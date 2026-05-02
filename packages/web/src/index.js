@@ -5,6 +5,7 @@ export { renderShellField, renderShellMetric, renderShellPageChrome, renderShell
 export { getPageComponent, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
 export { ShellAdminOpsPage } from "./pages/admin/ShellAdminOpsPage.js";
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.js";
+export { ShellPortfoliosPage } from "./pages/workspace/ShellPortfoliosPage.js";
 export { ShellSettingsPage } from "./pages/system/ShellSettingsPage.js";
 export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.js";
 export { coreAdapter } from "./adapters/core/index.js";

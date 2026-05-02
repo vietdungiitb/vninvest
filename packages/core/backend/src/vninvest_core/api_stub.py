@@ -49,7 +49,10 @@ def _ability_rules(identity, build_target):
         {"action": "read", "subject": "Settings"},
     ]
     if build_target in {"saas", "vip"}:
-        rules.append({"action": "read", "subject": "Transactions"})
+        rules.extend([
+            {"action": "read", "subject": "Transactions"},
+            {"action": "manage", "subject": "Portfolios"},
+        ])
     if identity["is_staff"] or identity["is_superuser"]:
         rules.append({"action": "manage", "subject": "all"})
     return rules
@@ -67,7 +70,7 @@ def _visible_groups(identity, build_target):
 def _visible_routes(identity, build_target):
     routes = ["dashboard", "watchlist", "support", "settings"]
     if build_target in {"saas", "vip"}:
-        routes.extend(["ai-advisory", "whale-alerts", "transactions"])
+        routes.extend(["ai-advisory", "whale-alerts", "transactions", "portfolios"])
     if build_target in {"saas", "vip"} and (identity["is_staff"] or identity["is_superuser"]):
         routes.extend(["admin-ops", "ai-command-center"])
     if build_target == "vip":

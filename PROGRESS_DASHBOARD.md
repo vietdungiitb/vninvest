@@ -1,3 +1,22 @@
+# ✅ AUDIT FILE LIST (2026-05-02ag)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `portfolios` route visibility and portfolio ability in the core bootstrap stub)
+- packages/web/src/pages/workspace/ShellPortfoliosPage.js (NEW - first workspace portfolio shell page using the shared helper layer)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `portfolios` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `portfolios` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellPortfoliosPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate portfolios route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the portfolios shell slice, total modules 544)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-27, WEB-28, OPS-13)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/workspace/ShellPortfoliosPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `portfolios` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose `portfolios`.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `portfolios`, `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected; bootstrap payload da chua `portfolios` trong `visible_routes`.
+- PASSED: `module_tree_full.md` regenerated successfully with 544 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02af)
 - packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - add shared snapshot/view-model mapper helpers for core shell pages)
 - packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - consume shared snapshot normalization, refresh action and health pill helpers)

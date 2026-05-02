@@ -455,3 +455,28 @@ Estimate: 0.5h
 Dependency: WEB-26  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung mapper cleanup slice moi nhat.
+
+---
+
+## 18. Portfolio workspace shell queue
+
+- [x] `WEB-27` Dung page `portfolios` bang shared helper layer cho core shell  
+Owner: Frontend Lead  
+Estimate: 2h  
+Dependency: WEB-25, WEB-26  
+Anchor files: `packages/web/src/pages/workspace/*`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`  
+DoD: `portfolios` duoc nang thanh route-level page `baseline`, reuse shared shell helper layer va chi doc du lieu tu core bootstrap/session/health seam thay vi mo them contract moi.
+
+- [x] `WEB-28` Expose va validate `portfolios` tren core bootstrap runtime  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-27  
+Anchor files: `packages/core/backend/src/vninvest_core/*`, `packages/web/scripts/check-shell.mjs`  
+DoD: core stub expose `portfolios` trong bootstrap navigation/abilities, `npm run check:shell` pass va live SSR parity tren `:8100` xac nhan route/page moi render duoc marker runtime expected.
+
+- [x] `OPS-13` Sync taskboard, audit docs va module tree sau portfolio shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-28  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung route-level page `portfolios` moi nhat.

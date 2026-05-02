@@ -61,7 +61,7 @@ export const routeCatalog = Object.freeze([
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["workspace.portfolios.manage"],
     adapter: "core",
-    status: "planned",
+    status: "baseline",
   },
   {
     id: "support",

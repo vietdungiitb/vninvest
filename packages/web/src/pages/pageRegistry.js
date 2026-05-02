@@ -2,6 +2,7 @@ import { ShellAdminOpsPage } from "./admin/ShellAdminOpsPage.js";
 import { ShellAiCommandCenterPage } from "./system/ShellAiCommandCenterPage.js";
 import { ShellSettingsPage } from "./system/ShellSettingsPage.js";
 import { VipLocalControlPage } from "./vip/VipLocalControlPage.js";
+import { ShellPortfoliosPage } from "./workspace/ShellPortfoliosPage.js";
 
 export const pageRegistry = Object.freeze([
   {
@@ -12,6 +13,11 @@ export const pageRegistry = Object.freeze([
   {
     routeId: "ai-command-center",
     component: ShellAiCommandCenterPage,
+    status: "baseline",
+  },
+  {
+    routeId: "portfolios",
+    component: ShellPortfoliosPage,
     status: "baseline",
   },
   {

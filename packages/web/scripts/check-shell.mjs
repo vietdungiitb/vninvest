@@ -20,6 +20,7 @@ import {
   routeCatalog,
   ShellAdminOpsPage,
   ShellAiCommandCenterPage,
+  ShellPortfoliosPage,
   ShellSettingsPage,
   shellAdapters,
   VipLocalControlPage,
@@ -72,6 +73,7 @@ for (const adapter of shellAdapters) {
 
 const adminOpsRoute = routeCatalog.find((route) => route.id === "admin-ops");
 const aiCommandCenterRoute = routeCatalog.find((route) => route.id === "ai-command-center");
+const portfoliosRoute = routeCatalog.find((route) => route.id === "portfolios");
 const vipShellAdapter = shellAdapters.find((adapter) => adapter.adapterId === "vip-app");
 const settingsRoute = routeCatalog.find((route) => route.id === "settings");
 const vipLocalControlRoute = routeCatalog.find((route) => route.id === "vip-local-control");
@@ -89,6 +91,7 @@ for (const methodName of requiredVipControlMethods) {
 
 assert(adminOpsRoute?.status === "baseline", "admin-ops route must move to baseline when the page exists");
 assert(aiCommandCenterRoute?.status === "baseline", "ai-command-center route must move to baseline when the page exists");
+assert(portfoliosRoute?.status === "baseline", "portfolios route must move to baseline when the page exists");
 assert(settingsRoute?.status === "baseline", "settings route must remain baseline once the shell settings page exists");
 assert(vipLocalControlRoute?.status === "baseline", "vip-local-control route must move to baseline when the page exists");
 
@@ -96,10 +99,12 @@ const pageRegistryRouteIds = new Set(getPageRegistryRouteIds());
 assert(pageRegistry.length === pageRegistryRouteIds.size, "Duplicate route ids detected in pageRegistry");
 assert(pageRegistryRouteIds.has("admin-ops"), "pageRegistry must register admin-ops");
 assert(pageRegistryRouteIds.has("ai-command-center"), "pageRegistry must register ai-command-center");
+assert(pageRegistryRouteIds.has("portfolios"), "pageRegistry must register portfolios");
 assert(pageRegistryRouteIds.has("settings"), "pageRegistry must register settings");
 assert(pageRegistryRouteIds.has("vip-local-control"), "pageRegistry must register vip-local-control");
 assert(getPageComponent("admin-ops") === ShellAdminOpsPage, "admin-ops must resolve to ShellAdminOpsPage");
 assert(getPageComponent("ai-command-center") === ShellAiCommandCenterPage, "ai-command-center must resolve to ShellAiCommandCenterPage");
+assert(getPageComponent("portfolios") === ShellPortfoliosPage, "portfolios must resolve to ShellPortfoliosPage");
 assert(getPageComponent("settings") === ShellSettingsPage, "settings must resolve to ShellSettingsPage");
 assert(getPageComponent("vip-local-control") === VipLocalControlPage, "vip-local-control must resolve to VipLocalControlPage");
 assert(typeof renderShellPageChrome === "function", "Shared shell page chrome helper must be exported");
@@ -328,6 +333,56 @@ assert(adminOpsMarkup.includes("Trung tâm vận hành admin shell"), "Admin ops
 assert(adminOpsMarkup.includes("show_admin_ops"), "Admin ops page must render admin surface flags");
 assert(adminOpsMarkup.includes("admin-ops"), "Admin ops page must render admin route visibility");
 assert(adminOpsMarkup.includes("package-admin"), "Admin ops page must render the current operator identity");
+
+const portfoliosMarkup = renderToStaticMarkup(
+  createElement(ShellPortfoliosPage, {
+    autoLoad: false,
+    initialSnapshot: {
+      buildMeta: {
+        adapterId: "core",
+        displayName: "Core API",
+        target: "saas",
+        baseUrl: "http://core.local/core/v1",
+      },
+      health: { ok: true, service: "core-api", environment: "foundation" },
+      capabilities: {
+        principal: {
+          identity: {
+            username: "package-admin",
+            is_staff: true,
+            is_superuser: true,
+          },
+        },
+        build: {
+          target: "saas",
+          plan: "pro",
+        },
+        abilities: [
+          { action: "manage", subject: "Portfolios" },
+          { action: "manage", subject: "all" },
+        ],
+        navigation: {
+          visible_groups: ["workspace", "signals", "system", "admin"],
+          visible_routes: ["dashboard", "watchlist", "transactions", "portfolios", "settings"],
+        },
+        surfaces: {
+          show_admin_ops: true,
+          show_ai_command_center: true,
+          show_vip_shell: false,
+        },
+      },
+      session: {
+        session_id: "core-session-foundation",
+        principal: { username: "package-admin" },
+      },
+    },
+  }),
+);
+
+assert(portfoliosMarkup.includes("Trung tâm danh mục và workspace"), "Portfolios page must render the Vietnamese page title");
+assert(portfoliosMarkup.includes("portfolios"), "Portfolios page must render the portfolios route visibility");
+assert(portfoliosMarkup.includes("workspace"), "Portfolios page must render workspace group visibility");
+assert(portfoliosMarkup.includes("package-admin"), "Portfolios page must render the current operator identity");
 
 const settingsPageMarkup = renderToStaticMarkup(
   createElement(ShellSettingsPage, {

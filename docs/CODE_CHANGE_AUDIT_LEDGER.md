@@ -1,3 +1,57 @@
+# Entry 2026-05-02ag - Add the first portfolio workspace shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `portfolios` de mo tiep lane workspace cua core shell sau khi helper layer da duoc cleanup on dinh.
+- Chi su dung bootstrap/session/health seam hien co; khong mo contract backend moi ngoai viec expose them route va ability trong core stub bootstrap payload.
+- Dong `WEB-27`, `WEB-28`, `OPS-13` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Mo rong bootstrap stub de expose `portfolios` trong `visible_routes` cho build target `saas|vip`.
+  - Bo sung ability `manage Portfolios` de lane workspace moi co subject phu hop cho shell page.
+- `packages/web/src/pages/workspace/ShellPortfoliosPage.js`:
+  - Them page route-level moi cho `portfolios` bang shared helper layer.
+  - Hien operator/session, workspace groups, portfolio routes, enabled surfaces, build metadata va portfolio abilities tu core bootstrap payload.
+- `packages/web/src/app/routeCatalog.js`:
+  - Nang route `portfolios` tu `planned` len `baseline`.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `portfolios` vao page registry de shell co route-level component that cho workspace lane.
+- `packages/web/src/index.js`:
+  - Export `ShellPortfoliosPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `portfolios` route/page registry va SSR render cua `ShellPortfoliosPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page workspace moi; tong module tang len 544.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-27`, `WEB-28`, `OPS-13`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ag.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho portfolio workspace slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `portfolios` route visibility and portfolio ability in the core bootstrap stub)
+- packages/web/src/pages/workspace/ShellPortfoliosPage.js (NEW - first workspace portfolio shell page using the shared helper layer)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `portfolios` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `portfolios` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellPortfoliosPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate portfolios route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the portfolios shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-27, WEB-28, OPS-13)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/workspace/ShellPortfoliosPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `portfolios` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd bang `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend/src"; $env:CORE_API_PORT="8100"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m vninvest_core.api_stub` de bootstrap payload moi expose `portfolios`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellPortfoliosPage, ShellSettingsPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core portfolios shared shell live parity passed`; da xac nhan bootstrap payload moi chua `portfolios` va ca bon page core van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (544 modules).
+
+Residual note:
+- `ShellPortfoliosPage` hien la route-level audit surface doc tu bootstrap runtime; write flows portfolio that va data table chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` dang duoc giu running voi bootstrap payload moi de auditor co the verify ngay route `portfolios` cung cac route core khac.
+
 # Entry 2026-05-02af - Extract shared mapper helpers for the core shell page family
 
 Muc tieu:
