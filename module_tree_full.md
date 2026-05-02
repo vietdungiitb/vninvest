@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:41:59`
+Generated at: `2026-05-02 11:47:04`
 
 ## Summary
 
-- Total modules: 544
+- Total modules: 545
 - Python modules: 340
-- JS/TS modules: 204
+- JS/TS modules: 205
 - Total classes: 563
-- Total functions: 2124
-- Total top-level variables: 3590
+- Total functions: 2125
+- Total top-level variables: 3598
 
 ## Python Modules
 
@@ -3702,6 +3702,13 @@ Generated at: `2026-05-02 11:41:59`
   - `ShellSettingsPage`
 - Top-level variables:
   - `enabledSurfaces`, `metrics`, `summaryCards`
+
+### `packages/web/src/pages/system/ShellSupportPage.js`
+
+- Functions:
+  - `ShellSupportPage`
+- Top-level variables:
+  - `SYSTEM_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `supportAbilities`, `systemRoutes`
 
 ### `packages/web/src/pages/vip/VipLocalControlPage.js`
 

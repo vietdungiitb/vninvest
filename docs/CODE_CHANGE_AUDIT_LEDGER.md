@@ -1,3 +1,53 @@
+# Entry 2026-05-02ah - Add the first system support shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `support` de dong bo route catalog `baseline` cua system lane voi page registry that.
+- Chi su dung bootstrap/session/health seam hien co; khong mo them backend contract moi ngoai viec bo sung support ability vao core stub bootstrap payload de consistent voi route capability.
+- Dong `WEB-29`, `WEB-30`, `OPS-14` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung ability `read Support` vao bootstrap stub de system support lane co subject phu hop voi route requirement hien tai.
+- `packages/web/src/pages/system/ShellSupportPage.js`:
+  - Them page route-level moi cho `support` bang shared helper layer.
+  - Hien operator/session, system groups, support route visibility, enabled surfaces, build metadata va support abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `support` vao page registry de shell co route-level component that cho system support lane.
+- `packages/web/src/index.js`:
+  - Export `ShellSupportPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `support` route/page registry va SSR render cua `ShellSupportPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page system moi; tong module tang len 545.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-29`, `WEB-30`, `OPS-14`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ah.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho support system slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read Support` in the core bootstrap ability set)
+- packages/web/src/pages/system/ShellSupportPage.js (NEW - first system support shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `support` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellSupportPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate support route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the support shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-29, WEB-30, OPS-14)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/system/ShellSupportPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `support` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd bang `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend/src"; $env:CORE_API_PORT="8100"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m vninvest_core.api_stub` de bootstrap payload moi expose support ability.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellSupportPage, ShellSettingsPage, ShellPortfoliosPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core support shared shell live parity passed`; da xac nhan bootstrap payload moi chua support ability va ca nam page core van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (545 modules).
+
+Residual note:
+- `ShellSupportPage` hien la route-level audit surface doc tu bootstrap runtime; ticket/support workflows that va operator interactions chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` dang duoc giu running voi bootstrap payload moi de auditor co the verify ngay route `support` cung cac route core khac.
+
 # Entry 2026-05-02ag - Add the first portfolio workspace shell page on the shared helper layer
 
 Muc tieu:

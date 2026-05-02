@@ -7,6 +7,7 @@ export { ShellAdminOpsPage } from "./pages/admin/ShellAdminOpsPage.js";
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.js";
 export { ShellPortfoliosPage } from "./pages/workspace/ShellPortfoliosPage.js";
 export { ShellSettingsPage } from "./pages/system/ShellSettingsPage.js";
+export { ShellSupportPage } from "./pages/system/ShellSupportPage.js";
 export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.js";
 export { coreAdapter } from "./adapters/core/index.js";
 export { createVipAppControlClient, vipAppAdapter } from "./adapters/vip-app/index.js";

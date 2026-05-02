@@ -480,3 +480,28 @@ Estimate: 0.5h
 Dependency: WEB-28  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung route-level page `portfolios` moi nhat.
+
+---
+
+## 19. Support system shell queue
+
+- [x] `WEB-29` Dung page `support` bang shared helper layer cho core shell  
+Owner: Frontend Lead  
+Estimate: 1.5h  
+Dependency: WEB-25, WEB-26  
+Anchor files: `packages/web/src/pages/system/*`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`  
+DoD: `support` co route-level page that reuse shared helper layer, bám system routes/bootstrap seam va khong mo them backend contract moi.
+
+- [x] `WEB-30` Expose va validate support ability/runtime parity  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-29  
+Anchor files: `packages/core/backend/src/vninvest_core/*`, `packages/web/scripts/check-shell.mjs`  
+DoD: core stub bootstrap expose support ability phu hop, `npm run check:shell` pass va live SSR parity tren `:8100` xac nhan route/page `support` render duoc marker runtime expected.
+
+- [x] `OPS-14` Sync taskboard, audit docs va module tree sau support shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-30  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung route-level page `support` moi nhat.
