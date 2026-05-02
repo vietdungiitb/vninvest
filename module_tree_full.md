@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 12:07:21`
+Generated at: `2026-05-02 12:15:04`
 
 ## Summary
 
-- Total modules: 549
+- Total modules: 550
 - Python modules: 340
-- JS/TS modules: 209
+- JS/TS modules: 210
 - Total classes: 563
-- Total functions: 2129
-- Total top-level variables: 3630
+- Total functions: 2130
+- Total top-level variables: 3638
 
 ## Python Modules
 
@@ -3695,6 +3695,13 @@ Generated at: `2026-05-02 12:07:21`
   - `ShellAiAdvisoryPage`
 - Top-level variables:
   - `SIGNAL_ROUTE_IDS`, `advisoryAbilities`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `signalRoutes`, `summaryCards`
+
+### `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`
+
+- Functions:
+  - `ShellWhaleAlertsPage`
+- Top-level variables:
+  - `SIGNAL_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `signalRoutes`, `summaryCards`, `whaleAbilities`
 
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 

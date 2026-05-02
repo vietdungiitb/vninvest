@@ -46,6 +46,7 @@ def _ability_rules(identity, build_target):
         {"action": "read", "subject": "Dashboard"},
         {"action": "read", "subject": "AiAdvisory"},
         {"action": "read", "subject": "WhaleAdvisory"},
+        {"action": "read", "subject": "WhaleAlerts"},
         {"action": "read", "subject": "Support"},
         {"action": "read", "subject": "Watchlist"},
         {"action": "read", "subject": "Settings"},

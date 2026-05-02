@@ -1,3 +1,21 @@
+# ✅ AUDIT FILE LIST (2026-05-02am)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read WhaleAlerts` while keeping `WhaleAdvisory` for compatibility)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (NEW - first whale-alerts signals shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `whale-alerts` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellWhaleAlertsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale-alerts route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the whale-alerts shell slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-39, WEB-40, OPS-19)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `whale-alerts` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `WhaleAlerts` dong thoi giu `WhaleAdvisory`.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `whale-alerts`, `signals`, `package-admin`, `Signals routes` va `Whale abilities` deu co trong markup render tu payload that.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02al)
 - packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read AiAdvisory` while keeping `WhaleAdvisory` for compatibility)
 - packages/web/src/pages/signals/ShellAiAdvisoryPage.js (NEW - first AI advisory signals shell page using the shared helper layer)

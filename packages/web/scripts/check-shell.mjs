@@ -20,6 +20,7 @@ import {
   routeCatalog,
   ShellAdminOpsPage,
   ShellAiAdvisoryPage,
+  ShellWhaleAlertsPage,
   ShellAiCommandCenterPage,
   ShellDashboardPage,
   ShellPortfoliosPage,
@@ -84,6 +85,7 @@ const portfoliosRoute = routeCatalog.find((route) => route.id === "portfolios");
 const supportRoute = routeCatalog.find((route) => route.id === "support");
 const transactionsRoute = routeCatalog.find((route) => route.id === "transactions");
 const watchlistRoute = routeCatalog.find((route) => route.id === "watchlist");
+const whaleAlertsRoute = routeCatalog.find((route) => route.id === "whale-alerts");
 const vipShellAdapter = shellAdapters.find((adapter) => adapter.adapterId === "vip-app");
 const settingsRoute = routeCatalog.find((route) => route.id === "settings");
 const vipLocalControlRoute = routeCatalog.find((route) => route.id === "vip-local-control");
@@ -107,6 +109,7 @@ assert(portfoliosRoute?.status === "baseline", "portfolios route must move to ba
 assert(supportRoute?.status === "baseline", "support route must remain baseline once the shell support page exists");
 assert(transactionsRoute?.status === "baseline", "transactions route must remain baseline once the shell transactions page exists");
 assert(watchlistRoute?.status === "baseline", "watchlist route must remain baseline once the shell watchlist page exists");
+assert(whaleAlertsRoute?.status === "baseline", "whale-alerts route must remain baseline once the shell whale alerts page exists");
 assert(settingsRoute?.status === "baseline", "settings route must remain baseline once the shell settings page exists");
 assert(vipLocalControlRoute?.status === "baseline", "vip-local-control route must move to baseline when the page exists");
 
@@ -118,6 +121,7 @@ assert(pageRegistryRouteIds.has("ai-command-center"), "pageRegistry must registe
 assert(pageRegistryRouteIds.has("dashboard"), "pageRegistry must register dashboard");
 assert(pageRegistryRouteIds.has("transactions"), "pageRegistry must register transactions");
 assert(pageRegistryRouteIds.has("watchlist"), "pageRegistry must register watchlist");
+assert(pageRegistryRouteIds.has("whale-alerts"), "pageRegistry must register whale-alerts");
 assert(pageRegistryRouteIds.has("portfolios"), "pageRegistry must register portfolios");
 assert(pageRegistryRouteIds.has("support"), "pageRegistry must register support");
 assert(pageRegistryRouteIds.has("settings"), "pageRegistry must register settings");
@@ -128,6 +132,7 @@ assert(getPageComponent("ai-command-center") === ShellAiCommandCenterPage, "ai-c
 assert(getPageComponent("dashboard") === ShellDashboardPage, "dashboard must resolve to ShellDashboardPage");
 assert(getPageComponent("transactions") === ShellTransactionsPage, "transactions must resolve to ShellTransactionsPage");
 assert(getPageComponent("watchlist") === ShellWatchlistPage, "watchlist must resolve to ShellWatchlistPage");
+assert(getPageComponent("whale-alerts") === ShellWhaleAlertsPage, "whale-alerts must resolve to ShellWhaleAlertsPage");
 assert(getPageComponent("portfolios") === ShellPortfoliosPage, "portfolios must resolve to ShellPortfoliosPage");
 assert(getPageComponent("support") === ShellSupportPage, "support must resolve to ShellSupportPage");
 assert(getPageComponent("settings") === ShellSettingsPage, "settings must resolve to ShellSettingsPage");
@@ -843,6 +848,58 @@ assert(aiAdvisoryMarkup.includes("Trung tâm AI advisory và tín hiệu"), "AI 
 assert(aiAdvisoryMarkup.includes("ai-advisory"), "AI advisory page must render ai-advisory route visibility");
 assert(aiAdvisoryMarkup.includes("signals"), "AI advisory page must render signals group visibility");
 assert(aiAdvisoryMarkup.includes("package-admin"), "AI advisory page must render the current operator identity");
+
+const whaleAlertsMarkup = renderToStaticMarkup(
+  createElement(ShellWhaleAlertsPage, {
+    autoLoad: false,
+    initialSnapshot: {
+      buildMeta: {
+        adapterId: "core",
+        displayName: "Core API",
+        target: "saas",
+        baseUrl: "http://core.local/core/v1",
+      },
+      health: { ok: true, service: "core-api", environment: "foundation" },
+      capabilities: {
+        principal: {
+          identity: {
+            username: "package-admin",
+            email: "package-admin@vninvest.local",
+            is_staff: true,
+            is_superuser: true,
+          },
+        },
+        build: {
+          target: "saas",
+          plan: "pro",
+        },
+        abilities: [
+          { action: "read", subject: "WhaleAdvisory" },
+          { action: "read", subject: "WhaleAlerts" },
+          { action: "manage", subject: "all" },
+        ],
+        navigation: {
+          visible_groups: ["workspace", "signals", "system", "admin"],
+          visible_routes: ["dashboard", "ai-advisory", "whale-alerts", "watchlist", "transactions"],
+        },
+        surfaces: {
+          show_admin_ops: true,
+          show_ai_command_center: true,
+          show_vip_shell: false,
+        },
+      },
+      session: {
+        session_id: "core-session-foundation",
+        principal: { username: "package-admin" },
+      },
+    },
+  }),
+);
+
+assert(whaleAlertsMarkup.includes("Trung tâm whale alerts và tín hiệu"), "Whale alerts page must render the Vietnamese page title");
+assert(whaleAlertsMarkup.includes("whale-alerts"), "Whale alerts page must render whale-alerts route visibility");
+assert(whaleAlertsMarkup.includes("signals"), "Whale alerts page must render signals group visibility");
+assert(whaleAlertsMarkup.includes("package-admin"), "Whale alerts page must render the current operator identity");
 
 const runtimeUpdates = [];
 const unsubscribe = authRuntime.subscribe((snapshot) => {

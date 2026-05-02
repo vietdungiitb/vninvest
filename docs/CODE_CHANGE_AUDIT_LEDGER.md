@@ -1,3 +1,54 @@
+# Entry 2026-05-02am - Add the first whale-alerts signals shell page and close the whale ability naming drift
+
+Muc tieu:
+- Dung route-level page `whale-alerts` de hoan tat coverage `baseline` con thieu cua signals lane trong package shell.
+- Dong drift contract giua route capability `signals.whale_alerts.read` va bootstrap ability subject legacy hien co bang cach bo sung alias `WhaleAlerts` trong core stub, trong khi van giu `WhaleAdvisory` de khong lam vo compatibility voi whale lane cu.
+- Dong `WEB-39`, `WEB-40`, `OPS-19` bang proof shell check, live SSR parity tren core stub `:8100`, audit sync va live capability proof cho ca `WhaleAlerts` va `WhaleAdvisory`.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung ability `read WhaleAlerts` vao bootstrap stub de route `whale-alerts` co subject naming phu hop voi contract signals hien tai.
+  - Giu lai `read WhaleAdvisory` de khong gay regression cho naming legacy va lane whale chua tach contract rieng.
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Them page route-level moi cho `whale-alerts` bang shared helper layer.
+  - Hien operator/session, signals groups, whale route visibility, enabled surfaces, build metadata va whale abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `whale-alerts` vao page registry de shell co route-level component that cho signals whale lane.
+- `packages/web/src/index.js`:
+  - Export `ShellWhaleAlertsPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `whale-alerts` route/page registry, SSR render cua `ShellWhaleAlertsPage` va route status baseline.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page signals moi; tong module tang len 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-39`, `WEB-40`, `OPS-19`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02am.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale-alerts signals slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read WhaleAlerts` while keeping `WhaleAdvisory` for compatibility)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (NEW - first whale-alerts signals shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `whale-alerts` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellWhaleAlertsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale-alerts route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the whale-alerts shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-39, WEB-40, OPS-19)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `whale-alerts`, register vao shell surface va them SSR proof.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `WhaleAlerts` dong thoi giu `WhaleAdvisory` cho compatibility.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellWhaleAlertsPage ... '@ | node --input-type=module; Pop-Location` => `core whale alerts shared shell live parity passed`; da xac nhan payload that chua ca `WhaleAlerts` va `WhaleAdvisory`, va markup render co `whale-alerts`, `signals`, `package-admin`, `Signals routes`, `Whale abilities`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+
+Residual note:
+- Slice nay chi tao route-level audit surface trong `packages/web`; no co chu y ton trong guardrails whale bang cach khong sua frontend whale workspace that, khong touch immutable bubble sources, va khong mo rong KLine intelligence contracts that.
+- Neu tiep tuc whale domain sau day, cong viec tiep theo nen la mapping ro `WhaleAlerts` vs `WhaleAdvisory` trong runtime contracts ngoai package shell, thay vi de alias song song keo dai khong can thiet.
+
 # Entry 2026-05-02al - Add the first AI advisory signals shell page and close the advisory ability drift
 
 Muc tieu:

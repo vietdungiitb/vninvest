@@ -5,6 +5,7 @@ export { renderShellField, renderShellMetric, renderShellPageChrome, renderShell
 export { getPageComponent, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
 export { ShellAdminOpsPage } from "./pages/admin/ShellAdminOpsPage.js";
 export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.js";
+export { ShellWhaleAlertsPage } from "./pages/signals/ShellWhaleAlertsPage.js";
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.js";
 export { ShellDashboardPage } from "./pages/workspace/ShellDashboardPage.js";
 export { ShellPortfoliosPage } from "./pages/workspace/ShellPortfoliosPage.js";

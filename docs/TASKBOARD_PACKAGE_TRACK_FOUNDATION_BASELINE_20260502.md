@@ -605,3 +605,28 @@ Estimate: 0.5h
 Dependency: WEB-38  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung route-level page `ai-advisory` va drift fix cua advisory ability.
+
+---
+
+## 24. Whale alerts signals shell queue
+
+- [x] `WEB-39` Dong bo whale ability va dung page `whale-alerts` tren shared helper layer  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 2h  
+Dependency: WEB-25, WEB-26  
+Anchor files: `packages/core/backend/src/vninvest_core/*`, `packages/web/src/pages/signals/*`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`  
+DoD: core stub bootstrap expose subject whale phu hop voi route contract, `whale-alerts` co route-level page that reuse shared helper layer va giu nguyen compatibility voi naming legacy `WhaleAdvisory`.
+
+- [x] `WEB-40` Validate whale-alerts runtime parity va registry coverage  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-39  
+Anchor files: `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/*`  
+DoD: `npm run check:shell` pass va live SSR parity tren `:8100` xac nhan route/page `whale-alerts` render duoc marker runtime expected, dong thoi payload that chua ca `WhaleAlerts` va `WhaleAdvisory`.
+
+- [x] `OPS-19` Sync taskboard, audit docs va module tree sau whale-alerts shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-40  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung route-level page `whale-alerts` va drift fix cua whale ability naming.
