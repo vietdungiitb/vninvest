@@ -734,3 +734,21 @@ Estimate: 0.5h
 Dependency: WEB-47  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit, runtime proof browser that va module tree phan anh dung quick action fallback moi, host route `/whale-alerts/shell`, dev Docker path va backend auth drift fix.
+
+---
+
+## 30. Whale hub to shell context carry-over queue
+
+- [x] `WEB-48` Giu context symbol/query khi mo whale shell tu hub  
+Owner: Frontend Lead  
+Estimate: 0.5h  
+Dependency: WEB-47  
+Anchor files: `frontend/src/pages/WhaleAlertsHub.jsx`, `frontend/src/pages/WhaleAlertsShellHost.jsx`  
+DoD: nut `Mo shell kiem chung` khong con reset context auditor; no uu tien giu `location.search` hien tai, va khi hub chua co query thi it nhat phai carry duoc ma dang dieu tra hoac tracked symbol dau tien sang `/whale-alerts/shell`.
+
+- [x] `OPS-25` Sync audit docs va module tree sau whale hub context slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-48  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung link carry-over moi, frontend build xanh, dev frontend da refresh, va browser proof xac nhan query `symbol`/`trade_date` duoc giu qua buoc nhay hub -> shell -> hub.

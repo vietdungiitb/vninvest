@@ -1,3 +1,40 @@
+# Entry 2026-05-02as - Preserve whale shell context when jumping from the hub into the host runtime
+
+Muc tieu:
+- Loai mot doan giong UX drift con sot lai sau `WEB-47`: auditor mo shell tu whale hub nhung mat context `symbol`/`trade_date`, buoc phai nhap lai tren shell host.
+- Giu buoc nhay hub -> shell host -> hub o cung mot lane audit that, khong mo them route moi va khong sua package-shell read-model.
+- Chot proof browser cho context carry-over trong runtime `frontend` that sau khi dev container duoc refresh.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/WhaleAlertsHub.jsx`:
+  - Import `useLocation()` de doc query string hien tai cua whale hub.
+  - Them `shellHostHref` bang `useMemo()`, merge `location.search` hien co voi fallback symbol tu `selectedSymbolInvestigation` hoac tracked symbol dau tien khi hub khong co query `symbol`.
+  - Doi link `Mo shell kiem chung` sang `to={shellHostHref}` de route shell host nhan du context auditor dang dung.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua route consumer frontend; tong module giu 551.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-48`, `OPS-25`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02as.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale hub context carry-over slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - preserve current query and fallback symbol when opening the whale shell host route)
+- module_tree_full.md (MODIFIED - regenerated after the whale hub context slice, total modules 551)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-48, OPS-25)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile thanh cong sau khi doi link `Mo shell kiem chung` sang href co context.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend image rebuild thanh cong va stack audit duoc refresh voi bundle moi.
+- PASSED: live browser proof tren `http://127.0.0.1/whale-alerts?symbol=SSI&trade_date=2026-04-19` cho thay link `Mo shell kiem chung` tro thanh `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19`; click link mo dung host page va nut `Quay lai trung tam whale` giu nguoc lai cung query do.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (551 modules).
+
+Residual note:
+- Whale hub hien van chua co router/query SSOT rieng, nen carry-over nay uu tien query dang co va moi fallback sang `selectedSymbolInvestigation`/tracked symbol dau tien; neu sau nay hub co URL state chinh thuc, nen chuyen toan bo whale investigation state sang URL thay vi gia tri tam trong component.
+
 # Entry 2026-05-02ar - Add latest-valid whale fallback quick action and wire the shell into the real frontend runtime
 
 Muc tieu:

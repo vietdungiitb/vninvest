@@ -1,3 +1,16 @@
+# ✅ AUDIT FILE LIST (2026-05-02as)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - preserve current query and fallback symbol when opening the whale shell host route)
+- module_tree_full.md (MODIFIED - regenerated after the whale hub context slice, total modules 551)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-48, OPS-25)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi nut `Mo shell kiem chung` duoc doi sang href co context.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: browser proof tren `/whale-alerts?symbol=SSI&trade_date=2026-04-19` xac nhan link shell tro thanh `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19`, va click vao shell host giu dung `SSI`/`2026-04-19` cho ca nut quay lai.
+- PASSED: `module_tree_full.md` regenerated successfully with 551 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ar)
 - packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add latest-valid trade-date quick action and query-safe fallback jump for the whale shell)
 - packages/web/scripts/check-shell.mjs (MODIFIED - validate degraded-session fallback metadata and quick action rendering)

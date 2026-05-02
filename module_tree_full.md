@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 13:49:16`
+Generated at: `2026-05-02 14:03:17`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Generated at: `2026-05-02 13:49:16`
 - JS/TS modules: 211
 - Total classes: 563
 - Total functions: 2173
-- Total top-level variables: 3687
+- Total top-level variables: 3692
 
 ## Python Modules
 
@@ -3300,7 +3300,7 @@ Generated at: `2026-05-02 13:49:16`
 - Functions:
   - `AdvisoryPreviewCard`, `AggregateFeedCard`, `CampaignCard`, `CampaignDetailModal`, `SymbolInvestigationPanel`, `TrackedSymbolCard`, `buildAggregateEventKey`, `buildSymbolStatsFromFeed`, `buildTrackedSymbolBuckets`, `formatCompactMoney`, `formatDuration`, `formatMoney`, `formatTime`, `getAggregateSourceMeta`, `getCampaignSideLabel`, `getCampaignTypeLabel`, `getFrequencyLabel`, `getSeverityLabel`, `getSeverityTone`, `getSideTone`, `getSizeClassLabel`, `getThresholdSourceLabel`, `isCountableWhaleOrder`, `loadInitialCampaigns`, `mergeUniqueAggregateEvents`
 - Top-level variables:
-  - `FEED_PAGE_SIZE_OPTIONS`, `abnormalityScore`, `abnormalityTone`, `activeWatchlistGroup`, `activeWatchlistGroupId`, `advisoryRequest`, `aggregateAbortRef`, `aggregateDisplayedCount`, `aggregateRequestSeqRef`, `aggregateSourceMeta`, `aggregateTotalCount`, `alertTimeRaw`, `avgValue`, `bootstrapRequestSeqRef`, `buyRatio`, `campaignAbortRef`, `campaignRequestSeqRef`, `campaigns`, `canReadAdvisory`, `cancelled`, `candidateTime`, `checkList`, `coObsSummary`, `currentTime`, `fetchData`, `filteredCampaigns`, `freq`, `groupedTimeline`, `handleHideLess`, `handleLoadMore`, `handleLoadMoreCampaigns`, `handleSortChange`, `hasExplain`, `hours`, `investigation`, `isBuy`, `isOrderSide`, `key`, `loadAggregateFeed`, `loadCampaigns`, `loadData`, `localController`, `map`, `merged`, `minutes`, `nextItems`, `normalized`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `normalizedSource`, `packageShellHostEnabled`, `parsed`, `parsedId`, `payload`, `primaryTime`, `raw`, `requestSeq`, `requestSignal`, `response`, `scopeLabel`, `seen`, `severityTone`, `side`, `sideTone`, `signals`, `sourceKeys`, `sourceMixLabel`, `st`, `strength`, `sym`, `symbol`, `symbolShortcuts`, `symbolStatsMap`, `tone`, `totalOrders`, `trackedSymbolsRequest`, `type`, `unique`, `watchlistGroupId`, `watchlistGroupsRequest`, `whaleAvgPrice`, `whyList`
+  - `FEED_PAGE_SIZE_OPTIONS`, `abnormalityScore`, `abnormalityTone`, `activeWatchlistGroup`, `activeWatchlistGroupId`, `advisoryRequest`, `aggregateAbortRef`, `aggregateDisplayedCount`, `aggregateRequestSeqRef`, `aggregateSourceMeta`, `aggregateTotalCount`, `alertTimeRaw`, `avgValue`, `bootstrapRequestSeqRef`, `buyRatio`, `campaignAbortRef`, `campaignRequestSeqRef`, `campaigns`, `canReadAdvisory`, `cancelled`, `candidateTime`, `checkList`, `coObsSummary`, `currentTime`, `fallbackSymbol`, `fetchData`, `filteredCampaigns`, `freq`, `groupedTimeline`, `handleHideLess`, `handleLoadMore`, `handleLoadMoreCampaigns`, `handleSortChange`, `hasExplain`, `hours`, `investigation`, `isBuy`, `isOrderSide`, `key`, `loadAggregateFeed`, `loadCampaigns`, `loadData`, `localController`, `location`, `map`, `merged`, `minutes`, `nextItems`, `normalized`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `normalizedSource`, `packageShellHostEnabled`, `params`, `parsed`, `parsedId`, `payload`, `primaryTime`, `query`, `raw`, `requestSeq`, `requestSignal`, `response`, `scopeLabel`, `seen`, `severityTone`, `shellHostHref`, `side`, `sideTone`, `signals`, `sourceKeys`, `sourceMixLabel`, `st`, `strength`, `sym`, `symbol`, `symbolShortcuts`, `symbolStatsMap`, `tone`, `totalOrders`, `trackedSymbolsRequest`, `type`, `unique`, `watchlistGroupId`, `watchlistGroupsRequest`, `whaleAvgPrice`, `whyList`
 
 ### `frontend/src/pages/WhaleAlertsHub.test.jsx`
 
