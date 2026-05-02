@@ -1,3 +1,21 @@
+# ✅ AUDIT FILE LIST (2026-05-02y)
+- packages/web/src/adapters/vip-app/vipAppAdapter.js (MODIFIED - add vip-app control-plane endpoint metadata and thin control client)
+- packages/web/src/adapters/vip-app/index.js (MODIFIED - export the VIP control client)
+- packages/web/src/index.js (MODIFIED - expose the VIP control client on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate VIP control client route metadata and request semantics)
+- module_tree_full.md (MODIFIED - regenerated after the VIP control client slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-11, WEB-12, OPS-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/adapters/vip-app/vipAppAdapter.js`, `packages/web/src/adapters/vip-app/index.js`, `packages/web/src/index.js`, va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm install` trong `packages/web` da khoi phuc local deps can thiet de chay standard shell validation.
+- PASSED: `npm run check:shell` trong `packages/web` da cover them VIP control client route metadata va request semantics.
+- PASSED: live smoke tren runtime `:8200` da xac nhan `login`, `listUsers`, `upsertUser`, `listAuditLogs`, `resetSession`, `logout` qua `createVipAppControlClient`.
+- PASSED: public export parity qua `packages/web/src/index.js` thanh cong tren compose runtime `:8200`.
+- PASSED: `module_tree_full.md` regenerated successfully with 536 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02x)
 - .gitignore (MODIFIED - ignore generated VIP local backend state data)
 - packages/vip-app/local-backend/store.py (NEW - file-backed persistence for users, session, tenant and audit logs)

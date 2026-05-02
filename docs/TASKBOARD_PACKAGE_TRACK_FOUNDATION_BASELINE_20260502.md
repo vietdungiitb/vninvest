@@ -255,3 +255,28 @@ Estimate: 0.5h
 Dependency: VIP-04  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs va audit evidence dong bo sau khi vip-app co persistence lane dau tien.
+
+---
+
+## 10. Next shell control queue
+
+- [x] `WEB-11` Them vip-app control client cho auth, RBAC va audit routes moi  
+Owner: Frontend Lead  
+Estimate: 2h  
+Dependency: VIP-04, OPS-04  
+Anchor files: `packages/web/src/adapters/vip-app/*`, `packages/web/src/index.js`, `packages/web/scripts/check-shell.mjs`  
+DoD: `packages/web` co client mỏng bám adapter seam de goi `login/logout/reset/listUsers/upsertUser/listAuditLogs` tren vip-app local backend ma khong bypass route metadata.
+
+- [x] `WEB-12` Validate control client parity voi compose runtime cua vip-app  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-11  
+Anchor files: `packages/web/src/adapters/vip-app/*`, `packages/vip-app/local-backend/*`  
+DoD: co proof bang `packages/web` client rang auth/RBAC/audit routes moi tra ve du lieu dung shape tren runtime `:8200`.
+
+- [x] `OPS-05` Sync taskboard, audit docs va module tree sau vip-app control client slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-12  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs va audit evidence dong bo sau khi `packages/web` co vip-app control client lane dau tien.

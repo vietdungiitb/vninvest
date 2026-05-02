@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 10:36:08`
+Generated at: `2026-05-02 10:44:01`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 10:36:08`
 - Python modules: 340
 - JS/TS modules: 196
 - Total classes: 563
-- Total functions: 2063
-- Total top-level variables: 3515
+- Total functions: 2068
+- Total top-level variables: 3519
 
 ## Python Modules
 
@@ -3610,9 +3610,9 @@ Generated at: `2026-05-02 10:36:08`
 ### `packages/web/src/adapters/vip-app/vipAppAdapter.js`
 
 - Functions:
-  - `resolveVipAppBaseUrl`
+  - `appendQuery`, `buildJsonRequest`, `createVipAppControlClient`, `requestJson`, `resolveFetchImpl`, `resolveVipAppBaseUrl`
 - Top-level variables:
-  - `vipAppAdapter`
+  - `params`, `queryString`, `request`, `response`, `vipAppAdapter`
 
 ### `packages/web/src/app/navigationCatalog.js`
 

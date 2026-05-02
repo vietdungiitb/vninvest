@@ -1,3 +1,51 @@
+# Entry 2026-05-02y - Add a thin VIP app control client to the package-track web shell
+
+Muc tieu:
+- Mo rong `packages/web` tu bootstrap-only seam thanh co them control-plane client cho cac route `auth`, `rbac`, `audit` cua `vip-app` local backend.
+- Giu `vipAppAdapter` lam SSOT cho endpoint metadata thay vi de consumer tu noi chuoi URL hoac bypass adapter seam.
+- Dong `WEB-11`, `WEB-12`, `OPS-05` bang proof o muc shell validation, live runtime parity va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/adapters/vip-app/vipAppAdapter.js`:
+  - Them endpoint builders cho `auth/login`, `auth/logout`, `auth/reset`, `rbac/users`, `audit/logs`.
+  - Them `createVipAppControlClient()` de goi `login`, `logout`, `resetSession`, `listUsers`, `upsertUser`, `listAuditLogs` bang fetch client mỏng bám adapter metadata.
+- `packages/web/src/adapters/vip-app/index.js`:
+  - Export `createVipAppControlClient` cung voi `vipAppAdapter`.
+- `packages/web/src/index.js`:
+  - Dua VIP control client vao public shell surface de consumer khong can import deep path.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them mocked shell proof cho endpoint metadata va request semantics cua VIP control client.
+- `module_tree_full.md`:
+  - Regenerate sau khi them control client helpers; tong module giu nguyen 536.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `WEB-11`, `WEB-12`, `OPS-05` complete.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02y.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho VIP control client slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/adapters/vip-app/vipAppAdapter.js (MODIFIED - add vip-app control-plane endpoint metadata and thin control client)
+- packages/web/src/adapters/vip-app/index.js (MODIFIED - export the VIP control client)
+- packages/web/src/index.js (MODIFIED - expose the VIP control client on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate VIP control client route metadata and request semantics)
+- module_tree_full.md (MODIFIED - regenerated after the VIP control client slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-11, WEB-12, OPS-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/adapters/vip-app/vipAppAdapter.js`, `packages/web/src/adapters/vip-app/index.js`, `packages/web/src/index.js`, `packages/web/scripts/check-shell.mjs`, va `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`.
+- FAILED -> FIXED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => ban dau loi `Cannot find package 'react'`; da khoi phuc local package deps bang `npm install` roi rerun thanh cong.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`, bao gom mocked proof cho VIP control client route metadata va request semantics.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... createVipAppControlClient from "./src/adapters/vip-app/vipAppAdapter.js" ... '@ | node --input-type=module; Pop-Location` => `vip control client live smoke passed`; da xac nhan `login`, `listUsers`, `upsertUser`, `listAuditLogs`, `resetSession`, `logout` tren runtime `:8200`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... createVipAppControlClient from "./src/index.js" ... '@ | node --input-type=module; Pop-Location` => `vip control client public export parity passed`; public shell surface van tra ve parity dung voi compose runtime `:8200`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (536 modules).
+
+Residual note:
+- Slice nay moi dung o muc client seam cho shell; chua co component/page trong `packages/web` render dang nhap local, quan ly sub-user hay audit log cho VIP.
+- `packages/web/node_modules/` la local ignored artifact; `npm run check:shell` can package-local React deps hien dien trong moi workstation muon chay standard shell validation.
+
 # Entry 2026-05-02x - Upgrade VIP app local backend to a minimal persisted auth/RBAC/audit runtime
 
 Muc tieu:

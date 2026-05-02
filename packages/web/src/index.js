@@ -2,7 +2,7 @@ export { BUILD_TARGETS, DEFAULT_BUILD_TARGET, getBuildTarget, isBuildTarget, nor
 export { routeCatalog, getRouteCatalogIds, getRoutesForBuildTarget } from "./app/routeCatalog.js";
 export { navigationCatalog, getNavigationGroupIds, getNavigationForBuildTarget } from "./app/navigationCatalog.js";
 export { coreAdapter } from "./adapters/core/index.js";
-export { vipAppAdapter } from "./adapters/vip-app/index.js";
+export { createVipAppControlClient, vipAppAdapter } from "./adapters/vip-app/index.js";
 export {
 	createBootstrapClient,
 	deriveLegacyAuthState,

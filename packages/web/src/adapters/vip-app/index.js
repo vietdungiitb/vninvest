@@ -1,1 +1,1 @@
-export { vipAppAdapter } from "./vipAppAdapter.js";
+export { createVipAppControlClient, vipAppAdapter } from "./vipAppAdapter.js";

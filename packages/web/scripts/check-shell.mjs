@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   BUILD_TARGETS,
   ShellAuthProvider,
+  createVipAppControlClient,
   createEmptyAuthRuntimeState,
   createShellAuthRuntime,
   deriveAuthRuntimeState,
@@ -56,6 +57,140 @@ for (const adapter of shellAdapters) {
     assert(typeof adapter[methodName] === "function", `Adapter ${adapter.adapterId} is missing method: ${methodName}`);
   }
 }
+
+const vipShellAdapter = shellAdapters.find((adapter) => adapter.adapterId === "vip-app");
+const requiredVipControlMethods = [
+  "getAuthLoginEndpoint",
+  "getAuthLogoutEndpoint",
+  "getAuthResetEndpoint",
+  "getRbacUsersEndpoint",
+  "getAuditLogsEndpoint",
+];
+
+for (const methodName of requiredVipControlMethods) {
+  assert(typeof vipShellAdapter?.[methodName] === "function", `VIP adapter is missing method: ${methodName}`);
+}
+
+const vipControlRequests = [];
+const vipControlClient = createVipAppControlClient({
+  env: { VNINVEST_VIP_APP_BASE_URL: "http://vip-app.local/vip-app/v1" },
+  fetchImpl: async (url, init = {}) => {
+    vipControlRequests.push({ url, init });
+
+    if (url.endsWith("/auth/login")) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        async json() {
+          return {
+            ok: true,
+            session: { session_id: "sess_login", principal: { username: "vip-local-admin" } },
+          };
+        },
+      };
+    }
+
+    if (url.endsWith("/auth/logout")) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        async json() {
+          return {
+            ok: true,
+            session: { session_id: "", principal: { username: "" } },
+          };
+        },
+      };
+    }
+
+    if (url.endsWith("/auth/reset")) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        async json() {
+          return {
+            ok: true,
+            session: { session_id: "vip-local-session", principal: { username: "vip-local-admin" } },
+          };
+        },
+      };
+    }
+
+    if (url.includes("/audit/logs")) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        async json() {
+          return {
+            ok: true,
+            audit_logs: [{ audit_id: 1, action: "auth.login" }],
+          };
+        },
+      };
+    }
+
+    if (init.method === "POST") {
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        async json() {
+          return {
+            ok: true,
+            user: { user_id: 102, username: "vip-operator" },
+          };
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      async json() {
+        return {
+          ok: true,
+          users: [{ user_id: 101, username: "vip-local-admin" }],
+        };
+      },
+    };
+  },
+});
+
+const vipLoginPayload = await vipControlClient.login({
+  username: "vip-local-admin",
+  password: "vip-demo-pass",
+});
+const vipUsersPayload = await vipControlClient.listUsers();
+const vipUserUpsertPayload = await vipControlClient.upsertUser({
+  username: "vip-operator",
+  role_keys: ["vip_operator"],
+});
+const vipAuditPayload = await vipControlClient.listAuditLogs({ limit: 5 });
+const vipResetPayload = await vipControlClient.resetSession();
+const vipLogoutPayload = await vipControlClient.logout();
+
+assert(vipLoginPayload.session.session_id === "sess_login", "VIP control client must return login payload JSON");
+assert(vipUsersPayload.users[0].username === "vip-local-admin", "VIP control client must return RBAC user listings");
+assert(vipUserUpsertPayload.user.username === "vip-operator", "VIP control client must return upserted user payloads");
+assert(vipAuditPayload.audit_logs[0].action === "auth.login", "VIP control client must return audit log payloads");
+assert(vipResetPayload.session.session_id === "vip-local-session", "VIP control client must support auth reset");
+assert(vipLogoutPayload.session.session_id === "", "VIP control client must support logout");
+
+assert(vipControlRequests[0].url === "http://vip-app.local/vip-app/v1/auth/login", "VIP control client must hit the login endpoint from adapter metadata");
+assert(vipControlRequests[0].init.method === "POST", "VIP control client login must use POST");
+assert(JSON.parse(vipControlRequests[0].init.body).username === "vip-local-admin", "VIP control client login must serialize credentials as JSON");
+assert(vipControlRequests[1].url === "http://vip-app.local/vip-app/v1/rbac/users", "VIP control client must use the RBAC users endpoint for listings");
+assert(vipControlRequests[1].init.method === "GET", "VIP control client listUsers must use GET");
+assert(vipControlRequests[2].url === "http://vip-app.local/vip-app/v1/rbac/users", "VIP control client must reuse the RBAC users endpoint for upserts");
+assert(vipControlRequests[2].init.method === "POST", "VIP control client upsertUser must use POST");
+assert(vipControlRequests[3].url === "http://vip-app.local/vip-app/v1/audit/logs?limit=5", "VIP control client must append audit query params through adapter metadata");
+assert(vipControlRequests[4].url === "http://vip-app.local/vip-app/v1/auth/reset", "VIP control client resetSession must use the reset endpoint");
+assert(vipControlRequests[5].url === "http://vip-app.local/vip-app/v1/auth/logout", "VIP control client logout must use the logout endpoint");
 
 const emptyAuthState = createEmptyAuthRuntimeState({ buildTarget: "saas" });
 assert(emptyAuthState.userPlan === "free", "Empty auth runtime state must default userPlan to free");
