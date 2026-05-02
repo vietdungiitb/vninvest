@@ -1,6 +1,5 @@
 import {
   createElement,
-  startTransition,
   useEffect,
   useRef,
   useState,
@@ -77,15 +76,13 @@ export function useCoreShellPageSnapshot({
       fetchImpl: fetchImplRef.current,
     });
 
-    startTransition(() => {
-      setViewState((previous) => ({
-        ...previous,
-        loading: false,
-        error: "",
-        notice: notice || previous.notice,
-        ...snapshot,
-      }));
-    });
+    setViewState((previous) => ({
+      ...previous,
+      loading: false,
+      error: "",
+      notice: notice || previous.notice,
+      ...snapshot,
+    }));
 
     return snapshot;
   }
@@ -115,14 +112,12 @@ export function useCoreShellPageSnapshot({
           return;
         }
 
-        startTransition(() => {
-          setViewState((previous) => ({
-            ...previous,
-            loading: false,
-            error: "",
-            ...snapshot,
-          }));
-        });
+        setViewState((previous) => ({
+          ...previous,
+          loading: false,
+          error: "",
+          ...snapshot,
+        }));
       } catch (error) {
         if (!active) {
           return;

@@ -1,3 +1,43 @@
+# Entry 2026-05-02az - Unstick shell bootstrap metadata for the AI advisory host runtime
+
+Muc tieu:
+- Dong residual sau `2026-05-02ay`: advisory session that cua `testpro` da render tren shell host, nhung metadata bootstrap cua shell van treo o trang thai loading nen UI hien `Username: Chua co`, `Plan: n/a`, `Signals routes visible: 0`.
+- Giu pham vi thay doi cuc hep trong shared package-shell helper thay vi sua lan toa qua advisory route hay core stub contract, vi live core endpoints da tra payload dung.
+- Chot proof browser tren `/ai-advisory/shell` rang lane bootstrap va lane advisory that cung on dinh trong runtime frontend dev.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/coreShellPageHelpers.js`:
+  - Bo `startTransition(...)` quanh hai lan commit `setViewState(...)` trong `useCoreShellPageSnapshot()`.
+  - Snapshot bootstrap (`buildMeta`, `health`, `capabilities`, `session`) gio duoc commit truc tiep sau khi `loadShellBootstrap()` resolve, thay vi de shell page o trang thai loading treo voi metadata rong.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua shared package-shell helper; tong module giu 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02az.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho advisory shell bootstrap slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - commit shell bootstrap snapshot state directly instead of wrapping it in `startTransition`)
+- module_tree_full.md (MODIFIED - regenerated after the shell bootstrap metadata fix, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/coreShellPageHelpers.js`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell` => package-shell validation xanh sau khi sua shared snapshot helper.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau khi package-shell helper commit state truc tiep.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc rebuild lai voi bundle moi.
+- PASSED: browser proof tren `http://127.0.0.1/ai-advisory/shell?symbol=BCM&ts=1777707400` voi session `testpro`:
+  - badge doi tu `Dang dong bo lane AI advisory` sang `Lane AI advisory san sang cho kiem tra`;
+  - bootstrap metadata hien `Build target: saas`, `Username: package-admin`, `Email: package-admin@vninvest.local`, `Session ID: core-session-foundation`, `Plan: pro`;
+  - navigation proof hien `visible groups = workspace/signals/system/admin`, `signals routes = ai-advisory + whale-alerts`, `enabled surfaces = show_admin_ops + show_ai_command_center`;
+  - advisory session that van giu `Contract: v2`, `Quality: 33.5`, benchmarks `RVOL: 0.35 (dry)`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Bootstrap identity tren shell host hien la identity cua core stub (`package-admin`) chu khong phai JWT user frontend (`testpro`). Day la hanh vi hop voi stub contract hien tai va khac residual vua sua: metadata khong con rong/treo, nhung neu muon parity 1:1 voi frontend principal thi can mot slice rieng de noi core stub vao auth context that.
+- Fix nay dung chung cho package-shell pages xai `useCoreShellPageSnapshot()`. Hien chi proof tren lane `ai-advisory`; neu can, co the sanity-check them `whale-alerts/shell` o slice sau.
+
 # Entry 2026-05-02ay - Surface the event-based advisory gate and sync testpro to the working AI runtime
 
 Muc tieu:

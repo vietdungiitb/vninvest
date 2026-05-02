@@ -1,3 +1,17 @@
+# ✅ AUDIT FILE LIST (2026-05-02az)
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - commit shell bootstrap snapshot state directly so host metadata no longer stays empty/loading)
+- module_tree_full.md (MODIFIED - regenerated after the advisory shell bootstrap fix, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`.
+- PASSED: `npm run check:shell` trong `packages/web` xanh sau khi bo `startTransition` khoi shared bootstrap state helper.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi package-shell helper moi duoc consume boi host app.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan badge thanh `Lane AI advisory san sang cho kiem tra`, `Build target: saas`, `Username: package-admin`, `Plan: pro`, `Signals routes visible: 2`, `Advisory routes active: 1`, va advisory that cua `BCM` van giu `Contract: v2`, `Quality: 33.5`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ay)
 - frontend/src/pages/UserConfig.jsx (MODIFIED - surface and persist `advisory_whale_signal_enabled` in settings)
 - frontend/src/pages/UserConfig.test.jsx (MODIFIED - cover the visible event-based advisory gate and save payload)
