@@ -430,3 +430,28 @@ Estimate: 0.5h
 Dependency: WEB-24  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung helper extraction slice moi nhat.
+
+---
+
+## 17. Core shell mapper cleanup queue
+
+- [x] `WEB-25` Tach shared mapper helpers cho core shell view-model  
+Owner: Frontend Lead  
+Estimate: 1.5h  
+Dependency: WEB-23, WEB-24  
+Anchor files: `packages/web/src/pages/*`  
+DoD: normalization chung cho `capabilities`, `navigation`, `surfaces`, `abilities`, route filtering va state badges cua `settings`, `admin-ops`, `ai-command-center` duoc dua vao helper dung chung thay vi lap lai o tung page.
+
+- [x] `WEB-26` Refactor ba core shell page len mapper helpers va validate parity  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-25  
+Anchor files: `packages/web/src/pages/*`, `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/*`  
+DoD: `npm run check:shell` pass, live SSR parity tren `:8100` pass cho `settings`, `admin-ops`, `ai-command-center`, markup marker va route semantics giu nguyen sau cleanup.
+
+- [x] `OPS-12` Sync taskboard, audit docs va module tree sau core mapper cleanup slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-26  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung mapper cleanup slice moi nhat.

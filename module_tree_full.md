@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:31:03`
+Generated at: `2026-05-02 11:36:40`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 11:31:03`
 - Python modules: 340
 - JS/TS modules: 203
 - Total classes: 563
-- Total functions: 2113
-- Total top-level variables: 3599
+- Total functions: 2123
+- Total top-level variables: 3580
 
 ## Python Modules
 
@@ -3673,14 +3673,14 @@ Generated at: `2026-05-02 11:31:03`
 - Functions:
   - `ShellAdminOpsPage`
 - Top-level variables:
-  - `abilities`, `adminAbilities`, `adminFlags`, `adminRoutes`, `buildMeta`, `capabilities`, `groupFlags`, `health`, `identity`, `metrics`, `navigation`, `routeFlags`, `session`, `summaryCards`, `surfaces`, `visibleGroups`, `visibleRoutes`
+  - `adminAbilities`, `adminFlags`, `adminRoutes`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`
 
 ### `packages/web/src/pages/coreShellPageHelpers.js`
 
 - Functions:
-  - `createEmptySnapshot`, `createInitialViewState`, `handleRefresh`, `normalizePageErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderBuildMetaCard`, `renderElement`, `renderFlagList`, `renderSummaryCard`, `renderValueList`, `runInitialLoad`, `useCoreShellPageSnapshot`
+  - `buildSurfaceFlags`, `buildVisibilityFlags`, `countFlagsByState`, `createEmptySnapshot`, `createInitialViewState`, `deriveCoreShellSnapshot`, `filterAbilitiesBySubject`, `filterVisibleRoutes`, `getEnabledSurfaceKeys`, `handleRefresh`, `normalizeComparableText`, `normalizePageErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderBuildMetaCard`, `renderElement`, `renderFlagList`, `renderHealthStatusPill`, `renderRefreshAction`, `renderSummaryCard`, `renderValueList`, `runInitialLoad`, `useCoreShellPageSnapshot`
 - Top-level variables:
-  - `active`, `bootstrapLoaderRef`, `envRef`, `fallbackErrorMessageRef`, `fetchImplRef`, `snapshot`
+  - `active`, `allowedRouteIds`, `bootstrapLoaderRef`, `buildMeta`, `capabilities`, `envRef`, `fallbackErrorMessageRef`, `fetchImplRef`, `health`, `navigation`, `normalizedKeywords`, `session`, `snapshot`, `subject`, `surfaces`
 
 ### `packages/web/src/pages/pageRegistry.js`
 
@@ -3694,14 +3694,14 @@ Generated at: `2026-05-02 11:31:03`
 - Functions:
   - `ShellAiCommandCenterPage`
 - Top-level variables:
-  - `abilities`, `aiAbilities`, `aiFlags`, `aiRoutes`, `buildMeta`, `capabilities`, `groupFlags`, `health`, `identity`, `metrics`, `navigation`, `routeFlags`, `session`, `summaryCards`, `surfaces`, `visibleGroups`, `visibleRoutes`
+  - `aiAbilities`, `aiFlags`, `aiRoutes`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`
 
 ### `packages/web/src/pages/system/ShellSettingsPage.js`
 
 - Functions:
   - `ShellSettingsPage`
 - Top-level variables:
-  - `abilities`, `buildMeta`, `capabilities`, `enabledSurfaces`, `health`, `identity`, `metrics`, `session`, `summaryCards`, `visibleGroups`, `visibleRoutes`
+  - `enabledSurfaces`, `metrics`, `summaryCards`
 
 ### `packages/web/src/pages/vip/VipLocalControlPage.js`
 

@@ -162,6 +162,118 @@ export function useCoreShellPageSnapshot({
   };
 }
 
+function normalizeComparableText(value) {
+  if (typeof value === "string") {
+    return value.toLowerCase();
+  }
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).toLowerCase();
+}
+
+export function deriveCoreShellSnapshot(viewState) {
+  const buildMeta = viewState?.buildMeta || null;
+  const health = viewState?.health || null;
+  const capabilities = viewState?.capabilities || null;
+  const session = viewState?.session || null;
+  const navigation = capabilities?.navigation || {};
+  const surfaces = capabilities?.surfaces || {};
+
+  return {
+    buildMeta,
+    health,
+    capabilities,
+    session,
+    navigation,
+    surfaces,
+    identity: capabilities?.principal?.identity || {},
+    visibleGroups: Array.isArray(navigation.visible_groups) ? navigation.visible_groups : [],
+    visibleRoutes: Array.isArray(navigation.visible_routes) ? navigation.visible_routes : [],
+    abilities: Array.isArray(capabilities?.abilities) ? capabilities.abilities : [],
+  };
+}
+
+export function getEnabledSurfaceKeys(surfaces) {
+  return Object.entries(surfaces || {})
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([surfaceKey]) => surfaceKey);
+}
+
+export function filterVisibleRoutes(visibleRoutes, allowedRoutes) {
+  const allowedRouteIds = new Set(Array.isArray(allowedRoutes) ? allowedRoutes : []);
+
+  return (Array.isArray(visibleRoutes) ? visibleRoutes : []).filter((routeId) => allowedRouteIds.has(routeId));
+}
+
+export function filterAbilitiesBySubject(abilities, subjectKeywords) {
+  const normalizedKeywords = (Array.isArray(subjectKeywords) ? subjectKeywords : [subjectKeywords])
+    .map((keyword) => normalizeComparableText(keyword))
+    .filter(Boolean);
+
+  return (Array.isArray(abilities) ? abilities : []).filter((ability) => {
+    const subject = normalizeComparableText(ability?.subject);
+    return subject === "all" || normalizedKeywords.some((keyword) => subject.includes(keyword));
+  });
+}
+
+export function buildSurfaceFlags(surfaces, flagDefinitions) {
+  return (Array.isArray(flagDefinitions) ? flagDefinitions : []).map((flagDefinition) => ({
+    label: flagDefinition.label,
+    state: surfaces?.[flagDefinition.key] ? "ON" : "OFF",
+    detail: flagDefinition.detail,
+  }));
+}
+
+export function buildVisibilityFlags(items, {
+  activeItem,
+  activeState = "ACTIVE",
+  visibleState = "VISIBLE",
+  activeDetail,
+  visibleDetail,
+}) {
+  return (Array.isArray(items) ? items : []).map((item) => ({
+    label: item,
+    state: item === activeItem ? activeState : visibleState,
+    detail: item === activeItem ? activeDetail : visibleDetail,
+  }));
+}
+
+export function countFlagsByState(flags, state) {
+  return (Array.isArray(flags) ? flags : []).filter((flag) => flag.state === state).length;
+}
+
+export function renderRefreshAction({ onClick, disabled, label = "Làm mới snapshot" }) {
+  return renderElement(
+    "div",
+    { className: "shellPage__actions" },
+    renderElement(
+      "button",
+      {
+        type: "button",
+        className: "shellPage__button shellPage__button--secondary",
+        onClick,
+        disabled,
+      },
+      label,
+    ),
+  );
+}
+
+export function renderHealthStatusPill(health) {
+  return renderElement(
+    "div",
+    { className: "shellPage__actions" },
+    renderElement(
+      "span",
+      { className: "shellPage__pill" },
+      `Health: ${health?.ok ? "OK" : "Chưa xác nhận"}`,
+    ),
+  );
+}
+
 export function renderSummaryCard({ key, title, rows }) {
   return renderElement(
     "article",

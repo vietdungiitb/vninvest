@@ -4,10 +4,18 @@ import {
   renderShellPanel,
 } from "../../components/ShellPageTemplate.js";
 import {
+  buildSurfaceFlags,
+  buildVisibilityFlags,
+  countFlagsByState,
+  deriveCoreShellSnapshot,
+  filterAbilitiesBySubject,
+  filterVisibleRoutes,
   renderAbilityList,
   renderBuildMetaCard,
   renderElement,
   renderFlagList,
+  renderHealthStatusPill,
+  renderRefreshAction,
   renderSummaryCard,
   useCoreShellPageSnapshot,
 } from "../coreShellPageHelpers.js";
@@ -29,42 +37,41 @@ export function ShellAiCommandCenterPage({
     refreshNotice: "Đã làm mới snapshot điều hành AI từ core runtime.",
   });
 
-  const buildMeta = viewState.buildMeta || null;
-  const health = viewState.health || null;
-  const capabilities = viewState.capabilities || null;
-  const session = viewState.session || null;
-  const identity = capabilities?.principal?.identity || {};
-  const navigation = capabilities?.navigation || {};
-  const surfaces = capabilities?.surfaces || {};
-  const visibleGroups = Array.isArray(navigation.visible_groups) ? navigation.visible_groups : [];
-  const visibleRoutes = Array.isArray(navigation.visible_routes) ? navigation.visible_routes : [];
-  const abilities = Array.isArray(capabilities?.abilities) ? capabilities.abilities : [];
-  const aiRoutes = visibleRoutes.filter((routeId) => routeId === "ai-command-center" || routeId === "ai-advisory");
-  const aiFlags = [
+  const {
+    buildMeta,
+    health,
+    capabilities,
+    session,
+    identity,
+    visibleGroups,
+    visibleRoutes,
+    abilities,
+    surfaces,
+  } = deriveCoreShellSnapshot(viewState);
+  const aiRoutes = filterVisibleRoutes(visibleRoutes, ["ai-command-center", "ai-advisory"]);
+  const aiFlags = buildSurfaceFlags(surfaces, [
     {
+      key: "show_ai_command_center",
       label: "show_ai_command_center",
-      state: surfaces.show_ai_command_center ? "ON" : "OFF",
       detail: "Flag chính xác nhận runtime đang mở lane điều hành AI cho shell hiện tại.",
     },
     {
+      key: "show_admin_ops",
       label: "show_admin_ops",
-      state: surfaces.show_admin_ops ? "ON" : "OFF",
       detail: "Cho biết operator lane có đồng thời bật để phối hợp với control center AI hay không.",
     },
     {
+      key: "show_vip_shell",
       label: "show_vip_shell",
-      state: surfaces.show_vip_shell ? "ON" : "OFF",
       detail: "Dùng để đối chiếu xem shell AI hiện tại có đang nằm trong build target VIP hay không.",
     },
-  ];
-  const aiAbilities = abilities.filter(
-    (ability) => ability.subject === "all" || String(ability.subject).toLowerCase().includes("ai"),
-  );
+  ]);
+  const aiAbilities = filterAbilitiesBySubject(abilities, "ai");
 
   const metrics = [
     renderShellMetric("Build target", buildMeta?.target || capabilities?.build?.target || "n/a"),
     renderShellMetric("AI routes", String(aiRoutes.length)),
-    renderShellMetric("AI flags ON", String(aiFlags.filter((flag) => flag.state === "ON").length)),
+    renderShellMetric("AI flags ON", String(countFlagsByState(aiFlags, "ON"))),
     renderShellMetric("AI abilities", String(aiAbilities.length)),
   ];
 
@@ -89,19 +96,15 @@ export function ShellAiCommandCenterPage({
     }),
   ];
 
-  const groupFlags = visibleGroups.map((groupId) => ({
-    label: groupId,
-    state: groupId === "system" ? "ACTIVE" : "VISIBLE",
-    detail: groupId === "system"
-      ? "Đây là group gating chính chứa route AI command center."
-      : "Group này vẫn đi cùng session AI hiện tại.",
-  }));
+  const groupFlags = buildVisibilityFlags(visibleGroups, {
+    activeItem: "system",
+    activeDetail: "Đây là group gating chính chứa route AI command center.",
+    visibleDetail: "Group này vẫn đi cùng session AI hiện tại.",
+  });
 
-  const routeFlags = aiRoutes.map((routeId) => ({
-    label: routeId,
-    state: "VISIBLE",
-    detail: "Route này đang được runtime cho phép xuất hiện trong shell hiện tại.",
-  }));
+  const routeFlags = buildVisibilityFlags(aiRoutes, {
+    visibleDetail: "Route này đang được runtime cho phép xuất hiện trong shell hiện tại.",
+  });
 
   return renderShellPageChrome({
     eyebrow: "Core AI command center",
@@ -126,20 +129,7 @@ export function ShellAiCommandCenterPage({
         renderShellPanel({
           title: "Snapshot operator và runtime",
           subtitle: "Đọc nhanh session, build meta và runtime health trước khi nối các control AI thật vào page này.",
-          actions: renderElement(
-            "div",
-            { className: "shellPage__actions" },
-            renderElement(
-              "button",
-              {
-                type: "button",
-                className: "shellPage__button shellPage__button--secondary",
-                onClick: handleRefresh,
-                disabled: viewState.loading,
-              },
-              "Làm mới snapshot",
-            ),
-          ),
+          actions: renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading }),
           children: renderElement("section", { className: "shellPage__summaryGrid" }, summaryCards),
         }),
         renderShellPanel({
@@ -164,15 +154,7 @@ export function ShellAiCommandCenterPage({
       renderShellPanel({
         title: "Surface flags và AI abilities",
         subtitle: "Giữ cùng một viewport cho auditor đọc tình trạng flag AI, route exposure và quyền quản trị liên quan đến AI lane.",
-        actions: renderElement(
-          "div",
-          { className: "shellPage__actions" },
-          renderElement(
-            "span",
-            { className: "shellPage__pill" },
-            `Health: ${health?.ok ? "OK" : "Chưa xác nhận"}`,
-          ),
-        ),
+        actions: renderHealthStatusPill(health),
         children: [
           renderFlagList(aiFlags, "Runtime chưa công bố surface flag AI nào.", "ai-flags"),
           renderBuildMetaCard({ key: "ai-build-meta", buildMeta }),

@@ -1,3 +1,19 @@
+# ✅ AUDIT FILE LIST (2026-05-02af)
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - add shared snapshot/view-model mapper helpers for core shell pages)
+- packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - consume shared snapshot normalization, refresh action and health pill helpers)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (MODIFIED - consume shared route/flag/ability mapper helpers for the admin lane)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (MODIFIED - consume shared route/flag/ability mapper helpers for the AI lane)
+- module_tree_full.md (MODIFIED - regenerated after the mapper cleanup slice, total modules 543)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-25, WEB-26, OPS-12)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi tach mapper helpers chung cho snapshot, flags, route visibility va health actions.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected sau cleanup.
+- PASSED: `module_tree_full.md` regenerated successfully with 543 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ae)
 - packages/web/src/pages/coreShellPageHelpers.js (NEW - shared bootstrap state and render helpers for core shell pages)
 - packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - adopt the shared core shell helper for bootstrap state and summary/list renderers)

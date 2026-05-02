@@ -1,3 +1,49 @@
+# Entry 2026-05-02af - Extract shared mapper helpers for the core shell page family
+
+Muc tieu:
+- Tach shared mapper helpers cho normalization va view-model building giua `settings`, `admin-ops` va `ai-command-center` sau khi bootstrap helper da duoc gom o slice truoc.
+- Giu nguyen contract va hanh vi runtime cua ba core shell page, khong mo them API moi va khong doi markup markers phuc vu SSR parity.
+- Dong `WEB-25`, `WEB-26`, `OPS-12` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/coreShellPageHelpers.js`:
+  - Them helper dung chung cho snapshot normalization, enabled surface keys, route filtering, ability filtering, flag builders, refresh action va health pill.
+  - Dat phan view-model mapping chung ve mot noi duy nhat de giam drift khi mo them core shell pages tiep theo.
+- `packages/web/src/pages/system/ShellSettingsPage.js`:
+  - Refactor de dung shared snapshot normalization va UI action helpers thay cho normalization/render button inline.
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js`:
+  - Refactor de dung shared ability/route/flag mappers thay cho logic lap lai trong page admin.
+- `packages/web/src/pages/system/ShellAiCommandCenterPage.js`:
+  - Refactor de dung shared ability/route/flag mappers thay cho logic lap lai trong page AI.
+- `module_tree_full.md`:
+  - Regenerate sau khi cleanup mapper layer; tong module giu nguyen 543.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-25`, `WEB-26`, `OPS-12`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02af.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core mapper cleanup slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - add shared snapshot/view-model mapper helpers for the core shell page family)
+- packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - move settings page onto shared snapshot normalization and UI action helpers)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (MODIFIED - move admin shell page onto shared route/flag/ability mapper helpers)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (MODIFIED - move AI shell page onto shared route/flag/ability mapper helpers)
+- module_tree_full.md (MODIFIED - regenerated after the mapper cleanup slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-25, WEB-26, OPS-12)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi tach mapper helpers chung cho snapshot, flags, route visibility va health actions.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellSettingsPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core shared shell mapper parity passed`; da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (543 modules).
+
+Residual note:
+- Slice nay da gom phan normalization/view-model co dang lap lai; phan narrative text, metric labels va summary rows van o tung page de giu context rieng cho settings/admin/AI lane.
+- Day la diem dung hop ly truoc khi chay nhanh 1 va mo them route core moi tren helper layer da on dinh hon.
+
 # Entry 2026-05-02ae - Extract shared helpers for the core shell page family
 
 Muc tieu:

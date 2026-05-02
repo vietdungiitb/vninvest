@@ -4,9 +4,13 @@ import {
   renderShellPanel,
 } from "../../components/ShellPageTemplate.js";
 import {
+  deriveCoreShellSnapshot,
+  getEnabledSurfaceKeys,
   renderAbilityList,
   renderBuildMetaCard,
   renderElement,
+  renderHealthStatusPill,
+  renderRefreshAction,
   renderSummaryCard,
   renderValueList,
   useCoreShellPageSnapshot,
@@ -29,21 +33,18 @@ export function ShellSettingsPage({
     refreshNotice: "Đã làm mới snapshot cấu hình shell từ core runtime.",
   });
 
-  const buildMeta = viewState.buildMeta || null;
-  const health = viewState.health || null;
-  const capabilities = viewState.capabilities || null;
-  const session = viewState.session || null;
-  const identity = capabilities?.principal?.identity || {};
-  const visibleGroups = Array.isArray(capabilities?.navigation?.visible_groups)
-    ? capabilities.navigation.visible_groups
-    : [];
-  const visibleRoutes = Array.isArray(capabilities?.navigation?.visible_routes)
-    ? capabilities.navigation.visible_routes
-    : [];
-  const abilities = Array.isArray(capabilities?.abilities) ? capabilities.abilities : [];
-  const enabledSurfaces = Object.entries(capabilities?.surfaces || {})
-    .filter(([, enabled]) => Boolean(enabled))
-    .map(([surfaceKey]) => surfaceKey);
+  const {
+    buildMeta,
+    health,
+    capabilities,
+    session,
+    identity,
+    surfaces,
+    visibleGroups,
+    visibleRoutes,
+    abilities,
+  } = deriveCoreShellSnapshot(viewState);
+  const enabledSurfaces = getEnabledSurfaceKeys(surfaces);
 
   const metrics = [
     renderShellMetric("Build target", buildMeta?.target || capabilities?.build?.target || "n/a"),
@@ -96,20 +97,7 @@ export function ShellSettingsPage({
         renderShellPanel({
           title: "Snapshot runtime hiện tại",
           subtitle: "Đọc nhanh tình trạng phiên, môi trường và adapter đang được shell core sử dụng.",
-          actions: renderElement(
-            "div",
-            { className: "shellPage__actions" },
-            renderElement(
-              "button",
-              {
-                type: "button",
-                className: "shellPage__button shellPage__button--secondary",
-                onClick: handleRefresh,
-                disabled: viewState.loading,
-              },
-              "Làm mới snapshot",
-            ),
-          ),
+          actions: renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading }),
           children: renderElement("section", { className: "shellPage__summaryGrid" }, summaryCards),
         }),
         renderShellPanel({
@@ -140,15 +128,7 @@ export function ShellSettingsPage({
       renderShellPanel({
         title: "Ability map và build metadata",
         subtitle: "Giữ cùng một viewport cho auditor đọc plan, abilities và metadata mà không cần rời khỏi route settings.",
-        actions: renderElement(
-          "div",
-          { className: "shellPage__actions" },
-          renderElement(
-            "span",
-            { className: "shellPage__pill" },
-            `Health: ${health?.ok ? "OK" : "Chưa xác nhận"}`,
-          ),
-        ),
+        actions: renderHealthStatusPill(health),
         children: [
           renderBuildMetaCard({ key: "build-meta-card", buildMeta }),
           renderAbilityList({

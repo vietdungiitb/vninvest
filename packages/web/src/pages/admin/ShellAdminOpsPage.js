@@ -4,10 +4,18 @@ import {
   renderShellPanel,
 } from "../../components/ShellPageTemplate.js";
 import {
+  buildSurfaceFlags,
+  buildVisibilityFlags,
+  countFlagsByState,
+  deriveCoreShellSnapshot,
+  filterAbilitiesBySubject,
+  filterVisibleRoutes,
   renderAbilityList,
   renderBuildMetaCard,
   renderElement,
   renderFlagList,
+  renderHealthStatusPill,
+  renderRefreshAction,
   renderSummaryCard,
   useCoreShellPageSnapshot,
 } from "../coreShellPageHelpers.js";
@@ -29,42 +37,41 @@ export function ShellAdminOpsPage({
     refreshNotice: "Đã làm mới snapshot điều hành admin từ core runtime.",
   });
 
-  const buildMeta = viewState.buildMeta || null;
-  const health = viewState.health || null;
-  const capabilities = viewState.capabilities || null;
-  const session = viewState.session || null;
-  const identity = capabilities?.principal?.identity || {};
-  const navigation = capabilities?.navigation || {};
-  const surfaces = capabilities?.surfaces || {};
-  const visibleGroups = Array.isArray(navigation.visible_groups) ? navigation.visible_groups : [];
-  const visibleRoutes = Array.isArray(navigation.visible_routes) ? navigation.visible_routes : [];
-  const abilities = Array.isArray(capabilities?.abilities) ? capabilities.abilities : [];
-  const adminAbilities = abilities.filter(
-    (ability) => ability.subject === "all" || String(ability.subject).toLowerCase().includes("admin"),
-  );
-  const adminRoutes = visibleRoutes.filter((routeId) => routeId === "admin-ops" || routeId === "ai-command-center");
-  const adminFlags = [
+  const {
+    buildMeta,
+    health,
+    capabilities,
+    session,
+    identity,
+    visibleGroups,
+    visibleRoutes,
+    abilities,
+    surfaces,
+  } = deriveCoreShellSnapshot(viewState);
+  const adminAbilities = filterAbilitiesBySubject(abilities, "admin");
+  const adminRoutes = filterVisibleRoutes(visibleRoutes, ["admin-ops", "ai-command-center"]);
+  const adminFlags = buildSurfaceFlags(surfaces, [
     {
+      key: "show_admin_ops",
       label: "show_admin_ops",
-      state: surfaces.show_admin_ops ? "ON" : "OFF",
       detail: "Xác nhận shell có mở operator surface cho route admin-ops hay không.",
     },
     {
+      key: "show_ai_command_center",
       label: "show_ai_command_center",
-      state: surfaces.show_ai_command_center ? "ON" : "OFF",
       detail: "Cho biết runtime đã sẵn sàng expose lane điều hành AI hay chưa.",
     },
     {
+      key: "show_vip_shell",
       label: "show_vip_shell",
-      state: surfaces.show_vip_shell ? "ON" : "OFF",
       detail: "Dùng để đối chiếu xem session admin hiện tại có đồng thời bật lane VIP hay không.",
     },
-  ];
+  ]);
 
   const metrics = [
     renderShellMetric("Build target", buildMeta?.target || capabilities?.build?.target || "n/a"),
     renderShellMetric("Admin routes", String(adminRoutes.length)),
-    renderShellMetric("Admin flags ON", String(adminFlags.filter((flag) => flag.state === "ON").length)),
+    renderShellMetric("Admin flags ON", String(countFlagsByState(adminFlags, "ON"))),
     renderShellMetric("Admin abilities", String(adminAbilities.length)),
   ];
 
@@ -89,19 +96,15 @@ export function ShellAdminOpsPage({
     }),
   ];
 
-  const groupFlags = visibleGroups.map((groupId) => ({
-    label: groupId,
-    state: groupId === "admin" ? "ACTIVE" : "VISIBLE",
-    detail: groupId === "admin"
-      ? "Đây là group gating chính cho lane operator surfaces."
-      : "Group này vẫn đi cùng session admin hiện tại.",
-  }));
+  const groupFlags = buildVisibilityFlags(visibleGroups, {
+    activeItem: "admin",
+    activeDetail: "Đây là group gating chính cho lane operator surfaces.",
+    visibleDetail: "Group này vẫn đi cùng session admin hiện tại.",
+  });
 
-  const routeFlags = adminRoutes.map((routeId) => ({
-    label: routeId,
-    state: "VISIBLE",
-    detail: "Route này đang được runtime cho phép xuất hiện trong navigation hiện tại.",
-  }));
+  const routeFlags = buildVisibilityFlags(adminRoutes, {
+    visibleDetail: "Route này đang được runtime cho phép xuất hiện trong navigation hiện tại.",
+  });
 
   return renderShellPageChrome({
     eyebrow: "Core admin operations",
@@ -126,20 +129,7 @@ export function ShellAdminOpsPage({
         renderShellPanel({
           title: "Snapshot operator và runtime",
           subtitle: "Đọc nhanh identity, runtime status và session của operator hiện tại trước khi nối các thao tác admin thật.",
-          actions: renderElement(
-            "div",
-            { className: "shellPage__actions" },
-            renderElement(
-              "button",
-              {
-                type: "button",
-                className: "shellPage__button shellPage__button--secondary",
-                onClick: handleRefresh,
-                disabled: viewState.loading,
-              },
-              "Làm mới snapshot",
-            ),
-          ),
+          actions: renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading }),
           children: renderElement("section", { className: "shellPage__summaryGrid" }, summaryCards),
         }),
         renderShellPanel({
@@ -164,15 +154,7 @@ export function ShellAdminOpsPage({
       renderShellPanel({
         title: "Surface flags và operator abilities",
         subtitle: "Giữ cùng một viewport cho operator đọc tình trạng flag admin, AI lane và các quyền quản trị đang active.",
-        actions: renderElement(
-          "div",
-          { className: "shellPage__actions" },
-          renderElement(
-            "span",
-            { className: "shellPage__pill" },
-            `Health: ${health?.ok ? "OK" : "Chưa xác nhận"}`,
-          ),
-        ),
+        actions: renderHealthStatusPill(health),
         children: [
           renderFlagList(adminFlags, "Runtime chưa công bố surface flag nào.", "admin-flags"),
           renderBuildMetaCard({ key: "admin-build-meta", buildMeta }),
