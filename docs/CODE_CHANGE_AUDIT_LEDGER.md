@@ -1,3 +1,46 @@
+# Entry 2026-05-02ao - Add query-driven advisory symbol routing to the AI advisory shell page
+
+Muc tieu:
+- Mo them mot lop dieu huong symbol nhe cho `ShellAiAdvisoryPage` de advisory session data slice khong bi khoa cung o `BCM`.
+- Uu tien `advisorySymbol` prop neu co, neu khong thi tu dong doc `?symbol=` tu browser URL va cho phep doi symbol ngay tren page.
+- Giu nguyen pham vi shell: khong them router abstraction moi, khong mo rong whale lane, khong sua backend contract.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`:
+  - Them helper normalize/query parsing de lay symbol tu prop, query string hoac env fallback.
+  - Them state `activeAdvisorySymbol` va `advisorySymbolDraft` de page co the refetch advisory session theo symbol dang chon.
+  - Them form nho voi input `Mã advisory` va nut `Đổi mã advisory`.
+  - Neu dang chay trong browser that, page se dong bo symbol da chon vao URL query string bang `history.replaceState`.
+  - Metric thu hai cua hero doi thanh `Advisory symbol` de auditor thay ngay symbol target hien tai.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them SSR proof cho control `Đổi mã advisory`.
+  - Them proof query-driven path bang `advisorySearch: "?symbol=fpt"` de xac nhan page tu resolve `FPT` ngay ca khi khong co prop override.
+- `module_tree_full.md`:
+  - Regenerate sau khi mo rong query-driven symbol routing; tong module giu nguyen 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-43`, `OPS-21`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ao.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho advisory symbol routing slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - add query-driven symbol resolution, local symbol form control and URL sync for the advisory data slice)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate advisory symbol control and query-string resolution proof)
+- module_tree_full.md (MODIFIED - regenerated after the advisory symbol routing slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-43, OPS-21)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/signals/ShellAiAdvisoryPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them query-driven symbol routing va control doi ma advisory.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+
+Residual note:
+- Slice nay chi mo symbol routing tren `ai-advisory` shell; no van doc cung endpoint `ai-advisory-session` v2 va khong giai quyet navigation/query-state cho cac route shell khac.
+- URL sync dung `history.replaceState`, nen neu consumer app muon luu history stack theo moi lan doi symbol thi se can mot router-level policy rieng o slice sau.
+
 # Entry 2026-05-02an - Canonicalize signal ability naming and wire the first advisory session read-only slice into package shell
 
 Muc tieu:

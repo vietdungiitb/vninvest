@@ -1,3 +1,16 @@
+# ✅ AUDIT FILE LIST (2026-05-02ao)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - add query-driven symbol resolution, local symbol form control and URL sync for the advisory data slice)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate advisory symbol control and query-string resolution proof)
+- module_tree_full.md (MODIFIED - regenerated after the advisory symbol routing slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-43, OPS-21)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellAiAdvisoryPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them query-driven symbol routing va control doi ma advisory.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02an)
 - packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - remove package-shell signal aliases so live bootstrap only exposes `WhaleAdvisory`)
 - packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add stock advisory session endpoint resolver and thin read-only client)

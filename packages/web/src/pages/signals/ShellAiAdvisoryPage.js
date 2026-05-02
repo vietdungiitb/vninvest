@@ -6,6 +6,7 @@ import {
 
 import { createCoreAdvisorySessionClient } from "../../adapters/core/index.js";
 import {
+  renderShellField,
   renderShellMetric,
   renderShellPageChrome,
   renderShellPanel,
@@ -30,13 +31,62 @@ import {
 
 const SIGNAL_ROUTE_IDS = ["ai-advisory", "whale-alerts"];
 
-function resolveAdvisorySymbol(env = {}, advisorySymbol) {
-  return String(
+function normalizeAdvisorySymbol(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function resolveAdvisorySearch(advisorySearch) {
+  if (typeof advisorySearch === "string") {
+    return advisorySearch;
+  }
+
+  if (typeof globalThis.location?.search === "string") {
+    return globalThis.location.search;
+  }
+
+  return "";
+}
+
+function resolveAdvisorySymbolFromSearch(advisorySearch) {
+  const search = resolveAdvisorySearch(advisorySearch);
+
+  if (!search) {
+    return "";
+  }
+
+  try {
+    return normalizeAdvisorySymbol(new URLSearchParams(search).get("symbol"));
+  } catch {
+    return "";
+  }
+}
+
+function resolveAdvisorySymbol(env = {}, advisorySymbol, advisorySearch) {
+  return normalizeAdvisorySymbol(
     advisorySymbol
+      || resolveAdvisorySymbolFromSearch(advisorySearch)
       || env.VNINVEST_AI_ADVISORY_SYMBOL
       || env.REACT_APP_AI_ADVISORY_SYMBOL
       || "BCM",
-  ).trim().toUpperCase();
+  );
+}
+
+function syncAdvisorySymbolSearch(symbol, advisorySearch) {
+  if (typeof advisorySearch === "string") {
+    return;
+  }
+
+  if (typeof globalThis.location?.href !== "string" || typeof globalThis.history?.replaceState !== "function") {
+    return;
+  }
+
+  try {
+    const nextUrl = new URL(globalThis.location.href);
+    nextUrl.searchParams.set("symbol", symbol);
+    globalThis.history.replaceState(globalThis.history.state, "", nextUrl.toString());
+  } catch {
+    // Ignore URL sync failures and keep the advisory page usable with local component state.
+  }
 }
 
 function createInitialAdvisoryState(initialAdvisorySession = null) {
@@ -102,6 +152,7 @@ export function ShellAiAdvisoryPage({
   autoLoad = true,
   initialSnapshot = null,
   advisorySymbol,
+  advisorySearch,
   advisorySessionLoader,
   initialAdvisorySession = null,
 }) {
@@ -117,22 +168,22 @@ export function ShellAiAdvisoryPage({
   const advisoryLoaderRef = useRef(null);
   const advisoryEnvRef = useRef(null);
   const advisoryFetchRef = useRef(null);
-  const advisorySymbolRef = useRef(null);
 
   advisoryEnvRef.current = env;
   advisoryFetchRef.current = fetchImpl;
-  advisorySymbolRef.current = resolveAdvisorySymbol(env, advisorySymbol);
   advisoryLoaderRef.current = advisorySessionLoader || ((requestOptions = {}) =>
     createCoreAdvisorySessionClient({
       env: advisoryEnvRef.current,
       fetchImpl: advisoryFetchRef.current,
     }).getAiAdvisorySession({
-      symbol: advisorySymbolRef.current,
       contract: "v2",
       includeBenchmarks: true,
       ...requestOptions,
     }));
 
+  const resolvedAdvisorySymbol = resolveAdvisorySymbol(env, advisorySymbol, advisorySearch);
+  const [activeAdvisorySymbol, setActiveAdvisorySymbol] = useState(() => resolvedAdvisorySymbol);
+  const [advisorySymbolDraft, setAdvisorySymbolDraft] = useState(() => resolvedAdvisorySymbol);
   const [advisoryState, setAdvisoryState] = useState(() => createInitialAdvisoryState(initialAdvisorySession));
 
   const {
@@ -150,11 +201,16 @@ export function ShellAiAdvisoryPage({
   const advisoryAbilities = filterAbilitiesBySubject(abilities, "whaleadvisory");
   const enabledSurfaces = getEnabledSurfaceKeys(surfaces);
   const advisoryQuality = advisoryState.data?.aggregate?.observability?.aggregate_quality || {};
-  const advisoryRows = buildAdvisoryRows(advisoryState.data, advisorySymbolRef.current);
+  const advisoryRows = buildAdvisoryRows(advisoryState.data, activeAdvisorySymbol);
   const benchmarkItems = buildBenchmarkItems(advisoryState.data);
 
   useEffect(() => {
-    if (!autoLoad || !advisorySymbolRef.current) {
+    setActiveAdvisorySymbol(resolvedAdvisorySymbol);
+    setAdvisorySymbolDraft(resolvedAdvisorySymbol);
+  }, [resolvedAdvisorySymbol]);
+
+  useEffect(() => {
+    if (!autoLoad || !activeAdvisorySymbol) {
       return undefined;
     }
 
@@ -168,7 +224,7 @@ export function ShellAiAdvisoryPage({
       }));
 
       try {
-        const advisorySession = await advisoryLoaderRef.current({ symbol: advisorySymbolRef.current });
+        const advisorySession = await advisoryLoaderRef.current({ symbol: activeAdvisorySymbol });
         if (!active) {
           return;
         }
@@ -196,11 +252,11 @@ export function ShellAiAdvisoryPage({
     return () => {
       active = false;
     };
-  }, [autoLoad, advisorySymbolRef.current]);
+  }, [activeAdvisorySymbol, autoLoad]);
 
   async function refreshAdvisorySession() {
     try {
-      const advisorySession = await advisoryLoaderRef.current({ symbol: advisorySymbolRef.current });
+      const advisorySession = await advisoryLoaderRef.current({ symbol: activeAdvisorySymbol });
       setAdvisoryState({
         loading: false,
         error: "",
@@ -222,9 +278,26 @@ export function ShellAiAdvisoryPage({
     ]);
   }
 
+  function handleAdvisorySymbolChange(event) {
+    setAdvisorySymbolDraft(normalizeAdvisorySymbol(event.target.value));
+  }
+
+  function handleAdvisorySymbolSubmit(event) {
+    event.preventDefault();
+
+    const nextSymbol = normalizeAdvisorySymbol(advisorySymbolDraft) || resolvedAdvisorySymbol;
+    if (!nextSymbol || nextSymbol === activeAdvisorySymbol) {
+      return;
+    }
+
+    setActiveAdvisorySymbol(nextSymbol);
+    setAdvisorySymbolDraft(nextSymbol);
+    syncAdvisorySymbolSearch(nextSymbol, advisorySearch);
+  }
+
   const metrics = [
     renderShellMetric("Build target", buildMeta?.target || capabilities?.build?.target || "n/a"),
-    renderShellMetric("Signals routes", String(signalRoutes.length)),
+    renderShellMetric("Advisory symbol", activeAdvisorySymbol || "n/a"),
     renderShellMetric("Advisory abilities", String(advisoryAbilities.length)),
     renderShellMetric(
       "Advisory quality",
@@ -316,9 +389,42 @@ export function ShellAiAdvisoryPage({
         subtitle: "Giữ cùng một viewport cho auditor đọc signal reach, advisory session thật, benchmark aggregate và ability map của lane AI advisory.",
         actions: renderHealthStatusPill(health),
         children: [
+          renderElement(
+            "form",
+            {
+              className: "shellPage__form",
+              key: "ai-advisory-symbol-form",
+              onSubmit: handleAdvisorySymbolSubmit,
+            },
+            renderElement(
+              "div",
+              { className: "shellPage__formGrid" },
+              renderShellField({
+                label: "Mã advisory",
+                name: "ai-advisory-symbol",
+                value: advisorySymbolDraft,
+                onChange: handleAdvisorySymbolChange,
+                placeholder: "Ví dụ: FPT",
+                autoComplete: "off",
+              }),
+            ),
+            renderElement(
+              "div",
+              { className: "shellPage__actions" },
+              renderElement(
+                "button",
+                {
+                  type: "submit",
+                  className: "shellPage__button shellPage__button--primary",
+                  disabled: advisoryState.loading || !advisorySymbolDraft,
+                },
+                "Đổi mã advisory",
+              ),
+            ),
+          ),
           renderSummaryCard({
             key: "ai-advisory-runtime-session",
-            title: `Advisory session thật (${advisorySymbolRef.current})`,
+            title: `Advisory session thật (${activeAdvisorySymbol})`,
             rows: advisoryRows,
           }),
           advisoryState.error

@@ -942,6 +942,57 @@ assert(aiAdvisoryMarkup.includes("package-admin"), "AI advisory page must render
 assert(aiAdvisoryMarkup.includes("BCM"), "AI advisory page must render the advisory symbol from the live data slice");
 assert(aiAdvisoryMarkup.includes("78.4"), "AI advisory page must render advisory quality from the read-only data slice");
 assert(aiAdvisoryMarkup.includes("elevated"), "AI advisory page must render benchmark enrichment from the read-only data slice");
+assert(aiAdvisoryMarkup.includes("Đổi mã advisory"), "AI advisory page must render the advisory symbol control");
+
+const aiAdvisoryQueryMarkup = renderToStaticMarkup(
+  createElement(ShellAiAdvisoryPage, {
+    autoLoad: false,
+    advisorySearch: "?symbol=fpt",
+    initialSnapshot: {
+      buildMeta: {
+        adapterId: "core",
+        displayName: "Core API",
+        target: "saas",
+        baseUrl: "http://core.local/core/v1",
+      },
+      health: { ok: true, service: "core-api", environment: "foundation" },
+      capabilities: {
+        principal: {
+          identity: {
+            username: "package-admin",
+            email: "package-admin@vninvest.local",
+            is_staff: true,
+            is_superuser: true,
+          },
+        },
+        build: {
+          target: "saas",
+          plan: "pro",
+        },
+        abilities: [
+          { action: "read", subject: "WhaleAdvisory" },
+          { action: "manage", subject: "all" },
+        ],
+        navigation: {
+          visible_groups: ["workspace", "signals", "system", "admin"],
+          visible_routes: ["dashboard", "ai-advisory", "whale-alerts", "watchlist", "transactions"],
+        },
+        surfaces: {
+          show_admin_ops: true,
+          show_ai_command_center: true,
+          show_vip_shell: false,
+        },
+      },
+      session: {
+        session_id: "core-session-foundation",
+        principal: { username: "package-admin" },
+      },
+    },
+  }),
+);
+
+assert(aiAdvisoryQueryMarkup.includes("FPT"), "AI advisory page must resolve the advisory symbol from the query string when no prop overrides it");
+assert(aiAdvisoryQueryMarkup.includes("Chưa có advisory session thật"), "AI advisory page must keep a graceful empty state for query-driven advisory symbols");
 
 const whaleAlertsMarkup = renderToStaticMarkup(
   createElement(ShellWhaleAlertsPage, {

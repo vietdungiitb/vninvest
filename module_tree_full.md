@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 12:29:12`
+Generated at: `2026-05-02 12:35:12`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 12:29:12`
 - Python modules: 340
 - JS/TS modules: 210
 - Total classes: 563
-- Total functions: 2143
-- Total top-level variables: 3655
+- Total functions: 2149
+- Total top-level variables: 3658
 
 ## Python Modules
 
@@ -3692,9 +3692,9 @@ Generated at: `2026-05-02 12:29:12`
 ### `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`
 
 - Functions:
-  - `ShellAiAdvisoryPage`, `buildAdvisoryRows`, `buildBenchmarkItems`, `createInitialAdvisoryState`, `handleRefreshAll`, `normalizeAdvisoryError`, `refreshAdvisorySession`, `resolveAdvisorySymbol`, `runAdvisoryLoad`
+  - `ShellAiAdvisoryPage`, `buildAdvisoryRows`, `buildBenchmarkItems`, `createInitialAdvisoryState`, `handleAdvisorySymbolChange`, `handleAdvisorySymbolSubmit`, `handleRefreshAll`, `normalizeAdvisoryError`, `normalizeAdvisorySymbol`, `refreshAdvisorySession`, `resolveAdvisorySearch`, `resolveAdvisorySymbol`, `resolveAdvisorySymbolFromSearch`, `runAdvisoryLoad`, `syncAdvisorySymbolSearch`
 - Top-level variables:
-  - `SIGNAL_ROUTE_IDS`, `active`, `advisoryAbilities`, `advisoryEnvRef`, `advisoryFetchRef`, `advisoryLoaderRef`, `advisoryQuality`, `advisoryRows`, `advisorySession`, `advisorySymbolRef`, `benchmarkItems`, `benchmarks`, `decision`, `enabledSurfaces`, `groupFlags`, `metrics`, `quality`, `routeFlags`, `signalRoutes`, `summaryCards`
+  - `SIGNAL_ROUTE_IDS`, `active`, `advisoryAbilities`, `advisoryEnvRef`, `advisoryFetchRef`, `advisoryLoaderRef`, `advisoryQuality`, `advisoryRows`, `advisorySession`, `benchmarkItems`, `benchmarks`, `decision`, `enabledSurfaces`, `groupFlags`, `metrics`, `nextSymbol`, `nextUrl`, `quality`, `resolvedAdvisorySymbol`, `routeFlags`, `search`, `signalRoutes`, `summaryCards`
 
 ### `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`
 

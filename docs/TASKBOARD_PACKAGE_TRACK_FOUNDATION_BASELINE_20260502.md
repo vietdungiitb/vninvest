@@ -655,3 +655,21 @@ Estimate: 0.5h
 Dependency: WEB-42  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit, module tree va live core stub proof phan anh dung canonical `WhaleAdvisory` payload va data slice advisory read-only tren route `ai-advisory`.
+
+---
+
+## 26. AI advisory symbol routing queue
+
+- [x] `WEB-43` Mo query-driven symbol target cho `ai-advisory` shell  
+Owner: Frontend Lead  
+Estimate: 1h  
+Dependency: WEB-42  
+Anchor files: `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/scripts/check-shell.mjs`  
+DoD: `ShellAiAdvisoryPage` uu tien prop `advisorySymbol`, neu khong co thi doc `?symbol=` tu browser query string, va co control tai cho de doi symbol advisory ma khong can sua source/env.
+
+- [x] `OPS-21` Sync audit docs va module tree sau advisory symbol routing slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-43  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung query-driven advisory symbol path, proof `check-shell`, va khong co regression tren advisory data slice truoc do.
