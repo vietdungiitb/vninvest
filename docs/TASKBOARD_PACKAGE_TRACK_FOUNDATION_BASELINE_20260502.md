@@ -530,3 +530,28 @@ Estimate: 0.5h
 Dependency: WEB-32  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung route-level page `dashboard` moi nhat.
+
+---
+
+## 21. Watchlist workspace shell queue
+
+- [x] `WEB-33` Dung page `watchlist` bang shared helper layer cho core shell  
+Owner: Frontend Lead  
+Estimate: 1.5h  
+Dependency: WEB-25, WEB-26  
+Anchor files: `packages/web/src/pages/workspace/*`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`  
+DoD: `watchlist` co route-level page that reuse shared helper layer, bam workspace routes/bootstrap seam va khong mo them backend contract moi.
+
+- [x] `WEB-34` Validate watchlist runtime parity va registry coverage  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-33  
+Anchor files: `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/*`  
+DoD: `npm run check:shell` pass va live SSR parity tren `:8100` xac nhan route/page `watchlist` render duoc marker runtime expected tu bootstrap payload hien co.
+
+- [x] `OPS-16` Sync taskboard, audit docs va module tree sau watchlist shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-34  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung route-level page `watchlist` moi nhat.

@@ -24,6 +24,7 @@ import {
   ShellPortfoliosPage,
   ShellSettingsPage,
   ShellSupportPage,
+  ShellWatchlistPage,
   shellAdapters,
   VipLocalControlPage,
   useShellAuth,
@@ -78,6 +79,7 @@ const aiCommandCenterRoute = routeCatalog.find((route) => route.id === "ai-comma
 const dashboardRoute = routeCatalog.find((route) => route.id === "dashboard");
 const portfoliosRoute = routeCatalog.find((route) => route.id === "portfolios");
 const supportRoute = routeCatalog.find((route) => route.id === "support");
+const watchlistRoute = routeCatalog.find((route) => route.id === "watchlist");
 const vipShellAdapter = shellAdapters.find((adapter) => adapter.adapterId === "vip-app");
 const settingsRoute = routeCatalog.find((route) => route.id === "settings");
 const vipLocalControlRoute = routeCatalog.find((route) => route.id === "vip-local-control");
@@ -98,6 +100,7 @@ assert(aiCommandCenterRoute?.status === "baseline", "ai-command-center route mus
 assert(dashboardRoute?.status === "baseline", "dashboard route must remain baseline once the shell dashboard page exists");
 assert(portfoliosRoute?.status === "baseline", "portfolios route must move to baseline when the page exists");
 assert(supportRoute?.status === "baseline", "support route must remain baseline once the shell support page exists");
+assert(watchlistRoute?.status === "baseline", "watchlist route must remain baseline once the shell watchlist page exists");
 assert(settingsRoute?.status === "baseline", "settings route must remain baseline once the shell settings page exists");
 assert(vipLocalControlRoute?.status === "baseline", "vip-local-control route must move to baseline when the page exists");
 
@@ -106,6 +109,7 @@ assert(pageRegistry.length === pageRegistryRouteIds.size, "Duplicate route ids d
 assert(pageRegistryRouteIds.has("admin-ops"), "pageRegistry must register admin-ops");
 assert(pageRegistryRouteIds.has("ai-command-center"), "pageRegistry must register ai-command-center");
 assert(pageRegistryRouteIds.has("dashboard"), "pageRegistry must register dashboard");
+assert(pageRegistryRouteIds.has("watchlist"), "pageRegistry must register watchlist");
 assert(pageRegistryRouteIds.has("portfolios"), "pageRegistry must register portfolios");
 assert(pageRegistryRouteIds.has("support"), "pageRegistry must register support");
 assert(pageRegistryRouteIds.has("settings"), "pageRegistry must register settings");
@@ -113,6 +117,7 @@ assert(pageRegistryRouteIds.has("vip-local-control"), "pageRegistry must registe
 assert(getPageComponent("admin-ops") === ShellAdminOpsPage, "admin-ops must resolve to ShellAdminOpsPage");
 assert(getPageComponent("ai-command-center") === ShellAiCommandCenterPage, "ai-command-center must resolve to ShellAiCommandCenterPage");
 assert(getPageComponent("dashboard") === ShellDashboardPage, "dashboard must resolve to ShellDashboardPage");
+assert(getPageComponent("watchlist") === ShellWatchlistPage, "watchlist must resolve to ShellWatchlistPage");
 assert(getPageComponent("portfolios") === ShellPortfoliosPage, "portfolios must resolve to ShellPortfoliosPage");
 assert(getPageComponent("support") === ShellSupportPage, "support must resolve to ShellSupportPage");
 assert(getPageComponent("settings") === ShellSettingsPage, "settings must resolve to ShellSettingsPage");
@@ -444,6 +449,57 @@ assert(dashboardMarkup.includes("Trung tâm dashboard và workspace"), "Dashboar
 assert(dashboardMarkup.includes("dashboard"), "Dashboard page must render dashboard route visibility");
 assert(dashboardMarkup.includes("workspace"), "Dashboard page must render workspace group visibility");
 assert(dashboardMarkup.includes("package-admin"), "Dashboard page must render the current operator identity");
+
+const watchlistMarkup = renderToStaticMarkup(
+  createElement(ShellWatchlistPage, {
+    autoLoad: false,
+    initialSnapshot: {
+      buildMeta: {
+        adapterId: "core",
+        displayName: "Core API",
+        target: "saas",
+        baseUrl: "http://core.local/core/v1",
+      },
+      health: { ok: true, service: "core-api", environment: "foundation" },
+      capabilities: {
+        principal: {
+          identity: {
+            username: "package-admin",
+            email: "package-admin@vninvest.local",
+            is_staff: true,
+            is_superuser: true,
+          },
+        },
+        build: {
+          target: "saas",
+          plan: "pro",
+        },
+        abilities: [
+          { action: "read", subject: "Watchlist" },
+          { action: "manage", subject: "all" },
+        ],
+        navigation: {
+          visible_groups: ["workspace", "signals", "system", "admin"],
+          visible_routes: ["dashboard", "watchlist", "transactions", "portfolios", "settings"],
+        },
+        surfaces: {
+          show_admin_ops: true,
+          show_ai_command_center: true,
+          show_vip_shell: false,
+        },
+      },
+      session: {
+        session_id: "core-session-foundation",
+        principal: { username: "package-admin" },
+      },
+    },
+  }),
+);
+
+assert(watchlistMarkup.includes("Trung tâm watchlist và workspace"), "Watchlist page must render the Vietnamese page title");
+assert(watchlistMarkup.includes("watchlist"), "Watchlist page must render watchlist route visibility");
+assert(watchlistMarkup.includes("workspace"), "Watchlist page must render workspace group visibility");
+assert(watchlistMarkup.includes("package-admin"), "Watchlist page must render the current operator identity");
 
 const settingsPageMarkup = renderToStaticMarkup(
   createElement(ShellSettingsPage, {

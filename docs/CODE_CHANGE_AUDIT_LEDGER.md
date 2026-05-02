@@ -1,3 +1,50 @@
+# Entry 2026-05-02aj - Add the first workspace watchlist shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `watchlist` de tiep tuc dong bo route catalog `baseline` cua workspace lane voi page registry that ma khong mo them backend contract moi.
+- Chi su dung bootstrap/session/health seam hien co; route va ability `Watchlist` da co san trong core stub, nen slice nay la frontend-only theo nghia contract.
+- Dong `WEB-33`, `WEB-34`, `OPS-16` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/workspace/ShellWatchlistPage.js`:
+  - Them page route-level moi cho `watchlist` bang shared helper layer.
+  - Hien operator/session, workspace groups, watchlist route visibility, enabled surfaces, build metadata va watchlist abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `watchlist` vao page registry de shell co route-level component that cho workspace watchlist lane.
+- `packages/web/src/index.js`:
+  - Export `ShellWatchlistPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `watchlist` route/page registry va SSR render cua `ShellWatchlistPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page workspace moi; tong module tang len 547.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-33`, `WEB-34`, `OPS-16`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02aj.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho watchlist workspace slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/workspace/ShellWatchlistPage.js (NEW - first workspace watchlist shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `watchlist` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellWatchlistPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate watchlist route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the watchlist shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-33, WEB-34, OPS-16)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/workspace/ShellWatchlistPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `watchlist` vao shared shell surface va registry.
+- FAILED -> FIXED: lan live parity dau tien dung assertion token tieng Viet trong inline Node script qua PowerShell nen bi skew encoding; da doi sang ASCII-safe markers va rerun thanh cong ma khong can sua source code.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellWatchlistPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core watchlist shared shell live parity passed`; da xac nhan bootstrap payload san co chua watchlist ability va route visibility tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (547 modules).
+
+Residual note:
+- `ShellWatchlistPage` hien la route-level audit surface doc tu bootstrap runtime; panel watchlist that, item persistence va data interactions chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` khong can doi contract cho slice nay; runtime parity hien dang dua tren payload bootstrap san co.
+
 # Entry 2026-05-02ai - Add the first workspace dashboard shell page on the shared helper layer
 
 Muc tieu:

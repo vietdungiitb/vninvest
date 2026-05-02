@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:54:23`
+Generated at: `2026-05-02 11:58:48`
 
 ## Summary
 
-- Total modules: 546
+- Total modules: 547
 - Python modules: 340
-- JS/TS modules: 206
+- JS/TS modules: 207
 - Total classes: 563
-- Total functions: 2126
-- Total top-level variables: 3606
+- Total functions: 2127
+- Total top-level variables: 3614
 
 ## Python Modules
 
@@ -3730,6 +3730,13 @@ Generated at: `2026-05-02 11:54:23`
   - `ShellPortfoliosPage`
 - Top-level variables:
   - `PORTFOLIO_ROUTE_IDS`, `WORKSPACE_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `portfolioAbilities`, `portfolioRoutes`, `routeFlags`, `summaryCards`, `workspaceRoutes`
+
+### `packages/web/src/pages/workspace/ShellWatchlistPage.js`
+
+- Functions:
+  - `ShellWatchlistPage`
+- Top-level variables:
+  - `WORKSPACE_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `watchlistAbilities`, `workspaceRoutes`
 
 ## Update Workflow
 
