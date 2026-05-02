@@ -21,15 +21,28 @@ Thay vì tách ngay thành 4 repos riêng biệt (gây overhead quản lý cho �
 
 Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mujoco%20Projects/vninvest/docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md).
 
+> [!IMPORTANT]
+> Với code hiện tại, **không bắt đầu bằng việc move `backend/` và `frontend/` sang `packages/` ngay lập tức**. Repo chưa có `packages/`, chưa có `shared/api-contracts/`, chưa có `buildTarget.js`, và docker/runtime/test commands hiện vẫn neo trực tiếp vào paths cũ. Theo [EXECUTION_REBASELINE](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md), Phase đầu phải là **boundary-first, no-move-first**.
+>
+> Trước mọi quyết định package split hay move vật lý liên quan `core`, phải đọc bộ `core` docs hiện hành:
+> - [ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md)
+> - [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
+> - [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
+> - [ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)
+> - [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)
+> - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
+
 ### 4 Packages (Phân vùng logic)
 
 #### Package `packages/core/` → Tương lai sẽ thành repo `vninvest-core`
 - **Chứa:** Backend Django, Data Ops, SSOT, cấu hình Kong, ClickHouse, `opennews-main`, `infra`.
 - **Vai trò:** "Máy mẹ" (Central MCP Server). Lưu giữ 100% bí mật kinh doanh.
+- **KHÔNG chứa:** React admin shell cho operator hay tenant admin pages.
 
 #### Package `packages/web/` → Tương lai sẽ thành repo `vninvest-common-web`
 - **Chứa:** Frontend ReactJS — **DUY NHẤT 1 source code** cho tất cả biến thể (Community, SaaS, VIP).
 - **Vai trò:** Dùng biến `REACT_APP_BUILD_TARGET` để build ra 3 bản khác nhau. Xem chi tiết tại [mục Build Variants](#4-chiến-lược-build-variants-1-source--3-bản-build).
+- **Bao gồm cả:** Central Operator Admin và Tenant Admin Console, vì đây đều là human-facing UI shells tiêu thụ APIs từ `core`.
 
 #### Package `packages/mobile/` → Tương lai sẽ thành repo `vninvest-mobile`
 - **Chứa:** Mobile app hiện hành.
@@ -39,7 +52,7 @@ Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mu
 - **Chứa:** Local Backend (FastAPI) + AI Orchestrator + Docker Compose.
 - **Local Backend lưu trữ:** Sub-users, RBAC, branding/white-label, API keys (Fernet), AI chat logs, usage analytics. Dữ liệu này chạy trên DB local của VIP (SQLite/PostgreSQL nhẹ), **KHÔNG** gửi về Central Server.
 - **KHÔNG chứa frontend** — VIP frontend là build variant từ `packages/web/` (`BUILD_TARGET=vip`).
-- **Đặc điểm:** Tuyệt đối không có `Money Flow Control Center`. Market data lấy qua MCP API.
+- **Đặc điểm:** Tuyệt đối không có `Money Flow Control Center`. Giao tiếp với `core` đi qua versioned partner/global APIs cho control-plane, commercial-plane và data-plane; MCP/data tools chỉ là lớp bổ sung cho AI/integration use cases, không phải đường duy nhất.
 
 ### Quy tắc Ranh giới (Boundary Rules) — BẮT BUỘC
 
@@ -48,9 +61,10 @@ Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mu
 
 1. `packages/core/` **KHÔNG** import trực tiếp từ `packages/web/` hay `packages/vip-app/`.
 2. `packages/web/` giao tiếp với `packages/core/` **CHỈ** qua REST API (thông qua `shared/api-contracts/`).
-3. `packages/vip-app/` giao tiếp với `packages/core/` **CHỈ** qua MCP API.
+3. `packages/vip-app/` giao tiếp với `packages/core/` qua versioned partner/global APIs và MCP/data tools phù hợp theo use case; không import trực tiếp code từ `core`.
 4. `packages/mobile/` giao tiếp với `packages/core/` **CHỈ** qua REST API.
 5. Code dùng chung (TypeScript interfaces, constants) phải nằm trong thư mục `shared/`.
+6. Mọi human-facing admin UI pages đều thuộc `packages/web/`; `packages/core/` chỉ sở hữu APIs và semantics phía server.
 
 ---
 
@@ -59,7 +73,15 @@ Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mu
 ### Giai đoạn A: Phát triển trong Monorepo (DEV PHASE)
 *Áp dụng ngay — Dành cho toàn bộ quá trình phát triển feature pack.*
 
-**Bước A1: Tổ chức lại thư mục (Restructure)**
+**Bước A0: Cố định boundaries trên cấu trúc hiện tại (BẮT BUỘC trước A1)**
+1. Giữ `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` là canonical paths của runtime hiện tại.
+2. Tạo `shared/api-contracts/` và `shared/constants/` như boundary artifact đầu tiên, **không** move runtime code trong cùng bước.
+3. Thêm `buildTarget.js` trực tiếp trong `frontend/src/` hiện tại để chứng minh build variants hoạt động trước khi move sang `packages/web/`.
+4. Chuẩn hóa external/core contracts, PAT/quota semantics, và ownership rules trước khi đụng tới folder layout lớn.
+
+**Bước A1: Tổ chức lại thư mục vật lý (Restructure có điều kiện)**
+> Chỉ bắt đầu sau khi A0 hoàn tất và A2/A3 đã chứng minh contracts, build flags và runtime paths ổn định.
+
 1. Tạo cấu trúc `packages/` và `shared/` trong repo hiện tại.
 2. Di chuyển `backend/`, `opennews-main/`, `infra/`, `scripts/` vào `packages/core/`.
 3. Di chuyển `frontend/` vào `packages/web/`.
@@ -68,15 +90,15 @@ Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mu
 6. Cập nhật tất cả đường dẫn trong `docker-compose.dev.yml`, CI config, IDE workspace.
 
 **Bước A2: Chuẩn bị "Máy Mẹ" (Core MCP Preparation)**
-1. **Database:** Code thêm bảng `Tenant` và `API_Keys` vào Django Backend.
+1. **Database:** Code thêm bảng `Tenant` và `API_Keys` vào Django Backend, ưu tiên tái sử dụng license/quota primitives hiện có của OpenCore cho entitlement/accounting.
 2. **MCP API:** Viết Endpoint API bọc `global_signal_universe_policy` thành JSON Schema.
-3. **Gateway:** Setup Kong API Gateway cho Rate Limiting.
+3. **Gateway:** Setup PAT + DRF throttling + Redis-backed quota trước; Kong API Gateway chỉ vào sau khi external traffic đủ lớn.
 4. *(Hệ thống Web SaaS hiện tại vẫn chạy bình thường, không bị ảnh hưởng.)*
 
 **Bước A3: Phát triển VIP Features (Build Variants, không clone)**
-1. Thêm `config/buildTarget.js` vào `packages/web/src/` — compile-time flags.
-2. Viết 5 VIP-only pages (`AIConfigBYOK`, `SubUserManagement`, `WhiteLabelSettings`, `UsageAnalytics`, `AIPromptStudio`) trực tiếp trong `packages/web/src/pages/` — gated bằng `SHOW_VIP_PAGES`.
-3. Wrap routes trong `App.jsx` với flags từ `buildTarget.js` (xem Build Variants section).
+1. Thêm `config/buildTarget.js` vào `frontend/src/` hiện tại trước; khi A1 hoàn tất mới đổi path sang `packages/web/src/`.
+2. Viết 5 VIP-only pages (`AIConfigBYOK`, `SubUserManagement`, `WhiteLabelSettings`, `UsageAnalytics`, `AIPromptStudio`) trực tiếp trong frontend source hiện tại và gate bằng `SHOW_VIP_PAGES`.
+3. Wrap routes trong `App.jsx` hiện tại với flags từ `buildTarget.js` (xem Build Variants section).
 4. Tạo `packages/vip-app/orchestrator/` — Multi-Agent Debate logic (FastAPI).
 5. Tất cả giao tiếp với core phải đi qua API (không import trực tiếp).
 

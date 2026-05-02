@@ -2,13 +2,24 @@
 
 **Date:** 2026-05-01  
 **Domain:** AI Trading, AI Advisory, Multi-Agent Systems, Backend, Frontend.  
-**Status:** PLANNING — chưa bắt đầu code.
+**Status:** PLANNING — target-state pack, phải thực thi qua execution rebaseline trước khi code.
 
 ---
 
 ## 1. Executive Summary
 
 Bản Handoff này là bộ tài liệu hoàn chỉnh để Đội Phát triển (Engineering Team) tiến hành triển khai kiến trúc Multi-Agent Debate thay thế cho tính năng AI Advisory tĩnh hiện tại của VNINVEST. Hệ thống cho phép cấu hình cá nhân hóa LLM API Keys (BYOM/BYOK) và chạy luồng tranh luận 4 Agents (Whale, Tech, Risk, Sentiment) để chốt tín hiệu giao dịch.
+
+> [!IMPORTANT]
+> Repo hiện tại đã có `AICommandCenterConfig`, `ai_runtime_config`, OpenCore quota/billing primitives, Channels/WebSocket và Redis Streams. Vì vậy implementation **không** được bắt đầu bằng physical repo restructure, Kong, ClickHouse hoặc VIP local backend đầy đủ. Thứ tự thực thi bắt buộc đọc tại [ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md).
+>
+> Với mọi slice có chạm `core` contracts hoặc VIP/core integration semantics, phải đọc thêm:
+> - [ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md)
+> - [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
+> - [ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)
+> - [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)
+> - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
+> - [ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)
 
 **Phạm vi feature pack:**
 - Mô hình BYOM/BYOK cho phép user tự nhập API Key
@@ -22,6 +33,9 @@ Bản Handoff này là bộ tài liệu hoàn chỉnh để Đội Phát triển
 ## 2. Directory of Documents
 
 Đây là danh sách các tài liệu kỹ thuật thuộc Gói Tính năng này. **Đội code BẮT BUỘC phải đọc theo thứ tự sau trước khi code:**
+
+0. **Execution Rebaseline (đọc trước toàn bộ):**
+   - [ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md)
 
 1. **Roadmap & Architecture Design (High-level):**
    - [AI_TRADING_INFRASTRUCTURE_ROADMAP](file:///c:/Mujoco%20Projects/vninvest/docs/AI_TRADING_INFRASTRUCTURE_ROADMAP_20260501.md)
@@ -39,6 +53,8 @@ Bản Handoff này là bộ tài liệu hoàn chỉnh để Đội Phát triển
 4. **Context Documents (Đọc thêm nếu cần):**
    - [B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL](file:///c:/Mujoco%20Projects/vninvest/docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md)
    - [VIP_APP_INTERNAL_ADMIN_FEATURES](file:///c:/Mujoco%20Projects/vninvest/docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md)
+   - [ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)
+   - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
 
 ---
 
@@ -54,6 +70,7 @@ Bản Handoff này là bộ tài liệu hoàn chỉnh để Đội Phát triển
 8. **Model Format Convention:** Dùng format `provider:model_name` (VD: `anthropic:claude-3-5-sonnet`).
 9. **Build Variants:** Trang AI Config BYOK nằm trong `packages/web/src/pages/`, gated bằng `SHOW_VIP_PAGES` flag. KHÔNG clone frontend — dùng `REACT_APP_BUILD_TARGET=vip` để build bản VIP.
 10. **VIP Local Backend:** Dữ liệu VIP (sub-users, API keys, chat logs, branding) lưu tại `packages/vip-app/local-backend/` trên máy VIP. KHÔNG gửi về Central Server.
+11. **Current-code-first sequencing:** Không bắt đầu bằng physical folder move, Kong, ClickHouse hoặc VIP local backend đầy đủ. Phải tái sử dụng `AICommandCenterConfig`, OpenCore entitlement primitives, Redis Streams và Channels trước.
 
 ---
 

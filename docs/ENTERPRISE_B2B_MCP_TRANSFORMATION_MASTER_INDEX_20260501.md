@@ -3,6 +3,56 @@
 **Date:** 2026-05-01
 **Mục đích:** Đây là **Mục lục Tổng (Master Index)** hệ thống hóa toàn bộ các tài liệu nghiên cứu và thiết kế kiến trúc mà chúng ta đã xây dựng để nâng cấp VNInvest từ một Web App thành một **Nền tảng Bán Dữ Liệu (Data API Provider)** và **Hệ sinh thái AI Trading (White-label SaaS)**.
 
+> [!IMPORTANT]
+> Bộ tài liệu bên dưới mô tả **target-state architecture**. Thứ tự triển khai bám theo code hiện tại được chốt tại [ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md). Khi có xung đột giữa kiến trúc đích và thực tế repo hiện tại, **Rebaseline** là tài liệu ưu tiên cho sequencing và entry conditions.
+>
+> Entry point chính thức cho mọi việc liên quan `core` hiện tại là bộ tài liệu sau:
+> - [ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md)
+> - [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
+> - [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
+> - [ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md)
+> - [ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md)
+> - [ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md)
+> - [ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md)
+> - [ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md)
+> - [ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md)
+> - [ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)
+> - [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)
+> - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
+> - [ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)
+
+---
+
+## PHẦN 1A: CORE PLATFORM FOUNDATION (CURRENT-CODE-ALIGNED)
+*Bộ tài liệu chính thức để chốt `core` trước khi triển khai package split, partner APIs hay schema migrations lớn.*
+
+1. **[ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md)**
+   *   Blueprint tổng thể cho `core`: boundaries, services architecture, global APIs, contract-first và schema-last gates.
+2. **[ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)**
+   *   Bộ contract pack cho `core`: resource catalog, field dictionary, endpoint matrix, auth/scope/meter matrix, error model và change policy.
+3. **[ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)**
+   *   Kiến trúc UI cho Central Operator Admin, Tenant Admin Console và ranh giới với VIP Internal Admin; chốt placement ở `web`, không ở `core`.
+4. **[ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md)**
+   *   Ma trận roles, abilities, capability claims và route gating cho Central Operator Admin và Tenant Admin Console; bám theo CASL/ProtectedRoute hiện có.
+5. **[ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md)**
+   *   Screen-level spec cho từng route admin: widgets, actions, states, APIs và implementation shape ở `frontend/src/`.
+6. **[ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md)**
+   *   Backlog contract cho operator admin APIs nội bộ: overview, tenant registry, runtime health/jobs, audit trace và các write actions P1.
+7. **[ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md)**
+   *   Hợp đồng chi tiết cho từng operator read endpoint P0: query params, response fields, list ordering và degrade semantics.
+8. **[ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md)**
+   *   Contract payload backend dùng để bootstrap abilities, navigation gating và admin surfaces cho frontend.
+9. **[ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md)**
+   *   Taskboard execution chia `Core Admin` thành các slice frontend/backend theo thứ tự contract-first.
+10. **[ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)**
+   *   Checklist freeze cho 6 resource đầu tiên: tenant, service account, PAT, usage meter, symbol snapshot, session facts.
+11. **[ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)**
+   *   Chiến lược storage và schema theo hướng logical ownership first, read-model first, physical schema split sau cùng.
+12. **[ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)**
+   *   Phân tích chi tiết candidate schema, quan hệ dữ liệu, cardinality, control-plane/commercial/data-plane/op-audit families.
+13. **[ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)**
+   *   Draft contract chi tiết cho partner/vip-app APIs: control-plane, commercial-plane, data-plane, headers, errors.
+
 ---
 
 ## PHẦN 1: TẦM NHÌN VÀ KIẾN TRÚC VĨ MÔ (MACRO ARCHITECTURE)

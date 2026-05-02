@@ -8,26 +8,51 @@
 ## Mục đích
 Định hướng từng bước triển khai kỹ thuật để đảm bảo tính an toàn, không phá vỡ logic cũ và dễ dàng rollback nếu có lỗi.
 
+> [!IMPORTANT]
+> Kế hoạch gốc bên dưới mô tả target-state. Với repo hiện tại, mọi bước phải đi theo thứ tự của [EXECUTION_REBASELINE](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md): mở rộng các trục đang tồn tại (`AICommandCenterConfig`, `ai_runtime_config`, OpenCore entitlements, Channels/WebSocket, Redis Streams) trước; không bắt đầu bằng physical repo move hay VIP local backend đầy đủ.
+
 ---
 
-## Step 1: Xây dựng nền tảng BYOK (Bring Your Own Key)
+## Step 0: Rebaseline trên code hiện tại
+*Thời gian: 1-2 ngày | Owner: Tech Lead | Priority: P0*
+
+### Mục tiêu
+Chốt rõ feature sẽ được cấy vào **đâu** trong code hiện có trước khi thêm schema/route/tool mới.
+
+### Actions
+1. Xác nhận transition seam cho AI config là `AICommandCenterConfig` + `resolve_ai_runtime_config()`, không thay bằng greenfield schema ngay từ bước đầu.
+2. Xác nhận entitlement/quota seed sẽ tái sử dụng `opencore_api.py` và `opencore_analytics.py` thay vì tạo subsystem riêng.
+3. Xác nhận internal realtime path tiếp tục dùng Channels/WebSocket; SSE là contract đối ngoại cho orchestration stream sau khi payload ổn định.
+4. Xác nhận chưa move `backend/` và `frontend/` sang `packages/` trong cùng slice với thay đổi feature.
+
+### Acceptance Criteria
+- [ ] Có văn bản chốt transition seams trước khi code Step 1.
+- [ ] Không có task nào mở đầu bằng folder move lớn.
+- [ ] Không có task nào yêu cầu Kong, ClickHouse hoặc VIP local backend đầy đủ ngay từ đầu.
+
+---
+
+## Step 1: Mở rộng nền tảng AI config hiện có sang BYOK
 *Thời gian: 1-2 ngày | Owner: Backend Lead | Priority: P0*
 
 ### Files to Create/Modify
 - **[NEW]** `backend/portfolio/ai_services/__init__.py`
 - **[NEW]** `backend/portfolio/ai_services/encryption.py` — Fernet helpers
-- **[MODIFY]** `backend/portfolio/models.py` — Thêm `UserAIConfiguration`
-- **[MODIFY]** `backend/portfolio/admin.py` — Register model vào Admin Panel
+- **[MODIFY]** `backend/portfolio/models.py` — Mở rộng `AICommandCenterConfig` hoặc thêm credential child-model tương thích ngược
+- **[MODIFY]** `backend/portfolio/serializers.py` — Giữ backward-compatible contract cho config payload
+- **[MODIFY]** `backend/portfolio/ai_runtime_config.py` — Resolve effective config theo multi-provider transition path
+- **[MODIFY]** `backend/portfolio/views_ai_runtime_stats.py` — Evolve current config endpoints trước khi thêm v1 routes mới
+- **[MODIFY]** `backend/portfolio/admin.py` — Register fields/model vào Admin Panel
 - **[NEW]** `backend/portfolio/tests/test_ai_configuration.py` — Unit tests
 
 ### Actions
 1. Thêm `cryptography` vào `requirements.txt`.
 2. Tạo `FERNET_KEY` trong `.env` và `settings.py`.
 3. Implement `encrypt_key()` / `decrypt_key()` trong `encryption.py`.
-4. Tạo model `UserAIConfiguration` theo Tech Spec §1.
+4. Reuse trục `AICommandCenterConfig` hiện có làm transition SSOT; chỉ thêm abstraction mới khi không phá backward compatibility.
 5. Tạo migration: `python manage.py makemigrations portfolio`.
-6. Viết API endpoint `GET/PUT /api/v1/ai/config/` trong `views.py` + `urls.py`.
-7. Viết unit tests: encryption round-trip, CRUD config, key isolation giữa users.
+6. Giữ `GET/PUT /api/ai-config/` tương thích; chỉ thêm `GET/PUT /api/v1/ai/config/` sau khi payload đã map sạch từ current contract.
+7. Viết unit tests: encryption round-trip, CRUD config, key isolation giữa users, backward compatibility với current runtime config.
 
 ### Verification Commands
 ```powershell
@@ -40,9 +65,10 @@ Pop-Location
 
 ### Acceptance Criteria
 - [ ] Migration chạy thành công, không conflict
-- [ ] `SELECT openai_key FROM portfolio_useraiconfiguration` trả về binary blob, không plaintext
+- [ ] API keys được lưu dưới dạng encrypted blob, không plaintext
 - [ ] API `PUT` lưu key → API `GET` trả về `api_keys_set` (không lộ key)
 - [ ] User A không đọc được config User B
+- [ ] Current AICommandCenter flows không bị vỡ
 
 ### Rollback
 - Revert migration: `python manage.py migrate portfolio <previous_migration_number>`
@@ -92,7 +118,7 @@ Pop-Location
 ### Files to Create/Modify
 - **[NEW]** `backend/portfolio/ai_services/orchestrator.py` — Class `AITradingOrchestrator`
 - **[NEW]** `backend/portfolio/ai_services/providers.py` — LLM provider abstraction
-- **[MODIFY]** `backend/portfolio/views.py` — Thêm SSE streaming view
+- **[NEW]** `backend/portfolio/views_ai_orchestrator.py` — Thêm streaming view tách biệt khỏi legacy views surfaces
 - **[MODIFY]** `backend/portfolio/urls.py` — Route `/api/v1/ai/debate/stream/`
 - **[NEW]** `backend/portfolio/tests/test_ai_orchestrator.py`
 
@@ -103,7 +129,7 @@ Pop-Location
    - `prefetch_context(symbol)` → lấy giá, VN-Index
    - `dispatch_agents(symbol, context)` → `asyncio.gather` 4 agents
    - `synthesize(agent_results)` → gọi Orchestrator LLM với prompt tổng hợp
-3. Tạo SSE view dùng `StreamingHttpResponse` với `content_type='text/event-stream'`.
+3. Tạo streaming view tách biệt; internal web có thể tạm dùng adapter qua Channels/WebSocket nếu cần rollout nhanh, nhưng external/vip contract cuối cùng vẫn là SSE.
 4. Xử lý fallback: báo lỗi nếu user chưa nhập key, hoặc 1 agent fail thì tiếp tục với agents còn lại.
 
 ### Verification
@@ -119,28 +145,31 @@ Pop-Location
 - [ ] Khi 1 agent fail, stream tiếp tục với 3 agents (graceful degradation)
 - [ ] SSE events đúng format Tech Spec §2.2
 - [ ] Endpoint chạy trên Uvicorn ASGI, không deadlock
+- [ ] Internal rollout path không buộc rewrite ngay WebSocket runtime hiện có
 
 ### Rollback
 - Xóa `orchestrator.py`, `providers.py`, revert views/urls changes.
 
 ---
 
-## Step 4: Cập nhật Frontend UI & SSE
+## Step 4: Cập nhật Frontend UI, build flags và streaming client
 *Thời gian: 2 ngày | Owner: Frontend Lead | Priority: P1*
 
 ### Files to Create/Modify
-- **[NEW]** `frontend/src/components/AIConfigurationPanel.jsx`
-- **[MODIFY]** `frontend/src/components/AIAdvisoryPanel.jsx` — SSE thay REST
+- **[NEW]** `frontend/src/config/buildTarget.js`
+- **[MODIFY]** `frontend/src/pages/AICommandCenter.jsx` — mở rộng UI config hiện có
+- **[MODIFY]** `frontend/src/components/AIAdvisoryPanel.jsx` — stream client thay REST khi contract ổn định
 - **[MODIFY]** `frontend/src/api/client.js` — Thêm endpoints
 - **[MODIFY]** `frontend/src/i18n/` — Thêm translations
 
 ### Actions
-1. Viết `AIConfigurationPanel.jsx`: form nhập API Keys, Select Box chọn model.
-2. Viết EventSource hook bắt SSE stream từ debate endpoint.
-3. Render loading states theo từng agent: "Đang gọi Whale Agent...", "✅ Hoàn thành".
-4. Render kết quả cuối: radar chart 4 góc + confidence score + summary.
-5. Xử lý mất kết nối: báo lỗi, không treo vĩnh viễn.
-6. Thêm i18n tiếng Việt cho tất cả text mới.
+1. Thêm `buildTarget.js` vào frontend source hiện tại để chuẩn bị build variants trước khi move sang `packages/web/`.
+2. Mở rộng `AICommandCenter.jsx` hiện có thay vì nhân đôi một config surface mới ngay lập tức.
+3. Viết EventSource hook hoặc adapter tương đương khi debate endpoint đã ổn định.
+4. Render loading states theo từng agent: "Đang gọi Whale Agent...", "✅ Hoàn thành".
+5. Render kết quả cuối: radar chart 4 góc + confidence score + summary.
+6. Xử lý mất kết nối: báo lỗi, không treo vĩnh viễn.
+7. Thêm i18n tiếng Việt cho tất cả text mới.
 
 ### Verification
 ```powershell
@@ -155,6 +184,7 @@ Pop-Location
 - [ ] SSE loading states hiển thị đúng
 - [ ] Mất mạng giữa chừng → UI báo lỗi, không treo
 - [ ] Tất cả text đã Việt hóa
+- [ ] Build flags hoạt động trên frontend source hiện tại mà chưa cần move thư mục
 
 ### Rollback
 - Revert `AIAdvisoryPanel.jsx` về bản REST cũ.

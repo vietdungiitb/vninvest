@@ -7,6 +7,25 @@ Dựa trên cấu trúc thư mục hiện tại của dự án VNInvest (`backen
 > [!NOTE]
 > Quyết định giữ Monorepo đã được Owner phê duyệt. Chi tiết lý do và trigger conditions tách repo xem tại [REPO_STRATEGY_AND_EXECUTION_ROADMAP](file:///c:/Mujoco%20Projects/vninvest/docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md).
 
+> [!IMPORTANT]
+> Tài liệu này là **folder target map**, không phải chỉ thị move toàn bộ runtime code ngay trong PR đầu tiên. Theo [EXECUTION_REBASELINE](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md), canonical runtime ở phase đầu vẫn là `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/`. Boundary artifacts như `shared/api-contracts/` và `frontend/src/config/buildTarget.js` đi trước, folder move đi sau.
+>
+> Khi chạm tới `packages/core/`, bộ tài liệu phải dùng làm chuẩn review là:
+> - [ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md)
+> - [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
+> - [ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)
+> - [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)
+> - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
+
+## Quy tắc chuyển tiếp bắt buộc
+
+Trước khi bắt đầu move vật lý sang `packages/`, phải đạt đủ các điều kiện sau:
+
+1. Core API contracts và PAT/tenant semantics đã ổn định trên backend hiện tại.
+2. Build variants đã chạy được trong frontend source hiện tại.
+3. Docker/runtime/test commands đã được chuẩn hóa theo boundary mới.
+4. Không còn import/runtime assumption cứng bám vào paths cũ mà chưa có alias hoặc workspace update.
+
 Dưới đây là sơ đồ ánh xạ (Mapping) từ code hiện tại sang cấu trúc Packages mới:
 
 ---

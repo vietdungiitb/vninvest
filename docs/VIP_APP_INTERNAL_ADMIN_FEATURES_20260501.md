@@ -9,6 +9,15 @@ Dưới đây là phác thảo 5 Module Quản trị cốt lõi cần phải xâ
 
 > [!NOTE]
 > **Kiến trúc triển khai:** 5 module dưới đây nằm trong **cùng 1 frontend source** (`packages/web/src/pages/`), gated bằng `SHOW_VIP_PAGES` flag (chỉ hiện khi `BUILD_TARGET=vip`). Dữ liệu của các module này được lưu trên **Local Backend** (`packages/vip-app/local-backend/`) chạy trên máy VIP, **KHÔNG** gửi về Central Server. Chi tiết kiến trúc xem tại [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mujoco%20Projects/vninvest/docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md).
+>
+> Mọi kết nối từ VIP local backend lên `core` phải bám theo bộ partner/core docs sau:
+> - [ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)
+> - [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
+> - [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
+> - [ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)
+> - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
+>
+> `VIP Internal Admin` khac voi `Core Admin UI` cua VNInvest central. Ca hai cung co the dung chung frontend source trong `web`, nhung `VIP Internal Admin` doc/ghi chu yeu vao `packages/vip-app/local-backend/`, con `Core Admin UI` la operator/tenant console noi chuyen voi `core`.
 
 ---
 

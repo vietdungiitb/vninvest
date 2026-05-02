@@ -1,7 +1,7 @@
 # ĐỀ XUẤT KIẾN TRÚC CÔNG NGHỆ (TECH STACK) & ÁNH XẠ MODULE
 
 **Date:** 2026-05-01
-**Tình trạng:** Bản mở rộng đảm bảo khả năng mở rộng (Scale lên 10,000 CCU) và tích hợp mô hình B2B mà **KHÔNG** làm phá vỡ kiến trúc cũ (SSOT).
+**Tình trạng:** Target-state tech stack cho mục tiêu 10,000 CCU. Thứ tự áp dụng thực tế phải bám theo [EXECUTION_REBASELINE](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md).
 
 ---
 
@@ -10,6 +10,18 @@
 1. Kiến trúc B2B/VIP Client: [B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL](file:///c:/Mujoco%20Projects/vninvest/docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md)
 2. Luồng chạy AI: [MULTI_AGENT_ORCHESTRATOR_DESIGN](file:///c:/Mujoco%20Projects/vninvest/docs/MULTI_AGENT_ORCHESTRATOR_DESIGN_20260501.md)
 3. Handoff cho Đội Code: [MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER](file:///c:/Mujoco%20Projects/vninvest/docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md)
+4. Core contracts & schema direction: [ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md), [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md), [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
+
+---
+
+## 1A. Quy tắc áp dụng theo code hiện tại
+
+Để kế hoạch này khả thi với repo hiện có, cần áp dụng các nguyên tắc sau:
+
+1. **Redis-first trước RabbitMQ:** tận dụng Celery + Redis + Redis Streams + Channels hiện có trước khi thêm một queue substrate mới.
+2. **PostgreSQL-first trước ClickHouse:** tối ưu facts/materialization/cache/read path trước; chỉ đưa ClickHouse vào khi raw tick analytics vẫn là bottleneck sau tối ưu.
+3. **WebSocket nội bộ trước, SSE đối ngoại sau:** internal web realtime tiếp tục dùng Channels/WebSocket; SSE ưu tiên cho external orchestrator/VIP stream contract.
+4. **Django edge trước Kong:** PAT, DRF throttling, Redis-backed quota và NGINX edge đi trước; Kong chỉ vào khi partner API traffic đủ lớn.
 
 ---
 
@@ -41,6 +53,6 @@ Sự bổ sung các công nghệ trên (Kong, ClickHouse, Redis Pub/Sub, Uvicorn
 ## 4. Hành Động Tiếp Theo Cho Đội Code
 
 Để thực hiện roadmap này mà không gây rủi ro, đội code cần theo sát tài liệu triển khai:
-- Trọng tâm ưu tiên 1: Chuyển đổi tính năng AI tĩnh hiện tại sang mô hình Async ASGI để làm quen với Uvicorn. (Tham khảo: [TECH_SPEC_MULTI_AGENT_AI_TRADING](file:///c:/Mujoco%20Projects/vninvest/docs/TECH_SPEC_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md)).
-- Trọng tâm ưu tiên 2: Cài đặt Kong Gateway ở môi trường Staging để dựng hệ thống cấp API Token cho đối tác.
-- Trọng tâm ưu tiên 3: Tách dần dữ liệu Ticks sang ClickHouse khi dung lượng Postgres vượt ngưỡng báo động.
+- Trọng tâm ưu tiên 1: Chuẩn hóa **core-ready monolith** trên hạ tầng đang chạy: Redis Streams, Channels, Celery, PostgreSQL facts-first paths, rate limiting và entitlement hiện có.
+- Trọng tâm ưu tiên 2: Dựng PAT / tenant quota / MCP wrapper routes ngay trong Django backend trước khi đưa Kong Gateway.
+- Trọng tâm ưu tiên 3: Chỉ đưa Kong và ClickHouse vào sau khi các trigger về external traffic hoặc OLAP pressure được đo thấy trên runtime thật.
