@@ -1,3 +1,26 @@
+# ✅ AUDIT FILE LIST (2026-05-02z)
+- packages/web/src/pages/pageRegistry.js (NEW - minimal route-to-page registry for the package shell)
+- packages/web/src/pages/vip/VipLocalControlPage.js (NEW - first VIP local control page for login, user list and audit log)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `vip-local-control` route status to `baseline`)
+- packages/web/src/index.js (MODIFIED - expose page registry and `VipLocalControlPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate page registry and SSR rendering of the VIP local control page)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (MODIFIED - freeze the unified UI template rule at approval level)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - add execution and DoD rules for the shared UI template)
+- docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - add hard technical rules for information-dense, low-spacing UI)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (MODIFIED - add UI template compliance gate)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add `GOV-05` for unified UI template governance)
+- module_tree_full.md (MODIFIED - regenerated after the VIP shell UI slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-13, WEB-14, OPS-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren page registry, VIP local control page va toan bo doc pack vua cap nhat.
+- PASSED: `npm run check:shell` trong `packages/web` da cover page registry, route `vip-local-control` status `baseline` va SSR render cua `VipLocalControlPage`.
+- PASSED: live SSR parity tren runtime `:8200` da xac nhan page moi tieu thu duoc `health`, `session`, `users` va `auditLogs`.
+- PASSED: integrated browser preview va screenshot da xac nhan giao dien bam template thong tin dam, metric band ro, panel compact va spacing thap.
+- PASSED: `module_tree_full.md` regenerated successfully with 538 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02y)
 - packages/web/src/adapters/vip-app/vipAppAdapter.js (MODIFIED - add vip-app control-plane endpoint metadata and thin control client)
 - packages/web/src/adapters/vip-app/index.js (MODIFIED - export the VIP control client)

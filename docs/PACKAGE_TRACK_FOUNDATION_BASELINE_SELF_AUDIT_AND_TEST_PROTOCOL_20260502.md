@@ -71,7 +71,8 @@ Validation tối thiểu:
 1. `npm run check:shell` trong `packages/web`,
 2. ids unique cho route catalog,
 3. navigation items map đúng route ids,
-4. adapter interface đồng nhất giữa `core` và `vip-app`.
+4. adapter interface đồng nhất giữa `core` và `vip-app`,
+5. nếu slice chạm UI, page hoặc component, phải có proof rằng surface mới vẫn bám template chung: giàu thông tin, spacing thấp và không trôi sang layout quá thoáng.
 
 #### Docs-only slice
 
@@ -174,3 +175,7 @@ PASS khi taskboard phản ánh đúng các slice đã hoàn thành, slice đang 
 ### D5. Handoff completeness
 
 PASS khi evidence của slice có trạng thái khi rời slice, lệnh PASS cuối, bước kế tiếp và blockers đủ để session sau resume trực tiếp.
+
+### D6. Unified UI template compliance
+
+PASS khi screenshot hoặc preview và review note chứng minh surface UI mới bám template chung của phần nâng cấp: information-dense, compact spacing và cùng grammar bố cục với các surface khác trong lane.

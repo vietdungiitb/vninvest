@@ -23,6 +23,7 @@ Ma trận này truy vết trực tiếp từ yêu cầu package baseline đã đ
 | GOV-02 | Mọi slice phải có focused validation và audit sync | compileall, shell check, module tree, ledger/progress sync là bắt buộc | Self-Audit Protocol mục 2-4 | QA-01, QA-02, OPS-01 | validation logs + ledger/progress sync |
 | GOV-03 | Taskboard phải là live status board khớp với audit mới nhất để tránh nhiều phiên claim chồng chéo | taskboard là authority cho trạng thái hiện hành; audit ledger và progress dashboard chỉ là bằng chứng lịch sử | Handoff Master mục 8, Implementation Plan mục 3-5 | ARC-03, OPS-02 | taskboard diff + audit entry alignment proof |
 | GOV-04 | Mỗi slice phải để lại handoff packet để phiên sau resume mà không đoán | evidence template và self-audit protocol bắt buộc ghi trạng thái khi rời slice, lệnh pass cuối, bước kế tiếp và blockers | Handoff Master mục 8-9, Self-Audit Protocol mục 3, Evidence Template mục 9 | ARC-03, OPS-02 | filled handoff block + latest audit note |
+| GOV-05 | Toàn bộ UI của phần nâng cấp phải dùng một template chung thống nhất, giàu thông tin và spacing thấp | template UI là hard rule ở cấp handoff, plan, spec; deviation chỉ được phép khi owner duyệt và có audit note | Handoff Master mục 2, 5.3, 8; Implementation Plan mục 1, 3, 4.3; Tech Spec mục 4.1A; Self-Audit mục 2-4 | WEB-13, WEB-14 và mọi slice UI tiếp theo | screenshot hoặc preview proof + template compliance review note |
 
 ## 3. Quy tắc sử dụng matrix
 

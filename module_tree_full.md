@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 10:44:01`
+Generated at: `2026-05-02 11:00:29`
 
 ## Summary
 
-- Total modules: 536
+- Total modules: 538
 - Python modules: 340
-- JS/TS modules: 196
+- JS/TS modules: 198
 - Total classes: 563
-- Total functions: 2068
-- Total top-level variables: 3519
+- Total functions: 2093
+- Total top-level variables: 3548
 
 ## Python Modules
 
@@ -3660,6 +3660,20 @@ Generated at: `2026-05-02 10:44:01`
 
 - Top-level variables:
   - `shellAdapters`
+
+### `packages/web/src/pages/pageRegistry.js`
+
+- Functions:
+  - `getPageComponent`, `getPageRegistryRouteIds`
+- Top-level variables:
+  - `pageEntry`, `pageRegistry`
+
+### `packages/web/src/pages/vip/VipLocalControlPage.js`
+
+- Functions:
+  - `VipLocalControlPage`, `createCredentials`, `createEmptySnapshot`, `createInitialViewState`, `createUserDraft`, `formatTimestamp`, `getRoleLabel`, `handleLogin`, `handleLogout`, `handleRefresh`, `handleResetSession`, `handleUserSubmit`, `loadControlSnapshot`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAuditItem`, `renderElement`, `renderField`, `renderMetric`, `renderSelectField`, `renderUserItem`, `runAction`, `runInitialLoad`
+- Top-level variables:
+  - `PAGE_STYLES`, `ROLE_OPTIONS`, `abilityCount`, `active`, `auditList`, `bootstrapLoaderRef`, `clientRef`, `controlPlaneClient`, `currentSessionId`, `currentSessionUsername`, `envRef`, `fetchImplRef`, `metrics`, `nextPayload`, `nextValue`, `notice`, `payload`, `result`, `roleEntry`, `roleKeys`, `roleText`, `sessionCards`, `snapshot`, `timestamp`, `userList`, `username`, `visibleRouteCount`
 
 ## Update Workflow
 

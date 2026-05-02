@@ -111,7 +111,7 @@ export const routeCatalog = Object.freeze([
     buildTargets: ["vip"],
     requiredCapabilities: ["vip.local_control.read"],
     adapter: "vip-app",
-    status: "planned",
+    status: "baseline",
   },
 ]);
 

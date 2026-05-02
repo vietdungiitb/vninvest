@@ -8,9 +8,13 @@ import {
   createEmptyAuthRuntimeState,
   createShellAuthRuntime,
   deriveAuthRuntimeState,
+  getPageComponent,
+  getPageRegistryRouteIds,
   navigationCatalog,
+  pageRegistry,
   routeCatalog,
   shellAdapters,
+  VipLocalControlPage,
   useShellAuth,
   useShellAuthRuntime,
 } from "../src/index.js";
@@ -59,6 +63,7 @@ for (const adapter of shellAdapters) {
 }
 
 const vipShellAdapter = shellAdapters.find((adapter) => adapter.adapterId === "vip-app");
+const vipLocalControlRoute = routeCatalog.find((route) => route.id === "vip-local-control");
 const requiredVipControlMethods = [
   "getAuthLoginEndpoint",
   "getAuthLogoutEndpoint",
@@ -70,6 +75,13 @@ const requiredVipControlMethods = [
 for (const methodName of requiredVipControlMethods) {
   assert(typeof vipShellAdapter?.[methodName] === "function", `VIP adapter is missing method: ${methodName}`);
 }
+
+assert(vipLocalControlRoute?.status === "baseline", "vip-local-control route must move to baseline when the page exists");
+
+const pageRegistryRouteIds = new Set(getPageRegistryRouteIds());
+assert(pageRegistry.length === pageRegistryRouteIds.size, "Duplicate route ids detected in pageRegistry");
+assert(pageRegistryRouteIds.has("vip-local-control"), "pageRegistry must register vip-local-control");
+assert(getPageComponent("vip-local-control") === VipLocalControlPage, "vip-local-control must resolve to VipLocalControlPage");
 
 const vipControlRequests = [];
 const vipControlClient = createVipAppControlClient({
@@ -191,6 +203,56 @@ assert(vipControlRequests[2].init.method === "POST", "VIP control client upsertU
 assert(vipControlRequests[3].url === "http://vip-app.local/vip-app/v1/audit/logs?limit=5", "VIP control client must append audit query params through adapter metadata");
 assert(vipControlRequests[4].url === "http://vip-app.local/vip-app/v1/auth/reset", "VIP control client resetSession must use the reset endpoint");
 assert(vipControlRequests[5].url === "http://vip-app.local/vip-app/v1/auth/logout", "VIP control client logout must use the logout endpoint");
+
+const vipPageMarkup = renderToStaticMarkup(
+  createElement(VipLocalControlPage, {
+    autoLoad: false,
+    initialSnapshot: {
+      health: { ok: true, service: "vip-app-local-api" },
+      capabilities: {
+        abilities: [
+          { action: "read", subject: "Dashboard" },
+          { action: "manage", subject: "VipLocalControl" },
+        ],
+        navigation: {
+          visible_routes: ["vip-local-control", "settings"],
+        },
+      },
+      session: {
+        session_id: "sess_vip_ui",
+        principal: { username: "vip-local-admin" },
+      },
+      users: [
+        {
+          user_id: 101,
+          username: "vip-local-admin",
+          email: "vip-local-admin@vninvest.local",
+          role_keys: ["vip_admin"],
+        },
+        {
+          user_id: 102,
+          username: "vip-operator",
+          email: "vip-operator@vninvest.local",
+          role_keys: ["vip_operator"],
+        },
+      ],
+      auditLogs: [
+        {
+          audit_id: 8,
+          action: "auth.login",
+          actor_username: "vip-local-admin",
+          created_at: "2026-05-02T10:44:01+00:00",
+        },
+      ],
+    },
+  }),
+);
+
+assert(vipPageMarkup.includes("Trung tâm điều khiển VIP cục bộ"), "VIP local control page must render the Vietnamese page title");
+assert(vipPageMarkup.includes("Đăng nhập local"), "VIP local control page must render the local login action");
+assert(vipPageMarkup.includes("vip-local-admin"), "VIP local control page must surface the current session identity");
+assert(vipPageMarkup.includes("vip-operator"), "VIP local control page must render the user list");
+assert(vipPageMarkup.includes("auth.login"), "VIP local control page must render audit actions");
 
 const emptyAuthState = createEmptyAuthRuntimeState({ buildTarget: "saas" });
 assert(emptyAuthState.userPlan === "free", "Empty auth runtime state must default userPlan to free");

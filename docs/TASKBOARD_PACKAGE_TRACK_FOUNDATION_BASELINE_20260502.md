@@ -280,3 +280,28 @@ Estimate: 0.5h
 Dependency: WEB-12  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs va audit evidence dong bo sau khi `packages/web` co vip-app control client lane dau tien.
+
+---
+
+## 11. Next VIP shell UI queue
+
+- [x] `WEB-13` Dung page VIP local control toi thieu cho login, user list va audit log  
+Owner: Frontend Lead  
+Estimate: 4h  
+Dependency: WEB-12, OPS-05  
+Anchor files: `packages/web/src/pages/*`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/index.js`, `packages/web/src/adapters/vip-app/*`  
+DoD: `packages/web` co route-level page React toi thieu cho `vip-local-control`, hien thi duoc local login, user list va audit log bang `createVipAppControlClient`, dong thoi bat buoc bam template UI chung cua phan nang cap: giao dien giau thong tin, spacing thap, khong drift sang layout qua thoang.
+
+- [x] `WEB-14` Validate SSR va live parity cho VIP local control page  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1.5h  
+Dependency: WEB-13  
+Anchor files: `packages/web/scripts/check-shell.mjs`, `packages/web/src/pages/*`, `packages/vip-app/local-backend/*`  
+DoD: co shell proof render page va live smoke xac nhan route/page moi tieu thu duoc login, user list va audit logs tren runtime `:8200`, kem screenshot hoac preview review xac nhan page bam template UI chung voi mat do thong tin cao va spacing thap.
+
+- [x] `OPS-06` Sync taskboard, audit docs va module tree sau VIP shell UI slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-14  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs va audit evidence dong bo sau khi `packages/web` co VIP local control page dau tien.

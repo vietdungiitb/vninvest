@@ -24,6 +24,7 @@ Sau khi hoàn thành, hệ thống phải đồng thời đạt đủ các kết
 5. `packages/web` vẫn là frontend source duy nhất; không sinh frontend thứ hai cho VIP hay OpenCore.
 6. Không file nào trong `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` bị dùng làm implementation target của baseline mới.
 7. Bộ tài liệu phải đủ để đội code triển khai tiếp các slice kế tiếp mà không phải hỏi lại về naming, file placement, interface shape hay validation path.
+8. Toàn bộ UI trong phần nâng cấp này phải tuân thủ một chuẩn template chung thống nhất để đội code không tạo ra nhiều ngôn ngữ giao diện khác nhau theo từng route.
 
 ## 3. Bộ tài liệu trong gói này
 
@@ -82,6 +83,9 @@ Khi có xung đột diễn giải, dùng thứ tự sau:
 2. `navigationCatalog` là navigation registry bám theo capability/build target, không hardcode logic menu vào nhiều component khác nhau.
 3. Adapter `core` và adapter `vip-app` phải cùng surface interface để shell phía trên không biết backend cụ thể nào đang đứng sau.
 4. Không import trực tiếp legacy `frontend/src/*` vào `packages/web` trong slice baseline này.
+5. Mọi page, panel, form, list và dashboard mới trong phần nâng cấp này phải bám một template UI chung ở cấp layout, spacing và nhịp hiển thị dữ liệu.
+6. Template mặc định phải ưu tiên giao diện giàu thông tin, mật độ hiển thị cao, khoảng cách lề và khoảng cách giãn cách thấp; không được đi theo kiểu trình bày quá thoáng hoặc nhiều khoảng trắng nếu không có lý do nghiệp vụ rõ ràng.
+7. Mọi deviation khỏi template chung phải được owner duyệt trước và phải ghi rõ trong taskboard cùng audit entry của slice liên quan.
 
 ### 5.4 Core baseline rules
 
@@ -151,6 +155,7 @@ Pop-Location
 8. `docs/CODE_CHANGE_AUDIT_LEDGER.md` là log bằng chứng bất biến theo slice; `PROGRESS_DASHBOARD.md` là mirror cho auditor. Hai file này không thay thế vai trò điều phối hiện hành của taskboard.
 9. Trước khi resume một slice, phải đọc taskboard hiện hành, entry audit mới nhất và residual risk note liên quan; nếu ba nguồn mâu thuẫn nhau thì sửa control docs trước khi code tiếp.
 10. Mỗi handoff phải để lại đủ bốn ý: trạng thái khi rời slice, lệnh validation pass cuối cùng, bước kế tiếp được khuyến nghị và blockers/guardrails cần giữ nguyên.
+11. Với mọi slice UI, reviewer phải có bước đối chiếu screenshot hoặc preview với template chung; surface nào thiếu mật độ thông tin hoặc dùng spacing quá rộng phải bị coi là chưa đạt.
 
 ## 9. Evidence obligations
 

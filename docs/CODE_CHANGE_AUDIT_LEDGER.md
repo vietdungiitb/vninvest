@@ -1,3 +1,68 @@
+# Entry 2026-05-02z - Build the first VIP local control page and freeze the shared UI template rule
+
+Muc tieu:
+- Dung route-level page React dau tien cho `vip-local-control` de `packages/web` khong chi co adapter seam ma da co UI that cho login local, user list va audit log.
+- Nang `vip-local-control` tu `planned` len `baseline` va them page registry toi thieu de shell biet route nay render surface nao.
+- Ghi cứng vao bo tai lieu phê duyệt va self-audit rang toan bo UI cua phan nang cap phai theo mot template chung: giao dien giau thong tin, spacing thap, review screenshot bat buoc.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/vip/VipLocalControlPage.js`:
+  - Them page React moi cho local login, refresh/reset session, upsert sub-user, doc audit logs va hien metrics session/health.
+  - Chot visual language dau tien cho lane VIP local control theo huong information-dense, panel compact, margins/gaps thap.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Them page registry toi thieu de map `vip-local-control` sang component route-level.
+- `packages/web/src/app/routeCatalog.js`:
+  - Mark `vip-local-control` sang `baseline` sau khi page that da ton tai.
+- `packages/web/src/index.js`:
+  - Export page registry va `VipLocalControlPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho page registry, status route `baseline` va SSR render cua `VipLocalControlPage`.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md`:
+  - Khoa requirement cap owner: toan bo UI phai bam template chung thong nhat, giau thong tin, spacing thap.
+- `docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Them execution objective, exit criteria va governance subsection cho template UI chung.
+- `docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Them hard rules ky thuat cho unified UI template governance trong `packages/web`.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md`:
+  - Them audit gate cho screenshot/preview review va UI template compliance.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md`:
+  - Them `GOV-05` cho template UI chung va evidence screenshot/preview.
+- `module_tree_full.md`:
+  - Regenerate sau khi them page registry, route-level page va cap nhat doc pack; tong module tang len 538.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `WEB-13`, `WEB-14`, `OPS-06` complete.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02z.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho VIP shell UI slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/pageRegistry.js (NEW - minimal route-to-page registry for the package shell)
+- packages/web/src/pages/vip/VipLocalControlPage.js (NEW - first VIP local control page for login, user list and audit log)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `vip-local-control` route status to `baseline`)
+- packages/web/src/index.js (MODIFIED - expose page registry and `VipLocalControlPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate page registry and SSR rendering of the VIP local control page)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (MODIFIED - freeze the unified UI template rule at approval level)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - add execution and DoD rules for the shared UI template)
+- docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - add hard technical rules for information-dense, low-spacing UI)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (MODIFIED - add UI template compliance gate)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add `GOV-05` for unified UI template governance)
+- module_tree_full.md (MODIFIED - regenerated after the VIP shell UI slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-13, WEB-14, OPS-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/pageRegistry.js`, `packages/web/src/pages/vip/VipLocalControlPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/index.js`, `packages/web/scripts/check-shell.mjs` va toan bo doc pack vua cap nhat.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`; da bao gom proof cho page registry, route `vip-local-control` status `baseline` va SSR render cua `VipLocalControlPage`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... createVipAppControlClient, loadShellBootstrap, VipLocalControlPage ... '@ | node --input-type=module; Pop-Location` => `vip local control page live SSR parity passed`; page da tieu thu duoc live snapshot `health`, `session`, `users`, `auditLogs` tu runtime `:8200`.
+- PASSED: preview HTML tam duoc generate tu live snapshot, mo trong integrated browser va capture screenshot; review cho thay layout bam template information-dense voi hero gon, metric band, panel compact, user list va audit log dat sat nhau.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (538 modules).
+
+Residual note:
+- `VipLocalControlPage` hien dang dong vai tro template seed dau tien cho lane VIP local control; cac slice UI tiep theo nen tach dan shared layout primitives thay vi clone mot bien the moi.
+- Quy tac template UI chung da duoc khoa trong handoff/plan/spec/self-audit; moi deviation tu nay phai co owner approval va screenshot review note.
+
 # Entry 2026-05-02y - Add a thin VIP app control client to the package-track web shell
 
 Muc tieu:
