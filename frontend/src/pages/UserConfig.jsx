@@ -21,6 +21,7 @@ export default function UserConfig() {
     language: 'vi',
     theme: 'dark',
     whale_alert_threshold: 500,
+    advisory_whale_signal_enabled: true,
   });
 
   useEffect(() => {
@@ -42,6 +43,9 @@ export default function UserConfig() {
           language: userCfg.language || prev.language,
           theme: userCfg.theme || prev.theme,
           whale_alert_threshold: Number(userCfg.whale_alert_threshold ?? prev.whale_alert_threshold),
+          advisory_whale_signal_enabled: typeof userCfg.advisory_whale_signal_enabled === 'boolean'
+            ? userCfg.advisory_whale_signal_enabled
+            : prev.advisory_whale_signal_enabled,
         }));
       } catch (err) {
         if (!mounted) return;
@@ -70,6 +74,7 @@ export default function UserConfig() {
         language: form.language,
         theme: form.theme,
         whale_alert_threshold: Math.max(1, Number(form.whale_alert_threshold) || 500),
+        advisory_whale_signal_enabled: Boolean(form.advisory_whale_signal_enabled),
       });
       setLanguage(form.language);
       setMessage(t('common.save'));
@@ -163,9 +168,29 @@ export default function UserConfig() {
                 {t('settings.openAiCommandCenter')}
               </Link>
             </div>
-              <p className="text-xs text-cyan-200/80">
-                {t('settings.generalOnlyNotice')}
-              </p>
+            <div className="rounded-2xl border border-cyan-400/20 bg-slate-950/40 p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  aria-label={t('settings.eventBasedAuto')}
+                  className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+                  checked={Boolean(form.advisory_whale_signal_enabled)}
+                  onChange={(e) => onField('advisory_whale_signal_enabled', e.target.checked)}
+                />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-slate-100">{t('settings.eventBasedAuto')}</p>
+                  <p className="text-xs leading-5 text-slate-300">{t('settings.eventBasedAutoHelp')}</p>
+                  <p className={`text-[11px] font-semibold uppercase tracking-widest ${form.advisory_whale_signal_enabled ? 'text-emerald-300' : 'text-amber-300'}`}>
+                    {form.advisory_whale_signal_enabled
+                      ? t('settings.eventBasedAutoStateOn')
+                      : t('settings.eventBasedAutoStateOff')}
+                  </p>
+                </div>
+              </label>
+            </div>
+            <p className="text-xs text-cyan-200/80">
+              {t('settings.generalOnlyNotice')}
+            </p>
           </section>
 
           <section className="card-section px-5 py-4">

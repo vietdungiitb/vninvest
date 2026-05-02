@@ -70,7 +70,10 @@ const vi = {
     movedTitle: 'Cấu hình AI đã chuyển sang AI Command Center',
     movedDescription: 'Provider, model, API key và prompt config của AI hiện được quản lý tập trung tại AI Command Center.',
     openAiCommandCenter: 'Mở AI Command Center',
-    generalOnlyNotice: 'Trang này chỉ còn giữ các thiết lập người dùng chung như ngôn ngữ, giao diện và ngưỡng cảnh báo.',
+    generalOnlyNotice: 'Trang này giữ các thiết lập người dùng chung và gate advisory theo sự kiện. Provider, model và API key vẫn nằm trong AI Command Center.',
+    eventBasedAutoHelp: 'Áp dụng cho whale, dark flow và reversal. Nếu tắt, AI runtime vẫn sẵn sàng nhưng hệ thống sẽ bỏ qua advisory tự động theo sự kiện.',
+    eventBasedAutoStateOn: 'Gate advisory theo sự kiện đang bật',
+    eventBasedAutoStateOff: 'Gate advisory theo sự kiện đang tắt',
   },
   auth: {
     brandName: 'VNInvest',

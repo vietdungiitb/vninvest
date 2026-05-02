@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 15:19:35`
+Generated at: `2026-05-02 16:03:15`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 15:19:35`
 - Python modules: 341
 - JS/TS modules: 213
 - Total classes: 564
-- Total functions: 2180
-- Total top-level variables: 3706
+- Total functions: 2181
+- Total top-level variables: 3707
 
 ## Python Modules
 
@@ -3168,9 +3168,9 @@ Generated at: `2026-05-02 15:19:35`
 ### `frontend/src/pages/AICommandCenter.jsx`
 
 - Functions:
-  - `AICommandCenter`, `PromptSourceTabs`, `applyAuditFilters`, `applyPromptPreset`, `applyTechnicalPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `resetAuditFilters`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
+  - `AICommandCenter`, `PromptSourceTabs`, `applyAuditFilters`, `applyPromptPreset`, `applyTechnicalPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `fetchUserRuntimeConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `resetAuditFilters`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
 - Top-level variables:
-  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `enabled`, `indicatorCount`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
+  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `enabled`, `eventBasedAdvisoryDisabled`, `indicatorCount`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
 
 ### `frontend/src/pages/Dashboard.jsx`
 

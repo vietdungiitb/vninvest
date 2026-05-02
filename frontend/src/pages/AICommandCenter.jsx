@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   CpuChipIcon, 
   AdjustmentsHorizontalIcon, 
@@ -14,6 +15,7 @@ import { Tab } from '@headlessui/react';
 import {
   getAICommandCenterAuditLogs,
   getAICommandCenterConfig,
+  getPortfolioUserConfig,
   testAICommandCenterConnection,
   updateAICommandCenterConfig,
 } from '../api/client';
@@ -501,13 +503,16 @@ const AICommandCenter = () => {
   const [auditTotal, setAuditTotal] = useState(0);
   const [auditFilters, setAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
   const [appliedAuditFilters, setAppliedAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
+  const [userRuntimeConfig, setUserRuntimeConfig] = useState(null);
   const currentConfig = config || DEFAULT_AI_CONFIG;
   const currentPromptConfig = normalizePromptConfig(currentConfig.ai_prompt_config);
   const totalAuditPages = Math.max(1, Math.ceil((auditTotal || 0) / AUDIT_PAGE_SIZE));
   const activeSourceCount = PROMPT_SOURCE_DEFINITIONS.filter((definition) => currentPromptConfig?.[definition.id]?.enabled).length;
+  const eventBasedAdvisoryDisabled = userRuntimeConfig?.advisory_whale_signal_enabled === false;
 
   useEffect(() => {
     fetchConfig();
+    fetchUserRuntimeConfig();
     loadAuditLogs(1);
   }, []);
 
@@ -546,6 +551,15 @@ const AICommandCenter = () => {
       setAuditError(err?.response?.data?.message || 'Không tải được lịch sử audit.');
     } finally {
       setAuditLoading(false);
+    }
+  };
+
+  const fetchUserRuntimeConfig = async () => {
+    try {
+      const resp = await getPortfolioUserConfig();
+      setUserRuntimeConfig(resp?.data || null);
+    } catch (err) {
+      console.error('Failed to fetch UserConfig for AI Command Center:', err);
     }
   };
 
@@ -855,6 +869,26 @@ const AICommandCenter = () => {
                     </span>
                   </div>
                 </div>
+
+                {currentConfig.ai_ready && eventBasedAdvisoryDisabled && (
+                  <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-100 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-3">
+                      <ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+                      <div>
+                        <div className="text-sm font-semibold">AI runtime đã sẵn sàng nhưng advisory theo sự kiện đang tắt</div>
+                        <p className="mt-1 text-xs leading-5 text-amber-100/80">
+                          Whale, dark flow và reversal sẽ không tự sinh AI Advisory cho tới khi bạn bật lại gate sự kiện trong UserConfig.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/settings"
+                      className="inline-flex items-center justify-center rounded-xl border border-amber-300/40 bg-slate-950/40 px-4 py-2 text-xs font-semibold text-amber-100 transition hover:border-amber-200 hover:bg-slate-950/70"
+                    >
+                      Mở UserConfig
+                    </Link>
+                  </div>
+                )}
 
                 {/* Test Connection Section */}
                 <div className="mt-5 space-y-3 rounded-2xl border border-slate-700/50 bg-slate-800/30 p-4">

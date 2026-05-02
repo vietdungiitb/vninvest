@@ -70,7 +70,10 @@ const en = {
     movedTitle: 'AI settings moved to AI Command Center',
     movedDescription: 'Provider, model, API key, and prompt config are now managed centrally in AI Command Center.',
     openAiCommandCenter: 'Open AI Command Center',
-    generalOnlyNotice: 'This page now only keeps general user preferences such as language, theme, and alert thresholds.',
+    generalOnlyNotice: 'This page keeps general preferences and the event-based advisory gate. Provider, model, and API key remain in AI Command Center.',
+    eventBasedAutoHelp: 'Applies to whale, dark flow, and reversal events. If disabled, the AI runtime may still be ready but event-based advisory generation will be skipped.',
+    eventBasedAutoStateOn: 'Event-based advisory gate is on',
+    eventBasedAutoStateOff: 'Event-based advisory gate is off',
   },
   auth: {
     brandName: 'VNInvest',

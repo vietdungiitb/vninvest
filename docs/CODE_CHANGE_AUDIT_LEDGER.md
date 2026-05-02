@@ -1,3 +1,58 @@
+# Entry 2026-05-02ay - Surface the event-based advisory gate and sync testpro to the working AI runtime
+
+Muc tieu:
+- Giai quyet UX drift da duoc xac nhan trong advisory runtime audit: user co the thay `AICommandCenter` bao `ready`, nhung `advisory_whale_signal_enabled` van tat ma khong co control ro rang tren UI de bat lai.
+- Dua gate `advisory_whale_signal_enabled` tro lai thanh mot account-level setting minh bach, persisted explicit trong `UserConfig`, dong thoi canh bao ngay trong `AICommandCenter` khi runtime da san sang nhung event-based advisory van bi khoa.
+- Hoan thanh buoc runtime tiep theo duoc user chon: dong bo `testpro` sang cung runtime path da proof voi `admin` va xac nhan `BCM` advisory materialize thanh cong tren contract `v2`.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/UserConfig.jsx`:
+  - Load/persist them `advisory_whale_signal_enabled` trong form state va payload `updatePortfolioUserConfig(...)`.
+  - Them the checkbox ro rang ngay trong khu AI handoff de user bat/tat advisory theo su kien va thay trang thai hien tai bang copy tieng Viet day du.
+- `frontend/src/pages/UserConfig.test.jsx`:
+  - Update fixtures/mock translations cho gate moi.
+  - Them proof cho UI toggle va xac nhan save payload gui `advisory_whale_signal_enabled` dung gia tri.
+- `frontend/src/pages/AICommandCenter.jsx`:
+  - Fetch them `getPortfolioUserConfig()`.
+  - Hien warning banner khi AI runtime `ready` nhung `advisory_whale_signal_enabled === false`, kem link mo `UserConfig` de sua dung cho.
+- `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`:
+  - Bo sung copy cho help/status cua event-based advisory gate va cap nhat handoff notice.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua frontend source; tong module giu 554.
+- Dev runtime / DB proof:
+  - Rebuild `frontend` trong root dev compose de UI moi len ngay.
+  - Dong bo `testpro` theo `admin` trong `AICommandCenterConfig` tren dev DB, bat `advisory_whale_signal_enabled`, xac nhan `resolve_ai_runtime_config(user=testpro)` => `ready=True`.
+  - Goi `stock_ai_advisory_session_api` cho `testpro/BCM` bang `APIClient.force_authenticate` va xac nhan materialize advisory `id=29`, `provider=copilot`, `model=openai/gpt-4.1-mini`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ay.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho advisory gate UX + testpro runtime sync slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/UserConfig.jsx (MODIFIED - surface and persist `advisory_whale_signal_enabled` in the visible settings UI)
+- frontend/src/pages/UserConfig.test.jsx (MODIFIED - cover the visible event-based advisory gate and its save payload)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - warn when runtime is ready but the event-based advisory gate is still off)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for the event-based advisory gate and handoff notice)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for the event-based advisory gate and handoff notice)
+- module_tree_full.md (MODIFIED - regenerated after the advisory gate UX slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/UserConfig.jsx`, `frontend/src/pages/UserConfig.test.jsx`, `frontend/src/pages/AICommandCenter.jsx`, `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm test -- --watchAll=false --runInBand src/pages/UserConfig.test.jsx` => 11/11 tests pass cho `UserConfig` slice sau khi expose gate moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau khi sua `UserConfig` + `AICommandCenter`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc refresh thanh cong voi bundle moi.
+- PASSED: dev DB sync proof => `testpro` hien co `AICommandCenterConfig` cung `provider/model` voi `admin`, co DB-backed key, va `advisory_whale_signal_enabled=True`.
+- PASSED: `resolve_ai_runtime_config(user=testpro)` => `{'ready': True, 'source': 'command_center', 'provider': 'copilot', 'model': 'openai/gpt-4.1-mini', ...}`.
+- PASSED: live advisory session proof bang endpoint that => `APIClient.force_authenticate(user=testpro).get('/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2')` tra `200`, `queued=False`, `message='Da tao AI Advisory truc tiep trong phien hien tai.'`, `advisory_id=29`.
+- PASSED: DB proof => latest `WhaleAdvisory` cua `testpro/BCM` la `id=29`, `ai_provider='copilot'`, `ai_model='openai/gpt-4.1-mini'`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- `UserConfig.test.jsx` van in ra React Router future-flag va `act(...)` warnings tu test harness cu; day la test-noise ton tai san co va khong chan validation logic cua slice nay.
+- `testpro` hien duoc sync theo cung command-center path cua `admin` trong dev DB. Neu muon tach secret rieng cho `testpro` thay vi reuse runtime path da proof, can cap user-level provider key rieng trong `AICommandCenter`.
+
 # Entry 2026-05-02ax - Add heartbeat-based health signaling for core worker and beat stubs
 
 Muc tieu:

@@ -1,3 +1,24 @@
+# ✅ AUDIT FILE LIST (2026-05-02ay)
+- frontend/src/pages/UserConfig.jsx (MODIFIED - surface and persist `advisory_whale_signal_enabled` in settings)
+- frontend/src/pages/UserConfig.test.jsx (MODIFIED - cover the visible event-based advisory gate and save payload)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - warn when runtime is ready but event-based advisory is still disabled)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for the event-based advisory gate)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for the event-based advisory gate)
+- module_tree_full.md (MODIFIED - regenerated after the advisory gate UX slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/UserConfig.jsx`, `frontend/src/pages/UserConfig.test.jsx`, `frontend/src/pages/AICommandCenter.jsx`, `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`.
+- PASSED: `npm test -- --watchAll=false --runInBand src/pages/UserConfig.test.jsx` => 11/11 PASS.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi them advisory gate visible UI va runtime warning.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: sync `testpro` theo runtime path cua `admin` trong dev DB va bat `advisory_whale_signal_enabled=True`.
+- PASSED: `resolve_ai_runtime_config(user=testpro)` xac nhan `ready=True`, `source=command_center`, `provider=copilot`, `model=openai/gpt-4.1-mini`.
+- PASSED: advisory session endpoint cua `testpro` tren `/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2` tra `200`, `queued=False`, `advisory_id=29`.
+- PASSED: DB proof xac nhan latest `WhaleAdvisory` cua `testpro/BCM` la `id=29`, `ai_provider='copilot'`, `ai_model='openai/gpt-4.1-mini'`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ax)
 - docker-compose.dev.yml (MODIFIED - add heartbeat-backed Docker healthchecks for `core-worker` and `core-beat`)
 - packages/core/backend/src/vninvest_core/stub_heartbeat.py (NEW - shared helper to write and validate core stub heartbeat files)
