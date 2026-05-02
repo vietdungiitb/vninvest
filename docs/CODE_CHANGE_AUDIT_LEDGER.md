@@ -1,3 +1,66 @@
+# Entry 2026-05-02at - Move the package-shell host runtime to same-origin and add the AI advisory host consumer
+
+Muc tieu:
+- Dong no ky thuat con lai cua host runtime whale: browser khong con goi core stub cross-origin `:8100`, ma di qua same-origin `/core/v1` tren frontend host.
+- Mo consumer thu hai cho package shell bang route `/ai-advisory/shell`, de lane AI advisory co browser-hosted audit surface that giong whale host lane.
+- Tach helper runtime dung chung cho package-shell host pages de tranh lap lai env/fetch glue khi so route host tang len.
+
+Noi dung cap nhat chinh:
+- `frontend/docker/nginx.conf`:
+  - Them upstream `host.docker.internal:8100` va proxy `location ^~ /core/v1/` de frontend host chuyen request core stub qua same origin.
+- `frontend/Dockerfile.dev-package-shell` va `docker-compose.dev.yml`:
+  - Doi `REACT_APP_PACKAGE_SHELL_CORE_BASE_URL` ve `/core/v1`.
+  - Them `extra_hosts: host.docker.internal:host-gateway` cho frontend dev container de proxy same-origin tim duoc core stub host.
+- `frontend/src/pages/packageShellHostRuntime.js`:
+  - Tao helper dung chung `packageShellHostEnv` va `packageShellHostFetch` de moi shell host page dung cung mot auth-aware fetch va base URL config.
+- `frontend/src/pages/WhaleAlertsShellHost.jsx`:
+  - Chuyen qua helper runtime dung chung va update copy de phan anh same-origin `/core/v1` proxy.
+- `frontend/src/pages/AiAdvisoryShellHost.jsx`:
+  - Tao host wrapper moi mount `ShellAiAdvisoryPage` trong runtime `frontend` that, dung helper runtime dung chung va giu `location.search` cho symbol context.
+- `frontend/src/App.jsx`:
+  - Them protected route `/ai-advisory/shell` gated boi `REACT_APP_ENABLE_PACKAGE_SHELL_HOST`.
+- `frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx`:
+  - Mo rong header seam bang link `Mo shell kiem chung` co the duoc bat/tat tu page legacy.
+- `frontend/src/pages/WhaleAdvisory.jsx`:
+  - Tinh `advisoryShellHostHref` tu `activeSymbol`, fallback symbol dau tien hoac `BCM`, va pass xuong header de legacy AI advisory co diem nhay thang vao shell host.
+- `module_tree_full.md`:
+  - Regenerate sau khi them hai module frontend moi; tong module tang len 553.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-49`, `WEB-50`, `OPS-26`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02at.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho package-shell host expansion slice.
+
+Danh sach tep cap nhat:
+- frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to the host core stub)
+- frontend/Dockerfile.dev-package-shell (MODIFIED - default the package-shell core base URL to `/core/v1`)
+- docker-compose.dev.yml (MODIFIED - feed `/core/v1` into the frontend build and map `host.docker.internal` for the dev container)
+- frontend/src/pages/packageShellHostRuntime.js (NEW - shared auth-aware fetch and env helper for package-shell host pages)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (MODIFIED - reuse shared host runtime helper and update copy for same-origin core proxy)
+- frontend/src/pages/AiAdvisoryShellHost.jsx (NEW - mount `ShellAiAdvisoryPage` inside the real frontend runtime)
+- frontend/src/App.jsx (MODIFIED - add gated `/ai-advisory/shell` host route)
+- frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx (MODIFIED - expose a shell host link seam in the advisory legacy header)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - link the legacy AI advisory page to the shell host with symbol carry-over and `BCM` fallback)
+- module_tree_full.md (MODIFIED - regenerated after package-shell host expansion, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-49, WEB-50, OPS-26)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/docker/nginx.conf`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx`, `frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx`, `frontend/src/pages/WhaleAdvisory.jsx` va `frontend/src/App.jsx`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau khi doi core base URL ve `/core/v1` va them AI advisory host route.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend rebuild thanh cong nhieu lan trong luc validate same-origin proxy va AI host consumer.
+- PASSED: browser proof `http://127.0.0.1/core/v1/health` tra `{"ok": true, "service": "core-api", "environment": "foundation", "version": "0.1.0"}` qua frontend host, xac nhan core stub da di same-origin thay vi cross-origin `:8100`.
+- PASSED: browser proof `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` van render whale shell host voi copy moi `same-origin /core/v1 proxy` va giu nguyen `SSI`/`trade_date` context.
+- PASSED: browser proof `http://127.0.0.1/ai-advisory` xac nhan header legacy co link `Mo shell kiem chung` tro thanh `/ai-advisory/shell?symbol=BCM` khi khong co active advisory symbol.
+- PASSED: browser proof `http://127.0.0.1/ai-advisory/shell?symbol=BCM` render duoc host header `AI advisory shell chay trong frontend that`, `ShellAiAdvisoryPage` va advisory symbol `BCM` trong runtime `frontend` that.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (553 modules).
+
+Residual note:
+- Same-origin proxy nay van phu thuoc vao core stub host dang listen tren `8100`; no loai CORS trong browser lane, nhung chua containerize core stub thanh service compose chinh thuc.
+- AI advisory host route hien render on dinh o muc shell/runtime proof, nhung advisory session request thuc te cho `BCM` hien tra `403 Forbidden`; day la state backend/business gating cua endpoint, khong phai loi route host moi.
+
 # Entry 2026-05-02as - Preserve whale shell context when jumping from the hub into the host runtime
 
 Muc tieu:

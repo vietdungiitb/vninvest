@@ -5,6 +5,7 @@ import LoginModal from './components/LoginModal';
 import Dashboard from './pages/Dashboard';
 import StockDetail from './pages/StockDetail';
 import WhaleAdvisory from './pages/WhaleAdvisory';
+import AiAdvisoryShellHost from './pages/AiAdvisoryShellHost';
 import WhaleAlertsHub from './pages/WhaleAlertsHub';
 import WhaleAlertsDashboard from './pages/WhaleAlertsDashboard';
 import WhaleAlertsShellHost from './pages/WhaleAlertsShellHost';
@@ -80,6 +81,16 @@ export default function App() {
                       </ProtectedRoute>
                     )}
                   />
+                  {packageShellHostEnabled ? (
+                    <Route
+                      path="ai-advisory/shell"
+                      element={(
+                        <ProtectedRoute action="read" subject="WhaleAdvisory">
+                          <AiAdvisoryShellHost />
+                        </ProtectedRoute>
+                      )}
+                    />
+                  ) : null}
                   <Route path="whale-advisory" element={<Navigate to="/ai-advisory" replace />} />
                   <Route path="whale-alerts" element={<WhaleAlertsHub />} />
                   {packageShellHostEnabled ? (

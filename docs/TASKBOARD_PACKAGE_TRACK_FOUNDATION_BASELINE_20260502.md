@@ -752,3 +752,28 @@ Estimate: 0.5h
 Dependency: WEB-48  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung link carry-over moi, frontend build xanh, dev frontend da refresh, va browser proof xac nhan query `symbol`/`trade_date` duoc giu qua buoc nhay hub -> shell -> hub.
+
+---
+
+## 31. Package-shell host expansion queue
+
+- [x] `WEB-49` Dua core shell host runtime ve same-origin `/core/v1`  
+Owner: Frontend Lead + DevOps  
+Estimate: 1h  
+Dependency: WEB-47  
+Anchor files: `frontend/docker/nginx.conf`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml`, `frontend/src/pages/WhaleAlertsShellHost.jsx`  
+DoD: browser-hosted package shell khong con goi truc tiep `http://127.0.0.1:8100`; frontend nginx proxy `/core/v1/*` ve core stub host, env shell host mac dinh dung `/core/v1`, va browser proof `http://127.0.0.1/core/v1/health` tra payload hop le qua same-origin.
+
+- [x] `WEB-50` Mo AI advisory package-shell host consumer trong frontend that  
+Owner: Frontend Lead  
+Estimate: 2h  
+Dependency: WEB-49  
+Anchor files: `frontend/src/App.jsx`, `frontend/src/pages/AiAdvisoryShellHost.jsx`, `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/WhaleAdvisory.jsx`, `frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx`  
+DoD: route `/ai-advisory/shell` mount duoc `ShellAiAdvisoryPage` bang runtime helper dung chung, header advisory legacy co link `Mo shell kiem chung`, va link do carry duoc symbol hien tai hoac fallback `BCM` khi chua co advisory live.
+
+- [x] `OPS-26` Sync audit docs va module tree sau package-shell host expansion slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-50  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit, same-origin proxy proof, AI advisory host proof va module tree phan anh dung helper runtime chung, route `/ai-advisory/shell` va count module moi.

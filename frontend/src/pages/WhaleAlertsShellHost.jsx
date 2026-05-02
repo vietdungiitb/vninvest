@@ -1,45 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShellWhaleAlertsPage } from '@vninvest/web';
-
-const shellEnv = {
-  VNINVEST_API_BASE_URL: process.env.REACT_APP_API_BASE_URL || '/api',
-  VNINVEST_CORE_BASE_URL: process.env.REACT_APP_PACKAGE_SHELL_CORE_BASE_URL || 'http://127.0.0.1:8100/core/v1',
-};
-
-function shouldAttachApiToken(requestUrl) {
-  if (!requestUrl) {
-    return false;
-  }
-
-  if (requestUrl.startsWith('/api/')) {
-    return true;
-  }
-
-  try {
-    const resolvedUrl = new URL(requestUrl, globalThis.location?.origin || 'http://127.0.0.1');
-    return resolvedUrl.origin === globalThis.location?.origin && resolvedUrl.pathname.startsWith('/api/');
-  } catch {
-    return false;
-  }
-}
-
-async function shellHostFetch(input, init = {}) {
-  const requestUrl = typeof input === 'string' ? input : input?.url || '';
-  const headers = new Headers(init.headers || {});
-
-  if (shouldAttachApiToken(requestUrl)) {
-    const accessToken = globalThis.localStorage?.getItem('access_token');
-    if (accessToken && !headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${accessToken}`);
-    }
-  }
-
-  return fetch(input, {
-    ...init,
-    headers,
-  });
-}
+import { packageShellHostEnv, packageShellHostFetch } from './packageShellHostRuntime';
 
 export default function WhaleAlertsShellHost() {
   const location = useLocation();
@@ -53,7 +15,7 @@ export default function WhaleAlertsShellHost() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-300">Package shell host</p>
               <h1 className="mt-2 text-2xl font-semibold text-amber-50">Whale alerts shell chạy trong frontend thật</h1>
               <p className="mt-2 text-sm leading-7 text-amber-100/80">
-                Route này mount trực tiếp `ShellWhaleAlertsPage` từ `@vninvest/web`, dùng JWT hiện tại cho `/api` và gọi core stub qua `:8100` để auditor kiểm tra shell route trong runtime thật thay vì chỉ xem SSR proof.
+                Route này mount trực tiếp `ShellWhaleAlertsPage` từ `@vninvest/web`, dùng JWT hiện tại cho `/api` và gọi core stub qua same-origin `/core/v1` proxy để auditor kiểm tra shell route trong runtime thật thay vì chỉ xem SSR proof.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -68,8 +30,8 @@ export default function WhaleAlertsShellHost() {
         </section>
 
         <ShellWhaleAlertsPage
-          env={shellEnv}
-          fetchImpl={shellHostFetch}
+          env={packageShellHostEnv}
+          fetchImpl={packageShellHostFetch}
           whaleSearch={location.search}
         />
       </div>

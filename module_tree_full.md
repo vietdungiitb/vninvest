@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 14:03:17`
+Generated at: `2026-05-02 14:24:06`
 
 ## Summary
 
-- Total modules: 551
+- Total modules: 553
 - Python modules: 340
-- JS/TS modules: 211
+- JS/TS modules: 213
 - Total classes: 563
 - Total functions: 2173
-- Total top-level variables: 3692
+- Total top-level variables: 3698
 
 ## Python Modules
 
@@ -3155,6 +3155,11 @@ Generated at: `2026-05-02 14:03:17`
 - Functions:
   - `buildStatsPayload`
 
+### `frontend/src/pages/AiAdvisoryShellHost.jsx`
+
+- Top-level variables:
+  - `location`
+
 ### `frontend/src/pages/AICommandCenter.jsx`
 
 - Functions:
@@ -3179,6 +3184,13 @@ Generated at: `2026-05-02 14:03:17`
   - `SidebarPanelFallback`, `buildFallbackSparkline`, `normalizeSymbol`, `scheduleAuxFetch`
 - Top-level variables:
   - `AIAdvisorAlertPanel`, `ModernSidebar`, `analyticsResult`, `avgPositionSize`, `base`, `baseSymbolUniverse`, `bulkResp`, `bulkSymbols`, `changePct`, `clearDeferredAuxFetch`, `cp`, `current`, `deferredAuxIdleRef`, `deferredAuxTimerRef`, `delta`, `digestFetchInFlightRef`, `digestResp`, `fallbackResp`, `fetchData`, `fetchRequestTokenRef`, `heatmapData`, `held`, `holdingsMap`, `industry`, `liveHoldings`, `loadAuxiliaryDashboardData`, `monitoredSymbols`, `nextHoldings`, `nextTracked`, `nextWatchlistGroups`, `nominalSize`, `prev`, `quote`, `realtimeMarketBreadth`, `requestPortfolioDigest`, `requestToken`, `results`, `sparkline24`, `symbol`, `symbolSet`, `symbolUniverse`, `toggleSeverityFilterFromSummary`, `totalHeldValue`, `trackedInfo`, `trackedMap`, `trackedSymbolNames`, `unreadUnifiedCount`
+
+### `frontend/src/pages/packageShellHostRuntime.js`
+
+- Functions:
+  - `packageShellHostFetch`, `shouldAttachApiToken`
+- Top-level variables:
+  - `accessToken`, `headers`, `packageShellHostEnv`, `requestUrl`, `resolvedUrl`
 
 ### `frontend/src/pages/PortfolioManagement.jsx`
 
@@ -3286,7 +3298,7 @@ Generated at: `2026-05-02 14:03:17`
 - Functions:
   - `fmtTime`
 - Top-level variables:
-  - `activeItem`, `filteredStats`, `list`, `q`, `refreshInfo`, `stillExists`
+  - `activeItem`, `advisoryShellHostHref`, `filteredStats`, `list`, `packageShellHostEnabled`, `params`, `q`, `query`, `refreshInfo`, `resolvedSymbol`, `stillExists`
 
 ### `frontend/src/pages/WhaleAlertsDashboard.jsx`
 
@@ -3311,10 +3323,8 @@ Generated at: `2026-05-02 14:03:17`
 
 ### `frontend/src/pages/WhaleAlertsShellHost.jsx`
 
-- Functions:
-  - `shellHostFetch`, `shouldAttachApiToken`
 - Top-level variables:
-  - `accessToken`, `headers`, `location`, `requestUrl`, `resolvedUrl`, `shellEnv`
+  - `location`
 
 ### `frontend/src/setupProxy.js`
 

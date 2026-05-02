@@ -180,12 +180,14 @@ services:
         REACT_APP_API_BASE_URL: /api
         REACT_APP_AI_ADVISORY_PATH: /ai-advisory
         REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
-        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: http://127.0.0.1:8100/core/v1
+        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
     depends_on:
       backend:
         condition: service_healthy
     ports:
       - "${FRONTEND_PORT:-80}:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
       - vninvest_network

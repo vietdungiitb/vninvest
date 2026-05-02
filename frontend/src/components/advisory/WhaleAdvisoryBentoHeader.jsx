@@ -1,10 +1,13 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext';
 
 export default function WhaleAdvisoryBentoHeader({ 
   userPlan, 
   statsLoading, 
-  onRefresh 
+  onRefresh,
+  shellHostHref,
+  showShellHostLink = false,
 }) {
   const { t } = useI18n();
 
@@ -47,6 +50,14 @@ export default function WhaleAdvisoryBentoHeader({
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">{t('whaleAdvisory.intelligenceHub')}</span>
               <span className="text-[11px] font-black text-slate-200 mt-1.5 tracking-tight">{t('whaleAdvisory.realtimeSource')}</span>
             </div>
+            {showShellHostLink ? (
+              <Link
+                to={shellHostHref || '/ai-advisory/shell'}
+                className="inline-flex items-center rounded-2xl border border-cyan-500/30 bg-cyan-950/40 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200 transition-colors hover:border-cyan-300 hover:text-white"
+              >
+                Mở shell kiểm chứng
+              </Link>
+            ) : null}
             <button 
               onClick={onRefresh}
               disabled={statsLoading}

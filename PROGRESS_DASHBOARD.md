@@ -1,3 +1,28 @@
+# ✅ AUDIT FILE LIST (2026-05-02at)
+- frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to the host core stub)
+- frontend/Dockerfile.dev-package-shell (MODIFIED - default the package-shell core base URL to `/core/v1`)
+- docker-compose.dev.yml (MODIFIED - feed `/core/v1` into the frontend build and map `host.docker.internal` for the dev container)
+- frontend/src/pages/packageShellHostRuntime.js (NEW - shared auth-aware fetch and env helper for package-shell host pages)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (MODIFIED - reuse shared host runtime helper and update copy for same-origin core proxy)
+- frontend/src/pages/AiAdvisoryShellHost.jsx (NEW - mount `ShellAiAdvisoryPage` inside the real frontend runtime)
+- frontend/src/App.jsx (MODIFIED - add gated `/ai-advisory/shell` host route)
+- frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx (MODIFIED - expose a shell host link seam in the advisory legacy header)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - link the legacy AI advisory page to the shell host with symbol carry-over and `BCM` fallback)
+- module_tree_full.md (MODIFIED - regenerated after package-shell host expansion, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-49, WEB-50, OPS-26)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/docker/nginx.conf`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx`, `frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx`, `frontend/src/pages/WhaleAdvisory.jsx` va `frontend/src/App.jsx`.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi doi core host sang same-origin `/core/v1` va them AI advisory shell host route.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi same-origin proxy va consumer advisory moi.
+- PASSED: browser proof `http://127.0.0.1/core/v1/health` tra JSON qua frontend host, xac nhan core stub da di same-origin.
+- PASSED: browser proof `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` van render whale shell host voi copy same-origin moi.
+- PASSED: browser proof `http://127.0.0.1/ai-advisory` xac nhan link `Mở shell kiểm chứng` tro thanh `/ai-advisory/shell?symbol=BCM`.
+- PASSED: browser proof `http://127.0.0.1/ai-advisory/shell?symbol=BCM` render duoc host header `AI advisory shell chạy trong frontend thật`, `ShellAiAdvisoryPage` va symbol `BCM`; advisory data request hien tra `403 Forbidden` tu backend, nhung route host moi da dung.
+- PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02as)
 - frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - preserve current query and fallback symbol when opening the whale shell host route)
 - module_tree_full.md (MODIFIED - regenerated after the whale hub context slice, total modules 551)
