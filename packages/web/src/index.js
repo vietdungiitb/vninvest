@@ -1,6 +1,7 @@
 export { BUILD_TARGETS, DEFAULT_BUILD_TARGET, getBuildTarget, isBuildTarget, normalizeBuildTarget } from "./config/buildTarget.js";
 export { routeCatalog, getRouteCatalogIds, getRoutesForBuildTarget } from "./app/routeCatalog.js";
 export { navigationCatalog, getNavigationGroupIds, getNavigationForBuildTarget } from "./app/navigationCatalog.js";
+export { renderShellField, renderShellMetric, renderShellPageChrome, renderShellPanel, renderShellSelectField } from "./components/ShellPageTemplate.js";
 export { getPageComponent, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
 export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.js";
 export { coreAdapter } from "./adapters/core/index.js";

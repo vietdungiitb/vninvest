@@ -12,6 +12,11 @@ import {
   getPageRegistryRouteIds,
   navigationCatalog,
   pageRegistry,
+  renderShellField,
+  renderShellMetric,
+  renderShellPageChrome,
+  renderShellPanel,
+  renderShellSelectField,
   routeCatalog,
   shellAdapters,
   VipLocalControlPage,
@@ -82,6 +87,11 @@ const pageRegistryRouteIds = new Set(getPageRegistryRouteIds());
 assert(pageRegistry.length === pageRegistryRouteIds.size, "Duplicate route ids detected in pageRegistry");
 assert(pageRegistryRouteIds.has("vip-local-control"), "pageRegistry must register vip-local-control");
 assert(getPageComponent("vip-local-control") === VipLocalControlPage, "vip-local-control must resolve to VipLocalControlPage");
+assert(typeof renderShellPageChrome === "function", "Shared shell page chrome helper must be exported");
+assert(typeof renderShellPanel === "function", "Shared shell panel helper must be exported");
+assert(typeof renderShellMetric === "function", "Shared shell metric helper must be exported");
+assert(typeof renderShellField === "function", "Shared shell field helper must be exported");
+assert(typeof renderShellSelectField === "function", "Shared shell select helper must be exported");
 
 const vipControlRequests = [];
 const vipControlClient = createVipAppControlClient({

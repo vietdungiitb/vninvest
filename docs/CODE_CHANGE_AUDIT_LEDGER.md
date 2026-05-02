@@ -1,3 +1,51 @@
+# Entry 2026-05-02aa - Extract the first shared shell page template primitive for package-track UI
+
+Muc tieu:
+- Dua rule template UI chung tu muc tai lieu xuong muc code bang shared primitive dau tien trong `packages/web` thay vi de `VipLocalControlPage` tiep tuc om tron page shell grammar inline.
+- Giu nguyen behavior cua `VipLocalControlPage` nhung tach page chrome, panel, metric va form field helpers thanh mot module co the reuse cho cac route-level pages tiep theo.
+- Dong `WEB-15`, `WEB-16`, `OPS-07` bang proof shell check, live SSR parity va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/components/ShellPageTemplate.js`:
+  - Them shared shell template primitive dau tien cho `packages/web`.
+  - Chua page chrome styles, hero badge, metrics band, compact panel grammar, field/select helpers va panel wrapper helper.
+- `packages/web/src/pages/vip/VipLocalControlPage.js`:
+  - Refactor route-level page sang shared shell template helper thay cho inline style string va inline renderers cho metric/field/select.
+  - Giu nguyen flow login, reset session, upsert user va audit rendering.
+- `packages/web/src/index.js`:
+  - Export shared shell template helpers tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof rang shared shell template helpers duoc export tren root surface, dong thoi giu proof SSR cua `VipLocalControlPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them module shared component moi vao `packages/web`.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-15`, `WEB-16`, `OPS-07`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02aa.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho shared shell template slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/components/ShellPageTemplate.js (NEW - first shared shell page template primitive for package-track UI)
+- packages/web/src/pages/vip/VipLocalControlPage.js (MODIFIED - move VIP local control page onto shared shell helpers)
+- packages/web/src/index.js (MODIFIED - export shared shell template helpers on the root package surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate shared helper exports and retain VIP page SSR proof)
+- module_tree_full.md (MODIFIED - regenerated after the shared shell template slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-15, WEB-16, OPS-07)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/components/ShellPageTemplate.js`, `packages/web/src/pages/vip/VipLocalControlPage.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi shared template duoc wire vao root surface va `VipLocalControlPage`.
+- FAILED -> FIXED: lan rerun dau tien cua `npm run check:shell` bao React key warning trong panel children array; da bo sung stable keys cho user list/audit list empty states va rerun thanh cong khong con warning.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... VipLocalControlPage, createVipAppControlClient, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `vip shared shell live parity passed`; da xac nhan live SSR markup van render `shellPage__panel`, `shellPage__heroBadge`, `vip-local-admin` tu runtime `:8200`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully.
+
+Residual note:
+- Shared primitive hien moi cover page shell grammar co mat trong `VipLocalControlPage`; cac route sau van can tiep tuc noi vao primitive nay thay vi tao bien the rieng.
+- Primitive nay dang chot visual language dau tien cho package-track UI; neu can them dark-theme tokens hoac 3-column contract phuc tap hon, nen lam o slice rieng de giu scope sach.
+
 # Entry 2026-05-02z - Build the first VIP local control page and freeze the shared UI template rule
 
 Muc tieu:

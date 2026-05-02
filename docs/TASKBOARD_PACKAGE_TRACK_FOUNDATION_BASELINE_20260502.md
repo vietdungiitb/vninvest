@@ -305,3 +305,28 @@ Estimate: 0.5h
 Dependency: WEB-14  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs va audit evidence dong bo sau khi `packages/web` co VIP local control page dau tien.
+
+---
+
+## 12. Shared shell template queue
+
+- [x] `WEB-15` Tach shared shell page template primitive dau tien cho `packages/web`  
+Owner: Frontend Lead  
+Estimate: 2h  
+Dependency: WEB-14, OPS-06  
+Anchor files: `packages/web/src/components/*`, `packages/web/src/pages/vip/VipLocalControlPage.js`, `packages/web/src/index.js`, `packages/web/scripts/check-shell.mjs`  
+DoD: `packages/web` co shared template primitive cho page chrome, panel, metric va form fields de cac route-level pages sau co the reuse mot grammar UI chung thay vi copy inline layout.
+
+- [x] `WEB-16` Refactor VIP local control page len shared template va validate parity  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-15  
+Anchor files: `packages/web/src/components/*`, `packages/web/src/pages/vip/VipLocalControlPage.js`, `packages/web/scripts/check-shell.mjs`  
+DoD: `VipLocalControlPage` dung shared template helper thay cho inline page shell, `npm run check:shell` pass khong con React key warning va live SSR parity tren runtime `:8200` van render duoc shared shell classes cung seeded local identity.
+
+- [x] `OPS-07` Sync taskboard, audit docs va module tree sau shared shell template slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-16  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs va audit evidence dong bo sau khi shared shell template primitive dau tien duoc merge vao `packages/web`.

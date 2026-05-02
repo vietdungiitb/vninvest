@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-05-02aa)
+- packages/web/src/components/ShellPageTemplate.js (NEW - first shared shell page template primitive for package-track UI)
+- packages/web/src/pages/vip/VipLocalControlPage.js (MODIFIED - move VIP local control page onto shared shell helpers)
+- packages/web/src/index.js (MODIFIED - export shared shell template helpers on the root package surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate shared helper exports and retain VIP page SSR proof)
+- module_tree_full.md (MODIFIED - regenerated after the shared shell template slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-15, WEB-16, OPS-07)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren shared template module, VIP local control page, root exports va shell validation script.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi shared shell helpers duoc tich hop vao `VipLocalControlPage`.
+- PASSED: React key warning da duoc sua va rerun `check:shell` khong con warning.
+- PASSED: live SSR parity tren runtime `:8200` da xac nhan markup moi van render shared classes `shellPage__panel`, `shellPage__heroBadge` va seeded local identity `vip-local-admin`.
+- PASSED: `module_tree_full.md` regenerated successfully after adding the new shared component module.
+
 # ✅ AUDIT FILE LIST (2026-05-02z)
 - packages/web/src/pages/pageRegistry.js (NEW - minimal route-to-page registry for the package shell)
 - packages/web/src/pages/vip/VipLocalControlPage.js (NEW - first VIP local control page for login, user list and audit log)

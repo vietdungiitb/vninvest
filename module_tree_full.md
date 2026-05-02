@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:00:29`
+Generated at: `2026-05-02 11:11:29`
 
 ## Summary
 
-- Total modules: 538
+- Total modules: 539
 - Python modules: 340
-- JS/TS modules: 198
+- JS/TS modules: 199
 - Total classes: 563
-- Total functions: 2093
+- Total functions: 2097
 - Total top-level variables: 3548
 
 ## Python Modules
@@ -3628,6 +3628,13 @@ Generated at: `2026-05-02 11:00:29`
 - Top-level variables:
   - `ALL_BUILD_TARGETS`, `normalizedTarget`, `routeCatalog`
 
+### `packages/web/src/components/ShellPageTemplate.js`
+
+- Functions:
+  - `joinClassNames`, `renderElement`, `renderShellField`, `renderShellMetric`, `renderShellPageChrome`, `renderShellPanel`, `renderShellSelectField`
+- Top-level variables:
+  - `SHELL_PAGE_TEMPLATE_STYLES`
+
 ### `packages/web/src/config/buildTarget.js`
 
 - Functions:
@@ -3671,9 +3678,9 @@ Generated at: `2026-05-02 11:00:29`
 ### `packages/web/src/pages/vip/VipLocalControlPage.js`
 
 - Functions:
-  - `VipLocalControlPage`, `createCredentials`, `createEmptySnapshot`, `createInitialViewState`, `createUserDraft`, `formatTimestamp`, `getRoleLabel`, `handleLogin`, `handleLogout`, `handleRefresh`, `handleResetSession`, `handleUserSubmit`, `loadControlSnapshot`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAuditItem`, `renderElement`, `renderField`, `renderMetric`, `renderSelectField`, `renderUserItem`, `runAction`, `runInitialLoad`
+  - `VipLocalControlPage`, `createCredentials`, `createEmptySnapshot`, `createInitialViewState`, `createUserDraft`, `formatTimestamp`, `getRoleLabel`, `handleLogin`, `handleLogout`, `handleRefresh`, `handleResetSession`, `handleUserSubmit`, `loadControlSnapshot`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAuditItem`, `renderElement`, `renderUserItem`, `runAction`, `runInitialLoad`
 - Top-level variables:
-  - `PAGE_STYLES`, `ROLE_OPTIONS`, `abilityCount`, `active`, `auditList`, `bootstrapLoaderRef`, `clientRef`, `controlPlaneClient`, `currentSessionId`, `currentSessionUsername`, `envRef`, `fetchImplRef`, `metrics`, `nextPayload`, `nextValue`, `notice`, `payload`, `result`, `roleEntry`, `roleKeys`, `roleText`, `sessionCards`, `snapshot`, `timestamp`, `userList`, `username`, `visibleRouteCount`
+  - `ROLE_OPTIONS`, `abilityCount`, `active`, `auditList`, `bootstrapLoaderRef`, `clientRef`, `controlPlaneClient`, `currentSessionId`, `currentSessionUsername`, `envRef`, `fetchImplRef`, `metrics`, `nextPayload`, `nextValue`, `notice`, `payload`, `result`, `roleEntry`, `roleKeys`, `roleText`, `sessionCards`, `snapshot`, `timestamp`, `userList`, `username`, `visibleRouteCount`
 
 ## Update Workflow
 
