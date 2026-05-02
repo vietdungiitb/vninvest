@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:16:01`
+Generated at: `2026-05-02 11:19:58`
 
 ## Summary
 
-- Total modules: 540
+- Total modules: 541
 - Python modules: 340
-- JS/TS modules: 200
+- JS/TS modules: 201
 - Total classes: 563
-- Total functions: 2108
-- Total top-level variables: 3564
+- Total functions: 2119
+- Total top-level variables: 3586
 
 ## Python Modules
 
@@ -3667,6 +3667,13 @@ Generated at: `2026-05-02 11:16:01`
 
 - Top-level variables:
   - `shellAdapters`
+
+### `packages/web/src/pages/admin/ShellAdminOpsPage.js`
+
+- Functions:
+  - `ShellAdminOpsPage`, `createEmptySnapshot`, `createInitialViewState`, `handleRefresh`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderElement`, `renderFlagList`, `renderSummaryCard`, `runInitialLoad`
+- Top-level variables:
+  - `abilities`, `active`, `adminAbilities`, `adminFlags`, `adminRoutes`, `bootstrapLoaderRef`, `buildMeta`, `capabilities`, `envRef`, `fetchImplRef`, `groupFlags`, `health`, `identity`, `metrics`, `navigation`, `routeFlags`, `session`, `snapshot`, `summaryCards`, `surfaces`, `visibleGroups`, `visibleRoutes`
 
 ### `packages/web/src/pages/pageRegistry.js`
 

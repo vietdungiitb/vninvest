@@ -1,3 +1,52 @@
+# Entry 2026-05-02ac - Add the first admin operations shell page on the shared template
+
+Muc tieu:
+- Dung route-level page `admin-ops` de tiep tuc harden shared shell template tren lane admin cua core shell thay vi de route nay tiep tuc o trang thai `planned`.
+- Chi su dung surface da co san tu core bootstrap runtime: operator identity, navigation, surface flags, health va session; khong mo them API contract moi.
+- Dong `WEB-19`, `WEB-20`, `OPS-09` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js`:
+  - Them page route-level moi cho `admin-ops` bang shared shell template.
+  - Hien operator identity, admin route visibility, admin surface flags, build metadata va admin-relevant abilities.
+- `packages/web/src/app/routeCatalog.js`:
+  - Nang route `admin-ops` tu `planned` len `baseline`.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `admin-ops` vao page registry de shell co route-level component that cho lane admin.
+- `packages/web/src/index.js`:
+  - Export `ShellAdminOpsPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `admin-ops` route/page registry va SSR render cua `ShellAdminOpsPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page admin moi; tong module tang len 541.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-19`, `WEB-20`, `OPS-09`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ac.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho admin shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (NEW - first admin operations shell page using the shared template)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `admin-ops` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `admin-ops` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAdminOpsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate admin ops registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the admin shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-19, WEB-20, OPS-09)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/admin/ShellAdminOpsPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them page `admin-ops` vao shared shell surface.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellAdminOpsPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `admin ops shared shell live parity passed`; da xac nhan live SSR markup render `shellPage__panel`, `package-admin`, `show_admin_ops` va `admin-ops` tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (541 modules).
+
+Residual note:
+- `admin-ops` hien moi la route-level audit surface doc tu bootstrap runtime; cac thao tac operator that van nen duoc them trong slice rieng de giu contract va validation path ro rang.
+- Core stub van dang duoc giu running tren `:8100` de auditor co the verify ca `settings` va `admin-ops` ngay lap tuc.
+
 # Entry 2026-05-02ab - Build the first core settings page on top of the shared shell template
 
 Muc tieu:

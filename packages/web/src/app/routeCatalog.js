@@ -101,7 +101,7 @@ export const routeCatalog = Object.freeze([
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["admin.operator.read"],
     adapter: "core",
-    status: "planned",
+    status: "baseline",
   },
   {
     id: "vip-local-control",

@@ -355,3 +355,28 @@ Estimate: 0.5h
 Dependency: WEB-18  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs va audit evidence dong bo sau khi `settings` tro thanh route-level page thu hai dung shared shell template.
+
+---
+
+## 14. Admin shell page reuse queue
+
+- [x] `WEB-19` Dung page `admin-ops` bang shared template cho core shell  
+Owner: Frontend Lead  
+Estimate: 2h  
+Dependency: WEB-17, WEB-18  
+Anchor files: `packages/web/src/pages/admin/*`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`  
+DoD: `admin-ops` duoc nang thanh route-level page `baseline`, reuse shared shell template va chi doc du lieu tu core bootstrap/session/health seam thay vi mo them contract moi.
+
+- [x] `WEB-20` Validate live parity cho admin shell page  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-19  
+Anchor files: `packages/web/scripts/check-shell.mjs`, `packages/web/src/pages/admin/*`, `packages/core/backend/src/vninvest_core/*`  
+DoD: `npm run check:shell` pass va live SSR parity tren `:8100` xac nhan page `admin-ops` render duoc operator identity, admin route visibility va surface flag `show_admin_ops` tu core stub.
+
+- [x] `OPS-09` Sync taskboard, audit docs va module tree sau admin shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-20  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs va audit evidence dong bo sau khi `admin-ops` tro thanh route-level page thu ba dung shared shell template.
