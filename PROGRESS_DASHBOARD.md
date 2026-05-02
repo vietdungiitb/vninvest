@@ -1,3 +1,19 @@
+# ✅ AUDIT FILE LIST (2026-05-02ba)
+- frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell bootstrap through frontend auth context and strip admin-only runtime flags for non-admin users)
+- frontend/src/pages/AiAdvisoryShellHost.jsx (MODIFIED - pass frontend auth-backed bootstrap loader into the advisory shell host)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (MODIFIED - pass frontend auth-backed bootstrap loader into the whale shell host)
+- module_tree_full.md (MODIFIED - regenerated after the shell auth-parity slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx` va `frontend/src/pages/WhaleAlertsShellHost.jsx`.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi bridge shell bootstrap qua `usePortfolio()` va cleanup admin-only navigation.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi host-runtime auth bridge moi.
+- PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan `Username: testpro`, `Plan: pro`, khong con `admin` group, khong con `show_admin_ops`, ability list chi con `read WhaleAdvisory`, va advisory that cua `BCM` van giu `Contract: v2`, `Quality: 33.5`.
+- PASSED: browser proof tren `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` xac nhan `Username: testpro`, `Plan: pro`, khong con `admin` group, `Enabled surfaces` chi con `show_ai_command_center`, va whale snapshot that van giu `latest_completed_session` / `raw_fallback` nhu truoc.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02az)
 - packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - commit shell bootstrap snapshot state directly so host metadata no longer stays empty/loading)
 - module_tree_full.md (MODIFIED - regenerated after the advisory shell bootstrap fix, total modules 554)

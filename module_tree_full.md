@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 16:23:50`
+Generated at: `2026-05-02 16:37:31`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 16:23:50`
 - Python modules: 341
 - JS/TS modules: 213
 - Total classes: 564
-- Total functions: 2181
-- Total top-level variables: 3707
+- Total functions: 2184
+- Total top-level variables: 3715
 
 ## Python Modules
 
@@ -3163,7 +3163,7 @@ Generated at: `2026-05-02 16:23:50`
 ### `frontend/src/pages/AiAdvisoryShellHost.jsx`
 
 - Top-level variables:
-  - `location`
+  - `bootstrapLoader`, `location`
 
 ### `frontend/src/pages/AICommandCenter.jsx`
 
@@ -3193,9 +3193,9 @@ Generated at: `2026-05-02 16:23:50`
 ### `frontend/src/pages/packageShellHostRuntime.js`
 
 - Functions:
-  - `packageShellHostFetch`, `shouldAttachApiToken`
+  - `cloneAbilityRules`, `createPackageShellBootstrapLoader`, `normalizePackageShellIdentity`, `packageShellHostFetch`, `shouldAttachApiToken`
 - Top-level variables:
-  - `accessToken`, `headers`, `packageShellHostEnv`, `requestUrl`, `resolvedUrl`
+  - `abilityRules`, `accessToken`, `bootstrapPayload`, `capabilities`, `hasFrontendIdentity`, `headers`, `normalizedIdentity`, `packageShellHostEnv`, `requestUrl`, `resolvedUrl`, `session`
 
 ### `frontend/src/pages/PortfolioManagement.jsx`
 
@@ -3329,7 +3329,7 @@ Generated at: `2026-05-02 16:23:50`
 ### `frontend/src/pages/WhaleAlertsShellHost.jsx`
 
 - Top-level variables:
-  - `location`
+  - `bootstrapLoader`, `location`
 
 ### `frontend/src/setupProxy.js`
 

@@ -1,3 +1,53 @@
+# Entry 2026-05-02ba - Bridge package-shell bootstrap to frontend auth context
+
+Muc tieu:
+- Tiep tuc dong residual sau `2026-05-02az`: shell host da het treo metadata, nhung bootstrap van doc identity/surfaces tu core stub nen hien `package-admin`, `admin` group va `show_admin_ops` cho session `testpro`.
+- Dua advisory shell va whale shell gan hon voi auth context that cua frontend ma khong bo health/build/runtime contract tu core stub.
+- Giu thay doi cuc hep o host runtime frontend, khong sua backend auth hay core stub contract cho slice nay.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/packageShellHostRuntime.js`:
+  - Them `createPackageShellBootstrapLoader(...)` de wrap `loadShellBootstrap()` va merge `userIdentity`, `userPlan`, `ability.rules` tu `usePortfolio()` vao bootstrap payload tra cho shell page.
+  - Trim navigation/surfaces admin-only (`admin` group, `admin-ops`, `show_admin_ops`) khi frontend user khong phai staff/superuser.
+- `frontend/src/pages/AiAdvisoryShellHost.jsx`:
+  - Read `ability`, `authStateReady`, `userIdentity`, `userPlan` tu `usePortfolio()`.
+  - Pass `bootstrapLoader` moi va gate `autoLoad={authStateReady}` vao `ShellAiAdvisoryPage`.
+- `frontend/src/pages/WhaleAlertsShellHost.jsx`:
+  - Dung cung bootstrap bridge tu `usePortfolio()` cho `ShellWhaleAlertsPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua host runtime frontend; tong module giu 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ba.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho shell auth-parity slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell bootstrap through frontend auth context and strip admin-only runtime flags for non-admin users)
+- frontend/src/pages/AiAdvisoryShellHost.jsx (MODIFIED - feed frontend auth-backed bootstrap loader into the advisory shell host)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (MODIFIED - feed frontend auth-backed bootstrap loader into the whale shell host)
+- module_tree_full.md (MODIFIED - regenerated after the shell auth-parity slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx` va `frontend/src/pages/WhaleAlertsShellHost.jsx`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau khi bridge bootstrap shell qua `usePortfolio()` va cleanup admin-only navigation.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc rebuild lai nhieu lan de proof host routes voi auth context moi.
+- PASSED: browser proof tren `http://127.0.0.1/ai-advisory/shell?symbol=BCM&ts=1777707400` voi session `testpro`:
+  - bootstrap metadata hien `Username: testpro`, `Email: pro@test.local`, `Plan: pro`;
+  - `Advisory abilities` giam ve `1` va ability list chi con `read WhaleAdvisory`, khong con `manage all`;
+  - `Visible groups` khong con `admin`, `Enabled surfaces` khong con `show_admin_ops`, nhung van giu `show_ai_command_center`;
+  - advisory session that van giu `Contract: v2`, `Risk: low`, `Quality: 33.5`, benchmarks `RVOL: 0.35 (dry)`.
+- PASSED: browser proof tren `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` voi session `testpro`:
+  - bootstrap metadata hien `Username: testpro`, `Email: pro@test.local`, `Plan: pro`;
+  - `Visible groups` khong con `admin`, `Enabled surfaces` chi con `show_ai_command_center`;
+  - whale snapshot that van giu `Nguon phien: latest_completed_session`, `Chat luong: DEGRADED_FLOW_MISSING`, `Facts-first read path: raw_fallback`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Session metadata tu shell bootstrap van giu `Session ID: core-session-foundation` vi day la contract cua core stub. Slice nay dong bo principal/plan/abilities/surfaces voi frontend auth, nhung khong doi session id stub.
+- Navigation van duoc base tren bootstrap cua core stub roi moi trim admin-only flags cho non-admin user. Neu muon parity hoan toan theo route governance cua frontend that, can mot slice rieng de suy dien route groups/surfaces tu route catalog va policy frontend thay vi tu stub bootstrap.
+
 # Entry 2026-05-02az - Unstick shell bootstrap metadata for the AI advisory host runtime
 
 Muc tieu:

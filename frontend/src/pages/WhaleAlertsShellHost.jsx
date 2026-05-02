@@ -1,10 +1,21 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShellWhaleAlertsPage } from '@vninvest/web';
-import { packageShellHostEnv, packageShellHostFetch } from './packageShellHostRuntime';
+import { usePortfolio } from '../context/PortfolioContext';
+import {
+  createPackageShellBootstrapLoader,
+  packageShellHostEnv,
+  packageShellHostFetch,
+} from './packageShellHostRuntime';
 
 export default function WhaleAlertsShellHost() {
   const location = useLocation();
+  const { ability, authStateReady, userIdentity, userPlan } = usePortfolio();
+  const bootstrapLoader = createPackageShellBootstrapLoader({
+    userIdentity,
+    userPlan,
+    ability,
+  });
 
   return (
     <div className="min-h-full bg-slate-950 px-4 py-4 xl:px-5">
@@ -30,6 +41,8 @@ export default function WhaleAlertsShellHost() {
         </section>
 
         <ShellWhaleAlertsPage
+          autoLoad={authStateReady}
+          bootstrapLoader={bootstrapLoader}
           env={packageShellHostEnv}
           fetchImpl={packageShellHostFetch}
           whaleSearch={location.search}
