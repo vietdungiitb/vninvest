@@ -1,3 +1,22 @@
+# ✅ AUDIT FILE LIST (2026-05-02x)
+- .gitignore (MODIFIED - ignore generated VIP local backend state data)
+- packages/vip-app/local-backend/store.py (NEW - file-backed persistence for users, session, tenant and audit logs)
+- packages/vip-app/local-backend/api_stub.py (MODIFIED - persistent auth/RBAC/audit HTTP surface while preserving bootstrap endpoints)
+- packages/vip-app/docker-compose.vip.yml (MODIFIED - explicit compose runtime data dir and default smoke password)
+- packages/vip-app/local-backend/README.md (MODIFIED - document persisted runtime surface and HTTP endpoints)
+- module_tree_full.md (MODIFIED - regenerated after VIP persistence slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out VIP persistence and audit slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/vip-app/local-backend/store.py` va `packages/vip-app/local-backend/api_stub.py`.
+- PASSED: store smoke da xac nhan `logout -> login -> rbac user upsert -> reload -> auth reset -> audit logs` va giu nguyen role `vip_operator` sau persist/reload.
+- PASSED: dedicated HTTP smoke tren `:8220` da xac nhan `auth/login`, `auth/reset`, `rbac/users`, `audit/logs` va capability bootstrap path.
+- PASSED: `docker compose -f packages/vip-app/docker-compose.vip.yml up -d --build` da refresh runtime that tren `:8200`.
+- PASSED: compose HTTP smoke tren `:8200` va shell bootstrap parity qua `packages/web/src/context/bootstrapClient.js` deu thanh cong.
+- PASSED: `module_tree_full.md` regenerated successfully with 536 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02w)
 - packages/web/src/context/authReact.js (NEW - React provider/hook wrapper for the package-track auth runtime)
 - packages/web/package.json (MODIFIED - add auth-react export and React dependency declarations)

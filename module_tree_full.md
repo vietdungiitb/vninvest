@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 10:14:24`
+Generated at: `2026-05-02 10:36:08`
 
 ## Summary
 
-- Total modules: 535
-- Python modules: 339
+- Total modules: 536
+- Python modules: 340
 - JS/TS modules: 196
-- Total classes: 561
-- Total functions: 2058
-- Total top-level variables: 3513
+- Total classes: 563
+- Total functions: 2063
+- Total top-level variables: 3515
 
 ## Python Modules
 
@@ -2400,11 +2400,21 @@ Generated at: `2026-05-02 10:14:24`
 ### `packages/vip-app/local-backend/api_stub.py`
 
 - Classes:
-  - `_VipAppApiStubHandler` -> methods: `_write_json`, `do_GET`, `log_message`
+  - `_VipAppApiStubHandler` -> methods: `_dispatch`, `_read_json_body`, `_write_json`, `do_GET`, `do_POST`, `log_message`
+  - `ApiError` -> methods: `__init__`
 - Functions:
-  - `_ability_rules`, `_build_target`, `_capability_bootstrap_payload`, `_env_flag`, `_env_int`, `_health_payload`, `_manifest_payload`, `_now_isoformat`, `_session_payload`, `_user_identity`, `_visible_groups`, `_visible_routes`, `main`
+  - `_capability_bootstrap_payload`, `_health_payload`, `_list_audit_logs`, `_list_users`, `_login`, `_logout`, `_manifest_payload`, `_reset_session`, `_route_list`, `_session_payload`, `_upsert_user`, `main`
 - Top-level variables:
-  - `ROUTE_HANDLERS`
+  - `ROUTE_HANDLERS`, `STATE_STORE`
+
+### `packages/vip-app/local-backend/store.py`
+
+- Classes:
+  - `VipAppStateStore` -> methods: `__init__`, `_ability_rules_locked`, `_active_username_locked`, `_allocate_user_id_locked`, `_anonymous_session_record`, `_append_audit_log_locked`, `_build_session_record_locked`, `_default_state`, `_get_active_user_locked`, `_get_user_by_id_from_state`, `_get_user_by_id_locked`, `_get_user_by_username_locked`, `_identity_payload_locked`, `_load_or_initialize_state`, `_normalize_state`, `_normalize_tenant_record`, `_normalize_user_record`, `_persist_locked`, `_resolve_seed_user_locked`, `_seed_tenant_record`, `_seed_user_record`, `_visible_groups_locked`, `_visible_routes_locked`, `get_build_target`, `get_capability_bootstrap_payload`, `get_health_payload`, `get_manifest_payload`, `get_plan`, `get_session_payload`, `get_state_summary`, `list_audit_logs`, `list_users`, `login`, `logout`, `reset_session`, `upsert_user`
+- Functions:
+  - `_coerce_bool`, `_hash_password`, `_identity_flags`, `_normalize_role_keys`, `_now_isoformat`, `_strip_secret_fields`
+- Top-level variables:
+  - `ROLE_KEYS`
 
 ### `scripts/ops/generate_module_tree.py`
 

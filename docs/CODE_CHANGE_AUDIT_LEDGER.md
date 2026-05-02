@@ -1,3 +1,60 @@
+# Entry 2026-05-02x - Upgrade VIP app local backend to a minimal persisted auth/RBAC/audit runtime
+
+Muc tieu:
+- Nang `packages/vip-app/local-backend` tu stub chi doc env thanh local backend co persistence toi thieu cho active session, RBAC va audit logs.
+- Giu on dinh contract bootstrap hien co cua `vipAppAdapter` tren `GET /vip-app/v1/health`, `GET /vip-app/v1/access/capabilities` va `GET /vip-app/v1/session/bootstrap`.
+- Dong `VIP-03`, `VIP-04`, `OPS-04` bang proof o muc store, HTTP, compose runtime va shell bootstrap parity.
+
+Noi dung cap nhat chinh:
+- `.gitignore`:
+  - Them ignore rule cho `packages/vip-app/local-backend/data/` de runtime state khong pollute git.
+- `packages/vip-app/local-backend/store.py`:
+  - Them file-backed store moi luu `users`, `active_session`, `audit_logs`, `tenant`, `metadata` vao `data/state.json`.
+  - Ho tro login/logout/reset session, upsert user RBAC, list audit logs va normalize state khi reload tu dia.
+  - Sua root cause RBAC drift de update email-only khong tu dong promote `vip_operator` thanh `vip_admin` sau persist/reload.
+- `packages/vip-app/local-backend/api_stub.py`:
+  - Wire HTTP surface vao store persisted thay vi payload doc truc tiep tu env.
+  - Them `POST /vip-app/v1/auth/login`, `POST /vip-app/v1/auth/logout`, `POST /vip-app/v1/auth/reset`, `GET /vip-app/v1/rbac/users`, `POST /vip-app/v1/rbac/users`, `GET /vip-app/v1/audit/logs`.
+  - Giu nguyen va tiep tuc phuc vu health/capability/session bootstrap endpoints cho shell lane `vip-app`.
+- `packages/vip-app/docker-compose.vip.yml`:
+  - Khai bao ro `VIP_APP_DATA_DIR=/workspace/data` va default smoke password `VIP_APP_STUB_PASSWORD=vip-demo-pass`.
+- `packages/vip-app/local-backend/README.md`:
+  - Cap nhat runbook cho store persisted, HTTP surface va default smoke credentials.
+- `module_tree_full.md`:
+  - Regenerate sau slice persistence; tong module tang len 536.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `VIP-03`, `VIP-04`, `OPS-04` complete.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02x.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho VIP persistence lane.
+
+Danh sach tep cap nhat:
+- .gitignore (MODIFIED - ignore generated VIP local backend state data)
+- packages/vip-app/local-backend/store.py (NEW - file-backed store for users, session, tenant and audit persistence)
+- packages/vip-app/local-backend/api_stub.py (MODIFIED - persistent auth/RBAC/audit HTTP surface while preserving bootstrap endpoints)
+- packages/vip-app/docker-compose.vip.yml (MODIFIED - explicit data directory and default smoke password for compose runtime)
+- packages/vip-app/local-backend/README.md (MODIFIED - document the persisted runtime surface and HTTP endpoints)
+- module_tree_full.md (MODIFIED - regenerated after VIP persistence slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out VIP persistence and audit slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/vip-app/local-backend/store.py` va `packages/vip-app/local-backend/api_stub.py` sau khi wire persistence lane.
+- PASSED: `mcp_pylanceRunCodeSnippet` trong `packages/vip-app/local-backend` voi `VipAppStateStore(data_dir=temp_dir, env=...)` => `vip local store persistence smoke passed`; da xac nhan `logout -> login -> rbac user upsert -> reload from disk -> auth reset -> audit log retention`.
+- FAILED -> FIXED: store smoke moi da bat duoc RBAC drift khi update email-only lam `vip_operator` bi promote sai sau reload; da sua root cause trong `_normalize_role_keys()` va logic `upsert_user()`.
+- PASSED: `mcp_pylanceRunCodeSnippet` lap lai sau khi sua drift => `vip local store persistence smoke passed`, role `vip_operator` duoc giu nguyen sau persist/reload.
+- PASSED: dedicated HTTP smoke tren `http://127.0.0.1:8220/vip-app/v1` => `vip local HTTP smoke passed`; da xac nhan `POST /auth/login`, `POST /rbac/users`, `POST /auth/reset`, `GET /access/capabilities`, `GET /rbac/users`, `GET /audit/logs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/vip-app"; docker compose -f docker-compose.vip.yml up -d --build; Pop-Location` => `vninvest-vip-package-vip-local-api-1` started successfully voi runtime persisted.
+- PASSED: compose HTTP smoke tren `http://127.0.0.1:8200/vip-app/v1` => `vip compose HTTP smoke passed`; da xac nhan login/reset/bootstrap/audit flow tren runtime that.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; node --input-type=module -e "import { loadShellBootstrap } from './src/context/bootstrapClient.js'; ..."; Pop-Location` => `vip shell bootstrap parity passed`; shell bootstrap client van doc duoc live VIP contract sau persistence upgrade.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (536 modules).
+
+Residual note:
+- `packages/vip-app/local-backend/data/state.json` la runtime artifact va da duoc gitignore; compose service duoc giu running tren `:8200` de auditor co the verify ngay.
+- Direct Node import qua `packages/web/src/index.js` van can package-local React dependency neu muon exercise full public shell surface; slice nay da verify dung seam contract consumer bi tac dong la `src/context/bootstrapClient.js`.
+
 # Entry 2026-05-02w - Wrap the package-track web auth runtime into a real React provider/hook
 
 Muc tieu:

@@ -235,21 +235,21 @@ DoD: taskboard phan anh dung `WEB-09` toi `OPS-03`, ledger/progress co evidence 
 
 ## 9. Next backend/runtime queue
 
-- [ ] `VIP-03` Nang vip-app tu stub len local backend co persistence toi thieu cho auth, RBAC va audit logs  
+- [x] `VIP-03` Nang vip-app tu stub len local backend co persistence toi thieu cho auth, RBAC va audit logs  
 Owner: Backend Lead  
 Estimate: 5h  
 Dependency: VIP-02, OPS-03  
 Anchor files: `packages/vip-app/local-backend/*`, `packages/vip-app/docker-compose.vip.yml`, `packages/web/src/adapters/vip-app/*`  
 DoD: local backend luu duoc principal/session/audit co ban, co bootstrap/session path on dinh va khong pha interface `vipAppAdapter` hien tai.
 
-- [ ] `VIP-04` Validate local persistence flows va audit semantics cua vip-app  
+- [x] `VIP-04` Validate local persistence flows va audit semantics cua vip-app  
 Owner: Backend Lead + Frontend Lead  
 Estimate: 2h  
 Dependency: VIP-03  
 Anchor files: `packages/vip-app/local-backend/*`, `packages/web/src/context/*`, `packages/web/src/adapters/vip-app/*`  
 DoD: co smoke/evidence cho login-bootstrap-reset/audit write path toi thieu va parity contract voi shell runtime.
 
-- [ ] `OPS-04` Sync taskboard, audit docs va module tree sau vip-app persistence slice  
+- [x] `OPS-04` Sync taskboard, audit docs va module tree sau vip-app persistence slice  
 Owner: Platform Lead  
 Estimate: 0.5h  
 Dependency: VIP-04  

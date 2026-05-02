@@ -9,6 +9,8 @@ services:
     environment:
       VIP_APP_ENV: foundation
       VIP_APP_API_PORT: "8200"
+      VIP_APP_DATA_DIR: "/workspace/data"
+      VIP_APP_STUB_PASSWORD: "vip-demo-pass"
     command: ["python", "api_stub.py"]
     ports:
       - "8200:8200"
