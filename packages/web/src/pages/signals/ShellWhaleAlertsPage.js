@@ -35,6 +35,11 @@ function normalizeWhaleSymbol(value) {
   return String(value || "").trim().toUpperCase();
 }
 
+function normalizeWhaleTradeDate(value) {
+  const normalized = String(value || "").trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
+}
+
 function resolveWhaleSearch(whaleSearch) {
   if (typeof whaleSearch === "string") {
     return whaleSearch;
@@ -61,6 +66,21 @@ function resolveWhaleSymbolFromSearch(whaleSearch) {
   }
 }
 
+function resolveWhaleTradeDateFromSearch(whaleSearch) {
+  const search = resolveWhaleSearch(whaleSearch);
+
+  if (!search) {
+    return "";
+  }
+
+  try {
+    const searchParams = new URLSearchParams(search);
+    return normalizeWhaleTradeDate(searchParams.get("trade_date") || searchParams.get("tradeDate"));
+  } catch {
+    return "";
+  }
+}
+
 function resolveWhaleSymbol(env = {}, whaleSymbol, whaleSearch) {
   return normalizeWhaleSymbol(
     whaleSymbol
@@ -71,7 +91,17 @@ function resolveWhaleSymbol(env = {}, whaleSymbol, whaleSearch) {
   );
 }
 
-function syncWhaleSymbolSearch(symbol, whaleSearch) {
+function resolveWhaleTradeDate(env = {}, whaleTradeDate, whaleSearch) {
+  return normalizeWhaleTradeDate(
+    whaleTradeDate
+      || resolveWhaleTradeDateFromSearch(whaleSearch)
+      || env.VNINVEST_WHALE_ALERTS_TRADE_DATE
+      || env.REACT_APP_WHALE_ALERTS_TRADE_DATE
+      || "",
+  );
+}
+
+function syncWhaleSearch(symbol, tradeDate, whaleSearch) {
   if (typeof whaleSearch === "string") {
     return;
   }
@@ -83,6 +113,13 @@ function syncWhaleSymbolSearch(symbol, whaleSearch) {
   try {
     const nextUrl = new URL(globalThis.location.href);
     nextUrl.searchParams.set("symbol", symbol);
+
+    if (tradeDate) {
+      nextUrl.searchParams.set("trade_date", tradeDate);
+    } else {
+      nextUrl.searchParams.delete("trade_date");
+    }
+
     globalThis.history.replaceState(globalThis.history.state, "", nextUrl.toString());
   } catch {
     // Keep local page state working even if URL sync is not available.
@@ -105,22 +142,25 @@ function normalizeWhaleSnapshotError(error) {
   return "Không thể tải whale analytics snapshot thật từ portfolio runtime.";
 }
 
-function buildWhaleSnapshotRows(whaleSnapshot, whaleSymbol) {
+function buildWhaleSnapshotRows(whaleSnapshot, whaleSymbol, whaleTradeDate) {
   if (!whaleSnapshot) {
     return [
-      { label: "Symbol", value: whaleSymbol || "n/a" },
-      { label: "Trade date", value: "Chưa nạp" },
-      { label: "Quality", value: "Chưa có whale snapshot thật" },
+      { label: "Mã", value: whaleSymbol || "n/a" },
+      { label: "Ngày yêu cầu", value: whaleTradeDate || "Mới nhất" },
+      { label: "Ngày phiên trả về", value: "Chưa nạp" },
+      { label: "Chất lượng", value: "Chưa có whale snapshot thật" },
     ];
   }
 
   return [
-    { label: "Symbol", value: whaleSnapshot.symbol || whaleSymbol || "n/a" },
-    { label: "Trade date", value: whaleSnapshot.trade_date || "Chưa có" },
-    { label: "Quality", value: whaleSnapshot.session_summary?.quality_state || whaleSnapshot.session_context?.quality_state || "UNKNOWN" },
-    { label: "Read path", value: whaleSnapshot.materialization?.read_path || "n/a" },
-    { label: "Whale orders", value: String(whaleSnapshot.summary?.whale_order_count ?? 0) },
-    { label: "Bucket facts", value: String(whaleSnapshot.materialization?.bucket_fact_count ?? 0) },
+    { label: "Mã", value: whaleSnapshot.symbol || whaleSymbol || "n/a" },
+    { label: "Ngày yêu cầu", value: whaleTradeDate || whaleSnapshot.session_context?.selected_trade_date || "Mới nhất" },
+    { label: "Ngày phiên trả về", value: whaleSnapshot.trade_date || "Chưa có" },
+    { label: "Nguồn phiên", value: whaleSnapshot.session?.resolved_from || "n/a" },
+    { label: "Chất lượng", value: whaleSnapshot.session_summary?.quality_state || whaleSnapshot.session_context?.quality_state || "UNKNOWN" },
+    { label: "Luồng đọc", value: whaleSnapshot.materialization?.read_path || "n/a" },
+    { label: "Lệnh whale", value: String(whaleSnapshot.summary?.whale_order_count ?? 0) },
+    { label: "Số bucket facts", value: String(whaleSnapshot.materialization?.bucket_fact_count ?? 0) },
   ];
 }
 
@@ -131,9 +171,10 @@ function buildWhaleSnapshotContextItems(whaleSnapshot) {
   }
 
   return [
-    `Selected trade date: ${sessionContext.selected_trade_date || "n/a"}`,
-    `Latest valid trade date: ${sessionContext.latest_valid_trade_date || "n/a"}`,
-    `Quality state: ${sessionContext.quality_state || "UNKNOWN"}`,
+    `Ngày yêu cầu: ${sessionContext.selected_trade_date || "n/a"}`,
+    `Ngày hợp lệ gần nhất: ${sessionContext.latest_valid_trade_date || "n/a"}`,
+    `Chất lượng phiên: ${sessionContext.quality_state || "UNKNOWN"}`,
+    `Nguồn phiên: ${whaleSnapshot?.session?.resolved_from || "n/a"}`,
   ];
 }
 
@@ -145,11 +186,11 @@ function buildWhaleSnapshotMaterializationItems(whaleSnapshot) {
   }
 
   return [
-    `Freshness: ${materialization?.freshness_state || "n/a"}`,
-    `Completeness: ${materialization?.completeness_state || "n/a"}`,
-    `Facts first: ${qualityFlags?.facts_first_primary_path ? "ON" : "OFF"}`,
-    `Has session summary: ${qualityFlags?.has_session_summary ? "ON" : "OFF"}`,
-    `Contract version: ${qualityFlags?.contract_version || "n/a"}`,
+    `Độ tươi dữ liệu: ${materialization?.freshness_state || "n/a"}`,
+    `Độ đầy đủ: ${materialization?.completeness_state || "n/a"}`,
+    `Ưu tiên facts-first: ${qualityFlags?.facts_first_primary_path ? "BẬT" : "TẮT"}`,
+    `Có session summary: ${qualityFlags?.has_session_summary ? "BẬT" : "TẮT"}`,
+    `Phiên bản contract: ${qualityFlags?.contract_version || "n/a"}`,
   ];
 }
 
@@ -160,6 +201,7 @@ export function ShellWhaleAlertsPage({
   autoLoad = true,
   initialSnapshot = null,
   whaleSymbol,
+  whaleTradeDate,
   whaleSearch,
   whaleSnapshotLoader,
   initialWhaleSnapshot = null,
@@ -180,8 +222,11 @@ export function ShellWhaleAlertsPage({
   whaleEnvRef.current = env;
   whaleFetchRef.current = fetchImpl;
   const resolvedWhaleSymbol = resolveWhaleSymbol(env, whaleSymbol, whaleSearch);
+  const resolvedWhaleTradeDate = resolveWhaleTradeDate(env, whaleTradeDate, whaleSearch);
   const [activeWhaleSymbol, setActiveWhaleSymbol] = useState(() => resolvedWhaleSymbol);
+  const [activeWhaleTradeDate, setActiveWhaleTradeDate] = useState(() => resolvedWhaleTradeDate);
   const [whaleSymbolDraft, setWhaleSymbolDraft] = useState(() => resolvedWhaleSymbol);
+  const [whaleTradeDateDraft, setWhaleTradeDateDraft] = useState(() => resolvedWhaleTradeDate);
   const [whaleSnapshotState, setWhaleSnapshotState] = useState(() => createInitialWhaleSnapshotState(initialWhaleSnapshot));
 
   whaleLoaderRef.current = whaleSnapshotLoader || ((requestOptions = {}) =>
@@ -193,6 +238,7 @@ export function ShellWhaleAlertsPage({
       timeframe: "session",
       compact: true,
       includeBaseline: false,
+      tradeDate: activeWhaleTradeDate || undefined,
       ...requestOptions,
     }));
 
@@ -210,14 +256,16 @@ export function ShellWhaleAlertsPage({
   const signalRoutes = filterVisibleRoutes(visibleRoutes, SIGNAL_ROUTE_IDS);
   const whaleAbilities = filterAbilitiesBySubject(abilities, "whaleadvisory");
   const enabledSurfaces = getEnabledSurfaceKeys(surfaces);
-  const whaleSnapshotRows = buildWhaleSnapshotRows(whaleSnapshotState.data, activeWhaleSymbol);
+  const whaleSnapshotRows = buildWhaleSnapshotRows(whaleSnapshotState.data, activeWhaleSymbol, activeWhaleTradeDate);
   const whaleSnapshotContextItems = buildWhaleSnapshotContextItems(whaleSnapshotState.data);
   const whaleSnapshotMaterializationItems = buildWhaleSnapshotMaterializationItems(whaleSnapshotState.data);
 
   useEffect(() => {
     setActiveWhaleSymbol(resolvedWhaleSymbol);
+    setActiveWhaleTradeDate(resolvedWhaleTradeDate);
     setWhaleSymbolDraft(resolvedWhaleSymbol);
-  }, [resolvedWhaleSymbol]);
+    setWhaleTradeDateDraft(resolvedWhaleTradeDate);
+  }, [resolvedWhaleSymbol, resolvedWhaleTradeDate]);
 
   useEffect(() => {
     if (!autoLoad || !activeWhaleSymbol) {
@@ -234,7 +282,10 @@ export function ShellWhaleAlertsPage({
       }));
 
       try {
-        const whaleSnapshot = await whaleLoaderRef.current({ symbol: activeWhaleSymbol });
+        const whaleSnapshot = await whaleLoaderRef.current({
+          symbol: activeWhaleSymbol,
+          tradeDate: activeWhaleTradeDate || undefined,
+        });
         if (!active) {
           return;
         }
@@ -262,11 +313,14 @@ export function ShellWhaleAlertsPage({
     return () => {
       active = false;
     };
-  }, [activeWhaleSymbol, autoLoad]);
+  }, [activeWhaleSymbol, activeWhaleTradeDate, autoLoad]);
 
   async function refreshWhaleSnapshot() {
     try {
-      const whaleSnapshot = await whaleLoaderRef.current({ symbol: activeWhaleSymbol });
+      const whaleSnapshot = await whaleLoaderRef.current({
+        symbol: activeWhaleSymbol,
+        tradeDate: activeWhaleTradeDate || undefined,
+      });
       setWhaleSnapshotState({
         loading: false,
         error: "",
@@ -292,23 +346,30 @@ export function ShellWhaleAlertsPage({
     setWhaleSymbolDraft(normalizeWhaleSymbol(event.target.value));
   }
 
-  function handleWhaleSymbolSubmit(event) {
+  function handleWhaleTradeDateChange(event) {
+    setWhaleTradeDateDraft(normalizeWhaleTradeDate(event.target.value));
+  }
+
+  function handleWhaleSnapshotSubmit(event) {
     event.preventDefault();
 
     const nextSymbol = normalizeWhaleSymbol(whaleSymbolDraft) || resolvedWhaleSymbol;
-    if (!nextSymbol || nextSymbol === activeWhaleSymbol) {
+    const nextTradeDate = normalizeWhaleTradeDate(whaleTradeDateDraft);
+    if (!nextSymbol || (nextSymbol === activeWhaleSymbol && nextTradeDate === activeWhaleTradeDate)) {
       return;
     }
 
     setActiveWhaleSymbol(nextSymbol);
+    setActiveWhaleTradeDate(nextTradeDate);
     setWhaleSymbolDraft(nextSymbol);
-    syncWhaleSymbolSearch(nextSymbol, whaleSearch);
+    setWhaleTradeDateDraft(nextTradeDate);
+    syncWhaleSearch(nextSymbol, nextTradeDate, whaleSearch);
   }
 
   const metrics = [
     renderShellMetric("Build target", buildMeta?.target || capabilities?.build?.target || "n/a"),
     renderShellMetric("Whale symbol", activeWhaleSymbol || "n/a"),
-    renderShellMetric("Whale abilities", String(whaleAbilities.length)),
+    renderShellMetric("Ngày mục tiêu", activeWhaleTradeDate || "Mới nhất"),
     renderShellMetric("Quality state", whaleSnapshotState.data?.session_summary?.quality_state || whaleSnapshotState.data?.session_context?.quality_state || "n/a"),
   ];
 
@@ -399,7 +460,7 @@ export function ShellWhaleAlertsPage({
             {
               className: "shellPage__form",
               key: "whale-alerts-symbol-form",
-              onSubmit: handleWhaleSymbolSubmit,
+              onSubmit: handleWhaleSnapshotSubmit,
             },
             renderElement(
               "div",
@@ -410,6 +471,14 @@ export function ShellWhaleAlertsPage({
                 value: whaleSymbolDraft,
                 onChange: handleWhaleSymbolChange,
                 placeholder: "Ví dụ: SSI",
+                autoComplete: "off",
+              }),
+              renderShellField({
+                label: "Ngày giao dịch yêu cầu",
+                name: "whale-alerts-trade-date",
+                type: "date",
+                value: whaleTradeDateDraft,
+                onChange: handleWhaleTradeDateChange,
                 autoComplete: "off",
               }),
             ),
@@ -423,7 +492,7 @@ export function ShellWhaleAlertsPage({
                   className: "shellPage__button shellPage__button--primary",
                   disabled: whaleSnapshotState.loading || !whaleSymbolDraft,
                 },
-                "Đổi mã whale",
+                "Tải snapshot whale",
               ),
             ),
           ),
@@ -462,13 +531,13 @@ export function ShellWhaleAlertsPage({
           renderElement(
             "div",
             { key: "whale-alerts-session-context" },
-            renderElement("h3", { className: "shellPage__itemTitle" }, "Session context"),
+            renderElement("h3", { className: "shellPage__itemTitle" }, "Ngữ cảnh phiên"),
             renderValueList(whaleSnapshotContextItems, "Whale snapshot hiện chưa trả session context nào.", "whale-alerts-session-context"),
           ),
           renderElement(
             "div",
             { key: "whale-alerts-materialization" },
-            renderElement("h3", { className: "shellPage__itemTitle" }, "Materialization facts"),
+            renderElement("h3", { className: "shellPage__itemTitle" }, "Trạng thái materialization"),
             renderValueList(whaleSnapshotMaterializationItems, "Whale snapshot hiện chưa trả materialization facts nào.", "whale-alerts-materialization"),
           ),
           renderAbilityList({

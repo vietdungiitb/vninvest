@@ -691,3 +691,21 @@ Estimate: 0.5h
 Dependency: WEB-44  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung whale snapshot read-model facts-first, focused backend proof va shell SSR proof khong regression.
+
+---
+
+## 28. Whale alerts trade-date targeting queue
+
+- [x] `WEB-45` Mo selected trade-date control cho `whale-alerts` shell  
+Owner: Frontend Lead  
+Estimate: 1h  
+Dependency: WEB-44  
+Anchor files: `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `backend/portfolio/tests/test_whale_analytics_snapshot_api.py`  
+DoD: `ShellWhaleAlertsPage` doc `trade_date` tu prop/query/env, co date input nhe tren page, sync query string bang `history.replaceState`, va render ro requested date cung resolved session source ma khong tao route hay backend contract moi.
+
+- [x] `OPS-23` Sync audit docs va module tree sau whale trade-date slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-45  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung selected trade-date path moi, `check-shell` xanh va backend weekend-fallback contract proof van pass.

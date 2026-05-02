@@ -1,3 +1,48 @@
+# Entry 2026-05-02aq - Add selected trade-date targeting to the whale alerts shell page
+
+Muc tieu:
+- Mo rong whale shell read-model vua them bang selected trade-date control nhe, de auditor co the chi dinh `trade_date` ngay tren page thay vi chi xem latest snapshot.
+- Giu nguyen pham vi shell: tiep tuc reuse `whale analytics snapshot` contract da ton tai, khong tao router moi, khong sua backend endpoint va khong buoc vao full KLine whale workspace.
+- Hien ro requested trade date va session resolution source de theo doi `latest_completed_session` fallback ngay tren route-level shell surface.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Them helper normalize/resolve cho `trade_date` tu prop, query string (`trade_date`/`tradeDate`) va env fallback.
+  - Them state `activeWhaleTradeDate` va `whaleTradeDateDraft`, dua `tradeDate` xuong `createCoreWhaleAnalyticsSnapshotClient()` trong ca auto-load lan refresh thu cong.
+  - Nang form whale thanh symbol + date input, sync lai query string bang `history.replaceState` khi auditor doi symbol hoac ngay.
+  - Facts card gio hien `Ngay yeu cau`, `Ngay phien tra ve` va `Nguon phien`; context/materialization items duoc Viet hoa ro hon de doc selected-session state.
+  - Hero metric thu ba chuyen thanh `Ngay muc tieu` de auditor thay ngay trade-date target dang dung.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them SSR proof cho `whaleTradeDate` prop tren page.
+  - Them query-string proof cho `?symbol=ssi&trade_date=2026-04-19`.
+  - Them proof page render `requested_session` source tu whale snapshot payload.
+- `module_tree_full.md`:
+  - Regenerate sau khi them trade-date helper/state moi; tong module giu nguyen 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-45`, `OPS-23`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02aq.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale trade-date slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add selected trade-date resolution, date input control and query sync for the whale snapshot shell slice)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale trade-date SSR and query-string proof)
+- module_tree_full.md (MODIFIED - regenerated after the whale trade-date slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-45, OPS-23)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them selected trade-date control cho whale shell.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date --keepdb` => 1/1 PASS.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+
+Residual note:
+- Slice nay van dung query string thay vi router param that cho `:symbol`/`:trade_date`, vi package shell hien chua co router abstraction rieng.
+- Page moi chi surfacing selected trade-date facts-first snapshot; no chua mo multi-date compare, heatmap session switching hay full whale intelligence navigation.
+
 # Entry 2026-05-02ap - Add the first whale snapshot read-only data slice to the whale alerts shell page
 
 Muc tieu:

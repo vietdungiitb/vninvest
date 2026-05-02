@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 13:08:10`
+Generated at: `2026-05-02 13:14:14`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 13:08:10`
 - Python modules: 340
 - JS/TS modules: 210
 - Total classes: 563
-- Total functions: 2166
-- Total top-level variables: 3673
+- Total functions: 2170
+- Total top-level variables: 3677
 
 ## Python Modules
 
@@ -3699,9 +3699,9 @@ Generated at: `2026-05-02 13:08:10`
 ### `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`
 
 - Functions:
-  - `ShellWhaleAlertsPage`, `buildWhaleSnapshotContextItems`, `buildWhaleSnapshotMaterializationItems`, `buildWhaleSnapshotRows`, `createInitialWhaleSnapshotState`, `handleRefreshAll`, `handleWhaleSymbolChange`, `handleWhaleSymbolSubmit`, `normalizeWhaleSnapshotError`, `normalizeWhaleSymbol`, `refreshWhaleSnapshot`, `resolveWhaleSearch`, `resolveWhaleSymbol`, `resolveWhaleSymbolFromSearch`, `runWhaleSnapshotLoad`, `syncWhaleSymbolSearch`
+  - `ShellWhaleAlertsPage`, `buildWhaleSnapshotContextItems`, `buildWhaleSnapshotMaterializationItems`, `buildWhaleSnapshotRows`, `createInitialWhaleSnapshotState`, `handleRefreshAll`, `handleWhaleSnapshotSubmit`, `handleWhaleSymbolChange`, `handleWhaleTradeDateChange`, `normalizeWhaleSnapshotError`, `normalizeWhaleSymbol`, `normalizeWhaleTradeDate`, `refreshWhaleSnapshot`, `resolveWhaleSearch`, `resolveWhaleSymbol`, `resolveWhaleSymbolFromSearch`, `resolveWhaleTradeDate`, `resolveWhaleTradeDateFromSearch`, `runWhaleSnapshotLoad`, `syncWhaleSearch`
 - Top-level variables:
-  - `SIGNAL_ROUTE_IDS`, `active`, `enabledSurfaces`, `groupFlags`, `materialization`, `metrics`, `nextSymbol`, `nextUrl`, `qualityFlags`, `resolvedWhaleSymbol`, `routeFlags`, `search`, `sessionContext`, `signalRoutes`, `summaryCards`, `whaleAbilities`, `whaleEnvRef`, `whaleFetchRef`, `whaleLoaderRef`, `whaleSnapshot`, `whaleSnapshotContextItems`, `whaleSnapshotMaterializationItems`, `whaleSnapshotRows`
+  - `SIGNAL_ROUTE_IDS`, `active`, `enabledSurfaces`, `groupFlags`, `materialization`, `metrics`, `nextSymbol`, `nextTradeDate`, `nextUrl`, `normalized`, `qualityFlags`, `resolvedWhaleSymbol`, `resolvedWhaleTradeDate`, `routeFlags`, `search`, `searchParams`, `sessionContext`, `signalRoutes`, `summaryCards`, `whaleAbilities`, `whaleEnvRef`, `whaleFetchRef`, `whaleLoaderRef`, `whaleSnapshot`, `whaleSnapshotContextItems`, `whaleSnapshotMaterializationItems`, `whaleSnapshotRows`
 
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 

@@ -1,3 +1,17 @@
+# ✅ AUDIT FILE LIST (2026-05-02aq)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add selected trade-date resolution, date input control and query sync for the whale snapshot shell slice)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale trade-date SSR and query-string proof)
+- module_tree_full.md (MODIFIED - regenerated after the whale trade-date slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-45, OPS-23)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them selected trade-date control cho whale shell.
+- PASSED: focused Django contract suite `test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date` => 1/1 PASS.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ap)
 - packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add whale analytics snapshot endpoint resolver and thin facts-first client)
 - packages/web/src/adapters/core/index.js (MODIFIED - export whale snapshot client)

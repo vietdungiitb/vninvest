@@ -1058,9 +1058,13 @@ const whaleAlertsMarkup = renderToStaticMarkup(
   createElement(ShellWhaleAlertsPage, {
     autoLoad: false,
     whaleSymbol: "HPG",
+    whaleTradeDate: "2026-04-15",
     initialWhaleSnapshot: {
       symbol: "HPG",
       trade_date: "2026-04-15",
+      session: {
+        resolved_from: "requested_session",
+      },
       session_context: {
         selected_trade_date: "2026-04-15",
         latest_valid_trade_date: "2026-04-15",
@@ -1136,12 +1140,14 @@ assert(whaleAlertsMarkup.includes("package-admin"), "Whale alerts page must rend
 assert(whaleAlertsMarkup.includes("HPG"), "Whale alerts page must render the whale snapshot symbol from the live data slice");
 assert(whaleAlertsMarkup.includes("facts_first"), "Whale alerts page must render the facts-first materialization path");
 assert(whaleAlertsMarkup.includes("READY"), "Whale alerts page must render the whale snapshot quality state");
-assert(whaleAlertsMarkup.includes("Đổi mã whale"), "Whale alerts page must render the whale symbol control");
+assert(whaleAlertsMarkup.includes("2026-04-15"), "Whale alerts page must render the requested whale trade date when one is provided");
+assert(whaleAlertsMarkup.includes("requested_session"), "Whale alerts page must render the resolved session source from the whale snapshot payload");
+assert(whaleAlertsMarkup.includes("Tải snapshot whale"), "Whale alerts page must render the whale snapshot control");
 
 const whaleAlertsQueryMarkup = renderToStaticMarkup(
   createElement(ShellWhaleAlertsPage, {
     autoLoad: false,
-    whaleSearch: "?symbol=ssi",
+    whaleSearch: "?symbol=ssi&trade_date=2026-04-19",
     initialSnapshot: {
       buildMeta: {
         adapterId: "core",
@@ -1186,6 +1192,7 @@ const whaleAlertsQueryMarkup = renderToStaticMarkup(
 );
 
 assert(whaleAlertsQueryMarkup.includes("SSI"), "Whale alerts page must resolve the whale symbol from the query string when no prop overrides it");
+assert(whaleAlertsQueryMarkup.includes("2026-04-19"), "Whale alerts page must resolve the whale trade date from the query string when no prop overrides it");
 assert(whaleAlertsQueryMarkup.includes("Chưa có whale snapshot thật"), "Whale alerts page must keep a graceful empty state for query-driven whale symbols");
 
 const runtimeUpdates = [];
