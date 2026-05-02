@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:47:04`
+Generated at: `2026-05-02 11:54:23`
 
 ## Summary
 
-- Total modules: 545
+- Total modules: 546
 - Python modules: 340
-- JS/TS modules: 205
+- JS/TS modules: 206
 - Total classes: 563
-- Total functions: 2125
-- Total top-level variables: 3598
+- Total functions: 2126
+- Total top-level variables: 3606
 
 ## Python Modules
 
@@ -3716,6 +3716,13 @@ Generated at: `2026-05-02 11:47:04`
   - `VipLocalControlPage`, `createCredentials`, `createEmptySnapshot`, `createInitialViewState`, `createUserDraft`, `formatTimestamp`, `getRoleLabel`, `handleLogin`, `handleLogout`, `handleRefresh`, `handleResetSession`, `handleUserSubmit`, `loadControlSnapshot`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAuditItem`, `renderElement`, `renderUserItem`, `runAction`, `runInitialLoad`
 - Top-level variables:
   - `ROLE_OPTIONS`, `abilityCount`, `active`, `auditList`, `bootstrapLoaderRef`, `clientRef`, `controlPlaneClient`, `currentSessionId`, `currentSessionUsername`, `envRef`, `fetchImplRef`, `metrics`, `nextPayload`, `nextValue`, `notice`, `payload`, `result`, `roleEntry`, `roleKeys`, `roleText`, `sessionCards`, `snapshot`, `timestamp`, `userList`, `username`, `visibleRouteCount`
+
+### `packages/web/src/pages/workspace/ShellDashboardPage.js`
+
+- Functions:
+  - `ShellDashboardPage`
+- Top-level variables:
+  - `WORKSPACE_ROUTE_IDS`, `dashboardAbilities`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `workspaceRoutes`
 
 ### `packages/web/src/pages/workspace/ShellPortfoliosPage.js`
 

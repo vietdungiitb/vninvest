@@ -1,3 +1,49 @@
+# Entry 2026-05-02ai - Add the first workspace dashboard shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `dashboard` de dong bo route catalog `baseline` cua workspace lane voi page registry that ma khong mo them backend contract moi.
+- Chi su dung bootstrap/session/health seam hien co; route va ability `Dashboard` da co san trong core stub, nen slice nay la frontend-only theo nghia contract.
+- Dong `WEB-31`, `WEB-32`, `OPS-15` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/workspace/ShellDashboardPage.js`:
+  - Them page route-level moi cho `dashboard` bang shared helper layer.
+  - Hien operator/session, workspace groups, dashboard route visibility, enabled surfaces, build metadata va dashboard abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `dashboard` vao page registry de shell co route-level component that cho workspace dashboard lane.
+- `packages/web/src/index.js`:
+  - Export `ShellDashboardPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `dashboard` route/page registry va SSR render cua `ShellDashboardPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page workspace moi; tong module tang len 546.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-31`, `WEB-32`, `OPS-15`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ai.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho dashboard workspace slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/workspace/ShellDashboardPage.js (NEW - first workspace dashboard shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `dashboard` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellDashboardPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate dashboard route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the dashboard shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-31, WEB-32, OPS-15)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/workspace/ShellDashboardPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `dashboard` vao shared shell surface va registry.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellDashboardPage, ShellSupportPage, ShellSettingsPage, ShellPortfoliosPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core dashboard shared shell live parity passed`; da xac nhan bootstrap payload san co chua dashboard ability va ca sau page core van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (546 modules).
+
+Residual note:
+- `ShellDashboardPage` hien la route-level audit surface doc tu bootstrap runtime; widgets dashboard that va data cards chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` dang duoc giu running voi bootstrap payload hien co de auditor co the verify ngay route `dashboard` cung cac route core khac.
+
 # Entry 2026-05-02ah - Add the first system support shell page on the shared helper layer
 
 Muc tieu:

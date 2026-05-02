@@ -1,3 +1,19 @@
+# ✅ AUDIT FILE LIST (2026-05-02ai)
+- packages/web/src/pages/workspace/ShellDashboardPage.js (NEW - first workspace dashboard shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `dashboard` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellDashboardPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate dashboard route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the dashboard shell slice, total modules 546)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-31, WEB-32, OPS-15)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/workspace/ShellDashboardPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `dashboard` vao shared shell surface va registry.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `dashboard`, `support`, `settings`, `portfolios`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected; bootstrap payload da chua dashboard ability san co.
+- PASSED: `module_tree_full.md` regenerated successfully with 546 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ah)
 - packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read Support` in the core bootstrap ability set)
 - packages/web/src/pages/system/ShellSupportPage.js (NEW - first system support shell page using the shared helper layer)
