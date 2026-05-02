@@ -1,4 +1,11 @@
 import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import { createCoreAdvisorySessionClient } from "../../adapters/core/index.js";
+import {
   renderShellMetric,
   renderShellPageChrome,
   renderShellPanel,
@@ -23,12 +30,80 @@ import {
 
 const SIGNAL_ROUTE_IDS = ["ai-advisory", "whale-alerts"];
 
+function resolveAdvisorySymbol(env = {}, advisorySymbol) {
+  return String(
+    advisorySymbol
+      || env.VNINVEST_AI_ADVISORY_SYMBOL
+      || env.REACT_APP_AI_ADVISORY_SYMBOL
+      || "BCM",
+  ).trim().toUpperCase();
+}
+
+function createInitialAdvisoryState(initialAdvisorySession = null) {
+  return {
+    loading: !initialAdvisorySession,
+    error: "",
+    data: initialAdvisorySession,
+  };
+}
+
+function normalizeAdvisoryError(error) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Không thể tải advisory session thật từ stock workspace runtime.";
+}
+
+function buildAdvisoryRows(advisorySession, advisorySymbol) {
+  if (!advisorySession) {
+    return [
+      { label: "Symbol", value: advisorySymbol || "n/a" },
+      { label: "Contract", value: "Chưa nạp" },
+      { label: "Trạng thái", value: "Chưa có advisory session thật" },
+    ];
+  }
+
+  const decision = advisorySession.aggregate?.decision || {};
+  const quality = advisorySession.aggregate?.observability?.aggregate_quality || {};
+
+  return [
+    { label: "Symbol", value: advisorySession.symbol || advisorySymbol || "n/a" },
+    { label: "Contract", value: advisorySession.contract_version || "v1" },
+    { label: "Trade date", value: advisorySession.selected_trade_date || "Mới nhất" },
+    { label: "Action", value: decision.action || "watch" },
+    { label: "Risk", value: decision.risk || "medium" },
+    {
+      label: "Quality",
+      value: quality.score !== undefined && quality.score !== null
+        ? `${quality.score} (${quality.label || "n/a"})`
+        : "Chưa có",
+    },
+  ];
+}
+
+function buildBenchmarkItems(advisorySession) {
+  const benchmarks = advisorySession?.aggregate?.benchmarks;
+  if (!benchmarks) {
+    return [];
+  }
+
+  return [
+    `RVOL: ${benchmarks.rvol ?? "n/a"} (${benchmarks.rvol_regime || "unknown"})`,
+    `Relative strength 20D: ${benchmarks.relative_strength_20d_pct ?? "n/a"}%`,
+    `MTF confirmation: ${benchmarks.mtf_confirmation_score ?? "n/a"} (${benchmarks.mtf_confirmation_label || "unknown"})`,
+  ];
+}
+
 export function ShellAiAdvisoryPage({
   env = {},
   fetchImpl,
   bootstrapLoader,
   autoLoad = true,
   initialSnapshot = null,
+  advisorySymbol,
+  advisorySessionLoader,
+  initialAdvisorySession = null,
 }) {
   const { viewState, handleRefresh } = useCoreShellPageSnapshot({
     env,
@@ -39,6 +114,26 @@ export function ShellAiAdvisoryPage({
     fallbackErrorMessage: "Không thể tải snapshot AI advisory từ core runtime.",
     refreshNotice: "Đã làm mới snapshot AI advisory từ core runtime.",
   });
+  const advisoryLoaderRef = useRef(null);
+  const advisoryEnvRef = useRef(null);
+  const advisoryFetchRef = useRef(null);
+  const advisorySymbolRef = useRef(null);
+
+  advisoryEnvRef.current = env;
+  advisoryFetchRef.current = fetchImpl;
+  advisorySymbolRef.current = resolveAdvisorySymbol(env, advisorySymbol);
+  advisoryLoaderRef.current = advisorySessionLoader || ((requestOptions = {}) =>
+    createCoreAdvisorySessionClient({
+      env: advisoryEnvRef.current,
+      fetchImpl: advisoryFetchRef.current,
+    }).getAiAdvisorySession({
+      symbol: advisorySymbolRef.current,
+      contract: "v2",
+      includeBenchmarks: true,
+      ...requestOptions,
+    }));
+
+  const [advisoryState, setAdvisoryState] = useState(() => createInitialAdvisoryState(initialAdvisorySession));
 
   const {
     buildMeta,
@@ -52,14 +147,91 @@ export function ShellAiAdvisoryPage({
     abilities,
   } = deriveCoreShellSnapshot(viewState);
   const signalRoutes = filterVisibleRoutes(visibleRoutes, SIGNAL_ROUTE_IDS);
-  const advisoryAbilities = filterAbilitiesBySubject(abilities, "aiadvisory");
+  const advisoryAbilities = filterAbilitiesBySubject(abilities, "whaleadvisory");
   const enabledSurfaces = getEnabledSurfaceKeys(surfaces);
+  const advisoryQuality = advisoryState.data?.aggregate?.observability?.aggregate_quality || {};
+  const advisoryRows = buildAdvisoryRows(advisoryState.data, advisorySymbolRef.current);
+  const benchmarkItems = buildBenchmarkItems(advisoryState.data);
+
+  useEffect(() => {
+    if (!autoLoad || !advisorySymbolRef.current) {
+      return undefined;
+    }
+
+    let active = true;
+
+    async function runAdvisoryLoad() {
+      setAdvisoryState((previous) => ({
+        ...previous,
+        loading: true,
+        error: "",
+      }));
+
+      try {
+        const advisorySession = await advisoryLoaderRef.current({ symbol: advisorySymbolRef.current });
+        if (!active) {
+          return;
+        }
+
+        setAdvisoryState({
+          loading: false,
+          error: "",
+          data: advisorySession,
+        });
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        setAdvisoryState((previous) => ({
+          ...previous,
+          loading: false,
+          error: normalizeAdvisoryError(error),
+        }));
+      }
+    }
+
+    void runAdvisoryLoad();
+
+    return () => {
+      active = false;
+    };
+  }, [autoLoad, advisorySymbolRef.current]);
+
+  async function refreshAdvisorySession() {
+    try {
+      const advisorySession = await advisoryLoaderRef.current({ symbol: advisorySymbolRef.current });
+      setAdvisoryState({
+        loading: false,
+        error: "",
+        data: advisorySession,
+      });
+    } catch (error) {
+      setAdvisoryState((previous) => ({
+        ...previous,
+        loading: false,
+        error: normalizeAdvisoryError(error),
+      }));
+    }
+  }
+
+  async function handleRefreshAll() {
+    await Promise.all([
+      handleRefresh(),
+      refreshAdvisorySession(),
+    ]);
+  }
 
   const metrics = [
     renderShellMetric("Build target", buildMeta?.target || capabilities?.build?.target || "n/a"),
     renderShellMetric("Signals routes", String(signalRoutes.length)),
     renderShellMetric("Advisory abilities", String(advisoryAbilities.length)),
-    renderShellMetric("Enabled surfaces", String(enabledSurfaces.length)),
+    renderShellMetric(
+      "Advisory quality",
+      advisoryQuality.score !== undefined && advisoryQuality.score !== null
+        ? String(advisoryQuality.score)
+        : "n/a",
+    ),
   ];
 
   const summaryCards = [
@@ -117,7 +289,7 @@ export function ShellAiAdvisoryPage({
         renderShellPanel({
           title: "Snapshot operator và runtime",
           subtitle: "Đọc nhanh session, runtime health và build meta trước khi nối advisory experience thật vào signals shell này.",
-          actions: renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading }),
+          actions: renderRefreshAction({ onClick: handleRefreshAll, disabled: viewState.loading || advisoryState.loading }),
           children: renderElement("section", { className: "shellPage__summaryGrid" }, summaryCards),
         }),
         renderShellPanel({
@@ -140,10 +312,29 @@ export function ShellAiAdvisoryPage({
         }),
       ),
       renderShellPanel({
-        title: "Advisory abilities và build metadata",
-        subtitle: "Giữ cùng một viewport cho auditor đọc signal reach, enabled surfaces và ability map của lane AI advisory.",
+        title: "Advisory data và build metadata",
+        subtitle: "Giữ cùng một viewport cho auditor đọc signal reach, advisory session thật, benchmark aggregate và ability map của lane AI advisory.",
         actions: renderHealthStatusPill(health),
         children: [
+          renderSummaryCard({
+            key: "ai-advisory-runtime-session",
+            title: `Advisory session thật (${advisorySymbolRef.current})`,
+            rows: advisoryRows,
+          }),
+          advisoryState.error
+            ? renderElement(
+              "div",
+              { className: "shellPage__empty", key: "ai-advisory-runtime-error" },
+              advisoryState.error,
+            )
+            : null,
+          advisoryState.loading && !advisoryState.data
+            ? renderElement(
+              "div",
+              { className: "shellPage__empty", key: "ai-advisory-runtime-loading" },
+              "Đang nạp advisory session thật từ stock workspace runtime.",
+            )
+            : null,
           renderBuildMetaCard({ key: "ai-advisory-build-meta", buildMeta }),
           renderElement(
             "div",
@@ -156,6 +347,12 @@ export function ShellAiAdvisoryPage({
             { key: "ai-advisory-surfaces" },
             renderElement("h3", { className: "shellPage__itemTitle" }, "Enabled surfaces"),
             renderValueList(enabledSurfaces, "Runtime chưa bật surface flag nào.", "ai-advisory-surfaces"),
+          ),
+          renderElement(
+            "div",
+            { key: "ai-advisory-benchmarks" },
+            renderElement("h3", { className: "shellPage__itemTitle" }, "Advisory benchmarks"),
+            renderValueList(benchmarkItems, "Advisory session hiện chưa trả benchmark aggregate nào.", "ai-advisory-benchmarks"),
           ),
           renderAbilityList({
             abilities: advisoryAbilities,

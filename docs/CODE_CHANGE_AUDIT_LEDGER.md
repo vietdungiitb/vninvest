@@ -1,3 +1,61 @@
+# Entry 2026-05-02an - Canonicalize signal ability naming and wire the first advisory session read-only slice into package shell
+
+Muc tieu:
+- Loai bo drift naming do package shell tu sinh `AiAdvisory` va `WhaleAlerts` alias, dua signals ability subject quay ve canonical backend `WhaleAdvisory`.
+- Them thin client doc endpoint that `/api/stock-management/stocks/<symbol>/ai-advisory-session/` contract `v2` thay vi tiep tuc dung ai-advisory route chi la bootstrap-only audit surface.
+- Mo rong `ShellAiAdvisoryPage` bang mot panel read-only advisory session/benchmark aggregate nho, giu nguyen pham vi nhe va khong clone lai legacy whale workspace.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo `AiAdvisory` va `WhaleAlerts` ra khoi bootstrap abilities; chi giu canonical subject `WhaleAdvisory` cho signals lane.
+- `packages/web/src/adapters/core/coreAdapter.js`:
+  - Them resolver cho stock workspace base URL va thin `createCoreAdvisorySessionClient()` doc `ai-advisory-session` contract `v2` co benchmark enrichment.
+- `packages/web/src/adapters/core/index.js`:
+  - Export advisory session client moi tren adapter surface.
+- `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`:
+  - Chuyen advisory ability filter sang canonical `WhaleAdvisory`.
+  - Them read-only advisory session state cho symbol cau hinh duoc, hien contract, action, risk, aggregate quality va benchmark enrichment trong cung audit surface.
+  - Nut refresh cua page gio reload ca bootstrap snapshot va advisory session data slice.
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Chuyen whale ability filter sang canonical `WhaleAdvisory` thay vi dua vao alias route-facing.
+- `packages/web/src/index.js`:
+  - Export `createCoreAdvisorySessionClient` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho advisory session client request URL, advisory JSON parse, SSR render cua `ShellAiAdvisoryPage` voi aggregate quality/benchmark data, va assert live core bootstrap contract khong con alias signal subjects.
+- `module_tree_full.md`:
+  - Regenerate sau khi them advisory client va mo rong signal shell page; tong module giu nguyen 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-41`, `WEB-42`, `OPS-20` cho queue naming canon + advisory read-model.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02an.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho signals naming canon + advisory data slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - remove package-shell signal aliases so live bootstrap only exposes `WhaleAdvisory`)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add stock advisory session endpoint resolver and thin read-only client)
+- packages/web/src/adapters/core/index.js (MODIFIED - export advisory session client)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - render read-only advisory session summary and benchmark aggregate on top of canonical signal subject)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - filter whale abilities by canonical `WhaleAdvisory` subject only)
+- packages/web/src/index.js (MODIFIED - export `createCoreAdvisorySessionClient` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate canonical signal payload, advisory client URL building and advisory session SSR proof)
+- module_tree_full.md (MODIFIED - regenerated after the advisory read-model slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-41, WEB-42, OPS-20)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi doi signals lane sang canonical `WhaleAdvisory` va them advisory session data slice.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_stock_ai_advisory_session.ApiRouteStockAiAdvisorySessionTests.test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled portfolio.tests.test_api_routes_stock_ai_advisory_session.ApiRouteStockAiAdvisorySessionTests.test_stock_ai_advisory_session_v2_includes_benchmark_enrichment --keepdb` => 2/2 PASS.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+- PASSED: core stub tren `:8100` da duoc refresh lai, `Get-NetTCPConnection -LocalPort 8100 -State Listen` xac nhan listener moi hoat dong, va proof `core stub canonical payload passed` xac nhan live bootstrap payload chi con `WhaleAdvisory` cho signals lane.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... '@ | node --input-type=module; Pop-Location` => `core signals live parity passed`; da xac nhan `ShellAiAdvisoryPage` van render duoc advisory session data slice, `ShellWhaleAlertsPage` van render duoc route `whale-alerts`, va live snapshot khong con alias `AiAdvisory`/`WhaleAlerts`.
+
+Residual note:
+- Advisory data slice nay la read-only surface, mac dinh doc symbol `BCM` neu env khong override `VNINVEST_AI_ADVISORY_SYMBOL`/`REACT_APP_AI_ADVISORY_SYMBOL`; khi stock workspace runtime khong san sang hoac thieu auth, page se hien graceful empty/error state thay vi fail cung.
+- Signals lane hien gio da canon ve `WhaleAdvisory` trong package shell; neu backend sau nay tach them permission domain rieng cho `whale-alerts`, slice tiep theo nen doi theo contract moi thay vi tai lap alias client-side.
+
 # Entry 2026-05-02am - Add the first whale-alerts signals shell page and close the whale ability naming drift
 
 Muc tieu:

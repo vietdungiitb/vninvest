@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   BUILD_TARGETS,
   ShellAuthProvider,
+  createCoreAdvisorySessionClient,
   createVipAppControlClient,
   createEmptyAuthRuntimeState,
   createShellAuthRuntime,
@@ -142,6 +143,66 @@ assert(typeof renderShellPanel === "function", "Shared shell panel helper must b
 assert(typeof renderShellMetric === "function", "Shared shell metric helper must be exported");
 assert(typeof renderShellField === "function", "Shared shell field helper must be exported");
 assert(typeof renderShellSelectField === "function", "Shared shell select helper must be exported");
+assert(typeof createCoreAdvisorySessionClient === "function", "Core advisory session client must be exported");
+
+const advisoryRequests = [];
+const advisoryClient = createCoreAdvisorySessionClient({
+  env: { VNINVEST_STOCK_WORKSPACE_BASE_URL: "http://backend.local/api/stock-management" },
+  fetchImpl: async (url) => {
+    advisoryRequests.push(url);
+
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      async json() {
+        return {
+          ok: true,
+          symbol: "BCM",
+          contract_version: "v2",
+          selected_trade_date: "2026-04-15",
+          aggregate: {
+            decision: {
+              score: 0.82,
+              score_band: "high",
+              action: "accumulate",
+              risk: "low",
+            },
+            observability: {
+              aggregate_quality: {
+                score: 78.4,
+                label: "high",
+                actionability: 0.82,
+                noise_ratio: 0.15,
+                consistency: 0.73,
+              },
+            },
+            benchmarks: {
+              rvol: 1.6,
+              rvol_regime: "elevated",
+              relative_strength_20d_pct: 4.2,
+              mtf_confirmation_score: 0.67,
+              mtf_confirmation_label: "mixed",
+            },
+          },
+        };
+      },
+    };
+  },
+});
+
+const advisorySessionPayload = await advisoryClient.getAiAdvisorySession({
+  symbol: "BCM",
+  contract: "v2",
+  includeBenchmarks: true,
+  tradeDate: "2026-04-15",
+});
+
+assert(advisorySessionPayload.aggregate.decision.action === "accumulate", "Core advisory session client must return advisory session JSON");
+assert(
+  advisoryRequests[0] === "http://backend.local/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1&trade_date=2026-04-15",
+  "Core advisory session client must build the stock advisory session endpoint correctly",
+);
 
 const vipControlRequests = [];
 const vipControlClient = createVipAppControlClient({
@@ -800,6 +861,37 @@ const authRuntime = createShellAuthRuntime({
 const aiAdvisoryMarkup = renderToStaticMarkup(
   createElement(ShellAiAdvisoryPage, {
     autoLoad: false,
+    advisorySymbol: "BCM",
+    initialAdvisorySession: {
+      ok: true,
+      symbol: "BCM",
+      contract_version: "v2",
+      selected_trade_date: "2026-04-15",
+      aggregate: {
+        decision: {
+          score: 0.82,
+          score_band: "high",
+          action: "accumulate",
+          risk: "low",
+        },
+        observability: {
+          aggregate_quality: {
+            score: 78.4,
+            label: "high",
+            actionability: 0.82,
+            noise_ratio: 0.15,
+            consistency: 0.73,
+          },
+        },
+        benchmarks: {
+          rvol: 1.6,
+          rvol_regime: "elevated",
+          relative_strength_20d_pct: 4.2,
+          mtf_confirmation_score: 0.67,
+          mtf_confirmation_label: "mixed",
+        },
+      },
+    },
     initialSnapshot: {
       buildMeta: {
         adapterId: "core",
@@ -822,7 +914,6 @@ const aiAdvisoryMarkup = renderToStaticMarkup(
           plan: "pro",
         },
         abilities: [
-          { action: "read", subject: "AiAdvisory" },
           { action: "read", subject: "WhaleAdvisory" },
           { action: "manage", subject: "all" },
         ],
@@ -848,6 +939,9 @@ assert(aiAdvisoryMarkup.includes("Trung tâm AI advisory và tín hiệu"), "AI 
 assert(aiAdvisoryMarkup.includes("ai-advisory"), "AI advisory page must render ai-advisory route visibility");
 assert(aiAdvisoryMarkup.includes("signals"), "AI advisory page must render signals group visibility");
 assert(aiAdvisoryMarkup.includes("package-admin"), "AI advisory page must render the current operator identity");
+assert(aiAdvisoryMarkup.includes("BCM"), "AI advisory page must render the advisory symbol from the live data slice");
+assert(aiAdvisoryMarkup.includes("78.4"), "AI advisory page must render advisory quality from the read-only data slice");
+assert(aiAdvisoryMarkup.includes("elevated"), "AI advisory page must render benchmark enrichment from the read-only data slice");
 
 const whaleAlertsMarkup = renderToStaticMarkup(
   createElement(ShellWhaleAlertsPage, {
@@ -875,7 +969,6 @@ const whaleAlertsMarkup = renderToStaticMarkup(
         },
         abilities: [
           { action: "read", subject: "WhaleAdvisory" },
-          { action: "read", subject: "WhaleAlerts" },
           { action: "manage", subject: "all" },
         ],
         navigation: {

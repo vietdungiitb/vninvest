@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 12:15:04`
+Generated at: `2026-05-02 12:29:12`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 12:15:04`
 - Python modules: 340
 - JS/TS modules: 210
 - Total classes: 563
-- Total functions: 2130
-- Total top-level variables: 3638
+- Total functions: 2143
+- Total top-level variables: 3655
 
 ## Python Modules
 
@@ -3595,9 +3595,9 @@ Generated at: `2026-05-02 12:15:04`
 ### `packages/web/src/adapters/core/coreAdapter.js`
 
 - Functions:
-  - `resolveCoreBaseUrl`
+  - `appendQuery`, `createCoreAdvisorySessionClient`, `requestJson`, `resolveCoreBaseUrl`, `resolveFetchImpl`, `resolveStockWorkspaceBaseUrl`
 - Top-level variables:
-  - `coreAdapter`
+  - `coreAdapter`, `normalizedSymbol`, `params`, `queryString`, `request`, `response`
 
 ### `packages/web/src/adapters/core/index.js`
 
@@ -3692,9 +3692,9 @@ Generated at: `2026-05-02 12:15:04`
 ### `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`
 
 - Functions:
-  - `ShellAiAdvisoryPage`
+  - `ShellAiAdvisoryPage`, `buildAdvisoryRows`, `buildBenchmarkItems`, `createInitialAdvisoryState`, `handleRefreshAll`, `normalizeAdvisoryError`, `refreshAdvisorySession`, `resolveAdvisorySymbol`, `runAdvisoryLoad`
 - Top-level variables:
-  - `SIGNAL_ROUTE_IDS`, `advisoryAbilities`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `signalRoutes`, `summaryCards`
+  - `SIGNAL_ROUTE_IDS`, `active`, `advisoryAbilities`, `advisoryEnvRef`, `advisoryFetchRef`, `advisoryLoaderRef`, `advisoryQuality`, `advisoryRows`, `advisorySession`, `advisorySymbolRef`, `benchmarkItems`, `benchmarks`, `decision`, `enabledSurfaces`, `groupFlags`, `metrics`, `quality`, `routeFlags`, `signalRoutes`, `summaryCards`
 
 ### `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`
 

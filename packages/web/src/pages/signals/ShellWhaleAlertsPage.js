@@ -52,7 +52,7 @@ export function ShellWhaleAlertsPage({
     abilities,
   } = deriveCoreShellSnapshot(viewState);
   const signalRoutes = filterVisibleRoutes(visibleRoutes, SIGNAL_ROUTE_IDS);
-  const whaleAbilities = filterAbilitiesBySubject(abilities, ["whalealerts", "whaleadvisory"]);
+  const whaleAbilities = filterAbilitiesBySubject(abilities, "whaleadvisory");
   const enabledSurfaces = getEnabledSurfaceKeys(surfaces);
 
   const metrics = [

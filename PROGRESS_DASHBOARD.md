@@ -1,3 +1,24 @@
+# ✅ AUDIT FILE LIST (2026-05-02an)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - remove package-shell signal aliases so live bootstrap only exposes `WhaleAdvisory`)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add stock advisory session endpoint resolver and thin read-only client)
+- packages/web/src/adapters/core/index.js (MODIFIED - export advisory session client)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - render read-only advisory session summary and benchmark aggregate on top of canonical signal subject)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - filter whale abilities by canonical `WhaleAdvisory` subject only)
+- packages/web/src/index.js (MODIFIED - export `createCoreAdvisorySessionClient` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate canonical signal payload, advisory client URL building and advisory session SSR proof)
+- module_tree_full.md (MODIFIED - regenerated after the advisory read-model slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-41, WEB-42, OPS-20)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi doi signals lane sang canonical `WhaleAdvisory` va them advisory session data slice.
+- PASSED: focused Django contract suite `test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled` + `test_stock_ai_advisory_session_v2_includes_benchmark_enrichment` => 2/2 PASS.
+- PASSED: core stub tren `:8100` da duoc refresh lai va live payload proof xac nhan khong con `AiAdvisory`/`WhaleAlerts`, chi con `WhaleAdvisory` cho signals lane.
+- PASSED: live parity tren core runtime `:8100` da xac nhan `ShellAiAdvisoryPage` render duoc advisory session data slice va `ShellWhaleAlertsPage` van render route `whale-alerts` tren canonical payload.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02am)
 - packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read WhaleAlerts` while keeping `WhaleAdvisory` for compatibility)
 - packages/web/src/pages/signals/ShellWhaleAlertsPage.js (NEW - first whale-alerts signals shell page using the shared helper layer)

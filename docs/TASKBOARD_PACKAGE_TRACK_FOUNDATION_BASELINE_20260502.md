@@ -630,3 +630,28 @@ Estimate: 0.5h
 Dependency: WEB-40  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung route-level page `whale-alerts` va drift fix cua whale ability naming.
+
+---
+
+## 25. Signals naming canon va advisory read-model queue
+
+- [x] `WEB-41` Canonicalize signals ability subject ve `WhaleAdvisory` trong package shell  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1.5h  
+Dependency: WEB-38, WEB-40  
+Anchor files: `packages/core/backend/src/vninvest_core/*`, `packages/web/src/pages/signals/*`, `packages/web/scripts/check-shell.mjs`  
+DoD: core stub va package shell khong con phat `AiAdvisory` hay `WhaleAlerts` alias trong live bootstrap payload; `ai-advisory` va `whale-alerts` van render duoc tren shared helper layer voi canonical subject `WhaleAdvisory`.
+
+- [x] `WEB-42` Wire read-only advisory session data slice vao `ai-advisory` shell  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 2h  
+Dependency: WEB-41  
+Anchor files: `packages/web/src/adapters/core/*`, `packages/web/src/pages/signals/*`, `backend/portfolio/views_ai_advisory_session.py`, `backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py`  
+DoD: `ShellAiAdvisoryPage` doc endpoint `/api/stock-management/stocks/<symbol>/ai-advisory-session/` contract `v2`, hien advisory quality va benchmark aggregate cho symbol cau hinh duoc, va `check-shell` co proof cho client + SSR render.
+
+- [x] `OPS-20` Sync taskboard, audit docs, module tree va runtime proof sau signals canon slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-42  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit, module tree va live core stub proof phan anh dung canonical `WhaleAdvisory` payload va data slice advisory read-only tren route `ai-advisory`.
