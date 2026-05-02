@@ -30,6 +30,13 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function buildIdempotencyKey(prefix = 'request') {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 const AUTH_PUBLIC_ENDPOINT_PATTERN = /\/auth\/(token\/?|token\/refresh\/?|register\/?|verify-email\/?|resend-verification\/?)$/i;
 let refreshRequestPromise = null;
 
@@ -136,6 +143,52 @@ export const refreshAccessToken = async () => {
     return null;
   }
 };
+
+export const getTenantServiceAccounts = (params = {}) =>
+  apiClient.get('/core/v1/partner/service-accounts/', { params });
+
+export const createTenantServiceAccount = (payload) =>
+  apiClient.post('/core/v1/partner/service-accounts/', payload, {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-service-account'),
+    },
+  });
+
+export const getTenantPATs = (params = {}) =>
+  apiClient.get('/core/v1/partner/pats/', { params });
+
+export const getTenantUsageMeters = (params = {}) =>
+  apiClient.get('/core/v1/partner/usage/meters/', { params });
+
+export const getTenantUsageQuotas = (params = {}) =>
+  apiClient.get('/core/v1/partner/usage/quotas/', { params });
+
+export const getTenantBillingSubscription = () =>
+  apiClient.get('/core/v1/partner/billing/subscription/');
+
+export const getTenantBillingInvoices = (params = {}) =>
+  apiClient.get('/core/v1/partner/billing/invoices/', { params });
+
+export const issueTenantPAT = (payload) =>
+  apiClient.post('/core/v1/partner/pats/issue/', payload, {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-pat-issue'),
+    },
+  });
+
+export const rotateTenantPAT = (tokenId, payload = {}) =>
+  apiClient.post(`/core/v1/partner/pats/${tokenId}/rotate/`, payload, {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-pat-rotate'),
+    },
+  });
+
+export const revokeTenantPAT = (tokenId, payload = {}) =>
+  apiClient.post(`/core/v1/partner/pats/${tokenId}/revoke/`, payload, {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-pat-revoke'),
+    },
+  });
 
 // --- Portfolio APIs (prefix portfolio/ theo urls.py) ---
 export const getPortfolios = () => apiClient.get('/portfolio/portfolios/');

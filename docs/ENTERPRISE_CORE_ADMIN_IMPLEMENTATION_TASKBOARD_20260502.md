@@ -62,7 +62,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 | Slice ID | Priority | Scope | Frontend anchors | Backend anchors | Contract dependencies | Exit criteria |
 |---|---|---|---|---|---|---|
 | `CA-00` | P0 | capability bootstrap | `PortfolioContext`, `AbilityContext`, `ProtectedRoute`, `TopNav` | `config/urls.py`, future `views_core_access.py` | capability payload contract | app đọc được `capability_snapshot`; admin nav không còn phụ thuộc cứng vào `manage all` |
-| `CA-01` | P0 | admin shell + route groups | `App.jsx`, `TopNav.jsx`, future `pages/admin/*` | route registration only | admin UI architecture, RBAC matrix | route groups `/admin/core/*` và `/admin/tenant/*` tồn tại với guards đúng |
+| `CA-01` | P0 | admin shell + route groups | `App.jsx`, `TopNav.jsx`, future `pages/admin/*` | route registration only | admin UI architecture, RBAC matrix | route groups `/admin/core/*` và `/tenant-admin/*` tồn tại với guards đúng |
 | `CA-02` | P0 | platform overview + runtime health | future `CoreOverview.jsx`, `CoreRuntimeHealth.jsx` | future `views_core_operator_overview.py`, `views_admin_runtime.py` | operator detailed contracts | screen render được summary cards/health cards từ P0 read routes |
 | `CA-03` | P0 | tenant registry + tenant detail | `CoreTenants.jsx`, `CoreTenantDetail.jsx` | future `views_core_operator_tenants.py` | operator detailed contracts | table + detail summary render đúng filters/status badges |
 | `CA-04` | P1 | service accounts | `CoreServiceAccounts.jsx` | future `views_core_operator_service_accounts.py` | operator detailed contracts, RBAC matrix | read list hoạt động; create/edit buttons gate đúng ability |
@@ -105,7 +105,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 
 ### Frontend tasks
 
-1. Tạo route groups `/admin/core/*` và `/admin/tenant/*`.
+1. Tạo route groups `/admin/core/*` và `/tenant-admin/*`.
 2. Tạo shell layout chung cho header, context bar, feedback region.
 3. Wire `TopNav` sang admin menus granular.
 
@@ -254,19 +254,60 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 - read route trả effective provider/model/source rõ ràng,
 - operator role không có write ability thì editor ở trạng thái read-only.
 
+### Ghi chú triển khai 2026-05-02bc
+
+- `frontend/src/pages/AICommandCenter.jsx` đã surfacing khung đọc nhanh runtime với provider/model/source/readiness grid và policy summary panel, bám vào các field hiệu lực sẵn có từ `/api/portfolio/ai-command-center/`.
+- Không cần thêm backend contract mới cho slice này vì endpoint hiện tại đã trả `effective_ai_provider`, `effective_ai_model`, `effective_ai_source`, `ai_ready` và các policy fields cần cho operator surface.
+- Slice backend wrapper/operator route con vẫn còn open theo taskboard gốc; đây là bước frontend gần code nhất để kéo contract ra UI thật.
+
+### Ghi chú triển khai 2026-05-02bd
+
+- `backend/portfolio/views_admin_runtime.py` đã expose `operator_ai_runtime_api` cho `GET /api/core/v1/operator/ai-runtime/`.
+- `backend/config/urls.py` đã route contract đó và `backend/portfolio/tests/test_system_ai_admin_api.py` đã cover snapshot shape + admin gate.
+- Response hiện trả `object`, `provider_rows`, `effective_policy_bundle`, `rollout_state` đúng theo operator contract; CA-08 backend wrapper slice coi như đã khép.
+
 ---
 
 ## 5.10 `CA-09` đến `CA-11` Tenant Admin Console
 
 Ba slice này chỉ nên bắt đầu khi `CA-00` hoàn tất và partner control/commercial routes đã freeze đủ:
 
-1. `CA-09`: tenant home + capabilities.
-2. `CA-10`: tenant service accounts + PATs.
-3. `CA-11`: tenant usage + billing.
+1. `CA-09`: tenant home + capabilities. Live frontend bootstrap đã hoàn tất với namespace `/tenant-admin/*` để tránh trùng Django admin `/admin/*`.
+2. `CA-10`: tenant service accounts + PATs. Live self-service machine access flow đã chạy end-to-end trên tenant console thật.
+3. `CA-11`: tenant usage + billing. Live commercial self-service read path đã hoàn tất và đã có browser proof.
 
 ### Key rule
 
 Tenant console không được thiết kế như bản copy của operator console. Nó là self-service surface, nên payload, menu, actions và error messages phải tenant-scoped.
+
+### Ghi chú triển khai 2026-05-02be
+
+- `frontend/src/context/PortfolioContext.jsx` giờ expose `userEntitlements` từ `/api/auth/me/` để tenant pages đọc quota và trial state trực tiếp.
+- `backend/portfolio/permissions.py` thêm tenant read abilities cho session `pro+` để tenant console đi qua guard mà không cần contract mới.
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx` và `TenantCapabilities.jsx` render live tenant console từ entitlements hiện có.
+- `frontend/src/App.jsx`, `frontend/src/components/TopNav.jsx` và `frontend/src/components/Sidebar.jsx` đã wire route groups `/tenant-admin/*` vào UI thật.
+- Khi ghi chú này được viết, `CA-10` va `CA-11` van open; trang thai hien tai da duoc cap nhat boi ghi chu 2026-05-02bf va 2026-05-02bg ben duoi.
+
+### Ghi chú triển khai 2026-05-02bf
+
+- `backend/portfolio/models.py` đã thêm `CoreServiceAccount` và `CorePATCredential` để tenant console có machine identity primitives thật, tách rõ service account và PAT lifecycle.
+- `backend/portfolio/views_partner_admin.py` đã mở các partner routes `GET/POST /api/core/v1/partner/service-accounts/`, `GET /api/core/v1/partner/pats/`, `POST /issue`, `POST /rotate`, `POST /revoke` với standard list envelope, `Idempotency-Key` cho write actions và one-time secret reveal.
+- `backend/config/urls.py`, `backend/portfolio/permissions.py`, `backend/portfolio/tests/test_partner_admin_api.py` và `backend/portfolio/tests/test_api_routes_auth_profile.py` đã wire route registry, entitlement gating và focused backend coverage cho CA-10.
+- `frontend/src/api/client.js`, `frontend/src/App.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx`, `frontend/src/pages/admin/tenant/TenantPATs.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js` đã đưa flow service account/PAT vào tenant console thật.
+- Ownership seam hiện tại vẫn là `request.user` như tenant owner surrogate; chưa có tenant graph độc lập. Điều này đủ cho self-service slice nhỏ, nhưng cần thay bằng tenant registry canonical khi mở CA-11+.
+- Migration `backend/portfolio/migrations/0066_userconfig_ai_prompt_config_and_more.py` đã được làm idempotent cho field `UserConfig.ai_prompt_config` để đi qua live DB drift trước khi bring-up CA-10 runtime.
+- Browser proof với `testpro` đã xác nhận create service account, issue PAT, rotate PAT và revoke PAT thành công trên `/tenant-admin/service-accounts` và `/tenant-admin/pats`.
+- `CA-10` coi như đã khép ở mức implementation + live proof; trang thai `CA-11` duoc cap nhat boi ghi chu 2026-05-02bg ben duoi.
+
+### Ghi chú triển khai 2026-05-02bg
+
+- `backend/portfolio/partner_tenant_context.py` da tach ownership resolution thanh `PartnerTenantContext` de chuan hoa tenant owner/context cho partner self-service routes, thay vi de logic nam rai rac trong views.
+- `backend/portfolio/views_partner_admin.py` da mo cac partner commercial routes `GET /api/core/v1/partner/usage/meters/`, `/usage/quotas/`, `/billing/subscription/`, `/billing/invoices/`, dong thoi refactor helper CA-10 sang `tenant_context` chung.
+- `backend/portfolio/permissions.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py` da them `TenantUsageView` va `TenantBillingView` vao auth/me ability + entitlement path cho session `pro+`.
+- `frontend/src/pages/admin/tenant/TenantUsage.jsx` va `frontend/src/pages/admin/tenant/TenantBilling.jsx`, cung voi route/nav/home/client/i18n wiring lien quan, da dua CA-11 usage/billing vao tenant console that.
+- `backend/portfolio/ai_prompt_config_ssot.py`, `backend/portfolio/views_ai_runtime_stats.py` va `backend/portfolio/tests/test_ai_config_api.py` da cleanup seam `AICommandCenterConfig.ai_prompt_config` <-> `UserConfig.ai_prompt_config` bang hydrate/mirror helper thay vi tiep tuc drift migration.
+- Browser proof voi `testpro` da xac nhan `/tenant-admin/usage` render live usage/quota (`api_calls_per_day da dung 42`, `ai_regenerate_per_day da dung 3`) va `/tenant-admin/billing` render subscription `pro` dang hoat dong cung invoice `INV-TESTPRO-PROOF-001`.
+- `CA-11` coi nhu da khep o muc implementation + live proof. Debt con lai la tenant ownership canonicalization: ownership hien duoc normalize qua seam moi, nhung van chua co `CoreTenant` registry doc lap.
 
 ---
 
@@ -281,6 +322,13 @@ Tenant console không được thiết kế như bản copy của operator conso
 ### Exit criteria
 
 - admin shell mới không còn cần broad gate semantics để hoạt động.
+
+### Ghi chú triển khai 2026-05-02bh
+
+- `CoreTenant` registry đã canonicalize tenant ownership cho partner self-service routes.
+- `manage all` bridge đã bị loại khỏi auth/me và route guards; `AdminOps`, `AdminCrawlControl`, `StockDetailAdvancedTab` dùng explicit abilities.
+- Browser proof xác nhận `ability_admin` vào `/admin-ops` và `/admin-crawl-control`, `testpro` vào `/tenant-admin/usage` và `/tenant-admin/billing`.
+- `CA-12` coi như đã khép ở mức implementation + live proof.
 
 ---
 

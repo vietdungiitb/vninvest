@@ -213,6 +213,7 @@ from .views_admin_runtime import (
     admin_runtime_kpi_api,
     admin_runtime_kpi_whale_preflight_metrics_api,
     admin_runtime_kpi_whale_pipeline_api,
+    operator_ai_runtime_api,
     admin_system_ai_audit_logs_api,
     admin_system_ai_settings_api,
     admin_system_ai_test_connection_api,

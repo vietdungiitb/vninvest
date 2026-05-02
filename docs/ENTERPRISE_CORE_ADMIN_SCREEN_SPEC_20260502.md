@@ -437,7 +437,7 @@ Mọi screen đều phải có:
 
 ## 5.1 Tenant Home
 
-**Route:** `/admin/tenant/home`  
+**Route:** `/tenant-admin/home`  
 **Ability:** `read TenantAdminHome`
 
 ### Widgets
@@ -456,7 +456,7 @@ Mọi screen đều phải có:
 
 ## 5.2 Tenant Service Accounts
 
-**Route:** `/admin/tenant/service-accounts`  
+**Route:** `/tenant-admin/service-accounts`  
 **Ability:** `read TenantServiceAccountAdmin`
 
 ### APIs
@@ -474,7 +474,7 @@ Mọi screen đều phải có:
 
 ## 5.3 Tenant PATs
 
-**Route:** `/admin/tenant/pats`  
+**Route:** `/tenant-admin/pats`  
 **Ability:** `read TenantPATAdmin`
 
 ### APIs
@@ -495,7 +495,7 @@ Mọi screen đều phải có:
 
 ## 5.4 Tenant Usage
 
-**Route:** `/admin/tenant/usage`  
+**Route:** `/tenant-admin/usage`  
 **Ability:** `read TenantUsageView`
 
 ### APIs
@@ -507,7 +507,7 @@ Mọi screen đều phải có:
 
 ## 5.5 Tenant Billing
 
-**Route:** `/admin/tenant/billing`  
+**Route:** `/tenant-admin/billing`  
 **Ability:** `read TenantBillingView`
 
 ### APIs
@@ -519,7 +519,7 @@ Mọi screen đều phải có:
 
 ## 5.6 Tenant Capabilities
 
-**Route:** `/admin/tenant/capabilities`  
+**Route:** `/tenant-admin/capabilities`  
 **Ability:** `read TenantCapabilityView`
 
 ### APIs

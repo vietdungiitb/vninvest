@@ -1,3 +1,370 @@
+# Entry 2026-05-02bh - Canonical tenant registry and bridge removal
+
+Muc tieu:
+- Hoan tat canonical tenant ownership qua `CoreTenant`.
+- Lo bo reliance vao `ability.can('manage', 'all')` trong auth/me va route guards.
+- Giu public tenant_id contract va browser proof cho admin/tenant routes.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/models.py`:
+  - Them `CoreTenant` registry va tiep tuc giu `tenant_id = ten_usr_<user_id>` cho public contract.
+  - Giu `CoreServiceAccount` / `CorePATCredential` cho tenant-scoped ownership qua canonical tenant row.
+- `backend/portfolio/partner_tenant_context.py`:
+  - Resolve tenant context qua `CoreTenant.ensure_for_user(...)` thay vi inline `request.user`.
+- `backend/portfolio/migrations/0067_coretenant.py` va `backend/portfolio/migrations/0068_rename_portfolio_c_status_4cc731_idx_portfolio_c_status_3f2e9e_idx.py`:
+  - Tao canonical tenant registry va dong drift index-name sau migrate live DB.
+- `backend/portfolio/permissions.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Replace manage-all bridge bang explicit admin abilities (`AdminOps`, `AdminCrawlControl`, `StockDetailAdvancedTab`).
+  - Tests assert khong con `manage all` trong auth/me payload va granular tenant flags van dung.
+- `frontend/src/App.jsx`:
+  - Protect `/admin-ops` va `/admin-crawl-control` bang `ProtectedRoute` explicit.
+  - Keep `/tenant-admin/*` route group on explicit abilities.
+- `frontend/src/components/TopNav.jsx` va `frontend/src/components/Sidebar.jsx`:
+  - Lo fallback `ability.can('manage', 'all')` cho nav visibility, dung explicit subject abilities.
+- `frontend/src/pages/StockDetail.jsx`:
+  - Advanced tab gate chuyen sang `read StockDetailAdvancedTab`.
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `TenantCapabilities.jsx`, `TenantServiceAccounts.jsx`, `TenantPATs.jsx`, `TenantUsage.jsx`, `TenantBilling.jsx`, `frontend/src/api/client.js`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Tenant console surfaces tiep tuc dung explicit ability gates va tenant-scoped client routes.
+- `module_tree_full.md`:
+  - Regenerated sau slice nay; tong module 564.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu CA-12 completion.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bh.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/models.py (MODIFIED - add CoreTenant canonical registry and align tenant-scoped primitives)
+- backend/portfolio/partner_tenant_context.py (MODIFIED - resolve tenant context through CoreTenant)
+- backend/portfolio/migrations/0067_coretenant.py (NEW - create canonical tenant registry)
+- backend/portfolio/migrations/0068_rename_portfolio_c_status_4cc731_idx_portfolio_c_status_3f2e9e_idx.py (NEW - clean CoreTenant index-name drift)
+- backend/portfolio/permissions.py (MODIFIED - replace manage all bridge with explicit admin abilities)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert explicit admin abilities and no manage all)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - keep tenant contract stable under canonical registry)
+- frontend/src/App.jsx (MODIFIED - explicit protected routes for admin surfaces)
+- frontend/src/components/TopNav.jsx (MODIFIED - explicit admin/tenant nav gating)
+- frontend/src/components/Sidebar.jsx (MODIFIED - explicit tenant nav gating)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - advanced tab gate uses explicit ability)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - tenant home shortcuts use explicit abilities)
+- frontend/src/pages/admin/tenant/TenantCapabilities.jsx (MODIFIED - tenant capability summary)
+- frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx (MODIFIED - tenant service account management)
+- frontend/src/pages/admin/tenant/TenantPATs.jsx (MODIFIED - tenant PAT lifecycle)
+- frontend/src/pages/admin/tenant/TenantUsage.jsx (MODIFIED - tenant usage/quota surface)
+- frontend/src/pages/admin/tenant/TenantBilling.jsx (MODIFIED - tenant billing/invoice surface)
+- frontend/src/api/client.js (MODIFIED - tenant partner API client methods and idempotency keys)
+- frontend/src/i18n/vi.js (MODIFIED - Vietnamese copy for tenant surfaces)
+- frontend/src/i18n/en.js (MODIFIED - English copy for tenant surfaces)
+- module_tree_full.md (MODIFIED - regenerated after slice, total modules 564)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-12 completion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` green, explicit admin abilities present and manage all absent.
+- PASSED: `manage.py test portfolio.tests.test_partner_admin_api --keepdb` green, tenant contract stable under canonical registry.
+- PASSED: `npm run build` trong `frontend` thanh cong.
+- PASSED: `manage.py makemigrations portfolio --check --dry-run` xanh sau khi them 0068.
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` refresh thanh cong; backend va frontend healthy.
+- PASSED: browser proof tren `/admin-ops`, `/admin-crawl-control`, `/tenant-admin/usage`, `/tenant-admin/billing` voi `ability_admin` va `testpro`.
+
+# Entry 2026-05-02bg - Complete tenant usage/billing self-service and prompt-config SSOT cleanup
+
+Muc tieu:
+- Hoan tat `CA-11` tenant usage/billing self-service read path tren tenant console that.
+- Tach ownership resolution cua partner tenant routes ra khoi inline `request.user` logic de giam debt truoc khi co tenant graph canonical.
+- Don drift quanh `UserConfig.ai_prompt_config` va `AICommandCenterConfig.ai_prompt_config` bang runtime SSOT helper thay vi tiep tuc mo them migration/history churn.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/partner_tenant_context.py`:
+  - Them `PartnerTenantContext` dataclass va resolver de chuan hoa `owner_user`, `tenant_id`, `tenant_code`, `display_name`, `plan_code`, `status`, `default_environment` cho partner self-service routes.
+- `backend/portfolio/views_partner_admin.py`:
+  - Refactor CA-10 ownership helpers de nhan `tenant_context` thay vi buoc chat vao `request.user` inline.
+  - Them partner commercial read routes `GET /api/core/v1/partner/usage/meters/`, `/usage/quotas/`, `/billing/subscription/`, `/billing/invoices/` cung helper snapshot/list envelope cho CA-11.
+- `backend/config/urls.py`:
+  - Dang ky 4 route commercial tenant moi trong namespace partner control-plane.
+- `backend/portfolio/permissions.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Mo rong `auth/me` abilities va entitlements cho `TenantUsageView` va `TenantBillingView` o `pro+`.
+- `backend/portfolio/tests/test_partner_admin_api.py`:
+  - Them focused coverage cho usage meters, quota snapshots, subscription summary va invoice list read paths.
+- `frontend/src/pages/admin/tenant/TenantUsage.jsx`:
+  - Tao usage page live, load song song `meters + quotas`, summary cards, risk labels, usage bars va deep link sang billing.
+- `frontend/src/pages/admin/tenant/TenantBilling.jsx`:
+  - Tao billing page live, load song song `subscription + invoices`, summary cards, field cards va invoice list cho tenant self-service commercial state.
+- `frontend/src/api/client.js`, `frontend/src/App.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Wire routes/nav/home shortcuts/client/i18n cho tenant usage va billing lanes tren UI that.
+- `backend/portfolio/ai_prompt_config_ssot.py` va `backend/portfolio/views_ai_runtime_stats.py`:
+  - Them helper hydrate/mirror de xem `AICommandCenterConfig.ai_prompt_config` la canonical field, nhung van mirror ve `UserConfig.ai_prompt_config` cho legacy readers.
+- `backend/portfolio/tests/test_ai_config_api.py`:
+  - Them regression tests cho hydration tu legacy `UserConfig` va mirror write-back sau `PUT ai_config`.
+- `module_tree_full.md`:
+  - Da regenerate sau slice nay; tong module hien tai la 564.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu `CA-11` da implementation + browser proof, dong thoi note ownership seam va prompt-config SSOT cleanup.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bg.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho CA-11 + debt cleanup slice.
+
+Danh sach tep cap nhat:
+- backend/portfolio/partner_tenant_context.py (NEW - extract partner tenant ownership/context resolution into a shared seam)
+- backend/portfolio/views_partner_admin.py (MODIFIED - add tenant usage/billing partner APIs and refactor ownership helpers around tenant context)
+- backend/config/urls.py (MODIFIED - register partner usage/billing routes)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - cover CA-11 usage/billing read paths)
+- backend/portfolio/permissions.py (MODIFIED - add tenant usage/billing abilities and entitlement flags for pro+)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert tenant usage/billing abilities and entitlements in auth/me)
+- frontend/src/pages/admin/tenant/TenantUsage.jsx (NEW - tenant usage metrics/quota page)
+- frontend/src/pages/admin/tenant/TenantBilling.jsx (NEW - tenant billing/subscription/invoice page)
+- frontend/src/api/client.js (MODIFIED - add tenant usage/billing client methods)
+- frontend/src/App.jsx (MODIFIED - add `/tenant-admin/usage` and `/tenant-admin/billing` routes)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant usage/billing quick links)
+- frontend/src/components/TopNav.jsx (MODIFIED - add tenant usage/billing nav items)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - add usage/billing shortcuts on tenant home)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for tenant usage/billing surfaces)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for tenant usage/billing surfaces)
+- backend/portfolio/ai_prompt_config_ssot.py (NEW - canonical prompt-config hydrate/mirror helper)
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - route AI config reads/writes through prompt-config SSOT helper)
+- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - cover legacy hydration and mirror write-back)
+- module_tree_full.md (MODIFIED - regenerated after CA-11 and debt cleanup slice, total modules 564)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-11 implementation and supporting debt cleanup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_partner_admin_api --keepdb` => green voi tenant usage/billing read paths, service account/PAT flows va free-plan deny path.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` => green voi tenant usage/billing abilities + entitlements tren `/api/auth/me/`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_ai_config_api --keepdb` => green voi legacy prompt-config hydration va mirror write-back coverage.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh voi tenant usage/billing routes, pages, nav va i18n moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (564 modules).
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => refresh dev stack thanh cong; backend healthy, frontend started.
+- PASSED: browser proof tren `/tenant-admin/usage` voi session `testpro` xac nhan tenant lane render live, summary `4` meters, `quota con lai 2.107`, `api_calls_per_day da dung 42`, `ai_regenerate_per_day da dung 3`.
+- PASSED: browser proof tren `/tenant-admin/billing` voi session `testpro` xac nhan subscription `pro` dang hoat dong, ky tiep theo `1 thg 6, 2026`, va invoice `INV-TESTPRO-PROOF-001` tong tien `49,00 US$`.
+
+Residual note:
+- Ownership cua tenant self-service van chua co `CoreTenant` registry canonical; `PartnerTenantContext` moi chi la seam de dung inline `request.user` ownership drift.
+- Dev runtime proof da seed du lieu thuong mai/toan luong toi thieu cho `testpro` (quota counters + 1 invoice mau) de browser audit thay duoc non-empty state; day khong phai schema hay code change.
+- Legacy `UserConfig.ai_prompt_config` van duoc mirror co chu dich trong giai doan chuyen tiep; khi migration/history duoc lam sach hoan toan, co the xoa bridge nay.
+
+# Entry 2026-05-02bf - Complete tenant service accounts and PAT self-service flow
+
+Muc tieu:
+- Hoan tat `CA-10` tenant self-service machine access flow thay vi dung o bootstrap/read-only tenant console.
+- Dung partner control-plane routes va tenant-scoped ownership seam de cho tenant user Pro tu tao service account, issue PAT, rotate va revoke tren UI that.
+- Giu pham vi hep: machine identity primitives, partner APIs, tenant UI routes, focused backend tests, migration drift handling va runtime/browser proof.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/models.py`:
+  - Them `CoreServiceAccount` va `CorePATCredential` voi public ids on dinh, policy/scopes JSON fields, PAT hashing, prefix-only read model va rotate/revoke lifecycle helpers.
+- `backend/portfolio/migrations/0066_userconfig_ai_prompt_config_and_more.py`:
+  - Tao bang/index cho `CoreServiceAccount` va `CorePATCredential`.
+  - Patch buoc add `UserConfig.ai_prompt_config` theo kieu idempotent de khong vo tren live DB da co san column do drift lich su.
+- `backend/portfolio/views_partner_admin.py`:
+  - Them partner control-plane views cho service account list/create va PAT list/issue/rotate/revoke.
+  - Standardize response theo envelope `object/url/data/has_more/next_cursor/prev_cursor`, them `X-Core-Request-Id`, enforce `Idempotency-Key` cho write mutations va chi reveal PAT secret o issue/rotate.
+- `backend/config/urls.py`:
+  - Dang ky routes `/api/core/v1/partner/service-accounts/`, `/api/core/v1/partner/pats/`, `/issue/`, `/<token_id>/rotate/`, `/<token_id>/revoke/`.
+- `backend/portfolio/permissions.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Mo rong abilities/entitlements CA-10 cho session `pro+` de frontend guard tenant machine-access lanes theo auth/me payload.
+- `backend/portfolio/tests/test_partner_admin_api.py`:
+  - Them focused tests cho service account list/create, PAT issue/list/rotate/revoke va free-plan deny path.
+- `frontend/src/api/client.js`:
+  - Them tenant client methods va auto-generate `Idempotency-Key` cho create/issue/rotate/revoke requests.
+- `frontend/src/App.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`:
+  - Them route va nav entries cho `/tenant-admin/service-accounts` va `/tenant-admin/pats`.
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`:
+  - Mo rong tenant home de link sang service accounts va PATs lane khi session co ability phu hop.
+- `frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx`:
+  - Tao page live de list/create service accounts, show metrics, environment va policy bundles.
+- `frontend/src/pages/admin/tenant/TenantPATs.jsx`:
+  - Tao page live de list/issue/rotate/revoke PATs, show one-time secret reveal, status counters va action buttons theo ability.
+- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Them copy cho service account/PAT routes, forms, metrics, states va errors.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu CA-10 da duoc implementation + live proof va note ownership seam hien tai.
+- `module_tree_full.md`:
+  - Da regenerate sau CA-10; tong module hien tai la 560.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bf.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho tenant machine-access slice.
+
+Danh sach tep cap nhat:
+- backend/portfolio/models.py (MODIFIED - add CoreServiceAccount/CorePATCredential primitives, PAT hash/prefix helpers and lifecycle methods)
+- backend/portfolio/migrations/0066_userconfig_ai_prompt_config_and_more.py (MODIFIED - add CA-10 tables/indexes and make ai_prompt_config add-field idempotent on drifted DBs)
+- backend/portfolio/views_partner_admin.py (NEW - partner tenant control-plane APIs for service accounts and PAT lifecycle)
+- backend/portfolio/permissions.py (MODIFIED - add CA-10 tenant machine-access abilities and entitlements for pro+)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/partner/*` routes)
+- backend/portfolio/tests/test_partner_admin_api.py (NEW - cover service account create/list and PAT issue/rotate/revoke flows)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert CA-10 tenant entitlements and abilities in auth/me)
+- frontend/src/api/client.js (MODIFIED - add tenant partner API client methods with Idempotency-Key headers)
+- frontend/src/App.jsx (MODIFIED - add `/tenant-admin/service-accounts` and `/tenant-admin/pats` routes)
+- frontend/src/components/TopNav.jsx (MODIFIED - expose tenant machine-access nav items)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant machine-access quick links)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - add shortcuts to service accounts and PATs lanes)
+- frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx (NEW - tenant service account management page)
+- frontend/src/pages/admin/tenant/TenantPATs.jsx (NEW - tenant PAT lifecycle page)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for CA-10 tenant machine-access UI)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for CA-10 tenant machine-access UI)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-10 implementation and live proof)
+- module_tree_full.md (MODIFIED - regenerated after CA-10 implementation and docs sync, total modules 560)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` => auth/me tenant entitlements and abilities green after stale-user test fix.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_partner_admin_api --keepdb` => service account create/list and PAT issue/rotate/revoke flows green, including free-plan deny path.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh voi tenant machine-access routes/pages/client copy moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.dev.yml up -d --build frontend backend` => refresh dev stack thanh cong; backend healthy, frontend started.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py migrate` => `Applying portfolio.0066_userconfig_ai_prompt_config_and_more... OK` sau khi patch migration cho drift live DB.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (560 modules).
+- PASSED: browser proof tren `http://127.0.0.1/tenant-admin/service-accounts` voi session `testpro` tao thanh cong service account `tenant-pro-browser-prod`, hien `Tenant ID: ten_usr_28`, policies `pol_market_read, pol_ai_invoke`.
+- PASSED: browser proof tren `http://127.0.0.1/tenant-admin/pats` issue thanh cong PAT `browser-prod-token` cho service account vua tao va reveal one-time secret `vni_pat_live_...`.
+- PASSED: browser proof rotate PAT tao token moi, chuyen token cu sang `rotating`, counters thanh `total=2`, `active=1`, `rotating=1`.
+- PASSED: browser proof revoke PAT active moi chuyen token do sang `revoked`, counters thanh `total=2`, `active=0`, `rotating=1`.
+
+Residual note:
+- Ownership cua CA-10 hien van dua tren `request.user` nhu tenant owner surrogate; chua co `CoreTenant` registry canonical. Khi mo `CA-11+`, nen tach ownership resolution sang tenant graph rieng de tranh khoa chat machine access vao user principal.
+
+# Entry 2026-05-02be - Bootstrap tenant admin home and capabilities
+
+Muc tieu:
+- Chuyen sang slice CA-09 gan nhat con mo: tenant admin home + capabilities, dung live frontend auth/me entitlements thay vi them backend contract moi.
+- Giu tenant console self-service va tenant-scoped, chi mo read route va menu nghiem tuc, khong chen write action sang slice nay.
+- Giữ pham vi hep: route, nav, entitlement exposure, hai page tenant, plus sync audit/module tree.
+
+Noi dung cap nhat chinh:
+- `frontend/src/context/PortfolioContext.jsx`:
+  - Expose `userEntitlements` tu `/api/auth/me/` de page tenant doc quota/trial/access flags.
+- `backend/portfolio/permissions.py`:
+  - Them tenant read abilities cho `TenantAdminHome` va `TenantCapabilityView` o plan `pro+`.
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`:
+  - Tenant home card set: identity, plan, quota, access gate va shortcut sang capability board.
+- `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`:
+  - Danh sach ability + quota caps + access summary tu entitlements hien co.
+- `frontend/src/App.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`:
+  - Wire route groups `/tenant-admin/*` vao shell live để tránh trùng Django admin `/admin/*`.
+- `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Bo sung assert cho tenant read flags trong `/api/auth/me/`.
+- `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`, `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`:
+  - Align route examples and namespace notes with the live `/tenant-admin/*` implementation.
+- `module_tree_full.md`:
+  - Regenerate sau slice tenant bootstrap; tong module len 556.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu CA-09 live frontend bootstrap da co mat.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02be.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho tenant admin console slice.
+
+Danh sach tep cap nhat:
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - expose userEntitlements from auth/me for tenant console surfaces)
+- backend/portfolio/permissions.py (MODIFIED - add tenant read abilities for pro+ plans)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (NEW - tenant home summary page)
+- frontend/src/pages/admin/tenant/TenantCapabilities.jsx (NEW - tenant capabilities page)
+- frontend/src/App.jsx (MODIFIED - add tenant admin routes under `/tenant-admin/*`)
+- frontend/src/components/TopNav.jsx (MODIFIED - surface tenant nav group)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant quick links)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - cover tenant entitlements in auth/me)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-09 live tenant bootstrap)
+- module_tree_full.md (MODIFIED - regenerated after tenant bootstrap slice, total modules 556)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: browser proof tren `http://127.0.0.1/tenant-admin/home` va `http://127.0.0.1/tenant-admin/capabilities` voi session `testpro` xac nhan tenant console render live sau rebuild frontend.
+- PASSED: `get_errors` clean tren `backend/portfolio/permissions.py`, `backend/portfolio/tests/test_api_routes_auth_profile.py`, `frontend/src/context/PortfolioContext.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`, `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi them tenant console routes va pages.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend backend` refresh lai dev stack thanh cong voi frontend/backend moi.
+- PASSED: direct Python permission probe `build_abilities('pro')` va `resolve_user_entitlements(user=pro)` tra tenant abilities + tenant flags dung nhu mong doi.
+- PASSED: `module_tree_full.md` regenerated successfully with 556 modules.
+
+Residual note:
+- Backend auth/profile test suite `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` van bi chan boi schema drift san co trong DB dev (`portfolio_userconfig.ai_prompt_config` missing). Slice tenant nay khong sua schema đó.
+
+# Entry 2026-05-02bd - Expose operator AI runtime snapshot route
+
+Muc tieu:
+- Chot backend wrapper/operator route cho `CA-08` sau khi frontend AI Command Center summary da xong.
+- Dung contract `GET /core/v1/operator/ai-runtime` de bao operator runtime posture moi, khong tiep tuc dung user-facing AI config shape lam dau vao chinh.
+- Giu pham vi hep: chi them route read-only + test snapshot + audit/progress sync, chua mo write policies.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_admin_runtime.py`:
+  - Them `operator_ai_runtime_api` (module-level) tra snapshot `operator_ai_runtime_snapshot`.
+  - Snapshot gom `provider_rows`, `effective_policy_bundle`, `rollout_state` va de-duoc read-only cho admin/operator.
+- `backend/portfolio/views.py`:
+  - Export symbol moi qua `portfolio.views` de router chung co the import.
+- `backend/config/urls.py`:
+  - Map `GET /api/core/v1/operator/ai-runtime/` sang `portfolio_views.operator_ai_runtime_api`.
+- `backend/portfolio/tests/test_system_ai_admin_api.py`:
+  - Them test admin snapshot shape va test normal user bi chan 403.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu CA-08 backend wrapper da khop contract.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua backend route; tong module giu 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bd.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho backend operator route slice.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_admin_runtime.py (MODIFIED - expose operator AI runtime snapshot route)
+- backend/portfolio/views.py (MODIFIED - re-export operator AI runtime route symbol)
+- backend/config/urls.py (MODIFIED - add `/api/core/v1/operator/ai-runtime/` route)
+- backend/portfolio/tests/test_system_ai_admin_api.py (MODIFIED - cover operator snapshot shape and admin gate)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-08 backend wrapper completion)
+- module_tree_full.md (MODIFIED - regenerated after the backend route slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_system_ai_admin_api.py`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_system_ai_admin_api --keepdb` => 20/20 tests pass, including operator AI runtime snapshot route.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend` => dev backend runtime duoc refresh lai theo code moi.
+- PASSED: live payload snapshot de `GET /api/core/v1/operator/ai-runtime/` voi admin auth tra `object=operator_ai_runtime_snapshot`, 2 provider rows (`command_center`, `system`), `effective_source=command_center`, `effective_provider=openai`, `effective_model=gpt-4o`, `ready=true`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Nested dead copy cua `operator_ai_runtime_api` con ton tai trong `admin_system_ai_test_connection_api` do patch hoist nhanh, nhung symbol module-level da khop route contract va test/route live deu pass. Se clean no o slice sau neu can.
+
+# Entry 2026-05-02bc - Surface AI runtime readiness grid in AI Command Center
+
+Muc tieu:
+- Rà soát tài liệu đã duyệt và tiếp tục slice open gần code nhất: `CA-08` AI runtime governance read path.
+- Bóc các runtime config primitives đã có sẵn trong backend ra UI operator rõ hơn, thay vì để provider/model/source/ready nằm rải rác trong form và audit log.
+- Giữ phạm vi cực hẹp: chỉ làm UI surfacing trên `AICommandCenter`, không thay đổi save flow hay backend contract.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/AICommandCenter.jsx`:
+  - Thêm derived runtime summary cho `effective_ai_provider`, `effective_ai_model`, `effective_ai_source`, `ai_ready`.
+  - Thêm khung đọc nhanh runtime ở đầu trang với 4 card provider/model/source/readiness.
+  - Thêm policy summary panel hiển thị key state, gate sự kiện, refresh cadence và budget token từ config hiện có.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chú triển khai cho CA-08 để phản ánh slice frontend đã được surfacing vào UI.
+- `module_tree_full.md`:
+  - Regenerate sau khi sửa `AICommandCenter`; tổng module giữ 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bc.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho AI runtime governance slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - surface provider/model/source/readiness grid and policy summary panel for AI runtime governance)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note the CA-08 frontend surfacing step)
+- module_tree_full.md (MODIFIED - regenerated after the AI runtime governance surfacing slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/AICommandCenter.jsx` sau khi them runtime summary/policy panel.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh voi AI Command Center summary mới.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc refresh lai theo bundle moi.
+- PASSED: browser proof tren `http://127.0.0.1/settings/ai` xac nhan khung runtime moi hien `openclaw`, model `Chưa cấu hình`, nguồn hiệu lực, trạng thái runtime, và policy summary cho gate sự kiện / budget / cadence.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Slice CA-08 vẫn còn phần backend wrapper/operator route và tenant/admin follow-ups trong taskboard gốc; frontend surfacing này là bước hẹp, sát code hiện tại nhất và không tạo contract mới.
+
 # Entry 2026-05-02bb - Bridge shell session id to frontend auth identity
 
 Muc tieu:

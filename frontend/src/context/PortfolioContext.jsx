@@ -40,6 +40,7 @@ export function PortfolioProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
   const [userIdentity, setUserIdentity] = useState({ id: null, username: '', email: '', isStaff: false, isSuperuser: false });
+  const [userEntitlements, setUserEntitlements] = useState(null);
   const [ability, setAbility] = useState(() => createAbilityFromRules([]));
 
   const logout = useCallback(() => {
@@ -53,6 +54,7 @@ export function PortfolioProvider({ children }) {
     setUserConfig(null);
     setUserPlan('free');
     setUserIdentity({ id: null, username: '', email: '', isStaff: false, isSuperuser: false });
+    setUserEntitlements(null);
     setAbility(createAbilityFromRules([]));
     setAuthStateReady(true);
   }, []);
@@ -79,6 +81,7 @@ export function PortfolioProvider({ children }) {
 
     if (meResult.status === 'fulfilled') {
       setUserPlan(meResult.value.data.plan || 'free');
+      setUserEntitlements(meResult.value.data.entitlements || null);
       setAbility(createAbilityFromRules(meResult.value.data.abilities || []));
       setUserIdentity({
         id: meResult.value.data.id || null,
@@ -268,6 +271,7 @@ export function PortfolioProvider({ children }) {
     fetchPortfolios,
     userPlan,
     userIdentity,
+    userEntitlements,
     ability,
     createPortfolio,
     updatePortfolio,
@@ -279,6 +283,7 @@ export function PortfolioProvider({ children }) {
     portfolios, activePortfolioId, isAuthenticated, authStateReady, login, register,
     resendVerification, logout, refreshAccessToken, userConfig,
     updateUserConfig, loading, fetchPortfolios, userPlan, userIdentity,
+    userEntitlements,
     ability, createPortfolio, updatePortfolio, deletePortfolio,
     createSubAccount, updateSubAccount, deleteSubAccount,
   ]);

@@ -175,12 +175,12 @@ Dùng cho `vip-app` local backend hoặc automation services. Lớp này **khôn
 | `/admin/core/runtime/jobs` | `read CoreJobOps` | `run CoreJobOps` cho manual actions |
 | `/admin/core/audit/requests` | `read CoreAuditTrace` | export gated separately |
 | `/admin/core/ai-runtime` | `read CoreAIRuntimeAdmin` | update policy needs `update CoreAIRuntimeAdmin` |
-| `/admin/tenant/home` | `read TenantAdminHome` | self tenant only |
-| `/admin/tenant/service-accounts` | `read TenantServiceAccountAdmin` | create/update gated separately |
-| `/admin/tenant/pats` | `read TenantPATAdmin` | issue/rotate/revoke gated separately |
-| `/admin/tenant/usage` | `read TenantUsageView` | self tenant only |
-| `/admin/tenant/billing` | `read TenantBillingView` | self tenant only |
-| `/admin/tenant/capabilities` | `read TenantCapabilityView` | self tenant only |
+| `/tenant-admin/home` | `read TenantAdminHome` | self tenant only |
+| `/tenant-admin/service-accounts` | `read TenantServiceAccountAdmin` | create/update gated separately |
+| `/tenant-admin/pats` | `read TenantPATAdmin` | issue/rotate/revoke gated separately |
+| `/tenant-admin/usage` | `read TenantUsageView` | self tenant only |
+| `/tenant-admin/billing` | `read TenantBillingView` | self tenant only |
+| `/tenant-admin/capabilities` | `read TenantCapabilityView` | self tenant only |
 
 ---
 

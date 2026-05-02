@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 17:18:01`
+Generated at: `2026-05-02 21:32:59`
 
 ## Summary
 
-- Total modules: 554
-- Python modules: 341
-- JS/TS modules: 213
-- Total classes: 564
-- Total functions: 2188
-- Total top-level variables: 3721
+- Total modules: 564
+- Python modules: 345
+- JS/TS modules: 219
+- Total classes: 573
+- Total functions: 2278
+- Total top-level variables: 3796
 
 ## Python Modules
 
@@ -178,6 +178,11 @@ Generated at: `2026-05-02 17:18:01`
   - `_entry_supports`, `build_provider_model_map`, `get_advisory_provider_failover_chain`, `get_default_model`, `get_model_entries`, `get_model_entry`, `get_models_for_capability`, `is_model_allowed_for_capability`, `is_valid_model`, `is_valid_provider`
 - Top-level variables:
   - `ADVISORY_CAPABILITY`, `ADVISORY_PROVIDER_FAILOVER_CHAIN_DEFAULTS`, `AVAILABLE_MODELS`, `DEFAULT_MODELS`, `MODEL_CATALOG`, `PROVIDER_CHOICES`
+
+### `backend/portfolio/ai_prompt_config_ssot.py`
+
+- Functions:
+  - `_is_initialized_prompt_config`, `ensure_ai_prompt_config_ssot`, `mirror_ai_prompt_config_to_legacy`
 
 ### `backend/portfolio/ai_runtime_config.py`
 
@@ -511,6 +516,9 @@ Generated at: `2026-05-02 17:18:01`
   - `AIAdvisoryExecutiveSummary` -> methods: `__str__`
   - `AICommandCenterAuditLog` -> methods: `__str__`
   - `AICommandCenterConfig` -> methods: `__str__`, `ai_api_key_configured`, `clean`, `get_ai_api_key`, `get_effective_ai_model`, `set_ai_api_key`
+  - `CorePATCredential` -> methods: `__str__`, `clean`, `effective_status`, `issue_for_service_account`, `revoke`, `rotate`, `save`, `tenant_id`
+  - `CoreServiceAccount` -> methods: `__str__`, `clean`, `save`, `tenant_id`
+  - `CoreTenant` -> methods: `__str__`, `_normalize_tenant_code`, `ensure_for_user`, `tenant_id`
   - `CrawlAuditLog` -> methods: `__str__`
   - `CrawlJob` -> methods: `__str__`
   - `CrawlRun` -> methods: `__str__`
@@ -558,6 +566,8 @@ Generated at: `2026-05-02 17:18:01`
   - `WhaleConfigRollout` -> methods: `__str__`
   - `WhaleConfigVersion` -> methods: `__str__`
   - `WhaleConfigWorkerAck` -> methods: `__str__`
+- Functions:
+  - `_build_pat_secret`, `_extract_pat_prefix`, `_generate_public_id`, `_hash_pat_secret`
 - Top-level variables:
   - `SecuritiesGroupAlias`, `SecuritiesItemAlias`
 
@@ -705,6 +715,13 @@ Generated at: `2026-05-02 17:18:01`
 - Top-level variables:
   - `logger`
 
+### `backend/portfolio/partner_tenant_context.py`
+
+- Classes:
+  - `PartnerTenantContext`
+- Functions:
+  - `resolve_partner_tenant_context`
+
 ### `backend/portfolio/password_reset.py`
 
 - Functions:
@@ -720,9 +737,9 @@ Generated at: `2026-05-02 17:18:01`
   - `IsPremiumPlan` -> methods: `has_permission`
   - `IsProPlan` -> methods: `has_permission`
 - Functions:
-  - `_get_plan`, `_resolve_quota_caps`, `_resolve_tier`, `_resolve_trial_state`, `build_abilities`, `has_plan`, `resolve_user_entitlements`
+  - `_get_plan`, `_is_operator_user`, `_resolve_quota_caps`, `_resolve_tier`, `_resolve_trial_state`, `build_abilities`, `has_plan`, `resolve_user_entitlements`
 - Top-level variables:
-  - `DEFAULT_QUOTA_CAPS_BY_TIER`, `PLAN_ORDER`, `PLAN_TIER_MAP`
+  - `ADMIN_CONSOLE_ABILITIES`, `DEFAULT_QUOTA_CAPS_BY_TIER`, `PLAN_ORDER`, `PLAN_TIER_MAP`
 
 ### `backend/portfolio/price_units.py`
 
@@ -1342,7 +1359,7 @@ Generated at: `2026-05-02 17:18:01`
 ### `backend/portfolio/tests/test_ai_config_api.py`
 
 - Classes:
-  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_command_center_audit_logs_support_filters_and_diff_summary`, `test_ai_config_get_and_put`, `test_ai_config_get_reports_not_ready_when_command_center_incomplete`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_prompt_config_accepts_canonical_and_legacy_layouts`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_ignores_ai_fields`
+  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_command_center_audit_logs_support_filters_and_diff_summary`, `test_ai_command_center_get_hydrates_prompt_config_from_legacy_userconfig`, `test_ai_command_center_put_mirrors_prompt_config_into_legacy_userconfig`, `test_ai_config_get_and_put`, `test_ai_config_get_reports_not_ready_when_command_center_incomplete`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_prompt_config_accepts_canonical_and_legacy_layouts`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_ignores_ai_fields`
 
 ### `backend/portfolio/tests/test_ai_context.py`
 
@@ -1406,7 +1423,7 @@ Generated at: `2026-05-02 17:18:01`
 ### `backend/portfolio/tests/test_api_routes_auth_profile.py`
 
 - Classes:
-  - `ApiRouteAuthProfileTests` -> methods: `authenticate`, `setUp`, `test_auth_me_endpoint_returns_community_tier_for_free_plan`, `test_auth_me_endpoint_returns_plan_and_abilities`, `test_auth_me_endpoint_returns_staff_flags_for_superuser`, `test_login_allows_unverified_superuser`, `test_login_is_blocked_for_unverified_user`, `test_portfolio_userconfig_endpoint`, `test_register_endpoint_rejects_password_mismatch`
+  - `ApiRouteAuthProfileTests` -> methods: `authenticate`, `setUp`, `test_auth_me_endpoint_returns_community_tier_for_free_plan`, `test_auth_me_endpoint_returns_plan_and_abilities`, `test_auth_me_endpoint_returns_staff_flags_for_superuser`, `test_auth_me_endpoint_treats_staff_user_as_admin_capability_session`, `test_login_allows_unverified_superuser`, `test_login_is_blocked_for_unverified_user`, `test_portfolio_userconfig_endpoint`, `test_register_endpoint_rejects_password_mismatch`
 
 ### `backend/portfolio/tests/test_api_routes_auth_register.py`
 
@@ -1616,6 +1633,11 @@ Generated at: `2026-05-02 17:18:01`
 - Top-level variables:
   - `User`
 
+### `backend/portfolio/tests/test_partner_admin_api.py`
+
+- Classes:
+  - `PartnerAdminApiTests` -> methods: `setUp`, `test_free_plan_cannot_access_partner_machine_access`, `test_partner_usage_and_billing_read_paths`, `test_pat_issue_list_rotate_and_revoke`, `test_service_account_list_and_create`
+
 ### `backend/portfolio/tests/test_password_reset_templates.py`
 
 - Classes:
@@ -1753,7 +1775,7 @@ Generated at: `2026-05-02 17:18:01`
 ### `backend/portfolio/tests/test_system_ai_admin_api.py`
 
 - Classes:
-  - `SystemAIAdminApiTests` -> methods: `setUp`, `test_admin_audit_logs_reject_invalid_datetime_filter`, `test_admin_audit_logs_reject_invalid_order`, `test_admin_can_filter_audit_logs_by_action`, `test_admin_can_filter_audit_logs_by_date_window`, `test_admin_can_get_system_ai_audit_logs`, `test_admin_can_order_audit_logs_ascending`, `test_admin_can_paginate_audit_logs`, `test_admin_can_test_system_ai_connection`, `test_admin_test_connection_returns_400_when_runtime_not_ready`, `test_get_returns_default_settings_for_admin`, `test_put_rejects_invalid_governance_delta_thresholds`, `test_put_rejects_invalid_prefetch_runtime_settings`, `test_put_rejects_invalid_prefetch_time_policy`, `test_put_updates_governance_delta_thresholds`, `test_put_updates_prefetch_runtime_settings`, `test_put_updates_prefetch_time_policy`, `test_put_updates_system_ai_settings`, `test_requires_admin_permission`
+  - `SystemAIAdminApiTests` -> methods: `setUp`, `test_admin_audit_logs_reject_invalid_datetime_filter`, `test_admin_audit_logs_reject_invalid_order`, `test_admin_can_filter_audit_logs_by_action`, `test_admin_can_filter_audit_logs_by_date_window`, `test_admin_can_get_operator_ai_runtime_snapshot`, `test_admin_can_get_system_ai_audit_logs`, `test_admin_can_order_audit_logs_ascending`, `test_admin_can_paginate_audit_logs`, `test_admin_can_test_system_ai_connection`, `test_admin_test_connection_returns_400_when_runtime_not_ready`, `test_get_returns_default_settings_for_admin`, `test_operator_ai_runtime_requires_admin_permission`, `test_put_rejects_invalid_governance_delta_thresholds`, `test_put_rejects_invalid_prefetch_runtime_settings`, `test_put_rejects_invalid_prefetch_time_policy`, `test_put_updates_governance_delta_thresholds`, `test_put_updates_prefetch_runtime_settings`, `test_put_updates_prefetch_time_policy`, `test_put_updates_system_ai_settings`, `test_requires_admin_permission`
 
 ### `backend/portfolio/tests/test_tasks_realtime.py`
 
@@ -1896,7 +1918,7 @@ Generated at: `2026-05-02 17:18:01`
 ### `backend/portfolio/views_admin_runtime.py`
 
 - Functions:
-  - `_forbidden_surface_response`, `_has_surface_write_permission`, `_is_celery_worker_available`, `_parse_bool_query_param`, `_parse_optional_positive_int`, `admin_intraday_side_backfill_apply_api`, `admin_intraday_side_backfill_preview_api`, `admin_intraday_side_backfill_status_api`, `admin_intraday_universe_warm_now_api`, `admin_runtime_kpi_advisory_merge_api`, `admin_runtime_kpi_advisory_metrics_api`, `admin_runtime_kpi_api`, `admin_runtime_kpi_whale_pipeline_api`, `admin_runtime_kpi_whale_preflight_metrics_api`, `admin_system_ai_audit_logs_api`, `admin_system_ai_settings_api`, `admin_system_ai_test_connection_api`, `admin_vnstock_runtime_config_changelog_api`, `admin_vnstock_runtime_config_current_api`, `admin_vnstock_runtime_config_reset_api`, `admin_vnstock_runtime_config_update_api`, `offpeak_vnstock_ingest_api`, `offpeak_vnstock_ingest_history_api`, `warm_ticker_prefetch_api`
+  - `_forbidden_surface_response`, `_has_surface_write_permission`, `_is_celery_worker_available`, `_parse_bool_query_param`, `_parse_optional_positive_int`, `admin_intraday_side_backfill_apply_api`, `admin_intraday_side_backfill_preview_api`, `admin_intraday_side_backfill_status_api`, `admin_intraday_universe_warm_now_api`, `admin_runtime_kpi_advisory_merge_api`, `admin_runtime_kpi_advisory_metrics_api`, `admin_runtime_kpi_api`, `admin_runtime_kpi_whale_pipeline_api`, `admin_runtime_kpi_whale_preflight_metrics_api`, `admin_system_ai_audit_logs_api`, `admin_system_ai_settings_api`, `admin_system_ai_test_connection_api`, `admin_vnstock_runtime_config_changelog_api`, `admin_vnstock_runtime_config_current_api`, `admin_vnstock_runtime_config_reset_api`, `admin_vnstock_runtime_config_update_api`, `offpeak_vnstock_ingest_api`, `offpeak_vnstock_ingest_history_api`, `operator_ai_runtime_api`, `warm_ticker_prefetch_api`
 
 ### `backend/portfolio/views_admin_sync.py`
 
@@ -1973,6 +1995,18 @@ Generated at: `2026-05-02 17:18:01`
   - `_verify_telegram_signature`, `preferred_symbols_delete`, `preferred_symbols_list`, `telegram_generate_link`, `telegram_settings_update`, `telegram_status`, `telegram_unlink`, `telegram_webhook`
 - Top-level variables:
   - `_MAX_PREFERRED_SYMBOLS`, `logger`
+
+### `backend/portfolio/views_partner_admin.py`
+
+- Classes:
+  - `PartnerPATIssueSerializer`
+  - `PartnerPATRevokeSerializer`
+  - `PartnerPATRotateSerializer`
+  - `PartnerServiceAccountCreateSerializer`
+- Functions:
+  - `_apply_cursor`, `_build_list_payload`, `_build_quota_snapshot_row`, `_build_subscription_summary`, `_build_usage_meter_row`, `_error`, `_paginate_list`, `_request_id`, `_request_ip`, `_require_idempotency_key`, `_resolve_owned_pat`, `_resolve_owned_service_account`, `_resolve_period_bounds`, `_resolve_risk_state`, `_resolve_subscription_status`, `_response`, `_serialize_invoice_summary`, `_serialize_pat_credential`, `_serialize_service_account`, `partner_billing_invoices_api`, `partner_billing_subscription_api`, `partner_pat_issue_api`, `partner_pat_list_api`, `partner_pat_revoke_api`, `partner_pat_rotate_api`, `partner_service_accounts_api`, `partner_usage_meters_api`, `partner_usage_quotas_api`
+- Top-level variables:
+  - `PARTNER_USAGE_METERS`
 
 ### `backend/portfolio/views_portfolio_watchlist.py`
 
@@ -2473,7 +2507,7 @@ Generated at: `2026-05-02 17:18:01`
 ### `frontend/src/api/client.js`
 
 - Functions:
-  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`
+  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`
 - Top-level variables:
   - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `protocol`, `publicApiClient`, `query`, `queryString`, `refresh`, `refreshRequestPromise`, `refreshToken`, `response`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
@@ -2852,7 +2886,7 @@ Generated at: `2026-05-02 17:18:01`
 ### `frontend/src/components/Sidebar.jsx`
 
 - Top-level variables:
-  - `cancelled`
+  - `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `cancelled`
 
 ### `frontend/src/components/SidebarWatchlist.jsx`
 
@@ -2924,7 +2958,7 @@ Generated at: `2026-05-02 17:18:01`
 - Functions:
   - `NavGroup`, `groupLinkClass`
 - Top-level variables:
-  - `portfolioItems`, `signalItems`, `systemItems`
+  - `canReadAdminOps`, `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `portfolioItems`, `signalItems`, `systemItems`, `tenantItems`
 
 ### `frontend/src/components/UnifiedAlertBar.jsx`
 
@@ -3141,6 +3175,48 @@ Generated at: `2026-05-02 17:18:01`
 - Top-level variables:
   - `root`
 
+### `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`
+
+- Functions:
+  - `InfoRow`, `MetricCard`, `formatQuotaValue`
+- Top-level variables:
+  - `abilityCount`, `entitlements`, `planLabel`, `quotaCaps`, `quotaCount`, `tenantCanInspect`, `tenantCanManagePATs`, `tenantCanManageServiceAccounts`, `tenantCanOpen`, `tenantCanReadBilling`, `tenantCanReadUsage`
+
+### `frontend/src/pages/admin/tenant/TenantBilling.jsx`
+
+- Functions:
+  - `FieldCard`, `SummaryCard`, `bootstrap`, `formatCurrency`, `formatDate`, `loadData`, `resolveBillingCycleLabel`, `resolveErrorMessage`, `resolveInvoiceStateLabel`, `resolveSubscriptionStatusLabel`
+- Top-level variables:
+  - `canReadUsage`, `cancelled`, `invoiceStateLabel`, `pastDueCount`, `renewalLabel`, `statusLabel`
+
+### `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`
+
+- Functions:
+  - `ListPanel`, `SummaryTile`, `formatQuotaValue`
+- Top-level variables:
+  - `abilities`, `abilityCount`, `abilityItems`, `accessFlag`, `entitlements`, `quotaCaps`, `quotaCount`, `quotaItems`
+
+### `frontend/src/pages/admin/tenant/TenantPATs.jsx`
+
+- Functions:
+  - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleIssue`, `handleRevoke`, `handleRotate`, `loadData`, `normalizeCommaList`, `resolveErrorMessage`
+- Top-level variables:
+  - `activeCount`, `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `nextServiceAccounts`, `nextTokens`, `response`, `rotating`, `rotatingCount`, `serviceAccount`, `serviceAccountMap`
+
+### `frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx`
+
+- Functions:
+  - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleSubmit`, `loadServiceAccounts`, `normalizeCommaList`, `resolveErrorMessage`
+- Top-level variables:
+  - `activeCount`, `canCreate`, `cancelled`, `environmentCount`, `response`
+
+### `frontend/src/pages/admin/tenant/TenantUsage.jsx`
+
+- Functions:
+  - `SummaryCard`, `UsageBar`, `bootstrap`, `formatDateTime`, `formatNumber`, `loadData`, `resolveErrorMessage`, `resolveRiskLabel`, `resolveToneClass`
+- Top-level variables:
+  - `canReadBilling`, `cancelled`, `criticalCount`, `entitledAmount`, `quotaByMeterCode`, `quotaSnapshot`, `ratio`, `totalRemaining`, `warningCount`
+
 ### `frontend/src/pages/AdminCrawlControl.jsx`
 
 - Functions:
@@ -3170,7 +3246,7 @@ Generated at: `2026-05-02 17:18:01`
 - Functions:
   - `AICommandCenter`, `PromptSourceTabs`, `applyAuditFilters`, `applyPromptPreset`, `applyTechnicalPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `fetchUserRuntimeConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `resetAuditFilters`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
 - Top-level variables:
-  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `enabled`, `eventBasedAdvisoryDisabled`, `indicatorCount`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
+  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `effectiveRuntimeMessage`, `effectiveRuntimeModel`, `effectiveRuntimeProvider`, `effectiveRuntimeSource`, `enabled`, `eventBasedAdvisoryDisabled`, `eventBasedAdvisoryEnabled`, `eventBasedAdvisoryLabel`, `indicatorCount`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `runtimePolicySummary`, `runtimeSummaryCards`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
 
 ### `frontend/src/pages/Dashboard.jsx`
 

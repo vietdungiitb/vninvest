@@ -242,13 +242,13 @@ Các surface đó là của `VIP Internal Admin`, không phải của `core` ope
 ## 7.2 Tenant Admin routes
 
 ```text
-/admin/tenant
-/admin/tenant/home
-/admin/tenant/service-accounts
-/admin/tenant/pats
-/admin/tenant/usage
-/admin/tenant/billing
-/admin/tenant/capabilities
+/tenant-admin
+/tenant-admin/home
+/tenant-admin/service-accounts
+/tenant-admin/pats
+/tenant-admin/usage
+/tenant-admin/billing
+/tenant-admin/capabilities
 ```
 
 ## 7.3 VIP Internal Admin routes

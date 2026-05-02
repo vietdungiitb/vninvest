@@ -644,7 +644,6 @@ def admin_system_ai_test_connection_api(request):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
-
     runtime_cfg = resolve_ai_runtime_config(user=None, system_settings=settings_obj)
     if not runtime_cfg.get('ready'):
         SystemAISettingsAuditLog.objects.create(
@@ -691,6 +690,118 @@ def admin_system_ai_test_connection_api(request):
     )
     status_code = status.HTTP_200_OK if payload.get('ok') else status.HTTP_400_BAD_REQUEST
     return Response(payload, status=status_code)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_ai_runtime_api(request):
+    """
+    GET /api/core/v1/operator/ai-runtime/
+    Admin-only operator projection for AI runtime governance.
+    """
+    from django.utils import timezone
+
+    from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_provider
+    from .ai_runtime_config import resolve_ai_runtime_config
+    from .ai_service import _resolve_provider_api_key
+    from .models import AICommandCenterConfig, SystemAISettings
+
+    settings_obj = SystemAISettings.get_active()
+    if settings_obj is None:
+        settings_obj = SystemAISettings.objects.create(name='default', is_active=True)
+
+    command_center_cfg = None
+    if getattr(request.user, 'is_authenticated', False):
+        command_center_cfg = AICommandCenterConfig.objects.filter(user=request.user).first()
+
+    def _resolve_row(*, source: str, cfg_provider: str, cfg_model: str, raw_key: str, allow_env_fallback: bool, config_present: bool, missing_config_code: str):
+        provider = str(cfg_provider or '').strip().lower()
+        model = str(cfg_model or '').strip()
+        if provider and not model:
+            model = str(get_default_model(provider) or '').strip()
+        resolved_key = str(raw_key or '').strip()
+        if provider and not resolved_key and allow_env_fallback:
+            resolved_key = _resolve_provider_api_key(provider, '')
+
+        if not config_present:
+            warning_code = missing_config_code
+        elif not is_valid_provider(provider):
+            warning_code = f'invalid_{source}_provider'
+        elif not model:
+            warning_code = f'missing_{source}_model'
+        elif not is_model_allowed_for_capability(provider, model, ADVISORY_CAPABILITY):
+            warning_code = f'invalid_{source}_model'
+        elif not resolved_key:
+            warning_code = f'missing_{source}_ai_api_key'
+        else:
+            warning_code = None
+
+        return {
+            'provider': provider,
+            'model': model,
+            'ready': warning_code is None,
+            'source': source,
+            'warning_code': warning_code,
+        }
+
+    command_center_row = _resolve_row(
+        source='command_center',
+        cfg_provider=getattr(command_center_cfg, 'ai_provider', '') if command_center_cfg else '',
+        cfg_model=command_center_cfg.get_effective_ai_model() if command_center_cfg else '',
+        raw_key=command_center_cfg.get_ai_api_key() if command_center_cfg else '',
+        allow_env_fallback=True,
+        config_present=command_center_cfg is not None,
+        missing_config_code='missing_command_center_ai_config',
+    )
+
+    system_row = _resolve_row(
+        source='system',
+        cfg_provider=getattr(settings_obj, 'ai_provider', ''),
+        cfg_model=settings_obj.get_effective_ai_model(),
+        raw_key=settings_obj.get_ai_api_key(),
+        allow_env_fallback=bool(settings_obj.allow_env_fallback),
+        config_present=settings_obj is not None,
+        missing_config_code='missing_system_ai_settings',
+    )
+
+    effective_runtime = resolve_ai_runtime_config(user=getattr(request, 'user', None), system_settings=settings_obj)
+    governance_thresholds = _get_runtime_governance_delta_thresholds()
+    prefetch_runtime_settings = _get_runtime_prefetch_settings()
+    prefetch_time_policy = _get_runtime_prefetch_time_policy()
+
+    rollout_warnings = [row['warning_code'] for row in (command_center_row, system_row) if row.get('warning_code')]
+
+    return Response(
+        {
+            'object': 'operator_ai_runtime_snapshot',
+            'generated_at': timezone.now().isoformat(),
+            'provider_rows': [command_center_row, system_row],
+            'effective_policy_bundle': {
+                'advisory_capability': ADVISORY_CAPABILITY,
+                'governance_delta_thresholds': governance_thresholds,
+                'prefetch_runtime_settings': prefetch_runtime_settings,
+                'prefetch_time_policy': prefetch_time_policy,
+                'runtime_source_priority': ['command_center', 'system'],
+                'effective_ready': bool(effective_runtime.get('ready')),
+                'effective_provider': effective_runtime.get('provider'),
+                'effective_model': effective_runtime.get('model'),
+                'effective_source': effective_runtime.get('source'),
+                'effective_message': effective_runtime.get('message'),
+            },
+            'rollout_state': {
+                'ready': bool(effective_runtime.get('ready')),
+                'source': effective_runtime.get('source'),
+                'provider': effective_runtime.get('provider'),
+                'model': effective_runtime.get('model'),
+                'reason': effective_runtime.get('reason'),
+                'message': effective_runtime.get('message'),
+                'command_center_configured': command_center_cfg is not None,
+                'system_configured': settings_obj is not None,
+                'warnings': rollout_warnings,
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(['GET'])

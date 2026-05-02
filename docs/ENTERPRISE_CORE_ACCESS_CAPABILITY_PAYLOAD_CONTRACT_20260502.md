@@ -133,7 +133,7 @@ Payload capability bootstrap phải chốt được 6 việc:
 | `central_operator.enabled` | boolean | No | route group visibility |
 | `central_operator.default_route` | string | Yes | e.g. `/admin/core/overview` |
 | `tenant_admin.enabled` | boolean | No | tenant console visibility |
-| `tenant_admin.default_route` | string | Yes | e.g. `/admin/tenant/home` |
+| `tenant_admin.default_route` | string | Yes | e.g. `/tenant-admin/home` |
 | `tenant_admin.tenant_id` | string | Yes | current tenant context |
 | `vip_internal_admin.enabled` | boolean | No | shared shell build variant support |
 | `vip_internal_admin.default_route` | string | Yes | local admin landing route |
@@ -270,7 +270,7 @@ Payload capability bootstrap phải chốt được 6 việc:
     "central_operator": { "enabled": false, "default_route": null },
     "tenant_admin": {
       "enabled": true,
-      "default_route": "/admin/tenant/home",
+      "default_route": "/tenant-admin/home",
       "tenant_id": "ten_01jv7x..."
     },
     "vip_internal_admin": { "enabled": false, "default_route": null }
@@ -289,10 +289,10 @@ Payload capability bootstrap phải chốt được 6 việc:
     { "action": "read", "subject": "TenantBillingView", "source_scope": "billing:read" }
   ],
   "navigation": {
-    "default_route": "/admin/tenant/home",
+    "default_route": "/tenant-admin/home",
     "menus": [
-      { "key": "tenant_home", "label": "Tenant Home", "route": "/admin/tenant/home", "enabled": true },
-      { "key": "tenant_pats", "label": "PAT Credentials", "route": "/admin/tenant/pats", "enabled": true }
+      { "key": "tenant_home", "label": "Tenant Home", "route": "/tenant-admin/home", "enabled": true },
+      { "key": "tenant_pats", "label": "PAT Credentials", "route": "/tenant-admin/pats", "enabled": true }
     ],
     "hidden_routes": ["/admin/core/*"]
   },

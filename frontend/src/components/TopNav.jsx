@@ -35,6 +35,13 @@ export default function TopNav() {
   const { t, locale, setLanguage } = useI18n();
   const { ability, userIdentity } = usePortfolio();
   const { uiMode, toggleUiMode, modernLeftSidebarOpen, toggleModernLeftSidebar } = useInterface();
+  const canReadAdminOps = ability.can('read', 'AdminOps');
+  const canReadTenantHome = ability.can('read', 'TenantAdminHome');
+  const canReadTenantCapabilities = ability.can('read', 'TenantCapabilityView');
+  const canReadTenantUsage = ability.can('read', 'TenantUsageView');
+  const canReadTenantBilling = ability.can('read', 'TenantBillingView');
+  const canReadTenantServiceAccounts = ability.can('read', 'TenantServiceAccountAdmin');
+  const canReadTenantPATs = ability.can('read', 'TenantPATAdmin');
 
   const signalItems = [
     { to: '/ai-advisory', label: t('layout.nav.aiAdvisory') },
@@ -54,7 +61,16 @@ export default function TopNav() {
     { to: '/settings', label: t('layout.nav.settings') },
     { to: '/settings/ai', label: t('layout.nav.aiCommandCenter') },
     { to: '/admin-ops', label: t('layout.nav.adminOps') },
-  ].filter((item) => item.to !== '/admin-ops' || ability.can('manage', 'all'));
+  ].filter((item) => item.to !== '/admin-ops' || canReadAdminOps);
+
+  const tenantItems = [
+    { to: '/tenant-admin/home', label: t('layout.nav.tenantHome'), visible: canReadTenantHome },
+    { to: '/tenant-admin/capabilities', label: t('layout.nav.tenantCapabilities'), visible: canReadTenantCapabilities },
+    { to: '/tenant-admin/usage', label: t('layout.nav.tenantUsage'), visible: canReadTenantUsage },
+    { to: '/tenant-admin/billing', label: t('layout.nav.tenantBilling'), visible: canReadTenantBilling },
+    { to: '/tenant-admin/service-accounts', label: t('layout.nav.tenantServiceAccounts'), visible: canReadTenantServiceAccounts },
+    { to: '/tenant-admin/pats', label: t('layout.nav.tenantPats'), visible: canReadTenantPATs },
+  ].filter((item) => item.visible);
 
   return (
     <header className="relative z-[70] h-[62px] shrink-0 overflow-visible border-b border-slate-700/80 bg-gradient-to-r from-slate-950/98 via-slate-900/96 to-slate-950/98 px-4 backdrop-blur-md">
@@ -76,6 +92,7 @@ export default function TopNav() {
           </NavLink>
           <NavGroup icon="◈" label={t('layout.nav.group.signals')} items={signalItems} />
           <NavGroup icon="▦" label={t('layout.nav.group.portfolio')} items={portfolioItems} />
+          {tenantItems.length > 0 ? <NavGroup icon="◫" label={t('layout.nav.group.tenant')} items={tenantItems} /> : null}
           <NavGroup icon="◌" label={t('layout.nav.group.system')} items={systemItems} />
         </div>
 

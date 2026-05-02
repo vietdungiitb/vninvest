@@ -182,6 +182,70 @@ class AIConfigApiTests(APITestCase):
         self.assertTrue(legacy_resp.data['ai_prompt_config']['fundamental']['enabled'])
         self.assertEqual(legacy_resp.data['ai_prompt_config']['fundamental']['lookback'], 2)
 
+    def test_ai_command_center_get_hydrates_prompt_config_from_legacy_userconfig(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={
+                'email_verified': True,
+                'ai_prompt_config': {
+                    'tasks': {
+                        'stock_advisory': {
+                            'sources': {
+                                'whale': {'enabled': False, 'lookback': 90, 'lookback_unit': 'day'},
+                                'technical': ['vols', 'prices', 'rsi'],
+                            },
+                        },
+                    },
+                },
+            },
+        )
+        AICommandCenterConfig.objects.update_or_create(
+            user=self.user,
+            defaults={
+                'ai_provider': 'openai',
+                'ai_model': 'gpt-4o',
+                'ai_prompt_config': {},
+            },
+        )
+
+        response = self.client.get('/api/portfolio/ai-command-center/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['ai_prompt_config']['whale']['enabled'])
+        self.assertEqual(response.data['ai_prompt_config']['whale']['lookback'], 90)
+        self.assertEqual(response.data['ai_prompt_config']['technical']['indicators'], ['vols', 'prices', 'rsi'])
+
+        command_center_cfg = AICommandCenterConfig.objects.get(user=self.user)
+        self.assertIn('whale', command_center_cfg.ai_prompt_config)
+        self.assertEqual(command_center_cfg.ai_prompt_config['whale']['lookback'], 90)
+
+    def test_ai_command_center_put_mirrors_prompt_config_into_legacy_userconfig(self):
+        response = self.client.put(
+            '/api/portfolio/ai-command-center/',
+            {
+                'ai_provider': 'openai',
+                'ai_model': 'gpt-4o',
+                'ai_api_key': 'test-openai-key',
+                'ai_prompt_config': {
+                    'whale': {'enabled': True, 'lookback': 150, 'lookback_unit': 'day'},
+                    'technical': {
+                        'enabled': True,
+                        'lookback': 30,
+                        'lookback_unit': 'session',
+                        'indicators': ['rsi', 'snapshot'],
+                    },
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        legacy_cfg = UserConfig.objects.get(user=self.user)
+        self.assertIn('whale', legacy_cfg.ai_prompt_config)
+        self.assertEqual(legacy_cfg.ai_prompt_config['whale']['lookback'], 150)
+        self.assertEqual(legacy_cfg.ai_prompt_config['technical']['indicators'], ['rsi', 'snapshot'])
+
     @patch.dict('os.environ', {'COPILOT_API_KEY': 'ghp_env_test_token'}, clear=False)
     def test_ai_config_get_uses_env_key_for_configured_flag(self):
         cfg, _ = AICommandCenterConfig.objects.get_or_create(user=self.user)

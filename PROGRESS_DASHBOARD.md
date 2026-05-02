@@ -1,3 +1,126 @@
+# ✅ AUDIT FILE LIST (2026-05-02bh)
+- backend/portfolio/models.py (MODIFIED - add CoreTenant canonical registry and align tenant-scoped primitives)
+- backend/portfolio/partner_tenant_context.py (MODIFIED - resolve tenant context through CoreTenant)
+- backend/portfolio/migrations/0067_coretenant.py (NEW - create canonical tenant registry)
+- backend/portfolio/migrations/0068_rename_portfolio_c_status_4cc731_idx_portfolio_c_status_3f2e9e_idx.py (NEW - clean CoreTenant index-name drift)
+- backend/portfolio/permissions.py (MODIFIED - replace manage all bridge with explicit admin abilities)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert explicit admin abilities and no manage all)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - keep tenant contract stable under canonical registry)
+- frontend/src/App.jsx (MODIFIED - explicit protected routes for admin surfaces)
+- frontend/src/components/TopNav.jsx (MODIFIED - explicit admin/tenant nav gating)
+- frontend/src/components/Sidebar.jsx (MODIFIED - explicit tenant nav gating)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - advanced tab gate uses explicit ability)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - tenant home shortcuts use explicit abilities)
+- frontend/src/pages/admin/tenant/TenantCapabilities.jsx (MODIFIED - tenant capability summary)
+- frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx (MODIFIED - tenant service account management)
+- frontend/src/pages/admin/tenant/TenantPATs.jsx (MODIFIED - tenant PAT lifecycle)
+- frontend/src/pages/admin/tenant/TenantUsage.jsx (MODIFIED - tenant usage/quota surface)
+- frontend/src/pages/admin/tenant/TenantBilling.jsx (MODIFIED - tenant billing/invoice surface)
+- frontend/src/api/client.js (MODIFIED - tenant partner API client methods and idempotency keys)
+- frontend/src/i18n/vi.js (MODIFIED - Vietnamese copy for tenant surfaces)
+- frontend/src/i18n/en.js (MODIFIED - English copy for tenant surfaces)
+- module_tree_full.md (MODIFIED - regenerated after slice, total modules 564)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-12 completion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` green, explicit admin abilities present and manage all absent.
+- PASSED: `manage.py test portfolio.tests.test_partner_admin_api --keepdb` green, tenant contract stable under canonical registry.
+- PASSED: `npm run build` trong `frontend` thanh cong.
+- PASSED: `manage.py makemigrations portfolio --check --dry-run` xanh sau khi them 0068.
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` refresh thanh cong; backend va frontend healthy.
+- PASSED: browser proof tren `/admin-ops`, `/admin-crawl-control`, `/tenant-admin/usage`, `/tenant-admin/billing` voi `ability_admin` va `testpro`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bf)
+- backend/portfolio/models.py (MODIFIED - add CoreServiceAccount/CorePATCredential primitives, PAT hash/prefix helpers and lifecycle methods)
+- backend/portfolio/migrations/0066_userconfig_ai_prompt_config_and_more.py (MODIFIED - add CA-10 tables/indexes and make ai_prompt_config add-field idempotent on drifted DBs)
+- backend/portfolio/views_partner_admin.py (NEW - partner tenant control-plane APIs for service accounts and PAT lifecycle)
+- backend/portfolio/permissions.py (MODIFIED - add CA-10 tenant machine-access abilities and entitlements for pro+)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/partner/*` routes)
+- backend/portfolio/tests/test_partner_admin_api.py (NEW - cover service account create/list and PAT issue/rotate/revoke flows)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert CA-10 tenant entitlements and abilities in auth/me)
+- frontend/src/api/client.js (MODIFIED - add tenant partner API client methods with Idempotency-Key headers)
+- frontend/src/App.jsx (MODIFIED - add `/tenant-admin/service-accounts` and `/tenant-admin/pats` routes)
+- frontend/src/components/TopNav.jsx (MODIFIED - expose tenant machine-access nav items)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant machine-access quick links)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - add shortcuts to service accounts and PATs lanes)
+- frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx (NEW - tenant service account management page)
+- frontend/src/pages/admin/tenant/TenantPATs.jsx (NEW - tenant PAT lifecycle page)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for CA-10 tenant machine-access UI)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for CA-10 tenant machine-access UI)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-10 implementation and live proof)
+- module_tree_full.md (MODIFIED - regenerated after CA-10 implementation and docs sync, total modules 560)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` green after CA-10 auth/me entitlement expansion.
+- PASSED: `manage.py test portfolio.tests.test_partner_admin_api --keepdb` green for service account create/list and PAT issue/rotate/revoke flows.
+- PASSED: `npm run build` trong `frontend` thanh cong voi tenant machine-access routes/pages/client copy moi.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend backend` refresh lai dev stack thanh cong; backend healthy, frontend started.
+- PASSED: `manage.py migrate` apply `portfolio.0066_userconfig_ai_prompt_config_and_more` thanh cong sau khi patch migration drift.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerate thanh cong `module_tree_full.md` voi tong 560 module.
+- PASSED: browser proof tren `/tenant-admin/service-accounts` va `/tenant-admin/pats` voi session `testpro` xac nhan tao service account, issue PAT, rotate PAT va revoke PAT thanh cong tren runtime live.
+
+# ✅ AUDIT FILE LIST (2026-05-02be)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - expose userEntitlements from auth/me for tenant console surfaces)
+- backend/portfolio/permissions.py (MODIFIED - add tenant read abilities for pro+ plans)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (NEW - tenant home summary page)
+- frontend/src/pages/admin/tenant/TenantCapabilities.jsx (NEW - tenant capabilities page)
+- frontend/src/App.jsx (MODIFIED - add tenant admin routes under `/tenant-admin/*`)
+- frontend/src/components/TopNav.jsx (MODIFIED - surface tenant nav group)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant quick links)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - cover tenant entitlements in auth/me)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-09 live tenant bootstrap)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - align tenant route examples with live namespace)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - align tenant route matrix with live namespace)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - align tenant screen routes with live namespace)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - align tenant route tree with live namespace)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - align shared blueprint route namespace with live tenant-admin routes)
+- module_tree_full.md (MODIFIED - regenerated after tenant bootstrap slice, total modules 556)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: browser proof tren `http://127.0.0.1/tenant-admin/home` va `http://127.0.0.1/tenant-admin/capabilities` voi session `testpro` xac nhan tenant console render live sau rebuild frontend.
+- PASSED: `get_errors` clean tren `backend/portfolio/permissions.py`, `backend/portfolio/tests/test_api_routes_auth_profile.py`, `frontend/src/context/PortfolioContext.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`, `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi them tenant console routes va pages.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend backend` refresh lai dev stack thanh cong voi frontend/backend moi.
+- PASSED: direct Python permission probe `build_abilities('pro')` va `resolve_user_entitlements(user=pro)` tra tenant abilities + tenant flags dung nhu mong doi.
+- PASSED: `module_tree_full.md` regenerated successfully with 556 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02bd)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - expose operator AI runtime snapshot route)
+- backend/portfolio/views.py (MODIFIED - re-export operator AI runtime route symbol)
+- backend/config/urls.py (MODIFIED - add `/api/core/v1/operator/ai-runtime/` route)
+- backend/portfolio/tests/test_system_ai_admin_api.py (MODIFIED - cover operator snapshot shape and admin gate)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-08 backend wrapper completion)
+- module_tree_full.md (MODIFIED - regenerated after the backend route slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_system_ai_admin_api.py`.
+- PASSED: `manage.py test portfolio.tests.test_system_ai_admin_api --keepdb` => 20/20 tests pass, including operator AI runtime snapshot route.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend` refresh lai dev backend thanh cong.
+- PASSED: live payload snapshot de `GET /api/core/v1/operator/ai-runtime/` voi admin auth tra `object=operator_ai_runtime_snapshot`, 2 provider rows, `effective_source=command_center`, `ready=true`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02bc)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - surface provider/model/source/readiness grid and policy summary panel for AI runtime governance)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note the CA-08 frontend surfacing step)
+- module_tree_full.md (MODIFIED - regenerated after the AI runtime governance surfacing slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/AICommandCenter.jsx` sau khi them runtime summary/policy panel.
+- PASSED: `npm run build` trong `frontend` thanh cong sau AI Command Center summary update.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: browser proof tren `/settings/ai` xac nhan provider/model/source/readiness grid va policy summary cho gate sự kiện / budget / cadence.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02bb)
 - frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell session id to a frontend-auth synthetic id for authenticated frontend users)
 - module_tree_full.md (MODIFIED - regenerated after the final shell session-id bridge adjustment, total modules 554)

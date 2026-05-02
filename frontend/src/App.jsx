@@ -17,6 +17,12 @@ import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import PortfolioManagement from './pages/PortfolioManagement';
 import UserConfig from './pages/UserConfig';
+import TenantAdminHome from './pages/admin/tenant/TenantAdminHome';
+import TenantBilling from './pages/admin/tenant/TenantBilling';
+import TenantCapabilities from './pages/admin/tenant/TenantCapabilities';
+import TenantPATs from './pages/admin/tenant/TenantPATs';
+import TenantServiceAccounts from './pages/admin/tenant/TenantServiceAccounts';
+import TenantUsage from './pages/admin/tenant/TenantUsage';
 import AICommandCenter from './pages/AICommandCenter';
 import Upgrade from './pages/Upgrade';
 import VerifyEmail from './pages/VerifyEmail';
@@ -107,8 +113,71 @@ export default function App() {
                   <Route path="transactions" element={<Transactions />} />
                   <Route path="support" element={<Support />} />
                   <Route path="watchlist" element={<Watchlist />} />
-                  <Route path="admin-ops" element={<AdminOps />} />
-                  <Route path="admin-crawl-control" element={<AdminCrawlControl />} />
+                  <Route
+                    path="admin-ops"
+                    element={(
+                      <ProtectedRoute action="read" subject="AdminOps">
+                        <AdminOps />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="admin-crawl-control"
+                    element={(
+                      <ProtectedRoute action="read" subject="AdminCrawlControl">
+                        <AdminCrawlControl />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/home"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantAdminHome">
+                        <TenantAdminHome />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/capabilities"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantCapabilityView">
+                        <TenantCapabilities />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/usage"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantUsageView">
+                        <TenantUsage />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/billing"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantBillingView">
+                        <TenantBilling />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/service-accounts"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantServiceAccountAdmin">
+                        <TenantServiceAccounts />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/pats"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantPATAdmin">
+                        <TenantPATs />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route path="tenant-admin" element={<Navigate to="/tenant-admin/home" replace />} />
                   <Route path="screener" element={<Screener />} />
                   <Route path="portfolios" element={<PortfolioManagement />} />
                   <Route path="settings" element={<UserConfig />} />
