@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 14:24:06`
+Generated at: `2026-05-02 14:40:19`
 
 ## Summary
 
 - Total modules: 553
 - Python modules: 340
 - JS/TS modules: 213
-- Total classes: 563
-- Total functions: 2173
-- Total top-level variables: 3698
+- Total classes: 564
+- Total functions: 2175
+- Total top-level variables: 3706
 
 ## Python Modules
 
@@ -79,7 +79,7 @@ Generated at: `2026-05-02 14:24:06`
 ### `backend/create_test_users.py`
 
 - Top-level variables:
-  - `TEST_PASSWORD`, `config_pro`, `ent_free`, `ent_pro`, `license_free`, `license_pro`, `lifecycle_pro`, `user_free`, `user_pro`
+  - `TEST_PASSWORD`, `config_pro`, `ent_free`, `ent_pro`, `free_plan`, `license_free`, `license_pro`, `lifecycle_pro`, `pro_plan`, `user_free`, `user_pro`
 
 ### `backend/debug_dark_money.py`
 
@@ -3611,10 +3611,12 @@ Generated at: `2026-05-02 14:24:06`
 
 ### `packages/web/src/adapters/core/coreAdapter.js`
 
+- Classes:
+  - `CoreAdapterHttpError`
 - Functions:
-  - `appendQuery`, `createCoreAdvisorySessionClient`, `createCoreWhaleAnalyticsSnapshotClient`, `requestJson`, `resolveCoreBaseUrl`, `resolveFetchImpl`, `resolvePortfolioApiBaseUrl`, `resolveStockWorkspaceBaseUrl`
+  - `appendQuery`, `createCoreAdvisorySessionClient`, `createCoreWhaleAnalyticsSnapshotClient`, `getAiAdvisorySessionWithFallback`, `readJsonBody`, `requestJson`, `resolveCoreBaseUrl`, `resolveFetchImpl`, `resolvePortfolioApiBaseUrl`, `resolveStockWorkspaceBaseUrl`
 - Top-level variables:
-  - `coreAdapter`, `normalizedSymbol`, `params`, `queryString`, `request`, `response`
+  - `baseRequestOptions`, `canFallbackToV1`, `contentType`, `coreAdapter`, `fallbackPayload`, `normalizedSymbol`, `params`, `payload`, `primaryRequestOptions`, `queryString`, `request`, `response`
 
 ### `packages/web/src/adapters/core/index.js`
 

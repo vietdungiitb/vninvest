@@ -777,3 +777,21 @@ Estimate: 0.5h
 Dependency: WEB-50  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit, same-origin proxy proof, AI advisory host proof va module tree phan anh dung helper runtime chung, route `/ai-advisory/shell` va count module moi.
+
+---
+
+## 32. Advisory host runtime resilience queue
+
+- [x] `WEB-51` Hardening advisory host runtime truoc rollout/data drift  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 2h  
+Dependency: WEB-50  
+Anchor files: `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/scripts/check-shell.mjs`, `backend/create_test_users.py`  
+DoD: advisory client thu `contract=v2` truoc nhung co the tu fallback ve `v1` khi rollout gate `holistic_disabled`; script `create_test_users.py` luon initialize canonical DPI plans truoc khi seed `testpro`, de host runtime khong bi `feature_locked` chi vi local plan drift; live route `/ai-advisory/shell?symbol=BCM` khong con dung o 403 va render duoc advisory session card trong frontend that.
+
+- [x] `OPS-27` Sync audit docs va module tree sau advisory host resilience slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-51  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit, shell-check regression proof, seed-script validation, frontend rebuild/runtime proof va module tree phan anh dung advisory fallback + canonical test-user plan fix.

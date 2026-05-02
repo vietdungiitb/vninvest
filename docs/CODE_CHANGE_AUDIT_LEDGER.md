@@ -1,3 +1,50 @@
+# Entry 2026-05-02au - Harden the AI advisory shell host against rollout gating and canonicalize dev Pro test-user plans
+
+Muc tieu:
+- Giai quyet blocker con lai tren `/ai-advisory/shell` bang cach tach hai lop loi: resiliency cho advisory client neu backend tu choi `v2` vi rollout `holistic_disabled`, va drift dev data lam `testpro` bi khoa sai feature do plan seed khong dung ma tran canonical.
+- Giu package-shell lane nhe: khong mo route moi, khong sua backend advisory contract, ma tang kha nang tu phuc hoi trong client va dam bao script seed user dev tao dung entitlements cho runtime proof.
+- Chot lai browser proof de route advisory shell khong con dung o `403 feature_locked` va hien session card that trong frontend runtime.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/adapters/core/coreAdapter.js`:
+  - Them `CoreAdapterHttpError` va parse JSON error payload de advisory client co the biet ly do deny thay vi chi nhin status text.
+  - Bo sung fallback logic cho `createCoreAdvisorySessionClient()`: neu request `contract=v2` bi backend tra `403` voi `reason=holistic_disabled`, client tu retry `contract=v1` va gan metadata fallback vao payload tra ve.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them regression proof cho case `holistic_disabled`: client phai goi lai `contract=v1`, payload fallback phai giu `requested_contract_version` va `contract_fallback_reason`.
+- `backend/create_test_users.py`:
+  - Goi `initialize_dpi_plans` truoc khi tao user test, va gan lai `license_free.plan`/`license_pro.plan` tu canonical DPI plan records thay vi tin vao `get_or_create` toi gian co the tao plan rong feature.
+- `module_tree_full.md`:
+  - Regenerate sau khi dong bo package-shell adapter va backend seed script; tong module giu 553.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-51`, `OPS-27`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02au.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho advisory host resilience slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - parse JSON error payloads and retry advisory `v1` when a `v2` request is blocked by the holistic rollout gate)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add shell regression proof for advisory fallback from `v2` to `v1`)
+- backend/create_test_users.py (MODIFIED - initialize canonical DPI plans before seeding `testpro` so Pro feature access is not silently empty)
+- module_tree_full.md (MODIFIED - regenerated after the advisory resilience slice, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-51, OPS-27)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell` => package-shell validation xanh sau khi them fallback logic va regression proof cho `holistic_disabled`.
+- PASSED: editor diagnostics clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/scripts/check-shell.mjs` va `backend/create_test_users.py`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile thanh cong voi advisory client moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc refresh thanh cong voi bundle moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" create_test_users.py` => canonical DPI plans duoc initialize/update, `testpro` duoc seed lai va feature access `sentiment_score` tra `True`.
+- PASSED: browser fetch proof tren `/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1` voi access token cua `testpro` khong con tra `403 feature_locked`; sau reseed + relogin, endpoint tra `200`.
+- PASSED: live browser proof `http://127.0.0.1/ai-advisory/shell?symbol=BCM&ts=1777707400` render lai duoc advisory session card voi `Contract: v1`, khong con block boi thong bao `Core adapter request failed: 403 Forbidden ...`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (553 modules).
+
+Residual note:
+- Route advisory shell hien khong con bi block boi plan drift/feature gate sai, nhung session that cua `testpro` van dang roi vao `ai_not_configured`, nen UI hien `Contract: v1` va chua co benchmark aggregate `v2`.
+- Fallback trong advisory client hien chi kick in cho deny reason `holistic_disabled`; cac deny khac nhu `feature_locked` van duoc giu nguyen de auditor thay dung ly do governance/runtime.
+
 # Entry 2026-05-02at - Move the package-shell host runtime to same-origin and add the AI advisory host consumer
 
 Muc tieu:

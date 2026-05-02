@@ -1,3 +1,22 @@
+# ✅ AUDIT FILE LIST (2026-05-02au)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - parse JSON error payloads and retry advisory `v1` when a `v2` request is blocked by the holistic rollout gate)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add shell regression proof for advisory fallback from `v2` to `v1`)
+- backend/create_test_users.py (MODIFIED - initialize canonical DPI plans before seeding `testpro` so Pro feature access is not silently empty)
+- module_tree_full.md (MODIFIED - regenerated after the advisory resilience slice, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-51, OPS-27)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/scripts/check-shell.mjs` va `backend/create_test_users.py`.
+- PASSED: `npm run check:shell` trong `packages/web` xanh sau khi them fallback advisory `holistic_disabled` + regression proof.
+- PASSED: `npm run build` trong `frontend` thanh cong voi advisory client moi.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle advisory moi.
+- PASSED: `create_test_users.py` seed lai `testpro` tren canonical DPI plans va xac nhan Pro feature access khong con bi drift.
+- PASSED: browser fetch proof tren `/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1` voi token moi cua `testpro` da tra `200` thay vi `403 feature_locked`.
+- PASSED: browser proof `/ai-advisory/shell?symbol=BCM&ts=1777707400` khong con hien error `403`; advisory session card render voi `Contract: v1`.
+- PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02at)
 - frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to the host core stub)
 - frontend/Dockerfile.dev-package-shell (MODIFIED - default the package-shell core base URL to `/core/v1`)

@@ -24,6 +24,30 @@ function resolveFetchImpl(fetchImpl) {
   throw new Error("No fetch implementation available for the core adapter client");
 }
 
+class CoreAdapterHttpError extends Error {
+  constructor(message, options = {}) {
+    super(message);
+    this.name = "CoreAdapterHttpError";
+    this.status = options.status;
+    this.statusText = options.statusText;
+    this.url = options.url;
+    this.payload = options.payload;
+  }
+}
+
+async function readJsonBody(response) {
+  const contentType = response.headers?.get?.("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 async function requestJson(fetchImpl, url, init = {}) {
   const response = await fetchImpl(url, {
     headers: {
@@ -34,7 +58,16 @@ async function requestJson(fetchImpl, url, init = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`Core adapter request failed: ${response.status} ${response.statusText} for ${url}`);
+    const payload = await readJsonBody(response);
+    throw new CoreAdapterHttpError(
+      `Core adapter request failed: ${response.status} ${response.statusText} for ${url}`,
+      {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        payload,
+      },
+    );
   }
 
   return response.json();
@@ -107,6 +140,56 @@ export function createCoreAdvisorySessionClient(options = {}) {
   const { env = {}, fetchImpl } = options;
   const request = resolveFetchImpl(fetchImpl);
 
+  async function getAiAdvisorySessionWithFallback(requestOptions = {}) {
+    const baseRequestOptions = {
+      tradeDate: requestOptions.tradeDate,
+      symbol: String(requestOptions.symbol || "").trim().toUpperCase(),
+    };
+    const primaryRequestOptions = {
+      ...baseRequestOptions,
+      contract: requestOptions.contract || "v2",
+      includeBenchmarks: requestOptions.includeBenchmarks !== false,
+    };
+
+    try {
+      return await requestJson(
+        request,
+        coreAdapter.getAiAdvisorySessionEndpoint(env, primaryRequestOptions),
+      );
+    } catch (error) {
+      const canFallbackToV1 =
+        primaryRequestOptions.contract === "v2"
+        && primaryRequestOptions.includeBenchmarks
+        && error instanceof CoreAdapterHttpError
+        && error.status === 403
+        && error.payload?.reason === "holistic_disabled";
+
+      if (!canFallbackToV1) {
+        throw error;
+      }
+
+      const fallbackPayload = await requestJson(
+        request,
+        coreAdapter.getAiAdvisorySessionEndpoint(env, {
+          ...baseRequestOptions,
+          contract: "v1",
+          includeBenchmarks: false,
+        }),
+      );
+
+      if (fallbackPayload && typeof fallbackPayload === "object") {
+        return {
+          ...fallbackPayload,
+          requested_contract_version: primaryRequestOptions.contract,
+          fallback_contract_version: "v1",
+          contract_fallback_reason: error.payload?.reason || "holistic_disabled",
+        };
+      }
+
+      return fallbackPayload;
+    }
+  }
+
   return {
     adapter: coreAdapter,
     getBuildMeta() {
@@ -118,15 +201,10 @@ export function createCoreAdvisorySessionClient(options = {}) {
         throw new Error("An advisory symbol is required");
       }
 
-      return requestJson(
-        request,
-        coreAdapter.getAiAdvisorySessionEndpoint(env, {
-          contract: requestOptions.contract || "v2",
-          includeBenchmarks: requestOptions.includeBenchmarks !== false,
-          tradeDate: requestOptions.tradeDate,
-          symbol: normalizedSymbol,
-        }),
-      );
+      return getAiAdvisorySessionWithFallback({
+        ...requestOptions,
+        symbol: normalizedSymbol,
+      });
     },
   };
 }

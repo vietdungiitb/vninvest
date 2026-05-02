@@ -206,6 +206,64 @@ assert(
   "Core advisory session client must build the stock advisory session endpoint correctly",
 );
 
+const fallbackAdvisoryRequests = [];
+const fallbackAdvisoryClient = createCoreAdvisorySessionClient({
+  env: { VNINVEST_STOCK_WORKSPACE_BASE_URL: "http://backend.local/api/stock-management" },
+  fetchImpl: async (url) => {
+    fallbackAdvisoryRequests.push(url);
+
+    if (fallbackAdvisoryRequests.length === 1) {
+      return {
+        ok: false,
+        status: 403,
+        statusText: "Forbidden",
+        headers: {
+          get(headerName) {
+            return String(headerName || "").toLowerCase() === "content-type" ? "application/json" : null;
+          },
+        },
+        async json() {
+          return {
+            ok: false,
+            reason: "holistic_disabled",
+            message: "Holistic Advisory V1 dang tat theo rollout gate.",
+          };
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      async json() {
+        return {
+          ok: true,
+          symbol: "BCM",
+          contract_version: "v1",
+          selected_trade_date: "2026-04-15",
+        };
+      },
+    };
+  },
+});
+
+const fallbackAdvisoryPayload = await fallbackAdvisoryClient.getAiAdvisorySession({
+  symbol: "BCM",
+  contract: "v2",
+  includeBenchmarks: true,
+  tradeDate: "2026-04-15",
+});
+
+assert(fallbackAdvisoryRequests.length === 2, "Core advisory client must retry once when the holistic rollout gate denies v2");
+assert(
+  fallbackAdvisoryRequests[1] === "http://backend.local/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v1&trade_date=2026-04-15",
+  "Core advisory client must retry with v1 when the holistic rollout gate denies v2",
+);
+assert(fallbackAdvisoryPayload.contract_version === "v1", "Fallback advisory payload must expose the v1 contract version");
+assert(fallbackAdvisoryPayload.requested_contract_version === "v2", "Fallback advisory payload must retain the originally requested contract");
+assert(fallbackAdvisoryPayload.contract_fallback_reason === "holistic_disabled", "Fallback advisory payload must expose the rollout gate reason");
+
 const whaleSnapshotRequests = [];
 const whaleSnapshotClient = createCoreWhaleAnalyticsSnapshotClient({
   env: { VNINVEST_API_BASE_URL: "http://backend.local/api" },
