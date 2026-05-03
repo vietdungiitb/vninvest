@@ -14,6 +14,7 @@ import Support from './pages/Support';
 import Watchlist from './pages/Watchlist';
 import AdminOps from './pages/AdminOps';
 import AdminCoreOverview from './pages/AdminCoreOverview';
+import AdminCoreTenants from './pages/AdminCoreTenants';
 import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import PortfolioManagement from './pages/PortfolioManagement';
@@ -132,6 +133,22 @@ export default function App() {
                       element={(
                         <ProtectedRoute action="read" subject="AdminOps">
                           <AdminCoreOverview />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreTenants />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants/:tenantId"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreTenants />
                         </ProtectedRoute>
                       )}
                     />

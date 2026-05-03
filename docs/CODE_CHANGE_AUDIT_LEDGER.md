@@ -1,3 +1,49 @@
+# Entry 2026-05-03am - CA-03 admin core tenant registry and detail
+
+Muc tieu:
+- Dong slice CA-03 bang cach tach tenant registry/detail ra thanh page dedicated cho `/admin/core/tenants` va `/admin/core/tenants/:tenantId`.
+- Bam current-code operator tenant wrappers, render registry list, filters, summary cards va detail panel cho một tenant dang chon.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorTenants()` va `getCoreOperatorTenantDetail()` wrappers cho `/core/v1/operator/tenants/` va `/core/v1/operator/tenants/{tenantId}/`.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Tao page dedicated cho tenant registry va tenant detail, co filters, summary cards, security/commercial panels va recent actions timeline.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Them focused tests cho registry list render, detail panel va route-param handling.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants` va `/admin/core/tenants/:tenantId` render `AdminCoreTenants`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho tenant registry va tenant detail pages.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 573.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-03` complete va ghi route group live state.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-04` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-03.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator tenants/detail helpers)
+- frontend/src/pages/AdminCoreTenants.jsx (NEW - dedicated tenant registry/detail page)
+- frontend/src/pages/AdminCoreTenants.test.jsx (NEW - focused registry/detail render tests)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants` and `/admin/core/tenants/:tenantId` now render AdminCoreTenants)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for tenant registry/detail pages)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-03 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-04)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `2 passed, 8 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 573 modules.
+
+Residual note:
+- CA-03 covers registry and detail only; CA-04 still needs dedicated operator service-account views/routes.
+- Legacy AdminOps route remains available at `/admin-ops` for backward compatibility.
+
 # Entry 2026-05-03al - CA-02 admin core platform overview and runtime health
 
 Muc tieu:

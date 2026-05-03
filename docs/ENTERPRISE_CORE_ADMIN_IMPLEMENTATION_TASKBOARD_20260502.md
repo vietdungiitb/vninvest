@@ -33,7 +33,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 | `CA-00` | Completed | `/api/core/v1/access/capabilities/` da co current-code wrapper route; frontend auth/bootstrap da cutover sang wrapper route, shared access service van con la wrapper/bridge layer |
 | `CA-01` | Completed | `/admin/core/*` da co route group va guards; canonical overview/crawl-control surface reuse current admin ops pages, legacy aliases `/admin-ops` và `/admin-crawl-control` vẫn còn live |
 | `CA-02` | Completed | `/admin/core/overview` da co page dedicated, bam current-code operator overview/health wrappers va summary/health cards |
-| `CA-03` | Not started | chưa có tenant registry/detail cho central operator |
+| `CA-03` | Completed | `/admin/core/tenants` va `/admin/core/tenants/:tenantId` da co page dedicated, list/detail/snapshot render từ current-code operator wrappers |
 | `CA-04` | Not started | chưa có operator service-account views/routes |
 | `CA-05` | Not started | chưa có operator PAT views/routes |
 | `CA-06` | Not started | chưa có operator usage/billing projections |
@@ -138,6 +138,13 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 - `frontend/src/App.adminCoreRoutes.test.jsx` da cap nhat route group de `/admin/core/overview` render page dedicated moi.
 - `frontend/src/pages/AdminCoreOverview.test.jsx` da khoa async render, overview snapshots va crawl-control link.
 - `CA-02` da chuyen sang `Completed`; `CA-03` la slice admin tiep theo tren board nay.
+
+### Ghi chu trien khai 2026-05-03am
+
+- `frontend/src/pages/AdminCoreTenants.jsx` da render registry list, filters va detail panel cho `/admin/core/tenants` va `/admin/core/tenants/:tenantId`.
+- `frontend/src/App.adminCoreRoutes.test.jsx` da khoa route group de tenant list/detail routes render page dedicated moi.
+- `frontend/src/pages/AdminCoreTenants.test.jsx` da cover list row, detail panel va tenant action timeline.
+- `CA-03` da chuyen sang `Completed`; `CA-04` la slice admin tiep theo tren board nay.
 
 ---
 

@@ -609,6 +609,8 @@ export const getAdminOpsStats = () => apiClient.get('/admin-ops/stats/');
 export const getAdminRuntimeKPI = () => apiClient.get('/admin-ops/runtime-kpi/');
 export const getCoreOperatorOverview = () => apiClient.get('/core/v1/operator/overview/');
 export const getCoreOperatorHealth = () => apiClient.get('/core/v1/operator/health/');
+export const getCoreOperatorTenants = (params = {}) => apiClient.get('/core/v1/operator/tenants/', { params });
+export const getCoreOperatorTenantDetail = (tenantId) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/`);
 export const getAdminSystemAiSettings = () => apiClient.get('/admin-ops/system-ai-settings/');
 export const updateAdminSystemAiSettings = (payload) => apiClient.put('/admin-ops/system-ai-settings/', payload);
 export const getAdminPrefetchRuntimeSettings = () => apiClient.get('/admin-ops/system-ai-settings/');
