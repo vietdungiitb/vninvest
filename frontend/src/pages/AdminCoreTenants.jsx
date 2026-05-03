@@ -321,9 +321,17 @@ export default function AdminCoreTenants() {
           {tenantId ? (
             selectedTenant ? (
               <div className="space-y-5">
-                <div>
-                  <p className="text-lg font-semibold text-slate-950 dark:text-white">{selectedTenant.display_name}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{selectedTenant.tenant_code}</p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-950 dark:text-white">{selectedTenant.display_name}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{selectedTenant.tenant_code}</p>
+                  </div>
+                  <Link
+                    to={`/admin/core/tenants/${selectedTenant.id}/service-accounts`}
+                    className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-500/15 dark:text-blue-200"
+                  >
+                    {t('adminCoreTenants.openServiceAccounts', { defaultValue: 'Xem service accounts' })}
+                  </Link>
                 </div>
                 <ValueRow label="Status" value={selectedTenant.status} />
                 <ValueRow label="Plan" value={selectedTenant.plan_code} />

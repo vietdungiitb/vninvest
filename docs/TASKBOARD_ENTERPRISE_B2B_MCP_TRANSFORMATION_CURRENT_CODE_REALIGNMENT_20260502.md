@@ -252,4 +252,4 @@ Sau khi current-code handoff pack da READY, route mac dinh cho doi code la:
 3. Chi mot task o trang thai `[/]` tai mot thoi diem trong toan bo chuong trinh.
 4. Sau moi slice phai dong bo `docs/CODE_CHANGE_AUDIT_LEDGER.md` va `PROGRESS_DASHBOARD.md` truoc khi claim slice tiep.
 5. Neu docs va code lech, tam dung va sua drift truoc khi tiep tuc.
-6. `CA-03` da dong xong ben admin board; neu tiep tuc lane admin thi slice mo tiep theo la `CA-04`.
+6. `CA-04` da dong xong ben admin board; neu tiep tuc lane admin thi slice mo tiep theo la `CA-05`.

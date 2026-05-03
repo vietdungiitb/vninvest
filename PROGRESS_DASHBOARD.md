@@ -1,3 +1,24 @@
+# ✅ AUDIT FILE LIST (2026-05-03an)
+- frontend/src/api/client.js (MODIFIED - add core operator tenant service-account helper)
+- frontend/src/pages/AdminCoreServiceAccounts.jsx (NEW - dedicated operator service-account page)
+- frontend/src/pages/AdminCoreServiceAccounts.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to service accounts)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for service-account route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/service-accounts` now renders AdminCoreServiceAccounts)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for service-account page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-04 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreServiceAccounts.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `11 passed, 11 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 575 modules.
+
+Status:
+- `CA-04` da hoan tat. `/admin/core/tenants/:tenantId/service-accounts` now renders a dedicated current-code service-account page with read-first gating, and the next open admin slice is `CA-05`.
+
 # ✅ AUDIT FILE LIST (2026-05-03am)
 - frontend/src/api/client.js (MODIFIED - add core operator tenants/detail helpers)
 - frontend/src/pages/AdminCoreTenants.jsx (NEW - dedicated tenant registry/detail page)

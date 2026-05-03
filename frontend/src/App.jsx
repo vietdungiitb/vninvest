@@ -15,6 +15,7 @@ import Watchlist from './pages/Watchlist';
 import AdminOps from './pages/AdminOps';
 import AdminCoreOverview from './pages/AdminCoreOverview';
 import AdminCoreTenants from './pages/AdminCoreTenants';
+import AdminCoreServiceAccounts from './pages/AdminCoreServiceAccounts';
 import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import PortfolioManagement from './pages/PortfolioManagement';
@@ -149,6 +150,14 @@ export default function App() {
                       element={(
                         <ProtectedRoute action="read" subject="AdminOps">
                           <AdminCoreTenants />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants/:tenantId/service-accounts"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreServiceAccounts />
                         </ProtectedRoute>
                       )}
                     />

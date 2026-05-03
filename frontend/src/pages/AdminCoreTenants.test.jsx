@@ -122,6 +122,7 @@ describe('AdminCoreTenants', () => {
     expect(await screen.findByText('Thông tin thương mại')).toBeInTheDocument();
     expect(await screen.findByText('Thông tin bảo mật')).toBeInTheDocument();
     expect(await screen.findByText('Tạo service account alpha-main')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Xem service accounts' })).toHaveAttribute('href', '/admin/core/tenants/ten_123/service-accounts');
     expect(mockGetCoreOperatorTenantDetail).toHaveBeenCalledWith('ten_123');
   });
 });

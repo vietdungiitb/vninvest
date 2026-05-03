@@ -1,3 +1,55 @@
+# Entry 2026-05-03an - CA-04 admin core service accounts
+
+Muc tieu:
+- Dong slice CA-04 bang page dedicated cho `/admin/core/tenants/:tenantId/service-accounts`.
+- Bam current-code operator service-account wrapper, render registry list, summary cards, detail side panel va create/edit gating theo ability.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorTenantServiceAccounts()` wrapper cho `/core/v1/operator/tenants/{tenant_id}/service-accounts/`.
+- `frontend/src/pages/AdminCoreServiceAccounts.jsx`:
+  - Tao page dedicated cho registry service account, summary cards, list table, detail panel va ability-gated action buttons.
+- `frontend/src/pages/AdminCoreServiceAccounts.test.jsx`:
+  - Them focused tests cho registry/detail render va gating create/edit buttons.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Them link tu tenant detail sang service-account route de operator co the drill-down ngay trong CA-03 surface.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Update coverage cho tenant-to-service-account navigation link.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants/:tenantId/service-accounts` render `AdminCoreServiceAccounts`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho service-account surface.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 575.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-04` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-05` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-04.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator tenant service-account helper)
+- frontend/src/pages/AdminCoreServiceAccounts.jsx (NEW - dedicated operator service-account page)
+- frontend/src/pages/AdminCoreServiceAccounts.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to service accounts)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for service-account route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/service-accounts` now renders AdminCoreServiceAccounts)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for service-account page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-04 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreServiceAccounts.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `11 passed, 11 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 575 modules.
+
+Residual note:
+- CA-04 is read-first and gating-first; write-side service-account APIs remain a later slice.
+- CA-05 still needs dedicated PAT credential views/routes.
+
 # Entry 2026-05-03am - CA-03 admin core tenant registry and detail
 
 Muc tieu:
