@@ -13,6 +13,7 @@ import Transactions from './pages/Transactions';
 import Support from './pages/Support';
 import Watchlist from './pages/Watchlist';
 import AdminOps from './pages/AdminOps';
+import AdminCoreOverview from './pages/AdminCoreOverview';
 import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import PortfolioManagement from './pages/PortfolioManagement';
@@ -130,7 +131,7 @@ export default function App() {
                       path="overview"
                       element={(
                         <ProtectedRoute action="read" subject="AdminOps">
-                          <AdminOps />
+                          <AdminCoreOverview />
                         </ProtectedRoute>
                       )}
                     />

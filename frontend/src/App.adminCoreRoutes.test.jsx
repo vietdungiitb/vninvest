@@ -109,6 +109,11 @@ jest.mock('./pages/AdminOps', () => ({
   default: mockPage('admin-ops-page', 'Admin Ops shell'),
 }));
 
+jest.mock('./pages/AdminCoreOverview', () => ({
+  __esModule: true,
+  default: mockPage('admin-core-overview-page', 'Admin Core Overview shell'),
+}));
+
 jest.mock('./pages/AdminCrawlControl', () => ({
   __esModule: true,
   default: mockPage('admin-crawl-control-page', 'Admin Crawl Control shell'),
@@ -209,7 +214,13 @@ describe('App admin core route group', () => {
   it('routes the admin core group root to the overview surface', async () => {
     renderAt('/admin/core');
 
-    expect(await screen.findByTestId('admin-ops-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('admin-core-overview-page')).toBeInTheDocument();
+  });
+
+  it('renders the dedicated admin core overview surface directly', async () => {
+    renderAt('/admin/core/overview');
+
+    expect(await screen.findByTestId('admin-core-overview-page')).toBeInTheDocument();
   });
 
   it('renders the crawl-control surface inside the admin core group', async () => {

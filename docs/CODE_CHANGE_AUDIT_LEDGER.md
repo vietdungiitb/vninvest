@@ -1,3 +1,49 @@
+# Entry 2026-05-03al - CA-02 admin core platform overview and runtime health
+
+Muc tieu:
+- Dong slice CA-02 bang cach tach `/admin/core/overview` thanh page dedicated, khong con reuse AdminOps.
+- Bam current-code operator overview/health wrappers va render summary cards, health cards va runtime snapshot data.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorOverview()` va `getCoreOperatorHealth()` wrappers cho `/core/v1/operator/overview/` va `/core/v1/operator/health/`.
+- `frontend/src/pages/AdminCoreOverview.jsx`:
+  - Tao page dedicated cho tổng quan nền tảng va runtime health, co chụp nhanh summary cards, health cards, degraded components va runtime snapshot panels.
+- `frontend/src/pages/AdminCoreOverview.test.jsx`:
+  - Them focused test cho overview/health render, crawl-control link va async snapshot assertions.
+- `frontend/src/App.jsx`:
+  - Doi route `/admin/core/overview` sang `AdminCoreOverview` thay vi reuse `AdminOps`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group tests de `/admin/core/overview` render page dedicated moi.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 571.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-02` complete va ghi route group live state.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-03` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-02.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator overview/health helpers)
+- frontend/src/pages/AdminCoreOverview.jsx (NEW - dedicated platform overview/runtime health page)
+- frontend/src/pages/AdminCoreOverview.test.jsx (NEW - focused overview/health render test)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/overview` now renders AdminCoreOverview)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for dedicated overview page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-02 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-03)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreOverview.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `2 passed, 5 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 571 modules.
+
+Residual note:
+- The page now renders current-code operator overview/health snapshots, but CA-03 is still open for tenant registry/detail surfaces.
+- Legacy AdminOps route remains available at `/admin-ops` for backward compatibility.
+
 # Entry 2026-05-03ak - CA-01 admin core route group and canonical crawl-control link
 
 Muc tieu:

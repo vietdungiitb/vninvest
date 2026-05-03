@@ -32,7 +32,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 |---|---|---|
 | `CA-00` | Completed | `/api/core/v1/access/capabilities/` da co current-code wrapper route; frontend auth/bootstrap da cutover sang wrapper route, shared access service van con la wrapper/bridge layer |
 | `CA-01` | Completed | `/admin/core/*` da co route group va guards; canonical overview/crawl-control surface reuse current admin ops pages, legacy aliases `/admin-ops` và `/admin-crawl-control` vẫn còn live |
-| `CA-02` | Not started | chưa có `GET /core/v1/operator/overview` và operator overview screen |
+| `CA-02` | Completed | `/admin/core/overview` da co page dedicated, bam current-code operator overview/health wrappers va summary/health cards |
 | `CA-03` | Not started | chưa có tenant registry/detail cho central operator |
 | `CA-04` | Not started | chưa có operator service-account views/routes |
 | `CA-05` | Not started | chưa có operator PAT views/routes |
@@ -131,6 +131,13 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 - `frontend/src/pages/AdminOps.jsx` da chuyen surface chuyên trách sang `/admin/core/crawl-control` trong khi legacy `/admin-crawl-control` van con live.
 - `frontend/src/App.adminCoreRoutes.test.jsx` da khoa route group, guard va redirect behavior cho `/admin/core/*`.
 - `CA-01` da chuyen sang `Completed`; `CA-02` van la slice tiep theo tren board nay.
+
+### Ghi chu trien khai 2026-05-03al
+
+- `frontend/src/pages/AdminCoreOverview.jsx` da render summary cards va runtime health cards tu `/api/core/v1/operator/overview/` va `/api/core/v1/operator/health/`.
+- `frontend/src/App.adminCoreRoutes.test.jsx` da cap nhat route group de `/admin/core/overview` render page dedicated moi.
+- `frontend/src/pages/AdminCoreOverview.test.jsx` da khoa async render, overview snapshots va crawl-control link.
+- `CA-02` da chuyen sang `Completed`; `CA-03` la slice admin tiep theo tren board nay.
 
 ---
 

@@ -1,3 +1,22 @@
+# ✅ AUDIT FILE LIST (2026-05-03al)
+- frontend/src/api/client.js (MODIFIED - add core operator overview/health helpers)
+- frontend/src/pages/AdminCoreOverview.jsx (NEW - dedicated platform overview/runtime health page)
+- frontend/src/pages/AdminCoreOverview.test.jsx (NEW - focused overview/health render test)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/overview` now renders AdminCoreOverview)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for dedicated overview page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-02 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-03)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreOverview.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `2 passed, 5 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 571 modules.
+
+Status:
+- `CA-02` da hoan tat. `/admin/core/overview` now renders a dedicated current-code overview page and the next open admin slice is `CA-03`.
+
 # ✅ AUDIT FILE LIST (2026-05-03ak)
 - frontend/src/App.jsx (MODIFIED - add admin core route group shell and guarded routes)
 - frontend/src/pages/AdminOps.jsx (MODIFIED - switch special surface link to canonical admin core route)
