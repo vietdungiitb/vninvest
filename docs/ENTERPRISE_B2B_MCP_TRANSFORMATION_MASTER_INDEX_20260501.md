@@ -1,10 +1,22 @@
 # TỔNG HỢP TÀI LIỆU: KIẾN TRÚC DOANH NGHIỆP VNINVEST (B2B MCP & AI TRADING)
 
 **Date:** 2026-05-01
+**Updated:** 2026-05-02 - current-code execution control pack added
 **Mục đích:** Đây là **Mục lục Tổng (Master Index)** hệ thống hóa toàn bộ các tài liệu nghiên cứu và thiết kế kiến trúc mà chúng ta đã xây dựng để nâng cấp VNInvest từ một Web App thành một **Nền tảng Bán Dữ Liệu (Data API Provider)** và **Hệ sinh thái AI Trading (White-label SaaS)**.
 
 > [!IMPORTANT]
 > Bộ tài liệu bên dưới mô tả **target-state architecture**. Thứ tự triển khai bám theo code hiện tại được chốt tại [ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md). Khi có xung đột giữa kiến trúc đích và thực tế repo hiện tại, **Rebaseline** là tài liệu ưu tiên cho sequencing và entry conditions.
+>
+> Current execution handoff cho doi code hien tai nam tai:
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md)
+> - [IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md)
+> - [TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md)
 >
 > Entry point chính thức cho mọi việc liên quan `core` hiện tại là bộ tài liệu sau:
 > - [ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md)
@@ -21,11 +33,50 @@
 > - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
 > - [ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)
 >
+> Khi current-code realignment va package/admin hardening da dong, route tiep theo phai chuyen sang SaaS cutover pack:
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_PLAN_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_PLAN_20260503.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TRACEABILITY_MATRIX_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TRACEABILITY_MATRIX_20260503.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260503.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260503.md)
+> - [ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md)
+>
 > Visual companion de doc nhanh tong the:
 > - [SYSTEM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md)
 >
 > Sequencing chinh thuc cho package track song song:
 > - [PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md)
+> - [PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md)
+
+> [!NOTE]
+> Cach doc dung bo tai lieu nay:
+> - `implemented now`: doc mo ta route/model/package artifact da ton tai trong repo.
+> - `partial`: doc mo ta lane da co mot phan code that, phan con lai van la backlog.
+> - `target-state`: doc mo ta architecture dich, khong duoc xem la bang chung code parity.
+> - `code-team continuation playbook`: route thuc thi sau handoff, phai doc cung voi taskboard va audit ledger truoc khi mo slice moi.
+
+---
+
+## PHẦN 0: CURRENT-CODE EXECUTION CONTROL DOCS
+*Bo tai lieu can doc dau tien neu muc tieu la lap ke hoach va giao viec dung voi code hien tai, khong doc target-state theo cach greenfield.*
+
+1. **[ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md)**
+   *   SSOT sequencing moi nhat: repo dang co ca legacy runtime lan package-track baseline; package track da ton tai that nhung chua dat parity runtime.*
+2. **[ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md)**
+   *   Handoff master cho toan bo chuong trinh current-code realignment va implementation backlog, gom ownership, thu tu tai lieu, workstreams va evidence obligations.*
+3. **[IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md)**
+   *   Ke hoach trien khai chi tiet gom 2 lane: realign docs cho dung code hien tai va build code backlog theo thu tu read-first, contract-first, schema-last.*
+4. **[TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md)**
+   *   Live status board cho doi code va auditor, chia theo lane docs, access/admin, operator, partner, data/schema, package parity va cutover readiness.*
+5. **[ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md)**
+   *   Ma tran requirement -> doc family -> slice -> evidence bat buoc de tranh coverage theater.*
+6. **[ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md)**
+   *   Checklist audit noi bo cho moi slice docs/backend/frontend/schema/package-track, kem command validation can chay lai duoc.*
+7. **[ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md)**
+   *   Template minh chung bat buoc de dong goi file list, command results, payload snapshots, screenshot/runtime proof va handoff packet.*
+8. **[ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md)**
+   *   Bao cao audit noi bo cho dot tao handoff pack nay, noi ro da cap nhat gi, con rui ro gi va vi sao pack nay da du de giao doi code.*
 
 ---
 

@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 10:14:24`
+Generated at: `2026-05-03 16:00:33`
 
 ## Summary
 
-- Total modules: 535
-- Python modules: 339
-- JS/TS modules: 196
-- Total classes: 561
-- Total functions: 2058
-- Total top-level variables: 3513
+- Total modules: 617
+- Python modules: 352
+- JS/TS modules: 265
+- Total classes: 580
+- Total functions: 2448
+- Total top-level variables: 4059
 
 ## Python Modules
 
@@ -79,7 +79,7 @@ Generated at: `2026-05-02 10:14:24`
 ### `backend/create_test_users.py`
 
 - Top-level variables:
-  - `TEST_PASSWORD`, `config_pro`, `ent_free`, `ent_pro`, `license_free`, `license_pro`, `lifecycle_pro`, `user_free`, `user_pro`
+  - `TEST_PASSWORD`, `config_pro`, `ent_free`, `ent_pro`, `free_plan`, `license_free`, `license_pro`, `lifecycle_pro`, `pro_plan`, `user_free`, `user_pro`
 
 ### `backend/debug_dark_money.py`
 
@@ -179,6 +179,11 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `ADVISORY_CAPABILITY`, `ADVISORY_PROVIDER_FAILOVER_CHAIN_DEFAULTS`, `AVAILABLE_MODELS`, `DEFAULT_MODELS`, `MODEL_CATALOG`, `PROVIDER_CHOICES`
 
+### `backend/portfolio/ai_prompt_config_ssot.py`
+
+- Functions:
+  - `_is_initialized_prompt_config`, `ensure_ai_prompt_config_ssot`, `mirror_ai_prompt_config_to_legacy`
+
 ### `backend/portfolio/ai_runtime_config.py`
 
 - Functions:
@@ -206,6 +211,7 @@ Generated at: `2026-05-02 10:14:24`
 ### `backend/portfolio/auth_views.py`
 
 - Classes:
+  - `CapabilitySnapshotView` -> methods: `get`
   - `EmailDeliveryFailed`
   - `GoogleOAuthSerializer`
   - `GoogleOAuthView` -> methods: `_generate_username`, `post`
@@ -223,9 +229,14 @@ Generated at: `2026-05-02 10:14:24`
   - `VerifyEmailSerializer`
   - `VerifyEmailView` -> methods: `post`
 - Functions:
-  - `_request_ip`
+  - `_build_current_capability_snapshot`, `_request_ip`, `_resolve_auth_bootstrap_state`
 - Top-level variables:
   - `logger`
+
+### `backend/portfolio/authentication_partner.py`
+
+- Classes:
+  - `CorePartnerPATAuthentication` -> methods: `authenticate`, `authenticate_header`
 
 ### `backend/portfolio/baseline_cache_service.py`
 
@@ -511,6 +522,9 @@ Generated at: `2026-05-02 10:14:24`
   - `AIAdvisoryExecutiveSummary` -> methods: `__str__`
   - `AICommandCenterAuditLog` -> methods: `__str__`
   - `AICommandCenterConfig` -> methods: `__str__`, `ai_api_key_configured`, `clean`, `get_ai_api_key`, `get_effective_ai_model`, `set_ai_api_key`
+  - `CorePATCredential` -> methods: `__str__`, `clean`, `effective_status`, `issue_for_service_account`, `resolve_from_raw_secret`, `revoke`, `rotate`, `save`, `tenant_id`
+  - `CoreServiceAccount` -> methods: `__str__`, `clean`, `save`, `tenant_id`
+  - `CoreTenant` -> methods: `__str__`, `_normalize_tenant_code`, `ensure_for_user`, `tenant_id`
   - `CrawlAuditLog` -> methods: `__str__`
   - `CrawlJob` -> methods: `__str__`
   - `CrawlRun` -> methods: `__str__`
@@ -558,6 +572,8 @@ Generated at: `2026-05-02 10:14:24`
   - `WhaleConfigRollout` -> methods: `__str__`
   - `WhaleConfigVersion` -> methods: `__str__`
   - `WhaleConfigWorkerAck` -> methods: `__str__`
+- Functions:
+  - `_build_pat_secret`, `_extract_pat_prefix`, `_generate_public_id`, `_hash_pat_secret`
 - Top-level variables:
   - `SecuritiesGroupAlias`, `SecuritiesItemAlias`
 
@@ -705,6 +721,13 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `logger`
 
+### `backend/portfolio/partner_tenant_context.py`
+
+- Classes:
+  - `PartnerTenantContext`
+- Functions:
+  - `resolve_partner_tenant_context`
+
 ### `backend/portfolio/password_reset.py`
 
 - Functions:
@@ -720,9 +743,9 @@ Generated at: `2026-05-02 10:14:24`
   - `IsPremiumPlan` -> methods: `has_permission`
   - `IsProPlan` -> methods: `has_permission`
 - Functions:
-  - `_get_plan`, `_resolve_quota_caps`, `_resolve_tier`, `_resolve_trial_state`, `build_abilities`, `has_plan`, `resolve_user_entitlements`
+  - `_get_plan`, `_is_operator_user`, `_resolve_quota_caps`, `_resolve_tier`, `_resolve_trial_state`, `build_abilities`, `has_plan`, `resolve_user_entitlements`
 - Top-level variables:
-  - `DEFAULT_QUOTA_CAPS_BY_TIER`, `PLAN_ORDER`, `PLAN_TIER_MAP`
+  - `ADMIN_CONSOLE_ABILITIES`, `DEFAULT_QUOTA_CAPS_BY_TIER`, `PLAN_ORDER`, `PLAN_TIER_MAP`
 
 ### `backend/portfolio/price_units.py`
 
@@ -1342,7 +1365,7 @@ Generated at: `2026-05-02 10:14:24`
 ### `backend/portfolio/tests/test_ai_config_api.py`
 
 - Classes:
-  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_command_center_audit_logs_support_filters_and_diff_summary`, `test_ai_config_get_and_put`, `test_ai_config_get_reports_not_ready_when_command_center_incomplete`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_prompt_config_accepts_canonical_and_legacy_layouts`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_ignores_ai_fields`
+  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_command_center_audit_logs_support_filters_and_diff_summary`, `test_ai_command_center_get_hydrates_prompt_config_from_legacy_userconfig`, `test_ai_command_center_put_mirrors_prompt_config_into_legacy_userconfig`, `test_ai_config_get_and_put`, `test_ai_config_get_reports_not_ready_when_command_center_incomplete`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_prompt_config_accepts_canonical_and_legacy_layouts`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_ignores_ai_fields`
 
 ### `backend/portfolio/tests/test_ai_context.py`
 
@@ -1406,7 +1429,7 @@ Generated at: `2026-05-02 10:14:24`
 ### `backend/portfolio/tests/test_api_routes_auth_profile.py`
 
 - Classes:
-  - `ApiRouteAuthProfileTests` -> methods: `authenticate`, `setUp`, `test_auth_me_endpoint_returns_community_tier_for_free_plan`, `test_auth_me_endpoint_returns_plan_and_abilities`, `test_auth_me_endpoint_returns_staff_flags_for_superuser`, `test_login_allows_unverified_superuser`, `test_login_is_blocked_for_unverified_user`, `test_portfolio_userconfig_endpoint`, `test_register_endpoint_rejects_password_mismatch`
+  - `ApiRouteAuthProfileTests` -> methods: `authenticate`, `setUp`, `test_access_capabilities_route_returns_operator_bootstrap_snapshot`, `test_access_capabilities_route_returns_tenant_bootstrap_snapshot`, `test_auth_me_endpoint_returns_community_tier_for_free_plan`, `test_auth_me_endpoint_returns_plan_and_abilities`, `test_auth_me_endpoint_returns_staff_flags_for_superuser`, `test_auth_me_endpoint_treats_staff_user_as_admin_capability_session`, `test_login_allows_unverified_superuser`, `test_login_is_blocked_for_unverified_user`, `test_portfolio_userconfig_endpoint`, `test_register_endpoint_rejects_password_mismatch`
 
 ### `backend/portfolio/tests/test_api_routes_auth_register.py`
 
@@ -1496,6 +1519,11 @@ Generated at: `2026-05-02 10:14:24`
 
 - Classes:
   - `TestDarkMoneyHistoryApi` -> methods: `setUp`, `test_deduplicates_exact_intraday_ticks_before_whale_aggregation`
+
+### `backend/portfolio/tests/test_dashboard_aggregated_risk_api.py`
+
+- Classes:
+  - `DashboardAggregatedRiskApiTests` -> methods: `setUp`, `test_dashboard_aggregated_risk_snapshot_uses_selected_portfolio`
 
 ### `backend/portfolio/tests/test_discovery_engine.py`
 
@@ -1589,6 +1617,21 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `User`
 
+### `backend/portfolio/tests/test_operator_admin_runtime_api.py`
+
+- Classes:
+  - `OperatorAdminRuntimeApiTests` -> methods: `_authenticate`, `setUp`, `test_operator_health_requires_admin`, `test_operator_health_returns_snapshot_structure`, `test_operator_overview_requires_admin`, `test_operator_overview_returns_snapshot_structure`
+
+### `backend/portfolio/tests/test_operator_jobs_audit_api.py`
+
+- Classes:
+  - `OperatorJobsAuditApiTests` -> methods: `_authenticate`, `setUp`, `test_operator_audit_request_detail_returns_source_record`, `test_operator_audit_requests_returns_audit_rows`, `test_operator_audit_requests_support_kind_filter`, `test_operator_jobs_requires_admin`, `test_operator_jobs_returns_job_rows`, `test_operator_jobs_support_kind_filter`
+
+### `backend/portfolio/tests/test_operator_tenant_registry_api.py`
+
+- Classes:
+  - `OperatorTenantRegistryApiTests` -> methods: `_authenticate`, `setUp`, `test_operator_pats_returns_no_secret_and_anomaly_metadata`, `test_operator_service_accounts_returns_risk_metadata`, `test_operator_tenant_detail_returns_summary_sections`, `test_operator_tenants_requires_admin`, `test_operator_tenants_returns_filtered_registry`, `test_operator_tenants_supports_status_filter`
+
 ### `backend/portfolio/tests/test_order_flow.py`
 
 - Classes:
@@ -1615,6 +1658,11 @@ Generated at: `2026-05-02 10:14:24`
   - `TestSourceParityPrimaryStream` -> methods: `test_cursor_replay_consistent`, `test_five_page_traversal_no_duplicates`
 - Top-level variables:
   - `User`
+
+### `backend/portfolio/tests/test_partner_admin_api.py`
+
+- Classes:
+  - `PartnerAdminApiTests` -> methods: `setUp`, `test_free_plan_cannot_access_partner_machine_access`, `test_partner_routes_accept_machine_pat_authentication`, `test_partner_tenant_summary_route_returns_current_tenant_snapshot`, `test_partner_usage_and_billing_read_paths`, `test_pat_issue_list_rotate_and_revoke`, `test_rotating_pat_expires_after_grace_window`, `test_service_account_list_and_create`
 
 ### `backend/portfolio/tests/test_password_reset_templates.py`
 
@@ -1753,7 +1801,7 @@ Generated at: `2026-05-02 10:14:24`
 ### `backend/portfolio/tests/test_system_ai_admin_api.py`
 
 - Classes:
-  - `SystemAIAdminApiTests` -> methods: `setUp`, `test_admin_audit_logs_reject_invalid_datetime_filter`, `test_admin_audit_logs_reject_invalid_order`, `test_admin_can_filter_audit_logs_by_action`, `test_admin_can_filter_audit_logs_by_date_window`, `test_admin_can_get_system_ai_audit_logs`, `test_admin_can_order_audit_logs_ascending`, `test_admin_can_paginate_audit_logs`, `test_admin_can_test_system_ai_connection`, `test_admin_test_connection_returns_400_when_runtime_not_ready`, `test_get_returns_default_settings_for_admin`, `test_put_rejects_invalid_governance_delta_thresholds`, `test_put_rejects_invalid_prefetch_runtime_settings`, `test_put_rejects_invalid_prefetch_time_policy`, `test_put_updates_governance_delta_thresholds`, `test_put_updates_prefetch_runtime_settings`, `test_put_updates_prefetch_time_policy`, `test_put_updates_system_ai_settings`, `test_requires_admin_permission`
+  - `SystemAIAdminApiTests` -> methods: `setUp`, `test_admin_audit_logs_reject_invalid_datetime_filter`, `test_admin_audit_logs_reject_invalid_order`, `test_admin_can_filter_audit_logs_by_action`, `test_admin_can_filter_audit_logs_by_date_window`, `test_admin_can_get_operator_ai_runtime_snapshot`, `test_admin_can_get_system_ai_audit_logs`, `test_admin_can_order_audit_logs_ascending`, `test_admin_can_paginate_audit_logs`, `test_admin_can_test_system_ai_connection`, `test_admin_test_connection_returns_400_when_runtime_not_ready`, `test_get_returns_default_settings_for_admin`, `test_operator_ai_runtime_requires_admin_permission`, `test_put_rejects_invalid_governance_delta_thresholds`, `test_put_rejects_invalid_prefetch_runtime_settings`, `test_put_rejects_invalid_prefetch_time_policy`, `test_put_updates_governance_delta_thresholds`, `test_put_updates_prefetch_runtime_settings`, `test_put_updates_prefetch_time_policy`, `test_put_updates_system_ai_settings`, `test_requires_admin_permission`
 
 ### `backend/portfolio/tests/test_tasks_realtime.py`
 
@@ -1896,7 +1944,7 @@ Generated at: `2026-05-02 10:14:24`
 ### `backend/portfolio/views_admin_runtime.py`
 
 - Functions:
-  - `_forbidden_surface_response`, `_has_surface_write_permission`, `_is_celery_worker_available`, `_parse_bool_query_param`, `_parse_optional_positive_int`, `admin_intraday_side_backfill_apply_api`, `admin_intraday_side_backfill_preview_api`, `admin_intraday_side_backfill_status_api`, `admin_intraday_universe_warm_now_api`, `admin_runtime_kpi_advisory_merge_api`, `admin_runtime_kpi_advisory_metrics_api`, `admin_runtime_kpi_api`, `admin_runtime_kpi_whale_pipeline_api`, `admin_runtime_kpi_whale_preflight_metrics_api`, `admin_system_ai_audit_logs_api`, `admin_system_ai_settings_api`, `admin_system_ai_test_connection_api`, `admin_vnstock_runtime_config_changelog_api`, `admin_vnstock_runtime_config_current_api`, `admin_vnstock_runtime_config_reset_api`, `admin_vnstock_runtime_config_update_api`, `offpeak_vnstock_ingest_api`, `offpeak_vnstock_ingest_history_api`, `warm_ticker_prefetch_api`
+  - `_build_operator_advisory_audit_row`, `_build_operator_audit_rows`, `_build_operator_crawl_audit_row`, `_build_operator_crawl_job_row`, `_build_operator_health_snapshot`, `_build_operator_jobs_snapshot`, `_build_operator_overview_snapshot`, `_build_operator_pat_list_snapshot`, `_build_operator_pat_snapshot`, `_build_operator_service_account_list_snapshot`, `_build_operator_service_account_snapshot`, `_build_operator_signal_job_row`, `_build_operator_system_ai_settings_audit_row`, `_build_operator_tenant_detail_snapshot`, `_build_operator_tenant_list_snapshot`, `_build_operator_tenant_snapshot`, `_build_operator_tenant_usage_snapshot`, `_build_operator_whale_config_audit_row`, `_build_recent_operator_actions`, `_forbidden_surface_response`, `_has_surface_write_permission`, `_http_request`, `_is_celery_worker_available`, `_operator_request_id`, `_operator_tenant_queryset`, `_paginate_operator_rows`, `_parse_bool_query_param`, `_parse_multi_query_param`, `_parse_operator_limit`, `_parse_optional_positive_int`, `_resolve_operator_audit_request_record`, `_resolve_operator_tenant`, `_resolve_service_account_rotation_risk`, `_response_payload`, `_split_operator_request_id`, `_text_contains`, `_worst_risk_state`, `admin_intraday_side_backfill_apply_api`, `admin_intraday_side_backfill_preview_api`, `admin_intraday_side_backfill_status_api`, `admin_intraday_universe_warm_now_api`, `admin_runtime_kpi_advisory_merge_api`, `admin_runtime_kpi_advisory_metrics_api`, `admin_runtime_kpi_api`, `admin_runtime_kpi_whale_pipeline_api`, `admin_runtime_kpi_whale_preflight_metrics_api`, `admin_system_ai_audit_logs_api`, `admin_system_ai_settings_api`, `admin_system_ai_test_connection_api`, `admin_vnstock_runtime_config_changelog_api`, `admin_vnstock_runtime_config_current_api`, `admin_vnstock_runtime_config_reset_api`, `admin_vnstock_runtime_config_update_api`, `offpeak_vnstock_ingest_api`, `offpeak_vnstock_ingest_history_api`, `operator_ai_runtime_api`, `operator_audit_request_detail_api`, `operator_audit_requests_api`, `operator_health_api`, `operator_jobs_api`, `operator_overview_api`, `operator_tenant_detail_api`, `operator_tenant_pats_api`, `operator_tenant_service_accounts_api`, `operator_tenants_api`, `warm_ticker_prefetch_api`
 
 ### `backend/portfolio/views_admin_sync.py`
 
@@ -1967,12 +2015,31 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `INTERVAL_ALIASES`, `INTRADAY_MAX_DAYS`, `MA_WINDOWS`, `PERIOD_DAYS_MAP`, `SMFI_LOOKBACK_SESSIONS`, `TRUNC_FN_MAP`, `VALID_INTERVALS`, `VNSTOCK_INTERVAL_MAP`, `logger`
 
+### `backend/portfolio/views_dashboard_risk.py`
+
+- Functions:
+  - `_build_dark_flow`, `_build_stale_positions`, `_build_whale_exposure`, `_coerce_float`, `_coerce_int`, `_coerce_iso_datetime`, `_resolve_dashboard_portfolio`, `dashboard_aggregated_risk_api`
+- Top-level variables:
+  - `MAX_TOP_SYMBOLS`, `RISK_LOOKBACK_DAYS`, `logger`
+
 ### `backend/portfolio/views_notifications.py`
 
 - Functions:
   - `_verify_telegram_signature`, `preferred_symbols_delete`, `preferred_symbols_list`, `telegram_generate_link`, `telegram_settings_update`, `telegram_status`, `telegram_unlink`, `telegram_webhook`
 - Top-level variables:
   - `_MAX_PREFERRED_SYMBOLS`, `logger`
+
+### `backend/portfolio/views_partner_admin.py`
+
+- Classes:
+  - `PartnerPATIssueSerializer`
+  - `PartnerPATRevokeSerializer`
+  - `PartnerPATRotateSerializer`
+  - `PartnerServiceAccountCreateSerializer`
+- Functions:
+  - `_apply_cursor`, `_build_audit_metadata`, `_build_list_payload`, `_build_plan_lifecycle_summary`, `_build_quota_snapshot_row`, `_build_subscription_summary`, `_build_usage_meter_row`, `_error`, `_paginate_list`, `_request_auth_context`, `_request_id`, `_request_ip`, `_require_idempotency_key`, `_resolve_owned_pat`, `_resolve_owned_service_account`, `_resolve_period_bounds`, `_resolve_risk_state`, `_resolve_subscription_status`, `_resolve_user_config`, `_response`, `_serialize_invoice_summary`, `_serialize_pat_credential`, `_serialize_service_account`, `_serialize_tenant_summary`, `partner_billing_invoices_api`, `partner_billing_subscription_api`, `partner_pat_issue_api`, `partner_pat_list_api`, `partner_pat_revoke_api`, `partner_pat_rotate_api`, `partner_service_accounts_api`, `partner_tenant_api`, `partner_usage_meters_api`, `partner_usage_quotas_api`
+- Top-level variables:
+  - `PARTNER_AUTH_CLASSES`, `PARTNER_USAGE_METERS`, `partner_authentication_classes`
 
 ### `backend/portfolio/views_portfolio_watchlist.py`
 
@@ -2349,7 +2416,7 @@ Generated at: `2026-05-02 10:14:24`
 ### `packages/core/backend/src/vninvest_core/api_stub.py`
 
 - Classes:
-  - `_CoreApiStubHandler` -> methods: `_write_json`, `do_GET`, `log_message`
+  - `_CoreApiStubHandler` -> methods: `_write_cors_headers`, `_write_json`, `do_GET`, `do_OPTIONS`, `log_message`
 - Functions:
   - `_ability_rules`, `_build_target`, `_capability_bootstrap_payload`, `_env_flag`, `_env_int`, `_health_payload`, `_now_isoformat`, `_session_payload`, `_user_identity`, `_visible_groups`, `_visible_routes`, `main`
 - Top-level variables:
@@ -2392,19 +2459,39 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `NAMESPACE`, `__all__`
 
+### `packages/core/backend/src/vninvest_core/stub_heartbeat.py`
+
+- Functions:
+  - `_health_file`, `_health_max_age_seconds`, `_now_isoformat`, `run_healthcheck`, `write_heartbeat`
+
 ### `packages/core/backend/src/vninvest_core/worker_stub.py`
 
 - Functions:
   - `main`
 
+### `packages/core/backend/tests/test_runtime_baseline.py`
+
+- Classes:
+  - `CoreRuntimeBaselineTests` -> methods: `test_capability_bootstrap_exposes_saas_routes_and_snapshot_version`, `test_healthcheck_accepts_fresh_written_file`, `test_manifest_exposes_core_topology`
+
 ### `packages/vip-app/local-backend/api_stub.py`
 
 - Classes:
-  - `_VipAppApiStubHandler` -> methods: `_write_json`, `do_GET`, `log_message`
+  - `_VipAppApiStubHandler` -> methods: `_dispatch`, `_read_json_body`, `_write_json`, `do_GET`, `do_POST`, `log_message`
+  - `ApiError` -> methods: `__init__`
 - Functions:
-  - `_ability_rules`, `_build_target`, `_capability_bootstrap_payload`, `_env_flag`, `_env_int`, `_health_payload`, `_manifest_payload`, `_now_isoformat`, `_session_payload`, `_user_identity`, `_visible_groups`, `_visible_routes`, `main`
+  - `_capability_bootstrap_payload`, `_health_payload`, `_list_audit_logs`, `_list_users`, `_login`, `_logout`, `_manifest_payload`, `_reset_session`, `_route_list`, `_session_payload`, `_upsert_user`, `main`
 - Top-level variables:
-  - `ROUTE_HANDLERS`
+  - `ROUTE_HANDLERS`, `STATE_STORE`
+
+### `packages/vip-app/local-backend/store.py`
+
+- Classes:
+  - `VipAppStateStore` -> methods: `__init__`, `_ability_rules_locked`, `_active_username_locked`, `_allocate_user_id_locked`, `_anonymous_session_record`, `_append_audit_log_locked`, `_build_session_record_locked`, `_default_state`, `_get_active_user_locked`, `_get_user_by_id_from_state`, `_get_user_by_id_locked`, `_get_user_by_username_locked`, `_identity_payload_locked`, `_load_or_initialize_state`, `_normalize_state`, `_normalize_tenant_record`, `_normalize_user_record`, `_persist_locked`, `_resolve_seed_user_locked`, `_seed_tenant_record`, `_seed_user_record`, `_visible_groups_locked`, `_visible_routes_locked`, `get_build_target`, `get_capability_bootstrap_payload`, `get_health_payload`, `get_manifest_payload`, `get_plan`, `get_session_payload`, `get_state_summary`, `list_audit_logs`, `list_users`, `login`, `logout`, `reset_session`, `upsert_user`
+- Functions:
+  - `_coerce_bool`, `_hash_password`, `_identity_flags`, `_normalize_role_keys`, `_now_isoformat`, `_strip_secret_fields`
+- Top-level variables:
+  - `ROLE_KEYS`
 
 ### `scripts/ops/generate_module_tree.py`
 
@@ -2453,14 +2540,14 @@ Generated at: `2026-05-02 10:14:24`
 ### `frontend/src/api/auth.js`
 
 - Functions:
-  - `confirmPasswordReset`, `getUserConfig`, `login`, `refreshToken`, `register`, `requestPasswordReset`, `resendVerification`, `updateUserConfig`, `verifyEmail`
+  - `confirmPasswordReset`, `getCapabilitySnapshot`, `getUserConfig`, `login`, `refreshToken`, `register`, `requestPasswordReset`, `resendVerification`, `updateUserConfig`, `verifyEmail`
 
 ### `frontend/src/api/client.js`
 
 - Functions:
-  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`
+  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
 - Top-level variables:
-  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `protocol`, `publicApiClient`, `query`, `queryString`, `refresh`, `refreshRequestPromise`, `refreshToken`, `response`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
+  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `protocol`, `publicApiClient`, `query`, `queryString`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `response`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
 ### `frontend/src/api/client.test.js`
 
@@ -2476,12 +2563,19 @@ Generated at: `2026-05-02 10:14:24`
 - Functions:
   - `createSupportTicket`, `getStaffSupportDashboard`, `getSupportTicketDetail`, `listStaffSupportTickets`, `listSupportTickets`, `patchStaffSupportTicket`, `reopenSupportTicket`, `replyStaffSupportTicket`, `replySupportTicket`
 
+### `frontend/src/App.adminCoreRoutes.test.jsx`
+
+- Functions:
+  - `mockPage`, `renderAt`
+- Top-level variables:
+  - `mockUseAbility`, `mockUsePortfolio`, `previousFlag`
+
 ### `frontend/src/App.jsx`
 
 - Functions:
-  - `LoginPage`, `ProtectedLayout`
+  - `AdminCoreShell`, `LoginPage`, `ProtectedLayout`
 - Top-level variables:
-  - `hasStoredTokens`, `location`, `navigate`
+  - `hasStoredTokens`, `location`, `navigate`, `packageShellHostEnabled`
 
 ### `frontend/src/components/adminops/GlobalScreenerAdminPanel.jsx`
 
@@ -2581,6 +2675,16 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `SOURCES_METADATA`, `TECHNICAL_INDICATORS`, `clamped`, `currentIndicators`, `enabledIndicators`, `enabledSources`, `isDefault`, `isEnabled`, `isSelected`, `lookbackDays`, `sourceLabelById`, `updated`
 
+### `frontend/src/components/AlertBadge.jsx`
+
+- Top-level variables:
+  - `computedTitle`
+
+### `frontend/src/components/AlertBadge.test.jsx`
+
+- Top-level variables:
+  - `badge`
+
 ### `frontend/src/components/AllocationPieChart.jsx`
 
 - Functions:
@@ -2633,12 +2737,12 @@ Generated at: `2026-05-02 10:14:24`
 - Functions:
   - `playCriticalTone`, `sourceLabel`, `stats`, `toNumber`, `toggleSeverityFilterFromSummary`
 - Top-level variables:
-  - `aHolding`, `avgCost`, `bHolding`, `candidate`, `cardTone`, `computedLiveMarketValue`, `cooldownMs`, `costBasis`, `criticalAlerts`, `criticalToastCooldownRef`, `ctx`, `eventAgeSeconds`, `fallbackUnrealizedPL`, `gain`, `holdingSymbolSet`, `id`, `isEventStale`, `isUnread`, `liveMarketValue`, `livePrice`, `liveQuote`, `liveVsSnapshotDelta`, `marketStats`, `nowTs`, `oscillator`, `parsed`, `prioritized`, `quantity`, `realtimeLabels`, `realtimePortfolioStats`, `severity`, `snapshotMarketValue`, `sourceTone`, `statusClasses`, `timeoutId`, `toastId`, `toastTtlMs`, `typeTone`, `unreadCount`, `unrealizedPL`
+  - `aHolding`, `avgCost`, `bHolding`, `candidate`, `cardTone`, `computedLiveMarketValue`, `cooldownMs`, `costBasis`, `criticalAlerts`, `criticalToastCooldownRef`, `ctx`, `eventAgeSeconds`, `fallbackUnrealizedPL`, `gain`, `holdingSymbolSet`, `id`, `isActive`, `isEventStale`, `isUnread`, `liveMarketValue`, `livePrice`, `liveQuote`, `liveVsSnapshotDelta`, `marketStats`, `nowTs`, `observabilityMetricChips`, `oscillator`, `parsed`, `prioritized`, `quantity`, `realtimeLabels`, `realtimePortfolioStats`, `severity`, `snapshotMarketValue`, `sourceTone`, `statusClasses`, `timeoutId`, `toastId`, `toastTtlMs`, `typeTone`, `unreadCount`, `unrealizedPL`
 
 ### `frontend/src/components/DashboardRealtimePanel.test.jsx`
 
 - Top-level variables:
-  - `mockGetRealtimeHealth`, `mockUseI18n`, `mockUsePersistentAlertState`, `mockUseUnifiedAlerts`
+  - `mockGetRealtimeHealth`, `mockUseI18n`, `mockUsePersistentAlertState`, `mockUseUnifiedAlerts`, `observabilityButton`
 
 ### `frontend/src/components/DepthChartPanel.jsx`
 
@@ -2665,9 +2769,9 @@ Generated at: `2026-05-02 10:14:24`
 ### `frontend/src/components/HoldingsTable.jsx`
 
 - Functions:
-  - `MiniSparkline`, `PerformanceBar`, `renderSkeleton`, `toX`, `toY`
+  - `MiniSparkline`, `PerformanceBar`, `formatWhaleMatchedValue`, `renderSkeleton`, `resolveWhaleAlertBadgeTone`, `resolveWhaleAlertIcon`, `resolveWhaleAlertRowTone`, `resolveWhaleAlertSeverityLabel`, `resolveWhaleAlertSideLabel`, `toX`, `toY`
 - Top-level variables:
-  - `clampedPct`, `currentPrice`, `isFresh`, `isPositive`, `isUp`, `marketValue`, `max`, `min`, `numericPct`, `pathData`, `plPct`, `range`, `widthStr`
+  - `clampedPct`, `currentPrice`, `isFresh`, `isPositive`, `isUp`, `marketValue`, `max`, `min`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `numericPct`, `numericValue`, `pathData`, `plPct`, `range`, `symbolKey`, `whaleAlert`, `whaleBadgeTone`, `whaleIcon`, `whaleMatchedValueLabel`, `whaleRowTone`, `whaleSeverityLabel`, `whaleSideLabel`, `widthStr`
 
 ### `frontend/src/components/KLineChartPanel.jsx`
 
@@ -2836,8 +2940,10 @@ Generated at: `2026-05-02 10:14:24`
 
 ### `frontend/src/components/Sidebar.jsx`
 
+- Functions:
+  - `canNavigateTo`
 - Top-level variables:
-  - `cancelled`
+  - `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `cancelled`, `capabilityMenus`, `hasCapabilityMenus`, `tenantSurfaceEnabled`, `visibleRoutes`
 
 ### `frontend/src/components/SidebarWatchlist.jsx`
 
@@ -2852,6 +2958,18 @@ Generated at: `2026-05-02 10:14:24`
   - `formatVND`
 - Top-level variables:
   - `areaPoints`, `displayValue`, `icon`, `iconByKey`, `max`, `min`, `points`, `strokeColor`, `trendByKey`, `trendPoints`, `valueColor`, `x`, `y`
+
+### `frontend/src/components/StickyAlertBar.jsx`
+
+- Functions:
+  - `severityLabel`, `timeLabel`
+- Top-level variables:
+  - `cardTone`, `displayTime`, `normalized`, `severity`, `severityTone`, `symbol`, `targetHref`, `topAlerts`
+
+### `frontend/src/components/StickyAlertBar.test.jsx`
+
+- Top-level variables:
+  - `mockUseI18n`
 
 ### `frontend/src/components/StockNewsPanel.jsx`
 
@@ -2907,9 +3025,9 @@ Generated at: `2026-05-02 10:14:24`
 ### `frontend/src/components/TopNav.jsx`
 
 - Functions:
-  - `NavGroup`, `groupLinkClass`
+  - `NavGroup`, `canNavigateTo`, `groupLinkClass`
 - Top-level variables:
-  - `portfolioItems`, `signalItems`, `systemItems`
+  - `canReadAdminOps`, `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `capabilityMenus`, `hasCapabilityMenus`, `portfolioItems`, `signalItems`, `systemItems`, `tenantItems`, `tenantSurfaceEnabled`, `visibleRoutes`
 
 ### `frontend/src/components/UnifiedAlertBar.jsx`
 
@@ -3017,7 +3135,7 @@ Generated at: `2026-05-02 10:14:24`
 - Functions:
   - `PortfolioProvider`, `bootstrap`, `usePortfolio`
 - Top-level variables:
-  - `PortfolioContext`, `activeRefreshToken`, `authFailed`, `cancelled`, `contextValue`, `createPortfolio`, `createSubAccount`, `ctx`, `deletePortfolio`, `deleteSubAccount`, `fetchPortfolios`, `hasInitialTokens`, `initialAccessToken`, `initialRefreshToken`, `login`, `logout`, `next`, `nextRefresh`, `ok`, `refreshAccessToken`, `register`, `res`, `resendVerification`, `response`, `saveTokens`, `syncAuthState`, `updatePortfolio`, `updateSubAccount`, `updateUserConfig`
+  - `PortfolioContext`, `activeRefreshToken`, `authFailed`, `cancelled`, `contextValue`, `createPortfolio`, `createSubAccount`, `ctx`, `deletePortfolio`, `deleteSubAccount`, `fetchPortfolios`, `hasInitialTokens`, `initialAccessToken`, `initialRefreshToken`, `login`, `logout`, `mePayload`, `next`, `nextRefresh`, `ok`, `refreshAccessToken`, `register`, `res`, `resendVerification`, `response`, `saveTokens`, `syncAuthState`, `updatePortfolio`, `updateSubAccount`, `updateUserConfig`
 
 ### `frontend/src/context/RealtimeContext.jsx`
 
@@ -3033,6 +3151,18 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `DEFAULT_AI_CONFIG`, `SCORING_POLICY_REGISTRY`, `SCORING_POLICY_VERSION`, `action`, `allSymbolsSet`, `cancelled`, `h`, `holdingMap`, `indicators`, `logics`, `ma20Dist`, `promptConfig`, `reasons`, `recommendations`, `response`, `rsi`, `score`, `sourceCfg`, `strategyParams`, `symbol`, `tech`, `techs`, `weight`, `whaleAlertCounts`, `whaleCount`
 
+### `frontend/src/hooks/useDashboardAlerts.js`
+
+- Functions:
+  - `buildPriorityAlerts`, `buildRecentWhaleAlertMap`, `normalizeAlertTimestamp`, `normalizeSymbol`, `recentAlerts`
+- Top-level variables:
+  - `RECENT_ALERT_WINDOW_MS`, `current`, `deduped`, `key`, `leftSeverity`, `leftTs`, `matchedValue`, `parsedTime`, `priorityAlerts`, `rightSeverity`, `rightTs`, `seen`, `severity`, `side`, `sideSource`, `sizeClass`, `symbol`, `timestamp`, `whaleAlertsBySymbol`
+
+### `frontend/src/hooks/useDashboardAlerts.test.js`
+
+- Top-level variables:
+  - `alerts`, `now`, `result`
+
 ### `frontend/src/hooks/useOrderBubbleCoordinates.js`
 
 - Functions:
@@ -3045,7 +3175,11 @@ Generated at: `2026-05-02 10:14:24`
 - Functions:
   - `loadCriticalSoundEnabled`, `loadMutedSymbols`, `loadReadAlertIds`, `safeParse`
 - Top-level variables:
-  - `MUTED_SYMBOLS_KEY`, `READ_ALERTS_KEY`, `SOUND_ENABLED_KEY`, `cleaned`, `isMutedSymbol`, `markAlertAsRead`, `muteSymbolFor30m`, `mutedUntil`, `next`, `normalized`, `now`, `parsed`, `persistMutedSymbols`, `persistReadAlerts`, `raw`, `toggleCriticalSound`, `until`, `value`
+  - `ALERT_SOUND_KEY`, `LEGACY_SOUND_ENABLED_KEY`, `MUTED_SYMBOLS_KEY`, `READ_ALERTS_KEY`, `cleaned`, `isMutedSymbol`, `legacyRaw`, `markAlertAsRead`, `muteSymbolFor30m`, `mutedUntil`, `next`, `normalized`, `now`, `parsed`, `persistMutedSymbols`, `persistReadAlerts`, `raw`, `serialized`, `toggleCriticalSound`, `until`, `value`
+
+### `frontend/src/hooks/usePersistentAlertState.test.js`
+
+- No parseable top-level symbols found
 
 ### `frontend/src/hooks/useRealtimeFeed.js`
 
@@ -3126,6 +3260,144 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `root`
 
+### `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`
+
+- Functions:
+  - `InfoRow`, `MetricCard`, `formatQuotaValue`
+- Top-level variables:
+  - `abilityCount`, `entitlements`, `planLabel`, `quotaCaps`, `quotaCount`, `tenantCanInspect`, `tenantCanManagePATs`, `tenantCanManageServiceAccounts`, `tenantCanOpen`, `tenantCanReadBilling`, `tenantCanReadUsage`
+
+### `frontend/src/pages/admin/tenant/TenantBilling.jsx`
+
+- Functions:
+  - `FieldCard`, `SummaryCard`, `bootstrap`, `formatCurrency`, `formatDate`, `loadData`, `resolveBillingCycleLabel`, `resolveErrorMessage`, `resolveInvoiceStateLabel`, `resolveSubscriptionStatusLabel`
+- Top-level variables:
+  - `canReadUsage`, `cancelled`, `invoiceStateLabel`, `pastDueCount`, `renewalLabel`, `statusLabel`
+
+### `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`
+
+- Functions:
+  - `ListPanel`, `SummaryTile`, `formatQuotaValue`
+- Top-level variables:
+  - `abilities`, `abilityCount`, `abilityItems`, `accessFlag`, `entitlements`, `quotaCaps`, `quotaCount`, `quotaItems`
+
+### `frontend/src/pages/admin/tenant/TenantPATs.jsx`
+
+- Functions:
+  - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleIssue`, `handleRevoke`, `handleRotate`, `loadData`, `normalizeCommaList`, `resolveErrorMessage`
+- Top-level variables:
+  - `activeCount`, `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `nextServiceAccounts`, `nextTokens`, `response`, `rotating`, `rotatingCount`, `serviceAccount`, `serviceAccountMap`
+
+### `frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx`
+
+- Functions:
+  - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleSubmit`, `loadServiceAccounts`, `normalizeCommaList`, `resolveErrorMessage`
+- Top-level variables:
+  - `activeCount`, `canCreate`, `cancelled`, `environmentCount`, `response`
+
+### `frontend/src/pages/admin/tenant/TenantUsage.jsx`
+
+- Functions:
+  - `SummaryCard`, `UsageBar`, `bootstrap`, `formatDateTime`, `formatNumber`, `loadData`, `resolveErrorMessage`, `resolveRiskLabel`, `resolveToneClass`
+- Top-level variables:
+  - `canReadBilling`, `cancelled`, `criticalCount`, `entitledAmount`, `quotaByMeterCode`, `quotaSnapshot`, `ratio`, `totalRemaining`, `warningCount`
+
+### `frontend/src/pages/AdminCoreAuditTrace.jsx`
+
+- Functions:
+  - `DetailBlock`, `MetricCard`, `Panel`, `ValueRow`, `clearFilters`, `formatDateTimeValue`, `kindLabel`, `loadDetail`, `openNextPage`, `openPrevPage`, `refresh`, `stringifyValue`, `submitFilters`, `toneClasses`
+- Top-level variables:
+  - `DEFAULT_FILTERS`, `DEFAULT_LIMIT`, `cancelled`, `hasMore`, `isSelected`, `lastFetchedLabel`, `loadAuditRequests`, `nextCursor`, `nextRows`, `nextSnapshot`, `normalized`, `params`, `prevCursor`, `response`, `rows`, `selectedRequest`, `sourceRecord`, `summaryCards`
+
+### `frontend/src/pages/AdminCoreAuditTrace.test.jsx`
+
+- Top-level variables:
+  - `detailButtons`, `mockGetCoreOperatorAuditRequestDetail`, `mockGetCoreOperatorAuditRequests`
+
+### `frontend/src/pages/AdminCoreBilling.jsx`
+
+- Functions:
+  - `MetricCard`, `Panel`, `ValueRow`, `bootstrap`, `formatCurrency`, `formatDateTime`, `refresh`, `toneClasses`
+- Top-level variables:
+  - `cancelled`, `commercialSummary`, `currentUsageRisk`, `nextInvoiceDate`, `normalized`, `pastDueMeterCount`, `renewalLabel`, `response`, `securitySummary`, `tenantSummary`, `usageMeters`
+
+### `frontend/src/pages/AdminCoreBilling.test.jsx`
+
+- Top-level variables:
+  - `mockGetCoreOperatorTenantDetail`
+
+### `frontend/src/pages/AdminCoreJobs.jsx`
+
+- Functions:
+  - `DetailBlock`, `MetricCard`, `Panel`, `ValueRow`, `clearFilters`, `formatDateTimeValue`, `formatPercentValue`, `kindLabel`, `kindTone`, `openNextPage`, `openPrevPage`, `refresh`, `submitFilters`, `toneClasses`
+- Top-level variables:
+  - `DEFAULT_FILTERS`, `DEFAULT_LIMIT`, `hasMore`, `isSelected`, `jobs`, `lastFetchedLabel`, `loadJobs`, `nextCursor`, `nextJobs`, `nextSnapshot`, `normalized`, `numeric`, `params`, `prevCursor`, `response`, `selectedJob`, `summaryCards`
+
+### `frontend/src/pages/AdminCoreJobs.test.jsx`
+
+- Top-level variables:
+  - `detailButtons`, `mockGetCoreOperatorJobs`
+
+### `frontend/src/pages/AdminCoreOverview.jsx`
+
+- Functions:
+  - `HealthCard`, `KeyValue`, `MetricCard`, `Panel`, `toneClasses`
+- Top-level variables:
+  - `aiRuntime`, `degradedComponents`, `healthCards`, `healthy`, `lastFetchedLabel`, `loadOverview`, `normalized`, `overallStatus`, `runtimeKpi`, `sources`, `status`, `summaryCards`, `timerId`
+
+### `frontend/src/pages/AdminCoreOverview.test.jsx`
+
+- Top-level variables:
+  - `mockGetCoreOperatorHealth`, `mockGetCoreOperatorOverview`
+
+### `frontend/src/pages/AdminCorePATs.jsx`
+
+- Functions:
+  - `MetricCard`, `Panel`, `ValueRow`, `bootstrap`, `clearFilters`, `formatDateTime`, `refresh`, `submitFilters`, `toneClasses`
+- Top-level variables:
+  - `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `clearedFilters`, `commercialSummary`, `headerTenantLabel`, `isSelected`, `nextServiceAccounts`, `nextTokens`, `normalized`, `securitySummary`, `selectedServiceAccount`, `selectedToken`, `serviceAccount`, `serviceAccountMap`, `tenantSummary`
+
+### `frontend/src/pages/AdminCorePATs.test.jsx`
+
+- Top-level variables:
+  - `issueButton`, `mockGetCoreOperatorTenantDetail`, `mockGetCoreOperatorTenantPATs`, `mockGetCoreOperatorTenantServiceAccounts`, `revokeButton`, `rotateButtons`
+
+### `frontend/src/pages/AdminCoreServiceAccounts.jsx`
+
+- Functions:
+  - `MetricCard`, `Panel`, `ValueRow`, `bootstrap`, `clearFilters`, `formatDateTime`, `refresh`, `submitFilters`, `toneClasses`
+- Top-level variables:
+  - `canCreate`, `canUpdate`, `cancelled`, `clearedFilters`, `commercialSummary`, `isSelected`, `listLabel`, `nextServiceAccounts`, `normalized`, `securitySummary`, `selectedServiceAccount`, `tenantSummary`
+
+### `frontend/src/pages/AdminCoreServiceAccounts.test.jsx`
+
+- Top-level variables:
+  - `createButton`, `editButton`, `mockGetCoreOperatorTenantDetail`, `mockGetCoreOperatorTenantServiceAccounts`
+
+### `frontend/src/pages/AdminCoreTenants.jsx`
+
+- Functions:
+  - `MetricCard`, `Panel`, `ValueRow`, `clearFilters`, `submitFilters`, `toneClasses`
+- Top-level variables:
+  - `isSelected`, `lastFetchedLabel`, `loadDetail`, `loadRegistry`, `navigate`, `normalized`, `recentActions`, `response`, `selectedCommercial`, `selectedSecurity`, `selectedTenant`, `summaryCards`, `tenants`
+
+### `frontend/src/pages/AdminCoreTenants.test.jsx`
+
+- Top-level variables:
+  - `mockGetCoreOperatorTenantDetail`, `mockGetCoreOperatorTenants`
+
+### `frontend/src/pages/AdminCoreUsage.jsx`
+
+- Functions:
+  - `MetricCard`, `Panel`, `UsageBar`, `ValueRow`, `bootstrap`, `formatDateTime`, `formatNumber`, `refresh`, `toneClasses`
+- Top-level variables:
+  - `cancelled`, `commercialSummary`, `criticalCount`, `detail`, `isSelected`, `nextMeters`, `normalized`, `ratio`, `response`, `securitySummary`, `selectedMeter`, `tenantSummary`, `totalRemaining`, `usageRisk`, `warningCount`
+
+### `frontend/src/pages/AdminCoreUsage.test.jsx`
+
+- Top-level variables:
+  - `mockGetCoreOperatorTenantDetail`
+
 ### `frontend/src/pages/AdminCrawlControl.jsx`
 
 - Functions:
@@ -3145,16 +3417,51 @@ Generated at: `2026-05-02 10:14:24`
 - Functions:
   - `buildStatsPayload`
 
+### `frontend/src/pages/AdminOpsShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
+
+### `frontend/src/pages/AdminOpsShellHost.test.jsx`
+
+- Top-level variables:
+  - `mockShellAdminOpsPage`, `mockUsePortfolio`, `props`
+
+### `frontend/src/pages/AiAdvisoryShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
+
 ### `frontend/src/pages/AICommandCenter.jsx`
 
 - Functions:
-  - `AICommandCenter`, `PromptSourceTabs`, `applyAuditFilters`, `applyPromptPreset`, `applyTechnicalPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `resetAuditFilters`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
+  - `AICommandCenter`, `PromptSourceTabs`, `applyAuditFilters`, `applyPromptPreset`, `applyTechnicalPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `fetchUserRuntimeConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `resetAuditFilters`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
 - Top-level variables:
-  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `enabled`, `indicatorCount`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
+  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `effectiveRuntimeMessage`, `effectiveRuntimeModel`, `effectiveRuntimeProvider`, `effectiveRuntimeSource`, `enabled`, `eventBasedAdvisoryDisabled`, `eventBasedAdvisoryEnabled`, `eventBasedAdvisoryLabel`, `indicatorCount`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `runtimePolicySummary`, `runtimeSummaryCards`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
+
+### `frontend/src/pages/AICommandCenterShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
+
+### `frontend/src/pages/AICommandCenterShellHost.test.jsx`
+
+- Top-level variables:
+  - `mockShellAiCommandCenterPage`, `mockUsePortfolio`, `props`
 
 ### `frontend/src/pages/Dashboard.jsx`
 
 - No parseable top-level symbols found
+
+### `frontend/src/pages/DashboardShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`
+
+### `frontend/src/pages/DashboardShellHost.test.jsx`
+
+- Top-level variables:
+  - `mockShellDashboardPage`, `mockUsePortfolio`, `props`
 
 ### `frontend/src/pages/LegacyDashboard.jsx`
 
@@ -3170,12 +3477,36 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `AIAdvisorAlertPanel`, `ModernSidebar`, `analyticsResult`, `avgPositionSize`, `base`, `baseSymbolUniverse`, `bulkResp`, `bulkSymbols`, `changePct`, `clearDeferredAuxFetch`, `cp`, `current`, `deferredAuxIdleRef`, `deferredAuxTimerRef`, `delta`, `digestFetchInFlightRef`, `digestResp`, `fallbackResp`, `fetchData`, `fetchRequestTokenRef`, `heatmapData`, `held`, `holdingsMap`, `industry`, `liveHoldings`, `loadAuxiliaryDashboardData`, `monitoredSymbols`, `nextHoldings`, `nextTracked`, `nextWatchlistGroups`, `nominalSize`, `prev`, `quote`, `realtimeMarketBreadth`, `requestPortfolioDigest`, `requestToken`, `results`, `sparkline24`, `symbol`, `symbolSet`, `symbolUniverse`, `toggleSeverityFilterFromSummary`, `totalHeldValue`, `trackedInfo`, `trackedMap`, `trackedSymbolNames`, `unreadUnifiedCount`
 
+### `frontend/src/pages/packageShellHostRuntime.js`
+
+- Functions:
+  - `buildFrontendSessionId`, `cloneAbilityRules`, `createPackageShellBootstrapLoader`, `isAdminShellIdentity`, `normalizePackageShellIdentity`, `normalizePackageShellNavigation`, `normalizePackageShellSurfaces`, `packageShellHostFetch`, `shouldAttachApiToken`
+- Top-level variables:
+  - `abilityRules`, `accessToken`, `bootstrapPayload`, `capabilities`, `hasFrontendIdentity`, `headers`, `isAdminIdentity`, `navigation`, `normalizedIdentity`, `packageShellHostEnv`, `requestUrl`, `resolvedUrl`, `session`, `sessionSubject`, `surfaces`, `visibleGroups`, `visibleRoutes`
+
+### `frontend/src/pages/packageShellHostRuntime.test.jsx`
+
+- Functions:
+  - `installShellRuntimeGlobals`, `renderWithRouter`
+- Top-level variables:
+  - `bootstrap`, `fetchMock`, `loader`, `localStorageMock`, `previousFetch`, `previousLocalStorage`, `previousLocation`, `runtime`
+
 ### `frontend/src/pages/PortfolioManagement.jsx`
 
 - Functions:
   - `Badge`, `DeleteConfirmModal`, `PortfolioCard`, `PortfolioFormModal`, `SubAccountFormModal`, `SubAccountList`, `closeModal`, `getSubAccountTypeOptions`, `handleCreatePortfolio`, `handleCreateSA`, `handleDeletePortfolio`, `handleDeleteSA`, `handleSubmit`, `handleUpdatePortfolio`, `handleUpdateSA`, `saTypeColor`
 - Top-level variables:
   - `CONFIRM_KEYWORD`, `isEdit`, `loadSubAccounts`, `map`, `match`, `mine`, `parsedMarginRatio`, `res`, `saCount`, `subAccountTypeOptions`, `trimmed`
+
+### `frontend/src/pages/PortfoliosShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
+
+### `frontend/src/pages/PortfoliosShellHost.test.jsx`
+
+- Top-level variables:
+  - `mockShellPortfoliosPage`, `mockUsePortfolio`, `props`
 
 ### `frontend/src/pages/ResetPassword.jsx`
 
@@ -3198,12 +3529,22 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `EMPTY_COND`, `FIELD_OPTIONS`, `OP_OPTIONS`, `f`, `fKey`, `fieldId`, `loadRules`, `op`, `opId`, `opKey`, `res`, `valueId`
 
+### `frontend/src/pages/SettingsShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
+
+### `frontend/src/pages/SettingsShellHost.test.jsx`
+
+- Top-level variables:
+  - `mockShellSettingsPage`, `mockUsePortfolio`, `props`
+
 ### `frontend/src/pages/StockDetail.jsx`
 
 - Functions:
   - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `KLineChartComponent`, `MetricRow`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_normalizeAdvisoryPromptConfig`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `formatChartAxis`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleToggleComponentInclude`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `loadPromptConfig`, `persistPromptConfig`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `run`, `runRefresh`, `showWorkspaceMessage`
 - Top-level variables:
-  - `ADVISORY_INVALIDATION_EVENT`, `STALE_RESYNC_RETRY_MS`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryParams`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chartPerformance`, `chartWindowHint`, `close`, `conflictState`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `events`, `fallback`, `fallbackFromTs`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `flattenedSnapshotOrders`, `floorPrice`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `height`, `id`, `inFlightRef`, `incomingTrades`, `interval`, `intervalId`, `isTransientEmpty`, `isUpstreamUnavailable`, `key`, `lastClose`, `latest`, `latestDeltaVsBaseline`, `latestVol`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveVolume`, `map`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `min`, `next`, `nextComponents`, `nextDeletedComponents`, `nextSummaries`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `row`, `rows`, `selectedTradeDate`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `snapshotOrders`, `sortedTrades`, `source`, `sourceGroupId`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickerData`, `timer`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `vol`, `warning`, `warningSuffix`, `whaleSignalsForChart`, `width`, `withinRange`, `x`, `y`, `years`
+  - `ADVISORY_INVALIDATION_EVENT`, `STALE_RESYNC_RETRY_MS`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryParams`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chartPerformance`, `chartWindowHint`, `close`, `conflictState`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `events`, `fallback`, `fallbackFromTs`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `flattenedSnapshotOrders`, `floorPrice`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `height`, `id`, `inFlightRef`, `incomingTrades`, `interval`, `intervalId`, `isTransientEmpty`, `isUpstreamUnavailable`, `key`, `lastClose`, `latest`, `latestDeltaVsBaseline`, `latestVol`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveVolume`, `map`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `min`, `next`, `nextComponents`, `nextDeletedComponents`, `nextSummaries`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `row`, `rows`, `selectedSessionMaterialization`, `selectedSessionReadPath`, `selectedTradeDate`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `snapshotOrders`, `sortedTrades`, `source`, `sourceGroupId`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickerData`, `timer`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `vol`, `warning`, `warningSuffix`, `whaleSignalsForChart`, `width`, `withinRange`, `x`, `y`, `years`
 
 ### `frontend/src/pages/stockDetailAdvisoryUtils.js`
 
@@ -3233,12 +3574,32 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `baseThread`, `baseTicket`
 
+### `frontend/src/pages/SupportShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
+
+### `frontend/src/pages/SupportShellHost.test.jsx`
+
+- Top-level variables:
+  - `mockShellSupportPage`, `mockUsePortfolio`, `props`
+
 ### `frontend/src/pages/Transactions.jsx`
 
 - Functions:
   - `calcFee`, `cancelForm`, `formatUsDecimalInput`, `formatUsIntegerInput`, `handleChange`, `handleDelete`, `handleFeePresetChange`, `handleNumericBlur`, `handleRefresh`, `handleSubmit`, `handleVisibilityChange`, `isValidUsPriceInput`, `isValidUsQuantityInput`, `openCreate`, `openEdit`, `parseUsNumber`
 - Top-level variables:
   - `ALL_TAB`, `EMPTY_FORM`, `FEE_PRESETS`, `FEE_PRESET_KEYS`, `MIN_FEE`, `SA_COLORS`, `TAX_SELL_RATE`, `TYPE_BG`, `US_PRICE_PATTERN`, `US_QUANTITY_PATTERN`, `VSD_RATE`, `activeSaName`, `brokerageFee`, `buyCount`, `count`, `data`, `dec`, `defaultSa`, `digits`, `displayTx`, `feeBreakdown`, `feePresetLabels`, `fetchSubAccounts`, `fetchTx`, `filtered`, `firstDot`, `intDigits`, `intFormatted`, `list`, `map`, `nextFieldErrors`, `normalized`, `normalizedSymbol`, `parsed`, `parsedPrice`, `parsedQuantity`, `payload`, `preset`, `priceParsed`, `qtyParsed`, `raw`, `res`, `results`, `sa`, `saColorMap`, `sanitized`, `sellCount`, `targets`, `taxFee`, `txValue`, `txs`, `typeLabels`, `vsdFee`
+
+### `frontend/src/pages/TransactionsShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
+
+### `frontend/src/pages/TransactionsShellHost.test.jsx`
+
+- Top-level variables:
+  - `mockShellTransactionsPage`, `mockUseI18n`, `mockUsePortfolio`, `props`
 
 ### `frontend/src/pages/Upgrade.jsx`
 
@@ -3271,12 +3632,22 @@ Generated at: `2026-05-02 10:14:24`
 - Top-level variables:
   - `MAX_WATCHLIST_RT_SYMBOLS`, `SIDEBAR_PAGE_SIZE`, `activeDirection`, `activeGroup`, `activeGroupItems`, `activeGroupTrackedCount`, `activeGroupTrackedItems`, `activeGroupUntrackedCount`, `activeKey`, `ad`, `ak`, `alertSymbols`, `allRealtimeSymbols`, `buf`, `clearSyncCooldownTimer`, `compare`, `cooldownMs`, `cooldownSeconds`, `currentPrice`, `downCount`, `dt`, `eventThresholdMillion`, `eventThresholdVnd`, `fetchPriceAlerts`, `fetchTracked`, `filteredActiveGroupItems`, `filteredByDataActiveGroupItems`, `filteredByDataTrackedSymbolsWithRealtime`, `filteredTrackedSymbolsWithRealtime`, `getGroupSortIndicator`, `getSparklinePrices`, `getTrackedSortIndicator`, `group`, `groupCurrentPage`, `groupStats`, `groupTotalPages`, `groupsWithRealtime`, `handleMarkPriceAlertTriggered`, `handleQuickCreatePriceAlert`, `handleSync`, `inCooldown`, `initial`, `isActive`, `isDown`, `isUp`, `justAddedSymbol`, `keyword`, `lastTriggeredAt`, `latestTriggeredPriceAlert`, `loadGroups`, `navigate`, `next`, `nextValue`, `normalized`, `normalizedPrev`, `normalizedSymbol`, `normalizedThreshold`, `now`, `openStockWorkspace`, `pagedActiveGroupItems`, `pagedGroups`, `pagedTrackedSymbolsWithRealtime`, `parsed`, `parsedThreshold`, `payload`, `prevDir`, `prevKey`, `price`, `priceAlertConditionLabels`, `priceAlertsWithRealtime`, `priceHistoryRef`, `realtimeLabels`, `res`, `retryAfter`, `rows`, `s`, `searchedActiveGroupItems`, `searchedTrackedSymbolsWithRealtime`, `shouldAutoClearMessage`, `si`, `sortedActiveGroupItems`, `sortedTrackedSymbolsWithRealtime`, `splitIndex`, `start`, `startSyncCooldown`, `strategyFilteredTracked`, `symbolsToAdd`, `syncCooldownIntervalRef`, `targetPrice`, `targets`, `thresholdInUseMillion`, `thresholdValue`, `toggleGroupSort`, `toggleTrackedSort`, `totalSidebarPages`, `tracked`, `trackedCurrentPage`, `trackedItem`, `trackedStats`, `trackedSymbolMap`, `trackedSymbolSet`, `trackedSymbolsWithRealtime`, `trackedTotalPages`, `trackedWithOverrideCount`, `trackedWithUserDefaultCount`, `triggeringAlertIdsRef`, `trimmed`, `typeLabels`, `upCount`, `updatedMap`, `updatedRows`, `useSymbolOverride`, `userThresholdMillion`
 
+### `frontend/src/pages/WatchlistShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
+
+### `frontend/src/pages/WatchlistShellHost.test.jsx`
+
+- Top-level variables:
+  - `mockShellWatchlistPage`, `mockUsePortfolio`, `props`
+
 ### `frontend/src/pages/WhaleAdvisory.jsx`
 
 - Functions:
   - `fmtTime`
 - Top-level variables:
-  - `activeItem`, `filteredStats`, `list`, `q`, `refreshInfo`, `stillExists`
+  - `activeItem`, `advisoryShellHostHref`, `filteredStats`, `list`, `packageShellHostEnabled`, `params`, `q`, `query`, `refreshInfo`, `resolvedSymbol`, `stillExists`
 
 ### `frontend/src/pages/WhaleAlertsDashboard.jsx`
 
@@ -3290,7 +3661,7 @@ Generated at: `2026-05-02 10:14:24`
 - Functions:
   - `AdvisoryPreviewCard`, `AggregateFeedCard`, `CampaignCard`, `CampaignDetailModal`, `SymbolInvestigationPanel`, `TrackedSymbolCard`, `buildAggregateEventKey`, `buildSymbolStatsFromFeed`, `buildTrackedSymbolBuckets`, `formatCompactMoney`, `formatDuration`, `formatMoney`, `formatTime`, `getAggregateSourceMeta`, `getCampaignSideLabel`, `getCampaignTypeLabel`, `getFrequencyLabel`, `getSeverityLabel`, `getSeverityTone`, `getSideTone`, `getSizeClassLabel`, `getThresholdSourceLabel`, `isCountableWhaleOrder`, `loadInitialCampaigns`, `mergeUniqueAggregateEvents`
 - Top-level variables:
-  - `FEED_PAGE_SIZE_OPTIONS`, `abnormalityScore`, `abnormalityTone`, `activeWatchlistGroup`, `activeWatchlistGroupId`, `advisoryRequest`, `aggregateAbortRef`, `aggregateDisplayedCount`, `aggregateRequestSeqRef`, `aggregateSourceMeta`, `aggregateTotalCount`, `alertTimeRaw`, `avgValue`, `bootstrapRequestSeqRef`, `buyRatio`, `campaignAbortRef`, `campaignRequestSeqRef`, `campaigns`, `canReadAdvisory`, `cancelled`, `candidateTime`, `checkList`, `coObsSummary`, `currentTime`, `fetchData`, `filteredCampaigns`, `freq`, `groupedTimeline`, `handleHideLess`, `handleLoadMore`, `handleLoadMoreCampaigns`, `handleSortChange`, `hasExplain`, `hours`, `investigation`, `isBuy`, `isOrderSide`, `key`, `loadAggregateFeed`, `loadCampaigns`, `loadData`, `localController`, `map`, `merged`, `minutes`, `nextItems`, `normalized`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `normalizedSource`, `parsed`, `parsedId`, `payload`, `primaryTime`, `raw`, `requestSeq`, `requestSignal`, `response`, `scopeLabel`, `seen`, `severityTone`, `side`, `sideTone`, `signals`, `sourceKeys`, `sourceMixLabel`, `st`, `strength`, `sym`, `symbol`, `symbolShortcuts`, `symbolStatsMap`, `tone`, `totalOrders`, `trackedSymbolsRequest`, `type`, `unique`, `watchlistGroupId`, `watchlistGroupsRequest`, `whaleAvgPrice`, `whyList`
+  - `FEED_PAGE_SIZE_OPTIONS`, `abnormalityScore`, `abnormalityTone`, `activeWatchlistGroup`, `activeWatchlistGroupId`, `advisoryRequest`, `aggregateAbortRef`, `aggregateDisplayedCount`, `aggregateRequestSeqRef`, `aggregateSourceMeta`, `aggregateTotalCount`, `alertTimeRaw`, `avgValue`, `bootstrapRequestSeqRef`, `buyRatio`, `campaignAbortRef`, `campaignRequestSeqRef`, `campaigns`, `canReadAdvisory`, `cancelled`, `candidateTime`, `checkList`, `coObsSummary`, `currentTime`, `fallbackSymbol`, `fetchData`, `filteredCampaigns`, `freq`, `groupedTimeline`, `handleHideLess`, `handleLoadMore`, `handleLoadMoreCampaigns`, `handleSortChange`, `hasExplain`, `hours`, `investigation`, `isBuy`, `isOrderSide`, `key`, `loadAggregateFeed`, `loadCampaigns`, `loadData`, `localController`, `location`, `map`, `merged`, `minutes`, `nextItems`, `normalized`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `normalizedSource`, `packageShellHostEnabled`, `params`, `parsed`, `parsedId`, `payload`, `primaryTime`, `query`, `raw`, `requestSeq`, `requestSignal`, `response`, `scopeLabel`, `seen`, `severityTone`, `shellHostHref`, `side`, `sideTone`, `signals`, `sourceKeys`, `sourceMixLabel`, `st`, `strength`, `sym`, `symbol`, `symbolShortcuts`, `symbolStatsMap`, `tone`, `totalOrders`, `trackedSymbolsRequest`, `type`, `unique`, `watchlistGroupId`, `watchlistGroupsRequest`, `whaleAvgPrice`, `whyList`
 
 ### `frontend/src/pages/WhaleAlertsHub.test.jsx`
 
@@ -3298,6 +3669,11 @@ Generated at: `2026-05-02 10:14:24`
   - `renderPage`, `setupCommonMocks`
 - Top-level variables:
   - `campaignA`, `campaignB`, `secondCall`
+
+### `frontend/src/pages/WhaleAlertsShellHost.jsx`
+
+- Top-level variables:
+  - `bootstrapLoader`, `location`
 
 ### `frontend/src/setupProxy.js`
 
@@ -3419,6 +3795,11 @@ Generated at: `2026-05-02 10:14:24`
 
 - No parseable top-level symbols found
 
+### `mobile-app/metro.config.js`
+
+- Top-level variables:
+  - `config`, `path`, `projectRoot`
+
 ### `mobile-app/src/app/AppRoot.tsx`
 
 - Functions:
@@ -3431,7 +3812,7 @@ Generated at: `2026-05-02 10:14:24`
 - Functions:
   - `BottomTabBar`
 - Top-level variables:
-  - `TAB_DEFS`, `active`, `styles`, `t`
+  - `t`
 
 ### `mobile-app/src/i18n/en.ts`
 
@@ -3508,8 +3889,7 @@ Generated at: `2026-05-02 10:14:24`
 
 ### `mobile-app/src/services/config.ts`
 
-- Top-level variables:
-  - `API_BASE_URL`, `API_PREFIX`, `DEMO_PASSWORD`, `DEMO_USERNAME`, `WS_BASE_URL`, `normalizeBaseUrl`, `trimmed`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/services/http.ts`
 
@@ -3582,12 +3962,39 @@ Generated at: `2026-05-02 10:14:24`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/adapters/core/coreAdapter.js`
+### `packages/mobile/src/components/MobileBottomTabBar.js`
 
 - Functions:
-  - `resolveCoreBaseUrl`
+  - `MobileBottomTabBar`
 - Top-level variables:
-  - `coreAdapter`
+  - `active`, `styles`
+
+### `packages/mobile/src/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/mobile/src/navigation/mobileNavigation.js`
+
+- Functions:
+  - `findMobileTabDefinition`, `isMobileTabKey`
+- Top-level variables:
+  - `DEFAULT_ACTIVE_TAB`, `MOBILE_TAB_DEFS`, `MOBILE_TAB_KEYS`
+
+### `packages/mobile/src/runtimeConfig.js`
+
+- Functions:
+  - `createMobileRuntimeConfig`, `normalizeBaseUrl`
+- Top-level variables:
+  - `API_BASE_URL`, `API_PREFIX`, `DEMO_PASSWORD`, `DEMO_USERNAME`, `WS_BASE_URL`, `apiBaseUrl`, `mobileRuntimeConfig`, `trimmed`, `wsBaseUrl`
+
+### `packages/web/src/adapters/core/coreAdapter.js`
+
+- Classes:
+  - `CoreAdapterHttpError`
+- Functions:
+  - `appendQuery`, `createCoreAdvisorySessionClient`, `createCoreWhaleAnalyticsSnapshotClient`, `getAiAdvisorySessionWithFallback`, `readJsonBody`, `requestJson`, `resolveCoreBaseUrl`, `resolveFetchImpl`, `resolvePortfolioApiBaseUrl`, `resolveStockWorkspaceBaseUrl`
+- Top-level variables:
+  - `baseRequestOptions`, `canFallbackToV1`, `contentType`, `coreAdapter`, `fallbackPayload`, `normalizedSymbol`, `params`, `payload`, `primaryRequestOptions`, `queryString`, `request`, `response`
 
 ### `packages/web/src/adapters/core/index.js`
 
@@ -3600,9 +4007,9 @@ Generated at: `2026-05-02 10:14:24`
 ### `packages/web/src/adapters/vip-app/vipAppAdapter.js`
 
 - Functions:
-  - `resolveVipAppBaseUrl`
+  - `appendQuery`, `buildJsonRequest`, `createVipAppControlClient`, `requestJson`, `resolveFetchImpl`, `resolveVipAppBaseUrl`
 - Top-level variables:
-  - `vipAppAdapter`
+  - `params`, `queryString`, `request`, `response`, `vipAppAdapter`
 
 ### `packages/web/src/app/navigationCatalog.js`
 
@@ -3617,6 +4024,13 @@ Generated at: `2026-05-02 10:14:24`
   - `getRouteCatalogIds`, `getRoutesForBuildTarget`
 - Top-level variables:
   - `ALL_BUILD_TARGETS`, `normalizedTarget`, `routeCatalog`
+
+### `packages/web/src/components/ShellPageTemplate.js`
+
+- Functions:
+  - `joinClassNames`, `renderElement`, `renderShellField`, `renderShellMetric`, `renderShellPageChrome`, `renderShellPanel`, `renderShellSelectField`
+- Top-level variables:
+  - `SHELL_PAGE_TEMPLATE_STYLES`
 
 ### `packages/web/src/config/buildTarget.js`
 
@@ -3650,6 +4064,97 @@ Generated at: `2026-05-02 10:14:24`
 
 - Top-level variables:
   - `shellAdapters`
+
+### `packages/web/src/pages/admin/ShellAdminOpsPage.js`
+
+- Functions:
+  - `ShellAdminOpsPage`
+- Top-level variables:
+  - `adminAbilities`, `adminFlags`, `adminRoutes`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`
+
+### `packages/web/src/pages/coreShellPageHelpers.js`
+
+- Functions:
+  - `buildSurfaceFlags`, `buildVisibilityFlags`, `countFlagsByState`, `createEmptySnapshot`, `createInitialViewState`, `deriveCoreShellSnapshot`, `filterAbilitiesBySubject`, `filterVisibleRoutes`, `getEnabledSurfaceKeys`, `handleRefresh`, `normalizeComparableText`, `normalizePageErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderBuildMetaCard`, `renderElement`, `renderFlagList`, `renderHealthStatusPill`, `renderRefreshAction`, `renderSummaryCard`, `renderValueList`, `runInitialLoad`, `useCoreShellPageSnapshot`
+- Top-level variables:
+  - `active`, `allowedRouteIds`, `bootstrapLoaderRef`, `buildMeta`, `capabilities`, `envRef`, `fallbackErrorMessageRef`, `fetchImplRef`, `health`, `navigation`, `normalizedKeywords`, `session`, `snapshot`, `subject`, `surfaces`
+
+### `packages/web/src/pages/pageRegistry.js`
+
+- Functions:
+  - `getPageComponent`, `getPageRegistryRouteIds`
+- Top-level variables:
+  - `pageEntry`, `pageRegistry`
+
+### `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`
+
+- Functions:
+  - `ShellAiAdvisoryPage`, `buildAdvisoryRows`, `buildBenchmarkItems`, `createInitialAdvisoryState`, `handleAdvisorySymbolChange`, `handleAdvisorySymbolSubmit`, `handleRefreshAll`, `normalizeAdvisoryError`, `normalizeAdvisorySymbol`, `refreshAdvisorySession`, `resolveAdvisorySearch`, `resolveAdvisorySymbol`, `resolveAdvisorySymbolFromSearch`, `runAdvisoryLoad`, `syncAdvisorySymbolSearch`
+- Top-level variables:
+  - `SIGNAL_ROUTE_IDS`, `active`, `advisoryAbilities`, `advisoryEnvRef`, `advisoryFetchRef`, `advisoryLoaderRef`, `advisoryQuality`, `advisoryRows`, `advisorySession`, `benchmarkItems`, `benchmarks`, `decision`, `enabledSurfaces`, `groupFlags`, `metrics`, `nextSymbol`, `nextUrl`, `quality`, `resolvedAdvisorySymbol`, `routeFlags`, `search`, `signalRoutes`, `summaryCards`
+
+### `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`
+
+- Functions:
+  - `ShellWhaleAlertsPage`, `buildWhaleSnapshotContextItems`, `buildWhaleSnapshotMaterializationItems`, `buildWhaleSnapshotRows`, `createInitialWhaleSnapshotState`, `handleJumpToLatestValidTradeDate`, `handleRefreshAll`, `handleWhaleSnapshotSubmit`, `handleWhaleSymbolChange`, `handleWhaleTradeDateChange`, `normalizeWhaleSnapshotError`, `normalizeWhaleSymbol`, `normalizeWhaleTradeDate`, `refreshWhaleSnapshot`, `resolveWhaleSearch`, `resolveWhaleSymbol`, `resolveWhaleSymbolFromSearch`, `resolveWhaleTradeDate`, `resolveWhaleTradeDateFromSearch`, `runWhaleSnapshotLoad`, `syncWhaleSearch`
+- Top-level variables:
+  - `SIGNAL_ROUTE_IDS`, `active`, `canJumpToLatestValidTradeDate`, `enabledSurfaces`, `groupFlags`, `latestValidWhaleTradeDate`, `materialization`, `metrics`, `nextSymbol`, `nextTradeDate`, `nextUrl`, `normalized`, `qualityFlags`, `resolvedWhaleSymbol`, `resolvedWhaleTradeDate`, `routeFlags`, `search`, `searchParams`, `sessionContext`, `signalRoutes`, `summaryCards`, `whaleAbilities`, `whaleEnvRef`, `whaleFetchRef`, `whaleLoaderRef`, `whaleSnapshot`, `whaleSnapshotContextItems`, `whaleSnapshotMaterializationItems`, `whaleSnapshotRows`
+
+### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
+
+- Functions:
+  - `ShellAiCommandCenterPage`
+- Top-level variables:
+  - `aiAbilities`, `aiFlags`, `aiRoutes`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`
+
+### `packages/web/src/pages/system/ShellSettingsPage.js`
+
+- Functions:
+  - `ShellSettingsPage`
+- Top-level variables:
+  - `enabledSurfaces`, `metrics`, `summaryCards`
+
+### `packages/web/src/pages/system/ShellSupportPage.js`
+
+- Functions:
+  - `ShellSupportPage`
+- Top-level variables:
+  - `SYSTEM_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `supportAbilities`, `systemRoutes`
+
+### `packages/web/src/pages/vip/VipLocalControlPage.js`
+
+- Functions:
+  - `VipLocalControlPage`, `createCredentials`, `createEmptySnapshot`, `createInitialViewState`, `createUserDraft`, `formatTimestamp`, `getRoleLabel`, `handleLogin`, `handleLogout`, `handleRefresh`, `handleResetSession`, `handleUserSubmit`, `loadControlSnapshot`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAuditItem`, `renderElement`, `renderUserItem`, `runAction`, `runInitialLoad`
+- Top-level variables:
+  - `ROLE_OPTIONS`, `abilityCount`, `active`, `auditList`, `bootstrapLoaderRef`, `clientRef`, `controlPlaneClient`, `currentSessionId`, `currentSessionUsername`, `envRef`, `fetchImplRef`, `metrics`, `nextPayload`, `nextValue`, `notice`, `payload`, `result`, `roleEntry`, `roleKeys`, `roleText`, `sessionCards`, `snapshot`, `timestamp`, `userList`, `username`, `visibleRouteCount`
+
+### `packages/web/src/pages/workspace/ShellDashboardPage.js`
+
+- Functions:
+  - `ShellDashboardPage`
+- Top-level variables:
+  - `WORKSPACE_ROUTE_IDS`, `dashboardAbilities`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `workspaceRoutes`
+
+### `packages/web/src/pages/workspace/ShellPortfoliosPage.js`
+
+- Functions:
+  - `ShellPortfoliosPage`
+- Top-level variables:
+  - `PORTFOLIO_ROUTE_IDS`, `WORKSPACE_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `portfolioAbilities`, `portfolioRoutes`, `routeFlags`, `summaryCards`, `workspaceRoutes`
+
+### `packages/web/src/pages/workspace/ShellTransactionsPage.js`
+
+- Functions:
+  - `ShellTransactionsPage`
+- Top-level variables:
+  - `WORKSPACE_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `transactionAbilities`, `workspaceRoutes`
+
+### `packages/web/src/pages/workspace/ShellWatchlistPage.js`
+
+- Functions:
+  - `ShellWatchlistPage`
+- Top-level variables:
+  - `WORKSPACE_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `watchlistAbilities`, `workspaceRoutes`
 
 ## Update Workflow
 

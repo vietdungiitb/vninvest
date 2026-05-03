@@ -28,6 +28,7 @@ def api_root(_request):
                 'health': '/api/health/',
                 'auth_token': '/api/auth/token/',
                 'portfolio': '/api/portfolio/',
+                'dashboard_risk': '/api/dashboard/aggregated-risk/',
                 'stock_management': '/api/stock-management/',
                 'support': '/api/support/',
                 'realtime': '/api/realtime/',
@@ -50,6 +51,7 @@ urlpatterns = [
     path('api/auth/password-reset/request/', PasswordResetRequestView.as_view(), name='auth-password-reset-request'),
     path('api/auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),
     path('api/portfolio/', include('portfolio.urls')),
+    path('api/dashboard/aggregated-risk/', portfolio_views.dashboard_aggregated_risk_api, name='dashboard-aggregated-risk'),
     path('api/support/', include('support.urls')),
     # Tách biệt route stock-management
     path('api/stock-management/', include('portfolio.urls_stock')),

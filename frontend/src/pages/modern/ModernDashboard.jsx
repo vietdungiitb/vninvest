@@ -10,6 +10,7 @@ import SmartStatsHeader from '../../components/modern/SmartStatsHeader';
 import ModularPositionDeck from '../../components/modern/ModularPositionDeck';
 import PortfolioHeatmap from '../../components/PortfolioHeatmap';
 import UnifiedAlertCenter from '../../components/UnifiedAlertCenter';
+import StickyAlertBar from '../../components/StickyAlertBar';
 import useUnifiedAlerts from '../../hooks/useUnifiedAlerts';
 import usePersistentAlertState from '../../hooks/usePersistentAlertState';
 
@@ -397,6 +398,8 @@ export default function ModernDashboard() {
 
       {/* 2. Main Workspace Layout */}
       <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4">
+        <StickyAlertBar alerts={filteredUnifiedAlerts} />
+
         <div className="page-body-grid page-body-grid--auto-height min-h-full items-start">
           <div className="page-body-grid__main min-w-0">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:h-[526px]">

@@ -1,3 +1,4238 @@
+# Entry 2026-05-03bt - SaaS mobile screen/navigation bridge
+
+Muc tieu:
+- Chot slice thu hai cua SAAS-11 de dua tab catalog va bottom navigation shell vao `packages/mobile`, trong luc legacy Expo app root chi con lam thin bridge.
+- Giu screen component tree o mobile-app trong slice nay; day la migration cho navigation layer truoc.
+
+Noi dung cap nhat chinh:
+- `packages/mobile/package.json`:
+  - Add `check:mobile-navigation` script for the navigation contract smoke.
+- `packages/mobile/README.md`:
+  - Document the package-owned navigation surfaces.
+- `packages/mobile/src/index.js`:
+  - Re-export navigation helpers alongside runtime config.
+- `packages/mobile/src/navigation/mobileNavigation.js`:
+  - Own the mobile tab catalog, default active tab, and tab helper functions.
+- `packages/mobile/src/components/MobileBottomTabBar.js`:
+  - Move the bottom navigation shell into the mobile package.
+- `packages/mobile/scripts/check-mobile-navigation.mjs`:
+  - Add dedicated smoke proof for the mobile navigation contract.
+- `mobile-app/src/components/BottomTabBar.tsx`:
+  - Bridge the legacy app onto the package-owned bottom tab shell.
+- `mobile-app/src/app/AppRoot.tsx`:
+  - Use the package-owned default active tab.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Expand SAAS-11 to include the screen/navigation bridge follow-up.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11B.md`:
+  - Add mobile screen/navigation bridge evidence packet.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03bt.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the mobile screen/navigation bridge slice.
+- `module_tree_full.md`:
+  - Regenerated after adding the mobile navigation package surfaces.
+
+Danh sach tep cap nhat:
+- packages/mobile/package.json (MODIFIED - add check:mobile-navigation script)
+- packages/mobile/README.md (MODIFIED - document package-owned navigation surfaces)
+- packages/mobile/src/index.js (MODIFIED - re-export navigation helpers)
+- packages/mobile/src/navigation/mobileNavigation.js (NEW - shared mobile navigation catalog)
+- packages/mobile/src/components/MobileBottomTabBar.js (NEW - package-owned bottom navigation shell)
+- packages/mobile/scripts/check-mobile-navigation.mjs (NEW - mobile navigation smoke proof)
+- mobile-app/src/components/BottomTabBar.tsx (MODIFIED - bridge legacy app to package-owned bottom tab shell)
+- mobile-app/src/app/AppRoot.tsx (MODIFIED - use package-owned default active tab)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to include screen/navigation bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11B.md (NEW - mobile screen/navigation bridge evidence packet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bt)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bt)
+- module_tree_full.md (MODIFIED - regenerate after adding the mobile navigation package surfaces)
+
+Validation:
+- PASSED: `Push-Location ./packages/mobile; node ./scripts/check-mobile-navigation.mjs; Pop-Location` -> mobile navigation smoke passed.
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; Pop-Location` -> TypeScript typecheck completed cleanly after the package-owned navigation bridge.
+- PASSED: `Push-Location ./mobile-app; node -e "const config = require('./metro.config.js'); console.log(config.watchFolders[0]);"; Pop-Location` -> Metro config still resolves the sibling `packages/mobile` folder.
+- PASSED: `get_errors` on the touched mobile files returned no errors.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (617 modules).
+
+Status:
+- SAAS-11 mobile screen/navigation bridge slice is in-progress with package-owned tab catalog and bottom navigation shell validated.
+
+# Entry 2026-05-03bs - SaaS mobile runtime config bridge
+
+Muc tieu:
+- Dung slice dau tien cua SAAS-11 de dua mobile runtime config vao `packages/mobile` va cho legacy `mobile-app` re-export qua package boundary.
+- Tao mot smoke thu nho nhung that cho mobile package track truoc khi mo phan screen/navigation migration.
+
+Noi dung cap nhat chinh:
+- `packages/mobile/package.json`:
+  - Add `type: module`, `main`, and `check:mobile` script for the package boundary.
+- `packages/mobile/README.md`:
+  - Document the mobile runtime config boundary and smoke surface.
+- `packages/mobile/src/runtimeConfig.js`:
+  - Own normalized API/WS/demo credential defaults for the mobile package track.
+- `packages/mobile/src/index.js`:
+  - Re-export the shared runtime config surface.
+- `packages/mobile/scripts/check-mobile-config.mjs`:
+  - Add dedicated package smoke proof for defaults and env overrides.
+- `mobile-app/src/services/config.ts`:
+  - Re-export the shared package config boundary.
+- `mobile-app/metro.config.js`:
+  - Load the sibling `packages/mobile` folder so the bridge can resolve in Expo/Metro.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Add SAAS-11 mobile runtime config bridge slice and mark it in-progress.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11.md`:
+  - Add mobile runtime config evidence packet.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03bs.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the mobile runtime config bridge slice.
+- `module_tree_full.md`:
+  - Regenerated after adding the mobile package bridge.
+
+Danh sach tep cap nhat:
+- packages/mobile/package.json (MODIFIED - add type module and check:mobile script)
+- packages/mobile/README.md (MODIFIED - document mobile runtime config boundary)
+- packages/mobile/src/runtimeConfig.js (NEW - shared mobile runtime config defaults)
+- packages/mobile/src/index.js (NEW - re-export shared mobile config surface)
+- packages/mobile/scripts/check-mobile-config.mjs (NEW - mobile package smoke proof)
+- mobile-app/src/services/config.ts (MODIFIED - re-export shared package config boundary)
+- mobile-app/metro.config.js (NEW - Metro watch folder bridge for sibling package)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - add SAAS-11 mobile runtime config bridge slice)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11.md (NEW - mobile runtime config evidence packet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bs)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bs)
+- module_tree_full.md (MODIFIED - regenerate after adding the mobile package bridge)
+
+Validation:
+- PASSED: `Push-Location ./packages/mobile; node ./scripts/check-mobile-config.mjs; Pop-Location` -> mobile package config smoke passed.
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; Pop-Location` -> TypeScript typecheck completed cleanly.
+- PASSED: `Push-Location ./mobile-app; node -e "const config = require('./metro.config.js'); console.log(config.watchFolders[0]);"; Pop-Location` -> Metro config loaded and resolved the sibling `packages/mobile` folder.
+- PASSED: `get_errors` on the touched mobile files returned no errors.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (615 modules).
+
+Status:
+- SAAS-11 mobile runtime config bridge slice is in-progress with package boundary, bridge, and smoke proof validated.
+
+# Entry 2026-05-03br - SaaS VIP local control smoke proof
+
+Muc tieu:
+- Chot VIP local control seam trong `packages/web` va local backend facade trong `packages/vip-app`.
+- Smoke route catalog, page registry, adapter contract, local backend client contract va static page markup roi moi xem slice la done.
+
+Noi dung cap nhat chinh:
+- `frontend/src/App.jsx`:
+  - Clean up React Router future-flag warnings in the touched frontend test harness while keeping the package-shell route wiring intact.
+- `frontend/src/pages/DashboardShellHost.test.jsx`:
+  - Clean up React Router future-flag warnings in the touched package-shell wrapper test harness.
+- `packages/web/package.json`:
+  - Add `check:vip` script for the VIP local-control smoke run.
+- `packages/web/scripts/check-vip-local-control.mjs`:
+  - Add dedicated static smoke proof for vip-local-control route, registry, adapter, client contract, and local backend flows.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-10 completed and close the board.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS10.md`:
+  - Add VIP local control evidence packet.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03br.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the VIP local control closeout.
+- `module_tree_full.md`:
+  - Regenerate after adding the VIP smoke script.
+
+Danh sach tep cap nhat:
+- frontend/src/App.jsx (MODIFIED - cleanup React Router future flags in touched route harness)
+- frontend/src/pages/DashboardShellHost.test.jsx (MODIFIED - cleanup React Router future flags in touched route harness)
+- packages/web/package.json (MODIFIED - add check:vip script)
+- packages/web/scripts/check-vip-local-control.mjs (NEW - VIP local control smoke proof)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - mark SAAS-10 completed and close the board)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS10.md (NEW - VIP app completion evidence packet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03br)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03br)
+- module_tree_full.md (MODIFIED - regenerate after adding the VIP smoke script)
+
+Validation:
+- PASSED: `Push-Location ./packages/web; npm run check:vip; Pop-Location` -> VIP local control smoke passed.
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx src/pages/DashboardShellHost.test.jsx; Pop-Location` -> 2 suites passed, 28 tests passed.
+- PASSED: `get_errors` on `frontend/src/App.jsx`, `frontend/src/pages/DashboardShellHost.test.jsx`, and `packages/web/scripts/check-vip-local-control.mjs` -> no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (612 modules).
+
+Status:
+- SAAS-10 VIP local control slice is completed with route, adapter, smoke proof, and audit sync validated.
+
+# Entry 2026-05-03bq - SaaS dashboard shell route consolidation
+
+Muc tieu:
+- Chuyen route `dashboard` cua frontend sang package-shell host de web consolidation tiep tuc di theo packages/web.
+- Giu legacy Dashboard dispatcher khi shell flag tat de rollout an toan.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/DashboardShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellDashboardPage.
+- `frontend/src/pages/DashboardShellHost.test.jsx`:
+  - Them wrapper regression test cho dashboard shell.
+- `frontend/src/App.jsx`:
+  - Route `dashboard` chuyen sang `DashboardShellHost` khi shell flag bat.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them regression test cho route `dashboard` khi shell flag bat va fallback khi shell flag tat.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Open and close SAAS-09B dashboard shell follow-up slice.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09B.md`:
+  - Add dashboard shell proof packet.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03bq.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va status update.
+- `module_tree_full.md`:
+  - Regenerated after adding the dashboard shell host slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/DashboardShellHost.jsx (NEW - package-shell host for dashboard lane)
+- frontend/src/pages/DashboardShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route dashboard use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for dashboard shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - open and close SAAS-09B dashboard slice)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09B.md (NEW - dashboard shell proof packet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bq)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bq)
+- module_tree_full.md (MODIFIED - regenerate after dashboard shell host slice)
+
+Validation:
+- PASSED: focused frontend route tests for dashboard shell host and App route gating.
+- PASSED: dev frontend/backend stack refreshed and containers reported healthy.
+- PASSED: browser proof captured on /dashboard after login as testpro.
+- PASSED: module tree regenerated successfully after the dashboard shell host slice.
+
+Status:
+- SAAS-09B dashboard shell host follow-up is completed with route wrapper tests, browser proof, and audit sync validated.
+
+# Entry 2026-05-03bp - SaaS portfolios shell route consolidation
+
+Muc tieu:
+- Chuyen route `portfolios` cua frontend sang package-shell host de web consolidation tiep tuc di theo packages/web.
+- Giu legacy fallback route khi shell flag tat de rollout an toan.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/PortfoliosShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellPortfoliosPage.
+- `frontend/src/pages/PortfoliosShellHost.test.jsx`:
+  - Them wrapper regression test cho portfolios shell.
+- `frontend/src/App.jsx`:
+  - Route `portfolios` chuyen sang `PortfoliosShellHost` khi shell flag bat.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them regression test cho route `portfolios` khi shell flag bat va fallback khi shell flag tat.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Cap nhat SAAS-09 web package consolidation slice voi portfolios scope.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md`:
+  - Expand evidence packet to include portfolios shell proof.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va status update.
+- `module_tree_full.md`:
+  - Regenerated after adding the portfolios shell host slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/PortfoliosShellHost.jsx (NEW - package-shell host for portfolios lane)
+- frontend/src/pages/PortfoliosShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route portfolios use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for portfolios shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md (MODIFIED - add portfolios shell proof)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bp)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bp)
+
+Validation:
+- PASSED: focused frontend route tests for portfolios shell host and App route gating.
+- PASSED: module tree regenerated successfully after the portfolios shell host slice.
+- PASSED: dev frontend/backend stack refreshed and containers reported healthy.
+
+Status:
+- SAAS-09 web package consolidation is completed with support + settings + settings/ai + admin-ops + portfolios + watchlist + transactions route migration and wrapper tests validated.
+
+# Entry 2026-05-03bo - SaaS admin ops shell route consolidation
+
+Muc tieu:
+- Chuyen route `admin-ops` cua frontend sang package-shell host de web consolidation tiep tuc di theo packages/web.
+- Giu legacy fallback route khi shell flag tat de rollout an toan.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/AdminOpsShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellAdminOpsPage.
+- `frontend/src/pages/AdminOpsShellHost.test.jsx`:
+  - Them wrapper regression test cho admin ops shell.
+- `frontend/src/App.jsx`:
+  - Route `admin-ops` chuyen sang `AdminOpsShellHost` khi shell flag bat.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them regression test cho route `admin-ops` khi shell flag bat va fallback khi shell flag tat.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Cap nhat SAAS-09 web package consolidation slice voi admin-ops scope.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md`:
+  - Expand evidence packet to include admin ops shell proof.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va status update.
+- `module_tree_full.md`:
+  - Regenerated after adding the admin ops shell host slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AdminOpsShellHost.jsx (NEW - package-shell host for admin ops lane)
+- frontend/src/pages/AdminOpsShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route admin-ops use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for admin ops shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md (MODIFIED - add admin ops shell proof)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bo)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bo)
+
+Validation:
+- Pending: focused frontend route tests after patch application.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings + settings/ai + admin-ops + watchlist + transactions route migration and wrapper tests validated.
+
+# Entry 2026-05-03bn - SaaS settings AI shell route consolidation
+
+Muc tieu:
+- Chuyen route `settings/ai` cua frontend sang package-shell host de web consolidation tiep tuc di theo packages/web.
+- Giu legacy fallback route khi shell flag tat de rollout an toan.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/AICommandCenterShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellAiCommandCenterPage.
+- `frontend/src/pages/AICommandCenterShellHost.test.jsx`:
+  - Them wrapper regression test cho AI command center shell.
+- `frontend/src/App.jsx`:
+  - Route `settings/ai` chuyen sang `AICommandCenterShellHost` khi shell flag bat.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them regression test cho route `settings/ai` khi shell flag bat va fallback khi shell flag tat.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Cap nhat SAAS-09 web package consolidation slice voi settings/ai scope.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md`:
+  - Expand evidence packet to include settings AI shell proof.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va status update.
+- `module_tree_full.md`:
+  - Regenerated after the AI command center shell host slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AICommandCenterShellHost.jsx (NEW - package-shell host for AI command center lane)
+- frontend/src/pages/AICommandCenterShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route settings/ai use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for settings AI shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md (MODIFIED - add settings AI shell proof)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bn)
+- module_tree_full.md (MODIFIED - regenerate after AI command center shell host slice)
+
+Validation:
+- PASSED: focused frontend route tests for settings AI shell host and App route gating.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location`.
+- PASSED: `Push-Location .; docker compose -f ./docker-compose.dev.yml up -d --build frontend backend; Pop-Location`.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings + settings/ai + watchlist + transactions route migration and wrapper tests validated.
+
+# Entry 2026-05-03bm - SaaS transactions shell route consolidation
+
+Muc tieu:
+- Chuyen route `transactions` cua frontend sang package-shell host de web consolidation tiep tuc di theo packages/web.
+- Giu legacy fallback route khi shell flag tat de rollout an toan.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/TransactionsShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellTransactionsPage.
+- `frontend/src/pages/TransactionsShellHost.test.jsx`:
+  - Them wrapper regression test cho transactions shell.
+- `frontend/src/App.jsx`:
+  - Route `transactions` chuyen sang `TransactionsShellHost` khi shell flag bat.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them regression test cho route `transactions` khi shell flag bat va fallback khi shell flag tat.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Cap nhat SAAS-09 web package consolidation slice voi transactions scope.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md`:
+  - Expand evidence packet to include transactions shell proof.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va status update.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/TransactionsShellHost.jsx (NEW - package-shell host for transactions lane)
+- frontend/src/pages/TransactionsShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route transactions use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for transactions shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md (MODIFIED - add transactions shell proof)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bm)
+
+Validation:
+- PASSED: focused frontend route tests for transactions shell host and App route gating.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings + watchlist + transactions route migration and wrapper tests validated.
+
+# Entry 2026-05-03bl - SaaS support + settings + watchlist shell route consolidation
+
+Muc tieu:
+- Chuyen route `support`, `settings` va `watchlist` cua frontend sang package-shell host de web consolidation tiep tuc di theo packages/web.
+- Giu legacy fallback route khi shell flag tat de rollout an toan.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/SupportShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellSupportPage.
+- `frontend/src/pages/SupportShellHost.test.jsx`:
+  - Them wrapper regression test cho support shell.
+- `frontend/src/pages/SettingsShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellSettingsPage.
+- `frontend/src/pages/SettingsShellHost.test.jsx`:
+  - Them wrapper regression test cho settings shell.
+- `frontend/src/pages/WatchlistShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellWatchlistPage.
+- `frontend/src/pages/WatchlistShellHost.test.jsx`:
+  - Them wrapper regression test cho watchlist shell.
+- `frontend/src/App.jsx`:
+  - Route `support`, `settings` va `watchlist` chuyen sang package shell host khi shell flag bat.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them regression test cho route `watchlist` khi shell flag bat.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Cap nhat SAAS-09 web package consolidation slice voi support + settings + watchlist scope.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va status update.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/SupportShellHost.jsx (NEW - package-shell host for support lane)
+- frontend/src/pages/SupportShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/pages/SettingsShellHost.jsx (NEW - package-shell host for settings lane)
+- frontend/src/pages/SettingsShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/pages/WatchlistShellHost.jsx (NEW - package-shell host for watchlist lane)
+- frontend/src/pages/WatchlistShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route support/settings/watchlist use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for watchlist shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bl)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bl)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false --runTestsByPath src/App.adminCoreRoutes.test.jsx src/pages/WatchlistShellHost.test.jsx; Pop-Location`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; npm test -- --runInBand --watch=false src/pages/SupportShellHost.test.jsx; Pop-Location`.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings + watchlist route migration and wrapper tests validated.
+
+# Entry 2026-05-03bk - SaaS support + settings shell route consolidation
+
+Muc tieu:
+- Chuyen route `support` va `settings` cua frontend sang package-shell host de web consolidation tiep tuc di theo packages/web.
+- Giu legacy fallback route khi shell flag tat de rollout an toan.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/SupportShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellSupportPage.
+- `frontend/src/pages/SupportShellHost.test.jsx`:
+  - Them wrapper regression test cho support shell.
+- `frontend/src/pages/SettingsShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellSettingsPage.
+- `frontend/src/pages/SettingsShellHost.test.jsx`:
+  - Them wrapper regression test cho settings shell.
+- `frontend/src/App.jsx`:
+  - Route `support` chuyen sang `SupportShellHost` va route `settings` chuyen sang `SettingsShellHost` khi shell flag bat.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them regression test cho route `support` va `settings` khi shell flag bat.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Cap nhat SAAS-09 web package consolidation slice voi support + settings scope.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va status update.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/SupportShellHost.jsx (NEW - package-shell host for support lane)
+- frontend/src/pages/SupportShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/pages/SettingsShellHost.jsx (NEW - package-shell host for settings lane)
+- frontend/src/pages/SettingsShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route support uses package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for support shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bk)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bk)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false --runTestsByPath src/App.adminCoreRoutes.test.jsx src/pages/SettingsShellHost.test.jsx; Pop-Location`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; npm test -- --runInBand --watch=false src/pages/SupportShellHost.test.jsx; Pop-Location`.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings route migration and wrapper tests validated.
+
+# Entry 2026-05-03bj - SaaS support shell route consolidation
+
+Muc tieu:
+- Chuyen route `support` cua frontend sang package-shell host de web consolidation tiep tuc di theo packages/web.
+- Giu legacy fallback route khi shell flag tat de rollout an toan.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/SupportShellHost.jsx`:
+  - Tao package-shell host wrapper cho ShellSupportPage.
+- `frontend/src/pages/SupportShellHost.test.jsx`:
+  - Them component-level regression test cho wrapper va shared shell mount.
+- `frontend/src/App.jsx`:
+  - Route `support` chuyen sang `SupportShellHost` khi shell flag bat.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them regression test cho route `support` khi shell flag bat.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Add SAAS-09 web package consolidation slice va mark SAAS-08 completed.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va status update.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/SupportShellHost.jsx (NEW - package-shell host for support lane)
+- frontend/src/pages/SupportShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route support uses package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for support shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - complete SAAS-08 and open SAAS-09)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bj)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bj)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx; Pop-Location`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; npm test -- --runInBand --watch=false src/pages/SupportShellHost.test.jsx; Pop-Location`.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support route migration validated.
+- SAAS-09 web package consolidation is in-progress with support route migration and wrapper test validated.
+
+# Entry 2026-05-03bi - SaaS core prod topology wiring
+
+Muc tieu:
+- Nối `packages/core` vào production topology để package-shell frontend có `core-api` thật phía sau `/core/v1`.
+- Giữ slice SAAS-08 ở trạng thái in-progress vì control-plane truth migration vẫn chưa hoàn tất.
+
+Noi dung cap nhat chinh:
+- `docker-compose.prod.yml`:
+  - Add `core-db`, `core-redis`, `core-api`, `core-worker`, `core-beat` into prod topology and expose `core-api` to the frontend runtime.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS08.md`:
+  - Upgrade evidence from smoke proof to smoke proof + prod wiring.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Expand SAAS-08 scope and anchors to include prod topology and nginx core proxy route.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the production wiring status.
+
+Danh sach tep cap nhat:
+- docker-compose.prod.yml (MODIFIED - wire core package runtime into production topology)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS08.md (MODIFIED - record prod wiring validation)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - extend SAAS-08 scope)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bi)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; docker compose -f ./docker-compose.yml -f ./docker-compose.prod.yml config; Pop-Location`.
+
+Status:
+- SAAS-08 now includes production topology wiring, but control-plane truth migration remains pending.
+
+# Entry 2026-05-03bh - SaaS core package smoke proof
+
+Muc tieu:
+- Xac minh `packages/core` la runtime baseline that co the chay doc lap va khong chi la scaffold.
+- Ghi nhan slice SAAS-08 o trang thai in-progress de phien sau co the tiep tuc production adoption wiring neu can.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/tests/test_runtime_baseline.py`:
+  - Them smoke tests cho manifest, capability bootstrap, va heartbeat behavior.
+- `packages/core/backend/tests/__init__.py`:
+  - Make unittest discovery on the package-local tests deterministic.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Add SAAS-08 core package adoption as in-progress.
+- `module_tree_full.md`:
+  - Regenerate after adding the package-core smoke test.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS08.md`:
+  - Record smoke proof and residual-risk note.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the new audit entry.
+
+Danh sach tep cap nhat:
+- packages/core/backend/tests/__init__.py (NEW - package marker for unittest discovery)
+- packages/core/backend/tests/test_runtime_baseline.py (NEW - core runtime smoke proof tests)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - add SAAS-08 in-progress)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS08.md (NEW - core package smoke proof evidence)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bh)
+- module_tree_full.md (MODIFIED - regenerated after new package-core test files)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:PYTHONPATH = "$PWD/src"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m unittest discover -s tests -p "test_*.py"; Pop-Location` => 3 tests passed.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated module tree successfully.
+
+Status:
+- SAAS-08 is in-progress with package-core smoke proof validated.
+
+# Entry 2026-05-03bg - SaaS final plan canonicalization
+
+Muc tieu:
+- Tao tai lieu final de phien sau co route canonical duy nhat cho SaaS cutover sau khi SAAS-07 da dong.
+- Tranh tinh trang phien sau phai doc rao rac handoff master, execution plan, taskboard va evidence packet ma khong co mot diem vao ro rang.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md`:
+  - Tao final plan canonical cho next-session routing va planned follow-on slices.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md`:
+  - Doc them final SaaS plan va route phien sau tu no.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Index final plan vao top-level route pack va SaaS cutover pack.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md`:
+  - Ghi ro final plan la canonical doc sau SAAS-07.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror audit entry va trang thai final plan.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md (NEW - canonical go-forward SaaS plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (MODIFIED - route to final SaaS plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - index final plan in route pack)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md (MODIFIED - point post-SAAS-07 route to final plan)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bg)
+
+Validation:
+- Pending: focused markdown validation after patch application.
+
+Status:
+- Final SaaS plan is created and linked from the canonical route surfaces.
+
+# Entry 2026-05-03bf - SaaS production manifest package-shell hardening
+
+Muc tieu:
+- Loai bo merge conflict residue trong `docker-compose.prod.yml` va chot frontend production deploy path qua package-shell host thay vi root legacy frontend build.
+- Ghi nhan slice infra nay vao taskboard, evidence va progress de khong con cutover thieu audit trail.
+
+Noi dung cap nhat chinh:
+- `docker-compose.prod.yml`:
+  - Remove conflict marker residue, fix `celery_beat` networks stanza, and switch production frontend build to `frontend/Dockerfile.dev-package-shell` with explicit package-shell env vars.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Add SAAS-07 production manifest hardening slice.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS07.md`:
+  - Record manifest validation proof and residual-risk note.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the completed SAAS-07 slice state.
+
+Danh sach tep cap nhat:
+- docker-compose.prod.yml (MODIFIED - harden production manifest and package-shell frontend build path)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - add SAAS-07 production manifest hardening slice)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS07.md (NEW - production manifest hardening evidence)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bf)
+
+Validation:
+- PASSED: `docker compose -f ./docker-compose.yml -f ./docker-compose.prod.yml config`.
+
+Status:
+- SAAS-07 production manifest package-shell hardening is implemented and validated.
+
+# Entry 2026-05-03be - SaaS legacy decommission completion
+
+Muc tieu:
+- Dong SAAS-06 bang cach loai bo legacy `/whale-advisory` backend alias, retarget route tests sang canonical `/ai-advisory`, va xac minh runtime code khong con residual legacy match.
+- Chot taskboard, evidence, ledger va progress dashboard o trang thai completed.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/urls.py`:
+  - Remove legacy whale-advisory backend alias, giu chi canonical ai-advisory routes.
+- `backend/portfolio/tests/test_api_routes_whale_advisory_access.py`, `backend/portfolio/tests/test_api_routes_whale_advisory_refresh.py`, `backend/portfolio/tests/test_api_routes_whale_advisory_delete_current.py`, `backend/portfolio/tests/test_api_routes_trading_and_p1_13.py`:
+  - Switch test routes sang `/api/portfolio/ai-advisory/...` va seed command-center runtime cho refresh happy path.
+- `backend/portfolio/views_ai_advisory_management.py`, `backend/portfolio/views_ai_runtime_stats.py`, `backend/portfolio/views_stock_order_flow.py`:
+  - Align docstrings/comments to ai-advisory canonical route names.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Drop now-redundant legacy fallback test.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-06 completed and close the board.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS06.md`:
+  - Record final runtime decommission proof and closeout metadata.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the completed slice state.
+- `module_tree_full.md`:
+  - Refresh after backend/frontend runtime code changes.
+
+Danh sach tep cap nhat:
+- backend/portfolio/urls.py (MODIFIED - remove legacy whale-advisory backend alias)
+- backend/portfolio/tests/test_api_routes_whale_advisory_access.py (MODIFIED - retarget to ai-advisory)
+- backend/portfolio/tests/test_api_routes_whale_advisory_refresh.py (MODIFIED - retarget to ai-advisory and seed command-center runtime)
+- backend/portfolio/tests/test_api_routes_whale_advisory_delete_current.py (MODIFIED - retarget to ai-advisory)
+- backend/portfolio/tests/test_api_routes_trading_and_p1_13.py (MODIFIED - retarget list routes to ai-advisory)
+- backend/portfolio/views_ai_advisory_management.py (MODIFIED - align canonical route docstring)
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - align ai-advisory-symbol-stats docstring)
+- backend/portfolio/views_stock_order_flow.py (MODIFIED - align ai-advisory-symbol-stats docstring)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - remove redundant legacy fallback test)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - complete SAAS-06)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS06.md (MODIFIED - final closeout proof)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03be)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+
+Validation:
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_whale_advisory_access portfolio.tests.test_api_routes_whale_advisory_refresh portfolio.tests.test_api_routes_whale_advisory_delete_current portfolio.tests.test_api_routes_trading_and_p1_13 --keepdb; Pop-Location`.
+- PASSED: `Push-Location ./frontend; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx; Pop-Location`.
+- PASSED: `grep_search` on backend/frontend code roots found no `whale-advisory` matches.
+- PASSED: `Push-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py; Pop-Location`.
+
+Status:
+- SAAS-06 is completed; live runtime code surfaces are clean.
+
+# Entry 2026-05-03bd - SaaS advisory roadmap de-aliasing
+
+Muc tieu:
+- De-alias the remaining user-facing advisory roadmap docs so the canonical route copy points to `/ai-advisory` instead of the retired `/whale-advisory` alias.
+- Keep the decommission slice moving by removing stale route wording from product docs, not only from the live router.
+
+Noi dung cap nhat chinh:
+- `docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md`:
+  - Replace `/whale-advisory` route wording with `/ai-advisory` and note that the legacy alias is retired.
+- `docs/WHALE_ADVISORY_AUTO_GENERATION_ROADMAP.md`:
+  - Replace the visual validation path from `/whale-advisory` to `/ai-advisory` and note that the legacy alias is retired.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Add the two roadmap docs to the SAAS-06 working artifact list.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS06.md`:
+  - Record the doc cleanup and validation grep result.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the new audit file list and status note.
+
+Danh sach tep cap nhat:
+- docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md (MODIFIED - canonicalize advisory route copy)
+- docs/WHALE_ADVISORY_AUTO_GENERATION_ROADMAP.md (MODIFIED - canonicalize visual validation route copy)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - track roadmap docs in SAAS-06 artifact list)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS06.md (MODIFIED - record doc cleanup validation)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bd)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bd)
+
+Validation:
+- PASSED: `grep_search` on the advisory roadmap docs showed `/ai-advisory` as the route copy and limited `/whale-advisory` wording to retire notes.
+- PASSED: `get_errors` on touched markdown files returned no errors.
+
+Status:
+- SAAS-06 is still in-progress, but the remaining user-facing advisory route copy is now normalized.
+
+# Entry 2026-05-03bc - SaaS legacy whale-advisory alias removal
+
+Muc tieu:
+- Loai bo legacy runtime alias `/whale-advisory` khoi router live de tiep tuc giam dien tich fallback/redirect cua monolith layer.
+- Clean stale route comment va prove path cu khong con render page alias nua, ma fallback qua dashboard.
+
+Noi dung cap nhat chinh:
+- `frontend/src/App.jsx`:
+  - Remove legacy `whale-advisory` redirect alias from the router.
+- `frontend/src/components/ProtectedRoute.jsx`:
+  - Update stale code comment to canonical `/ai-advisory` route reference.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Add regression test that legacy `/whale-advisory` now falls through to the dashboard fallback.
+- `module_tree_full.md`:
+  - Refresh after frontend decommission slice changes.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-06 in-progress.
+
+Danh sach tep cap nhat:
+- frontend/src/App.jsx (MODIFIED - remove legacy whale-advisory alias route)
+- frontend/src/components/ProtectedRoute.jsx (MODIFIED - update stale route comment to canonical ai-advisory)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - add legacy whale-advisory fallback test)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - mark SAAS-06 in-progress)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bc)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+
+Validation:
+- PASSED: `Push-Location ./frontend; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx; Pop-Location`
+- PASSED: `get_errors` on touched frontend files returned no errors.
+- PASSED: `Push-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py; Pop-Location`
+
+Status:
+- SAAS-06 decommission slice is now in-progress with the first legacy alias removed and covered by regression tests.
+
+# Entry 2026-05-03bb - SaaS package-shell shadow run and rollback gate
+
+Muc tieu:
+- Prove package shell host parity for ai-advisory and whale-alerts shell routes under the frontend runtime.
+- Add rollback-gate coverage so disabling `REACT_APP_ENABLE_PACKAGE_SHELL_HOST` cleanly falls back to the dashboard instead of leaving the app in an ambiguous shell state.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/packageShellHostRuntime.test.jsx`:
+  - Assert `packageShellHostFetch` attaches Bearer token only to same-origin `/api` requests.
+  - Assert non-API requests do not gain Authorization headers.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Assert `/ai-advisory/shell` falls back to the dashboard when package shell routes are disabled.
+- `packages/web/scripts/check-shell.mjs`:
+  - Revalidated package shell registry and bootstrap contract.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-05 completed.
+- `module_tree_full.md`:
+  - Refresh after frontend test slice changes.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/packageShellHostRuntime.test.jsx (MODIFIED - add bearer-token and non-API fetch parity coverage)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - add package shell rollback-gate route fallback coverage)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - close SAAS-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bb)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS05.md (NEW - package shell shadow run evidence)
+
+Validation:
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/pages/packageShellHostRuntime.test.jsx; Pop-Location`
+- PASSED: `Push-Location ./packages/web; npm run check:shell; Pop-Location`
+- PASSED: `Push-Location ./frontend; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx; Pop-Location`
+- PASSED: `get_errors` on touched frontend test files returned no errors.
+
+Status:
+- SAAS-05 shadow run and rollback gate slice is implemented and validated.
+
+# Entry 2026-05-03ba - SaaS facts-first selected-session witness
+
+Muc tieu:
+- Giữ backend `materialization.read_path` va `session_summary_state` thay vi lam mat witness khi frontend normalize snapshot.
+- Thread selected-session truth vao StockDetail chart context va chart header de facts-first path co the kiem chung bang UI.
+
+Noi dung cap nhat chinh:
+- `frontend/src/utils/whaleAnalyticsSnapshotAdapter.js`:
+  - Preserve top-level `materialization` va `session_summary` trong normalized snapshot.
+- `frontend/src/utils/whaleAnalyticsSnapshotAdapter.test.js`:
+  - Assert `materialization.read_path = facts_first` va fallback raw path witness duoc giu lai.
+- `frontend/src/pages/StockDetail.jsx`:
+  - Thread `read_path`, `session_summary_state`, `freshness_state` va quality flags vao `selected_session` chart context.
+  - Show facts-first/raw-fallback badge in KLine header when materialization exists.
+- `module_tree_full.md`:
+  - Refresh after frontend UI/runtime slice changes.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-04 completed va SAAS-05 in-progress.
+
+Danh sach tep cap nhat:
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.js (MODIFIED - preserve materialization/session summary witness)
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.test.js (MODIFIED - assert facts-first/raw fallback preservation)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - thread selected-session witness into chart context and header badge)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - advance board status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ba)
+
+Validation:
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/utils/whaleAnalyticsSnapshotAdapter.test.js; Pop-Location`
+- PASSED: `get_errors` on touched frontend files returned no errors.
+- PASSED: `Push-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py; Pop-Location`
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`
+
+Status:
+- SAAS-04 data-plane facts-first selected-session witness slice is implemented and validated.
+
+# Entry 2026-05-03az - SaaS tenant lifecycle summary parity
+
+Muc tieu:
+- Dong bo canonical plan lifecycle truth vao partner va operator tenant snapshots.
+- Cho operator list/detail va partner tenant summary doc duoc plan state machine hien tai thay vi chi status field thuan.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_partner_admin.py`:
+  - Add `_build_plan_lifecycle_summary` va expose `plan_lifecycle` trong partner tenant snapshot.
+- `backend/portfolio/views_admin_runtime.py`:
+  - Project `plan_lifecycle` vao operator tenant list va detail snapshots.
+- `backend/portfolio/tests/test_partner_admin_api.py`:
+  - Assert partner tenant summary includes `plan_lifecycle` canonical fields.
+- `backend/portfolio/tests/test_operator_tenant_registry_api.py`:
+  - Assert operator tenant list/detail include `plan_lifecycle` canonical fields.
+- `module_tree_full.md`:
+  - Refresh after backend slice changes.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-03 completed va SAAS-04 in-progress.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_partner_admin.py (MODIFIED - add plan lifecycle summary to partner tenant snapshot)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - project plan lifecycle into operator snapshots)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - assert partner plan lifecycle projection)
+- backend/portfolio/tests/test_operator_tenant_registry_api.py (MODIFIED - assert operator plan lifecycle projection)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - advance board status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03az)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_partner_admin_api portfolio.tests.test_operator_tenant_registry_api --keepdb --noinput`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py`
+- PASSED: `get_errors` on changed backend files returned no errors.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`
+
+Status:
+- SAAS-03 tenant lifecycle summary parity slice is implemented and test-verified.
+
+# Entry 2026-05-03ay - SaaS partner machine-auth cutover
+
+Muc tieu:
+- Cho partner APIs nhan Bearer PAT machine auth trong luc giu session/JWT fallback cho browser flows.
+- Dong bo audit metadata cho service-account create, PAT issue, PAT rotate va PAT revoke.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/authentication_partner.py`:
+  - Tao `CorePartnerPATAuthentication` de resolve Bearer PAT raw secret sang user + credential.
+- `backend/portfolio/models.py`:
+  - Them `resolve_from_raw_secret`, fix `ROTATING` grace expiry semantics, va cho `rotate/revoke` merge metadata audit.
+- `backend/portfolio/views_partner_admin.py`:
+  - Gan PAT auth cho partner routes, ghi `auth_mode` + `audit_reason` metadata, va cap nhat PAT/service-account write flows.
+- `backend/portfolio/tests/test_partner_admin_api.py`:
+  - Xac minh human session flow, machine PAT flow, audit metadata, va grace expiry semantics.
+- `frontend/src/api/client.js`:
+  - Gan default `audit_reason` cho partner PAT write helpers.
+- `module_tree_full.md`:
+  - Refresh sau khi code changes.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-02 completed va SAAS-03 in-progress.
+
+Danh sach tep cap nhat:
+- backend/portfolio/authentication_partner.py (NEW - Bearer PAT authentication)
+- backend/portfolio/models.py (MODIFIED - PAT secret resolver and grace-expiry semantics)
+- backend/portfolio/views_partner_admin.py (MODIFIED - partner PAT auth, audit metadata, and defaults)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - session and machine auth coverage)
+- frontend/src/api/client.js (MODIFIED - default audit_reason for partner PAT writes)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - advance board status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ay)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_partner_admin_api --keepdb --noinput`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py`
+- PASSED: `get_errors` on changed backend/frontend files returned no errors.
+
+Status:
+- SAAS-02 partner machine-auth slice is implemented, validated, and handoff-ready.
+
+# Entry 2026-05-03ax - SaaS access snapshot versioning
+
+Muc tieu:
+- Dong bo capability snapshot version field giua legacy backend, package stub va shared contract.
+- Xac minh snapshot versioned payload bang test backend focused.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/auth_views.py`:
+  - Bump `snapshot_version` len `2026-05-03` trong capability snapshot.
+- `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Assert tenant/operator snapshot deu tra ve `snapshot_version = 2026-05-03`.
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Add `snapshot_version` field to capability bootstrap payload.
+- `shared/api-contracts/capability-bootstrap.contract.json`:
+  - Add schema field cho `snapshot_version`.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-00 completed va SAAS-01 completed.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ax.
+
+Danh sach tep cap nhat:
+- backend/portfolio/auth_views.py (MODIFIED - bump capability snapshot version)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert snapshot version in access-capabilities tests)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add snapshot_version to package stub)
+- shared/api-contracts/capability-bootstrap.contract.json (MODIFIED - permit snapshot_version in contract)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - advance SAAS-00/SAAS-01 status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ax)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb --noinput`
+
+Status:
+- SAAS-01 access plane versioning slice is implemented and test-verified.
+
+# Entry 2026-05-03aw - SaaS cutover execution pack
+
+Muc tieu:
+- Tao route SaaS cutover cu the sau khi current-code realignment va package/admin hardening da dong.
+- Dinh nghia ro phased execution cho access plane, partner machine-auth, tenant lifecycle, data-plane parity, shadow run va legacy decommission.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md`:
+  - Tao handoff master moi cho route SaaS cutover.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_PLAN_20260503.md`:
+  - Tao execution plan phan phase, gate matrix va decommission checklist.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Tao taskboard voi SAAS-00 -> SAAS-06 slices va exit criteria cu the.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TRACEABILITY_MATRIX_20260503.md`:
+  - Tao traceability matrix cho requirement -> doc family -> task -> evidence.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260503.md`:
+  - Tao protocol audit/test cho docs, backend, frontend, package-track va decommission slices.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260503.md`:
+  - Tao evidence template cho slice execution, rollback va decommission proof.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md`:
+  - Redirect next recommended route sang SaaS cutover board.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md`:
+  - Add SaaS cutover route after current-code realignment.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Add SaaS cutover route links to master index.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Add pointer to SaaS cutover board after PKG/CA lanes.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md (NEW - SaaS cutover handoff master)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_PLAN_20260503.md (NEW - SaaS cutover execution plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (NEW - SaaS cutover taskboard)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TRACEABILITY_MATRIX_20260503.md (NEW - SaaS cutover traceability matrix)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260503.md (NEW - SaaS cutover self-audit protocol)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260503.md (NEW - SaaS cutover evidence template)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (MODIFIED - redirect next route to SaaS board)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add SaaS cutover route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add SaaS cutover route links)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add SaaS route pointer)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aw)
+
+Validation:
+- PASSED: read-back and grep_search cross-check confirmed the SaaS route, decommission gate, and audit obligations are present across the new SaaS pack and linked control docs.
+
+Residual note:
+- This pack is docs-first. Code/runtime cutover slices still need to be claimed from the new SaaS board.
+
+# Entry 2026-05-03av - Dashboard aggregated risk API
+
+Muc tieu:
+- Dong slice 3.1 cua TODO bang API tong hop rui ro cho dashboard theo selected portfolio.
+- Dung holdings live + whale events + dark flow signals de tra ve stale %, whale exposure va dark flow avg trong mot snapshot nhe.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_dashboard_risk.py`:
+  - Tao `dashboard_aggregated_risk_api` voi resolve portfolio theo query param hoac portfolio gan nhat cua user.
+  - Tong hop stale positions, whale exposure symbols, dark flow signals va summary cards cho dashboard.
+- `backend/portfolio/views.py`:
+  - Export `dashboard_aggregated_risk_api` ra barrel current-code.
+- `backend/config/urls.py`:
+  - Register `GET /api/dashboard/aggregated-risk/` va expose endpoint trong api root.
+- `backend/portfolio/tests/test_dashboard_aggregated_risk_api.py`:
+  - Focused API test cho selected portfolio snapshot va metric aggregation.
+- `TODO.md`:
+  - Mark `3.1 Aggregated Risk API` complete va chuyen current phase sang validation.
+- `DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md`:
+  - Sync plan note cho backend aggregation contract.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_dashboard_risk.py (NEW - dashboard aggregated risk snapshot API)
+- backend/portfolio/views.py (MODIFIED - export dashboard aggregated risk API)
+- backend/config/urls.py (MODIFIED - register dashboard aggregated risk route)
+- backend/portfolio/tests/test_dashboard_aggregated_risk_api.py (NEW - focused dashboard risk API test)
+- TODO.md (MODIFIED - mark 3.1 complete and advance current phase)
+- DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md (MODIFIED - sync backend aggregation note)
+
+Validation:
+- Pending: focused backend test run after patch application.
+
+Residual note:
+- The API now exists, but the frontend RiskSummaryCard still needs a follow-up slice if product wants the aggregated snapshot surfaced on screen.
+
+# Entry 2026-05-03au - Dashboard alert sound setting migration
+
+Muc tieu:
+- Dong slice 2.2 cua TODO bang nghe/ghi lai sound setting voi ten ro rang `alert_sound`, nhung van giu legacy key de khong break users cu.
+- Giu audio ping pathway hien co trong realtime panels, chi thay kho persistence va tinh trang setting.
+
+Noi dung cap nhat chinh:
+- `frontend/src/hooks/usePersistentAlertState.js`:
+  - Doi storage key sang `dashboard.alerts.alert_sound`.
+  - Doc legacy `dashboard.alerts.critical_sound_enabled` nhu migration fallback va write sang ca hai key.
+- `frontend/src/hooks/usePersistentAlertState.test.js`:
+  - Them test cho migrate legacy key va toggle write sang new key.
+- `TODO.md`:
+  - Mark `2.2 Audio + Settings` complete va advance current phase sang `3.1 Aggregated Risk API`.
+- `DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md`:
+  - Sync note for audio ping toggle implementation.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/usePersistentAlertState.js (MODIFIED - migrate to alert_sound storage key)
+- frontend/src/hooks/usePersistentAlertState.test.js (NEW - migration/toggle test)
+- TODO.md (MODIFIED - mark 2.2 complete and advance current phase)
+- DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md (MODIFIED - sync phase-2 note)
+
+Validation:
+- PASSED: `Push-Location frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/hooks/usePersistentAlertState.test.js; Pop-Location` => 1 suite passed.
+
+Residual note:
+- The higher-level user profile setting still lives in browser storage; if product wants server-backed sync later, that should be handled as a separate preferences slice.
+
+# Entry 2026-05-03at - Dashboard unified alert badge
+
+Muc tieu:
+- Dong slice 2.1 cua TODO bang mot badge reusable cho whale alerts va chuan hoa logic filter/priority sang hook dashboard chung.
+- Giữ visual shape cua badge cu, nhung tach rendering ra component chung de future surfaces co the reuse.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/AlertBadge.jsx`:
+  - Tao clickable badge reuse cho icon, severity color, matched value va hover title.
+- `frontend/src/components/AlertBadge.test.jsx`:
+  - Them test cho click-through link va hover/title details.
+- `frontend/src/hooks/useDashboardAlerts.js`:
+  - Tao hook + helper gom whale-alert map va priority ordering trong 5 phut gan nhat.
+- `frontend/src/hooks/useDashboardAlerts.test.js`:
+  - Them test cho map priority va ordering theo severity/time.
+- `frontend/src/components/HoldingsTable.jsx`:
+  - Thay inline whale badge span bang `AlertBadge` reusable.
+- `frontend/src/pages/LegacyDashboard.jsx`:
+  - Dung `useDashboardAlerts` de lay `whaleAlertsBySymbol` cho HoldingsTable.
+- `TODO.md`:
+  - Mark `2.1 Unified AlertBadge` complete va advance current phase sang `2.2 Audio + Settings`.
+- `DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md`:
+  - Sync phase-2 note for badge/hook implementation.
+
+Danh sach tep cap nhat:
+- frontend/src/components/AlertBadge.jsx (NEW - unified clickable whale alert badge)
+- frontend/src/components/AlertBadge.test.jsx (NEW - focused badge render test)
+- frontend/src/hooks/useDashboardAlerts.js (NEW - dashboard alert filter/priority hook)
+- frontend/src/hooks/useDashboardAlerts.test.js (NEW - filter/priority hook test)
+- frontend/src/components/HoldingsTable.jsx (MODIFIED - render reusable alert badge)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - source whale badge map from dashboard hook)
+- TODO.md (MODIFIED - mark 2.1 complete and advance current phase)
+- DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md (MODIFIED - sync phase-2 note)
+
+Validation:
+- PASSED: `Push-Location frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/components/AlertBadge.test.jsx src/hooks/useDashboardAlerts.test.js; Pop-Location` => 2 suites passed.
+
+Residual note:
+- The audio/settings step remains open as the next slice; the new badge hook currently only centralizes visual priority and recent-window whale map logic.
+
+# Entry 2026-05-03as - Dashboard realtime panel compact observability popover
+
+Muc tieu:
+- Dong slice 1.3 cua TODO bang observability icon popover cho realtime panel, giam noise inline va giu metrics san sang khi can.
+- Giu logic alert ordering hien co, vi `useUnifiedAlerts` da sort severity/time san va tiep tuc ghim extreme alerts len dau danh sach.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/DashboardRealtimePanel.jsx`:
+  - Them icon button popover cho observability strip, de metrics/health chi hien khi user mo.
+  - Them mounted guard cho async `getRealtimeHealth` effect de tranh setState sau unmount.
+- `frontend/src/components/DashboardRealtimePanel.test.jsx`:
+  - Them test interaction mo popover va check metrics chip render.
+  - Doi health mock sang pending promise de test khong tao act warning.
+- `TODO.md`:
+  - Mark `1.3 RealtimePanel compact` complete va advance current phase sang `2.1 Unified AlertBadge`.
+- `DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md`:
+  - Sync note for observability icon popover implementation.
+
+Danh sach tep cap nhat:
+- frontend/src/components/DashboardRealtimePanel.jsx (MODIFIED - add observability icon popover and mounted guard)
+- frontend/src/components/DashboardRealtimePanel.test.jsx (MODIFIED - add popover interaction coverage)
+- TODO.md (MODIFIED - mark 1.3 complete and advance current phase)
+- DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md (MODIFIED - sync observability popover note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/components/DashboardRealtimePanel.test.jsx; Pop-Location` => 2 passed.
+
+Residual note:
+- The panel is now visually quieter, but the underlying alert ordering is still driven by `useUnifiedAlerts`; if the next slice wants a stronger pinning rule, that should be done at the hook/selector boundary, not in the view layer.
+
+# Entry 2026-05-03ar - Dashboard sticky alert bar
+
+Muc tieu:
+- Dong slice 1.2 cua TODO bang mot sticky alert bar dung chung cho dashboard legacy va modern.
+- Ghim top 3 alert dang nang nhat trong selected session, giu cùng truth voi luong `useUnifiedAlerts` hien co.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/StickyAlertBar.jsx`:
+  - Tao component sticky show top 3 alert theo symbol, severity va time, co empty state va link `Xem tất cả`.
+- `frontend/src/components/StickyAlertBar.test.jsx`:
+  - Them focused test cho sticky class, top-3 slicing va time render.
+- `frontend/src/pages/LegacyDashboard.jsx` va `frontend/src/pages/modern/ModernDashboard.jsx`:
+  - Ghim StickyAlertBar ngay tren dashboard workspace de ca 2 mode doc cung mot source truth.
+- `TODO.md`:
+  - Mark `1.2 Sticky Alert Bar` complete va advance current phase sang `1.3 RealtimePanel compact`.
+- `module_tree_full.md`:
+  - Can refresh sau khi them component/test moi trong frontend.
+
+Danh sach tep cap nhat:
+- frontend/src/components/StickyAlertBar.jsx (NEW - sticky top-3 alert bar component)
+- frontend/src/components/StickyAlertBar.test.jsx (NEW - focused sticky/top-3 render test)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - insert sticky alert bar above dashboard body)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - insert sticky alert bar above workspace grid)
+- TODO.md (MODIFIED - mark 1.2 complete and advance current phase)
+- module_tree_full.md (MODIFIED - regenerate after frontend code changes)
+
+Validation:
+- PASSED: `Push-Location frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/components/StickyAlertBar.test.jsx; Pop-Location` => sticky bar test passed.
+
+Residual note:
+- The bar currently uses the already-sorted `filteredUnifiedAlerts` feed from `useUnifiedAlerts`; the next slice can decide whether to add a dedicated risk summary card or pin/extreme boost logic.
+
+# Entry 2026-05-03aq - CA-07 admin core jobs and audit trace
+
+Muc tieu:
+- Dong slice CA-07 bang hai page dedicated read-only cho `/admin/core/runtime/jobs` va `/admin/core/audit/requests`.
+- Bam current-code operator wrappers, route guards va deep links tu overview de operator co the truy xuat jobs/audit ngay trong admin core shell.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorJobs()`, `getCoreOperatorAuditRequests()` va `getCoreOperatorAuditRequestDetail()` wrappers cho current-code operator projections.
+- `frontend/src/pages/AdminCoreJobs.jsx`:
+  - Tao page dedicated cho jobs table, filters, summary cards, pagination va detail panel read-only.
+- `frontend/src/pages/AdminCoreJobs.test.jsx`:
+  - Them focused tests cho render table/detail va selection switching.
+- `frontend/src/pages/AdminCoreAuditTrace.jsx`:
+  - Tao page dedicated cho audit trace table, filters, summary cards, detail panel va source record JSON.
+- `frontend/src/pages/AdminCoreAuditTrace.test.jsx`:
+  - Them focused tests cho render table/detail va selection switching.
+- `frontend/src/pages/AdminCoreOverview.jsx` va `frontend/src/pages/AdminCoreOverview.test.jsx`:
+  - Them deep links sang jobs/audit trace tu overview hero actions.
+- `frontend/src/App.jsx` va `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Route `/admin/core/runtime/jobs` va `/admin/core/audit/requests` render dedicated pages va duoc cover trong route-group tests.
+- `backend/portfolio/permissions.py`, `backend/portfolio/auth_views.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Them abilities `CoreJobOps` va `CoreAuditTrace` vao capability snapshot operator de route guard khop live bootstrap.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 585.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-07` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Close continuation note cho admin lane; `CA-07` da dong.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-07.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator jobs/audit helpers)
+- frontend/src/pages/AdminCoreJobs.jsx (NEW - dedicated operator jobs page)
+- frontend/src/pages/AdminCoreJobs.test.jsx (NEW - focused jobs page tests)
+- frontend/src/pages/AdminCoreAuditTrace.jsx (NEW - dedicated operator audit trace page)
+- frontend/src/pages/AdminCoreAuditTrace.test.jsx (NEW - focused audit trace page tests)
+- frontend/src/pages/AdminCoreOverview.jsx (MODIFIED - add jobs/audit deep links)
+- frontend/src/pages/AdminCoreOverview.test.jsx (MODIFIED - navigation assertions for jobs/audit links)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/runtime/jobs` and `/admin/core/audit/requests` now render dedicated pages)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for jobs/audit pages)
+- backend/portfolio/permissions.py (MODIFIED - add CoreJobOps/CoreAuditTrace abilities)
+- backend/portfolio/auth_views.py (MODIFIED - central operator snapshot recognizes new abilities)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - ability snapshot assertions)
+- module_tree_full.md (MODIFIED - regenerated after frontend/backend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-07 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - close admin continuation note)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreJobs.test.jsx src/pages/AdminCoreAuditTrace.test.jsx src/pages/AdminCoreOverview.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `4 passed, 17 total`.
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb; Pop-Location` => `10 passed`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 585 modules.
+
+Residual note:
+- CA-07 is read-only by design; write actions, retry/run-now, export and richer lineage drill-down remain later slices.
+
+# Entry 2026-05-03ao - CA-05 admin core PAT credentials
+
+Muc tieu:
+- Dong slice CA-05 bang page dedicated cho `/admin/core/tenants/:tenantId/pats`.
+- Bam current-code operator PAT wrapper, render PAT registry, summary cards, detail panel va issue/rotate/revoke gating theo ability.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorTenantPATs()` wrapper cho `/core/v1/operator/tenants/{tenant_id}/pats/`.
+- `frontend/src/pages/AdminCorePATs.jsx`:
+  - Tao page dedicated cho PAT registry, filters, summary cards, detail panel va ability-gated action buttons.
+- `frontend/src/pages/AdminCorePATs.test.jsx`:
+  - Them focused tests cho registry/detail render va gating issue/rotate/revoke buttons.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Them PAT drill-down link tu tenant detail sang PAT route.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Update coverage cho tenant-to-PAT navigation link.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants/:tenantId/pats` render `AdminCorePATs`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho PAT surface.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 577.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-05` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-06` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-05.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator tenant PAT helper)
+- frontend/src/pages/AdminCorePATs.jsx (NEW - dedicated operator PAT page)
+- frontend/src/pages/AdminCorePATs.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to PAT route)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for PAT route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/pats` now renders AdminCorePATs)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for PAT page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-05 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCorePATs.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 577 modules.
+
+Residual note:
+- CA-05 is read-first and gating-first; issue/rotate/revoke write-side endpoints remain later work.
+- CA-06 still needs dedicated usage/quota/billing views/routes.
+
+# Entry 2026-05-03ap - CA-06 admin core usage and billing
+
+Muc tieu:
+- Dong slice CA-06 bang hai page dedicated cho `/admin/core/tenants/:tenantId/usage` va `/admin/core/tenants/:tenantId/billing`.
+- Bam current-code tenant snapshot de render usage/quota meter state, subscription summary, billing posture va drill-down navigation.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/AdminCoreUsage.jsx`:
+  - Tao page dedicated cho meter usage, quota summary, meter detail va usage risk context.
+- `frontend/src/pages/AdminCoreBilling.jsx`:
+  - Tao page dedicated cho subscription summary, billing metrics va usage context.
+- `frontend/src/pages/AdminCoreUsage.test.jsx` / `frontend/src/pages/AdminCoreBilling.test.jsx`:
+  - Them focused tests cho list/detail render va data-driven summary cards.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Them drill-down links sang usage va billing routes tu tenant detail.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Update coverage cho tenant-to-usage/billing navigation links.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants/:tenantId/usage` va `/admin/core/tenants/:tenantId/billing` render dedicated pages.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho usage va billing surfaces.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 581.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-06` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-07` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-06.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AdminCoreUsage.jsx (NEW - dedicated meter usage/quota page)
+- frontend/src/pages/AdminCoreBilling.jsx (NEW - dedicated billing/subscription page)
+- frontend/src/pages/AdminCoreUsage.test.jsx (NEW - focused usage page tests)
+- frontend/src/pages/AdminCoreBilling.test.jsx (NEW - focused billing page tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down links to usage/billing routes)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertions for usage/billing routes)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/usage` and `/billing` now render dedicated pages)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for usage/billing pages)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-06 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-07)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreUsage.test.jsx src/pages/AdminCoreBilling.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 581 modules.
+
+Residual note:
+- CA-06 is read-first and snapshot-based; deeper billing adjustment actions remain later work.
+- CA-07 still needs dedicated jobs + audit trace views/routes.
+
+# Entry 2026-05-03ao - CA-05 admin core PAT credentials
+
+Muc tieu:
+- Dong slice CA-05 bang page dedicated cho `/admin/core/tenants/:tenantId/pats`.
+- Bam current-code operator PAT wrapper, render PAT registry, summary cards, detail panel va issue/rotate/revoke gating theo ability.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorTenantPATs()` wrapper cho `/core/v1/operator/tenants/{tenant_id}/pats/`.
+- `frontend/src/pages/AdminCorePATs.jsx`:
+  - Tao page dedicated cho PAT registry, filters, summary cards, detail panel va ability-gated action buttons.
+- `frontend/src/pages/AdminCorePATs.test.jsx`:
+  - Them focused tests cho registry/detail render va gating issue/rotate/revoke buttons.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Them PAT drill-down link tu tenant detail sang PAT route.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Update coverage cho tenant-to-PAT navigation link.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants/:tenantId/pats` render `AdminCorePATs`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho PAT surface.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 577.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-05` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-06` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-05.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator tenant PAT helper)
+- frontend/src/pages/AdminCorePATs.jsx (NEW - dedicated operator PAT page)
+- frontend/src/pages/AdminCorePATs.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to PAT route)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for PAT route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/pats` now renders AdminCorePATs)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for PAT page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-05 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCorePATs.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 577 modules.
+
+Residual note:
+- CA-05 is read-first and gating-first; issue/rotate/revoke write-side endpoints remain later work.
+- CA-06 still needs dedicated usage/quota/billing views/routes.
+
+# Entry 2026-05-03an - CA-04 admin core service accounts
+
+Muc tieu:
+- Dong slice CA-04 bang page dedicated cho `/admin/core/tenants/:tenantId/service-accounts`.
+- Bam current-code operator service-account wrapper, render registry list, summary cards, detail side panel va create/edit gating theo ability.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorTenantServiceAccounts()` wrapper cho `/core/v1/operator/tenants/{tenant_id}/service-accounts/`.
+- `frontend/src/pages/AdminCoreServiceAccounts.jsx`:
+  - Tao page dedicated cho registry service account, summary cards, list table, detail panel va ability-gated action buttons.
+- `frontend/src/pages/AdminCoreServiceAccounts.test.jsx`:
+  - Them focused tests cho registry/detail render va gating create/edit buttons.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Them link tu tenant detail sang service-account route de operator co the drill-down ngay trong CA-03 surface.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Update coverage cho tenant-to-service-account navigation link.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants/:tenantId/service-accounts` render `AdminCoreServiceAccounts`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho service-account surface.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 575.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-04` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-05` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-04.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator tenant service-account helper)
+- frontend/src/pages/AdminCoreServiceAccounts.jsx (NEW - dedicated operator service-account page)
+- frontend/src/pages/AdminCoreServiceAccounts.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to service accounts)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for service-account route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/service-accounts` now renders AdminCoreServiceAccounts)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for service-account page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-04 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreServiceAccounts.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `11 passed, 11 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 575 modules.
+
+Residual note:
+- CA-04 is read-first and gating-first; write-side service-account APIs remain a later slice.
+- CA-05 still needs dedicated PAT credential views/routes.
+
+# Entry 2026-05-03am - CA-03 admin core tenant registry and detail
+
+Muc tieu:
+- Dong slice CA-03 bang cach tach tenant registry/detail ra thanh page dedicated cho `/admin/core/tenants` va `/admin/core/tenants/:tenantId`.
+- Bam current-code operator tenant wrappers, render registry list, filters, summary cards va detail panel cho một tenant dang chon.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorTenants()` va `getCoreOperatorTenantDetail()` wrappers cho `/core/v1/operator/tenants/` va `/core/v1/operator/tenants/{tenantId}/`.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Tao page dedicated cho tenant registry va tenant detail, co filters, summary cards, security/commercial panels va recent actions timeline.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Them focused tests cho registry list render, detail panel va route-param handling.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants` va `/admin/core/tenants/:tenantId` render `AdminCoreTenants`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho tenant registry va tenant detail pages.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 573.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-03` complete va ghi route group live state.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-04` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-03.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator tenants/detail helpers)
+- frontend/src/pages/AdminCoreTenants.jsx (NEW - dedicated tenant registry/detail page)
+- frontend/src/pages/AdminCoreTenants.test.jsx (NEW - focused registry/detail render tests)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants` and `/admin/core/tenants/:tenantId` now render AdminCoreTenants)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for tenant registry/detail pages)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-03 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-04)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `2 passed, 8 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 573 modules.
+
+Residual note:
+- CA-03 covers registry and detail only; CA-04 still needs dedicated operator service-account views/routes.
+- Legacy AdminOps route remains available at `/admin-ops` for backward compatibility.
+
+# Entry 2026-05-03al - CA-02 admin core platform overview and runtime health
+
+Muc tieu:
+- Dong slice CA-02 bang cach tach `/admin/core/overview` thanh page dedicated, khong con reuse AdminOps.
+- Bam current-code operator overview/health wrappers va render summary cards, health cards va runtime snapshot data.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorOverview()` va `getCoreOperatorHealth()` wrappers cho `/core/v1/operator/overview/` va `/core/v1/operator/health/`.
+- `frontend/src/pages/AdminCoreOverview.jsx`:
+  - Tao page dedicated cho tổng quan nền tảng va runtime health, co chụp nhanh summary cards, health cards, degraded components va runtime snapshot panels.
+- `frontend/src/pages/AdminCoreOverview.test.jsx`:
+  - Them focused test cho overview/health render, crawl-control link va async snapshot assertions.
+- `frontend/src/App.jsx`:
+  - Doi route `/admin/core/overview` sang `AdminCoreOverview` thay vi reuse `AdminOps`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group tests de `/admin/core/overview` render page dedicated moi.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 571.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-02` complete va ghi route group live state.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-03` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-02.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator overview/health helpers)
+- frontend/src/pages/AdminCoreOverview.jsx (NEW - dedicated platform overview/runtime health page)
+- frontend/src/pages/AdminCoreOverview.test.jsx (NEW - focused overview/health render test)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/overview` now renders AdminCoreOverview)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for dedicated overview page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-02 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-03)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreOverview.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `2 passed, 5 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 571 modules.
+
+Residual note:
+- The page now renders current-code operator overview/health snapshots, but CA-03 is still open for tenant registry/detail surfaces.
+- Legacy AdminOps route remains available at `/admin-ops` for backward compatibility.
+
+# Entry 2026-05-03ak - CA-01 admin core route group and canonical crawl-control link
+
+Muc tieu:
+- Dong slice CA-01 bang cach them route group `/admin/core/*` vao frontend router, giu compat alias `/admin-ops` va `/admin-crawl-control`, va canonicalize surface chuyen trach sang route group moi.
+- Dam bao route group moi co guard va index redirect dung, khong lam thay doi backend auth semantics.
+
+Noi dung cap nhat chinh:
+- `frontend/src/App.jsx`:
+  - Them `AdminCoreShell` + route group `/admin/core/*`.
+  - Them index redirect va child routes cho `overview` va `crawl-control` voi guard `ProtectedRoute`.
+- `frontend/src/pages/AdminOps.jsx`:
+  - Surface chuyen trach tren admin ops page chuyen sang `/admin/core/crawl-control`.
+- `frontend/src/pages/AdminOps.test.jsx`:
+  - Update assertion cho canonical `/admin/core/crawl-control`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them test route group cho `/admin/core`, `/admin/core/crawl-control` va denied redirect.
+- `module_tree_full.md`:
+  - Regenerate sau thay doi frontend code.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-01` complete va ghi route group live state.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-01.
+
+Danh sach tep cap nhat:
+- frontend/src/App.jsx (MODIFIED - add admin core route group shell and guarded routes)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - switch special surface link to canonical admin core route)
+- frontend/src/pages/AdminOps.test.jsx (MODIFIED - expect canonical admin core crawl-control link)
+- frontend/src/App.adminCoreRoutes.test.jsx (NEW - route-group guard and redirect tests)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm test -- --runInBand --watch=false --runTestsByPath src/App.adminCoreRoutes.test.jsx src/pages/AdminOps.test.jsx; Pop-Location` => `2 passed, 5 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 569 modules.
+
+Residual note:
+- Route group `/admin/core/*` now exists, but CA-02 still needs dedicated overview/health pages if we want the canonical surface to stop reusing AdminOps directly.
+- Legacy direct aliases `/admin-ops` and `/admin-crawl-control` remain live for compat.
+
+# Entry 2026-05-03aj - PKG-03 package cutover readiness gates
+
+Muc tieu:
+- Dong slice PKG-03 bang cach chuyen cutover readiness tu generic bullets thanh gate matrix co the audit va resume duoc.
+- Giu package-track migration plan la authority cho parity, validation, rollback, route coverage, runtime ownership va approval gate truoc cutover.
+
+Noi dung cap nhat chinh:
+- `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`:
+  - Them `Readiness gate matrix` cho parity, validation, rollback, route coverage, runtime ownership, audit va approval.
+  - Them rule ro rang rang package track chua duoc xem la cutover-ready neu chua dong `PKG-01` toi `PKG-03` va cac gate chua xanh.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md`:
+  - Them package migration plan vao control docs pack de team co the tim gate matrix ngay trong handoff route.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PKG-03` hoan thanh va ghi status note.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PKG-03.
+
+Danh sach tep cap nhat:
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add explicit package cutover readiness gate matrix)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add package migration plan to control docs pack)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-03 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search`/read-back xac nhan package migration plan da co gate matrix ro rang cho parity, validation, rollback, route coverage, runtime ownership va approval.
+- PASSED: `get_errors` clean tren cac docs control vua cap nhat.
+
+Residual note:
+- This slice is docs-only; no runtime/package code changed.
+- Next recommended slice in the taskboard route is `CA-01`.
+
+# Entry 2026-05-03ai - PKG-02 shell host parity proofs
+
+Muc tieu:
+- Dong slice PKG-02 bang mot proof machine-readable cho package-shell host runtime va hai host page wrappers, khong doi runtime behavior san co.
+- Chot query carry-over, shared env/fetch wiring va frontend identity overlay cho `AiAdvisoryShellHost` va `WhaleAlertsShellHost`.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/packageShellHostRuntime.test.jsx`:
+  - Them test cho `createPackageShellBootstrapLoader(...)` de xac nhan frontend identity overlay, admin hint stripping va shared bootstrap shape.
+  - Them test cho `AiAdvisoryShellHost` de xac nhan query carry-over, shared `packageShellHostEnv` va `packageShellHostFetch`, va shared loader wiring.
+  - Them test cho `WhaleAlertsShellHost` de xac nhan query carry-over, shared `packageShellHostEnv` va `packageShellHostFetch`, va shared loader wiring.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PKG-02` hoan thanh va ghi status note.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PKG-02.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/packageShellHostRuntime.test.jsx (NEW - package shell host parity proofs)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/packageShellHostRuntime.test.jsx; Pop-Location` => `3 passed, 3 total`.
+
+Residual note:
+- Shell host parity proof slice is test-only; runtime logic in `frontend/src/pages/packageShellHostRuntime.js` and host page wrappers remained unchanged.
+- Next package slice recommended by taskboard remains `PKG-03`.
+
+# Entry 2026-05-03ah - PKG-01 current-code session wrapper alias
+
+Muc tieu:
+- Dong slice PKG-01 bang cach chuyen package-core session lane sang current-code wrapper naming `auth/me` trong shell adapter, trong khi giu alias cũ de compat.
+- Dam bao package shell van bootstrap duoc session payload baseline, nhung route naming da khop hon voi current-code wrapper style.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/adapters/core/coreAdapter.js`:
+  - Doi session payload endpoint sang `/core/v1/auth/me`.
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Them alias `/auth/me` va `/core/v1/auth/me` cho `_session_payload` trong khi giu `/session/me` va `/core/v1/session/me`.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them assertion khop current-code wrapper-style endpoint cho core session lane.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PKG-01` hoan thanh va ghi status note.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PKG-01.
+
+Danh sach tep cap nhat:
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - switch session endpoint to auth/me wrapper path)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add auth/me route aliases for session payload)
+- packages/web/scripts/check-shell.mjs (MODIFIED - lock core wrapper-style session endpoint)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-01 complete)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ah)
+
+Validation:
+- PASSED: `Push-Location .\packages\web; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: Python smoke import against `packages/core/backend/src/vninvest_core/api_stub.py` verified `/auth/me` and `/core/v1/auth/me` aliases and stable session fields.
+- PASSED: `get_errors` clean on the touched JS and Python files.
+
+Residual note:
+- PKG-01 is a route/adapter alignment slice, not a schema or payload-shape expansion; the next package slice is `PKG-02` for shell host parity proofs.
+
+# Entry 2026-05-03ag - Code-team continuation playbook and audit route
+
+Muc tieu:
+- Bo sung route doc rieng cho code team sau handoff de chot thu tu slice, one-active-slice rule va audit loop bat buoc.
+- Dong bo handoff master, implementation plan, taskboard, traceability matrix, evidence template va audit report voi mot playbook duy nhat.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md`:
+  - Playbook moi cho code team: entry conditions, package-track lane, admin lane, drift response lane, audit control va evidence minimum.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md`:
+  - Them playbook reference trong control doc list va code-team continuation route section.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Link playbook moi vao current-code execution control pack.
+- `docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Them Lane C cho controlled code-team continuation va audit gates sau moi slice.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Ghi route mac dinh PKG-01 -> PKG-03 va chuyen sang CA-01 -> CA-07 sau khi package gate on dinh.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md`:
+  - Them req `HND-01` cho one-active-slice rule va audit sync.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md`:
+  - Ghi route code-team continuation va residual risk giu docs/code khong lech.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md`:
+  - Them audit checklist cho playbook route va route doc consulted.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ag.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho code-team continuation playbook slice.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (NEW - code-team continuation route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add playbook reference and continuation route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add playbook link)
+- docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add Lane C and audit gates)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add continuation route section)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add HND-01 row)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (MODIFIED - add continuation route and risk note)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (MODIFIED - add playbook audit checklist)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` xac nhan playbook link xuat hien trong master index, handoff master va evidence template.
+- PASSED: read-back xac nhan playbook doc co route, audit gates va one-active-slice rule.
+
+Residual note:
+- Chua co code runtime change trong slice nay; day la docs/governance route slice.
+- PKG-01 van la next recommended slice, sau do moi chuyen sang CA-01..CA-07 theo playbook.
+
+# Entry 2026-05-03af - DATA-02 migration/backfill/rollback order
+
+Muc tieu:
+- Dong slice DATA-02 bang cach freeze migration/backfill/rollback order cho identity/commercial deltas trong storage strategy.
+- Dam bao resource freeze checklist chi dong vai tro cross-reference, khong lap lai migration plan.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md`:
+  - Them `### 6.4 Migration/backfill/rollback order cho identity/commercial deltas` voi order cho `CoreTenantMembership`, `CoreAccessPolicy`, `CoreBillingAccount`, `CoreTokenSecretVersion`.
+- `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`:
+  - Them note cross-reference toi migration/backfill/rollback order trong storage strategy.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `DATA-02` hoan thanh va them status note.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03af.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho DATA-02.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (MODIFIED - add migration order section)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add migration order cross-reference)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DATA-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `git diff --stat` tren storage strategy va freeze checklist cho thay dung scope thay doi.
+- PASSED: read-back xac nhan migration order section va checklist cross-reference da co mat.
+
+Residual note:
+- `DATA-03` con mo; read-model priority workstream se lay matrix/migration order lam dau vao, khong phai ket qua cuoi cung.
+
+# Entry 2026-05-03ae - DATA-01 implemented-vs-target resource matrix
+
+Muc tieu:
+- Dong slice DATA-01 bang cach tao canonical implemented-vs-target resource matrix cho core resources va dong bo term ngu nghia giua schema analysis, contract pack va resource freeze checklist.
+- Dam bao docs khong con truong hop moi file ke mot phien ban matrix rieng; schema analysis la source of truth, hai file con lai chi cross-reference.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md`:
+  - Them `## 0.1 Implemented-vs-target resource matrix` voi rows cho `CoreTenant`, `CoreServiceAccount`, `CorePATCredential`, `CoreUsageMeter`, `CoreBillingAccount`, `CoreTenantMembership`, `CoreAccessPolicy`, `CoreTokenSecretVersion`, `TenantQuotaLedger`, `CoreUsageAggregateHourly`, `CoreSymbolSnapshot`, `SessionFacts`, `UnifiedAlertProjection`.
+- `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`:
+  - Them note cross-reference toi canonical matrix va giu truth table runtime availability/target-state wording.
+- `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`:
+  - Them note cross-reference toi canonical matrix va giu checklist o muc freeze posture.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `DATA-01` hoan thanh va them status note.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ae.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho DATA-01.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (MODIFIED - add canonical resource matrix)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - add matrix cross-reference)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add matrix cross-reference)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DATA-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `git diff --stat` tren 3 file matrix cap nhat cho thay dung scope thay doi.
+- PASSED: read-back xac nhan matrix va cross-reference notes da co mat o schema analysis, contract pack va resource freeze checklist.
+
+Residual note:
+- `DATA-02` va `DATA-03` con mo; canonical matrix nay co y nghia freeze posture, khong thay the migration order hay read-model priority workstream.
+
+# Entry 2026-05-03ad - PART-03 tenant-admin docs freeze against live routes
+
+Muc tieu:
+- Dong slice PART-03 de freeze tenant-admin docs against live routes va cap nhat audit trail cho live partner tenant summary mapping.
+- Dam bao `GET /api/core/v1/partner/tenant/` da duoc reflect trong UI architecture, screen spec, RBAC matrix, contract pack, resource freeze checklist va partner API contract draft; target-state `/core/v1/partner/tenant` van duoc giu ro la owner path.
+
+Noi dung cap nhat chinh:
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PART-03` hoan thanh va them status note.
+- `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`:
+  - Giu Tenant Home mapping o live wrapper route.
+- `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`:
+  - Ghi ro live tenant summary route.
+- `docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md`:
+  - Dong bo inventory tenant-admin capability voi current live surface.
+- `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`:
+  - Mark live wrapper route vs target-state owner path.
+- `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`:
+  - Cap nhat freeze posture cho tenant route.
+- `docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md`:
+  - Ghi current live wrapper route va giu target-state owner path.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ad.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho PART-03.
+
+Danh sach tep cap nhat:
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-03 complete)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - update tenant summary mapping)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - update tenant-admin capability inventory)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - update live wrapper route posture)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - update tenant route freeze posture)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - mark partner tenant route live)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: spot check with grep confirmed live tenant route strings present in all updated docs.
+- PASSED: taskboard row `PART-03` marked completed.
+
+Residual note:
+- `GET /core/v1/partner/tenant` van con la target-state owner path; current runtime surface la live wrapper route.
+
+# Entry 2026-05-03ac - PART-02 partner envelope and request-id semantics
+
+Muc tieu:
+- Dong noi dung partner client layer de envelope, request-id va idempotency semantics khop voi contract freeze.
+- Binh thuong hoa `coreRequestId` metadata tren response tu `frontend/src/api/client.js` va giu Idempotency-Key o cac mutating partner helpers.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getTenantSummary()` cho live partner tenant route.
+  - Them response metadata shim de attach `coreRequestId` tu `X-Core-Request-Id` vao Axios response/error.
+  - Giu `Idempotency-Key` headers cho service-account/PAT write helpers.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PART-02` hoan thanh va them status note 2026-05-03.
+- `module_tree_full.md`:
+  - Regenerate sau frontend code change, module count giu 567.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ac.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PART-02 nay.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add coreRequestId response metadata and tenant summary helper)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => `Compiled successfully`.
+- PASSED: `get_errors` clean tren `frontend/src/api/client.js`.
+
+Residual note:
+- Tenant/admin pages chua consume `getTenantSummary()` yet; lane tiep theo se day no vao screen spec/doc freeze neu can.
+- `PART-02` da dong; tiep theo la `PART-03` de freeze tenant-admin docs against live routes.
+
+# Entry 2026-05-03ab - PART-01 partner tenant summary route
+
+Muc tieu:
+- Mo current live wrapper route cho Tenant Home de route partner tenant summary khop voi contract current-code truth.
+- Dong docs drift quanh `GET /api/core/v1/partner/tenant/` va giu `GET /core/v1/partner/tenant` o trang thai target-state owner path.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_partner_admin.py`:
+  - Them `_serialize_tenant_summary(...)` va `partner_tenant_api(...)` de tra tenant snapshot tu `CoreTenant.ensure_for_user(...)`.
+- `backend/config/urls.py`:
+  - Dang ky route `GET /api/core/v1/partner/tenant/`.
+- `backend/portfolio/tests/test_partner_admin_api.py`:
+  - Them focused test cho tenant summary snapshot va tenant bootstrap path.
+- `docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md`:
+  - Cap nhat current-code reality check va route status de reflect live wrapper route.
+- `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`, `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`:
+  - Cap nhat Tenant Home mapping va resource freeze notes cho live wrapper route.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PART-01` hoan thanh.
+- `module_tree_full.md`:
+  - Regenerate sau code change, module count giu 567.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ab.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PART-01 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_partner_admin.py (MODIFIED - add partner tenant summary wrapper)
+- backend/config/urls.py (MODIFIED - register partner tenant route)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - add tenant summary route test)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - mark partner tenant route live)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - update tenant current-code freeze posture)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - update tenant route freeze posture)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_partner_admin_api --keepdb; Pop-Location` => `Ran 5 tests ... OK`.
+- PASSED: `get_errors` clean tren `backend/portfolio/views_partner_admin.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_partner_admin_api.py`, `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` successfully (567 modules).
+
+Residual note:
+- `PART-02` van mo de dong envelope/header/idempotency parity cho partner APIs con lai.
+- Tenant route nay la current live wrapper route; `GET /core/v1/partner/tenant` van la target-state owner path.
+
+# Entry 2026-05-03aa - OPS-05 operator AI runtime naming convergence
+
+Muc tieu:
+- Dong slice operator AI runtime de route live, test coverage va UI/docs naming khop nhau trong current-code truth.
+- Ghi ro `AICommandCenter.jsx` la current human-facing surface cho `GET /api/core/v1/operator/ai-runtime/`, khong con xem no nhu backlog thuan tuy.
+
+Noi dung cap nhat chinh:
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `OPS-05` hoan thanh va them status note 2026-05-03.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md`:
+  - Ghi ro current UI surface `AICommandCenter.jsx` la AI Command Center surface cho operator AI runtime governance.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`:
+  - Ghi ro UI surface va operator AI runtime route co naming khop nhau trong current-code truth.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03aa.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice OPS-05 nay.
+
+Danh sach tep cap nhat:
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-05 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - add AI Command Center UI naming note)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - add AI Command Center UI naming note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_system_ai_admin_api --keepdb; Pop-Location` => `Ran 20 tests ... OK`.
+- PASSED: read review tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/tests/test_system_ai_admin_api.py`, `frontend/src/pages/AICommandCenter.jsx` cho thay operator AI runtime route, test coverage va UI naming da khop nhau.
+
+Residual note:
+- Khong co code runtime moi trong slice nay; no chi dong audit/doc drift con lai quanh operator AI runtime naming.
+- `OPS-05` da dong, backlog tiep theo quay lai cac lane con mo trong taskboard.
+
+# Entry 2026-05-02bq - OPS-04 operator jobs and audit trace reads
+
+Muc tieu:
+- Hoan tat slice operator jobs va audit trace reads tren current runtime truth de live runtime co read-first wrapper routes cho job table va audit traces.
+- Dung current-code union wrappers cho SignalServiceRun, CrawlRun va cac audit log tables san co thay vi tao data layer moi.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_admin_runtime.py`:
+  - Them operator job helpers, audit trace helpers, jobs list route va audit trace list/detail routes.
+  - Jobs table bao ve `SignalServiceRun` va `CrawlRun` voi cursor/ordering semantics.
+  - Audit trace table bao ve `SystemAISettingsAuditLog`, `WhaleConfigAuditLog`, `AdvisoryAggregateAuditLog` va `CrawlAuditLog`, co detail lookup theo `request_id` composite.
+- `backend/config/urls.py`:
+  - Dang ky route `GET /api/core/v1/operator/jobs/`, `GET /api/core/v1/operator/audit/requests/` va `GET /api/core/v1/operator/audit/requests/{request_id}/`.
+- `backend/portfolio/views.py`:
+  - Export operator jobs va audit trace views tu module chinh.
+- `backend/portfolio/tests/test_operator_jobs_audit_api.py`:
+  - Them focused tests cho admin gating, jobs list/filter, audit list/filter va audit detail payload.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `OPS-04` hoan thanh.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md` va `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`:
+  - Cap nhat current-code reality check de phan anh cac wrapper routes jobs va audit requests da live.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice OPS-04 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator jobs and audit trace wrappers)
+- backend/portfolio/views.py (MODIFIED - export operator jobs and audit trace views)
+- backend/config/urls.py (MODIFIED - register operator jobs and audit routes)
+- backend/portfolio/tests/test_operator_jobs_audit_api.py (NEW - focused operator jobs and audit trace tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-04 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - update current-code reality check)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - update current-code reality check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_operator_jobs_audit_api.py`.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_jobs_audit_api --keepdb; Pop-Location` => `Ran 6 tests ... OK`.
+
+Residual note:
+- `OPS-05` AI runtime contract alignment remain open.
+- Jobs/audit surfaces are current-code wrapper projections over existing tables; the target-state `/core/v1/operator/*` naming remains contract vocabulary only.
+
+# Entry 2026-05-02bp - OPS-02 tenant registry/detail and OPS-03 service-account/PAT projections
+
+Muc tieu:
+- Hoan tat slice tenant registry/detail va operator principal projections de live runtime co day du read-first wrappers cho tenant, service-account va PAT lanes.
+- Giu current-code truth phan biet ro operator wrapper routes da live voi target-state contract routes con lai.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_admin_runtime.py`:
+  - Them operator tenant snapshot/list/detail helpers, service-account list helpers va PAT list helpers.
+  - Them `operator_tenants_api`, `operator_tenant_detail_api`, `operator_tenant_service_accounts_api`, `operator_tenant_pats_api`.
+  - Tenant list co summary cards, search/filter/cursor support va commercial/security projections.
+  - Service-account list co rotation risk metadata; PAT list co issuer/anomaly metadata va khong bao gio expose secret.
+- `backend/config/urls.py`:
+  - Dang ky route `GET /api/core/v1/operator/tenants/`, `GET /api/core/v1/operator/tenants/{tenant_id}/`, `GET /api/core/v1/operator/tenants/{tenant_id}/service-accounts/`, `GET /api/core/v1/operator/tenants/{tenant_id}/pats/`.
+- `backend/portfolio/views.py`:
+  - Export operator tenant registry/principal views tu module chinh.
+- `backend/portfolio/tests/test_operator_tenant_registry_api.py`:
+  - Them focused tests cho admin gating, registry filter/search, suspended filter, detail summary, service-account projection va PAT projection.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `OPS-02` va `OPS-03` hoan thanh.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md` va `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`:
+  - Cap nhat current-code reality check de phan anh cac wrapper routes operator tenant/principal da live.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice OPS-02/OPS-03 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator tenant registry/detail and principal list projections)
+- backend/portfolio/views.py (MODIFIED - export operator tenant/principal views)
+- backend/config/urls.py (MODIFIED - register operator tenant/principal routes)
+- backend/portfolio/tests/test_operator_tenant_registry_api.py (NEW - focused admin, registry and principal projection tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-02 and OPS-03 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - update current-code reality check)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - update current-code reality check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bp)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_tenant_registry_api --keepdb; Pop-Location` => `Ran 6 tests ... OK`.
+- PASSED: runtime probe via `manage.py shell` with operator/admin tenant fixture returned `200` for `/api/core/v1/operator/tenants/`, `/api/core/v1/operator/tenants/{tenant_id}/`, `/api/core/v1/operator/tenants/{tenant_id}/service-accounts/`, and `/api/core/v1/operator/tenants/{tenant_id}/pats/` and the payload shapes matched the projected list/detail contracts.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` rebuilt and restarted `vninvest-dev-backend` with the new routes loaded.
+
+Residual note:
+- `OPS-04` jobs/audit reads remain open.
+- Operator list/detail routes are live wrapper projections under `/api/core/v1/operator/*`; the non-`api` path remains target-state contract naming.
+
+# Entry 2026-05-02bo - OPS-01 operator overview and health projections
+
+Muc tieu:
+- Hoan tat slice read-first operator overview va health de live runtime co mot operator projection layer on dinh dung tu cac snapshot hien co.
+- Ghep operator overview/health tu `config.health`, `market_observability`, `admin_runtime_kpi` va `operator_ai_runtime` thay vi tao data layer moi.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_admin_runtime.py`:
+  - Them `_response_payload(...)`, `_http_request(...)`, `_build_operator_health_snapshot(...)` va `_build_operator_overview_snapshot(...)`.
+  - Them `operator_health_api` va `operator_overview_api` cho `GET /api/core/v1/operator/health/` va `GET /api/core/v1/operator/overview/`.
+  - Health snapshot gom `service`, `realtime`, `streams`, `prefetch`, `market_observability`, `celery`, `ai_runtime` components va `degraded_components` semantics.
+- `backend/config/urls.py`:
+  - Dang ky hai route operator moi trong namespace `/api/core/v1/operator/*`.
+- `backend/portfolio/views.py`:
+  - Export operator overview/health views tu module chinh de route registration dung current anchors.
+- `backend/portfolio/tests/test_operator_admin_runtime_api.py`:
+  - Them focused tests cho anonymous/regular/admin access va snapshot structure cua overview/health routes.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `OPS-01` hoan thanh.
+- `module_tree_full.md`:
+  - Regenerate sau code change, module count tang len 565.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice OPS-01 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator overview/health read projections)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/operator/overview/` and `/api/core/v1/operator/health/`)
+- backend/portfolio/views.py (MODIFIED - export operator overview/health views)
+- backend/portfolio/tests/test_operator_admin_runtime_api.py (NEW - focused admin access and snapshot structure tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_admin_runtime_api --keepdb; Pop-Location` => `Ran 4 tests ... OK`.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => `module_tree_full.md` regenerated; module count `565`.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` => backend image rebuilt and `vninvest-dev-backend` restarted healthy.
+
+Residual note:
+- Health/overview projections hien la thin read wrappers over existing runtime snapshots, not mot dashboard data warehouse moi.
+- `OPS-02` va `OPS-04` van con mo; slice nay chi dong operator P0 read projections dau tien.
+
+# Entry 2026-05-02bn - ACC-03 package-track wildcard fallback removal
+
+Muc tieu:
+- Lo bo wildcard fallback trong package-track bootstrap de package shell khong con dua vao `manage all` hoac `subject all` khi doc admin/AI abilities.
+- Giu package shell baseline on dinh nhung thay wildcard bang explicit package capability subjects cho admin/AI lanes.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Lo bo `{"action": "manage", "subject": "all"}` khoi `_ability_rules(...)`.
+  - Them explicit package capabilities `admin.operator.read`, `system.ai_command_center.manage`, va `vip.local_control.read` cho session staff/superuser theo build target.
+- `packages/web/src/pages/coreShellPageHelpers.js`:
+  - `filterAbilitiesBySubject(...)` khong con coi `subject === "all"` la wildcard.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them assertion de dam bao wildcard `all` khong con match keyword admin va explicit admin capability van match dung.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `ACC-03` hoan tat.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bn.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice ACC-03 nay.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - replace manage-all wildcard with explicit package capabilities)
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - remove wildcard subject all from subject filtering)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add regression assertions for explicit capabilities)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-03 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./packages/web; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: `& ".\.venv\Scripts\python.exe" -m py_compile packages/core/backend/src/vninvest_core/api_stub.py` => clean compile, no syntax errors.
+
+Residual note:
+- Package track van la baseline/shim lane, not parity proof cho toi bo operator/partner/commercial surfaces.
+- `ACC-03` chi lo wildcard fallback; cac slice package parity/lane hardening khac van con mo trong package-track roadmap.
+
+# Entry 2026-05-02bm - ACC-02 frontend capability bootstrap cutover
+
+Muc tieu:
+- Hoan tat cutover frontend auth/bootstrap sang dedicated `capability_snapshot` wrapper route de `PortfolioContext`, `TopNav` va `Sidebar` khong con phai suy dien admin/tenant nav tu bootstrap cũ.
+- Dong bo taskboard va contract docs de `ACC-02`/`CA-00` phan anh dung current-code truth va khong con de slice nay o trang thai treo.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/auth.js`:
+  - Them helper `getCapabilitySnapshot()` cho `GET /api/core/v1/access/capabilities/`.
+- `frontend/src/context/PortfolioContext.jsx`:
+  - `syncAuthState()` doc song song `/auth/me/`, wrapper `capability_snapshot` va `userConfig`.
+  - Luu `capabilitySnapshot` state va uu tien abilities/entitlements tu wrapper route khi co.
+- `frontend/src/components/TopNav.jsx` va `frontend/src/components/Sidebar.jsx`:
+  - Uu tien `navigation`/`surfaces` tu `capabilitySnapshot` de render tenant/admin menus, co fallback an toan ve ability cu.
+- `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`:
+  - Danh dau frontend da cutover sang dedicated wrapper route trong `ACC-02`.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Cap nhat `CA-00` thanh `Completed` va ghi ro frontend da doc wrapper route.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `ACC-02` hoan tat.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bm.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice ACC-02 nay.
+
+Danh sach tep cap nhat:
+- frontend/src/api/auth.js (MODIFIED - add capability snapshot helper)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - consume capability snapshot in auth bootstrap)
+- frontend/src/components/TopNav.jsx (MODIFIED - prefer capability snapshot navigation hints)
+- frontend/src/components/Sidebar.jsx (MODIFIED - prefer capability snapshot navigation hints)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - mark frontend cutover complete)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-00 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => `Compiled successfully`.
+- PASSED: dev stack refresh da chay truoc do cho frontend/backend va browser proof tren `/dashboard` cho thay tenant/admin nav render dung voi `capabilitySnapshot`.
+- PASSED: `read_page` tren `/dashboard` xac nhan `Khách thuê` nav group va tenant admin links hien len, khong co regression bootstrap.
+- PASSED: `get_errors` tren docs/taskboards lien quan sau sync => clean.
+
+Residual note:
+- `ACC-03` van con mo de lo wildcard fallback trong package-track bootstrap lane; slice nay chi khan dinh frontend/legacy runtime cutover, khong giai quyet package parity.
+- `CA-01` van partial vi `/admin/core/*` chua co live implementation.
+
+# Entry 2026-05-02bl - ACC-01 capability bootstrap wrapper route
+
+Muc tieu:
+- Mo route current-code truth cho capability bootstrap de lane Access/Admin co dedicated `capability_snapshot` wrapper ma khong phai tiep tuc suy dien tu `manage all` hay broad admin bridge.
+- Tiep tuc giu `/api/auth/me/` la auth payload goc, nhung them access wrapper route de frontend/admin lane co diem doc contract ro hon cho `ACC-02`.
+- Dong bo docs/taskboards so huu slice nay de stack docs va code cung phan anh `ACC-01` da hoan tat, trong khi `CA-00` van con `Partial` cho toi khi frontend cutover xong.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/auth_views.py`:
+  - Them helper `_resolve_auth_bootstrap_state(...)` de tai su dung resolution cho `auth/me`.
+  - Them helper `_build_current_capability_snapshot(...)` adapter tu `resolve_user_entitlements(...)` sang object `capability_snapshot`.
+  - Them `CapabilitySnapshotView` cho `GET /api/core/v1/access/capabilities/` voi `actor`, `surfaces`, `abilities`, `navigation`, `constraints`, `feature_flags`, `bridges` va carry-through `entitlements`.
+- `backend/config/urls.py`:
+  - Dang ky route `api/core/v1/access/capabilities/`.
+- `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Them focused tests cho tenant bootstrap snapshot va operator bootstrap snapshot.
+  - Giu test coverage cu cua `/api/auth/me/` de dam bao auth payload goc khong bi drift.
+- `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`:
+  - Cap nhat current live bootstrap contract de ghi ro `/api/core/v1/access/capabilities/` da ton tai nhu current-code wrapper route adapter tu `/api/auth/me/`.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Cap nhat `CA-00` thanh route wrapper da ton tai nhung frontend/access service chua cutover hoan toan.
+  - Them implementation note 2026-05-02bl cho route moi.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `ACC-01` hoan tat.
+- `module_tree_full.md`:
+  - Regenerate sau thay doi code backend.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bl.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice ACC-01 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/auth_views.py (MODIFIED - add current-code capability snapshot wrapper and reuse auth bootstrap resolution)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/access/capabilities/`)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - add tenant/operator focused tests for capability snapshot route)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - document live wrapper route and wrapper-source semantics)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - update CA-00 current state and add implementation note)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes, total modules 564)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/auth_views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_api_routes_auth_profile.py` sau khi them route wrapper va tests.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb; Pop-Location` => `Ran 10 tests ... OK`.
+- PASSED: `get_errors` clean tren `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`, `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md` sau khi sync docs/taskboards.
+- PASSED: rerun same focused suite sau doc sync => `Ran 10 tests ... OK`.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (564 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` => backend image rebuilt, container healthy.
+- PASSED: runtime payload proof qua proxy `http://127.0.0.1/api/core/v1/access/capabilities/` bang user `testpro` tra `object=capability_snapshot`, `actor.session_type=tenant_human`, `surfaces.tenant_admin.enabled=true`, `navigation.default_route=/tenant-admin/home`, `bridges.legacy_manage_all_active=false`.
+
+Residual note:
+- Slice nay moi hoan tat `ACC-01`. Frontend chua doc route wrapper moi; cutover cua `PortfolioContext`, `AbilityContext`, `ProtectedRoute`, `TopNav` va nav gating van thuoc `ACC-02`.
+- `CA-00` trong admin implementation taskboard van de `Partial` vi route wrapper hien la `auth_me_wrapper`, chua tach thanh access service doc lap hoan chinh.
+- Current wrapper route van phan loai non-operator authenticated sessions vao lane `tenant_human`; neu doi frontend can session taxonomy chi tiet hon cho free/basic users thi do la follow-up semantics cho `ACC-02`, khong phai blocker cho current slice.
+
+# Entry 2026-05-02bk - Enterprise Core doc-family realignment completion
+
+Muc tieu:
+- Hoan tat phan docs con mo trong handoff pack current-code realignment de bo tai lieu co the chuyen giao cho doi code va auditors ma khong con de `ENTERPRISE_CORE_*` drift giua implemented-now va target-state.
+- Dong cac slice `DOC-04`, `DOC-05`, `DOC-06` trong taskboard bang cach realign day du nhom Access/Admin, Operator/Partner/Core contracts, va Resource/Schema docs.
+- Dong bo lai control surfaces trung tam de taskboard va audit report phan anh dung rang docs family da hoan tat, phan con mo chi con la code backlog.
+
+Noi dung cap nhat chinh:
+- Realign bo Access/Admin docs:
+  - `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`
+  - `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`
+  - `docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md`
+  - `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`
+  - `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`
+  - Them current-code truth cho `/api/auth/me/`, `/tenant-admin/*`, `/admin-ops`, `/admin-crawl-control`; ha dedicated `/core/v1/access/capabilities` va `/admin/core/*` ve target-state; cap nhat status slices `CA-*` theo code that.
+- Realign bo Operator/Partner/Core contract docs:
+  - `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md`
+  - `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`
+  - `docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md`
+  - `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`
+  - `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`
+  - Chot lai `GET /api/core/v1/operator/ai-runtime/` la operator wrapper route live duy nhat, partner self-service control/commercial routes la implemented-now, `GET /core/v1/partner/tenant` va data-plane partner APIs van la target-state, machine-auth PAT chua phai current runtime.
+- Realign bo Resource/Schema docs:
+  - `docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md`
+  - `docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md`
+  - `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`
+  - Them current-code snapshot cho `CoreTenant`, `CoreServiceAccount`, `CorePATCredential`, quota/billing projections reuse; danh dau `CoreUsageMeter`, `CoreBillingAccount`, `SessionFacts`, `UnifiedAlertProjection` la target-state/backlog.
+- Dong bo control docs trung tam:
+  - `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md`
+  - Danh dau `DOC-04`, `DOC-05`, `DOC-06` hoan tat va cap nhat residual risk tu doc drift sang code backlog/parity work.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bk.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho dot hoan tat doc-family nay.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - add current/live vs target-state interpretation and real current route inventory)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - mark central operator specs as target-state, document live tenant/admin surfaces and actual bootstrap path)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - replace outdated manage-all assumption with explicit live ability inventory)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - document `/api/auth/me/` as current bootstrap and map it to future capability snapshot)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - add actual completion state for CA-08 to CA-12 and partial state for CA-00/CA-01)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - mark operator backlog routes as target-state except live ai-runtime wrapper)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - mark only operator ai-runtime route as live and the rest as backlog)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - document live self-service partner routes, human-session auth reality and target-state PAT machine auth)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - add current-code freeze posture for each core resource)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add current boundary reality for legacy runtime plus package-track baseline)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (MODIFIED - add current storage reality snapshot)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (MODIFIED - add current materialized model snapshot vs target-state tables)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add current freeze snapshot and correct live auth/route semantics for core resources)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DOC-04, DOC-05, DOC-06 complete)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (MODIFIED - update positive impact and residual risks after core doc-family realignment)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bk)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 5 docs Access/Admin vua realign: `ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE`, `ENTERPRISE_CORE_ADMIN_SCREEN_SPEC`, `ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX`, `ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT`, `ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD`.
+- PASSED: `grep_search` xac nhan nhom Access/Admin docs da co cac marker current-code moi: `/api/auth/me/`, `AdminOps`, `AdminCrawlControl`, inventory `/tenant-admin/*`, status `CA-10`, `CA-11`, `CA-12` complete.
+- PASSED: `get_errors` clean tren 5 docs Operator/Partner/Core contracts vua realign: `ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG`, `ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS`, `ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT`, `ENTERPRISE_CORE_CONTRACT_PACK`, `ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT`.
+- PASSED: `grep_search` xac nhan nhom contract docs da ghi ro `Current-code reality`, auth `human session/JWT`, `GET /api/core/v1/operator/ai-runtime/` la live, `GET /core/v1/partner/tenant` va data-plane partner APIs la target-state.
+- PASSED: `get_errors` clean tren 3 docs Resource/Schema vua realign: `ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY`, `ENTERPRISE_CORE_SCHEMA_ANALYSIS`, `ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST`.
+- PASSED: `grep_search` xac nhan nhom schema/resource docs da co current-code snapshot cho `CoreTenant`, `CoreServiceAccount`, `CorePATCredential` va danh dau ro `CoreUsageMeter`/`CoreBillingAccount` la target-state.
+- PASSED: `get_errors` clean tren `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md` va `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md` sau khi dong `DOC-04..06`.
+- PASSED: `grep_search` xac nhan taskboard current-code da danh dau `[x]` cho `DOC-04`, `DOC-05`, `DOC-06` va audit report da doi residual risk tu doc drift sang code backlog/parity work.
+
+Residual note:
+- Dot nay van la docs-only slice. No khong them code runtime moi cho operator P0 reads, `partner/tenant`, partner data-plane hay schema objects target-state.
+- Sau mốc nay, bo docs handoff co the xem la day du cho doi code va auditors. Phan cong viec con mo thuoc backlog code `ACC-*`, `OPS-*`, `PART-*`, `DATA-*`, `PKG-*`, khong con la khoang trong docs control.
+- Khong refresh `module_tree_full.md` o dot nay vi khong co thay doi code trong `backend/`, `frontend/` hoac `packages/`.
+
+# Entry 2026-05-02bj - Enterprise B2B MCP current-code realignment handoff pack
+
+Muc tieu:
+- Cap nhat lai hai control docs goc cua enterprise B2B MCP transformation de dung voi code hien tai sau package-track baseline va core-admin audit.
+- Tao mot bo handoff pack moi de doi code co the tiep tuc lam viec theo slice ma khong can hoi lai ve thu tu uu tien, workstreams, validation protocol hay evidence obligations.
+- Chot lai current-code entry point cho cac tai lieu `ENTERPRISE_CORE_*` va tach ro implemented-now, partial, target-state o cap execution control.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Viet lai baseline repo theo su that hien tai: legacy runtime va package-track baseline dang cung ton tai.
+  - Ghi ro `packages/core`, `packages/web`, `packages/vip-app`, `shared/api-contracts`, `buildTarget.js` da ton tai that.
+  - Chot lai sequencing `Phase 0-5` theo current code, phan biet package baseline voi parity runtime.
+  - Ghi ro package-track bootstrap van con transitional wildcard fallback, nen khong duoc claim bridge-free final state.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Them `PHAN 0` cho current-code execution control docs.
+  - Tro thang toi handoff master, implementation plan, taskboard, traceability, self-audit va evidence template moi.
+  - Them note cach doc `implemented now`, `partial`, `target-state` de tranh doc nham bo target-state docs.
+- Tao moi bo handoff pack current-code realignment:
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md`
+  - `docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`
+  - `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md`
+  - Pack moi nay chia chuong trinh thanh cac workstream `WS-DOC`, `WS-ACCESS`, `WS-OPERATOR`, `WS-PARTNER`, `WS-DATA`, `WS-PKG`, co taskboard chi tiet va evidence obligations cho tung slice.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bj.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho dot current-code realignment docs nay.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - rewrite execution baseline to reflect actual legacy + package-track coexistence and accurate sequencing)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add current-code execution control section and handoff pack entry points)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (NEW - current-code execution handoff master for the whole enterprise B2B MCP program)
+- docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (NEW - detailed implementation plan for docs realignment and code backlog)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (NEW - live taskboard for docs, access/admin, operator, partner, data/schema, package-track workstreams)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md (NEW - requirement-to-slice traceability matrix)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (NEW - self-audit and validation protocol)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (NEW - slice evidence template)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (NEW - internal audit report for this handoff pack)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` tren `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md` xac nhan cac anchor quan trong da xuat hien: `packages/`/`shared/` ton tai that, `buildTarget.js` ton tai, `Legacy runtime van la SSOT nghiep vu hien tai`, package-track wildcard fallback `manage all`, va `Phase 1 - Package/shared foundation baseline`.
+- PASSED: `get_errors` clean tren `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md` sau khi viet lai toan bo rebaseline.
+- PASSED: `grep_search` tren `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md` xac nhan master index da tro dung sang `CURRENT_CODE_HANDOFF_MASTER`, `IMPLEMENTATION_PLAN_*` va `TASKBOARD_*` moi.
+- PASSED: `get_errors` clean tren 8 docs control moi/cap nhat: master index, handoff master, implementation plan, taskboard, traceability matrix, self-audit protocol, evidence template, handoff audit report.
+- PASSED: `grep_search` tren `docs/*.md` xac nhan traceability matrix va taskboard moi co chung task IDs chinh (`DOC-01`, `ACC-01`, `OPS-01`, `PART-01`, `DATA-01`, `PKG-01`) va audit report da co verdict `PASS FOR IMPLEMENTATION HANDOFF WITH NOTES`.
+- PASSED: read review tren dau file `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md` xac nhan `PHAN 0` da duoc chen vao truoc `PHAN 1A` va current-code control docs da duoc dat thanh entry point chinh.
+
+Residual note:
+- Dot nay la docs-only slice; no khong tu dong realign toan bo cac docs `ENTERPRISE_CORE_*` con lai. Cac task `DOC-04`, `DOC-05`, `DOC-06` van con mo trong taskboard de tiep tuc lam sach tung doc family theo current-code truth.
+- Khong refresh `module_tree_full.md` o dot nay vi khong co thay doi code trong `backend/`, `frontend/` hoac `packages/`; pack audit moi da ghi ro quy tac nay trong self-audit protocol.
+
+# Entry 2026-05-02bi - HoldingsTable whale badges and recent alert glow
+
+Muc tieu:
+- Gop whale alert recent 5 phut vao `HoldingsTable` de canh bao ngay tren dong vi the.
+- Giu nguon du lieu ton tai san trong `LegacyDashboard` (`alerts` realtime) va khong them fetch contract moi.
+- Cap nhat backlog phase 1 de danh dau 1.1 hoan thanh va chuyen sang 1.2 cho dashboard improvement.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/LegacyDashboard.jsx`:
+  - Tao `whaleAlertsBySymbol` tu `alerts` realtime voi cua so 5 phut, gom severity/side/size class/matched value.
+  - Truyen map nay vao `HoldingsTable` de render badge theo symbol.
+- `frontend/src/components/HoldingsTable.jsx`:
+  - Them badge whale o cot ma co icon `🦈/🐋`, severity label, side label va matched value compact.
+  - Them row glow/accent theo severity va giu indicator freshness xanh cho row khong co whale alert.
+- `TODO.md`:
+  - Danh dau `1.1 HoldingsTable whale badges` la done va chuyen `Current Phase` sang `1.2 Sticky Alert Bar`.
+- `module_tree_full.md`:
+  - Regenerate sau slice nay; tong module van 564.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bi.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice whale badge nay.
+
+Danh sach tep cap nhat:
+- frontend/src/components/HoldingsTable.jsx (MODIFIED - render whale badge/glow on holdings rows)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - build 5-minute whale alert map and pass to holdings table)
+- TODO.md (MODIFIED - mark 1.1 complete and advance current phase)
+- module_tree_full.md (MODIFIED - regenerated after the dashboard badge slice, total modules 564)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/components/HoldingsTable.jsx` va `frontend/src/pages/LegacyDashboard.jsx` sau khi them whale badge map.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau HoldingsTable badge update.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => refresh dev stack thanh cong; backend healthy, frontend started.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & ".venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (564 modules).
+
+Residual note:
+- Badge map currently dựa vào shape alert realtime `symbol`, `ts`, `side`, `severity`, `size_class`, `matched_value`; nếu upstream schema đổi, helper `buildRecentWhaleAlertMap()` sẽ cần chạm nhỏ.
+
+# Entry 2026-05-02bh - Canonical tenant registry and bridge removal
+
+Muc tieu:
+- Hoan tat canonical tenant ownership qua `CoreTenant`.
+- Lo bo reliance vao `ability.can('manage', 'all')` trong auth/me va route guards.
+- Giu public tenant_id contract va browser proof cho admin/tenant routes.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/models.py`:
+  - Them `CoreTenant` registry va tiep tuc giu `tenant_id = ten_usr_<user_id>` cho public contract.
+  - Giu `CoreServiceAccount` / `CorePATCredential` cho tenant-scoped ownership qua canonical tenant row.
+- `backend/portfolio/partner_tenant_context.py`:
+  - Resolve tenant context qua `CoreTenant.ensure_for_user(...)` thay vi inline `request.user`.
+- `backend/portfolio/migrations/0067_coretenant.py` va `backend/portfolio/migrations/0068_rename_portfolio_c_status_4cc731_idx_portfolio_c_status_3f2e9e_idx.py`:
+  - Tao canonical tenant registry va dong drift index-name sau migrate live DB.
+- `backend/portfolio/permissions.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Replace manage-all bridge bang explicit admin abilities (`AdminOps`, `AdminCrawlControl`, `StockDetailAdvancedTab`).
+  - Tests assert khong con `manage all` trong auth/me payload va granular tenant flags van dung.
+- `frontend/src/App.jsx`:
+  - Protect `/admin-ops` va `/admin-crawl-control` bang `ProtectedRoute` explicit.
+  - Keep `/tenant-admin/*` route group on explicit abilities.
+- `frontend/src/components/TopNav.jsx` va `frontend/src/components/Sidebar.jsx`:
+  - Lo fallback `ability.can('manage', 'all')` cho nav visibility, dung explicit subject abilities.
+- `frontend/src/pages/StockDetail.jsx`:
+  - Advanced tab gate chuyen sang `read StockDetailAdvancedTab`.
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `TenantCapabilities.jsx`, `TenantServiceAccounts.jsx`, `TenantPATs.jsx`, `TenantUsage.jsx`, `TenantBilling.jsx`, `frontend/src/api/client.js`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Tenant console surfaces tiep tuc dung explicit ability gates va tenant-scoped client routes.
+- `module_tree_full.md`:
+  - Regenerated sau slice nay; tong module 564.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu CA-12 completion.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bh.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/models.py (MODIFIED - add CoreTenant canonical registry and align tenant-scoped primitives)
+- backend/portfolio/partner_tenant_context.py (MODIFIED - resolve tenant context through CoreTenant)
+- backend/portfolio/migrations/0067_coretenant.py (NEW - create canonical tenant registry)
+- backend/portfolio/migrations/0068_rename_portfolio_c_status_4cc731_idx_portfolio_c_status_3f2e9e_idx.py (NEW - clean CoreTenant index-name drift)
+- backend/portfolio/permissions.py (MODIFIED - replace manage all bridge with explicit admin abilities)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert explicit admin abilities and no manage all)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - keep tenant contract stable under canonical registry)
+- frontend/src/App.jsx (MODIFIED - explicit protected routes for admin surfaces)
+- frontend/src/components/TopNav.jsx (MODIFIED - explicit admin/tenant nav gating)
+- frontend/src/components/Sidebar.jsx (MODIFIED - explicit tenant nav gating)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - advanced tab gate uses explicit ability)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - tenant home shortcuts use explicit abilities)
+- frontend/src/pages/admin/tenant/TenantCapabilities.jsx (MODIFIED - tenant capability summary)
+- frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx (MODIFIED - tenant service account management)
+- frontend/src/pages/admin/tenant/TenantPATs.jsx (MODIFIED - tenant PAT lifecycle)
+- frontend/src/pages/admin/tenant/TenantUsage.jsx (MODIFIED - tenant usage/quota surface)
+- frontend/src/pages/admin/tenant/TenantBilling.jsx (MODIFIED - tenant billing/invoice surface)
+- frontend/src/api/client.js (MODIFIED - tenant partner API client methods and idempotency keys)
+- frontend/src/i18n/vi.js (MODIFIED - Vietnamese copy for tenant surfaces)
+- frontend/src/i18n/en.js (MODIFIED - English copy for tenant surfaces)
+- module_tree_full.md (MODIFIED - regenerated after slice, total modules 564)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-12 completion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` green, explicit admin abilities present and manage all absent.
+- PASSED: `manage.py test portfolio.tests.test_partner_admin_api --keepdb` green, tenant contract stable under canonical registry.
+- PASSED: `npm run build` trong `frontend` thanh cong.
+- PASSED: `manage.py makemigrations portfolio --check --dry-run` xanh sau khi them 0068.
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` refresh thanh cong; backend va frontend healthy.
+- PASSED: browser proof tren `/admin-ops`, `/admin-crawl-control`, `/tenant-admin/usage`, `/tenant-admin/billing` voi `ability_admin` va `testpro`.
+
+# Entry 2026-05-02bg - Complete tenant usage/billing self-service and prompt-config SSOT cleanup
+
+Muc tieu:
+- Hoan tat `CA-11` tenant usage/billing self-service read path tren tenant console that.
+- Tach ownership resolution cua partner tenant routes ra khoi inline `request.user` logic de giam debt truoc khi co tenant graph canonical.
+- Don drift quanh `UserConfig.ai_prompt_config` va `AICommandCenterConfig.ai_prompt_config` bang runtime SSOT helper thay vi tiep tuc mo them migration/history churn.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/partner_tenant_context.py`:
+  - Them `PartnerTenantContext` dataclass va resolver de chuan hoa `owner_user`, `tenant_id`, `tenant_code`, `display_name`, `plan_code`, `status`, `default_environment` cho partner self-service routes.
+- `backend/portfolio/views_partner_admin.py`:
+  - Refactor CA-10 ownership helpers de nhan `tenant_context` thay vi buoc chat vao `request.user` inline.
+  - Them partner commercial read routes `GET /api/core/v1/partner/usage/meters/`, `/usage/quotas/`, `/billing/subscription/`, `/billing/invoices/` cung helper snapshot/list envelope cho CA-11.
+- `backend/config/urls.py`:
+  - Dang ky 4 route commercial tenant moi trong namespace partner control-plane.
+- `backend/portfolio/permissions.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Mo rong `auth/me` abilities va entitlements cho `TenantUsageView` va `TenantBillingView` o `pro+`.
+- `backend/portfolio/tests/test_partner_admin_api.py`:
+  - Them focused coverage cho usage meters, quota snapshots, subscription summary va invoice list read paths.
+- `frontend/src/pages/admin/tenant/TenantUsage.jsx`:
+  - Tao usage page live, load song song `meters + quotas`, summary cards, risk labels, usage bars va deep link sang billing.
+- `frontend/src/pages/admin/tenant/TenantBilling.jsx`:
+  - Tao billing page live, load song song `subscription + invoices`, summary cards, field cards va invoice list cho tenant self-service commercial state.
+- `frontend/src/api/client.js`, `frontend/src/App.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Wire routes/nav/home shortcuts/client/i18n cho tenant usage va billing lanes tren UI that.
+- `backend/portfolio/ai_prompt_config_ssot.py` va `backend/portfolio/views_ai_runtime_stats.py`:
+  - Them helper hydrate/mirror de xem `AICommandCenterConfig.ai_prompt_config` la canonical field, nhung van mirror ve `UserConfig.ai_prompt_config` cho legacy readers.
+- `backend/portfolio/tests/test_ai_config_api.py`:
+  - Them regression tests cho hydration tu legacy `UserConfig` va mirror write-back sau `PUT ai_config`.
+- `module_tree_full.md`:
+  - Da regenerate sau slice nay; tong module hien tai la 564.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu `CA-11` da implementation + browser proof, dong thoi note ownership seam va prompt-config SSOT cleanup.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bg.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho CA-11 + debt cleanup slice.
+
+Danh sach tep cap nhat:
+- backend/portfolio/partner_tenant_context.py (NEW - extract partner tenant ownership/context resolution into a shared seam)
+- backend/portfolio/views_partner_admin.py (MODIFIED - add tenant usage/billing partner APIs and refactor ownership helpers around tenant context)
+- backend/config/urls.py (MODIFIED - register partner usage/billing routes)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - cover CA-11 usage/billing read paths)
+- backend/portfolio/permissions.py (MODIFIED - add tenant usage/billing abilities and entitlement flags for pro+)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert tenant usage/billing abilities and entitlements in auth/me)
+- frontend/src/pages/admin/tenant/TenantUsage.jsx (NEW - tenant usage metrics/quota page)
+- frontend/src/pages/admin/tenant/TenantBilling.jsx (NEW - tenant billing/subscription/invoice page)
+- frontend/src/api/client.js (MODIFIED - add tenant usage/billing client methods)
+- frontend/src/App.jsx (MODIFIED - add `/tenant-admin/usage` and `/tenant-admin/billing` routes)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant usage/billing quick links)
+- frontend/src/components/TopNav.jsx (MODIFIED - add tenant usage/billing nav items)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - add usage/billing shortcuts on tenant home)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for tenant usage/billing surfaces)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for tenant usage/billing surfaces)
+- backend/portfolio/ai_prompt_config_ssot.py (NEW - canonical prompt-config hydrate/mirror helper)
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - route AI config reads/writes through prompt-config SSOT helper)
+- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - cover legacy hydration and mirror write-back)
+- module_tree_full.md (MODIFIED - regenerated after CA-11 and debt cleanup slice, total modules 564)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-11 implementation and supporting debt cleanup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_partner_admin_api --keepdb` => green voi tenant usage/billing read paths, service account/PAT flows va free-plan deny path.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` => green voi tenant usage/billing abilities + entitlements tren `/api/auth/me/`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_ai_config_api --keepdb` => green voi legacy prompt-config hydration va mirror write-back coverage.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh voi tenant usage/billing routes, pages, nav va i18n moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (564 modules).
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => refresh dev stack thanh cong; backend healthy, frontend started.
+- PASSED: browser proof tren `/tenant-admin/usage` voi session `testpro` xac nhan tenant lane render live, summary `4` meters, `quota con lai 2.107`, `api_calls_per_day da dung 42`, `ai_regenerate_per_day da dung 3`.
+- PASSED: browser proof tren `/tenant-admin/billing` voi session `testpro` xac nhan subscription `pro` dang hoat dong, ky tiep theo `1 thg 6, 2026`, va invoice `INV-TESTPRO-PROOF-001` tong tien `49,00 US$`.
+
+Residual note:
+- Ownership cua tenant self-service van chua co `CoreTenant` registry canonical; `PartnerTenantContext` moi chi la seam de dung inline `request.user` ownership drift.
+- Dev runtime proof da seed du lieu thuong mai/toan luong toi thieu cho `testpro` (quota counters + 1 invoice mau) de browser audit thay duoc non-empty state; day khong phai schema hay code change.
+- Legacy `UserConfig.ai_prompt_config` van duoc mirror co chu dich trong giai doan chuyen tiep; khi migration/history duoc lam sach hoan toan, co the xoa bridge nay.
+
+# Entry 2026-05-02bf - Complete tenant service accounts and PAT self-service flow
+
+Muc tieu:
+- Hoan tat `CA-10` tenant self-service machine access flow thay vi dung o bootstrap/read-only tenant console.
+- Dung partner control-plane routes va tenant-scoped ownership seam de cho tenant user Pro tu tao service account, issue PAT, rotate va revoke tren UI that.
+- Giu pham vi hep: machine identity primitives, partner APIs, tenant UI routes, focused backend tests, migration drift handling va runtime/browser proof.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/models.py`:
+  - Them `CoreServiceAccount` va `CorePATCredential` voi public ids on dinh, policy/scopes JSON fields, PAT hashing, prefix-only read model va rotate/revoke lifecycle helpers.
+- `backend/portfolio/migrations/0066_userconfig_ai_prompt_config_and_more.py`:
+  - Tao bang/index cho `CoreServiceAccount` va `CorePATCredential`.
+  - Patch buoc add `UserConfig.ai_prompt_config` theo kieu idempotent de khong vo tren live DB da co san column do drift lich su.
+- `backend/portfolio/views_partner_admin.py`:
+  - Them partner control-plane views cho service account list/create va PAT list/issue/rotate/revoke.
+  - Standardize response theo envelope `object/url/data/has_more/next_cursor/prev_cursor`, them `X-Core-Request-Id`, enforce `Idempotency-Key` cho write mutations va chi reveal PAT secret o issue/rotate.
+- `backend/config/urls.py`:
+  - Dang ky routes `/api/core/v1/partner/service-accounts/`, `/api/core/v1/partner/pats/`, `/issue/`, `/<token_id>/rotate/`, `/<token_id>/revoke/`.
+- `backend/portfolio/permissions.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Mo rong abilities/entitlements CA-10 cho session `pro+` de frontend guard tenant machine-access lanes theo auth/me payload.
+- `backend/portfolio/tests/test_partner_admin_api.py`:
+  - Them focused tests cho service account list/create, PAT issue/list/rotate/revoke va free-plan deny path.
+- `frontend/src/api/client.js`:
+  - Them tenant client methods va auto-generate `Idempotency-Key` cho create/issue/rotate/revoke requests.
+- `frontend/src/App.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`:
+  - Them route va nav entries cho `/tenant-admin/service-accounts` va `/tenant-admin/pats`.
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`:
+  - Mo rong tenant home de link sang service accounts va PATs lane khi session co ability phu hop.
+- `frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx`:
+  - Tao page live de list/create service accounts, show metrics, environment va policy bundles.
+- `frontend/src/pages/admin/tenant/TenantPATs.jsx`:
+  - Tao page live de list/issue/rotate/revoke PATs, show one-time secret reveal, status counters va action buttons theo ability.
+- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Them copy cho service account/PAT routes, forms, metrics, states va errors.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu CA-10 da duoc implementation + live proof va note ownership seam hien tai.
+- `module_tree_full.md`:
+  - Da regenerate sau CA-10; tong module hien tai la 560.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bf.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho tenant machine-access slice.
+
+Danh sach tep cap nhat:
+- backend/portfolio/models.py (MODIFIED - add CoreServiceAccount/CorePATCredential primitives, PAT hash/prefix helpers and lifecycle methods)
+- backend/portfolio/migrations/0066_userconfig_ai_prompt_config_and_more.py (MODIFIED - add CA-10 tables/indexes and make ai_prompt_config add-field idempotent on drifted DBs)
+- backend/portfolio/views_partner_admin.py (NEW - partner tenant control-plane APIs for service accounts and PAT lifecycle)
+- backend/portfolio/permissions.py (MODIFIED - add CA-10 tenant machine-access abilities and entitlements for pro+)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/partner/*` routes)
+- backend/portfolio/tests/test_partner_admin_api.py (NEW - cover service account create/list and PAT issue/rotate/revoke flows)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert CA-10 tenant entitlements and abilities in auth/me)
+- frontend/src/api/client.js (MODIFIED - add tenant partner API client methods with Idempotency-Key headers)
+- frontend/src/App.jsx (MODIFIED - add `/tenant-admin/service-accounts` and `/tenant-admin/pats` routes)
+- frontend/src/components/TopNav.jsx (MODIFIED - expose tenant machine-access nav items)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant machine-access quick links)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - add shortcuts to service accounts and PATs lanes)
+- frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx (NEW - tenant service account management page)
+- frontend/src/pages/admin/tenant/TenantPATs.jsx (NEW - tenant PAT lifecycle page)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for CA-10 tenant machine-access UI)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for CA-10 tenant machine-access UI)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-10 implementation and live proof)
+- module_tree_full.md (MODIFIED - regenerated after CA-10 implementation and docs sync, total modules 560)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` => auth/me tenant entitlements and abilities green after stale-user test fix.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_partner_admin_api --keepdb` => service account create/list and PAT issue/rotate/revoke flows green, including free-plan deny path.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh voi tenant machine-access routes/pages/client copy moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.dev.yml up -d --build frontend backend` => refresh dev stack thanh cong; backend healthy, frontend started.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py migrate` => `Applying portfolio.0066_userconfig_ai_prompt_config_and_more... OK` sau khi patch migration cho drift live DB.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (560 modules).
+- PASSED: browser proof tren `http://127.0.0.1/tenant-admin/service-accounts` voi session `testpro` tao thanh cong service account `tenant-pro-browser-prod`, hien `Tenant ID: ten_usr_28`, policies `pol_market_read, pol_ai_invoke`.
+- PASSED: browser proof tren `http://127.0.0.1/tenant-admin/pats` issue thanh cong PAT `browser-prod-token` cho service account vua tao va reveal one-time secret `vni_pat_live_...`.
+- PASSED: browser proof rotate PAT tao token moi, chuyen token cu sang `rotating`, counters thanh `total=2`, `active=1`, `rotating=1`.
+- PASSED: browser proof revoke PAT active moi chuyen token do sang `revoked`, counters thanh `total=2`, `active=0`, `rotating=1`.
+
+Residual note:
+- Ownership cua CA-10 hien van dua tren `request.user` nhu tenant owner surrogate; chua co `CoreTenant` registry canonical. Khi mo `CA-11+`, nen tach ownership resolution sang tenant graph rieng de tranh khoa chat machine access vao user principal.
+
+# Entry 2026-05-02be - Bootstrap tenant admin home and capabilities
+
+Muc tieu:
+- Chuyen sang slice CA-09 gan nhat con mo: tenant admin home + capabilities, dung live frontend auth/me entitlements thay vi them backend contract moi.
+- Giu tenant console self-service va tenant-scoped, chi mo read route va menu nghiem tuc, khong chen write action sang slice nay.
+- Giữ pham vi hep: route, nav, entitlement exposure, hai page tenant, plus sync audit/module tree.
+
+Noi dung cap nhat chinh:
+- `frontend/src/context/PortfolioContext.jsx`:
+  - Expose `userEntitlements` tu `/api/auth/me/` de page tenant doc quota/trial/access flags.
+- `backend/portfolio/permissions.py`:
+  - Them tenant read abilities cho `TenantAdminHome` va `TenantCapabilityView` o plan `pro+`.
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`:
+  - Tenant home card set: identity, plan, quota, access gate va shortcut sang capability board.
+- `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`:
+  - Danh sach ability + quota caps + access summary tu entitlements hien co.
+- `frontend/src/App.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`:
+  - Wire route groups `/tenant-admin/*` vao shell live để tránh trùng Django admin `/admin/*`.
+- `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Bo sung assert cho tenant read flags trong `/api/auth/me/`.
+- `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`, `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`:
+  - Align route examples and namespace notes with the live `/tenant-admin/*` implementation.
+- `module_tree_full.md`:
+  - Regenerate sau slice tenant bootstrap; tong module len 556.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu CA-09 live frontend bootstrap da co mat.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02be.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho tenant admin console slice.
+
+Danh sach tep cap nhat:
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - expose userEntitlements from auth/me for tenant console surfaces)
+- backend/portfolio/permissions.py (MODIFIED - add tenant read abilities for pro+ plans)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (NEW - tenant home summary page)
+- frontend/src/pages/admin/tenant/TenantCapabilities.jsx (NEW - tenant capabilities page)
+- frontend/src/App.jsx (MODIFIED - add tenant admin routes under `/tenant-admin/*`)
+- frontend/src/components/TopNav.jsx (MODIFIED - surface tenant nav group)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant quick links)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - cover tenant entitlements in auth/me)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-09 live tenant bootstrap)
+- module_tree_full.md (MODIFIED - regenerated after tenant bootstrap slice, total modules 556)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: browser proof tren `http://127.0.0.1/tenant-admin/home` va `http://127.0.0.1/tenant-admin/capabilities` voi session `testpro` xac nhan tenant console render live sau rebuild frontend.
+- PASSED: `get_errors` clean tren `backend/portfolio/permissions.py`, `backend/portfolio/tests/test_api_routes_auth_profile.py`, `frontend/src/context/PortfolioContext.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`, `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi them tenant console routes va pages.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend backend` refresh lai dev stack thanh cong voi frontend/backend moi.
+- PASSED: direct Python permission probe `build_abilities('pro')` va `resolve_user_entitlements(user=pro)` tra tenant abilities + tenant flags dung nhu mong doi.
+- PASSED: `module_tree_full.md` regenerated successfully with 556 modules.
+
+Residual note:
+- Backend auth/profile test suite `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` van bi chan boi schema drift san co trong DB dev (`portfolio_userconfig.ai_prompt_config` missing). Slice tenant nay khong sua schema đó.
+
+# Entry 2026-05-02bd - Expose operator AI runtime snapshot route
+
+Muc tieu:
+- Chot backend wrapper/operator route cho `CA-08` sau khi frontend AI Command Center summary da xong.
+- Dung contract `GET /core/v1/operator/ai-runtime` de bao operator runtime posture moi, khong tiep tuc dung user-facing AI config shape lam dau vao chinh.
+- Giu pham vi hep: chi them route read-only + test snapshot + audit/progress sync, chua mo write policies.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_admin_runtime.py`:
+  - Them `operator_ai_runtime_api` (module-level) tra snapshot `operator_ai_runtime_snapshot`.
+  - Snapshot gom `provider_rows`, `effective_policy_bundle`, `rollout_state` va de-duoc read-only cho admin/operator.
+- `backend/portfolio/views.py`:
+  - Export symbol moi qua `portfolio.views` de router chung co the import.
+- `backend/config/urls.py`:
+  - Map `GET /api/core/v1/operator/ai-runtime/` sang `portfolio_views.operator_ai_runtime_api`.
+- `backend/portfolio/tests/test_system_ai_admin_api.py`:
+  - Them test admin snapshot shape va test normal user bi chan 403.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chu CA-08 backend wrapper da khop contract.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua backend route; tong module giu 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bd.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho backend operator route slice.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_admin_runtime.py (MODIFIED - expose operator AI runtime snapshot route)
+- backend/portfolio/views.py (MODIFIED - re-export operator AI runtime route symbol)
+- backend/config/urls.py (MODIFIED - add `/api/core/v1/operator/ai-runtime/` route)
+- backend/portfolio/tests/test_system_ai_admin_api.py (MODIFIED - cover operator snapshot shape and admin gate)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-08 backend wrapper completion)
+- module_tree_full.md (MODIFIED - regenerated after the backend route slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_system_ai_admin_api.py`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_system_ai_admin_api --keepdb` => 20/20 tests pass, including operator AI runtime snapshot route.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend` => dev backend runtime duoc refresh lai theo code moi.
+- PASSED: live payload snapshot de `GET /api/core/v1/operator/ai-runtime/` voi admin auth tra `object=operator_ai_runtime_snapshot`, 2 provider rows (`command_center`, `system`), `effective_source=command_center`, `effective_provider=openai`, `effective_model=gpt-4o`, `ready=true`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Nested dead copy cua `operator_ai_runtime_api` con ton tai trong `admin_system_ai_test_connection_api` do patch hoist nhanh, nhung symbol module-level da khop route contract va test/route live deu pass. Se clean no o slice sau neu can.
+
+# Entry 2026-05-02bc - Surface AI runtime readiness grid in AI Command Center
+
+Muc tieu:
+- Rà soát tài liệu đã duyệt và tiếp tục slice open gần code nhất: `CA-08` AI runtime governance read path.
+- Bóc các runtime config primitives đã có sẵn trong backend ra UI operator rõ hơn, thay vì để provider/model/source/ready nằm rải rác trong form và audit log.
+- Giữ phạm vi cực hẹp: chỉ làm UI surfacing trên `AICommandCenter`, không thay đổi save flow hay backend contract.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/AICommandCenter.jsx`:
+  - Thêm derived runtime summary cho `effective_ai_provider`, `effective_ai_model`, `effective_ai_source`, `ai_ready`.
+  - Thêm khung đọc nhanh runtime ở đầu trang với 4 card provider/model/source/readiness.
+  - Thêm policy summary panel hiển thị key state, gate sự kiện, refresh cadence và budget token từ config hiện có.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Ghi chú triển khai cho CA-08 để phản ánh slice frontend đã được surfacing vào UI.
+- `module_tree_full.md`:
+  - Regenerate sau khi sửa `AICommandCenter`; tổng module giữ 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bc.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho AI runtime governance slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - surface provider/model/source/readiness grid and policy summary panel for AI runtime governance)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note the CA-08 frontend surfacing step)
+- module_tree_full.md (MODIFIED - regenerated after the AI runtime governance surfacing slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/AICommandCenter.jsx` sau khi them runtime summary/policy panel.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh voi AI Command Center summary mới.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc refresh lai theo bundle moi.
+- PASSED: browser proof tren `http://127.0.0.1/settings/ai` xac nhan khung runtime moi hien `openclaw`, model `Chưa cấu hình`, nguồn hiệu lực, trạng thái runtime, và policy summary cho gate sự kiện / budget / cadence.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Slice CA-08 vẫn còn phần backend wrapper/operator route và tenant/admin follow-ups trong taskboard gốc; frontend surfacing này là bước hẹp, sát code hiện tại nhất và không tạo contract mới.
+
+# Entry 2026-05-02bb - Bridge shell session id to frontend auth identity
+
+Muc tieu:
+- Chot residual con lai cua slice auth-parity shell host: `Session ID` van hien `core-session-foundation` cho `testpro`, trong khi user principal da la frontend auth that.
+- Giữ health/build metadata va core bootstrap contract cua shell, chi thay session id thanh chuoi synthetic do host frontend tao ra khi co real frontend identity.
+- Tranh edge case sinh `frontend-auth:guest` khi bridge khong co frontend identity that.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/packageShellHostRuntime.js`:
+  - Them helper `buildFrontendSessionId(...)`.
+  - Override `session.session_id` sang `frontend-auth:<username|user_id>` khi frontend identity co that.
+  - Neu bridge khong co frontend identity that, giu fallback `session.session_id` tu core stub thay vi ep sang guest synthetic id.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua host runtime; tong module giu 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bb.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice session-id bridge.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell session id to a frontend-auth synthetic id for authenticated frontend users)
+- module_tree_full.md (MODIFIED - regenerated after the final shell session-id bridge adjustment, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/packageShellHostRuntime.js` sau khi them guard `frontend-auth` cho session id.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh voi bundle moi sau session-id bridge.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc refresh lai theo code cuoi cung.
+- PASSED: browser proof tren `http://127.0.0.1/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan `Username: testpro`, `Session ID: frontend-auth:testpro`, `Plan: pro`, `Signals routes visible: 2`, `Advisory routes active: 1`, va advisory session `BCM` van giu `Contract: v2`, `Quality: 33.5`.
+- PASSED: browser proof tren `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` xac nhan `Username: testpro`, `Session ID: frontend-auth:testpro`, `Plan: pro`, `Signals routes visible: 2`, `Whale routes active: 1`, va whale snapshot `SSI` van giu `latest_completed_session` / `raw_fallback`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Health, build meta va shell bootstrap routes van den tu core stub theo contract hien tai. Slice nay chi dong bo session id cho frontend-auth users, khong thay doi core runtime contract o muc transport.
+
+# Entry 2026-05-02ba - Bridge package-shell bootstrap to frontend auth context
+
+Muc tieu:
+- Tiep tuc dong residual sau `2026-05-02az`: shell host da het treo metadata, nhung bootstrap van doc identity/surfaces tu core stub nen hien `package-admin`, `admin` group va `show_admin_ops` cho session `testpro`.
+- Dua advisory shell va whale shell gan hon voi auth context that cua frontend ma khong bo health/build/runtime contract tu core stub.
+- Giu thay doi cuc hep o host runtime frontend, khong sua backend auth hay core stub contract cho slice nay.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/packageShellHostRuntime.js`:
+  - Them `createPackageShellBootstrapLoader(...)` de wrap `loadShellBootstrap()` va merge `userIdentity`, `userPlan`, `ability.rules` tu `usePortfolio()` vao bootstrap payload tra cho shell page.
+  - Trim navigation/surfaces admin-only (`admin` group, `admin-ops`, `show_admin_ops`) khi frontend user khong phai staff/superuser.
+- `frontend/src/pages/AiAdvisoryShellHost.jsx`:
+  - Read `ability`, `authStateReady`, `userIdentity`, `userPlan` tu `usePortfolio()`.
+  - Pass `bootstrapLoader` moi va gate `autoLoad={authStateReady}` vao `ShellAiAdvisoryPage`.
+- `frontend/src/pages/WhaleAlertsShellHost.jsx`:
+  - Dung cung bootstrap bridge tu `usePortfolio()` cho `ShellWhaleAlertsPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua host runtime frontend; tong module giu 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ba.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho shell auth-parity slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell bootstrap through frontend auth context and strip admin-only runtime flags for non-admin users)
+- frontend/src/pages/AiAdvisoryShellHost.jsx (MODIFIED - feed frontend auth-backed bootstrap loader into the advisory shell host)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (MODIFIED - feed frontend auth-backed bootstrap loader into the whale shell host)
+- module_tree_full.md (MODIFIED - regenerated after the shell auth-parity slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx` va `frontend/src/pages/WhaleAlertsShellHost.jsx`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau khi bridge bootstrap shell qua `usePortfolio()` va cleanup admin-only navigation.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc rebuild lai nhieu lan de proof host routes voi auth context moi.
+- PASSED: browser proof tren `http://127.0.0.1/ai-advisory/shell?symbol=BCM&ts=1777707400` voi session `testpro`:
+  - bootstrap metadata hien `Username: testpro`, `Email: pro@test.local`, `Plan: pro`;
+  - `Advisory abilities` giam ve `1` va ability list chi con `read WhaleAdvisory`, khong con `manage all`;
+  - `Visible groups` khong con `admin`, `Enabled surfaces` khong con `show_admin_ops`, nhung van giu `show_ai_command_center`;
+  - advisory session that van giu `Contract: v2`, `Risk: low`, `Quality: 33.5`, benchmarks `RVOL: 0.35 (dry)`.
+- PASSED: browser proof tren `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` voi session `testpro`:
+  - bootstrap metadata hien `Username: testpro`, `Email: pro@test.local`, `Plan: pro`;
+  - `Visible groups` khong con `admin`, `Enabled surfaces` chi con `show_ai_command_center`;
+  - whale snapshot that van giu `Nguon phien: latest_completed_session`, `Chat luong: DEGRADED_FLOW_MISSING`, `Facts-first read path: raw_fallback`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Session metadata tu shell bootstrap van giu `Session ID: core-session-foundation` vi day la contract cua core stub. Slice nay dong bo principal/plan/abilities/surfaces voi frontend auth, nhung khong doi session id stub.
+- Navigation van duoc base tren bootstrap cua core stub roi moi trim admin-only flags cho non-admin user. Neu muon parity hoan toan theo route governance cua frontend that, can mot slice rieng de suy dien route groups/surfaces tu route catalog va policy frontend thay vi tu stub bootstrap.
+
+# Entry 2026-05-02az - Unstick shell bootstrap metadata for the AI advisory host runtime
+
+Muc tieu:
+- Dong residual sau `2026-05-02ay`: advisory session that cua `testpro` da render tren shell host, nhung metadata bootstrap cua shell van treo o trang thai loading nen UI hien `Username: Chua co`, `Plan: n/a`, `Signals routes visible: 0`.
+- Giu pham vi thay doi cuc hep trong shared package-shell helper thay vi sua lan toa qua advisory route hay core stub contract, vi live core endpoints da tra payload dung.
+- Chot proof browser tren `/ai-advisory/shell` rang lane bootstrap va lane advisory that cung on dinh trong runtime frontend dev.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/coreShellPageHelpers.js`:
+  - Bo `startTransition(...)` quanh hai lan commit `setViewState(...)` trong `useCoreShellPageSnapshot()`.
+  - Snapshot bootstrap (`buildMeta`, `health`, `capabilities`, `session`) gio duoc commit truc tiep sau khi `loadShellBootstrap()` resolve, thay vi de shell page o trang thai loading treo voi metadata rong.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua shared package-shell helper; tong module giu 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02az.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho advisory shell bootstrap slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - commit shell bootstrap snapshot state directly instead of wrapping it in `startTransition`)
+- module_tree_full.md (MODIFIED - regenerated after the shell bootstrap metadata fix, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/coreShellPageHelpers.js`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell` => package-shell validation xanh sau khi sua shared snapshot helper.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau khi package-shell helper commit state truc tiep.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc rebuild lai voi bundle moi.
+- PASSED: browser proof tren `http://127.0.0.1/ai-advisory/shell?symbol=BCM&ts=1777707400` voi session `testpro`:
+  - badge doi tu `Dang dong bo lane AI advisory` sang `Lane AI advisory san sang cho kiem tra`;
+  - bootstrap metadata hien `Build target: saas`, `Username: package-admin`, `Email: package-admin@vninvest.local`, `Session ID: core-session-foundation`, `Plan: pro`;
+  - navigation proof hien `visible groups = workspace/signals/system/admin`, `signals routes = ai-advisory + whale-alerts`, `enabled surfaces = show_admin_ops + show_ai_command_center`;
+  - advisory session that van giu `Contract: v2`, `Quality: 33.5`, benchmarks `RVOL: 0.35 (dry)`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Bootstrap identity tren shell host hien la identity cua core stub (`package-admin`) chu khong phai JWT user frontend (`testpro`). Day la hanh vi hop voi stub contract hien tai va khac residual vua sua: metadata khong con rong/treo, nhung neu muon parity 1:1 voi frontend principal thi can mot slice rieng de noi core stub vao auth context that.
+- Fix nay dung chung cho package-shell pages xai `useCoreShellPageSnapshot()`. Hien chi proof tren lane `ai-advisory`; neu can, co the sanity-check them `whale-alerts/shell` o slice sau.
+
+# Entry 2026-05-02ay - Surface the event-based advisory gate and sync testpro to the working AI runtime
+
+Muc tieu:
+- Giai quyet UX drift da duoc xac nhan trong advisory runtime audit: user co the thay `AICommandCenter` bao `ready`, nhung `advisory_whale_signal_enabled` van tat ma khong co control ro rang tren UI de bat lai.
+- Dua gate `advisory_whale_signal_enabled` tro lai thanh mot account-level setting minh bach, persisted explicit trong `UserConfig`, dong thoi canh bao ngay trong `AICommandCenter` khi runtime da san sang nhung event-based advisory van bi khoa.
+- Hoan thanh buoc runtime tiep theo duoc user chon: dong bo `testpro` sang cung runtime path da proof voi `admin` va xac nhan `BCM` advisory materialize thanh cong tren contract `v2`.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/UserConfig.jsx`:
+  - Load/persist them `advisory_whale_signal_enabled` trong form state va payload `updatePortfolioUserConfig(...)`.
+  - Them the checkbox ro rang ngay trong khu AI handoff de user bat/tat advisory theo su kien va thay trang thai hien tai bang copy tieng Viet day du.
+- `frontend/src/pages/UserConfig.test.jsx`:
+  - Update fixtures/mock translations cho gate moi.
+  - Them proof cho UI toggle va xac nhan save payload gui `advisory_whale_signal_enabled` dung gia tri.
+- `frontend/src/pages/AICommandCenter.jsx`:
+  - Fetch them `getPortfolioUserConfig()`.
+  - Hien warning banner khi AI runtime `ready` nhung `advisory_whale_signal_enabled === false`, kem link mo `UserConfig` de sua dung cho.
+- `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`:
+  - Bo sung copy cho help/status cua event-based advisory gate va cap nhat handoff notice.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua frontend source; tong module giu 554.
+- Dev runtime / DB proof:
+  - Rebuild `frontend` trong root dev compose de UI moi len ngay.
+  - Dong bo `testpro` theo `admin` trong `AICommandCenterConfig` tren dev DB, bat `advisory_whale_signal_enabled`, xac nhan `resolve_ai_runtime_config(user=testpro)` => `ready=True`.
+  - Goi `stock_ai_advisory_session_api` cho `testpro/BCM` bang `APIClient.force_authenticate` va xac nhan materialize advisory `id=29`, `provider=copilot`, `model=openai/gpt-4.1-mini`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ay.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho advisory gate UX + testpro runtime sync slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/UserConfig.jsx (MODIFIED - surface and persist `advisory_whale_signal_enabled` in the visible settings UI)
+- frontend/src/pages/UserConfig.test.jsx (MODIFIED - cover the visible event-based advisory gate and its save payload)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - warn when runtime is ready but the event-based advisory gate is still off)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for the event-based advisory gate and handoff notice)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for the event-based advisory gate and handoff notice)
+- module_tree_full.md (MODIFIED - regenerated after the advisory gate UX slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/UserConfig.jsx`, `frontend/src/pages/UserConfig.test.jsx`, `frontend/src/pages/AICommandCenter.jsx`, `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm test -- --watchAll=false --runInBand src/pages/UserConfig.test.jsx` => 11/11 tests pass cho `UserConfig` slice sau khi expose gate moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau khi sua `UserConfig` + `AICommandCenter`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc refresh thanh cong voi bundle moi.
+- PASSED: dev DB sync proof => `testpro` hien co `AICommandCenterConfig` cung `provider/model` voi `admin`, co DB-backed key, va `advisory_whale_signal_enabled=True`.
+- PASSED: `resolve_ai_runtime_config(user=testpro)` => `{'ready': True, 'source': 'command_center', 'provider': 'copilot', 'model': 'openai/gpt-4.1-mini', ...}`.
+- PASSED: live advisory session proof bang endpoint that => `APIClient.force_authenticate(user=testpro).get('/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2')` tra `200`, `queued=False`, `message='Da tao AI Advisory truc tiep trong phien hien tai.'`, `advisory_id=29`.
+- PASSED: DB proof => latest `WhaleAdvisory` cua `testpro/BCM` la `id=29`, `ai_provider='copilot'`, `ai_model='openai/gpt-4.1-mini'`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- `UserConfig.test.jsx` van in ra React Router future-flag va `act(...)` warnings tu test harness cu; day la test-noise ton tai san co va khong chan validation logic cua slice nay.
+- `testpro` hien duoc sync theo cung command-center path cua `admin` trong dev DB. Neu muon tach secret rieng cho `testpro` thay vi reuse runtime path da proof, can cap user-level provider key rieng trong `AICommandCenter`.
+
+# Entry 2026-05-02ax - Add heartbeat-based health signaling for core worker and beat stubs
+
+Muc tieu:
+- Giai quyet residual cua `2026-05-02aw`: root dev stack da co `core-worker` va `core-beat`, nhung Docker moi chi thay process `Up`; can mot health signal toi thieu de auditor thay duoc readiness/liveness ro hon.
+- Giu scope hep va khong tao contract gia: stub processes tu ghi heartbeat file trong container, con compose healthcheck chi doc freshness cua heartbeat nay.
+- Tang quan sat runtime toi thieu cho core topology root stack ma khong mo them HTTP service hoac them dependency ngoai stdlib.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/stub_heartbeat.py`:
+  - Them helper dung chung de ghi heartbeat snapshot JSON va kiem tra freshness cua health file bang stdlib.
+- `packages/core/backend/src/vninvest_core/worker_stub.py`:
+  - Ghi heartbeat file ngay luc start va moi chu ky `heartbeat`, dong thoi flush log de compose logs phan anh ngay.
+- `packages/core/backend/src/vninvest_core/beat_stub.py`:
+  - Ghi heartbeat file ngay luc start va moi chu ky `tick`, dong thoi flush log de compose logs phan anh ngay.
+- `docker-compose.dev.yml`:
+  - Them env `CORE_STUB_HEALTH_FILE`, `CORE_STUB_HEALTH_MAX_AGE_SECONDS` va healthcheck cho `core-worker`, `core-beat` bang `vninvest_core.stub_heartbeat.run_healthcheck(...)`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them helper moi; tong module thanh 554.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-54`, `OPS-30`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ax.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core health signaling slice.
+
+Danh sach tep cap nhat:
+- docker-compose.dev.yml (MODIFIED - add heartbeat-backed Docker healthchecks for `core-worker` and `core-beat`)
+- packages/core/backend/src/vninvest_core/stub_heartbeat.py (NEW - shared helper to write and validate core stub heartbeat files)
+- packages/core/backend/src/vninvest_core/worker_stub.py (MODIFIED - emit worker heartbeat snapshots and flush startup/runtime logs)
+- packages/core/backend/src/vninvest_core/beat_stub.py (MODIFIED - emit beat heartbeat snapshots and flush startup/runtime logs)
+- module_tree_full.md (MODIFIED - regenerated after the core health signaling slice, total modules 554)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-54, OPS-30)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/stub_heartbeat.py`, `packages/core/backend/src/vninvest_core/worker_stub.py`, `packages/core/backend/src/vninvest_core/beat_stub.py` va `docker-compose.dev.yml`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` => recreate thanh cong hai service sau khi them heartbeat signal va healthcheck.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker logs --tail 20 vninvest-dev-core-worker; docker logs --tail 20 vninvest-dev-core-beat` => xac nhan worker/beat ghi startup log kem heartbeat file path `/tmp/vninvest-core-worker-health.json` va `/tmp/vninvest-core-beat-health.json`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker inspect --format "{{.Name}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-health{{end}}" vninvest-dev-core-worker vninvest-dev-core-beat` => ca hai service len `healthy`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Health signal hien la file-freshness contract noi bo, du cho dev compose audit va basic restart detection; neu sau nay worker/beat tro thanh process that co queue/scheduler semantics, nen nang cap len endpoint hoac metrics contract bieu dien readiness giau hon.
+- Slice nay khong thay doi lane advisory runtime; viec user da nap provider key can duoc validate rieng neu muon mo lai nhanh `1`.
+
+# Entry 2026-05-02aw - Complete the root dev compose topology for core stub services
+
+Muc tieu:
+- Hoan thanh nhánh compose tiep theo sau `WEB-52`: root dev stack khong chi co `core-api`, ma co du `core-worker` va `core-beat` de topology stub cua `packages/core` khong con bi tach roi khoi compose goc.
+- Giu thay doi cuc hep trong `docker-compose.dev.yml`, reuse dung source `packages/core/backend` va stub processes da co san, khong chen them DB/Redis semantics gia khi worker/beat hien chi la heartbeat loops.
+- Chot proof runtime bang compose status thay vi chi dua vao diff, de auditor thay duoc ba service core cung ton tai trong mot stack.
+
+Noi dung cap nhat chinh:
+- `docker-compose.dev.yml`:
+  - Them service `core-worker` chay `python -m vninvest_core.worker_stub`, mount `./packages/core/backend`, noi vao `vninvest_network`, phu thuoc `core-api` healthy.
+  - Them service `core-beat` chay `python -m vninvest_core.beat_stub`, mount `./packages/core/backend`, noi vao `vninvest_network`, phu thuoc `core-api` healthy.
+- `module_tree_full.md`:
+  - Regenerate sau compose topology completion; tong module giu 553.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-53`, `OPS-29`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02aw.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core topology completion slice.
+
+Danh sach tep cap nhat:
+- docker-compose.dev.yml (MODIFIED - add compose-managed `core-worker` and `core-beat` stub services alongside `core-api`)
+- module_tree_full.md (MODIFIED - regenerated after the core topology completion slice, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-53, OPS-29)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `docker-compose.dev.yml`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` => `vninvest-dev-core-worker` va `vninvest-dev-core-beat` start thanh cong, giu `vninvest-dev-core-api` healthy.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml ps core-api core-worker core-beat` => ca ba service `core-api`, `core-worker`, `core-beat` deu o trang thai `Up` trong root dev stack.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (553 modules).
+
+Residual note:
+- Topology goc hien da co du ba stub services trong root dev compose, nhung chi `core-api` dang duoc shell host tieu thu truc tiep; `core-worker` va `core-beat` moi dung heartbeat stub va chua co health/metrics contract rieng.
+- Blocker `ai_not_configured` cho advisory host van giu nguyen: can secret/runtime source hop le truoc khi co the tao advisory that.
+
+# Entry 2026-05-02av - Move the core stub into dev compose and close the AI runtime blocker investigation
+
+Muc tieu:
+- Hoan thanh nhanh buoc `2`: core stub khong con phu thuoc host process `:8100`, ma tro thanh service `core-api` chay ngay trong dev compose network va duoc frontend proxy qua same-origin `/core/v1`.
+- Chot nhanh buoc `1` den muc co the ket luan ky thuat: `ai_not_configured` tren advisory shell host hien khong con la bug code, ma la blocker runtime do backend container khong co env key va cung khong co DB-backed `AICommandCenterConfig`/`SystemAISettings` key.
+- Giu pham vi thay doi hep: chi sua compose/nginx cho core stub, con nhanh AI runtime duoc ghi ro thanh residual blocker thay vi them fake secret hay flow gia.
+
+Noi dung cap nhat chinh:
+- `docker-compose.dev.yml`:
+  - Them service `core-api` chay `python -m vninvest_core.api_stub` tu `./packages/core/backend`, noi vao `vninvest_network`, co healthcheck noi bo tren `http://127.0.0.1:8100/health`.
+  - Buoc `frontend` phai `depends_on` `core-api` healthy de same-origin shell host chi len sau khi core stub san sang.
+- `frontend/docker/nginx.conf`:
+  - Doi upstream `/core/v1/*` tu `host.docker.internal:8100` sang service compose `core-api:8100`.
+- `module_tree_full.md`:
+  - Regenerate sau compose/nginx cutover; tong module giu 553.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-52`, `OPS-28`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02av.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho compose-managed core stub slice.
+
+Danh sach tep cap nhat:
+- docker-compose.dev.yml (MODIFIED - add compose-managed `core-api` stub service and make frontend wait for it)
+- frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to `core-api:8100` instead of the host)
+- module_tree_full.md (MODIFIED - regenerated after the core stub compose cutover, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-52, OPS-28)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `docker-compose.dev.yml` va `frontend/docker/nginx.conf`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build core-api frontend` => `vninvest-dev-core-api` healthy, `vninvest-dev-frontend` restarted thanh cong.
+- PASSED: host proof sau khi kill terminal host cu cho thay `Get-NetTCPConnection -LocalPort 8100 -State Listen` => `NO_HOST_LISTENER`.
+- PASSED: browser proof `http://127.0.0.1/core/v1/health` van tra `{"ok": true, "service": "core-api", "environment": "foundation", "version": "0.1.0"}` qua frontend host du host khong con listener `:8100`.
+- PASSED: browser sanity reload tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` van vao duoc host page sau khi doi upstream `/core/v1` sang compose service.
+- PASSED: runtime investigation proof trong backend container:
+  - khong co `OPENAI_API_KEY`, `OPENCLAW_API_KEY`, `COPILOT_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`;
+  - `testpro` khong co `AICommandCenterConfig`;
+  - `SystemAISettings` active co `allow_env_fallback=True` nhung khong co DB key.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (553 modules).
+
+Residual note:
+- Buoc `1` hien genuinely blocked boi missing AI secret/runtime source trong backend dev container; de advisory host co advisory that moi thay vi `ai_not_configured`, can cap mot provider key hop le qua `SystemAISettings` hoac `AICommandCenterConfig`.
+- Compose cutover nay moi dua `core-api` vao dev stack; `core-worker`/`core-beat` va topology rieng cua `packages/core/docker-compose.core.yml` chua duoc hop nhat vao root dev stack.
+
+# Entry 2026-05-02au - Harden the AI advisory shell host against rollout gating and canonicalize dev Pro test-user plans
+
+Muc tieu:
+- Giai quyet blocker con lai tren `/ai-advisory/shell` bang cach tach hai lop loi: resiliency cho advisory client neu backend tu choi `v2` vi rollout `holistic_disabled`, va drift dev data lam `testpro` bi khoa sai feature do plan seed khong dung ma tran canonical.
+- Giu package-shell lane nhe: khong mo route moi, khong sua backend advisory contract, ma tang kha nang tu phuc hoi trong client va dam bao script seed user dev tao dung entitlements cho runtime proof.
+- Chot lai browser proof de route advisory shell khong con dung o `403 feature_locked` va hien session card that trong frontend runtime.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/adapters/core/coreAdapter.js`:
+  - Them `CoreAdapterHttpError` va parse JSON error payload de advisory client co the biet ly do deny thay vi chi nhin status text.
+  - Bo sung fallback logic cho `createCoreAdvisorySessionClient()`: neu request `contract=v2` bi backend tra `403` voi `reason=holistic_disabled`, client tu retry `contract=v1` va gan metadata fallback vao payload tra ve.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them regression proof cho case `holistic_disabled`: client phai goi lai `contract=v1`, payload fallback phai giu `requested_contract_version` va `contract_fallback_reason`.
+- `backend/create_test_users.py`:
+  - Goi `initialize_dpi_plans` truoc khi tao user test, va gan lai `license_free.plan`/`license_pro.plan` tu canonical DPI plan records thay vi tin vao `get_or_create` toi gian co the tao plan rong feature.
+- `module_tree_full.md`:
+  - Regenerate sau khi dong bo package-shell adapter va backend seed script; tong module giu 553.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-51`, `OPS-27`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02au.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho advisory host resilience slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - parse JSON error payloads and retry advisory `v1` when a `v2` request is blocked by the holistic rollout gate)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add shell regression proof for advisory fallback from `v2` to `v1`)
+- backend/create_test_users.py (MODIFIED - initialize canonical DPI plans before seeding `testpro` so Pro feature access is not silently empty)
+- module_tree_full.md (MODIFIED - regenerated after the advisory resilience slice, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-51, OPS-27)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell` => package-shell validation xanh sau khi them fallback logic va regression proof cho `holistic_disabled`.
+- PASSED: editor diagnostics clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/scripts/check-shell.mjs` va `backend/create_test_users.py`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile thanh cong voi advisory client moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc refresh thanh cong voi bundle moi.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" create_test_users.py` => canonical DPI plans duoc initialize/update, `testpro` duoc seed lai va feature access `sentiment_score` tra `True`.
+- PASSED: browser fetch proof tren `/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1` voi access token cua `testpro` khong con tra `403 feature_locked`; sau reseed + relogin, endpoint tra `200`.
+- PASSED: live browser proof `http://127.0.0.1/ai-advisory/shell?symbol=BCM&ts=1777707400` render lai duoc advisory session card voi `Contract: v1`, khong con block boi thong bao `Core adapter request failed: 403 Forbidden ...`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (553 modules).
+
+Residual note:
+- Route advisory shell hien khong con bi block boi plan drift/feature gate sai, nhung session that cua `testpro` van dang roi vao `ai_not_configured`, nen UI hien `Contract: v1` va chua co benchmark aggregate `v2`.
+- Fallback trong advisory client hien chi kick in cho deny reason `holistic_disabled`; cac deny khac nhu `feature_locked` van duoc giu nguyen de auditor thay dung ly do governance/runtime.
+
+# Entry 2026-05-02at - Move the package-shell host runtime to same-origin and add the AI advisory host consumer
+
+Muc tieu:
+- Dong no ky thuat con lai cua host runtime whale: browser khong con goi core stub cross-origin `:8100`, ma di qua same-origin `/core/v1` tren frontend host.
+- Mo consumer thu hai cho package shell bang route `/ai-advisory/shell`, de lane AI advisory co browser-hosted audit surface that giong whale host lane.
+- Tach helper runtime dung chung cho package-shell host pages de tranh lap lai env/fetch glue khi so route host tang len.
+
+Noi dung cap nhat chinh:
+- `frontend/docker/nginx.conf`:
+  - Them upstream `host.docker.internal:8100` va proxy `location ^~ /core/v1/` de frontend host chuyen request core stub qua same origin.
+- `frontend/Dockerfile.dev-package-shell` va `docker-compose.dev.yml`:
+  - Doi `REACT_APP_PACKAGE_SHELL_CORE_BASE_URL` ve `/core/v1`.
+  - Them `extra_hosts: host.docker.internal:host-gateway` cho frontend dev container de proxy same-origin tim duoc core stub host.
+- `frontend/src/pages/packageShellHostRuntime.js`:
+  - Tao helper dung chung `packageShellHostEnv` va `packageShellHostFetch` de moi shell host page dung cung mot auth-aware fetch va base URL config.
+- `frontend/src/pages/WhaleAlertsShellHost.jsx`:
+  - Chuyen qua helper runtime dung chung va update copy de phan anh same-origin `/core/v1` proxy.
+- `frontend/src/pages/AiAdvisoryShellHost.jsx`:
+  - Tao host wrapper moi mount `ShellAiAdvisoryPage` trong runtime `frontend` that, dung helper runtime dung chung va giu `location.search` cho symbol context.
+- `frontend/src/App.jsx`:
+  - Them protected route `/ai-advisory/shell` gated boi `REACT_APP_ENABLE_PACKAGE_SHELL_HOST`.
+- `frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx`:
+  - Mo rong header seam bang link `Mo shell kiem chung` co the duoc bat/tat tu page legacy.
+- `frontend/src/pages/WhaleAdvisory.jsx`:
+  - Tinh `advisoryShellHostHref` tu `activeSymbol`, fallback symbol dau tien hoac `BCM`, va pass xuong header de legacy AI advisory co diem nhay thang vao shell host.
+- `module_tree_full.md`:
+  - Regenerate sau khi them hai module frontend moi; tong module tang len 553.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-49`, `WEB-50`, `OPS-26`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02at.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho package-shell host expansion slice.
+
+Danh sach tep cap nhat:
+- frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to the host core stub)
+- frontend/Dockerfile.dev-package-shell (MODIFIED - default the package-shell core base URL to `/core/v1`)
+- docker-compose.dev.yml (MODIFIED - feed `/core/v1` into the frontend build and map `host.docker.internal` for the dev container)
+- frontend/src/pages/packageShellHostRuntime.js (NEW - shared auth-aware fetch and env helper for package-shell host pages)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (MODIFIED - reuse shared host runtime helper and update copy for same-origin core proxy)
+- frontend/src/pages/AiAdvisoryShellHost.jsx (NEW - mount `ShellAiAdvisoryPage` inside the real frontend runtime)
+- frontend/src/App.jsx (MODIFIED - add gated `/ai-advisory/shell` host route)
+- frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx (MODIFIED - expose a shell host link seam in the advisory legacy header)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - link the legacy AI advisory page to the shell host with symbol carry-over and `BCM` fallback)
+- module_tree_full.md (MODIFIED - regenerated after package-shell host expansion, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-49, WEB-50, OPS-26)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/docker/nginx.conf`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx`, `frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx`, `frontend/src/pages/WhaleAdvisory.jsx` va `frontend/src/App.jsx`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau khi doi core base URL ve `/core/v1` va them AI advisory host route.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend rebuild thanh cong nhieu lan trong luc validate same-origin proxy va AI host consumer.
+- PASSED: browser proof `http://127.0.0.1/core/v1/health` tra `{"ok": true, "service": "core-api", "environment": "foundation", "version": "0.1.0"}` qua frontend host, xac nhan core stub da di same-origin thay vi cross-origin `:8100`.
+- PASSED: browser proof `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` van render whale shell host voi copy moi `same-origin /core/v1 proxy` va giu nguyen `SSI`/`trade_date` context.
+- PASSED: browser proof `http://127.0.0.1/ai-advisory` xac nhan header legacy co link `Mo shell kiem chung` tro thanh `/ai-advisory/shell?symbol=BCM` khi khong co active advisory symbol.
+- PASSED: browser proof `http://127.0.0.1/ai-advisory/shell?symbol=BCM` render duoc host header `AI advisory shell chay trong frontend that`, `ShellAiAdvisoryPage` va advisory symbol `BCM` trong runtime `frontend` that.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (553 modules).
+
+Residual note:
+- Same-origin proxy nay van phu thuoc vao core stub host dang listen tren `8100`; no loai CORS trong browser lane, nhung chua containerize core stub thanh service compose chinh thuc.
+- AI advisory host route hien render on dinh o muc shell/runtime proof, nhung advisory session request thuc te cho `BCM` hien tra `403 Forbidden`; day la state backend/business gating cua endpoint, khong phai loi route host moi.
+
+# Entry 2026-05-02as - Preserve whale shell context when jumping from the hub into the host runtime
+
+Muc tieu:
+- Loai mot doan giong UX drift con sot lai sau `WEB-47`: auditor mo shell tu whale hub nhung mat context `symbol`/`trade_date`, buoc phai nhap lai tren shell host.
+- Giu buoc nhay hub -> shell host -> hub o cung mot lane audit that, khong mo them route moi va khong sua package-shell read-model.
+- Chot proof browser cho context carry-over trong runtime `frontend` that sau khi dev container duoc refresh.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/WhaleAlertsHub.jsx`:
+  - Import `useLocation()` de doc query string hien tai cua whale hub.
+  - Them `shellHostHref` bang `useMemo()`, merge `location.search` hien co voi fallback symbol tu `selectedSymbolInvestigation` hoac tracked symbol dau tien khi hub khong co query `symbol`.
+  - Doi link `Mo shell kiem chung` sang `to={shellHostHref}` de route shell host nhan du context auditor dang dung.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua route consumer frontend; tong module giu 551.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-48`, `OPS-25`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02as.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale hub context carry-over slice.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - preserve current query and fallback symbol when opening the whale shell host route)
+- module_tree_full.md (MODIFIED - regenerated after the whale hub context slice, total modules 551)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-48, OPS-25)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile thanh cong sau khi doi link `Mo shell kiem chung` sang href co context.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend image rebuild thanh cong va stack audit duoc refresh voi bundle moi.
+- PASSED: live browser proof tren `http://127.0.0.1/whale-alerts?symbol=SSI&trade_date=2026-04-19` cho thay link `Mo shell kiem chung` tro thanh `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19`; click link mo dung host page va nut `Quay lai trung tam whale` giu nguoc lai cung query do.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (551 modules).
+
+Residual note:
+- Whale hub hien van chua co router/query SSOT rieng, nen carry-over nay uu tien query dang co va moi fallback sang `selectedSymbolInvestigation`/tracked symbol dau tien; neu sau nay hub co URL state chinh thuc, nen chuyen toan bo whale investigation state sang URL thay vi gia tri tam trong component.
+
+# Entry 2026-05-02ar - Add latest-valid whale fallback quick action and wire the shell into the real frontend runtime
+
+Muc tieu:
+- Them duong nhay nhanh tu selected trade date loi sang `latest_valid_trade_date` de auditor co the chuyen session fallback ngay tren whale shell thay vi sua query thu cong.
+- Noi `ShellWhaleAlertsPage` vao runtime `frontend` that de xac nhan package-shell whale lane chay duoc qua host app dang dang nhap, thay vi chi dung SSR/check-shell proofs.
+- Giai quyet cac blocker runtime phat sinh tren duong host that, gom CORS cho core stub, duplicate React trong vendor copy va drift `UserConfig.ai_prompt_config` dang chan seed/login path.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Them `latestValidWhaleTradeDate`, `canJumpToLatestValidTradeDate` va `handleJumpToLatestValidTradeDate()` de page doc metadata fallback tu `session_context` va doi date bang mot nut bam.
+  - Render nut `Dung phien hop le gan nhat` chi khi payload tra ve `latest_valid_trade_date` khac selected date hien tai; giu query string dong bo voi date moi.
+- `packages/web/scripts/check-shell.mjs`:
+  - Chuyen SSR proof sang payload degrade-session fallback (`latest_completed_session`, `latest_valid_trade_date`, `DEGRADED_SESSION_FALLBACK`).
+  - Assert them nut quick action va fallback metadata trong markup shell.
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung `OPTIONS` va CORS headers cho core stub de browser-hosted shell route goi truc tiep `http://127.0.0.1:8100/core/v1`.
+- `frontend/package.json` va `frontend/package-lock.json`:
+  - Them local dependency `@vninvest/web` tu `file:../packages/web` de legacy frontend co the host package shell.
+- `frontend/src/App.jsx`:
+  - Them protected route co flag gate cho `/whale-alerts/shell`.
+- `frontend/src/pages/WhaleAlertsHub.jsx`:
+  - Them entry link `Mo shell kiem chung` khi host runtime duoc bat.
+- `frontend/src/pages/WhaleAlertsShellHost.jsx`:
+  - Tao host wrapper page mount truc tiep `ShellWhaleAlertsPage`, chuyen `location.search`, dung env core stub, va attach JWT chi cho same-origin `/api` requests.
+- `frontend/Dockerfile.dev-package-shell` va `docker-compose.dev.yml`:
+  - Doi frontend dev build sang root context, vendor `packages/web` vao image dev, bat env host runtime, va strip `node_modules`/`package-lock.json` nested trong ban copy `@vninvest/web` de loai duplicate React gay invalid hook call.
+- `backend/portfolio/models.py`:
+  - Khoi phuc field `UserConfig.ai_prompt_config` de khop live DB schema, mo lai seed/login flow ma host runtime phu thuoc.
+- `module_tree_full.md`:
+  - Regenerate sau khi them host runtime files va backend/frontend glue; tong module tang len 551.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-46`, `WEB-47`, `OPS-24`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ar.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale fallback + host-runtime slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add latest-valid trade-date quick action and query-safe fallback jump for the whale shell)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate degraded-session fallback metadata and quick action rendering)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add browser CORS/OPTIONS support for the core stub host runtime)
+- frontend/package.json (MODIFIED - add local `@vninvest/web` dependency for the frontend host app)
+- frontend/package-lock.json (MODIFIED - lock the local `@vninvest/web` package dependency)
+- frontend/src/App.jsx (MODIFIED - add gated `/whale-alerts/shell` host route)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - add visible entry link to the whale shell host route)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (NEW - mount `ShellWhaleAlertsPage` inside the real frontend runtime with auth-aware fetch)
+- frontend/Dockerfile.dev-package-shell (NEW - dev-only frontend image that vendors `packages/web` without nested React dependencies)
+- docker-compose.dev.yml (MODIFIED - point dev frontend build to the package-shell host Dockerfile and enable host env flags)
+- backend/portfolio/models.py (MODIFIED - restore `UserConfig.ai_prompt_config` to match the live DB schema)
+- module_tree_full.md (MODIFIED - regenerated after the whale host-runtime slice, total modules 551)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-46, WEB-47, OPS-24)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/api_stub.py`, `frontend/src/App.jsx`, `frontend/src/pages/WhaleAlertsHub.jsx`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `backend/portfolio/models.py` va `frontend/Dockerfile.dev-package-shell`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them quick action fallback va host-runtime glue.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => frontend image build thanh cong, `vninvest-dev-frontend` started va Dockerfile dev moi da strip nested `node_modules` trong vendor copy `@vninvest/web`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend python create_test_users.py` => seed `testfree` va `testpro` thanh cong sau khi drift `UserConfig.ai_prompt_config` duoc sua.
+- PASSED: live browser route `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` render duoc host header `Whale alerts shell chay trong frontend that`, facts card `Whale snapshot that (SSI)` va `Nguon phien: latest_completed_session`; loi `Cannot read properties of null (reading 'useRef')` khong con lap lai.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (551 modules).
+
+Residual note:
+- Host route nay la dev/audit lane duoc gate boi `REACT_APP_ENABLE_PACKAGE_SHELL_HOST=1`; no chua thay the runtime whale hub legacy va chua duoc expose cho prod stack.
+- Core stub van dang duoc browser goi cross-origin qua `:8100` cho muc dich audit runtime; truoc khi cutover can chot lai runtime ownership/same-origin strategy cho package-shell consumer that.
+
+# Entry 2026-05-02aq - Add selected trade-date targeting to the whale alerts shell page
+
+Muc tieu:
+- Mo rong whale shell read-model vua them bang selected trade-date control nhe, de auditor co the chi dinh `trade_date` ngay tren page thay vi chi xem latest snapshot.
+- Giu nguyen pham vi shell: tiep tuc reuse `whale analytics snapshot` contract da ton tai, khong tao router moi, khong sua backend endpoint va khong buoc vao full KLine whale workspace.
+- Hien ro requested trade date va session resolution source de theo doi `latest_completed_session` fallback ngay tren route-level shell surface.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Them helper normalize/resolve cho `trade_date` tu prop, query string (`trade_date`/`tradeDate`) va env fallback.
+  - Them state `activeWhaleTradeDate` va `whaleTradeDateDraft`, dua `tradeDate` xuong `createCoreWhaleAnalyticsSnapshotClient()` trong ca auto-load lan refresh thu cong.
+  - Nang form whale thanh symbol + date input, sync lai query string bang `history.replaceState` khi auditor doi symbol hoac ngay.
+  - Facts card gio hien `Ngay yeu cau`, `Ngay phien tra ve` va `Nguon phien`; context/materialization items duoc Viet hoa ro hon de doc selected-session state.
+  - Hero metric thu ba chuyen thanh `Ngay muc tieu` de auditor thay ngay trade-date target dang dung.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them SSR proof cho `whaleTradeDate` prop tren page.
+  - Them query-string proof cho `?symbol=ssi&trade_date=2026-04-19`.
+  - Them proof page render `requested_session` source tu whale snapshot payload.
+- `module_tree_full.md`:
+  - Regenerate sau khi them trade-date helper/state moi; tong module giu nguyen 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-45`, `OPS-23`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02aq.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale trade-date slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add selected trade-date resolution, date input control and query sync for the whale snapshot shell slice)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale trade-date SSR and query-string proof)
+- module_tree_full.md (MODIFIED - regenerated after the whale trade-date slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-45, OPS-23)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them selected trade-date control cho whale shell.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date --keepdb` => 1/1 PASS.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+
+Residual note:
+- Slice nay van dung query string thay vi router param that cho `:symbol`/`:trade_date`, vi package shell hien chua co router abstraction rieng.
+- Page moi chi surfacing selected trade-date facts-first snapshot; no chua mo multi-date compare, heatmap session switching hay full whale intelligence navigation.
+
+# Entry 2026-05-02ap - Add the first whale snapshot read-only data slice to the whale alerts shell page
+
+Muc tieu:
+- Dua `ShellWhaleAlertsPage` ra khoi trang thai bootstrap-only bang cach noi voi snapshot endpoint whale analytics da ton tai.
+- Giu slice o muc facts-first read-model: chi surfacing `session_summary`, `materialization`, `quality_flags`, `session_context` va `summary`, khong lao vao full KLine/heatmap/marker workspace cua whale feature pack.
+- Bo sung symbol control nhe cho whale lane qua prop/query/browser state ma khong them router abstraction hoac route backend moi.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/adapters/core/coreAdapter.js`:
+  - Them `resolvePortfolioApiBaseUrl()` va endpoint builder cho `/api/portfolio/whale/analytics/<symbol>/`.
+  - Them thin client `createCoreWhaleAnalyticsSnapshotClient()` doc snapshot facts-first bang `timeframe=session`, `compact=1`, `include_baseline=0`.
+  - Tong quat hoa request error message cua core adapter de dung chung cho advisory va whale clients.
+- `packages/web/src/adapters/core/index.js`:
+  - Export whale snapshot client moi tren core adapter surface.
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Them read-only whale snapshot state.
+  - Them query-driven symbol resolution (`?symbol=`), local symbol form control va URL sync bang `history.replaceState`.
+  - Hien facts-first card cho symbol/trade date/quality/read path/order count/bucket facts.
+  - Hien `Session context` va `Materialization facts` tu payload that.
+  - Nut refresh cua page gio reload ca bootstrap snapshot va whale snapshot data slice.
+  - Dung `useRef` cho whale snapshot loader de tranh refetch loop trong browser runtime.
+- `packages/web/src/index.js`:
+  - Export `createCoreWhaleAnalyticsSnapshotClient` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof request URL cho whale snapshot client.
+  - Them SSR proof cho `ShellWhaleAlertsPage` khi co initial whale snapshot facts-first.
+  - Them proof query-driven symbol path `?symbol=ssi` va empty state graceful cho symbol moi.
+- `module_tree_full.md`:
+  - Regenerate sau khi them whale snapshot read-model; tong module giu nguyen 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-44`, `OPS-22`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ap.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale snapshot shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add whale analytics snapshot endpoint resolver and thin facts-first client)
+- packages/web/src/adapters/core/index.js (MODIFIED - export whale snapshot client)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - render whale snapshot facts-first data slice with query-driven symbol control)
+- packages/web/src/index.js (MODIFIED - export `createCoreWhaleAnalyticsSnapshotClient` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale snapshot client URL, facts-first SSR proof and query-driven symbol resolution)
+- module_tree_full.md (MODIFIED - regenerated after the whale snapshot shell slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-44, OPS-22)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/web/src/adapters/core/index.js` va `packages/web/src/index.js`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them whale snapshot client va facts-first panel cho `whale-alerts`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_returns_contract_and_headers portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date --keepdb` => 2/2 PASS.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+
+Residual note:
+- Slice nay chi surfacing facts-first read-model cho whale shell; no chua mo heatmap/pane/marker/full KLine intelligence theo doc pack whale.
+- Symbol control hien dung `history.replaceState` va query string thay cho route param that, vi package shell hien chua co router abstraction cho `:symbol`.
+
+# Entry 2026-05-02ao - Add query-driven advisory symbol routing to the AI advisory shell page
+
+Muc tieu:
+- Mo them mot lop dieu huong symbol nhe cho `ShellAiAdvisoryPage` de advisory session data slice khong bi khoa cung o `BCM`.
+- Uu tien `advisorySymbol` prop neu co, neu khong thi tu dong doc `?symbol=` tu browser URL va cho phep doi symbol ngay tren page.
+- Giu nguyen pham vi shell: khong them router abstraction moi, khong mo rong whale lane, khong sua backend contract.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`:
+  - Them helper normalize/query parsing de lay symbol tu prop, query string hoac env fallback.
+  - Them state `activeAdvisorySymbol` va `advisorySymbolDraft` de page co the refetch advisory session theo symbol dang chon.
+  - Them form nho voi input `Mã advisory` va nut `Đổi mã advisory`.
+  - Neu dang chay trong browser that, page se dong bo symbol da chon vao URL query string bang `history.replaceState`.
+  - Metric thu hai cua hero doi thanh `Advisory symbol` de auditor thay ngay symbol target hien tai.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them SSR proof cho control `Đổi mã advisory`.
+  - Them proof query-driven path bang `advisorySearch: "?symbol=fpt"` de xac nhan page tu resolve `FPT` ngay ca khi khong co prop override.
+- `module_tree_full.md`:
+  - Regenerate sau khi mo rong query-driven symbol routing; tong module giu nguyen 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-43`, `OPS-21`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ao.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho advisory symbol routing slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - add query-driven symbol resolution, local symbol form control and URL sync for the advisory data slice)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate advisory symbol control and query-string resolution proof)
+- module_tree_full.md (MODIFIED - regenerated after the advisory symbol routing slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-43, OPS-21)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/signals/ShellAiAdvisoryPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them query-driven symbol routing va control doi ma advisory.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+
+Residual note:
+- Slice nay chi mo symbol routing tren `ai-advisory` shell; no van doc cung endpoint `ai-advisory-session` v2 va khong giai quyet navigation/query-state cho cac route shell khac.
+- URL sync dung `history.replaceState`, nen neu consumer app muon luu history stack theo moi lan doi symbol thi se can mot router-level policy rieng o slice sau.
+
+# Entry 2026-05-02an - Canonicalize signal ability naming and wire the first advisory session read-only slice into package shell
+
+Muc tieu:
+- Loai bo drift naming do package shell tu sinh `AiAdvisory` va `WhaleAlerts` alias, dua signals ability subject quay ve canonical backend `WhaleAdvisory`.
+- Them thin client doc endpoint that `/api/stock-management/stocks/<symbol>/ai-advisory-session/` contract `v2` thay vi tiep tuc dung ai-advisory route chi la bootstrap-only audit surface.
+- Mo rong `ShellAiAdvisoryPage` bang mot panel read-only advisory session/benchmark aggregate nho, giu nguyen pham vi nhe va khong clone lai legacy whale workspace.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo `AiAdvisory` va `WhaleAlerts` ra khoi bootstrap abilities; chi giu canonical subject `WhaleAdvisory` cho signals lane.
+- `packages/web/src/adapters/core/coreAdapter.js`:
+  - Them resolver cho stock workspace base URL va thin `createCoreAdvisorySessionClient()` doc `ai-advisory-session` contract `v2` co benchmark enrichment.
+- `packages/web/src/adapters/core/index.js`:
+  - Export advisory session client moi tren adapter surface.
+- `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`:
+  - Chuyen advisory ability filter sang canonical `WhaleAdvisory`.
+  - Them read-only advisory session state cho symbol cau hinh duoc, hien contract, action, risk, aggregate quality va benchmark enrichment trong cung audit surface.
+  - Nut refresh cua page gio reload ca bootstrap snapshot va advisory session data slice.
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Chuyen whale ability filter sang canonical `WhaleAdvisory` thay vi dua vao alias route-facing.
+- `packages/web/src/index.js`:
+  - Export `createCoreAdvisorySessionClient` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho advisory session client request URL, advisory JSON parse, SSR render cua `ShellAiAdvisoryPage` voi aggregate quality/benchmark data, va assert live core bootstrap contract khong con alias signal subjects.
+- `module_tree_full.md`:
+  - Regenerate sau khi them advisory client va mo rong signal shell page; tong module giu nguyen 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-41`, `WEB-42`, `OPS-20` cho queue naming canon + advisory read-model.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02an.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho signals naming canon + advisory data slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - remove package-shell signal aliases so live bootstrap only exposes `WhaleAdvisory`)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add stock advisory session endpoint resolver and thin read-only client)
+- packages/web/src/adapters/core/index.js (MODIFIED - export advisory session client)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - render read-only advisory session summary and benchmark aggregate on top of canonical signal subject)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - filter whale abilities by canonical `WhaleAdvisory` subject only)
+- packages/web/src/index.js (MODIFIED - export `createCoreAdvisorySessionClient` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate canonical signal payload, advisory client URL building and advisory session SSR proof)
+- module_tree_full.md (MODIFIED - regenerated after the advisory read-model slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-41, WEB-42, OPS-20)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi doi signals lane sang canonical `WhaleAdvisory` va them advisory session data slice.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_stock_ai_advisory_session.ApiRouteStockAiAdvisorySessionTests.test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled portfolio.tests.test_api_routes_stock_ai_advisory_session.ApiRouteStockAiAdvisorySessionTests.test_stock_ai_advisory_session_v2_includes_benchmark_enrichment --keepdb` => 2/2 PASS.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+- PASSED: core stub tren `:8100` da duoc refresh lai, `Get-NetTCPConnection -LocalPort 8100 -State Listen` xac nhan listener moi hoat dong, va proof `core stub canonical payload passed` xac nhan live bootstrap payload chi con `WhaleAdvisory` cho signals lane.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... '@ | node --input-type=module; Pop-Location` => `core signals live parity passed`; da xac nhan `ShellAiAdvisoryPage` van render duoc advisory session data slice, `ShellWhaleAlertsPage` van render duoc route `whale-alerts`, va live snapshot khong con alias `AiAdvisory`/`WhaleAlerts`.
+
+Residual note:
+- Advisory data slice nay la read-only surface, mac dinh doc symbol `BCM` neu env khong override `VNINVEST_AI_ADVISORY_SYMBOL`/`REACT_APP_AI_ADVISORY_SYMBOL`; khi stock workspace runtime khong san sang hoac thieu auth, page se hien graceful empty/error state thay vi fail cung.
+- Signals lane hien gio da canon ve `WhaleAdvisory` trong package shell; neu backend sau nay tach them permission domain rieng cho `whale-alerts`, slice tiep theo nen doi theo contract moi thay vi tai lap alias client-side.
+
+# Entry 2026-05-02am - Add the first whale-alerts signals shell page and close the whale ability naming drift
+
+Muc tieu:
+- Dung route-level page `whale-alerts` de hoan tat coverage `baseline` con thieu cua signals lane trong package shell.
+- Dong drift contract giua route capability `signals.whale_alerts.read` va bootstrap ability subject legacy hien co bang cach bo sung alias `WhaleAlerts` trong core stub, trong khi van giu `WhaleAdvisory` de khong lam vo compatibility voi whale lane cu.
+- Dong `WEB-39`, `WEB-40`, `OPS-19` bang proof shell check, live SSR parity tren core stub `:8100`, audit sync va live capability proof cho ca `WhaleAlerts` va `WhaleAdvisory`.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung ability `read WhaleAlerts` vao bootstrap stub de route `whale-alerts` co subject naming phu hop voi contract signals hien tai.
+  - Giu lai `read WhaleAdvisory` de khong gay regression cho naming legacy va lane whale chua tach contract rieng.
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Them page route-level moi cho `whale-alerts` bang shared helper layer.
+  - Hien operator/session, signals groups, whale route visibility, enabled surfaces, build metadata va whale abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `whale-alerts` vao page registry de shell co route-level component that cho signals whale lane.
+- `packages/web/src/index.js`:
+  - Export `ShellWhaleAlertsPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `whale-alerts` route/page registry, SSR render cua `ShellWhaleAlertsPage` va route status baseline.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page signals moi; tong module tang len 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-39`, `WEB-40`, `OPS-19`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02am.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale-alerts signals slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read WhaleAlerts` while keeping `WhaleAdvisory` for compatibility)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (NEW - first whale-alerts signals shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `whale-alerts` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellWhaleAlertsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale-alerts route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the whale-alerts shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-39, WEB-40, OPS-19)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `whale-alerts`, register vao shell surface va them SSR proof.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `WhaleAlerts` dong thoi giu `WhaleAdvisory` cho compatibility.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellWhaleAlertsPage ... '@ | node --input-type=module; Pop-Location` => `core whale alerts shared shell live parity passed`; da xac nhan payload that chua ca `WhaleAlerts` va `WhaleAdvisory`, va markup render co `whale-alerts`, `signals`, `package-admin`, `Signals routes`, `Whale abilities`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+
+Residual note:
+- Slice nay chi tao route-level audit surface trong `packages/web`; no co chu y ton trong guardrails whale bang cach khong sua frontend whale workspace that, khong touch immutable bubble sources, va khong mo rong KLine intelligence contracts that.
+- Neu tiep tuc whale domain sau day, cong viec tiep theo nen la mapping ro `WhaleAlerts` vs `WhaleAdvisory` trong runtime contracts ngoai package shell, thay vi de alias song song keo dai khong can thiet.
+
+# Entry 2026-05-02al - Add the first AI advisory signals shell page and close the advisory ability drift
+
+Muc tieu:
+- Dung route-level page `ai-advisory` de tiep tuc dong bo route catalog `baseline` cua signals lane voi page registry that.
+- Dong drift contract giua route capability `signals.ai_advisory.read` va bootstrap ability subject hien co bang cach bo sung alias `AiAdvisory` trong core stub, trong khi van giu `WhaleAdvisory` de khong lam vo whale lane chua tach rieq.
+- Dong `WEB-37`, `WEB-38`, `OPS-18` bang proof shell check, live SSR parity tren core stub `:8100`, audit sync va live capability proof cho subject `AiAdvisory`.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung ability `read AiAdvisory` vao bootstrap stub de route `ai-advisory` co subject naming phu hop voi contract signals hien tai.
+  - Giu lai `read WhaleAdvisory` de khong gay regression cho lane whale-alerts chua co route-level page rieng.
+- `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`:
+  - Them page route-level moi cho `ai-advisory` bang shared helper layer.
+  - Hien operator/session, signals groups, advisory route visibility, enabled surfaces, build metadata va advisory abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `ai-advisory` vao page registry de shell co route-level component that cho signals advisory lane.
+- `packages/web/src/index.js`:
+  - Export `ShellAiAdvisoryPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `ai-advisory` route/page registry, SSR render cua `ShellAiAdvisoryPage` va route status baseline.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page signals moi; tong module tang len 549.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-37`, `WEB-38`, `OPS-18`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02al.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho AI advisory signals slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read AiAdvisory` while keeping `WhaleAdvisory` for compatibility)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (NEW - first AI advisory signals shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `ai-advisory` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAiAdvisoryPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate ai-advisory route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the AI advisory shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-37, WEB-38, OPS-18)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `ai-advisory`, register vao shell surface va them SSR proof.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `AiAdvisory` tren live capabilities.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellAiAdvisoryPage ... '@ | node --input-type=module; Pop-Location` => `core ai advisory shared shell live parity passed`; da xac nhan payload that chua subject `AiAdvisory` va markup render co `ai-advisory`, `signals`, `package-admin`, `Signals routes`, `Advisory abilities`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (549 modules).
+
+Residual note:
+- Slice nay dong drift cho `ai-advisory`, nhung whale lane van con subject legacy `WhaleAdvisory`; route-level page `whale-alerts` nen duoc lam o slice tiep theo de quy hoach naming va SSR proof rieng thay vi gop lan nua.
+- `ShellAiAdvisoryPage` hien la route-level audit surface doc tu bootstrap runtime; cac panel advisory that, policy outputs va data cards chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+
+# Entry 2026-05-02ak - Add the first workspace transactions shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `transactions` de tiep tuc dong bo route catalog `baseline` cua workspace lane voi page registry that ma khong mo them backend contract moi.
+- Chi su dung bootstrap/session/health seam hien co; route va ability `Transactions` da co san trong core stub, nen slice nay la frontend-only theo nghia contract.
+- Dong `WEB-35`, `WEB-36`, `OPS-17` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/workspace/ShellTransactionsPage.js`:
+  - Them page route-level moi cho `transactions` bang shared helper layer.
+  - Hien operator/session, workspace groups, transaction route visibility, enabled surfaces, build metadata va transaction abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `transactions` vao page registry de shell co route-level component that cho workspace transactions lane.
+- `packages/web/src/index.js`:
+  - Export `ShellTransactionsPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `transactions` route/page registry va SSR render cua `ShellTransactionsPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page workspace moi; tong module tang len 548.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-35`, `WEB-36`, `OPS-17`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ak.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho transactions workspace slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/workspace/ShellTransactionsPage.js (NEW - first workspace transactions shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `transactions` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellTransactionsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate transactions route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the transactions shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-35, WEB-36, OPS-17)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/workspace/ShellTransactionsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `transactions` vao shared shell surface va registry.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellTransactionsPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core transactions shared shell live parity passed`; da xac nhan bootstrap payload san co chua transactions ability va route visibility tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (548 modules).
+
+Residual note:
+- `ShellTransactionsPage` hien la route-level audit surface doc tu bootstrap runtime; bang giao dich that, write interactions va transactional workflows chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` khong can doi contract cho slice nay; runtime parity hien dang dua tren payload bootstrap san co.
+
+# Entry 2026-05-02aj - Add the first workspace watchlist shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `watchlist` de tiep tuc dong bo route catalog `baseline` cua workspace lane voi page registry that ma khong mo them backend contract moi.
+- Chi su dung bootstrap/session/health seam hien co; route va ability `Watchlist` da co san trong core stub, nen slice nay la frontend-only theo nghia contract.
+- Dong `WEB-33`, `WEB-34`, `OPS-16` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/workspace/ShellWatchlistPage.js`:
+  - Them page route-level moi cho `watchlist` bang shared helper layer.
+  - Hien operator/session, workspace groups, watchlist route visibility, enabled surfaces, build metadata va watchlist abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `watchlist` vao page registry de shell co route-level component that cho workspace watchlist lane.
+- `packages/web/src/index.js`:
+  - Export `ShellWatchlistPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `watchlist` route/page registry va SSR render cua `ShellWatchlistPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page workspace moi; tong module tang len 547.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-33`, `WEB-34`, `OPS-16`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02aj.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho watchlist workspace slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/workspace/ShellWatchlistPage.js (NEW - first workspace watchlist shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `watchlist` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellWatchlistPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate watchlist route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the watchlist shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-33, WEB-34, OPS-16)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/workspace/ShellWatchlistPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `watchlist` vao shared shell surface va registry.
+- FAILED -> FIXED: lan live parity dau tien dung assertion token tieng Viet trong inline Node script qua PowerShell nen bi skew encoding; da doi sang ASCII-safe markers va rerun thanh cong ma khong can sua source code.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellWatchlistPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core watchlist shared shell live parity passed`; da xac nhan bootstrap payload san co chua watchlist ability va route visibility tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (547 modules).
+
+Residual note:
+- `ShellWatchlistPage` hien la route-level audit surface doc tu bootstrap runtime; panel watchlist that, item persistence va data interactions chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` khong can doi contract cho slice nay; runtime parity hien dang dua tren payload bootstrap san co.
+
+# Entry 2026-05-02ai - Add the first workspace dashboard shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `dashboard` de dong bo route catalog `baseline` cua workspace lane voi page registry that ma khong mo them backend contract moi.
+- Chi su dung bootstrap/session/health seam hien co; route va ability `Dashboard` da co san trong core stub, nen slice nay la frontend-only theo nghia contract.
+- Dong `WEB-31`, `WEB-32`, `OPS-15` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/workspace/ShellDashboardPage.js`:
+  - Them page route-level moi cho `dashboard` bang shared helper layer.
+  - Hien operator/session, workspace groups, dashboard route visibility, enabled surfaces, build metadata va dashboard abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `dashboard` vao page registry de shell co route-level component that cho workspace dashboard lane.
+- `packages/web/src/index.js`:
+  - Export `ShellDashboardPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `dashboard` route/page registry va SSR render cua `ShellDashboardPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page workspace moi; tong module tang len 546.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-31`, `WEB-32`, `OPS-15`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ai.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho dashboard workspace slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/workspace/ShellDashboardPage.js (NEW - first workspace dashboard shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `dashboard` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellDashboardPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate dashboard route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the dashboard shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-31, WEB-32, OPS-15)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/workspace/ShellDashboardPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `dashboard` vao shared shell surface va registry.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellDashboardPage, ShellSupportPage, ShellSettingsPage, ShellPortfoliosPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core dashboard shared shell live parity passed`; da xac nhan bootstrap payload san co chua dashboard ability va ca sau page core van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (546 modules).
+
+Residual note:
+- `ShellDashboardPage` hien la route-level audit surface doc tu bootstrap runtime; widgets dashboard that va data cards chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` dang duoc giu running voi bootstrap payload hien co de auditor co the verify ngay route `dashboard` cung cac route core khac.
+
+# Entry 2026-05-02ah - Add the first system support shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `support` de dong bo route catalog `baseline` cua system lane voi page registry that.
+- Chi su dung bootstrap/session/health seam hien co; khong mo them backend contract moi ngoai viec bo sung support ability vao core stub bootstrap payload de consistent voi route capability.
+- Dong `WEB-29`, `WEB-30`, `OPS-14` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung ability `read Support` vao bootstrap stub de system support lane co subject phu hop voi route requirement hien tai.
+- `packages/web/src/pages/system/ShellSupportPage.js`:
+  - Them page route-level moi cho `support` bang shared helper layer.
+  - Hien operator/session, system groups, support route visibility, enabled surfaces, build metadata va support abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `support` vao page registry de shell co route-level component that cho system support lane.
+- `packages/web/src/index.js`:
+  - Export `ShellSupportPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `support` route/page registry va SSR render cua `ShellSupportPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page system moi; tong module tang len 545.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-29`, `WEB-30`, `OPS-14`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ah.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho support system slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read Support` in the core bootstrap ability set)
+- packages/web/src/pages/system/ShellSupportPage.js (NEW - first system support shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `support` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellSupportPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate support route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the support shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-29, WEB-30, OPS-14)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/system/ShellSupportPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `support` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd bang `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend/src"; $env:CORE_API_PORT="8100"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m vninvest_core.api_stub` de bootstrap payload moi expose support ability.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellSupportPage, ShellSettingsPage, ShellPortfoliosPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core support shared shell live parity passed`; da xac nhan bootstrap payload moi chua support ability va ca nam page core van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (545 modules).
+
+Residual note:
+- `ShellSupportPage` hien la route-level audit surface doc tu bootstrap runtime; ticket/support workflows that va operator interactions chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` dang duoc giu running voi bootstrap payload moi de auditor co the verify ngay route `support` cung cac route core khac.
+
+# Entry 2026-05-02ag - Add the first portfolio workspace shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `portfolios` de mo tiep lane workspace cua core shell sau khi helper layer da duoc cleanup on dinh.
+- Chi su dung bootstrap/session/health seam hien co; khong mo contract backend moi ngoai viec expose them route va ability trong core stub bootstrap payload.
+- Dong `WEB-27`, `WEB-28`, `OPS-13` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Mo rong bootstrap stub de expose `portfolios` trong `visible_routes` cho build target `saas|vip`.
+  - Bo sung ability `manage Portfolios` de lane workspace moi co subject phu hop cho shell page.
+- `packages/web/src/pages/workspace/ShellPortfoliosPage.js`:
+  - Them page route-level moi cho `portfolios` bang shared helper layer.
+  - Hien operator/session, workspace groups, portfolio routes, enabled surfaces, build metadata va portfolio abilities tu core bootstrap payload.
+- `packages/web/src/app/routeCatalog.js`:
+  - Nang route `portfolios` tu `planned` len `baseline`.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `portfolios` vao page registry de shell co route-level component that cho workspace lane.
+- `packages/web/src/index.js`:
+  - Export `ShellPortfoliosPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `portfolios` route/page registry va SSR render cua `ShellPortfoliosPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page workspace moi; tong module tang len 544.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-27`, `WEB-28`, `OPS-13`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ag.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho portfolio workspace slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `portfolios` route visibility and portfolio ability in the core bootstrap stub)
+- packages/web/src/pages/workspace/ShellPortfoliosPage.js (NEW - first workspace portfolio shell page using the shared helper layer)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `portfolios` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `portfolios` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellPortfoliosPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate portfolios route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the portfolios shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-27, WEB-28, OPS-13)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/workspace/ShellPortfoliosPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `portfolios` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd bang `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend/src"; $env:CORE_API_PORT="8100"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m vninvest_core.api_stub` de bootstrap payload moi expose `portfolios`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellPortfoliosPage, ShellSettingsPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core portfolios shared shell live parity passed`; da xac nhan bootstrap payload moi chua `portfolios` va ca bon page core van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (544 modules).
+
+Residual note:
+- `ShellPortfoliosPage` hien la route-level audit surface doc tu bootstrap runtime; write flows portfolio that va data table chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` dang duoc giu running voi bootstrap payload moi de auditor co the verify ngay route `portfolios` cung cac route core khac.
+
+# Entry 2026-05-02af - Extract shared mapper helpers for the core shell page family
+
+Muc tieu:
+- Tach shared mapper helpers cho normalization va view-model building giua `settings`, `admin-ops` va `ai-command-center` sau khi bootstrap helper da duoc gom o slice truoc.
+- Giu nguyen contract va hanh vi runtime cua ba core shell page, khong mo them API moi va khong doi markup markers phuc vu SSR parity.
+- Dong `WEB-25`, `WEB-26`, `OPS-12` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/coreShellPageHelpers.js`:
+  - Them helper dung chung cho snapshot normalization, enabled surface keys, route filtering, ability filtering, flag builders, refresh action va health pill.
+  - Dat phan view-model mapping chung ve mot noi duy nhat de giam drift khi mo them core shell pages tiep theo.
+- `packages/web/src/pages/system/ShellSettingsPage.js`:
+  - Refactor de dung shared snapshot normalization va UI action helpers thay cho normalization/render button inline.
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js`:
+  - Refactor de dung shared ability/route/flag mappers thay cho logic lap lai trong page admin.
+- `packages/web/src/pages/system/ShellAiCommandCenterPage.js`:
+  - Refactor de dung shared ability/route/flag mappers thay cho logic lap lai trong page AI.
+- `module_tree_full.md`:
+  - Regenerate sau khi cleanup mapper layer; tong module giu nguyen 543.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-25`, `WEB-26`, `OPS-12`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02af.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core mapper cleanup slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - add shared snapshot/view-model mapper helpers for the core shell page family)
+- packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - move settings page onto shared snapshot normalization and UI action helpers)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (MODIFIED - move admin shell page onto shared route/flag/ability mapper helpers)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (MODIFIED - move AI shell page onto shared route/flag/ability mapper helpers)
+- module_tree_full.md (MODIFIED - regenerated after the mapper cleanup slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-25, WEB-26, OPS-12)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi tach mapper helpers chung cho snapshot, flags, route visibility va health actions.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellSettingsPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core shared shell mapper parity passed`; da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (543 modules).
+
+Residual note:
+- Slice nay da gom phan normalization/view-model co dang lap lai; phan narrative text, metric labels va summary rows van o tung page de giu context rieng cho settings/admin/AI lane.
+- Day la diem dung hop ly truoc khi chay nhanh 1 va mo them route core moi tren helper layer da on dinh hon.
+
+# Entry 2026-05-02ae - Extract shared helpers for the core shell page family
+
+Muc tieu:
+- Tach shared helper/hook cho state machine bootstrap loading, refresh va cac render helper lap lai giua `settings`, `admin-ops` va `ai-command-center`.
+- Giu nguyen contract va hanh vi runtime cua ba core shell page, khong mo them API moi hay doi gating semantics.
+- Dong `WEB-23`, `WEB-24`, `OPS-11` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/coreShellPageHelpers.js`:
+  - Them helper dung chung cho bootstrap snapshot state, refresh flow, summary/list renderers va build metadata card cua core shell pages.
+  - Giu duoc state machine `autoLoad`/`refresh` trong mot noi duy nhat de tranh drift khi them them core pages.
+- `packages/web/src/pages/system/ShellSettingsPage.js`:
+  - Refactor de dung shared helper thay cho logic bootstrap va render helpers inline.
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js`:
+  - Refactor de dung shared helper thay cho logic bootstrap va render helpers inline.
+- `packages/web/src/pages/system/ShellAiCommandCenterPage.js`:
+  - Refactor de dung shared helper thay cho logic bootstrap va render helpers inline.
+- `module_tree_full.md`:
+  - Regenerate sau khi them helper module moi; tong module tang len 543.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-23`, `WEB-24`, `OPS-11`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ae.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core helper extraction slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/coreShellPageHelpers.js (NEW - shared bootstrap state and render helpers for the core shell page family)
+- packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - move settings page onto the shared core shell helper)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (MODIFIED - move admin shell page onto the shared core shell helper)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (MODIFIED - move AI shell page onto the shared core shell helper)
+- module_tree_full.md (MODIFIED - regenerated after the helper extraction slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-23, WEB-24, OPS-11)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi tach helper bootstrap/render dung chung cho ba core shell page.
+- FAILED -> FIXED: lan live parity dau tien dung sai env key `VNINVEST_CORE_API_BASE_URL`, gay loi `Failed to parse URL from /core/v1/health`; da doi sang `VNINVEST_CORE_BASE_URL` va rerun thanh cong.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellSettingsPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core shared shell live parity passed`; da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (543 modules).
+
+Residual note:
+- Slice nay moi chi gom logic bootstrap state va render helper co dang giong nhau; mapping du lieu sang narrative/page-specific panels van nam tai tung page de giu semantics rieng cho settings/admin/AI lane.
+- Core stub van dang duoc giu running tren `:8100` de auditor co the verify ngay ba route core sau refactor.
+
+# Entry 2026-05-02ad - Add the first AI command center shell page on the shared template
+
+Muc tieu:
+- Dung route-level page `ai-command-center` de tiep tuc harden shared shell template tren lane AI cua core shell va dua route nay ra khoi trang thai `planned`.
+- Chi su dung surface da co san tu core bootstrap runtime: operator identity, navigation, surface flags, health va session; khong mo them API contract moi.
+- Dong `WEB-21`, `WEB-22`, `OPS-10` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/system/ShellAiCommandCenterPage.js`:
+  - Them page route-level moi cho `ai-command-center` bang shared shell template.
+  - Hien operator identity, AI route visibility, AI surface flags, build metadata va AI-relevant abilities.
+- `packages/web/src/app/routeCatalog.js`:
+  - Nang route `ai-command-center` tu `planned` len `baseline`.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `ai-command-center` vao page registry de shell co route-level component that cho lane AI.
+- `packages/web/src/index.js`:
+  - Export `ShellAiCommandCenterPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `ai-command-center` route/page registry va SSR render cua `ShellAiCommandCenterPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page AI moi; tong module tang len 542.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-21`, `WEB-22`, `OPS-10`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ad.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho AI shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (NEW - first AI command center shell page using the shared template)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `ai-command-center` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `ai-command-center` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAiCommandCenterPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate AI command center registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the AI shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-21, WEB-22, OPS-10)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/system/ShellAiCommandCenterPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them page `ai-command-center` vao shared shell surface.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `ai command center shared shell live parity passed`; da xac nhan live SSR markup render `shellPage__panel`, `package-admin`, `show_ai_command_center` va `ai-command-center` tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (542 modules).
+
+Residual note:
+- `ai-command-center` hien moi la route-level audit surface doc tu bootstrap runtime; cac control AI that va workflow command plane van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub van dang duoc giu running tren `:8100` de auditor co the verify lien tiep `settings`, `admin-ops` va `ai-command-center`.
+
+# Entry 2026-05-02ac - Add the first admin operations shell page on the shared template
+
+Muc tieu:
+- Dung route-level page `admin-ops` de tiep tuc harden shared shell template tren lane admin cua core shell thay vi de route nay tiep tuc o trang thai `planned`.
+- Chi su dung surface da co san tu core bootstrap runtime: operator identity, navigation, surface flags, health va session; khong mo them API contract moi.
+- Dong `WEB-19`, `WEB-20`, `OPS-09` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js`:
+  - Them page route-level moi cho `admin-ops` bang shared shell template.
+  - Hien operator identity, admin route visibility, admin surface flags, build metadata va admin-relevant abilities.
+- `packages/web/src/app/routeCatalog.js`:
+  - Nang route `admin-ops` tu `planned` len `baseline`.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `admin-ops` vao page registry de shell co route-level component that cho lane admin.
+- `packages/web/src/index.js`:
+  - Export `ShellAdminOpsPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `admin-ops` route/page registry va SSR render cua `ShellAdminOpsPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page admin moi; tong module tang len 541.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-19`, `WEB-20`, `OPS-09`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ac.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho admin shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (NEW - first admin operations shell page using the shared template)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `admin-ops` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `admin-ops` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAdminOpsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate admin ops registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the admin shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-19, WEB-20, OPS-09)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/admin/ShellAdminOpsPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them page `admin-ops` vao shared shell surface.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellAdminOpsPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `admin ops shared shell live parity passed`; da xac nhan live SSR markup render `shellPage__panel`, `package-admin`, `show_admin_ops` va `admin-ops` tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (541 modules).
+
+Residual note:
+- `admin-ops` hien moi la route-level audit surface doc tu bootstrap runtime; cac thao tac operator that van nen duoc them trong slice rieng de giu contract va validation path ro rang.
+- Core stub van dang duoc giu running tren `:8100` de auditor co the verify ca `settings` va `admin-ops` ngay lap tuc.
+
+# Entry 2026-05-02ab - Build the first core settings page on top of the shared shell template
+
+Muc tieu:
+- Dung route-level page core thu hai cho `settings` de shared shell template duoc reuse tren hon mot route thay vi chi neo vao VIP local control.
+- Bám chặt surface da co san cua core bootstrap runtime: health, build meta, session, navigation va surfaces, khong mo them API contract moi.
+- Dong `WEB-17`, `WEB-18`, `OPS-08` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/system/ShellSettingsPage.js`:
+  - Them page route-level moi cho `settings` su dung shared shell template.
+  - Hien build target, plan, session, health, visible groups/routes, surfaces va ability map tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register route `settings` vao page registry cung voi `vip-local-control`.
+- `packages/web/src/index.js`:
+  - Export `ShellSettingsPage` tren root package surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho page registry route `settings` va SSR render cua `ShellSettingsPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page core moi; tong module tang len 540.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-17`, `WEB-18`, `OPS-08`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ab.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core settings shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/system/ShellSettingsPage.js (NEW - first core-backed settings shell page using the shared template)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `settings` as the second route-level page in the package shell)
+- packages/web/src/index.js (MODIFIED - export `ShellSettingsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate settings page registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the core settings shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-17, WEB-18, OPS-08)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi register `settings` vao page registry va them SSR proof cho core settings page.
+- FAILED -> FIXED: lan live parity dau tien fail voi `ECONNREFUSED 127.0.0.1:8100`; nguyen nhan la core stub chua chay va lan start dau tien dung sai cwd nen Python khong tim thay module `vninvest_core`. Da start lai tu `packages/core/backend/src` bang `"c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m vninvest_core.api_stub` va rerun thanh cong.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellSettingsPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core settings shared shell live parity passed`; da xac nhan markup render `shellPage__panel`, `package-admin`, `core-api` tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (540 modules).
+
+Residual note:
+- `settings` hien dong vai tro page audit/runtime status dau tien cho core shell; cac system pages sau nen reuse grammar nay thay vi tao panel contract rieng.
+- Core stub dang duoc giu running tren `:8100` de auditor co the verify page moi ngay lap tuc.
+
+# Entry 2026-05-02aa - Extract the first shared shell page template primitive for package-track UI
+
+Muc tieu:
+- Dua rule template UI chung tu muc tai lieu xuong muc code bang shared primitive dau tien trong `packages/web` thay vi de `VipLocalControlPage` tiep tuc om tron page shell grammar inline.
+- Giu nguyen behavior cua `VipLocalControlPage` nhung tach page chrome, panel, metric va form field helpers thanh mot module co the reuse cho cac route-level pages tiep theo.
+- Dong `WEB-15`, `WEB-16`, `OPS-07` bang proof shell check, live SSR parity va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/components/ShellPageTemplate.js`:
+  - Them shared shell template primitive dau tien cho `packages/web`.
+  - Chua page chrome styles, hero badge, metrics band, compact panel grammar, field/select helpers va panel wrapper helper.
+- `packages/web/src/pages/vip/VipLocalControlPage.js`:
+  - Refactor route-level page sang shared shell template helper thay cho inline style string va inline renderers cho metric/field/select.
+  - Giu nguyen flow login, reset session, upsert user va audit rendering.
+- `packages/web/src/index.js`:
+  - Export shared shell template helpers tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof rang shared shell template helpers duoc export tren root surface, dong thoi giu proof SSR cua `VipLocalControlPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them module shared component moi vao `packages/web`.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-15`, `WEB-16`, `OPS-07`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02aa.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho shared shell template slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/components/ShellPageTemplate.js (NEW - first shared shell page template primitive for package-track UI)
+- packages/web/src/pages/vip/VipLocalControlPage.js (MODIFIED - move VIP local control page onto shared shell helpers)
+- packages/web/src/index.js (MODIFIED - export shared shell template helpers on the root package surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate shared helper exports and retain VIP page SSR proof)
+- module_tree_full.md (MODIFIED - regenerated after the shared shell template slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-15, WEB-16, OPS-07)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/components/ShellPageTemplate.js`, `packages/web/src/pages/vip/VipLocalControlPage.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi shared template duoc wire vao root surface va `VipLocalControlPage`.
+- FAILED -> FIXED: lan rerun dau tien cua `npm run check:shell` bao React key warning trong panel children array; da bo sung stable keys cho user list/audit list empty states va rerun thanh cong khong con warning.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... VipLocalControlPage, createVipAppControlClient, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `vip shared shell live parity passed`; da xac nhan live SSR markup van render `shellPage__panel`, `shellPage__heroBadge`, `vip-local-admin` tu runtime `:8200`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully.
+
+Residual note:
+- Shared primitive hien moi cover page shell grammar co mat trong `VipLocalControlPage`; cac route sau van can tiep tuc noi vao primitive nay thay vi tao bien the rieng.
+- Primitive nay dang chot visual language dau tien cho package-track UI; neu can them dark-theme tokens hoac 3-column contract phuc tap hon, nen lam o slice rieng de giu scope sach.
+
+# Entry 2026-05-02z - Build the first VIP local control page and freeze the shared UI template rule
+
+Muc tieu:
+- Dung route-level page React dau tien cho `vip-local-control` de `packages/web` khong chi co adapter seam ma da co UI that cho login local, user list va audit log.
+- Nang `vip-local-control` tu `planned` len `baseline` va them page registry toi thieu de shell biet route nay render surface nao.
+- Ghi cứng vao bo tai lieu phê duyệt va self-audit rang toan bo UI cua phan nang cap phai theo mot template chung: giao dien giau thong tin, spacing thap, review screenshot bat buoc.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/vip/VipLocalControlPage.js`:
+  - Them page React moi cho local login, refresh/reset session, upsert sub-user, doc audit logs va hien metrics session/health.
+  - Chot visual language dau tien cho lane VIP local control theo huong information-dense, panel compact, margins/gaps thap.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Them page registry toi thieu de map `vip-local-control` sang component route-level.
+- `packages/web/src/app/routeCatalog.js`:
+  - Mark `vip-local-control` sang `baseline` sau khi page that da ton tai.
+- `packages/web/src/index.js`:
+  - Export page registry va `VipLocalControlPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho page registry, status route `baseline` va SSR render cua `VipLocalControlPage`.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md`:
+  - Khoa requirement cap owner: toan bo UI phai bam template chung thong nhat, giau thong tin, spacing thap.
+- `docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Them execution objective, exit criteria va governance subsection cho template UI chung.
+- `docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Them hard rules ky thuat cho unified UI template governance trong `packages/web`.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md`:
+  - Them audit gate cho screenshot/preview review va UI template compliance.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md`:
+  - Them `GOV-05` cho template UI chung va evidence screenshot/preview.
+- `module_tree_full.md`:
+  - Regenerate sau khi them page registry, route-level page va cap nhat doc pack; tong module tang len 538.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `WEB-13`, `WEB-14`, `OPS-06` complete.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02z.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho VIP shell UI slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/pageRegistry.js (NEW - minimal route-to-page registry for the package shell)
+- packages/web/src/pages/vip/VipLocalControlPage.js (NEW - first VIP local control page for login, user list and audit log)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `vip-local-control` route status to `baseline`)
+- packages/web/src/index.js (MODIFIED - expose page registry and `VipLocalControlPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate page registry and SSR rendering of the VIP local control page)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (MODIFIED - freeze the unified UI template rule at approval level)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - add execution and DoD rules for the shared UI template)
+- docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - add hard technical rules for information-dense, low-spacing UI)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (MODIFIED - add UI template compliance gate)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add `GOV-05` for unified UI template governance)
+- module_tree_full.md (MODIFIED - regenerated after the VIP shell UI slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-13, WEB-14, OPS-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/pageRegistry.js`, `packages/web/src/pages/vip/VipLocalControlPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/index.js`, `packages/web/scripts/check-shell.mjs` va toan bo doc pack vua cap nhat.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`; da bao gom proof cho page registry, route `vip-local-control` status `baseline` va SSR render cua `VipLocalControlPage`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... createVipAppControlClient, loadShellBootstrap, VipLocalControlPage ... '@ | node --input-type=module; Pop-Location` => `vip local control page live SSR parity passed`; page da tieu thu duoc live snapshot `health`, `session`, `users`, `auditLogs` tu runtime `:8200`.
+- PASSED: preview HTML tam duoc generate tu live snapshot, mo trong integrated browser va capture screenshot; review cho thay layout bam template information-dense voi hero gon, metric band, panel compact, user list va audit log dat sat nhau.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (538 modules).
+
+Residual note:
+- `VipLocalControlPage` hien dang dong vai tro template seed dau tien cho lane VIP local control; cac slice UI tiep theo nen tach dan shared layout primitives thay vi clone mot bien the moi.
+- Quy tac template UI chung da duoc khoa trong handoff/plan/spec/self-audit; moi deviation tu nay phai co owner approval va screenshot review note.
+
+# Entry 2026-05-02y - Add a thin VIP app control client to the package-track web shell
+
+Muc tieu:
+- Mo rong `packages/web` tu bootstrap-only seam thanh co them control-plane client cho cac route `auth`, `rbac`, `audit` cua `vip-app` local backend.
+- Giu `vipAppAdapter` lam SSOT cho endpoint metadata thay vi de consumer tu noi chuoi URL hoac bypass adapter seam.
+- Dong `WEB-11`, `WEB-12`, `OPS-05` bang proof o muc shell validation, live runtime parity va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/adapters/vip-app/vipAppAdapter.js`:
+  - Them endpoint builders cho `auth/login`, `auth/logout`, `auth/reset`, `rbac/users`, `audit/logs`.
+  - Them `createVipAppControlClient()` de goi `login`, `logout`, `resetSession`, `listUsers`, `upsertUser`, `listAuditLogs` bang fetch client mỏng bám adapter metadata.
+- `packages/web/src/adapters/vip-app/index.js`:
+  - Export `createVipAppControlClient` cung voi `vipAppAdapter`.
+- `packages/web/src/index.js`:
+  - Dua VIP control client vao public shell surface de consumer khong can import deep path.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them mocked shell proof cho endpoint metadata va request semantics cua VIP control client.
+- `module_tree_full.md`:
+  - Regenerate sau khi them control client helpers; tong module giu nguyen 536.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `WEB-11`, `WEB-12`, `OPS-05` complete.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02y.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho VIP control client slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/adapters/vip-app/vipAppAdapter.js (MODIFIED - add vip-app control-plane endpoint metadata and thin control client)
+- packages/web/src/adapters/vip-app/index.js (MODIFIED - export the VIP control client)
+- packages/web/src/index.js (MODIFIED - expose the VIP control client on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate VIP control client route metadata and request semantics)
+- module_tree_full.md (MODIFIED - regenerated after the VIP control client slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-11, WEB-12, OPS-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/adapters/vip-app/vipAppAdapter.js`, `packages/web/src/adapters/vip-app/index.js`, `packages/web/src/index.js`, `packages/web/scripts/check-shell.mjs`, va `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`.
+- FAILED -> FIXED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => ban dau loi `Cannot find package 'react'`; da khoi phuc local package deps bang `npm install` roi rerun thanh cong.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`, bao gom mocked proof cho VIP control client route metadata va request semantics.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... createVipAppControlClient from "./src/adapters/vip-app/vipAppAdapter.js" ... '@ | node --input-type=module; Pop-Location` => `vip control client live smoke passed`; da xac nhan `login`, `listUsers`, `upsertUser`, `listAuditLogs`, `resetSession`, `logout` tren runtime `:8200`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... createVipAppControlClient from "./src/index.js" ... '@ | node --input-type=module; Pop-Location` => `vip control client public export parity passed`; public shell surface van tra ve parity dung voi compose runtime `:8200`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (536 modules).
+
+Residual note:
+- Slice nay moi dung o muc client seam cho shell; chua co component/page trong `packages/web` render dang nhap local, quan ly sub-user hay audit log cho VIP.
+- `packages/web/node_modules/` la local ignored artifact; `npm run check:shell` can package-local React deps hien dien trong moi workstation muon chay standard shell validation.
+
+# Entry 2026-05-02x - Upgrade VIP app local backend to a minimal persisted auth/RBAC/audit runtime
+
+Muc tieu:
+- Nang `packages/vip-app/local-backend` tu stub chi doc env thanh local backend co persistence toi thieu cho active session, RBAC va audit logs.
+- Giu on dinh contract bootstrap hien co cua `vipAppAdapter` tren `GET /vip-app/v1/health`, `GET /vip-app/v1/access/capabilities` va `GET /vip-app/v1/session/bootstrap`.
+- Dong `VIP-03`, `VIP-04`, `OPS-04` bang proof o muc store, HTTP, compose runtime va shell bootstrap parity.
+
+Noi dung cap nhat chinh:
+- `.gitignore`:
+  - Them ignore rule cho `packages/vip-app/local-backend/data/` de runtime state khong pollute git.
+- `packages/vip-app/local-backend/store.py`:
+  - Them file-backed store moi luu `users`, `active_session`, `audit_logs`, `tenant`, `metadata` vao `data/state.json`.
+  - Ho tro login/logout/reset session, upsert user RBAC, list audit logs va normalize state khi reload tu dia.
+  - Sua root cause RBAC drift de update email-only khong tu dong promote `vip_operator` thanh `vip_admin` sau persist/reload.
+- `packages/vip-app/local-backend/api_stub.py`:
+  - Wire HTTP surface vao store persisted thay vi payload doc truc tiep tu env.
+  - Them `POST /vip-app/v1/auth/login`, `POST /vip-app/v1/auth/logout`, `POST /vip-app/v1/auth/reset`, `GET /vip-app/v1/rbac/users`, `POST /vip-app/v1/rbac/users`, `GET /vip-app/v1/audit/logs`.
+  - Giu nguyen va tiep tuc phuc vu health/capability/session bootstrap endpoints cho shell lane `vip-app`.
+- `packages/vip-app/docker-compose.vip.yml`:
+  - Khai bao ro `VIP_APP_DATA_DIR=/workspace/data` va default smoke password `VIP_APP_STUB_PASSWORD=vip-demo-pass`.
+- `packages/vip-app/local-backend/README.md`:
+  - Cap nhat runbook cho store persisted, HTTP surface va default smoke credentials.
+- `module_tree_full.md`:
+  - Regenerate sau slice persistence; tong module tang len 536.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `VIP-03`, `VIP-04`, `OPS-04` complete.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02x.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho VIP persistence lane.
+
+Danh sach tep cap nhat:
+- .gitignore (MODIFIED - ignore generated VIP local backend state data)
+- packages/vip-app/local-backend/store.py (NEW - file-backed store for users, session, tenant and audit persistence)
+- packages/vip-app/local-backend/api_stub.py (MODIFIED - persistent auth/RBAC/audit HTTP surface while preserving bootstrap endpoints)
+- packages/vip-app/docker-compose.vip.yml (MODIFIED - explicit data directory and default smoke password for compose runtime)
+- packages/vip-app/local-backend/README.md (MODIFIED - document the persisted runtime surface and HTTP endpoints)
+- module_tree_full.md (MODIFIED - regenerated after VIP persistence slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out VIP persistence and audit slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/vip-app/local-backend/store.py` va `packages/vip-app/local-backend/api_stub.py` sau khi wire persistence lane.
+- PASSED: `mcp_pylanceRunCodeSnippet` trong `packages/vip-app/local-backend` voi `VipAppStateStore(data_dir=temp_dir, env=...)` => `vip local store persistence smoke passed`; da xac nhan `logout -> login -> rbac user upsert -> reload from disk -> auth reset -> audit log retention`.
+- FAILED -> FIXED: store smoke moi da bat duoc RBAC drift khi update email-only lam `vip_operator` bi promote sai sau reload; da sua root cause trong `_normalize_role_keys()` va logic `upsert_user()`.
+- PASSED: `mcp_pylanceRunCodeSnippet` lap lai sau khi sua drift => `vip local store persistence smoke passed`, role `vip_operator` duoc giu nguyen sau persist/reload.
+- PASSED: dedicated HTTP smoke tren `http://127.0.0.1:8220/vip-app/v1` => `vip local HTTP smoke passed`; da xac nhan `POST /auth/login`, `POST /rbac/users`, `POST /auth/reset`, `GET /access/capabilities`, `GET /rbac/users`, `GET /audit/logs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/vip-app"; docker compose -f docker-compose.vip.yml up -d --build; Pop-Location` => `vninvest-vip-package-vip-local-api-1` started successfully voi runtime persisted.
+- PASSED: compose HTTP smoke tren `http://127.0.0.1:8200/vip-app/v1` => `vip compose HTTP smoke passed`; da xac nhan login/reset/bootstrap/audit flow tren runtime that.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; node --input-type=module -e "import { loadShellBootstrap } from './src/context/bootstrapClient.js'; ..."; Pop-Location` => `vip shell bootstrap parity passed`; shell bootstrap client van doc duoc live VIP contract sau persistence upgrade.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (536 modules).
+
+Residual note:
+- `packages/vip-app/local-backend/data/state.json` la runtime artifact va da duoc gitignore; compose service duoc giu running tren `:8200` de auditor co the verify ngay.
+- Direct Node import qua `packages/web/src/index.js` van can package-local React dependency neu muon exercise full public shell surface; slice nay da verify dung seam contract consumer bi tac dong la `src/context/bootstrapClient.js`.
+
 # Entry 2026-05-02w - Wrap the package-track web auth runtime into a real React provider/hook
 
 Muc tieu:
@@ -7195,7 +11430,7 @@ Dieu kien test:
 - Environment: dev (local testing, representative duration compression)
 - Thoi gian thuc thi: 10:04-10:05 UTC+7 (2026-04-17)
 - Python script: Direct Django API call + Redis client manipulation (no external tools)
-- Canary flags (da bat truoc): 
+- Canary flags (da bat truoc):
   - REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED=True
   - REALTIME_STREAM_PENDING_RECLAIM_ENABLED=True
   - STREAM_PENDING_RECLAIM_IDLE_MS=1000
@@ -7241,7 +11476,7 @@ Phan Phase 3: FAULT INJECTION [PASS]
     4. ACK reclaimed message
     5. Verify pending count dropped to 0
 - Results:
-  - **Cycle 1**: 
+  - **Cycle 1**:
     - Message: 1776388948805-0
     - Pending BEFORE: 1
     - Pending AFTER: 0
@@ -9209,7 +13444,7 @@ Pham vi:
   2. Phase 2: Integrate Dashboard RealtimePanel.
   3. Phase 4: Toi uu hoa polling strategy de giam excessive re-renders.
   (Phase 3 - Watchlist integration & Phase 5 - Testing = TODO)
-  
+
 - Muc tieu:
   * Giam flashing Dashboard tu 5-10x/min -> 2-3x/min thong qua row memo.
   * Gium API surge ban dau tu 100 calls/1s -> 20 calls/2-3s (batch size +).

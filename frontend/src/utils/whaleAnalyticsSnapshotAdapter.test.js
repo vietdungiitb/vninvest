@@ -67,6 +67,20 @@ describe('whaleAnalyticsSnapshotAdapter', () => {
         contract_version: 'kline-intelligence-v1',
         cache_key_version: 'v4',
       },
+      materialization: {
+        source: 'shared_bucket_facts_cache',
+        read_path: 'facts_first',
+        freshness_state: 'fresh',
+        session_summary_state: 'complete',
+        raw_fallback_used: false,
+        tick_count: 48,
+        bucket_count: 4,
+        bucket_fact_count: 4,
+      },
+      session_summary: {
+        selected_trade_date: '2026-04-25',
+        session_summary_state: 'complete',
+      },
       summary: {
         whale_order_count: 1,
       },
@@ -92,6 +106,16 @@ describe('whaleAnalyticsSnapshotAdapter', () => {
     expect(normalized.flow.view_model.sessionContext.qualityState).toBe('READY');
     expect(normalized.flow.view_model.qualityFlags.contractVersion).toBe('kline-intelligence-v1');
     expect(normalized.bubbles.quality_flags.contract_version).toBe('kline-intelligence-v1');
+    expect(normalized.materialization).toMatchObject({
+      read_path: 'facts_first',
+      session_summary_state: 'complete',
+      raw_fallback_used: false,
+      bucket_fact_count: 4,
+    });
+    expect(normalized.session_summary).toMatchObject({
+      selected_trade_date: '2026-04-25',
+      session_summary_state: 'complete',
+    });
   });
 
   test('derives a fallback flow compare view model from legacy flow series when additive sections are absent', () => {
@@ -123,6 +147,13 @@ describe('whaleAnalyticsSnapshotAdapter', () => {
       summary: {
         whale_order_count: 1,
       },
+      materialization: {
+        source: 'shared_bucket_facts_cache',
+        read_path: 'raw_fallback',
+        freshness_state: 'stale',
+        session_summary_state: 'empty',
+        raw_fallback_used: true,
+      },
       meta: {
         data_state: 'snapshot',
       },
@@ -135,5 +166,6 @@ describe('whaleAnalyticsSnapshotAdapter', () => {
     expect(normalized.flow.view_model.buckets[0].cvdNormalized).toBeGreaterThan(50);
     expect(normalized.flow.view_model.buckets[0].markerSide).toBe('buy');
     expect(normalized.flow.view_model.sessionContext.qualityState).toBe('READY');
+    expect(normalized.materialization?.read_path).toBe('raw_fallback');
   });
 });

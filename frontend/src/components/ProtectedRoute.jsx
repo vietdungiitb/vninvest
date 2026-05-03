@@ -3,7 +3,7 @@
  * Route guard theo CASL ability — chặn truy cập trang nếu không có quyền.
  *
  * Dùng trong App.jsx:
- *   <Route path="/whale-advisory" element={
+ *   <Route path="/ai-advisory" element={
  *     <ProtectedRoute action="read" subject="WhaleAdvisory">
  *       <WhaleAdvisoryPage />
  *     </ProtectedRoute>

@@ -2,5 +2,11 @@
   "name": "@vninvest/mobile",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "scripts": {
+    "check:mobile": "node ./scripts/check-mobile-config.mjs",
+    "check:mobile-navigation": "node ./scripts/check-mobile-navigation.mjs"
+  },
   "description": "VNInvest mobile package-track scaffold"
 }
