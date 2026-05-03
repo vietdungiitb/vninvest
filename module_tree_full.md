@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-03 07:45:01`
+Generated at: `2026-05-03 07:56:11`
 
 ## Summary
 
-- Total modules: 577
+- Total modules: 581
 - Python modules: 348
-- JS/TS modules: 229
+- JS/TS modules: 233
 - Total classes: 577
-- Total functions: 2376
-- Total top-level variables: 3902
+- Total functions: 2393
+- Total top-level variables: 3930
 
 ## Python Modules
 
@@ -3242,6 +3242,18 @@ Generated at: `2026-05-03 07:45:01`
 - Top-level variables:
   - `canReadBilling`, `cancelled`, `criticalCount`, `entitledAmount`, `quotaByMeterCode`, `quotaSnapshot`, `ratio`, `totalRemaining`, `warningCount`
 
+### `frontend/src/pages/AdminCoreBilling.jsx`
+
+- Functions:
+  - `MetricCard`, `Panel`, `ValueRow`, `bootstrap`, `formatCurrency`, `formatDateTime`, `refresh`, `toneClasses`
+- Top-level variables:
+  - `cancelled`, `commercialSummary`, `currentUsageRisk`, `nextInvoiceDate`, `normalized`, `pastDueMeterCount`, `renewalLabel`, `response`, `securitySummary`, `tenantSummary`, `usageMeters`
+
+### `frontend/src/pages/AdminCoreBilling.test.jsx`
+
+- Top-level variables:
+  - `mockGetCoreOperatorTenantDetail`
+
 ### `frontend/src/pages/AdminCoreOverview.jsx`
 
 - Functions:
@@ -3289,6 +3301,18 @@ Generated at: `2026-05-03 07:45:01`
 
 - Top-level variables:
   - `mockGetCoreOperatorTenantDetail`, `mockGetCoreOperatorTenants`
+
+### `frontend/src/pages/AdminCoreUsage.jsx`
+
+- Functions:
+  - `MetricCard`, `Panel`, `UsageBar`, `ValueRow`, `bootstrap`, `formatDateTime`, `formatNumber`, `refresh`, `toneClasses`
+- Top-level variables:
+  - `cancelled`, `commercialSummary`, `criticalCount`, `detail`, `isSelected`, `nextMeters`, `normalized`, `ratio`, `response`, `securitySummary`, `selectedMeter`, `tenantSummary`, `totalRemaining`, `usageRisk`, `warningCount`
+
+### `frontend/src/pages/AdminCoreUsage.test.jsx`
+
+- Top-level variables:
+  - `mockGetCoreOperatorTenantDetail`
 
 ### `frontend/src/pages/AdminCrawlControl.jsx`
 

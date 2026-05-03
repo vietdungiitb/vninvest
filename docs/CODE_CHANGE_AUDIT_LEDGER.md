@@ -50,6 +50,111 @@ Residual note:
 - CA-05 is read-first and gating-first; issue/rotate/revoke write-side endpoints remain later work.
 - CA-06 still needs dedicated usage/quota/billing views/routes.
 
+# Entry 2026-05-03ap - CA-06 admin core usage and billing
+
+Muc tieu:
+- Dong slice CA-06 bang hai page dedicated cho `/admin/core/tenants/:tenantId/usage` va `/admin/core/tenants/:tenantId/billing`.
+- Bam current-code tenant snapshot de render usage/quota meter state, subscription summary, billing posture va drill-down navigation.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/AdminCoreUsage.jsx`:
+  - Tao page dedicated cho meter usage, quota summary, meter detail va usage risk context.
+- `frontend/src/pages/AdminCoreBilling.jsx`:
+  - Tao page dedicated cho subscription summary, billing metrics va usage context.
+- `frontend/src/pages/AdminCoreUsage.test.jsx` / `frontend/src/pages/AdminCoreBilling.test.jsx`:
+  - Them focused tests cho list/detail render va data-driven summary cards.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Them drill-down links sang usage va billing routes tu tenant detail.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Update coverage cho tenant-to-usage/billing navigation links.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants/:tenantId/usage` va `/admin/core/tenants/:tenantId/billing` render dedicated pages.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho usage va billing surfaces.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 581.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-06` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-07` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-06.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AdminCoreUsage.jsx (NEW - dedicated meter usage/quota page)
+- frontend/src/pages/AdminCoreBilling.jsx (NEW - dedicated billing/subscription page)
+- frontend/src/pages/AdminCoreUsage.test.jsx (NEW - focused usage page tests)
+- frontend/src/pages/AdminCoreBilling.test.jsx (NEW - focused billing page tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down links to usage/billing routes)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertions for usage/billing routes)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/usage` and `/billing` now render dedicated pages)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for usage/billing pages)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-06 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-07)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreUsage.test.jsx src/pages/AdminCoreBilling.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 581 modules.
+
+Residual note:
+- CA-06 is read-first and snapshot-based; deeper billing adjustment actions remain later work.
+- CA-07 still needs dedicated jobs + audit trace views/routes.
+
+# Entry 2026-05-03ao - CA-05 admin core PAT credentials
+
+Muc tieu:
+- Dong slice CA-05 bang page dedicated cho `/admin/core/tenants/:tenantId/pats`.
+- Bam current-code operator PAT wrapper, render PAT registry, summary cards, detail panel va issue/rotate/revoke gating theo ability.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorTenantPATs()` wrapper cho `/core/v1/operator/tenants/{tenant_id}/pats/`.
+- `frontend/src/pages/AdminCorePATs.jsx`:
+  - Tao page dedicated cho PAT registry, filters, summary cards, detail panel va ability-gated action buttons.
+- `frontend/src/pages/AdminCorePATs.test.jsx`:
+  - Them focused tests cho registry/detail render va gating issue/rotate/revoke buttons.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Them PAT drill-down link tu tenant detail sang PAT route.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Update coverage cho tenant-to-PAT navigation link.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants/:tenantId/pats` render `AdminCorePATs`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho PAT surface.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 577.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-05` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-06` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-05.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator tenant PAT helper)
+- frontend/src/pages/AdminCorePATs.jsx (NEW - dedicated operator PAT page)
+- frontend/src/pages/AdminCorePATs.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to PAT route)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for PAT route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/pats` now renders AdminCorePATs)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for PAT page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-05 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCorePATs.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 577 modules.
+
+Residual note:
+- CA-05 is read-first and gating-first; issue/rotate/revoke write-side endpoints remain later work.
+- CA-06 still needs dedicated usage/quota/billing views/routes.
+
 # Entry 2026-05-03an - CA-04 admin core service accounts
 
 Muc tieu:
@@ -10132,7 +10237,7 @@ Dieu kien test:
 - Environment: dev (local testing, representative duration compression)
 - Thoi gian thuc thi: 10:04-10:05 UTC+7 (2026-04-17)
 - Python script: Direct Django API call + Redis client manipulation (no external tools)
-- Canary flags (da bat truoc): 
+- Canary flags (da bat truoc):
   - REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED=True
   - REALTIME_STREAM_PENDING_RECLAIM_ENABLED=True
   - STREAM_PENDING_RECLAIM_IDLE_MS=1000
@@ -10178,7 +10283,7 @@ Phan Phase 3: FAULT INJECTION [PASS]
     4. ACK reclaimed message
     5. Verify pending count dropped to 0
 - Results:
-  - **Cycle 1**: 
+  - **Cycle 1**:
     - Message: 1776388948805-0
     - Pending BEFORE: 1
     - Pending AFTER: 0
@@ -12146,7 +12251,7 @@ Pham vi:
   2. Phase 2: Integrate Dashboard RealtimePanel.
   3. Phase 4: Toi uu hoa polling strategy de giam excessive re-renders.
   (Phase 3 - Watchlist integration & Phase 5 - Testing = TODO)
-  
+
 - Muc tieu:
   * Giam flashing Dashboard tu 5-10x/min -> 2-3x/min thong qua row memo.
   * Gium API surge ban dau tu 100 calls/1s -> 20 calls/2-3s (batch size +).

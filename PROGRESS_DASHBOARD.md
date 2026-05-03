@@ -1,3 +1,25 @@
+# ✅ AUDIT FILE LIST (2026-05-03ap)
+- frontend/src/pages/AdminCoreUsage.jsx (NEW - dedicated meter usage/quota page)
+- frontend/src/pages/AdminCoreBilling.jsx (NEW - dedicated billing/subscription page)
+- frontend/src/pages/AdminCoreUsage.test.jsx (NEW - focused usage page tests)
+- frontend/src/pages/AdminCoreBilling.test.jsx (NEW - focused billing page tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down links to usage/billing routes)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertions for usage/billing routes)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/usage` and `/billing` now render dedicated pages)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for usage/billing pages)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-06 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-07)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreUsage.test.jsx src/pages/AdminCoreBilling.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 581 modules.
+
+Status:
+- `CA-06` da hoan tat. `/admin/core/tenants/:tenantId/usage` and `/admin/core/tenants/:tenantId/billing` now render dedicated current-code usage/billing pages, and the next open admin slice is `CA-07`.
+
 # ✅ AUDIT FILE LIST (2026-05-03ao)
 - frontend/src/api/client.js (MODIFIED - add core operator tenant PAT helper)
 - frontend/src/pages/AdminCorePATs.jsx (NEW - dedicated operator PAT page)

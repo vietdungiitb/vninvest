@@ -129,6 +129,16 @@ jest.mock('./pages/AdminCorePATs', () => ({
   default: mockPage('admin-core-pats-page', 'Admin Core PATs shell'),
 }));
 
+jest.mock('./pages/AdminCoreUsage', () => ({
+  __esModule: true,
+  default: mockPage('admin-core-usage-page', 'Admin Core Usage shell'),
+}));
+
+jest.mock('./pages/AdminCoreBilling', () => ({
+  __esModule: true,
+  default: mockPage('admin-core-billing-page', 'Admin Core Billing shell'),
+}));
+
 jest.mock('./pages/AdminCrawlControl', () => ({
   __esModule: true,
   default: mockPage('admin-crawl-control-page', 'Admin Crawl Control shell'),
@@ -260,6 +270,18 @@ describe('App admin core route group', () => {
     renderAt('/admin/core/tenants/ten_123/pats');
 
     expect(await screen.findByTestId('admin-core-pats-page')).toBeInTheDocument();
+  });
+
+  it('renders the tenant usage surface inside the admin core group', async () => {
+    renderAt('/admin/core/tenants/ten_123/usage');
+
+    expect(await screen.findByTestId('admin-core-usage-page')).toBeInTheDocument();
+  });
+
+  it('renders the tenant billing surface inside the admin core group', async () => {
+    renderAt('/admin/core/tenants/ten_123/billing');
+
+    expect(await screen.findByTestId('admin-core-billing-page')).toBeInTheDocument();
   });
 
   it('renders the crawl-control surface inside the admin core group', async () => {

@@ -339,6 +339,18 @@ export default function AdminCoreTenants() {
                     >
                       {t('adminCoreTenants.openPATs', { defaultValue: 'Xem PATs' })}
                     </Link>
+                    <Link
+                      to={`/admin/core/tenants/${selectedTenant.id}/usage`}
+                      className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 dark:text-emerald-200"
+                    >
+                      {t('adminCoreTenants.openUsage', { defaultValue: 'Xem usage' })}
+                    </Link>
+                    <Link
+                      to={`/admin/core/tenants/${selectedTenant.id}/billing`}
+                      className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-500/15 dark:text-violet-200"
+                    >
+                      {t('adminCoreTenants.openBilling', { defaultValue: 'Xem billing' })}
+                    </Link>
                   </div>
                 </div>
                 <ValueRow label="Status" value={selectedTenant.status} />

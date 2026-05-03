@@ -124,6 +124,8 @@ describe('AdminCoreTenants', () => {
     expect(await screen.findByText('Tạo service account alpha-main')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Xem service accounts' })).toHaveAttribute('href', '/admin/core/tenants/ten_123/service-accounts');
     expect(screen.getByRole('link', { name: 'Xem PATs' })).toHaveAttribute('href', '/admin/core/tenants/ten_123/pats');
+    expect(screen.getByRole('link', { name: 'Xem usage' })).toHaveAttribute('href', '/admin/core/tenants/ten_123/usage');
+    expect(screen.getByRole('link', { name: 'Xem billing' })).toHaveAttribute('href', '/admin/core/tenants/ten_123/billing');
     expect(mockGetCoreOperatorTenantDetail).toHaveBeenCalledWith('ten_123');
   });
 });
