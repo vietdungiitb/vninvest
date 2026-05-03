@@ -1,3 +1,37 @@
+# Entry 2026-05-03ca - SAAS-16: OpenCore community distribution build pipeline wired
+
+Muc tieu:
+- Dua community build pipeline vao packages/web de sinh artifact `packages/web/dist/community`.
+- Dong bo OpenCore bundle metadata va docs voi command build thuc te `npm run build-community`.
+- Giu dung boundary: OpenCore consume artifact tu packages/web, khong so huu frontend source moi.
+
+Danh sach tep cap nhat:
+- packages/web/package.json (MODIFIED - add build-community script)
+- packages/web/scripts/build-community.mjs (NEW - community build producer)
+- packages/web/dist/community/build-manifest.json (GENERATED - community artifact manifest)
+- packages/opencore/activation/bootstrap.json (MODIFIED - build-community bootstrap step)
+- packages/opencore/distribution/community-bundle.json (MODIFIED - build_command + build_manifest)
+- packages/opencore/distribution/install-community.ps1 (MODIFIED - clearer build hint)
+- packages/opencore/docs-public/quickstart.md (MODIFIED - exact build command)
+- packages/opencore/docs-public/self-host-install.md (MODIFIED - exact build command)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS16.md (MODIFIED - build pipeline status)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-16 build pipeline wired)
+- docs/SAAS_COMPLETION_MASTER_ROADMAP_20260503.md (MODIFIED - SAAS-16 build pipeline wired)
+- docs/SAAS_ARCHITECTURE_GAPS_ASSESSMENT_20260503.md (MODIFIED - gap 8 build pipeline wired)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synced)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ca)
+
+Validation:
+- PASSED: `node ./scripts/build-community.mjs` -> community build artifact written to packages/web/dist/community
+- PASSED: JSON parse of `packages/opencore/distribution/community-bundle.json` -> OK
+- PASSED: JSON parse of `packages/opencore/activation/bootstrap.json` -> OK
+- PASSED: PowerShell syntax parse of `packages/opencore/distribution/install-community.ps1` -> OK
+- PASSED: `docker compose -f packages/opencore/docker-compose.opencore.yml config` -> overlay parses successfully
+
+Residual risk:
+- Release automation and artifact publication are still manual.
+- `packages/web/dist/community` is a generated artifact and must be recreated after frontend changes.
+
 # Entry 2026-05-03bz - SAAS-16: OpenCore community distribution bootstrap
 
 Muc tieu:

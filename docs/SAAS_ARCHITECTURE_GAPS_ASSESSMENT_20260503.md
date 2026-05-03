@@ -161,11 +161,11 @@ Sau khi hoàn thành SAAS-00 đến SAAS-11, VNInvest đã có:
 
 ### Gap 8 — `packages/opencore` chưa hoàn chỉnh implementation (LOW)
 
-**Mô tả:** `packages/opencore` theo kiến trúc là community/self-host distribution bundle. Hiện tại đã có bootstrap assets (compose overlay, activation/distribution manifests, public-safe docs) nhưng chưa có build automation end-to-end.
+**Mô tả:** `packages/opencore` theo kiến trúc là community/self-host distribution bundle. Hiện tại đã có bootstrap assets (compose overlay, activation/distribution manifests, public-safe docs) và build producer `packages/web/scripts/build-community.mjs`, nhưng release automation end-to-end vẫn còn thiếu.
 
-**Tác động:** Community funnel và upgrade journey từ community → SaaS vẫn thiếu release packaging đầy đủ.
+**Tác động:** Community funnel và upgrade journey từ community → SaaS vẫn thiếu release publication đầy đủ.
 
-**Giải pháp:** SAAS-16 (bootstrap in progress) — hoàn tất community build pipeline và release automation sau SAAS-15.
+**Giải pháp:** SAAS-16 (build pipeline wired) — hoàn tất release automation và artifact publication sau SAAS-15.
 
 ---
 

@@ -6,7 +6,7 @@ param(
 $composeFile = Join-Path $PSScriptRoot '..\docker-compose.opencore.yml'
 
 if (-not (Test-Path $WebDistDir)) {
-    throw "Khong tim thay thu muc build community: $WebDistDir"
+    throw "Khong tim thay thu muc build community: $WebDistDir. Hay chay 'npm run build-community' trong packages/web truoc."
 }
 
 $resolvedDistDir = (Resolve-Path $WebDistDir).Path

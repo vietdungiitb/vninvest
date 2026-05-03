@@ -2,7 +2,7 @@
 
 **Ngay:** 2026-05-03  
 **Slice:** SAAS-16 bootstrap  
-**Trang thai:** Package-level bootstrap COMPLETE | Full community build automation STILL IN PROGRESS
+**Trang thai:** Package-level bootstrap COMPLETE | Community build automation COMPLETE | Release automation STILL IN PROGRESS
 
 ---
 
@@ -34,6 +34,10 @@
 ## 2. Validation
 
 ```powershell
+# Community build producer
+Push-Location "C:\Mujoco Projects\vninvest\packages\web"
+node ./scripts/build-community.mjs
+
 # JSON manifests
 Get-Content -Raw packages/opencore/distribution/community-bundle.json | ConvertFrom-Json
 Get-Content -Raw packages/opencore/activation/bootstrap.json | ConvertFrom-Json
@@ -46,6 +50,7 @@ docker compose -f packages/opencore/docker-compose.opencore.yml config
 ```
 
 Result:
+- Community build: PASS, `packages/web/dist/community/build-manifest.json` written
 - JSON parse: PASS
 - PowerShell parse: PASS
 - Compose config: PASS
@@ -56,4 +61,4 @@ Result:
 
 1. `packages/web` community dist artifact must exist at runtime at the path exposed by `OPENCORE_WEB_DIST_DIR`.
 2. This bootstrap slice does not add a build pipeline for the community artifact itself.
-3. Full SAAS-16 completion still needs packaging automation and release orchestration.
+3. Full SAAS-16 completion still needs release orchestration and artifact publication automation.

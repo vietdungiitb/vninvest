@@ -4,8 +4,10 @@
   "lane": "community",
   "frontend_source": "packages/web",
   "build_target": "community",
+  "build_command": "npm run build-community",
   "compose_overlay": "packages/opencore/docker-compose.opencore.yml",
   "web_dist_dir": "../web/dist/community",
+  "build_manifest": "packages/web/dist/community/build-manifest.json",
   "activation_bootstrap": "packages/opencore/activation/bootstrap.json",
   "public_docs": [
     "packages/opencore/docs-public/quickstart.md",
