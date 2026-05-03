@@ -1,3 +1,41 @@
+# Entry 2026-05-03bz - SAAS-16: OpenCore community distribution bootstrap
+
+Muc tieu:
+- Bootstrap packages/opencore thanh community/self-host distribution bundle.
+- Dong goi compose overlay, activation bootstrap, distribution manifest va public-safe docs.
+- Giu dung boundary: consume artifact tu packages/web, consume contract tu packages/core, khong fork frontend source.
+
+Danh sach tep cap nhat:
+- packages/opencore/README.md (MODIFIED - package boundary update)
+- packages/opencore/activation/README.md (MODIFIED - activation metadata notes)
+- packages/opencore/activation/bootstrap.json (NEW - activation bootstrap manifest)
+- packages/opencore/distribution/README.md (MODIFIED - bundle/install notes)
+- packages/opencore/distribution/community-bundle.json (NEW - distribution manifest)
+- packages/opencore/distribution/install-community.ps1 (NEW - install helper)
+- packages/opencore/distribution/nginx-opencore.conf (NEW - self-host Nginx config)
+- packages/opencore/docker-compose.opencore.yml (MODIFIED - real overlay)
+- packages/opencore/docs-public/README.md (MODIFIED - public-safe doc index)
+- packages/opencore/docs-public/quickstart.md (NEW)
+- packages/opencore/docs-public/self-host-install.md (NEW)
+- packages/opencore/docs-public/upgrade-path.md (NEW)
+- packages/opencore/docs-public/feature-pricing-catalog.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS16.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-16 bootstrap in progress)
+- docs/SAAS_COMPLETION_MASTER_ROADMAP_20260503.md (MODIFIED - SAAS-16 bootstrap in progress)
+- docs/SAAS_ARCHITECTURE_GAPS_ASSESSMENT_20260503.md (MODIFIED - gap 8 bootstrap status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bz)
+- PROGRESS_DASHBOARD.md (MODIFIED - SAAS-16 audit file list)
+
+Validation:
+- PASSED: JSON parse of `packages/opencore/distribution/community-bundle.json` -> OK
+- PASSED: JSON parse of `packages/opencore/activation/bootstrap.json` -> OK
+- PASSED: PowerShell syntax parse of `packages/opencore/distribution/install-community.ps1` -> OK
+- PASSED: `docker compose -f packages/opencore/docker-compose.opencore.yml config` -> overlay parses successfully
+
+Residual risk:
+- Community bundle still depends on an actual `packages/web` community dist artifact at runtime.
+- Build automation for the community lane is not finished yet; this is a bootstrap slice, not the full release pipeline.
+
 # Entry 2026-05-03by - SAAS-15: Legacy Decommission Final Gate
 
 Muc tieu:

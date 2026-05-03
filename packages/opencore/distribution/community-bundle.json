@@ -1,0 +1,27 @@
+{
+  "package_name": "vninvest-opencore-community",
+  "version": "2026.05.03",
+  "lane": "community",
+  "frontend_source": "packages/web",
+  "build_target": "community",
+  "compose_overlay": "packages/opencore/docker-compose.opencore.yml",
+  "web_dist_dir": "../web/dist/community",
+  "activation_bootstrap": "packages/opencore/activation/bootstrap.json",
+  "public_docs": [
+    "packages/opencore/docs-public/quickstart.md",
+    "packages/opencore/docs-public/self-host-install.md",
+    "packages/opencore/docs-public/upgrade-path.md",
+    "packages/opencore/docs-public/feature-pricing-catalog.md"
+  ],
+  "core_contract_dependencies": [
+    "tenant-lifecycle v1.0.0",
+    "partner-pat v1.0.0",
+    "unified-alert v1.0.0",
+    "whale-feed-aggregate v1.0.0"
+  ],
+  "boundary_rules": [
+    "Khong fork frontend source rieng.",
+    "Khong so huu entitlement, quota, billing hoac market truth.",
+    "Chi tieu thu artifact tu packages/web va contract tu packages/core."
+  ]
+}

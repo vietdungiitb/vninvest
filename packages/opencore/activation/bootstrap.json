@@ -1,0 +1,24 @@
+{
+  "channel": "community",
+  "activation_mode": "self-host",
+  "upgrade_journey": [
+    "community",
+    "saas",
+    "vip"
+  ],
+  "required_inputs": [
+    "OPENCORE_WEB_DIST_DIR",
+    "OPENCORE_HTTP_PORT"
+  ],
+  "bootstrap_steps": [
+    "Point OPENCORE_WEB_DIST_DIR to the community artifact from packages/web.",
+    "Run packages/opencore/distribution/install-community.ps1.",
+    "Open the self-host URL and review the public-safe docs."
+  ],
+  "core_dependencies": [
+    "tenant-lifecycle v1.0.0",
+    "partner-pat v1.0.0",
+    "unified-alert v1.0.0",
+    "whale-feed-aggregate v1.0.0"
+  ]
+}
