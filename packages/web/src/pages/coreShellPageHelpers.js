@@ -210,7 +210,7 @@ export function filterAbilitiesBySubject(abilities, subjectKeywords) {
 
   return (Array.isArray(abilities) ? abilities : []).filter((ability) => {
     const subject = normalizeComparableText(ability?.subject);
-    return subject === "all" || normalizedKeywords.some((keyword) => subject.includes(keyword));
+    return normalizedKeywords.some((keyword) => subject.includes(keyword));
   });
 }
 

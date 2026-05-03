@@ -1,8 +1,19 @@
 # ENTERPRISE CORE OPERATOR ADMIN API DETAILED CONTRACTS
 
 **Date:** 2026-05-02  
-**Status:** Detailed read-first contract draft for operator P0 endpoints  
+**Status:** Current-code truth plus detailed read-first contract draft for operator P0 endpoints  
 **Purpose:** Hạ `operator admin API backlog` từ mức route families xuống mức request/response semantics, field dictionary và degrade rules đủ chi tiết để frontend/backend cùng freeze từng endpoint P0.
+
+---
+
+## 0. Current-code reality check
+
+Tài liệu này là detailed contract target-state cho operator API family. Ở current runtime hiện tại:
+
+- `GET /api/core/v1/operator/overview/`, `GET /api/core/v1/operator/health/`, `GET /api/core/v1/operator/tenants/`, `GET /api/core/v1/operator/tenants/{tenant_id}/`, `GET /api/core/v1/operator/tenants/{tenant_id}/service-accounts/`, `GET /api/core/v1/operator/tenants/{tenant_id}/pats/` và `GET /api/core/v1/operator/ai-runtime/` đã có wrapper route live,
+- các route `jobs`, `audit`, `operator usage/billing` đã có live wrapper routes ở current code,
+- legacy operator data vẫn phần lớn nằm ở namespace `/api/admin-ops/*` hoặc các legacy views riêng.
+- `frontend/src/pages/AICommandCenter.jsx` là current UI surface cho AI runtime governance; naming này khớp với operator AI runtime route trong current-code truth.
 
 ---
 
@@ -38,6 +49,8 @@ Tài liệu này chỉ chi tiết hóa **P0 read-first operator endpoints**:
 14. `GET /core/v1/operator/ai-runtime`
 
 P1 write routes vẫn ở backlog doc, chưa freeze chi tiết trong artifact này.
+
+As of current code, items `1`, `2`, `3`, `4`, `5`, `10`, `11`, `12`, `13` và `14` đã có wrapper implementation dưới `/api/core/v1/operator/*`; các item còn lại vẫn là contract backlog để freeze trước khi code.
 
 ---
 

@@ -1,7 +1,7 @@
 # ENTERPRISE CORE ACCESS CAPABILITY PAYLOAD CONTRACT
 
 **Date:** 2026-05-02  
-**Status:** Draft contract for session-to-frontend capability bootstrap  
+**Status:** Current-code truth plus target-state contract for session-to-frontend capability bootstrap  
 **Purpose:** Chốt payload backend mà frontend sẽ dùng để dựng `AbilityContext`, `ProtectedRoute`, `Can` và navigation gating, thay cho việc phụ thuộc lâu dài vào bridge rộng kiểu `manage all`.
 
 ---
@@ -38,6 +38,26 @@ Backend hiện tại đã có các anchor liên quan auth/commercial/runtime có
 - `backend/portfolio/ai_runtime_config.py`
 - `backend/portfolio/views_admin_runtime.py`
 
+## 2.1 Current live bootstrap contract
+
+`Implemented now` trong legacy runtime hien tai gom 2 lop bootstrap song song:
+
+- `GET /api/auth/me/` la authoritative auth payload goc,
+- `GET /api/core/v1/access/capabilities/` la dedicated current-code wrapper route moi, adapter tu auth payload hien co sang `capability_snapshot` shape cho lane admin/access.
+
+Payload live hiện tại đã có các trường quan trọng sau:
+
+- top-level `abilities[]` dùng trực tiếp cho `AbilityContext`, `ProtectedRoute` và `Can`,
+- top-level `entitlements` chứa `plan`, `tier`, `quota_caps`, `trial_state` và các boolean capability flags cho tenant/admin surfaces,
+- admin runtime hiện không còn phát `manage all`; operator legacy pages dùng explicit abilities `AdminOps`, `AdminCrawlControl`, `StockDetailAdvancedTab`.
+
+He qua cho handoff pack:
+
+- `/api/auth/me/` van la authoritative auth payload goc cho current code,
+- `GET /api/core/v1/access/capabilities/` da ton tai nhu current-code wrapper route va tra `capability_snapshot`,
+- route wrapper nay van derive tu auth payload/entitlements hien co, chua phai access service doc lap hoan chinh,
+- frontend da cutover sang dedicated `capability_snapshot` trong `ACC-02` cho auth/bootstrap, nav gating va admin shell; `auth/me` van la authoritative auth payload goc va wrapper route van la current-code adapter.
+
 ---
 
 ## 3. Mục tiêu contract
@@ -57,7 +77,9 @@ Payload capability bootstrap phải chốt được 6 việc:
 
 ## 4.1 Primary route
 
-`GET /core/v1/access/capabilities`
+Current live auth payload route: `GET /api/auth/me/`  
+Current live dedicated wrapper route: `GET /api/core/v1/access/capabilities/`  
+Target-state dedicated route ownership: `GET /core/v1/access/capabilities` qua access service tach rieng hon
 
 ### Auth mode
 
@@ -67,7 +89,25 @@ Payload capability bootstrap phải chốt được 6 việc:
 
 ### Response object key
 
-`capability_snapshot`
+Current live payload cua `/api/auth/me/` khong co top-level `capability_snapshot`; no tra `abilities[]` va `entitlements` truc tiep trong auth payload. Wrapper route `/api/core/v1/access/capabilities/` hien da adapter current truth nay thanh object key `capability_snapshot`, nhung van con mang tinh current-code bridge thay vi final access service.
+
+## 4.2 Mapping rule từ current live payload sang target-state snapshot
+
+| Current live `/api/auth/me/` | Current wrapper `/api/core/v1/access/capabilities/` | Ghi chú |
+|---|---|---|
+| `abilities[]` | `abilities[]` | giu nguyen action/subject semantics |
+| `entitlements.plan`, `entitlements.tier` | `actor`, `roles`, `feature_flags` | wrapper route adapter hoa de frontend co dedicated object |
+| `entitlements.can_read_*` booleans | `surfaces`, `navigation`, `constraints` | current wrapper route derive surface/menu hints tu boolean flags nay |
+| `is_staff`, `is_superuser` | `actor.session_type`, `surfaces.central_operator.enabled` | current code van suy luan mot phan tu auth flags |
+| top-level `plan` | `actor.plan`, `roles[]` | redundant voi `entitlements.plan` va duoc carry sang wrapper |
+
+### Current wrapper note
+
+Route `/api/core/v1/access/capabilities/` hien con them:
+
+- `entitlements` de frontend migration khong mat current commercial flags,
+- `feature_flags.capability_bootstrap_source=auth_me_wrapper` de auditors nhan ra no dang la wrapper route,
+- `bridges.legacy_manage_all_active=false` de xac nhan explicit ability model da thay wildcard bridge trong live legacy runtime.
 
 ### Cache semantics
 

@@ -1,3 +1,328 @@
+# ✅ AUDIT FILE LIST (2026-05-03ak)
+- frontend/src/App.jsx (MODIFIED - add admin core route group shell and guarded routes)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - switch special surface link to canonical admin core route)
+- frontend/src/pages/AdminOps.test.jsx (MODIFIED - expect canonical admin core crawl-control link)
+- frontend/src/App.adminCoreRoutes.test.jsx (NEW - route-group guard and redirect tests)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm test -- --runInBand --watch=false --runTestsByPath src/App.adminCoreRoutes.test.jsx src/pages/AdminOps.test.jsx; Pop-Location` => `2 passed, 5 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 569 modules.
+
+Status:
+- `CA-01` da hoan tat. Route group `/admin/core/*` now exists with guards, and next open admin slice is `CA-02`.
+
+# ✅ AUDIT FILE LIST (2026-05-03aj)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add explicit package cutover readiness gate matrix)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add package migration plan to control docs pack)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-03 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search`/read-back xac nhan package migration plan da co gate matrix ro rang cho parity, validation, rollback, route coverage, runtime ownership va approval.
+
+Status:
+- `PKG-03` da hoan tat. Package-track cutover readiness now co explicit gate matrix va code-team continuation route can move sang `CA-01` theo playbook.
+
+# ✅ AUDIT FILE LIST (2026-05-03ai)
+- frontend/src/pages/packageShellHostRuntime.test.jsx (NEW - package shell host parity proofs)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/packageShellHostRuntime.test.jsx; Pop-Location` => `3 passed, 3 total`.
+
+Status:
+- `PKG-02` da hoan tat. Package-shell host parity proofs now co machine-readable coverage cho loader overlay, query carry-over va shared env/fetch wiring; next slice recommended la `PKG-03`.
+
+# ✅ AUDIT FILE LIST (2026-05-03ah)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - switch session endpoint to auth/me wrapper path)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add auth/me route aliases for session payload)
+- packages/web/scripts/check-shell.mjs (MODIFIED - lock core wrapper-style session endpoint)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\packages\web; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: Python smoke import against `packages/core/backend/src/vninvest_core/api_stub.py` verified `/auth/me` and `/core/v1/auth/me` aliases and stable session fields.
+- PASSED: `get_errors` clean on the touched JS and Python files.
+
+Status:
+- `PKG-01` da hoan tat. Package-core session lane nay gio khop current-code wrapper naming hon, trong khi alias cu van giu compat cho lane baseline.
+
+# ✅ AUDIT FILE LIST (2026-05-03ag)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (NEW - code-team continuation route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add playbook reference and continuation route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add playbook link)
+- docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add Lane C and audit gates)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add continuation route section)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add HND-01 row)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (MODIFIED - add continuation route and risk note)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (MODIFIED - add playbook audit checklist)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` xac nhan playbook link xuat hien trong master index, handoff master va evidence template.
+
+Status:
+- Code-team continuation route da duoc them vao docs control pack; next recommended slice la `PKG-01`.
+
+# ✅ AUDIT FILE LIST (2026-05-03af)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (MODIFIED - add migration order section)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add migration order cross-reference)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DATA-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `git diff --stat` tren storage strategy va freeze checklist cho thay dung scope thay doi.
+
+Status:
+- `DATA-02` da hoan tat. Storage strategy now has the canonical migration/backfill/rollback order; freeze checklist chỉ cross-reference.
+
+# ✅ AUDIT FILE LIST (2026-05-03ae)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (MODIFIED - add canonical resource matrix)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - add matrix cross-reference)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add matrix cross-reference)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DATA-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `git diff --stat` tren 3 file matrix cap nhat cho thay dung scope thay doi.
+
+Status:
+- `DATA-01` da hoan tat. `ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md` la canonical matrix; contract pack va freeze checklist chi cross-reference de giu thanh phan current-code va target-state khong bi tron.
+
+# ✅ AUDIT FILE LIST (2026-05-03ad)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-03 complete)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - update tenant summary mapping)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - update tenant-admin capability inventory)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - update live wrapper route posture)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - update tenant route freeze posture)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - mark partner tenant route live)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: spot check with grep confirmed live tenant route strings in updated docs.
+
+Status:
+- `PART-03` da hoan tat. Tenant-admin docs now reflect live wrapper route `GET /api/core/v1/partner/tenant/` va target-state owner path `GET /core/v1/partner/tenant`.
+
+# ✅ AUDIT FILE LIST (2026-05-03ac)
+- frontend/src/api/client.js (MODIFIED - add coreRequestId response metadata and tenant summary helper)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => `Compiled successfully`.
+
+Status:
+- `PART-02` da hoan tat. Frontend partner client now co `getTenantSummary()` va `coreRequestId` metadata cho response/error handling.
+
+# ✅ AUDIT FILE LIST (2026-05-03ab)
+- backend/portfolio/views_partner_admin.py (MODIFIED - add partner tenant summary wrapper)
+- backend/config/urls.py (MODIFIED - register partner tenant route)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - add tenant summary route test)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - mark partner tenant route live)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - update tenant current-code freeze posture)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - update tenant route freeze posture)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_partner_admin_api --keepdb; Pop-Location` => `Ran 5 tests ... OK`.
+
+Status:
+- `PART-01` da hoan tat. Tenant Home da co current live wrapper route `GET /api/core/v1/partner/tenant/`.
+
+# ✅ AUDIT FILE LIST (2026-05-03aa)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-05 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - add AI Command Center UI naming note)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - add AI Command Center UI naming note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_system_ai_admin_api --keepdb; Pop-Location` => `Ran 20 tests ... OK`.
+
+Status:
+- `OPS-05` da hoan tat. Operator AI runtime route, test coverage va AI Command Center UI naming da khop nhau trong current-code truth.
+
+# ✅ AUDIT FILE LIST (2026-05-02bq)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator jobs and audit trace wrappers)
+- backend/portfolio/views.py (MODIFIED - export operator jobs and audit trace views)
+- backend/config/urls.py (MODIFIED - register operator jobs and audit routes)
+- backend/portfolio/tests/test_operator_jobs_audit_api.py (NEW - focused operator jobs and audit trace tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-04 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - update current-code reality check)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - update current-code reality check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_operator_jobs_audit_api.py`.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_jobs_audit_api --keepdb; Pop-Location` xanh.
+
+Status:
+- `OPS-04` da hoan tat. Operator jobs table va audit trace routes da live; backlog tiep theo la `OPS-05`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bp)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator tenant registry/detail and principal list projections)
+- backend/portfolio/views.py (MODIFIED - export operator tenant/principal views)
+- backend/config/urls.py (MODIFIED - register operator tenant/principal routes)
+- backend/portfolio/tests/test_operator_tenant_registry_api.py (NEW - focused admin, registry and principal projection tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-02 and OPS-03 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - update current-code reality check)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - update current-code reality check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bp)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_tenant_registry_api --keepdb; Pop-Location` xanh.
+- PASSED: live runtime probe via `manage.py shell` xac nhan operator tenant/principal routes tra payload JSON dung shape.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` rebuild/restart backend thanh cong.
+
+Status:
+- `OPS-02` va `OPS-03` da hoan tat. Operator tenant registry/detail va service-account/PAT projections da live; backlog tiep theo la `OPS-04`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bo)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator overview/health read projections)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/operator/overview/` and `/api/core/v1/operator/health/`)
+- backend/portfolio/views.py (MODIFIED - export operator overview/health views)
+- backend/portfolio/tests/test_operator_admin_runtime_api.py (NEW - focused admin access and snapshot structure tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bo)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_admin_runtime_api --keepdb; Pop-Location` xanh.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` rebuild/restart backend thanh cong.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md`.
+
+Status:
+- `OPS-01` da hoan tat. Operator overview/health now la thin read projection layer tren current runtime truth; backlog tiep theo la `OPS-02`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bn)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - replace manage-all wildcard with explicit package capabilities)
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - remove wildcard subject all from subject filtering)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add regression assertions for explicit capabilities)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-03 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./packages/web; npm run check:shell; Pop-Location` thanh cong.
+- PASSED: `& ".\.venv\Scripts\python.exe" -m py_compile packages/core/backend/src/vninvest_core/api_stub.py` thanh cong.
+
+Status:
+- `ACC-03` da hoan tat. Package-track wildcard fallback da duoc lo bo; next lane work con lai la parity/hardening khac neu can.
+
+# ✅ AUDIT FILE LIST (2026-05-02bm)
+- frontend/src/api/auth.js (MODIFIED - add capability snapshot helper)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - consume capability snapshot in auth bootstrap)
+- frontend/src/components/TopNav.jsx (MODIFIED - prefer capability snapshot navigation hints)
+- frontend/src/components/Sidebar.jsx (MODIFIED - prefer capability snapshot navigation hints)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - mark frontend cutover complete)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-00 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` thanh cong.
+- PASSED: browser proof tren `/dashboard` xac nhan tenant/admin nav rendering dung sau cutover capability snapshot.
+- PASSED: `read_page`/`get_errors` cho docs/taskboards lien quan clean.
+
+Status:
+- `ACC-02` da hoan tat. Backlog tiep theo trong lane nay la `ACC-03` de lo wildcard fallback package-track.
+
+# ✅ AUDIT FILE LIST (2026-05-02bl)
+- backend/portfolio/auth_views.py (MODIFIED - add current-code capability snapshot wrapper and auth bootstrap helper reuse)
+- backend/config/urls.py (MODIFIED - expose `/api/core/v1/access/capabilities/`)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - add tenant/operator focused tests for the new capability route)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - document live wrapper route and current wrapper semantics)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - update CA-00 partial state and add implementation note)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes, total modules 564)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: focused Django suite `portfolio.tests.test_api_routes_auth_profile --keepdb` xanh ca truoc va sau doc sync (`Ran 10 tests ... OK`).
+- PASSED: backend runtime rebuilt qua `docker compose -f ./docker-compose.dev.yml up -d --build backend`; container `vninvest-dev-backend` len `healthy`.
+- PASSED: runtime proxy proof qua `http://127.0.0.1/api/core/v1/access/capabilities/` voi user `testpro` tra `capability_snapshot` hop le, tenant surface enabled va wildcard bridge disabled.
+- PASSED: `get_errors` clean tren code files va docs/taskboards vua cap nhat.
+- PASSED: `module_tree_full.md` duoc regenerate thanh cong sau code change.
+
+Status:
+- `ACC-01` da hoan tat. Backlog tu nhien tiep theo la `ACC-02` de frontend bat dau doc wrapper route moi va can bang route/nav gating theo capability snapshot.
+
+# ✅ AUDIT FILE LIST (2026-05-02bk)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - add current/live vs target-state interpretation and live route inventory)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - mark operator screen family as target-state and live tenant/admin surfaces as implemented-now)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - replace outdated manage-all assumption with explicit current ability inventory)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - document `/api/auth/me/` as current bootstrap and map to future capability snapshot)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - update CA slice states to match current code)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - mark most operator routes as backlog and ai-runtime wrapper as live)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - mark only operator ai-runtime route as implemented-now)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - document live partner self-service routes and target-state machine-auth/data-plane lanes)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - add per-resource current-code freeze posture)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add current boundary reality for legacy runtime and package-track coexistence)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (MODIFIED - add current storage reality snapshot)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (MODIFIED - add current materialized model snapshot vs target-state)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add current freeze snapshot and correct route/auth semantics)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DOC-04, DOC-05, DOC-06 complete)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (MODIFIED - refresh positive impact and residual risks after doc-family completion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bk)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren toan bo 15 docs vua realign/cap nhat trong dot nay.
+- PASSED: `grep_search` xac nhan nhom Access/Admin docs da ghi ro current bootstrap `/api/auth/me/`, live tenant/admin routes va explicit abilities thay cho `manage all`.
+- PASSED: `grep_search` xac nhan nhom Operator/Partner/Core contract docs da ghi ro auth `human session/JWT`, `GET /api/core/v1/operator/ai-runtime/` la live, `GET /core/v1/partner/tenant` va data-plane partner APIs la target-state.
+- PASSED: `grep_search` xac nhan nhom Resource/Schema docs da co implemented-vs-target snapshots cho `CoreTenant`, `CoreServiceAccount`, `CorePATCredential` va object backlog.
+- PASSED: `get_errors` clean va `grep_search` confirm tren current-code taskboard + handoff audit report sau khi danh dau xong `DOC-04`, `DOC-05`, `DOC-06`.
+
+Status:
+- Current-code handoff pack nay gio da day du o mat docs. Cac muc con mo cua chuong trinh chi con la code backlog `ACC-*`, `OPS-*`, `PART-*`, `DATA-*`, `PKG-*`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bj)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - rewrite current execution baseline around actual legacy + package-track repo state)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add current-code execution control entry points and section `PHAN 0`)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (NEW - current-code handoff master)
+- docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (NEW - execution plan for docs realignment and code backlog)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (NEW - live execution taskboard)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md (NEW - requirement/slice traceability)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (NEW - internal audit and validation protocol)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (NEW - slice evidence template)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (NEW - handoff audit report)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` xac nhan rebaseline moi da ghi ro `packages/`, `shared/`, `buildTarget.js`, package-track wildcard fallback va sequencing `Phase 1`.
+- PASSED: `get_errors` clean tren rebaseline va 8 docs control moi/cap nhat cua handoff pack.
+- PASSED: `grep_search` xac nhan master index da tro dung sang handoff master, implementation plan, taskboard, traceability, self-audit va evidence template moi.
+- PASSED: `grep_search` xac nhan traceability matrix va taskboard co chung task IDs chinh `DOC-01`, `ACC-01`, `OPS-01`, `PART-01`, `DATA-01`, `PKG-01`.
+- PASSED: read review tren master index xac nhan `PHAN 0` da duoc chen vao truoc `PHAN 1A` va current-code execution control docs da tro thanh entry point chinh.
+
 # ✅ AUDIT FILE LIST (2026-05-02bi)
 - frontend/src/components/HoldingsTable.jsx (MODIFIED - whale badge + row glow for recent whale alerts)
 - frontend/src/pages/LegacyDashboard.jsx (MODIFIED - 5-minute whale alert map from realtime feed)

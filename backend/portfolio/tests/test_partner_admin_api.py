@@ -77,6 +77,24 @@ class PartnerAdminApiTests(APITestCase):
         self.assertEqual(create_response.data['environment'], 'staging')
         self.assertEqual(create_response.data['policy_ids'], ['pol_market_read', 'pol_signals_read'])
 
+    def test_partner_tenant_summary_route_returns_current_tenant_snapshot(self):
+        self.assertFalse(CoreTenant.objects.filter(owner_user=self.user).exists())
+
+        response = self.client.get('/api/core/v1/partner/tenant/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['object'], 'tenant')
+        self.assertEqual(response.data['id'], f'ten_usr_{self.user.id}')
+        self.assertEqual(response.data['tenant_code'], CoreTenant.objects.get(owner_user=self.user).tenant_code)
+        self.assertEqual(response.data['display_name'], self.user.username)
+        self.assertEqual(response.data['status'], CoreTenant.StatusChoices.ACTIVE)
+        self.assertEqual(response.data['plan_code'], 'pro')
+        self.assertIsNone(response.data['billing_account_id'])
+        self.assertEqual(response.data['default_environment'], CoreTenant.EnvironmentChoices.PROD)
+        self.assertIn('created_at', response.data)
+        self.assertIn('updated_at', response.data)
+        self.assertIn('X-Core-Request-Id', response)
+
     def test_pat_issue_list_rotate_and_revoke(self):
         service_account = CoreServiceAccount.objects.create(
             owner_user=self.user,

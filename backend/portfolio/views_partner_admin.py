@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .opencore_revenue import DPIInvoice, DPISubscription
-from .models import CorePATCredential, CoreServiceAccount
+from .models import CorePATCredential, CoreServiceAccount, CoreTenant
 from .partner_tenant_context import resolve_partner_tenant_context
 from .permissions import IsProPlan
 from .quota_service import get_usage
@@ -311,6 +311,21 @@ def _build_subscription_summary(user, tenant_context) -> dict:
     }
 
 
+def _serialize_tenant_summary(tenant: CoreTenant) -> dict:
+    return {
+        'object': 'tenant',
+        'id': tenant.public_id,
+        'tenant_code': tenant.tenant_code,
+        'display_name': tenant.display_name,
+        'status': tenant.status,
+        'plan_code': tenant.plan_code,
+        'billing_account_id': None,
+        'default_environment': tenant.default_environment,
+        'created_at': tenant.created_at.isoformat() if tenant.created_at else None,
+        'updated_at': tenant.updated_at.isoformat() if tenant.updated_at else None,
+    }
+
+
 class PartnerServiceAccountCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
     environment = serializers.ChoiceField(choices=CoreServiceAccount.EnvironmentChoices.choices)
@@ -340,6 +355,17 @@ def _resolve_owned_service_account(tenant_context, public_id: str) -> CoreServic
 
 def _resolve_owned_pat(tenant_context, public_id: str) -> CorePATCredential | None:
     return CorePATCredential.objects.select_related('service_account').filter(owner_user=tenant_context.owner_user, public_id=public_id).first()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsProPlan])
+def partner_tenant_api(request):
+    request_id = _request_id()
+    tenant = CoreTenant.ensure_for_user(request.user)
+    return _response(
+        _serialize_tenant_summary(tenant),
+        request_id=request_id,
+    )
 
 
 @api_view(['GET', 'POST'])

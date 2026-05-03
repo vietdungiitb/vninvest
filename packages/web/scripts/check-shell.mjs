@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   BUILD_TARGETS,
+  coreAdapter,
   ShellAuthProvider,
   createCoreAdvisorySessionClient,
   createCoreWhaleAnalyticsSnapshotClient,
@@ -35,6 +36,7 @@ import {
   useShellAuth,
   useShellAuthRuntime,
 } from "../src/index.js";
+import { filterAbilitiesBySubject } from "../src/pages/coreShellPageHelpers.js";
 
 function assert(condition, message) {
   if (!condition) {
@@ -78,6 +80,11 @@ for (const adapter of shellAdapters) {
     assert(typeof adapter[methodName] === "function", `Adapter ${adapter.adapterId} is missing method: ${methodName}`);
   }
 }
+
+assert(
+  coreAdapter.getSessionPayloadEndpoint().endsWith("/auth/me"),
+  "Core adapter must use the current-code auth/me wrapper endpoint for session payloads",
+);
 
 const adminOpsRoute = routeCatalog.find((route) => route.id === "admin-ops");
 const aiAdvisoryRoute = routeCatalog.find((route) => route.id === "ai-advisory");
@@ -146,6 +153,18 @@ assert(typeof renderShellField === "function", "Shared shell field helper must b
 assert(typeof renderShellSelectField === "function", "Shared shell select helper must be exported");
 assert(typeof createCoreAdvisorySessionClient === "function", "Core advisory session client must be exported");
 assert(typeof createCoreWhaleAnalyticsSnapshotClient === "function", "Core whale analytics snapshot client must be exported");
+
+const explicitAdminAbilities = filterAbilitiesBySubject(
+  [
+    { action: "manage", subject: "all" },
+    { action: "read", subject: "admin.operator.read" },
+    { action: "manage", subject: "system.ai_command_center.manage" },
+  ],
+  "admin",
+);
+
+assert(explicitAdminAbilities.length === 1, "Wildcard subject `all` must no longer satisfy admin keyword filters");
+assert(explicitAdminAbilities[0].subject === "admin.operator.read", "Explicit admin ability must still match admin keyword filters");
 
 const advisoryRequests = [];
 const advisoryClient = createCoreAdvisorySessionClient({

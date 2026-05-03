@@ -21,6 +21,8 @@ export const confirmPasswordReset = (token, newPassword, newPasswordConfirm) => 
 
 export const refreshToken = (refresh) => apiClient.post('/auth/token/refresh/', { refresh });
 
+export const getCapabilitySnapshot = () => apiClient.get('/core/v1/access/capabilities/');
+
 export const getUserConfig = () => apiClient.get('/portfolio/userconfig/');
 
 export const updateUserConfig = (data) => apiClient.put('/portfolio/userconfig/', data);

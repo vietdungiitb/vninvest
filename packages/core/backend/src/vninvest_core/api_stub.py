@@ -55,7 +55,13 @@ def _ability_rules(identity, build_target):
             {"action": "manage", "subject": "Portfolios"},
         ])
     if identity["is_staff"] or identity["is_superuser"]:
-        rules.append({"action": "manage", "subject": "all"})
+        if build_target in {"saas", "vip"}:
+            rules.extend([
+                {"action": "read", "subject": "admin.operator.read"},
+                {"action": "manage", "subject": "system.ai_command_center.manage"},
+            ])
+        if build_target == "vip":
+            rules.append({"action": "read", "subject": "vip.local_control.read"})
     return rules
 
 
@@ -140,11 +146,13 @@ ROUTE_HANDLERS = {
     "/healthz": _health_payload,
     "/manifest": get_core_manifest,
     "/access/capabilities": _capability_bootstrap_payload,
+    "/auth/me": _session_payload,
     "/session/me": _session_payload,
     "/core/v1/health": _health_payload,
     "/core/v1/healthz": _health_payload,
     "/core/v1/manifest": get_core_manifest,
     "/core/v1/access/capabilities": _capability_bootstrap_payload,
+    "/core/v1/auth/me": _session_payload,
     "/core/v1/session/me": _session_payload,
 }
 

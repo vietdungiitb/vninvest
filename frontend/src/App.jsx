@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginModal from './components/LoginModal';
 import Dashboard from './pages/Dashboard';
@@ -63,6 +63,10 @@ function ProtectedLayout() {
   return <Layout />;
 }
 
+function AdminCoreShell() {
+  return <Outlet />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -113,6 +117,33 @@ export default function App() {
                   <Route path="transactions" element={<Transactions />} />
                   <Route path="support" element={<Support />} />
                   <Route path="watchlist" element={<Watchlist />} />
+                  <Route path="admin/core" element={<AdminCoreShell />}>
+                    <Route
+                      index
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <Navigate to="/admin/core/overview" replace />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="overview"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminOps />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="crawl-control"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminCrawlControl">
+                          <AdminCrawlControl />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route path="*" element={<Navigate to="/admin/core/overview" replace />} />
+                  </Route>
                   <Route
                     path="admin-ops"
                     element={(

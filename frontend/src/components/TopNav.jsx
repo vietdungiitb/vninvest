@@ -1,4 +1,4 @@
-import React from 'react';
+import { useMemo } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -33,15 +33,23 @@ function NavGroup({ label, items, icon }) {
 
 export default function TopNav() {
   const { t, locale, setLanguage } = useI18n();
-  const { ability, userIdentity } = usePortfolio();
+  const { ability, capabilitySnapshot, userIdentity } = usePortfolio();
   const { uiMode, toggleUiMode, modernLeftSidebarOpen, toggleModernLeftSidebar } = useInterface();
-  const canReadAdminOps = ability.can('read', 'AdminOps');
-  const canReadTenantHome = ability.can('read', 'TenantAdminHome');
-  const canReadTenantCapabilities = ability.can('read', 'TenantCapabilityView');
-  const canReadTenantUsage = ability.can('read', 'TenantUsageView');
-  const canReadTenantBilling = ability.can('read', 'TenantBillingView');
-  const canReadTenantServiceAccounts = ability.can('read', 'TenantServiceAccountAdmin');
-  const canReadTenantPATs = ability.can('read', 'TenantPATAdmin');
+  const capabilityMenus = capabilitySnapshot?.navigation?.menus || [];
+  const hasCapabilityMenus = capabilityMenus.length > 0;
+  const visibleRoutes = useMemo(
+    () => new Set(capabilityMenus.filter((item) => item?.enabled).map((item) => item.route)),
+    [capabilityMenus],
+  );
+  const tenantSurfaceEnabled = capabilitySnapshot?.surfaces?.tenant_admin?.enabled;
+  const canNavigateTo = (route, fallback) => (hasCapabilityMenus ? visibleRoutes.has(route) : fallback);
+  const canReadAdminOps = canNavigateTo('/admin-ops', ability.can('read', 'AdminOps'));
+  const canReadTenantHome = canNavigateTo('/tenant-admin/home', ability.can('read', 'TenantAdminHome'));
+  const canReadTenantCapabilities = canNavigateTo('/tenant-admin/capabilities', ability.can('read', 'TenantCapabilityView'));
+  const canReadTenantUsage = canNavigateTo('/tenant-admin/usage', ability.can('read', 'TenantUsageView'));
+  const canReadTenantBilling = canNavigateTo('/tenant-admin/billing', ability.can('read', 'TenantBillingView'));
+  const canReadTenantServiceAccounts = canNavigateTo('/tenant-admin/service-accounts', ability.can('read', 'TenantServiceAccountAdmin'));
+  const canReadTenantPATs = canNavigateTo('/tenant-admin/pats', ability.can('read', 'TenantPATAdmin'));
 
   const signalItems = [
     { to: '/ai-advisory', label: t('layout.nav.aiAdvisory') },
@@ -92,7 +100,7 @@ export default function TopNav() {
           </NavLink>
           <NavGroup icon="◈" label={t('layout.nav.group.signals')} items={signalItems} />
           <NavGroup icon="▦" label={t('layout.nav.group.portfolio')} items={portfolioItems} />
-          {tenantItems.length > 0 ? <NavGroup icon="◫" label={t('layout.nav.group.tenant')} items={tenantItems} /> : null}
+          {tenantSurfaceEnabled !== false && tenantItems.length > 0 ? <NavGroup icon="◫" label={t('layout.nav.group.tenant')} items={tenantItems} /> : null}
           <NavGroup icon="◌" label={t('layout.nav.group.system')} items={systemItems} />
         </div>
 

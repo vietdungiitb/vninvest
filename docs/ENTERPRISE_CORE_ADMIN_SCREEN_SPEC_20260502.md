@@ -1,7 +1,7 @@
 # ENTERPRISE CORE ADMIN SCREEN SPEC
 
 **Date:** 2026-05-02  
-**Status:** Screen-level implementation spec for admin surfaces  
+**Status:** Current-code truth plus screen-level implementation spec for admin surfaces  
 **Purpose:** Chi tiết hóa `Core Admin UI` xuống mức screen contract để team frontend có thể dựng flow, states, widgets và action model mà không phải suy đoán từ architecture doc.
 
 **Companion artifact:**
@@ -14,9 +14,9 @@
 
 Tài liệu này đứng sau:
 
-- [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
-- [ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md)
-- [ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md)
+- [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](./ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
+- [ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502](./ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md)
+- [ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502](./ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md)
 
 Nó tập trung vào 3 câu hỏi thực dụng:
 
@@ -36,6 +36,19 @@ Frontend hiện tại đã có các primitive phù hợp để dựng admin surf
 - ability state trong `frontend/src/context/PortfolioContext.jsx` và `frontend/src/context/AbilityContext.js`.
 
 Do đó screen spec này giả định admin UI sẽ bám theo các primitive trên, không tạo hệ permission song song phía frontend.
+
+## 2.1 Current live screen inventory
+
+Để tránh nhầm giữa live runtime và target-state spec:
+
+- `Implemented now`:
+   - `/admin-ops` và `/admin-crawl-control` là hai operator screens đang chạy thật,
+   - `/tenant-admin/home`, `/tenant-admin/capabilities`, `/tenant-admin/usage`, `/tenant-admin/billing`, `/tenant-admin/service-accounts`, `/tenant-admin/pats` là tenant admin screens đang chạy thật,
+   - tenant screens hiện bootstrap chủ yếu từ `/api/auth/me/` cộng với partner self-service APIs.
+- `Partial`:
+   - AI runtime read path đã có contract live `GET /core/v1/operator/ai-runtime`, nhưng chưa được đặt trong route family `/admin/core/ai-runtime`.
+- `Target-state`:
+   - toàn bộ Central Operator Admin screen family ở Mục 4 bên dưới, ngoại trừ phần AI runtime data route đã có wrapper backend.
 
 ---
 
@@ -67,6 +80,8 @@ Mọi screen đều phải có:
 ---
 
 ## 4. Central Operator Admin screen specs
+
+Các screen ở Mục 4 là target-state screen contracts cho central operator console. Chúng chưa tồn tại đầy đủ trong live runtime; code hiện tại mới có legacy operator pages `/admin-ops`, `/admin-crawl-control` và route dữ liệu `GET /core/v1/operator/ai-runtime`.
 
 ## 4.1 Platform Overview
 
@@ -449,8 +464,9 @@ Mọi screen đều phải có:
 
 ### APIs
 
-- `GET /core/v1/partner/tenant`
-- `GET /core/v1/access/capabilities`
+- `GET /api/auth/me/` cho live bootstrap hiện tại
+- `GET /api/core/v1/partner/tenant/` cho live tenant summary hiện tại
+- `GET /core/v1/access/capabilities` là target-state follow-up
 
 ---
 
@@ -524,8 +540,9 @@ Mọi screen đều phải có:
 
 ### APIs
 
-- `GET /core/v1/access/capabilities`
-- `GET /core/v1/ai/runtime-config`
+- `GET /api/auth/me/` cho live entitlements và abilities hiện tại
+- `GET /core/v1/access/capabilities` là target-state follow-up
+- `GET /core/v1/ai/runtime-config` là target-state follow-up
 
 ---
 
@@ -541,21 +558,12 @@ Mọi screen đều phải có:
 
 ## 7. Current implementation shape trong repo hiện tại
 
-Trước khi move sang `packages/web/`, screen groups nên được dựng như sau:
+Trước khi move sang `packages/web/`, repo hiện tại đang có các screen groups live như sau:
 
 ```text
-frontend/src/pages/admin/core/CoreOverview.jsx
-frontend/src/pages/admin/core/CoreTenants.jsx
-frontend/src/pages/admin/core/CoreTenantDetail.jsx
-frontend/src/pages/admin/core/CoreServiceAccounts.jsx
-frontend/src/pages/admin/core/CorePATs.jsx
-frontend/src/pages/admin/core/CoreUsage.jsx
-frontend/src/pages/admin/core/CoreBilling.jsx
-frontend/src/pages/admin/core/CoreRuntimeHealth.jsx
-frontend/src/pages/admin/core/CoreJobs.jsx
-frontend/src/pages/admin/core/CoreAuditTrace.jsx
-frontend/src/pages/admin/core/CoreAIRuntime.jsx
-
+frontend/src/pages/AdminOps.jsx
+frontend/src/pages/AdminCrawlControl.jsx
+frontend/src/pages/AICommandCenter.jsx
 frontend/src/pages/admin/tenant/TenantAdminHome.jsx
 frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx
 frontend/src/pages/admin/tenant/TenantPATs.jsx
@@ -563,6 +571,8 @@ frontend/src/pages/admin/tenant/TenantUsage.jsx
 frontend/src/pages/admin/tenant/TenantBilling.jsx
 frontend/src/pages/admin/tenant/TenantCapabilities.jsx
 ```
+
+Các file `frontend/src/pages/admin/core/*` ở đây nên được xem là target-state implementation shape cho phase operator console kế tiếp, chưa phải current live inventory.
 
 ---
 

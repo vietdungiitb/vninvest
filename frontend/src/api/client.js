@@ -30,6 +30,22 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function getCoreRequestId(headers = {}) {
+  return String(headers['x-core-request-id'] || headers['X-Core-Request-Id'] || '').trim();
+}
+
+function attachCoreRequestId(response) {
+  if (!response || typeof response !== 'object') {
+    return response;
+  }
+
+  const requestId = getCoreRequestId(response.headers || {});
+  if (requestId) {
+    response.coreRequestId = requestId;
+  }
+  return response;
+}
+
 function buildIdempotencyKey(prefix = 'request') {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `${prefix}-${crypto.randomUUID()}`;
@@ -91,9 +107,13 @@ apiClient.interceptors.request.use((config) => {
 
 // Interceptor response: 401 -> refresh token -> retry, fail -> logout
 apiClient.interceptors.response.use(
-  (res) => res,
+  (res) => attachCoreRequestId(res),
   async (err) => {
     const originalRequest = err.config || {};
+    attachCoreRequestId(err.response);
+    if (err.response?.coreRequestId) {
+      err.coreRequestId = err.response.coreRequestId;
+    }
 
     // Login/register/verify endpoints must return their own errors to UI.
     // If we auto-redirect here, the login page appears to refresh without message.
@@ -146,6 +166,9 @@ export const refreshAccessToken = async () => {
 
 export const getTenantServiceAccounts = (params = {}) =>
   apiClient.get('/core/v1/partner/service-accounts/', { params });
+
+export const getTenantSummary = () =>
+  apiClient.get('/core/v1/partner/tenant/');
 
 export const createTenantServiceAccount = (payload) =>
   apiClient.post('/core/v1/partner/service-accounts/', payload, {

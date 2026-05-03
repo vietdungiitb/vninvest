@@ -1,8 +1,29 @@
 # ENTERPRISE CORE PARTNER API CONTRACT DRAFT
 
 **Date:** 2026-05-02  
-**Status:** Draft contract for `vip-app` and future partner integrations  
+**Status:** Current-code truth plus draft contract for `vip-app` and future partner integrations  
 **Purpose:** Cụ thể hóa bộ partner/global APIs cần cho `vip-app` ở mức contract đủ để review và freeze trước implementation.
+
+---
+
+## 0. Current-code reality check
+
+Current runtime đã có một phần partner self-service APIs, nhưng chưa đạt target-state machine-auth contract đầy đủ:
+
+- `Implemented now`:
+  - `GET/POST /api/core/v1/partner/service-accounts/`,
+  - `GET /api/core/v1/partner/tenant/` la current live wrapper route cho tenant summary,
+  - `GET /api/core/v1/partner/pats/`, `POST /issue`, `POST /rotate`, `POST /revoke`,
+  - `GET /api/core/v1/partner/usage/meters/`, `GET /api/core/v1/partner/usage/quotas/`,
+  - `GET /api/core/v1/partner/billing/subscription/`, `GET /api/core/v1/partner/billing/invoices/`.
+- `Partial`:
+  - tenant context đã được canonicalize qua `CoreTenant`, nhưng current auth mode vẫn là authenticated human session cộng `IsProPlan`, chưa phải tenant PAT verification path,
+  - response envelopes `object=list`, `X-Core-Request-Id`, `Idempotency-Key` cho write actions đã có ở self-service control-plane.
+- `Target-state`:
+  - machine-auth bằng `Authorization: Bearer <tenant_pat>`,
+  - toàn bộ data-plane APIs ở Mục 5 (`/market/*`, `/signals/*`, `/ai/*`).
+
+Ghi chu: partner read-model priority ladder do storage strategy 6.5 chot la `tenant_summary` -> `quota_snapshot` -> `session_facts` -> `unified_alert`; `tenant_summary` va `quota_snapshot` di truoc vi da co live wrapper/projection, con `session_facts` va `unified_alert` van la target-state.
 
 ---
 
@@ -31,9 +52,17 @@ Tài liệu này tập trung vào 3 nhóm endpoint mà `vip-app` cần nhất:
 
 ### 2.2 Auth
 
+Current live implementation:
+
+- authenticated Django user session/JWT,
+- permission gate `IsAuthenticated` + `IsProPlan`,
+- tenant context resolve từ current user qua `CoreTenant.ensure_for_user(...)` seam.
+
+Target-state contract:
+
 - `Authorization: Bearer <tenant_pat>`
-- Token phải thuộc một `CoreServiceAccount`
-- Token phải map được về `tenant_id`
+- token phải thuộc một `CoreServiceAccount`
+- token phải map được về `tenant_id`
 
 ### 2.3 Standard headers
 
@@ -79,6 +108,8 @@ Tài liệu này tập trung vào 3 nhóm endpoint mà `vip-app` cần nhất:
 
 ### 3.1 `GET /core/v1/partner/tenant`
 
+**Status:** current live wrapper route `GET /api/core/v1/partner/tenant/`; target-state owner path vẫn là `/core/v1/partner/tenant`.
+
 **Scope:** `tenant:read`  
 **Meter:** none
 
@@ -98,6 +129,8 @@ Tài liệu này tập trung vào 3 nhóm endpoint mà `vip-app` cần nhất:
   "updated_at": "2026-05-02T08:30:00Z"
 }
 ```
+
+Current runtime hien tai tra `billing_account_id: null` vi chua co billing-account model rieng.
 
 ### 3.2 `GET /core/v1/partner/service-accounts`
 
@@ -352,6 +385,8 @@ Tài liệu này tập trung vào 3 nhóm endpoint mà `vip-app` cần nhất:
 ---
 
 ## 5. Data-plane contracts cho `vip-app`
+
+Toàn bộ data-plane contracts ở Mục 5 hiện vẫn là target-state. Current runtime chưa expose các route `/core/v1/market/*`, `/core/v1/signals/*` hay `/core/v1/ai/*` theo partner contract family này.
 
 ### 5.1 `GET /core/v1/market/tickers`
 

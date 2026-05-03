@@ -40,6 +40,159 @@ def _request_ip(request) -> str:
     return str(request.META.get('REMOTE_ADDR', '') or '').strip()
 
 
+def _resolve_auth_bootstrap_state(user):
+    cfg = getattr(user, 'user_config', None)
+    entitlements = resolve_user_entitlements(user)
+    plan = entitlements['plan']
+    return cfg, entitlements, plan
+
+
+def _build_current_capability_snapshot(user) -> dict:
+    _cfg, entitlements, plan = _resolve_auth_bootstrap_state(user)
+    central_operator_enabled = bool(
+        entitlements.get('can_read_admin_ops')
+        or entitlements.get('can_read_admin_crawl_control')
+    )
+    tenant_admin_enabled = bool(
+        entitlements.get('can_read_tenant_admin_home')
+        or entitlements.get('can_read_tenant_capabilities')
+        or entitlements.get('can_read_tenant_usage')
+        or entitlements.get('can_read_tenant_billing')
+        or entitlements.get('can_read_tenant_service_accounts')
+        or entitlements.get('can_read_tenant_pats')
+    )
+    default_route = '/admin-ops' if central_operator_enabled else '/tenant-admin/home' if tenant_admin_enabled else '/'
+    session_type = 'operator_human' if central_operator_enabled else 'tenant_human'
+    tenant_id = f'ten_usr_{user.id}' if tenant_admin_enabled else None
+    menus = []
+
+    if entitlements.get('can_read_admin_ops'):
+        menus.append({
+            'key': 'admin_ops',
+            'label': 'Admin Ops',
+            'route': '/admin-ops',
+            'enabled': True,
+            'required_ability': {'action': 'read', 'subject': 'AdminOps'},
+        })
+    if entitlements.get('can_read_admin_crawl_control'):
+        menus.append({
+            'key': 'admin_crawl_control',
+            'label': 'Admin Crawl Control',
+            'route': '/admin-crawl-control',
+            'enabled': True,
+            'required_ability': {'action': 'read', 'subject': 'AdminCrawlControl'},
+        })
+    if entitlements.get('can_read_tenant_admin_home'):
+        menus.append({
+            'key': 'tenant_admin_home',
+            'label': 'Tenant Admin Home',
+            'route': '/tenant-admin/home',
+            'enabled': True,
+            'required_ability': {'action': 'read', 'subject': 'TenantAdminHome'},
+        })
+    if entitlements.get('can_read_tenant_service_accounts'):
+        menus.append({
+            'key': 'tenant_service_accounts',
+            'label': 'Tenant Service Accounts',
+            'route': '/tenant-admin/service-accounts',
+            'enabled': True,
+            'required_ability': {'action': 'read', 'subject': 'TenantServiceAccountAdmin'},
+        })
+    if entitlements.get('can_read_tenant_pats'):
+        menus.append({
+            'key': 'tenant_pats',
+            'label': 'Tenant PATs',
+            'route': '/tenant-admin/pats',
+            'enabled': True,
+            'required_ability': {'action': 'read', 'subject': 'TenantPATAdmin'},
+        })
+    if entitlements.get('can_read_tenant_usage'):
+        menus.append({
+            'key': 'tenant_usage',
+            'label': 'Tenant Usage',
+            'route': '/tenant-admin/usage',
+            'enabled': True,
+            'required_ability': {'action': 'read', 'subject': 'TenantUsageView'},
+        })
+    if entitlements.get('can_read_tenant_billing'):
+        menus.append({
+            'key': 'tenant_billing',
+            'label': 'Tenant Billing',
+            'route': '/tenant-admin/billing',
+            'enabled': True,
+            'required_ability': {'action': 'read', 'subject': 'TenantBillingView'},
+        })
+    if entitlements.get('can_read_tenant_capabilities'):
+        menus.append({
+            'key': 'tenant_capabilities',
+            'label': 'Tenant Capabilities',
+            'route': '/tenant-admin/capabilities',
+            'enabled': True,
+            'required_ability': {'action': 'read', 'subject': 'TenantCapabilityView'},
+        })
+
+    hidden_routes = []
+    if not central_operator_enabled:
+        hidden_routes.extend(['/admin-ops', '/admin-crawl-control'])
+    if not tenant_admin_enabled:
+        hidden_routes.append('/tenant-admin/*')
+
+    return {
+        'object': 'capability_snapshot',
+        'snapshot_version': '2026-05-02',
+        'generated_at': timezone.now().isoformat(),
+        'actor': {
+            'user_id': str(user.id),
+            'username': user.username,
+            'email': user.email,
+            'session_type': session_type,
+            'primary_tenant_id': tenant_id,
+            'display_name': user.get_full_name().strip() or user.username,
+            'plan': plan,
+        },
+        'surfaces': {
+            'central_operator': {
+                'enabled': central_operator_enabled,
+                'default_route': '/admin-ops' if central_operator_enabled else None,
+            },
+            'tenant_admin': {
+                'enabled': tenant_admin_enabled,
+                'default_route': '/tenant-admin/home' if tenant_admin_enabled else None,
+                'tenant_id': tenant_id,
+            },
+            'vip_internal_admin': {
+                'enabled': False,
+                'default_route': None,
+            },
+        },
+        'roles': [session_type, plan],
+        'scopes': [],
+        'abilities': entitlements['abilities'],
+        'navigation': {
+            'default_route': default_route,
+            'menus': menus,
+            'hidden_routes': hidden_routes,
+        },
+        'constraints': {
+            'write_actions_require_reason': central_operator_enabled,
+            'browser_pat_usage_forbidden': True,
+            'show_disabled_actions': True,
+            'token_secret_one_time_reveal': True,
+        },
+        'feature_flags': {
+            'central_operator_enabled': central_operator_enabled,
+            'tenant_console_enabled': tenant_admin_enabled,
+            'capability_bootstrap_source': 'auth_me_wrapper',
+        },
+        'bridges': {
+            'legacy_manage_all_active': False,
+            'bridge_source': None,
+            'bridge_deprecation_state': 'disabled',
+        },
+        'entitlements': entitlements,
+    }
+
+
 class EmailDeliveryFailed(APIException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     default_detail = 'Không thể gửi email xác thực tại thời điểm này.'
@@ -57,9 +210,7 @@ class UserMeView(RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         user = request.user
-        cfg = getattr(user, 'user_config', None)
-        entitlements = resolve_user_entitlements(user)
-        plan = entitlements['plan']
+        cfg, entitlements, plan = _resolve_auth_bootstrap_state(user)
 
         return Response({
             'id': user.id,
@@ -79,6 +230,19 @@ class UserMeView(RetrieveAPIView):
             'abilities': entitlements['abilities'],
             'entitlements': entitlements,
         })
+
+
+class CapabilitySnapshotView(APIView):
+    """
+    GET /api/core/v1/access/capabilities/
+    Dedicated current-code bootstrap wrapper that exposes admin/tenant surfaces
+    without relying on wildcard `manage all` semantics.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        return Response(_build_current_capability_snapshot(request.user))
 
 
 class VerifiedEmailTokenObtainPairSerializer(TokenObtainPairSerializer):

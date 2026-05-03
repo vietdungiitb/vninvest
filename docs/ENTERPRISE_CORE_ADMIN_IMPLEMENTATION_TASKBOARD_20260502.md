@@ -1,7 +1,7 @@
 # ENTERPRISE CORE ADMIN IMPLEMENTATION TASKBOARD
 
 **Date:** 2026-05-02  
-**Status:** Execution-facing taskboard before coding  
+**Status:** Execution-facing current-code taskboard for admin documentation and code follow-up  
 **Purpose:** Biến `admin architecture + RBAC matrix + screen spec + contracts` thành chuỗi slice frontend/backend đủ nhỏ để triển khai dần mà vẫn giữ contract-first và schema-last.
 
 ---
@@ -22,9 +22,27 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 
 1. Capability bootstrap đi trước route rewrite.
 2. Read-only operator screens đi trước write actions.
-3. Central Operator Admin đi trước Tenant Admin Console.
+3. Các slice operator còn lại đi trước việc mở rộng tenant console mới; tenant self-service đang chạy thật không cần quay lại thiết kế từ đầu.
 4. Mỗi slice phải có frontend anchor, backend anchor, contract dependency và focused validation.
 5. Không mở write actions operator nếu read routes cùng screen chưa ổn định.
+
+## 2.1 Current execution snapshot
+
+| Slice ID | Trạng thái hiện tại | Current-code note |
+|---|---|---|
+| `CA-00` | Completed | `/api/core/v1/access/capabilities/` da co current-code wrapper route; frontend auth/bootstrap da cutover sang wrapper route, shared access service van con la wrapper/bridge layer |
+| `CA-01` | Completed | `/admin/core/*` da co route group va guards; canonical overview/crawl-control surface reuse current admin ops pages, legacy aliases `/admin-ops` và `/admin-crawl-control` vẫn còn live |
+| `CA-02` | Not started | chưa có `GET /core/v1/operator/overview` và operator overview screen |
+| `CA-03` | Not started | chưa có tenant registry/detail cho central operator |
+| `CA-04` | Not started | chưa có operator service-account views/routes |
+| `CA-05` | Not started | chưa có operator PAT views/routes |
+| `CA-06` | Not started | chưa có operator usage/billing projections |
+| `CA-07` | Not started | chưa có operator jobs/audit screens theo contract mới |
+| `CA-08` | Completed | backend wrapper `GET /api/core/v1/operator/ai-runtime/` và read surface liên quan đã có |
+| `CA-09` | Completed | tenant home + capabilities live trên `/tenant-admin/*` |
+| `CA-10` | Completed | tenant service account + PAT self-service live end-to-end |
+| `CA-11` | Completed | tenant usage + billing self-service live end-to-end |
+| `CA-12` | Completed | `manage all` đã bị loại khỏi live auth/me và route guards |
 
 ---
 
@@ -98,6 +116,21 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 - human operator session nhận `central_operator.enabled=true`.
 - tenant admin session nhận `central_operator.enabled=false`.
 - frontend ẩn đúng nav items khi thiếu ability.
+
+### Ghi chu trien khai 2026-05-02bm
+
+- `backend/portfolio/auth_views.py` da them `CapabilitySnapshotView` va helper adapter `capability_snapshot` tu `resolve_user_entitlements(...)` hien co.
+- `backend/config/urls.py` da mo route `GET /api/core/v1/access/capabilities/` nhu current-code wrapper route, khong phu thuoc vao wildcard `manage all`.
+- `backend/portfolio/tests/test_api_routes_auth_profile.py` da cover ca tenant bootstrap va operator bootstrap cho route moi.
+- `frontend/src/context/PortfolioContext.jsx`, `frontend/src/components/TopNav.jsx` va `frontend/src/components/Sidebar.jsx` da cutover sang doc wrapper route va surface/menu hints.
+- `CA-00` da chuyen sang `Completed`; `CA-01` da chuyen sang `Completed` sau khi them route group `/admin/core/*` va guard cho overview/crawl-control surface, trong khi legacy aliases van duoc giu de compat.
+
+### Ghi chu trien khai 2026-05-03ak
+
+- `frontend/src/App.jsx` da them route group `/admin/core/*` voi index redirect, overview va crawl-control route.
+- `frontend/src/pages/AdminOps.jsx` da chuyen surface chuyên trách sang `/admin/core/crawl-control` trong khi legacy `/admin-crawl-control` van con live.
+- `frontend/src/App.adminCoreRoutes.test.jsx` da khoa route group, guard va redirect behavior cho `/admin/core/*`.
+- `CA-01` da chuyen sang `Completed`; `CA-02` van la slice tiep theo tren board nay.
 
 ---
 

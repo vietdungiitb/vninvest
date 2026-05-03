@@ -201,3 +201,48 @@ class ApiRouteAuthProfileTests(APITestCase):
         self.assertIn({'action': 'read', 'subject': 'AdminCrawlControl'}, response.data['abilities'])
         self.assertNotIn({'action': 'manage', 'subject': 'all'}, response.data['abilities'])
         self.assertTrue(response.data['entitlements']['can_read_admin_ops'])
+
+    def test_access_capabilities_route_returns_tenant_bootstrap_snapshot(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'premium', 'email_verified': True},
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/core/v1/access/capabilities/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['object'], 'capability_snapshot')
+        self.assertEqual(response.data['actor']['session_type'], 'tenant_human')
+        self.assertEqual(response.data['actor']['primary_tenant_id'], f'ten_usr_{self.user.id}')
+        self.assertFalse(response.data['surfaces']['central_operator']['enabled'])
+        self.assertTrue(response.data['surfaces']['tenant_admin']['enabled'])
+        self.assertEqual(response.data['surfaces']['tenant_admin']['default_route'], '/tenant-admin/home')
+        self.assertEqual(response.data['navigation']['default_route'], '/tenant-admin/home')
+        self.assertIn({'action': 'read', 'subject': 'TenantAdminHome'}, response.data['abilities'])
+        self.assertFalse(response.data['bridges']['legacy_manage_all_active'])
+        self.assertEqual(response.data['bridges']['bridge_deprecation_state'], 'disabled')
+
+    def test_access_capabilities_route_returns_operator_bootstrap_snapshot(self):
+        admin_user = User.objects.create_superuser(
+            username='capability_admin',
+            email='capability-admin@example.com',
+            password='Admin@123456',
+        )
+        UserConfig.objects.update_or_create(
+            user=admin_user,
+            defaults={'email_verified': True},
+        )
+        self.client.force_authenticate(user=admin_user)
+
+        response = self.client.get('/api/core/v1/access/capabilities/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['object'], 'capability_snapshot')
+        self.assertEqual(response.data['actor']['session_type'], 'operator_human')
+        self.assertTrue(response.data['surfaces']['central_operator']['enabled'])
+        self.assertEqual(response.data['surfaces']['central_operator']['default_route'], '/admin-ops')
+        self.assertEqual(response.data['navigation']['default_route'], '/admin-ops')
+        self.assertIn({'action': 'read', 'subject': 'AdminOps'}, response.data['abilities'])
+        self.assertIn({'action': 'read', 'subject': 'AdminCrawlControl'}, response.data['abilities'])
+        self.assertFalse(response.data['bridges']['legacy_manage_all_active'])

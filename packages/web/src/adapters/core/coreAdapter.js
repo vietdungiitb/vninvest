@@ -104,7 +104,7 @@ export const coreAdapter = {
     return `${resolveCoreBaseUrl(env)}/access/capabilities`;
   },
   getSessionPayloadEndpoint(env = {}) {
-    return `${resolveCoreBaseUrl(env)}/session/me`;
+    return `${resolveCoreBaseUrl(env)}/auth/me`;
   },
   getHealthcheckEndpoint(env = {}) {
     return `${resolveCoreBaseUrl(env)}/health`;

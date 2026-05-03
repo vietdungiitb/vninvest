@@ -1,3 +1,810 @@
+# Entry 2026-05-03ak - CA-01 admin core route group and canonical crawl-control link
+
+Muc tieu:
+- Dong slice CA-01 bang cach them route group `/admin/core/*` vao frontend router, giu compat alias `/admin-ops` va `/admin-crawl-control`, va canonicalize surface chuyen trach sang route group moi.
+- Dam bao route group moi co guard va index redirect dung, khong lam thay doi backend auth semantics.
+
+Noi dung cap nhat chinh:
+- `frontend/src/App.jsx`:
+  - Them `AdminCoreShell` + route group `/admin/core/*`.
+  - Them index redirect va child routes cho `overview` va `crawl-control` voi guard `ProtectedRoute`.
+- `frontend/src/pages/AdminOps.jsx`:
+  - Surface chuyen trach tren admin ops page chuyen sang `/admin/core/crawl-control`.
+- `frontend/src/pages/AdminOps.test.jsx`:
+  - Update assertion cho canonical `/admin/core/crawl-control`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Them test route group cho `/admin/core`, `/admin/core/crawl-control` va denied redirect.
+- `module_tree_full.md`:
+  - Regenerate sau thay doi frontend code.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-01` complete va ghi route group live state.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-01.
+
+Danh sach tep cap nhat:
+- frontend/src/App.jsx (MODIFIED - add admin core route group shell and guarded routes)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - switch special surface link to canonical admin core route)
+- frontend/src/pages/AdminOps.test.jsx (MODIFIED - expect canonical admin core crawl-control link)
+- frontend/src/App.adminCoreRoutes.test.jsx (NEW - route-group guard and redirect tests)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm test -- --runInBand --watch=false --runTestsByPath src/App.adminCoreRoutes.test.jsx src/pages/AdminOps.test.jsx; Pop-Location` => `2 passed, 5 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 569 modules.
+
+Residual note:
+- Route group `/admin/core/*` now exists, but CA-02 still needs dedicated overview/health pages if we want the canonical surface to stop reusing AdminOps directly.
+- Legacy direct aliases `/admin-ops` and `/admin-crawl-control` remain live for compat.
+
+# Entry 2026-05-03aj - PKG-03 package cutover readiness gates
+
+Muc tieu:
+- Dong slice PKG-03 bang cach chuyen cutover readiness tu generic bullets thanh gate matrix co the audit va resume duoc.
+- Giu package-track migration plan la authority cho parity, validation, rollback, route coverage, runtime ownership va approval gate truoc cutover.
+
+Noi dung cap nhat chinh:
+- `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`:
+  - Them `Readiness gate matrix` cho parity, validation, rollback, route coverage, runtime ownership, audit va approval.
+  - Them rule ro rang rang package track chua duoc xem la cutover-ready neu chua dong `PKG-01` toi `PKG-03` va cac gate chua xanh.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md`:
+  - Them package migration plan vao control docs pack de team co the tim gate matrix ngay trong handoff route.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PKG-03` hoan thanh va ghi status note.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PKG-03.
+
+Danh sach tep cap nhat:
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add explicit package cutover readiness gate matrix)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add package migration plan to control docs pack)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-03 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search`/read-back xac nhan package migration plan da co gate matrix ro rang cho parity, validation, rollback, route coverage, runtime ownership va approval.
+- PASSED: `get_errors` clean tren cac docs control vua cap nhat.
+
+Residual note:
+- This slice is docs-only; no runtime/package code changed.
+- Next recommended slice in the taskboard route is `CA-01`.
+
+# Entry 2026-05-03ai - PKG-02 shell host parity proofs
+
+Muc tieu:
+- Dong slice PKG-02 bang mot proof machine-readable cho package-shell host runtime va hai host page wrappers, khong doi runtime behavior san co.
+- Chot query carry-over, shared env/fetch wiring va frontend identity overlay cho `AiAdvisoryShellHost` va `WhaleAlertsShellHost`.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/packageShellHostRuntime.test.jsx`:
+  - Them test cho `createPackageShellBootstrapLoader(...)` de xac nhan frontend identity overlay, admin hint stripping va shared bootstrap shape.
+  - Them test cho `AiAdvisoryShellHost` de xac nhan query carry-over, shared `packageShellHostEnv` va `packageShellHostFetch`, va shared loader wiring.
+  - Them test cho `WhaleAlertsShellHost` de xac nhan query carry-over, shared `packageShellHostEnv` va `packageShellHostFetch`, va shared loader wiring.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PKG-02` hoan thanh va ghi status note.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PKG-02.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/packageShellHostRuntime.test.jsx (NEW - package shell host parity proofs)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/packageShellHostRuntime.test.jsx; Pop-Location` => `3 passed, 3 total`.
+
+Residual note:
+- Shell host parity proof slice is test-only; runtime logic in `frontend/src/pages/packageShellHostRuntime.js` and host page wrappers remained unchanged.
+- Next package slice recommended by taskboard remains `PKG-03`.
+
+# Entry 2026-05-03ah - PKG-01 current-code session wrapper alias
+
+Muc tieu:
+- Dong slice PKG-01 bang cach chuyen package-core session lane sang current-code wrapper naming `auth/me` trong shell adapter, trong khi giu alias cũ de compat.
+- Dam bao package shell van bootstrap duoc session payload baseline, nhung route naming da khop hon voi current-code wrapper style.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/adapters/core/coreAdapter.js`:
+  - Doi session payload endpoint sang `/core/v1/auth/me`.
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Them alias `/auth/me` va `/core/v1/auth/me` cho `_session_payload` trong khi giu `/session/me` va `/core/v1/session/me`.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them assertion khop current-code wrapper-style endpoint cho core session lane.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PKG-01` hoan thanh va ghi status note.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PKG-01.
+
+Danh sach tep cap nhat:
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - switch session endpoint to auth/me wrapper path)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add auth/me route aliases for session payload)
+- packages/web/scripts/check-shell.mjs (MODIFIED - lock core wrapper-style session endpoint)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-01 complete)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ah)
+
+Validation:
+- PASSED: `Push-Location .\packages\web; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: Python smoke import against `packages/core/backend/src/vninvest_core/api_stub.py` verified `/auth/me` and `/core/v1/auth/me` aliases and stable session fields.
+- PASSED: `get_errors` clean on the touched JS and Python files.
+
+Residual note:
+- PKG-01 is a route/adapter alignment slice, not a schema or payload-shape expansion; the next package slice is `PKG-02` for shell host parity proofs.
+
+# Entry 2026-05-03ag - Code-team continuation playbook and audit route
+
+Muc tieu:
+- Bo sung route doc rieng cho code team sau handoff de chot thu tu slice, one-active-slice rule va audit loop bat buoc.
+- Dong bo handoff master, implementation plan, taskboard, traceability matrix, evidence template va audit report voi mot playbook duy nhat.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md`:
+  - Playbook moi cho code team: entry conditions, package-track lane, admin lane, drift response lane, audit control va evidence minimum.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md`:
+  - Them playbook reference trong control doc list va code-team continuation route section.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Link playbook moi vao current-code execution control pack.
+- `docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Them Lane C cho controlled code-team continuation va audit gates sau moi slice.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Ghi route mac dinh PKG-01 -> PKG-03 va chuyen sang CA-01 -> CA-07 sau khi package gate on dinh.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md`:
+  - Them req `HND-01` cho one-active-slice rule va audit sync.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md`:
+  - Ghi route code-team continuation va residual risk giu docs/code khong lech.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md`:
+  - Them audit checklist cho playbook route va route doc consulted.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ag.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho code-team continuation playbook slice.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (NEW - code-team continuation route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add playbook reference and continuation route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add playbook link)
+- docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add Lane C and audit gates)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add continuation route section)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add HND-01 row)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (MODIFIED - add continuation route and risk note)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (MODIFIED - add playbook audit checklist)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` xac nhan playbook link xuat hien trong master index, handoff master va evidence template.
+- PASSED: read-back xac nhan playbook doc co route, audit gates va one-active-slice rule.
+
+Residual note:
+- Chua co code runtime change trong slice nay; day la docs/governance route slice.
+- PKG-01 van la next recommended slice, sau do moi chuyen sang CA-01..CA-07 theo playbook.
+
+# Entry 2026-05-03af - DATA-02 migration/backfill/rollback order
+
+Muc tieu:
+- Dong slice DATA-02 bang cach freeze migration/backfill/rollback order cho identity/commercial deltas trong storage strategy.
+- Dam bao resource freeze checklist chi dong vai tro cross-reference, khong lap lai migration plan.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md`:
+  - Them `### 6.4 Migration/backfill/rollback order cho identity/commercial deltas` voi order cho `CoreTenantMembership`, `CoreAccessPolicy`, `CoreBillingAccount`, `CoreTokenSecretVersion`.
+- `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`:
+  - Them note cross-reference toi migration/backfill/rollback order trong storage strategy.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `DATA-02` hoan thanh va them status note.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03af.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho DATA-02.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (MODIFIED - add migration order section)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add migration order cross-reference)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DATA-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `git diff --stat` tren storage strategy va freeze checklist cho thay dung scope thay doi.
+- PASSED: read-back xac nhan migration order section va checklist cross-reference da co mat.
+
+Residual note:
+- `DATA-03` con mo; read-model priority workstream se lay matrix/migration order lam dau vao, khong phai ket qua cuoi cung.
+
+# Entry 2026-05-03ae - DATA-01 implemented-vs-target resource matrix
+
+Muc tieu:
+- Dong slice DATA-01 bang cach tao canonical implemented-vs-target resource matrix cho core resources va dong bo term ngu nghia giua schema analysis, contract pack va resource freeze checklist.
+- Dam bao docs khong con truong hop moi file ke mot phien ban matrix rieng; schema analysis la source of truth, hai file con lai chi cross-reference.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md`:
+  - Them `## 0.1 Implemented-vs-target resource matrix` voi rows cho `CoreTenant`, `CoreServiceAccount`, `CorePATCredential`, `CoreUsageMeter`, `CoreBillingAccount`, `CoreTenantMembership`, `CoreAccessPolicy`, `CoreTokenSecretVersion`, `TenantQuotaLedger`, `CoreUsageAggregateHourly`, `CoreSymbolSnapshot`, `SessionFacts`, `UnifiedAlertProjection`.
+- `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`:
+  - Them note cross-reference toi canonical matrix va giu truth table runtime availability/target-state wording.
+- `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`:
+  - Them note cross-reference toi canonical matrix va giu checklist o muc freeze posture.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `DATA-01` hoan thanh va them status note.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ae.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho DATA-01.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (MODIFIED - add canonical resource matrix)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - add matrix cross-reference)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add matrix cross-reference)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DATA-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `git diff --stat` tren 3 file matrix cap nhat cho thay dung scope thay doi.
+- PASSED: read-back xac nhan matrix va cross-reference notes da co mat o schema analysis, contract pack va resource freeze checklist.
+
+Residual note:
+- `DATA-02` va `DATA-03` con mo; canonical matrix nay co y nghia freeze posture, khong thay the migration order hay read-model priority workstream.
+
+# Entry 2026-05-03ad - PART-03 tenant-admin docs freeze against live routes
+
+Muc tieu:
+- Dong slice PART-03 de freeze tenant-admin docs against live routes va cap nhat audit trail cho live partner tenant summary mapping.
+- Dam bao `GET /api/core/v1/partner/tenant/` da duoc reflect trong UI architecture, screen spec, RBAC matrix, contract pack, resource freeze checklist va partner API contract draft; target-state `/core/v1/partner/tenant` van duoc giu ro la owner path.
+
+Noi dung cap nhat chinh:
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PART-03` hoan thanh va them status note.
+- `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`:
+  - Giu Tenant Home mapping o live wrapper route.
+- `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`:
+  - Ghi ro live tenant summary route.
+- `docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md`:
+  - Dong bo inventory tenant-admin capability voi current live surface.
+- `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`:
+  - Mark live wrapper route vs target-state owner path.
+- `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`:
+  - Cap nhat freeze posture cho tenant route.
+- `docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md`:
+  - Ghi current live wrapper route va giu target-state owner path.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ad.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho PART-03.
+
+Danh sach tep cap nhat:
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-03 complete)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - update tenant summary mapping)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - update tenant-admin capability inventory)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - update live wrapper route posture)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - update tenant route freeze posture)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - mark partner tenant route live)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: spot check with grep confirmed live tenant route strings present in all updated docs.
+- PASSED: taskboard row `PART-03` marked completed.
+
+Residual note:
+- `GET /core/v1/partner/tenant` van con la target-state owner path; current runtime surface la live wrapper route.
+
+# Entry 2026-05-03ac - PART-02 partner envelope and request-id semantics
+
+Muc tieu:
+- Dong noi dung partner client layer de envelope, request-id va idempotency semantics khop voi contract freeze.
+- Binh thuong hoa `coreRequestId` metadata tren response tu `frontend/src/api/client.js` va giu Idempotency-Key o cac mutating partner helpers.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getTenantSummary()` cho live partner tenant route.
+  - Them response metadata shim de attach `coreRequestId` tu `X-Core-Request-Id` vao Axios response/error.
+  - Giu `Idempotency-Key` headers cho service-account/PAT write helpers.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PART-02` hoan thanh va them status note 2026-05-03.
+- `module_tree_full.md`:
+  - Regenerate sau frontend code change, module count giu 567.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ac.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PART-02 nay.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add coreRequestId response metadata and tenant summary helper)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => `Compiled successfully`.
+- PASSED: `get_errors` clean tren `frontend/src/api/client.js`.
+
+Residual note:
+- Tenant/admin pages chua consume `getTenantSummary()` yet; lane tiep theo se day no vao screen spec/doc freeze neu can.
+- `PART-02` da dong; tiep theo la `PART-03` de freeze tenant-admin docs against live routes.
+
+# Entry 2026-05-03ab - PART-01 partner tenant summary route
+
+Muc tieu:
+- Mo current live wrapper route cho Tenant Home de route partner tenant summary khop voi contract current-code truth.
+- Dong docs drift quanh `GET /api/core/v1/partner/tenant/` va giu `GET /core/v1/partner/tenant` o trang thai target-state owner path.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_partner_admin.py`:
+  - Them `_serialize_tenant_summary(...)` va `partner_tenant_api(...)` de tra tenant snapshot tu `CoreTenant.ensure_for_user(...)`.
+- `backend/config/urls.py`:
+  - Dang ky route `GET /api/core/v1/partner/tenant/`.
+- `backend/portfolio/tests/test_partner_admin_api.py`:
+  - Them focused test cho tenant summary snapshot va tenant bootstrap path.
+- `docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md`:
+  - Cap nhat current-code reality check va route status de reflect live wrapper route.
+- `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`, `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`:
+  - Cap nhat Tenant Home mapping va resource freeze notes cho live wrapper route.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `PART-01` hoan thanh.
+- `module_tree_full.md`:
+  - Regenerate sau code change, module count giu 567.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03ab.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice PART-01 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_partner_admin.py (MODIFIED - add partner tenant summary wrapper)
+- backend/config/urls.py (MODIFIED - register partner tenant route)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - add tenant summary route test)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - mark partner tenant route live)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - update tenant current-code freeze posture)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - update tenant route freeze posture)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_partner_admin_api --keepdb; Pop-Location` => `Ran 5 tests ... OK`.
+- PASSED: `get_errors` clean tren `backend/portfolio/views_partner_admin.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_partner_admin_api.py`, `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` successfully (567 modules).
+
+Residual note:
+- `PART-02` van mo de dong envelope/header/idempotency parity cho partner APIs con lai.
+- Tenant route nay la current live wrapper route; `GET /core/v1/partner/tenant` van la target-state owner path.
+
+# Entry 2026-05-03aa - OPS-05 operator AI runtime naming convergence
+
+Muc tieu:
+- Dong slice operator AI runtime de route live, test coverage va UI/docs naming khop nhau trong current-code truth.
+- Ghi ro `AICommandCenter.jsx` la current human-facing surface cho `GET /api/core/v1/operator/ai-runtime/`, khong con xem no nhu backlog thuan tuy.
+
+Noi dung cap nhat chinh:
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `OPS-05` hoan thanh va them status note 2026-05-03.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md`:
+  - Ghi ro current UI surface `AICommandCenter.jsx` la AI Command Center surface cho operator AI runtime governance.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`:
+  - Ghi ro UI surface va operator AI runtime route co naming khop nhau trong current-code truth.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-03aa.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice OPS-05 nay.
+
+Danh sach tep cap nhat:
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-05 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - add AI Command Center UI naming note)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - add AI Command Center UI naming note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_system_ai_admin_api --keepdb; Pop-Location` => `Ran 20 tests ... OK`.
+- PASSED: read review tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/tests/test_system_ai_admin_api.py`, `frontend/src/pages/AICommandCenter.jsx` cho thay operator AI runtime route, test coverage va UI naming da khop nhau.
+
+Residual note:
+- Khong co code runtime moi trong slice nay; no chi dong audit/doc drift con lai quanh operator AI runtime naming.
+- `OPS-05` da dong, backlog tiep theo quay lai cac lane con mo trong taskboard.
+
+# Entry 2026-05-02bq - OPS-04 operator jobs and audit trace reads
+
+Muc tieu:
+- Hoan tat slice operator jobs va audit trace reads tren current runtime truth de live runtime co read-first wrapper routes cho job table va audit traces.
+- Dung current-code union wrappers cho SignalServiceRun, CrawlRun va cac audit log tables san co thay vi tao data layer moi.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_admin_runtime.py`:
+  - Them operator job helpers, audit trace helpers, jobs list route va audit trace list/detail routes.
+  - Jobs table bao ve `SignalServiceRun` va `CrawlRun` voi cursor/ordering semantics.
+  - Audit trace table bao ve `SystemAISettingsAuditLog`, `WhaleConfigAuditLog`, `AdvisoryAggregateAuditLog` va `CrawlAuditLog`, co detail lookup theo `request_id` composite.
+- `backend/config/urls.py`:
+  - Dang ky route `GET /api/core/v1/operator/jobs/`, `GET /api/core/v1/operator/audit/requests/` va `GET /api/core/v1/operator/audit/requests/{request_id}/`.
+- `backend/portfolio/views.py`:
+  - Export operator jobs va audit trace views tu module chinh.
+- `backend/portfolio/tests/test_operator_jobs_audit_api.py`:
+  - Them focused tests cho admin gating, jobs list/filter, audit list/filter va audit detail payload.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `OPS-04` hoan thanh.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md` va `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`:
+  - Cap nhat current-code reality check de phan anh cac wrapper routes jobs va audit requests da live.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice OPS-04 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator jobs and audit trace wrappers)
+- backend/portfolio/views.py (MODIFIED - export operator jobs and audit trace views)
+- backend/config/urls.py (MODIFIED - register operator jobs and audit routes)
+- backend/portfolio/tests/test_operator_jobs_audit_api.py (NEW - focused operator jobs and audit trace tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-04 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - update current-code reality check)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - update current-code reality check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_operator_jobs_audit_api.py`.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_jobs_audit_api --keepdb; Pop-Location` => `Ran 6 tests ... OK`.
+
+Residual note:
+- `OPS-05` AI runtime contract alignment remain open.
+- Jobs/audit surfaces are current-code wrapper projections over existing tables; the target-state `/core/v1/operator/*` naming remains contract vocabulary only.
+
+# Entry 2026-05-02bp - OPS-02 tenant registry/detail and OPS-03 service-account/PAT projections
+
+Muc tieu:
+- Hoan tat slice tenant registry/detail va operator principal projections de live runtime co day du read-first wrappers cho tenant, service-account va PAT lanes.
+- Giu current-code truth phan biet ro operator wrapper routes da live voi target-state contract routes con lai.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_admin_runtime.py`:
+  - Them operator tenant snapshot/list/detail helpers, service-account list helpers va PAT list helpers.
+  - Them `operator_tenants_api`, `operator_tenant_detail_api`, `operator_tenant_service_accounts_api`, `operator_tenant_pats_api`.
+  - Tenant list co summary cards, search/filter/cursor support va commercial/security projections.
+  - Service-account list co rotation risk metadata; PAT list co issuer/anomaly metadata va khong bao gio expose secret.
+- `backend/config/urls.py`:
+  - Dang ky route `GET /api/core/v1/operator/tenants/`, `GET /api/core/v1/operator/tenants/{tenant_id}/`, `GET /api/core/v1/operator/tenants/{tenant_id}/service-accounts/`, `GET /api/core/v1/operator/tenants/{tenant_id}/pats/`.
+- `backend/portfolio/views.py`:
+  - Export operator tenant registry/principal views tu module chinh.
+- `backend/portfolio/tests/test_operator_tenant_registry_api.py`:
+  - Them focused tests cho admin gating, registry filter/search, suspended filter, detail summary, service-account projection va PAT projection.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `OPS-02` va `OPS-03` hoan thanh.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md` va `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`:
+  - Cap nhat current-code reality check de phan anh cac wrapper routes operator tenant/principal da live.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice OPS-02/OPS-03 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator tenant registry/detail and principal list projections)
+- backend/portfolio/views.py (MODIFIED - export operator tenant/principal views)
+- backend/config/urls.py (MODIFIED - register operator tenant/principal routes)
+- backend/portfolio/tests/test_operator_tenant_registry_api.py (NEW - focused admin, registry and principal projection tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-02 and OPS-03 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - update current-code reality check)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - update current-code reality check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bp)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_tenant_registry_api --keepdb; Pop-Location` => `Ran 6 tests ... OK`.
+- PASSED: runtime probe via `manage.py shell` with operator/admin tenant fixture returned `200` for `/api/core/v1/operator/tenants/`, `/api/core/v1/operator/tenants/{tenant_id}/`, `/api/core/v1/operator/tenants/{tenant_id}/service-accounts/`, and `/api/core/v1/operator/tenants/{tenant_id}/pats/` and the payload shapes matched the projected list/detail contracts.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` rebuilt and restarted `vninvest-dev-backend` with the new routes loaded.
+
+Residual note:
+- `OPS-04` jobs/audit reads remain open.
+- Operator list/detail routes are live wrapper projections under `/api/core/v1/operator/*`; the non-`api` path remains target-state contract naming.
+
+# Entry 2026-05-02bo - OPS-01 operator overview and health projections
+
+Muc tieu:
+- Hoan tat slice read-first operator overview va health de live runtime co mot operator projection layer on dinh dung tu cac snapshot hien co.
+- Ghep operator overview/health tu `config.health`, `market_observability`, `admin_runtime_kpi` va `operator_ai_runtime` thay vi tao data layer moi.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_admin_runtime.py`:
+  - Them `_response_payload(...)`, `_http_request(...)`, `_build_operator_health_snapshot(...)` va `_build_operator_overview_snapshot(...)`.
+  - Them `operator_health_api` va `operator_overview_api` cho `GET /api/core/v1/operator/health/` va `GET /api/core/v1/operator/overview/`.
+  - Health snapshot gom `service`, `realtime`, `streams`, `prefetch`, `market_observability`, `celery`, `ai_runtime` components va `degraded_components` semantics.
+- `backend/config/urls.py`:
+  - Dang ky hai route operator moi trong namespace `/api/core/v1/operator/*`.
+- `backend/portfolio/views.py`:
+  - Export operator overview/health views tu module chinh de route registration dung current anchors.
+- `backend/portfolio/tests/test_operator_admin_runtime_api.py`:
+  - Them focused tests cho anonymous/regular/admin access va snapshot structure cua overview/health routes.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `OPS-01` hoan thanh.
+- `module_tree_full.md`:
+  - Regenerate sau code change, module count tang len 565.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice OPS-01 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator overview/health read projections)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/operator/overview/` and `/api/core/v1/operator/health/`)
+- backend/portfolio/views.py (MODIFIED - export operator overview/health views)
+- backend/portfolio/tests/test_operator_admin_runtime_api.py (NEW - focused admin access and snapshot structure tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_admin_runtime_api --keepdb; Pop-Location` => `Ran 4 tests ... OK`.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => `module_tree_full.md` regenerated; module count `565`.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` => backend image rebuilt and `vninvest-dev-backend` restarted healthy.
+
+Residual note:
+- Health/overview projections hien la thin read wrappers over existing runtime snapshots, not mot dashboard data warehouse moi.
+- `OPS-02` va `OPS-04` van con mo; slice nay chi dong operator P0 read projections dau tien.
+
+# Entry 2026-05-02bn - ACC-03 package-track wildcard fallback removal
+
+Muc tieu:
+- Lo bo wildcard fallback trong package-track bootstrap de package shell khong con dua vao `manage all` hoac `subject all` khi doc admin/AI abilities.
+- Giu package shell baseline on dinh nhung thay wildcard bang explicit package capability subjects cho admin/AI lanes.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Lo bo `{"action": "manage", "subject": "all"}` khoi `_ability_rules(...)`.
+  - Them explicit package capabilities `admin.operator.read`, `system.ai_command_center.manage`, va `vip.local_control.read` cho session staff/superuser theo build target.
+- `packages/web/src/pages/coreShellPageHelpers.js`:
+  - `filterAbilitiesBySubject(...)` khong con coi `subject === "all"` la wildcard.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them assertion de dam bao wildcard `all` khong con match keyword admin va explicit admin capability van match dung.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `ACC-03` hoan tat.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bn.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice ACC-03 nay.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - replace manage-all wildcard with explicit package capabilities)
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - remove wildcard subject all from subject filtering)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add regression assertions for explicit capabilities)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-03 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./packages/web; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: `& ".\.venv\Scripts\python.exe" -m py_compile packages/core/backend/src/vninvest_core/api_stub.py` => clean compile, no syntax errors.
+
+Residual note:
+- Package track van la baseline/shim lane, not parity proof cho toi bo operator/partner/commercial surfaces.
+- `ACC-03` chi lo wildcard fallback; cac slice package parity/lane hardening khac van con mo trong package-track roadmap.
+
+# Entry 2026-05-02bm - ACC-02 frontend capability bootstrap cutover
+
+Muc tieu:
+- Hoan tat cutover frontend auth/bootstrap sang dedicated `capability_snapshot` wrapper route de `PortfolioContext`, `TopNav` va `Sidebar` khong con phai suy dien admin/tenant nav tu bootstrap cũ.
+- Dong bo taskboard va contract docs de `ACC-02`/`CA-00` phan anh dung current-code truth va khong con de slice nay o trang thai treo.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/auth.js`:
+  - Them helper `getCapabilitySnapshot()` cho `GET /api/core/v1/access/capabilities/`.
+- `frontend/src/context/PortfolioContext.jsx`:
+  - `syncAuthState()` doc song song `/auth/me/`, wrapper `capability_snapshot` va `userConfig`.
+  - Luu `capabilitySnapshot` state va uu tien abilities/entitlements tu wrapper route khi co.
+- `frontend/src/components/TopNav.jsx` va `frontend/src/components/Sidebar.jsx`:
+  - Uu tien `navigation`/`surfaces` tu `capabilitySnapshot` de render tenant/admin menus, co fallback an toan ve ability cu.
+- `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`:
+  - Danh dau frontend da cutover sang dedicated wrapper route trong `ACC-02`.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Cap nhat `CA-00` thanh `Completed` va ghi ro frontend da doc wrapper route.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `ACC-02` hoan tat.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bm.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice ACC-02 nay.
+
+Danh sach tep cap nhat:
+- frontend/src/api/auth.js (MODIFIED - add capability snapshot helper)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - consume capability snapshot in auth bootstrap)
+- frontend/src/components/TopNav.jsx (MODIFIED - prefer capability snapshot navigation hints)
+- frontend/src/components/Sidebar.jsx (MODIFIED - prefer capability snapshot navigation hints)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - mark frontend cutover complete)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-00 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => `Compiled successfully`.
+- PASSED: dev stack refresh da chay truoc do cho frontend/backend va browser proof tren `/dashboard` cho thay tenant/admin nav render dung voi `capabilitySnapshot`.
+- PASSED: `read_page` tren `/dashboard` xac nhan `Khách thuê` nav group va tenant admin links hien len, khong co regression bootstrap.
+- PASSED: `get_errors` tren docs/taskboards lien quan sau sync => clean.
+
+Residual note:
+- `ACC-03` van con mo de lo wildcard fallback trong package-track bootstrap lane; slice nay chi khan dinh frontend/legacy runtime cutover, khong giai quyet package parity.
+- `CA-01` van partial vi `/admin/core/*` chua co live implementation.
+
+# Entry 2026-05-02bl - ACC-01 capability bootstrap wrapper route
+
+Muc tieu:
+- Mo route current-code truth cho capability bootstrap de lane Access/Admin co dedicated `capability_snapshot` wrapper ma khong phai tiep tuc suy dien tu `manage all` hay broad admin bridge.
+- Tiep tuc giu `/api/auth/me/` la auth payload goc, nhung them access wrapper route de frontend/admin lane co diem doc contract ro hon cho `ACC-02`.
+- Dong bo docs/taskboards so huu slice nay de stack docs va code cung phan anh `ACC-01` da hoan tat, trong khi `CA-00` van con `Partial` cho toi khi frontend cutover xong.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/auth_views.py`:
+  - Them helper `_resolve_auth_bootstrap_state(...)` de tai su dung resolution cho `auth/me`.
+  - Them helper `_build_current_capability_snapshot(...)` adapter tu `resolve_user_entitlements(...)` sang object `capability_snapshot`.
+  - Them `CapabilitySnapshotView` cho `GET /api/core/v1/access/capabilities/` voi `actor`, `surfaces`, `abilities`, `navigation`, `constraints`, `feature_flags`, `bridges` va carry-through `entitlements`.
+- `backend/config/urls.py`:
+  - Dang ky route `api/core/v1/access/capabilities/`.
+- `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Them focused tests cho tenant bootstrap snapshot va operator bootstrap snapshot.
+  - Giu test coverage cu cua `/api/auth/me/` de dam bao auth payload goc khong bi drift.
+- `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`:
+  - Cap nhat current live bootstrap contract de ghi ro `/api/core/v1/access/capabilities/` da ton tai nhu current-code wrapper route adapter tu `/api/auth/me/`.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Cap nhat `CA-00` thanh route wrapper da ton tai nhung frontend/access service chua cutover hoan toan.
+  - Them implementation note 2026-05-02bl cho route moi.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Danh dau `ACC-01` hoan tat.
+- `module_tree_full.md`:
+  - Regenerate sau thay doi code backend.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bl.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice ACC-01 nay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/auth_views.py (MODIFIED - add current-code capability snapshot wrapper and reuse auth bootstrap resolution)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/access/capabilities/`)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - add tenant/operator focused tests for capability snapshot route)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - document live wrapper route and wrapper-source semantics)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - update CA-00 current state and add implementation note)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes, total modules 564)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/auth_views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_api_routes_auth_profile.py` sau khi them route wrapper va tests.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb; Pop-Location` => `Ran 10 tests ... OK`.
+- PASSED: `get_errors` clean tren `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`, `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`, `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md` sau khi sync docs/taskboards.
+- PASSED: rerun same focused suite sau doc sync => `Ran 10 tests ... OK`.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (564 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` => backend image rebuilt, container healthy.
+- PASSED: runtime payload proof qua proxy `http://127.0.0.1/api/core/v1/access/capabilities/` bang user `testpro` tra `object=capability_snapshot`, `actor.session_type=tenant_human`, `surfaces.tenant_admin.enabled=true`, `navigation.default_route=/tenant-admin/home`, `bridges.legacy_manage_all_active=false`.
+
+Residual note:
+- Slice nay moi hoan tat `ACC-01`. Frontend chua doc route wrapper moi; cutover cua `PortfolioContext`, `AbilityContext`, `ProtectedRoute`, `TopNav` va nav gating van thuoc `ACC-02`.
+- `CA-00` trong admin implementation taskboard van de `Partial` vi route wrapper hien la `auth_me_wrapper`, chua tach thanh access service doc lap hoan chinh.
+- Current wrapper route van phan loai non-operator authenticated sessions vao lane `tenant_human`; neu doi frontend can session taxonomy chi tiet hon cho free/basic users thi do la follow-up semantics cho `ACC-02`, khong phai blocker cho current slice.
+
+# Entry 2026-05-02bk - Enterprise Core doc-family realignment completion
+
+Muc tieu:
+- Hoan tat phan docs con mo trong handoff pack current-code realignment de bo tai lieu co the chuyen giao cho doi code va auditors ma khong con de `ENTERPRISE_CORE_*` drift giua implemented-now va target-state.
+- Dong cac slice `DOC-04`, `DOC-05`, `DOC-06` trong taskboard bang cach realign day du nhom Access/Admin, Operator/Partner/Core contracts, va Resource/Schema docs.
+- Dong bo lai control surfaces trung tam de taskboard va audit report phan anh dung rang docs family da hoan tat, phan con mo chi con la code backlog.
+
+Noi dung cap nhat chinh:
+- Realign bo Access/Admin docs:
+  - `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`
+  - `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`
+  - `docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md`
+  - `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`
+  - `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`
+  - Them current-code truth cho `/api/auth/me/`, `/tenant-admin/*`, `/admin-ops`, `/admin-crawl-control`; ha dedicated `/core/v1/access/capabilities` va `/admin/core/*` ve target-state; cap nhat status slices `CA-*` theo code that.
+- Realign bo Operator/Partner/Core contract docs:
+  - `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md`
+  - `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`
+  - `docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md`
+  - `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`
+  - `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`
+  - Chot lai `GET /api/core/v1/operator/ai-runtime/` la operator wrapper route live duy nhat, partner self-service control/commercial routes la implemented-now, `GET /core/v1/partner/tenant` va data-plane partner APIs van la target-state, machine-auth PAT chua phai current runtime.
+- Realign bo Resource/Schema docs:
+  - `docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md`
+  - `docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md`
+  - `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`
+  - Them current-code snapshot cho `CoreTenant`, `CoreServiceAccount`, `CorePATCredential`, quota/billing projections reuse; danh dau `CoreUsageMeter`, `CoreBillingAccount`, `SessionFacts`, `UnifiedAlertProjection` la target-state/backlog.
+- Dong bo control docs trung tam:
+  - `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md`
+  - Danh dau `DOC-04`, `DOC-05`, `DOC-06` hoan tat va cap nhat residual risk tu doc drift sang code backlog/parity work.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bk.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho dot hoan tat doc-family nay.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - add current/live vs target-state interpretation and real current route inventory)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - mark central operator specs as target-state, document live tenant/admin surfaces and actual bootstrap path)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - replace outdated manage-all assumption with explicit live ability inventory)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - document `/api/auth/me/` as current bootstrap and map it to future capability snapshot)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - add actual completion state for CA-08 to CA-12 and partial state for CA-00/CA-01)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - mark operator backlog routes as target-state except live ai-runtime wrapper)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - mark only operator ai-runtime route as live and the rest as backlog)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - document live self-service partner routes, human-session auth reality and target-state PAT machine auth)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - add current-code freeze posture for each core resource)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add current boundary reality for legacy runtime plus package-track baseline)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (MODIFIED - add current storage reality snapshot)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (MODIFIED - add current materialized model snapshot vs target-state tables)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add current freeze snapshot and correct live auth/route semantics for core resources)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DOC-04, DOC-05, DOC-06 complete)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (MODIFIED - update positive impact and residual risks after core doc-family realignment)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bk)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 5 docs Access/Admin vua realign: `ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE`, `ENTERPRISE_CORE_ADMIN_SCREEN_SPEC`, `ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX`, `ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT`, `ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD`.
+- PASSED: `grep_search` xac nhan nhom Access/Admin docs da co cac marker current-code moi: `/api/auth/me/`, `AdminOps`, `AdminCrawlControl`, inventory `/tenant-admin/*`, status `CA-10`, `CA-11`, `CA-12` complete.
+- PASSED: `get_errors` clean tren 5 docs Operator/Partner/Core contracts vua realign: `ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG`, `ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS`, `ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT`, `ENTERPRISE_CORE_CONTRACT_PACK`, `ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT`.
+- PASSED: `grep_search` xac nhan nhom contract docs da ghi ro `Current-code reality`, auth `human session/JWT`, `GET /api/core/v1/operator/ai-runtime/` la live, `GET /core/v1/partner/tenant` va data-plane partner APIs la target-state.
+- PASSED: `get_errors` clean tren 3 docs Resource/Schema vua realign: `ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY`, `ENTERPRISE_CORE_SCHEMA_ANALYSIS`, `ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST`.
+- PASSED: `grep_search` xac nhan nhom schema/resource docs da co current-code snapshot cho `CoreTenant`, `CoreServiceAccount`, `CorePATCredential` va danh dau ro `CoreUsageMeter`/`CoreBillingAccount` la target-state.
+- PASSED: `get_errors` clean tren `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md` va `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md` sau khi dong `DOC-04..06`.
+- PASSED: `grep_search` xac nhan taskboard current-code da danh dau `[x]` cho `DOC-04`, `DOC-05`, `DOC-06` va audit report da doi residual risk tu doc drift sang code backlog/parity work.
+
+Residual note:
+- Dot nay van la docs-only slice. No khong them code runtime moi cho operator P0 reads, `partner/tenant`, partner data-plane hay schema objects target-state.
+- Sau mốc nay, bo docs handoff co the xem la day du cho doi code va auditors. Phan cong viec con mo thuoc backlog code `ACC-*`, `OPS-*`, `PART-*`, `DATA-*`, `PKG-*`, khong con la khoang trong docs control.
+- Khong refresh `module_tree_full.md` o dot nay vi khong co thay doi code trong `backend/`, `frontend/` hoac `packages/`.
+
+# Entry 2026-05-02bj - Enterprise B2B MCP current-code realignment handoff pack
+
+Muc tieu:
+- Cap nhat lai hai control docs goc cua enterprise B2B MCP transformation de dung voi code hien tai sau package-track baseline va core-admin audit.
+- Tao mot bo handoff pack moi de doi code co the tiep tuc lam viec theo slice ma khong can hoi lai ve thu tu uu tien, workstreams, validation protocol hay evidence obligations.
+- Chot lai current-code entry point cho cac tai lieu `ENTERPRISE_CORE_*` va tach ro implemented-now, partial, target-state o cap execution control.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Viet lai baseline repo theo su that hien tai: legacy runtime va package-track baseline dang cung ton tai.
+  - Ghi ro `packages/core`, `packages/web`, `packages/vip-app`, `shared/api-contracts`, `buildTarget.js` da ton tai that.
+  - Chot lai sequencing `Phase 0-5` theo current code, phan biet package baseline voi parity runtime.
+  - Ghi ro package-track bootstrap van con transitional wildcard fallback, nen khong duoc claim bridge-free final state.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Them `PHAN 0` cho current-code execution control docs.
+  - Tro thang toi handoff master, implementation plan, taskboard, traceability, self-audit va evidence template moi.
+  - Them note cach doc `implemented now`, `partial`, `target-state` de tranh doc nham bo target-state docs.
+- Tao moi bo handoff pack current-code realignment:
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md`
+  - `docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`
+  - `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md`
+  - `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md`
+  - Pack moi nay chia chuong trinh thanh cac workstream `WS-DOC`, `WS-ACCESS`, `WS-OPERATOR`, `WS-PARTNER`, `WS-DATA`, `WS-PKG`, co taskboard chi tiet va evidence obligations cho tung slice.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bj.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho dot current-code realignment docs nay.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - rewrite execution baseline to reflect actual legacy + package-track coexistence and accurate sequencing)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add current-code execution control section and handoff pack entry points)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (NEW - current-code execution handoff master for the whole enterprise B2B MCP program)
+- docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (NEW - detailed implementation plan for docs realignment and code backlog)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (NEW - live taskboard for docs, access/admin, operator, partner, data/schema, package-track workstreams)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md (NEW - requirement-to-slice traceability matrix)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (NEW - self-audit and validation protocol)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (NEW - slice evidence template)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (NEW - internal audit report for this handoff pack)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` tren `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md` xac nhan cac anchor quan trong da xuat hien: `packages/`/`shared/` ton tai that, `buildTarget.js` ton tai, `Legacy runtime van la SSOT nghiep vu hien tai`, package-track wildcard fallback `manage all`, va `Phase 1 - Package/shared foundation baseline`.
+- PASSED: `get_errors` clean tren `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md` sau khi viet lai toan bo rebaseline.
+- PASSED: `grep_search` tren `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md` xac nhan master index da tro dung sang `CURRENT_CODE_HANDOFF_MASTER`, `IMPLEMENTATION_PLAN_*` va `TASKBOARD_*` moi.
+- PASSED: `get_errors` clean tren 8 docs control moi/cap nhat: master index, handoff master, implementation plan, taskboard, traceability matrix, self-audit protocol, evidence template, handoff audit report.
+- PASSED: `grep_search` tren `docs/*.md` xac nhan traceability matrix va taskboard moi co chung task IDs chinh (`DOC-01`, `ACC-01`, `OPS-01`, `PART-01`, `DATA-01`, `PKG-01`) va audit report da co verdict `PASS FOR IMPLEMENTATION HANDOFF WITH NOTES`.
+- PASSED: read review tren dau file `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md` xac nhan `PHAN 0` da duoc chen vao truoc `PHAN 1A` va current-code control docs da duoc dat thanh entry point chinh.
+
+Residual note:
+- Dot nay la docs-only slice; no khong tu dong realign toan bo cac docs `ENTERPRISE_CORE_*` con lai. Cac task `DOC-04`, `DOC-05`, `DOC-06` van con mo trong taskboard de tiep tuc lam sach tung doc family theo current-code truth.
+- Khong refresh `module_tree_full.md` o dot nay vi khong co thay doi code trong `backend/`, `frontend/` hoac `packages/`; pack audit moi da ghi ro quy tac nay trong self-audit protocol.
+
 # Entry 2026-05-02bi - HoldingsTable whale badges and recent alert glow
 
 Muc tieu:

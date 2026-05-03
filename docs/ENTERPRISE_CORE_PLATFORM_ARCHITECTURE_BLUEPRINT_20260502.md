@@ -1,7 +1,7 @@
 # ENTERPRISE CORE PLATFORM ARCHITECTURE BLUEPRINT
 
 **Date:** 2026-05-02  
-**Status:** Current-code-aligned execution blueprint for `core`  
+**Status:** Current-code truth plus execution blueprint for `core`  
 **Purpose:** Chốt kiến trúc tổng thể nhưng đủ chi tiết cho `core` để phục vụ `web`, `opencore`, `vip-app`, `mobile` mà không phải dựng greenfield platform mới.
 
 **Companion artifacts:**
@@ -18,6 +18,30 @@
 - [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](./ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)
 - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](./ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
 - [ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](./ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)
+
+---
+
+## 0. Current-code boundary reality
+
+Để bộ blueprint này dùng được cho handoff thực chiến, phải đọc nó cùng ba sự thật hiện tại của repo:
+
+1. Legacy backend `backend/` vẫn là runtime SSOT đang chạy cho auth, tenant self-service, admin ops, data APIs và billing projections.
+2. Package-track foundation đã tồn tại thật trong `packages/core/`, `packages/web/`, `packages/vip-app/` và `shared/api-contracts/`, nhưng chưa thay thế legacy runtime ở hầu hết đường đi chính.
+3. `core` ở trạng thái `partial boundary extraction`, không phải greenfield platform đã hoàn thiện.
+
+### Implemented now
+
+- explicit auth/bootstrap abilities và entitlements qua `/api/auth/me/`,
+- tenant self-service control-plane và commercial routes dưới `/api/core/v1/partner/*`,
+- operator wrapper read path `GET /api/core/v1/operator/ai-runtime/`,
+- canonical tenant/machine-access primitives `CoreTenant`, `CoreServiceAccount`, `CorePATCredential` trong legacy backend.
+
+### Target-state còn mở
+
+- full operator API edge `/core/v1/operator/*`,
+- tenant machine-auth bằng PAT theo partner contract,
+- data-plane `core` contract families cho `symbol_snapshot`, `session_facts`, `unified_alert`,
+- service-layer consolidation và package-shell cutover khỏi legacy runtime.
 
 ---
 
