@@ -16,6 +16,7 @@ import AdminOps from './pages/AdminOps';
 import AdminCoreOverview from './pages/AdminCoreOverview';
 import AdminCoreTenants from './pages/AdminCoreTenants';
 import AdminCoreServiceAccounts from './pages/AdminCoreServiceAccounts';
+import AdminCorePATs from './pages/AdminCorePATs';
 import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import PortfolioManagement from './pages/PortfolioManagement';
@@ -158,6 +159,14 @@ export default function App() {
                       element={(
                         <ProtectedRoute action="read" subject="AdminOps">
                           <AdminCoreServiceAccounts />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants/:tenantId/pats"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCorePATs />
                         </ProtectedRoute>
                       )}
                     />

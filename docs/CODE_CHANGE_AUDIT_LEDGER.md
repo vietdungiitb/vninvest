@@ -1,3 +1,55 @@
+# Entry 2026-05-03ao - CA-05 admin core PAT credentials
+
+Muc tieu:
+- Dong slice CA-05 bang page dedicated cho `/admin/core/tenants/:tenantId/pats`.
+- Bam current-code operator PAT wrapper, render PAT registry, summary cards, detail panel va issue/rotate/revoke gating theo ability.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorTenantPATs()` wrapper cho `/core/v1/operator/tenants/{tenant_id}/pats/`.
+- `frontend/src/pages/AdminCorePATs.jsx`:
+  - Tao page dedicated cho PAT registry, filters, summary cards, detail panel va ability-gated action buttons.
+- `frontend/src/pages/AdminCorePATs.test.jsx`:
+  - Them focused tests cho registry/detail render va gating issue/rotate/revoke buttons.
+- `frontend/src/pages/AdminCoreTenants.jsx`:
+  - Them PAT drill-down link tu tenant detail sang PAT route.
+- `frontend/src/pages/AdminCoreTenants.test.jsx`:
+  - Update coverage cho tenant-to-PAT navigation link.
+- `frontend/src/App.jsx`:
+  - Route `/admin/core/tenants/:tenantId/pats` render `AdminCorePATs`.
+- `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Cap nhat route-group coverage cho PAT surface.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 577.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-05` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Advance continuation note sang `CA-06` cho lane admin.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-05.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator tenant PAT helper)
+- frontend/src/pages/AdminCorePATs.jsx (NEW - dedicated operator PAT page)
+- frontend/src/pages/AdminCorePATs.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to PAT route)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for PAT route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/pats` now renders AdminCorePATs)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for PAT page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-05 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCorePATs.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 577 modules.
+
+Residual note:
+- CA-05 is read-first and gating-first; issue/rotate/revoke write-side endpoints remain later work.
+- CA-06 still needs dedicated usage/quota/billing views/routes.
+
 # Entry 2026-05-03an - CA-04 admin core service accounts
 
 Muc tieu:

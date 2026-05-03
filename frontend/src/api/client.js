@@ -612,6 +612,7 @@ export const getCoreOperatorHealth = () => apiClient.get('/core/v1/operator/heal
 export const getCoreOperatorTenants = (params = {}) => apiClient.get('/core/v1/operator/tenants/', { params });
 export const getCoreOperatorTenantDetail = (tenantId) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/`);
 export const getCoreOperatorTenantServiceAccounts = (tenantId, params = {}) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/service-accounts/`, { params });
+export const getCoreOperatorTenantPATs = (tenantId, params = {}) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/pats/`, { params });
 export const getAdminSystemAiSettings = () => apiClient.get('/admin-ops/system-ai-settings/');
 export const updateAdminSystemAiSettings = (payload) => apiClient.put('/admin-ops/system-ai-settings/', payload);
 export const getAdminPrefetchRuntimeSettings = () => apiClient.get('/admin-ops/system-ai-settings/');

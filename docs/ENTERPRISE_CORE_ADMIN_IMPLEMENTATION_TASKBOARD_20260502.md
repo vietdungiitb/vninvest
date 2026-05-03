@@ -35,7 +35,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 | `CA-02` | Completed | `/admin/core/overview` da co page dedicated, bam current-code operator overview/health wrappers va summary/health cards |
 | `CA-03` | Completed | `/admin/core/tenants` va `/admin/core/tenants/:tenantId` da co page dedicated, list/detail/snapshot render từ current-code operator wrappers |
 | `CA-04` | Completed | `/admin/core/tenants/:tenantId/service-accounts` da co page dedicated, summary cards, registry table, detail panel va gating cho create/edit buttons |
-| `CA-05` | Not started | chưa có operator PAT views/routes |
+| `CA-05` | Completed | `/admin/core/tenants/:tenantId/pats` da co page dedicated, summary cards, registry table, detail panel va gating cho issue/rotate/revoke buttons |
 | `CA-06` | Not started | chưa có operator usage/billing projections |
 | `CA-07` | Not started | chưa có operator jobs/audit screens theo contract mới |
 | `CA-08` | Completed | backend wrapper `GET /api/core/v1/operator/ai-runtime/` và read surface liên quan đã có |
@@ -84,7 +84,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 | `CA-02` | P0 | platform overview + runtime health | future `CoreOverview.jsx`, `CoreRuntimeHealth.jsx` | future `views_core_operator_overview.py`, `views_admin_runtime.py` | operator detailed contracts | screen render được summary cards/health cards từ P0 read routes |
 | `CA-03` | P0 | tenant registry + tenant detail | `CoreTenants.jsx`, `CoreTenantDetail.jsx` | future `views_core_operator_tenants.py` | operator detailed contracts | table + detail summary render đúng filters/status badges |
 | `CA-04` | P1 | service accounts | `AdminCoreServiceAccounts.jsx` | `views_admin_runtime.py` + `/api/core/v1/operator/tenants/{tenant_id}/service-accounts/` | operator detailed contracts, RBAC matrix | read list hoạt động; create/edit buttons gate đúng ability |
-| `CA-05` | P1 | PAT credentials | `CorePATs.jsx` | future `views_core_operator_pats.py` | operator detailed contracts, capability payload | read list hoạt động; issue/rotate/revoke ở trạng thái gated, chưa cần fully wired nếu write APIs chưa xong |
+| `CA-05` | P1 | PAT credentials | `AdminCorePATs.jsx` | `views_admin_runtime.py` + `/api/core/v1/operator/tenants/{tenant_id}/pats/` | operator detailed contracts, capability payload | read list hoạt động; issue/rotate/revoke ở trạng thái gated, chưa cần fully wired nếu write APIs chưa xong |
 | `CA-06` | P1 | usage, quotas, billing | `CoreUsage.jsx`, `CoreBilling.jsx` | future `views_core_operator_commercial.py`, `opencore_api.py` reuse candidates | operator detailed contracts, contract pack | commercial panels render bằng read projections rõ ràng |
 | `CA-07` | P1 | jobs + audit trace | `CoreJobs.jsx`, `CoreAuditTrace.jsx` | future `views_core_operator_jobs.py`, future `views_core_operator_audit.py` | operator detailed contracts | jobs table, audit search, detail drawer hoạt động read-only |
 | `CA-08` | P1 | AI runtime governance read path | `CoreAIRuntime.jsx` | `views_ai_runtime_stats.py`, `ai_runtime_config.py`, future operator wrapper view | operator detailed contracts | provider/model readiness + rollout state render được |
@@ -144,7 +144,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 - `frontend/src/pages/AdminCoreTenants.jsx` da render registry list, filters va detail panel cho `/admin/core/tenants` va `/admin/core/tenants/:tenantId`.
 - `frontend/src/App.adminCoreRoutes.test.jsx` da khoa route group de tenant list/detail routes render page dedicated moi.
 - `frontend/src/pages/AdminCoreTenants.test.jsx` da cover list row, detail panel va tenant action timeline.
-- `CA-03` da chuyen sang `Completed`; `CA-04` da chuyen sang `Completed` va `CA-05` la slice admin tiep theo tren board nay.
+- `CA-03` da chuyen sang `Completed`; `CA-04` va `CA-05` da chuyen sang `Completed` va `CA-06` la slice admin tiep theo tren board nay.
 
 ### Ghi chu trien khai 2026-05-03an
 
@@ -153,7 +153,16 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 - `frontend/src/pages/AdminCoreServiceAccounts.test.jsx` da cover list/detail render va gating cho create/edit buttons.
 - `frontend/src/pages/AdminCoreTenants.jsx` va `frontend/src/pages/AdminCoreTenants.test.jsx` da them link va coverage tu tenant detail sang service-account route.
 - `frontend/src/App.jsx` va `frontend/src/App.adminCoreRoutes.test.jsx` da mo route group cho service-account surface moi.
-- `CA-04` da chuyen sang `Completed`; `CA-05` la slice admin tiep theo tren board nay.
+- `CA-04` va `CA-05` da chuyen sang `Completed`; `CA-06` la slice admin tiep theo tren board nay.
+
+### Ghi chu trien khai 2026-05-03ao
+
+- `frontend/src/api/client.js` da co `getCoreOperatorTenantPATs(...)` wrapper cho operator PAT projection.
+- `frontend/src/pages/AdminCorePATs.jsx` da render sổ đăng ký PAT, filters, summary cards, detail panel va ability-gated issue/rotate/revoke buttons cho `/admin/core/tenants/:tenantId/pats`.
+- `frontend/src/pages/AdminCorePATs.test.jsx` da cover list/detail render va gating cho issue/rotate/revoke buttons.
+- `frontend/src/pages/AdminCoreTenants.jsx` va `frontend/src/pages/AdminCoreTenants.test.jsx` da them PAT drill-down link va coverage tu tenant detail.
+- `frontend/src/App.jsx` va `frontend/src/App.adminCoreRoutes.test.jsx` da mo route group cho PAT surface moi.
+- `CA-05` da chuyen sang `Completed`; `CA-06` la slice admin tiep theo tren board nay.
 
 ---
 

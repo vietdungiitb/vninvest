@@ -326,12 +326,20 @@ export default function AdminCoreTenants() {
                     <p className="text-lg font-semibold text-slate-950 dark:text-white">{selectedTenant.display_name}</p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">{selectedTenant.tenant_code}</p>
                   </div>
-                  <Link
-                    to={`/admin/core/tenants/${selectedTenant.id}/service-accounts`}
-                    className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-500/15 dark:text-blue-200"
-                  >
-                    {t('adminCoreTenants.openServiceAccounts', { defaultValue: 'Xem service accounts' })}
-                  </Link>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      to={`/admin/core/tenants/${selectedTenant.id}/service-accounts`}
+                      className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-500/15 dark:text-blue-200"
+                    >
+                      {t('adminCoreTenants.openServiceAccounts', { defaultValue: 'Xem service accounts' })}
+                    </Link>
+                    <Link
+                      to={`/admin/core/tenants/${selectedTenant.id}/pats`}
+                      className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-700 transition-colors hover:bg-cyan-500/15 dark:text-cyan-200"
+                    >
+                      {t('adminCoreTenants.openPATs', { defaultValue: 'Xem PATs' })}
+                    </Link>
+                  </div>
                 </div>
                 <ValueRow label="Status" value={selectedTenant.status} />
                 <ValueRow label="Plan" value={selectedTenant.plan_code} />

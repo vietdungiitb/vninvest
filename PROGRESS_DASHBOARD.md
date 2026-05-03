@@ -1,3 +1,24 @@
+# ✅ AUDIT FILE LIST (2026-05-03ao)
+- frontend/src/api/client.js (MODIFIED - add core operator tenant PAT helper)
+- frontend/src/pages/AdminCorePATs.jsx (NEW - dedicated operator PAT page)
+- frontend/src/pages/AdminCorePATs.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to PAT route)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for PAT route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/pats` now renders AdminCorePATs)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for PAT page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-05 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCorePATs.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 577 modules.
+
+Status:
+- `CA-05` da hoan tat. `/admin/core/tenants/:tenantId/pats` now renders a dedicated current-code PAT page with read-first gating, and the next open admin slice is `CA-06`.
+
 # ✅ AUDIT FILE LIST (2026-05-03an)
 - frontend/src/api/client.js (MODIFIED - add core operator tenant service-account helper)
 - frontend/src/pages/AdminCoreServiceAccounts.jsx (NEW - dedicated operator service-account page)
