@@ -1,3 +1,61 @@
+# Entry 2026-05-03aq - CA-07 admin core jobs and audit trace
+
+Muc tieu:
+- Dong slice CA-07 bang hai page dedicated read-only cho `/admin/core/runtime/jobs` va `/admin/core/audit/requests`.
+- Bam current-code operator wrappers, route guards va deep links tu overview de operator co the truy xuat jobs/audit ngay trong admin core shell.
+
+Noi dung cap nhat chinh:
+- `frontend/src/api/client.js`:
+  - Them `getCoreOperatorJobs()`, `getCoreOperatorAuditRequests()` va `getCoreOperatorAuditRequestDetail()` wrappers cho current-code operator projections.
+- `frontend/src/pages/AdminCoreJobs.jsx`:
+  - Tao page dedicated cho jobs table, filters, summary cards, pagination va detail panel read-only.
+- `frontend/src/pages/AdminCoreJobs.test.jsx`:
+  - Them focused tests cho render table/detail va selection switching.
+- `frontend/src/pages/AdminCoreAuditTrace.jsx`:
+  - Tao page dedicated cho audit trace table, filters, summary cards, detail panel va source record JSON.
+- `frontend/src/pages/AdminCoreAuditTrace.test.jsx`:
+  - Them focused tests cho render table/detail va selection switching.
+- `frontend/src/pages/AdminCoreOverview.jsx` va `frontend/src/pages/AdminCoreOverview.test.jsx`:
+  - Them deep links sang jobs/audit trace tu overview hero actions.
+- `frontend/src/App.jsx` va `frontend/src/App.adminCoreRoutes.test.jsx`:
+  - Route `/admin/core/runtime/jobs` va `/admin/core/audit/requests` render dedicated pages va duoc cover trong route-group tests.
+- `backend/portfolio/permissions.py`, `backend/portfolio/auth_views.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py`:
+  - Them abilities `CoreJobOps` va `CoreAuditTrace` vao capability snapshot operator de route guard khop live bootstrap.
+- `module_tree_full.md`:
+  - Regenerate sau them page/test/helper moi; module count len 585.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Mark `CA-07` complete va ghi actual code anchors.
+- `docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md`:
+  - Close continuation note cho admin lane; `CA-07` da dong.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice CA-07.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - add core operator jobs/audit helpers)
+- frontend/src/pages/AdminCoreJobs.jsx (NEW - dedicated operator jobs page)
+- frontend/src/pages/AdminCoreJobs.test.jsx (NEW - focused jobs page tests)
+- frontend/src/pages/AdminCoreAuditTrace.jsx (NEW - dedicated operator audit trace page)
+- frontend/src/pages/AdminCoreAuditTrace.test.jsx (NEW - focused audit trace page tests)
+- frontend/src/pages/AdminCoreOverview.jsx (MODIFIED - add jobs/audit deep links)
+- frontend/src/pages/AdminCoreOverview.test.jsx (MODIFIED - navigation assertions for jobs/audit links)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/runtime/jobs` and `/admin/core/audit/requests` now render dedicated pages)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for jobs/audit pages)
+- backend/portfolio/permissions.py (MODIFIED - add CoreJobOps/CoreAuditTrace abilities)
+- backend/portfolio/auth_views.py (MODIFIED - central operator snapshot recognizes new abilities)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - ability snapshot assertions)
+- module_tree_full.md (MODIFIED - regenerated after frontend/backend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-07 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - close admin continuation note)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreJobs.test.jsx src/pages/AdminCoreAuditTrace.test.jsx src/pages/AdminCoreOverview.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `4 passed, 17 total`.
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb; Pop-Location` => `10 passed`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 585 modules.
+
+Residual note:
+- CA-07 is read-only by design; write actions, retry/run-now, export and richer lineage drill-down remain later slices.
+
 # Entry 2026-05-03ao - CA-05 admin core PAT credentials
 
 Muc tieu:

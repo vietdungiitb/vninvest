@@ -103,6 +103,8 @@ describe('AdminCoreOverview', () => {
     expect(screen.getByText('Sức khỏe runtime')).toBeInTheDocument();
     expect(screen.getByText('Thành phần suy giảm: 1')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Mở trung tâm crawl' })).toHaveAttribute('href', '/admin/core/crawl-control');
+    expect(screen.getByRole('link', { name: 'Xem jobs' })).toHaveAttribute('href', '/admin/core/runtime/jobs');
+    expect(screen.getByRole('link', { name: 'Xem audit trace' })).toHaveAttribute('href', '/admin/core/audit/requests');
     expect(mockGetCoreOperatorOverview).toHaveBeenCalledTimes(1);
     expect(mockGetCoreOperatorHealth).toHaveBeenCalledTimes(1);
   });

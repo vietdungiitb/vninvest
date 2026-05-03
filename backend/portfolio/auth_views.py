@@ -52,6 +52,8 @@ def _build_current_capability_snapshot(user) -> dict:
     central_operator_enabled = bool(
         entitlements.get('can_read_admin_ops')
         or entitlements.get('can_read_admin_crawl_control')
+        or entitlements.get('can_read_admin_core_jobs')
+        or entitlements.get('can_read_admin_core_audit_trace')
     )
     tenant_admin_enabled = bool(
         entitlements.get('can_read_tenant_admin_home')

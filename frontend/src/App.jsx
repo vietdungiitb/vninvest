@@ -19,6 +19,8 @@ import AdminCoreServiceAccounts from './pages/AdminCoreServiceAccounts';
 import AdminCorePATs from './pages/AdminCorePATs';
 import AdminCoreUsage from './pages/AdminCoreUsage';
 import AdminCoreBilling from './pages/AdminCoreBilling';
+import AdminCoreJobs from './pages/AdminCoreJobs';
+import AdminCoreAuditTrace from './pages/AdminCoreAuditTrace';
 import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import PortfolioManagement from './pages/PortfolioManagement';
@@ -193,6 +195,22 @@ export default function App() {
                       element={(
                         <ProtectedRoute action="read" subject="AdminCrawlControl">
                           <AdminCrawlControl />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="runtime/jobs"
+                      element={(
+                        <ProtectedRoute action="read" subject="CoreJobOps">
+                          <AdminCoreJobs />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="audit/requests"
+                      element={(
+                        <ProtectedRoute action="read" subject="CoreAuditTrace">
+                          <AdminCoreAuditTrace />
                         </ProtectedRoute>
                       )}
                     />

@@ -192,6 +192,15 @@ export const getTenantBillingSubscription = () =>
 export const getTenantBillingInvoices = (params = {}) =>
   apiClient.get('/core/v1/partner/billing/invoices/', { params });
 
+export const getCoreOperatorJobs = (params = {}) =>
+  apiClient.get('/core/v1/operator/jobs/', { params });
+
+export const getCoreOperatorAuditRequests = (params = {}) =>
+  apiClient.get('/core/v1/operator/audit/requests/', { params });
+
+export const getCoreOperatorAuditRequestDetail = (requestId) =>
+  apiClient.get(`/core/v1/operator/audit/requests/${requestId}/`);
+
 export const issueTenantPAT = (payload) =>
   apiClient.post('/core/v1/partner/pats/issue/', payload, {
     headers: {

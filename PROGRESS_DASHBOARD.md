@@ -1,3 +1,29 @@
+# ✅ AUDIT FILE LIST (2026-05-03aq)
+- frontend/src/api/client.js (MODIFIED - add core operator jobs/audit helpers)
+- frontend/src/pages/AdminCoreJobs.jsx (NEW - dedicated operator jobs page)
+- frontend/src/pages/AdminCoreJobs.test.jsx (NEW - focused jobs page tests)
+- frontend/src/pages/AdminCoreAuditTrace.jsx (NEW - dedicated operator audit trace page)
+- frontend/src/pages/AdminCoreAuditTrace.test.jsx (NEW - focused audit trace page tests)
+- frontend/src/pages/AdminCoreOverview.jsx (MODIFIED - add jobs/audit deep links)
+- frontend/src/pages/AdminCoreOverview.test.jsx (MODIFIED - navigation assertions for jobs/audit links)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/runtime/jobs` and `/admin/core/audit/requests` now render dedicated pages)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for jobs/audit pages)
+- backend/portfolio/permissions.py (MODIFIED - add CoreJobOps/CoreAuditTrace abilities)
+- backend/portfolio/auth_views.py (MODIFIED - central operator snapshot recognizes new abilities)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - ability snapshot assertions)
+- module_tree_full.md (MODIFIED - regenerated after frontend/backend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-07 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - close admin continuation note)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreJobs.test.jsx src/pages/AdminCoreAuditTrace.test.jsx src/pages/AdminCoreOverview.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `4 passed, 17 total`.
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb; Pop-Location` => `10 passed`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 585 modules.
+
+Status:
+- `CA-07` da hoan tat. `/admin/core/runtime/jobs` va `/admin/core/audit/requests` now render dedicated current-code read-only pages, va board admin hien khong con slice mo.
+
 # ✅ AUDIT FILE LIST (2026-05-03ap)
 - frontend/src/pages/AdminCoreUsage.jsx (NEW - dedicated meter usage/quota page)
 - frontend/src/pages/AdminCoreBilling.jsx (NEW - dedicated billing/subscription page)

@@ -146,6 +146,18 @@ export default function AdminCoreOverview() {
             >
               {t('adminCoreOverview.openCrawlControl', { defaultValue: 'Mở trung tâm crawl' })}
             </Link>
+            <Link
+              to="/admin/core/runtime/jobs"
+              className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+            >
+              {t('adminCoreOverview.openJobs', { defaultValue: 'Xem jobs' })}
+            </Link>
+            <Link
+              to="/admin/core/audit/requests"
+              className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+            >
+              {t('adminCoreOverview.openAuditTrace', { defaultValue: 'Xem audit trace' })}
+            </Link>
             <button
               type="button"
               onClick={loadOverview}

@@ -139,6 +139,16 @@ jest.mock('./pages/AdminCoreBilling', () => ({
   default: mockPage('admin-core-billing-page', 'Admin Core Billing shell'),
 }));
 
+jest.mock('./pages/AdminCoreJobs', () => ({
+  __esModule: true,
+  default: mockPage('admin-core-jobs-page', 'Admin Core Jobs shell'),
+}));
+
+jest.mock('./pages/AdminCoreAuditTrace', () => ({
+  __esModule: true,
+  default: mockPage('admin-core-audit-trace-page', 'Admin Core Audit Trace shell'),
+}));
+
 jest.mock('./pages/AdminCrawlControl', () => ({
   __esModule: true,
   default: mockPage('admin-crawl-control-page', 'Admin Crawl Control shell'),
@@ -226,7 +236,12 @@ describe('App admin core route group', () => {
       authStateReady: true,
     });
     mockUseAbility.mockReturnValue({
-      can: jest.fn((action, subject) => action === 'read' && (subject === 'AdminOps' || subject === 'AdminCrawlControl')),
+      can: jest.fn((action, subject) => action === 'read' && (
+        subject === 'AdminOps'
+        || subject === 'AdminCrawlControl'
+        || subject === 'CoreJobOps'
+        || subject === 'CoreAuditTrace'
+      )),
     });
   });
 
@@ -288,6 +303,18 @@ describe('App admin core route group', () => {
     renderAt('/admin/core/crawl-control');
 
     expect(await screen.findByTestId('admin-crawl-control-page')).toBeInTheDocument();
+  });
+
+  it('renders the jobs surface inside the admin core group', async () => {
+    renderAt('/admin/core/runtime/jobs');
+
+    expect(await screen.findByTestId('admin-core-jobs-page')).toBeInTheDocument();
+  });
+
+  it('renders the audit-trace surface inside the admin core group', async () => {
+    renderAt('/admin/core/audit/requests');
+
+    expect(await screen.findByTestId('admin-core-audit-trace-page')).toBeInTheDocument();
   });
 
   it('keeps the admin core group guarded by ability checks', async () => {

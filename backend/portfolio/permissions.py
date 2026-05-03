@@ -48,6 +48,8 @@ DEFAULT_QUOTA_CAPS_BY_TIER = {
 ADMIN_CONSOLE_ABILITIES = [
     {'action': 'read', 'subject': 'AdminOps'},
     {'action': 'read', 'subject': 'AdminCrawlControl'},
+    {'action': 'read', 'subject': 'CoreJobOps'},
+    {'action': 'read', 'subject': 'CoreAuditTrace'},
     {'action': 'read', 'subject': 'StockDetailAdvancedTab'},
 ]
 
@@ -196,6 +198,8 @@ def resolve_user_entitlements(user) -> dict:
         'can_write_tenant_pats': has_plan(user, 'pro'),
         'can_read_admin_ops': has_plan(user, 'admin'),
         'can_read_admin_crawl_control': has_plan(user, 'admin'),
+        'can_read_admin_core_jobs': has_plan(user, 'admin'),
+        'can_read_admin_core_audit_trace': has_plan(user, 'admin'),
     }
 
 

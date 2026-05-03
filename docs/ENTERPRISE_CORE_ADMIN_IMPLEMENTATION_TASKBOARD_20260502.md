@@ -37,7 +37,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 | `CA-04` | Completed | `/admin/core/tenants/:tenantId/service-accounts` da co page dedicated, summary cards, registry table, detail panel va gating cho create/edit buttons |
 | `CA-05` | Completed | `/admin/core/tenants/:tenantId/pats` da co page dedicated, summary cards, registry table, detail panel va gating cho issue/rotate/revoke buttons |
 | `CA-06` | Completed | `/admin/core/tenants/:tenantId/usage` va `/admin/core/tenants/:tenantId/billing` da co page dedicated, summary cards, meter/context panels va drill-down links |
-| `CA-07` | Not started | chưa có operator jobs/audit screens theo contract mới |
+| `CA-07` | Completed | `/admin/core/runtime/jobs` và `/admin/core/audit/requests` đã có page dedicated read-only theo current-code operator wrappers |
 | `CA-08` | Completed | backend wrapper `GET /api/core/v1/operator/ai-runtime/` và read surface liên quan đã có |
 | `CA-09` | Completed | tenant home + capabilities live trên `/tenant-admin/*` |
 | `CA-10` | Completed | tenant service account + PAT self-service live end-to-end |
@@ -86,7 +86,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 | `CA-04` | P1 | service accounts | `AdminCoreServiceAccounts.jsx` | `views_admin_runtime.py` + `/api/core/v1/operator/tenants/{tenant_id}/service-accounts/` | operator detailed contracts, RBAC matrix | read list hoạt động; create/edit buttons gate đúng ability |
 | `CA-05` | P1 | PAT credentials | `AdminCorePATs.jsx` | `views_admin_runtime.py` + `/api/core/v1/operator/tenants/{tenant_id}/pats/` | operator detailed contracts, capability payload | read list hoạt động; issue/rotate/revoke ở trạng thái gated, chưa cần fully wired nếu write APIs chưa xong |
 | `CA-06` | P1 | usage, quotas, billing | `AdminCoreUsage.jsx`, `AdminCoreBilling.jsx` | `views_admin_runtime.py` snapshot reuse + current commercial projections | operator detailed contracts, contract pack | commercial panels render bằng read projections rõ ràng |
-| `CA-07` | P1 | jobs + audit trace | `CoreJobs.jsx`, `CoreAuditTrace.jsx` | future `views_core_operator_jobs.py`, future `views_core_operator_audit.py` | operator detailed contracts | jobs table, audit search, detail drawer hoạt động read-only |
+| `CA-07` | P1 | jobs + audit trace | `AdminCoreJobs.jsx`, `AdminCoreAuditTrace.jsx` | `views_admin_runtime.py`, `permissions.py`, `auth_views.py` | operator detailed contracts | jobs table, audit search, detail drawer hoạt động read-only |
 | `CA-08` | P1 | AI runtime governance read path | `CoreAIRuntime.jsx` | `views_ai_runtime_stats.py`, `ai_runtime_config.py`, future operator wrapper view | operator detailed contracts | provider/model readiness + rollout state render được |
 | `CA-09` | P2 | tenant admin home + capabilities | `TenantAdminHome.jsx`, `TenantCapabilities.jsx` | future partner/access views | capability payload contract, partner contract draft | tenant console bootstrap hoàn chỉnh |
 | `CA-10` | P2 | tenant service accounts + PATs | `TenantServiceAccounts.jsx`, `TenantPATs.jsx` | partner control-plane views | partner contract draft, capability payload contract | tenant self-service machine access flow read/write theo scope |
@@ -162,7 +162,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 - `frontend/src/pages/AdminCorePATs.test.jsx` da cover list/detail render va gating cho issue/rotate/revoke buttons.
 - `frontend/src/pages/AdminCoreTenants.jsx` va `frontend/src/pages/AdminCoreTenants.test.jsx` da them PAT drill-down link va coverage tu tenant detail.
 - `frontend/src/App.jsx` va `frontend/src/App.adminCoreRoutes.test.jsx` da mo route group cho PAT surface moi.
-- `CA-05` da chuyen sang `Completed`; `CA-06` da chuyen sang `Completed` va `CA-07` la slice admin tiep theo tren board nay.
+- `CA-05` da chuyen sang `Completed`; `CA-06` da chuyen sang `Completed` va `CA-07` da chuyen sang `Completed`, nen board admin nay khong con slice mo.
 
 ### Ghi chu trien khai 2026-05-03ap
 
@@ -171,7 +171,7 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 - `frontend/src/pages/AdminCoreUsage.test.jsx` va `frontend/src/pages/AdminCoreBilling.test.jsx` da cover list/detail render cho ca hai surface.
 - `frontend/src/pages/AdminCoreTenants.jsx` va `frontend/src/pages/AdminCoreTenants.test.jsx` da them drill-down links sang usage/billing routes.
 - `frontend/src/App.jsx` va `frontend/src/App.adminCoreRoutes.test.jsx` da mo route group cho usage/billing surfaces moi.
-- `CA-06` da chuyen sang `Completed`; `CA-07` la slice admin tiep theo tren board nay.
+- `CA-06` da chuyen sang `Completed`; `CA-07` da chuyen sang `Completed`, nen board admin nay khong con slice mo.
 
 ---
 
@@ -308,6 +308,15 @@ Nó không thay thế screen spec hay contract doc. Nó chốt `nên build theo 
 
 - audit detail không lộ raw sensitive payload,
 - jobs page render được queued/running/failed states rõ ràng.
+
+### Ghi chú triển khai 2026-05-03aq
+
+- `frontend/src/pages/AdminCoreJobs.jsx` da render page dedicated cho `/admin/core/runtime/jobs` voi list/detail read-only, filter và cursor controls.
+- `frontend/src/pages/AdminCoreAuditTrace.jsx` da render page dedicated cho `/admin/core/audit/requests` voi list/detail read-only va source record panel.
+- `frontend/src/App.jsx`, `frontend/src/App.adminCoreRoutes.test.jsx`, `frontend/src/pages/AdminCoreOverview.jsx` va `frontend/src/pages/AdminCoreOverview.test.jsx` da được cập nhật route group, route test va deep links cho hai surface mới.
+- `backend/portfolio/permissions.py`, `backend/portfolio/auth_views.py` va `backend/portfolio/tests/test_api_routes_auth_profile.py` da them ability `CoreJobOps` va `CoreAuditTrace` vao capability snapshot operator.
+- Focused validation pass: frontend route/page tests xanh va backend auth/profile tests xanh.
+- `CA-07` da chuyen sang `Completed`; board admin nay khong con slice mo.
 
 ---
 
