@@ -23,7 +23,7 @@ from .models import (
 )
 from .partner_tenant_context import resolve_partner_tenant_context
 from .serializers import CrawlRunSerializer, SignalServiceRunSerializer
-from .views_partner_admin import PARTNER_USAGE_METERS, _build_quota_snapshot_row, _build_subscription_summary
+from .views_partner_admin import PARTNER_USAGE_METERS, _build_plan_lifecycle_summary, _build_quota_snapshot_row, _build_subscription_summary
 
 from portfolio.tasks_prefetch import _read_offpeak_ingest_history
 from portfolio.runtime_policy_helpers import (
@@ -219,6 +219,7 @@ def _build_recent_operator_actions(tenant: CoreTenant, tenant_context, service_a
 
 def _build_operator_tenant_snapshot(tenant: CoreTenant) -> dict:
     tenant_context = resolve_partner_tenant_context(tenant.owner_user)
+    plan_lifecycle = _build_plan_lifecycle_summary(tenant.owner_user)
     usage_snapshot = _build_operator_tenant_usage_snapshot(tenant)
     service_account_qs = CoreServiceAccount.objects.filter(owner_user=tenant.owner_user)
     pat_qs = CorePATCredential.objects.select_related('service_account').filter(owner_user=tenant.owner_user)
@@ -248,6 +249,7 @@ def _build_operator_tenant_snapshot(tenant: CoreTenant) -> dict:
         'display_name': tenant.display_name,
         'status': tenant.status,
         'plan_code': tenant_context.plan_code,
+        'plan_lifecycle': plan_lifecycle,
         'suspension_state': usage_snapshot['suspension_state'],
         'current_usage_risk': usage_snapshot['current_usage_risk'],
         'invoice_state': usage_snapshot['invoice_state'],
@@ -353,6 +355,7 @@ def _build_operator_tenant_list_snapshot(request, tenants: list[CoreTenant]) -> 
                 'display_name': row['display_name'],
                 'status': row['status'],
                 'plan_code': row['plan_code'],
+                'plan_lifecycle': row['plan_lifecycle'],
                 'suspension_state': row['suspension_state'],
                 'current_usage_risk': row['current_usage_risk'],
                 'invoice_state': row['invoice_state'],

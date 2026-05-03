@@ -5,7 +5,8 @@
   "type": "module",
   "description": "VNInvest shared frontend package-track shell baseline",
   "scripts": {
-    "check:shell": "node ./scripts/check-shell.mjs"
+    "check:shell": "node ./scripts/check-shell.mjs",
+    "check:vip": "node ./scripts/check-vip-local-control.mjs"
   },
   "exports": {
     ".": "./src/index.js",

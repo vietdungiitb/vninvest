@@ -12,16 +12,17 @@ import StatCard from '../components/StatCard';
 import HoldingsTable from '../components/HoldingsTable';
 import UnifiedAlertBar from '../components/UnifiedAlertBar';
 import UnifiedAlertCenter from '../components/UnifiedAlertCenter';
+import StickyAlertBar from '../components/StickyAlertBar';
 import PortfolioHeatmap from '../components/PortfolioHeatmap';
 import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import useUnifiedAlerts from '../hooks/useUnifiedAlerts';
+import useDashboardAlerts from '../hooks/useDashboardAlerts';
 import usePersistentAlertState from '../hooks/usePersistentAlertState';
 import {
   buildLiveHoldingsOverlay,
   buildLiveSummaryFromHoldings,
 } from '../utils/dashboardRealtimeSelectors';
-import { normalizeAlertSeverity, severityWeight } from '../utils/alertTaxonomy';
 
 const AllocationPieChart = lazy(() => import('../components/AllocationPieChart'));
 const PortfolioAnalyticsPanel = lazy(() => import('../components/PortfolioAnalyticsPanel'));
@@ -38,47 +39,6 @@ function DashboardPanelFallback({ minHeightClass = 'min-h-[220px]' }) {
 
 function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
-}
-
-function normalizeAlertTimestamp(value) {
-  const parsedTime = new Date(value || 0).getTime();
-  return Number.isFinite(parsedTime) ? parsedTime : null;
-}
-
-function buildRecentWhaleAlertMap(alertList) {
-  const now = Date.now();
-  const recentWindowMs = 5 * 60 * 1000;
-
-  return (alertList || []).reduce((accumulator, alert) => {
-    const symbol = normalizeSymbol(alert?.symbol);
-    if (!symbol) {
-      return accumulator;
-    }
-
-    const timestamp = normalizeAlertTimestamp(alert?.ts || alert?.time || alert?.created_at || alert?.event_time);
-    if (timestamp === null || now - timestamp > recentWindowMs) {
-      return accumulator;
-    }
-
-    const severity = normalizeAlertSeverity(alert?.severity, 'medium');
-    const sideSource = String(alert?.side || alert?.signal_type || alert?.type || '').toLowerCase();
-    const side = sideSource.includes('sell') ? 'sell' : 'buy';
-    const sizeClass = String(alert?.size_class || '').trim().toLowerCase();
-    const matchedValue = Number(alert?.matched_value ?? alert?.matchedValue ?? alert?.value ?? 0);
-    const current = accumulator[symbol];
-
-    if (!current || timestamp > current.ts || (timestamp === current.ts && severityWeight(severity) > severityWeight(current.severity))) {
-      accumulator[symbol] = {
-        ts: timestamp,
-        severity,
-        side,
-        sizeClass,
-        matchedValue,
-      };
-    }
-
-    return accumulator;
-  }, {});
 }
 
 export default function LegacyDashboard() {
@@ -171,10 +131,7 @@ export default function LegacyDashboard() {
     [monitoredSymbols, quotesBySymbol],
   );
 
-  const whaleAlertsBySymbol = useMemo(
-    () => buildRecentWhaleAlertMap(alerts),
-    [alerts],
-  );
+  const { whaleAlertsBySymbol: dashboardWhaleAlertsBySymbol } = useDashboardAlerts({ alerts });
 
   const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
   const liveSummary = buildLiveSummaryFromHoldings(liveHoldings);
@@ -577,6 +534,8 @@ export default function LegacyDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
+        <StickyAlertBar alerts={filteredUnifiedAlerts} />
+
         <PortfolioHeatmap
           holdings={(holdingsReady && trackedSymbolsReady) ? heatmapData : []}
           title={t('dashboardRealtime.watchlistHeatmapTitle', { defaultValue: 'Biến động Watchlist & Danh mục' })}
@@ -692,7 +651,7 @@ export default function LegacyDashboard() {
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-300">
           {t('dashboard.holdings')}
         </h2>
-        <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} whaleAlertsBySymbol={whaleAlertsBySymbol} />
+        <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} whaleAlertsBySymbol={dashboardWhaleAlertsBySymbol} />
       </div>
     </div>
   );

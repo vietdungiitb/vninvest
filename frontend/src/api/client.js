@@ -53,6 +53,13 @@ function buildIdempotencyKey(prefix = 'request') {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function withDefaultAuditReason(payload = {}, defaultReason) {
+  return {
+    ...payload,
+    audit_reason: payload.audit_reason || defaultReason,
+  };
+}
+
 const AUTH_PUBLIC_ENDPOINT_PATTERN = /\/auth\/(token\/?|token\/refresh\/?|register\/?|verify-email\/?|resend-verification\/?)$/i;
 let refreshRequestPromise = null;
 
@@ -202,21 +209,21 @@ export const getCoreOperatorAuditRequestDetail = (requestId) =>
   apiClient.get(`/core/v1/operator/audit/requests/${requestId}/`);
 
 export const issueTenantPAT = (payload) =>
-  apiClient.post('/core/v1/partner/pats/issue/', payload, {
+  apiClient.post('/core/v1/partner/pats/issue/', withDefaultAuditReason(payload, 'tenant_admin_issue_pat'), {
     headers: {
       'Idempotency-Key': buildIdempotencyKey('tenant-pat-issue'),
     },
   });
 
 export const rotateTenantPAT = (tokenId, payload = {}) =>
-  apiClient.post(`/core/v1/partner/pats/${tokenId}/rotate/`, payload, {
+  apiClient.post(`/core/v1/partner/pats/${tokenId}/rotate/`, withDefaultAuditReason(payload, 'tenant_admin_rotate_pat'), {
     headers: {
       'Idempotency-Key': buildIdempotencyKey('tenant-pat-rotate'),
     },
   });
 
 export const revokeTenantPAT = (tokenId, payload = {}) =>
-  apiClient.post(`/core/v1/partner/pats/${tokenId}/revoke/`, payload, {
+  apiClient.post(`/core/v1/partner/pats/${tokenId}/revoke/`, withDefaultAuditReason(payload, 'tenant_admin_revoke_pat'), {
     headers: {
       'Idempotency-Key': buildIdempotencyKey('tenant-pat-revoke'),
     },

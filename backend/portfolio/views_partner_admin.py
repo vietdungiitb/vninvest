@@ -4,15 +4,21 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from .authentication_partner import CorePartnerPATAuthentication
 from .opencore_revenue import DPIInvoice, DPISubscription
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant
+from .models import CorePATCredential, CoreServiceAccount, CoreTenant, UserConfig
 from .partner_tenant_context import resolve_partner_tenant_context
 from .permissions import IsProPlan
 from .quota_service import get_usage
+
+
+PARTNER_AUTH_CLASSES = [CorePartnerPATAuthentication, JWTAuthentication]
+partner_authentication_classes = authentication_classes(PARTNER_AUTH_CLASSES)
 
 
 def _request_ip(request) -> str:
@@ -57,6 +63,63 @@ def _require_idempotency_key(request, request_id: str):
         request_id=request_id,
         param='Idempotency-Key',
     )
+
+
+def _request_auth_context(request) -> dict:
+    auth = getattr(request, 'auth', None)
+    if isinstance(auth, CorePATCredential):
+        return {
+            'auth_mode': 'pat',
+            'auth_credential_id': auth.public_id,
+            'auth_service_account_id': auth.service_account.public_id,
+        }
+
+    return {'auth_mode': 'session'}
+
+
+def _build_audit_metadata(request, *, action: str, audit_reason: str, extra: dict | None = None) -> dict:
+    metadata = {
+        'audit_action': action,
+        'audit_reason': str(audit_reason or '').strip(),
+    }
+    metadata.update(_request_auth_context(request))
+    if extra:
+        metadata.update(extra)
+    return metadata
+
+
+def _resolve_user_config(user) -> UserConfig:
+    user_config, _ = UserConfig.objects.get_or_create(user=user)
+    return user_config
+
+
+def _build_plan_lifecycle_summary(user) -> dict:
+    user_config = _resolve_user_config(user)
+    now = timezone.now()
+
+    if user_config.plan_locked_by_admin:
+        lifecycle_state = 'locked'
+    elif user_config.downgraded_at:
+        lifecycle_state = 'downgraded'
+    elif user_config.plan_expires_at and user_config.plan_expires_at <= now:
+        lifecycle_state = 'auto_downgrade_due' if user_config.auto_downgrade_enabled else 'expired'
+    elif user_config.plan_source == UserConfig.PlanSourceChoices.PAID:
+        lifecycle_state = 'paid'
+    elif user_config.plan_source == UserConfig.PlanSourceChoices.ONBOARDING_TRIAL:
+        lifecycle_state = 'trial'
+    else:
+        lifecycle_state = 'system_default'
+
+    return {
+        'plan': user_config.plan,
+        'plan_source': user_config.plan_source,
+        'plan_assigned_at': user_config.plan_assigned_at.isoformat() if user_config.plan_assigned_at else None,
+        'plan_expires_at': user_config.plan_expires_at.isoformat() if user_config.plan_expires_at else None,
+        'auto_downgrade_enabled': bool(user_config.auto_downgrade_enabled),
+        'plan_locked_by_admin': bool(user_config.plan_locked_by_admin),
+        'downgraded_at': user_config.downgraded_at.isoformat() if user_config.downgraded_at else None,
+        'lifecycle_state': lifecycle_state,
+    }
 
 
 def _serialize_service_account(service_account: CoreServiceAccount, *, tenant_context=None) -> dict:
@@ -311,7 +374,7 @@ def _build_subscription_summary(user, tenant_context) -> dict:
     }
 
 
-def _serialize_tenant_summary(tenant: CoreTenant) -> dict:
+def _serialize_tenant_summary(tenant: CoreTenant, *, plan_lifecycle: dict | None = None) -> dict:
     return {
         'object': 'tenant',
         'id': tenant.public_id,
@@ -319,6 +382,7 @@ def _serialize_tenant_summary(tenant: CoreTenant) -> dict:
         'display_name': tenant.display_name,
         'status': tenant.status,
         'plan_code': tenant.plan_code,
+        'plan_lifecycle': plan_lifecycle or _build_plan_lifecycle_summary(tenant.owner_user),
         'billing_account_id': None,
         'default_environment': tenant.default_environment,
         'created_at': tenant.created_at.isoformat() if tenant.created_at else None,
@@ -331,6 +395,7 @@ class PartnerServiceAccountCreateSerializer(serializers.Serializer):
     environment = serializers.ChoiceField(choices=CoreServiceAccount.EnvironmentChoices.choices)
     policy_ids = serializers.ListField(child=serializers.CharField(max_length=80), required=False, allow_empty=True)
     metadata = serializers.DictField(required=False)
+    audit_reason = serializers.CharField(max_length=160, required=False, allow_blank=True)
 
 
 class PartnerPATIssueSerializer(serializers.Serializer):
@@ -338,15 +403,18 @@ class PartnerPATIssueSerializer(serializers.Serializer):
     scope_codes = serializers.ListField(child=serializers.CharField(max_length=80), allow_empty=False)
     expires_at = serializers.DateTimeField(required=False, allow_null=True)
     display_name = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    audit_reason = serializers.CharField(max_length=160, required=False, allow_blank=True)
 
 
 class PartnerPATRotateSerializer(serializers.Serializer):
     grace_period_seconds = serializers.IntegerField(required=False, min_value=0, default=3600)
     expires_at = serializers.DateTimeField(required=False, allow_null=True)
+    audit_reason = serializers.CharField(max_length=160, required=False, allow_blank=True)
 
 
 class PartnerPATRevokeSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True, max_length=160)
+    audit_reason = serializers.CharField(required=False, allow_blank=True, max_length=160)
 
 
 def _resolve_owned_service_account(tenant_context, public_id: str) -> CoreServiceAccount | None:
@@ -358,17 +426,19 @@ def _resolve_owned_pat(tenant_context, public_id: str) -> CorePATCredential | No
 
 
 @api_view(['GET'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_tenant_api(request):
     request_id = _request_id()
     tenant = CoreTenant.ensure_for_user(request.user)
     return _response(
-        _serialize_tenant_summary(tenant),
+        _serialize_tenant_summary(tenant, plan_lifecycle=_build_plan_lifecycle_summary(tenant.owner_user)),
         request_id=request_id,
     )
 
 
 @api_view(['GET', 'POST'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_service_accounts_api(request):
     request_id = _request_id()
@@ -393,13 +463,16 @@ def partner_service_accounts_api(request):
 
     serializer = PartnerServiceAccountCreateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    audit_reason = str(serializer.validated_data.get('audit_reason') or 'tenant_admin_create_service_account').strip()
+    metadata = dict(serializer.validated_data.get('metadata') or {})
+    metadata.update(_build_audit_metadata(request, action='service_account_create', audit_reason=audit_reason))
     service_account = CoreServiceAccount.objects.create(
         owner_user=tenant_context.owner_user,
         created_by=request.user,
         name=serializer.validated_data['name'].strip(),
         environment=serializer.validated_data['environment'],
         policy_ids=list(serializer.validated_data.get('policy_ids') or []),
-        metadata=serializer.validated_data.get('metadata') or {},
+        metadata=metadata,
     )
     return _response(
         _serialize_service_account(service_account, tenant_context=tenant_context),
@@ -409,6 +482,7 @@ def partner_service_accounts_api(request):
 
 
 @api_view(['GET'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_pat_list_api(request):
     request_id = _request_id()
@@ -436,6 +510,7 @@ def partner_pat_list_api(request):
 
 
 @api_view(['POST'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_pat_issue_api(request):
     request_id = _request_id()
@@ -456,13 +531,19 @@ def partner_pat_issue_api(request):
             param='service_account_id',
         )
 
+    audit_reason = str(serializer.validated_data.get('audit_reason') or 'tenant_admin_issue_pat').strip()
     credential, raw_secret = CorePATCredential.issue_for_service_account(
         service_account=service_account,
         scope_codes=list(serializer.validated_data['scope_codes']),
         expires_at=serializer.validated_data.get('expires_at'),
         display_name=serializer.validated_data.get('display_name', ''),
         issued_by=request.user,
-        metadata={'issued_from_ip': _request_ip(request)},
+        metadata=_build_audit_metadata(
+            request,
+            action='pat_issue',
+            audit_reason=audit_reason,
+            extra={'issued_from_ip': _request_ip(request)},
+        ),
     )
     return _response(
         _serialize_pat_credential(credential, secret=raw_secret, tenant_context=tenant_context),
@@ -472,6 +553,7 @@ def partner_pat_issue_api(request):
 
 
 @api_view(['POST'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_pat_rotate_api(request, token_id: str):
     request_id = _request_id()
@@ -501,11 +583,18 @@ def partner_pat_rotate_api(request, token_id: str):
             param='token_id',
         )
 
+    audit_reason = str(serializer.validated_data.get('audit_reason') or 'tenant_admin_rotate_pat').strip()
     with transaction.atomic():
         new_token, raw_secret, grace_until = credential.rotate(
             grace_period_seconds=serializer.validated_data.get('grace_period_seconds', 3600),
             expires_at=serializer.validated_data.get('expires_at'),
             issued_by=request.user,
+            metadata=_build_audit_metadata(
+                request,
+                action='pat_rotate',
+                audit_reason=audit_reason,
+                extra={'rotated_token_id': credential.public_id},
+            ),
         )
 
     payload = {
@@ -518,6 +607,7 @@ def partner_pat_rotate_api(request, token_id: str):
 
 
 @api_view(['POST'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_pat_revoke_api(request, token_id: str):
     request_id = _request_id()
@@ -538,7 +628,21 @@ def partner_pat_revoke_api(request, token_id: str):
             param='token_id',
         )
 
-    credential.revoke(reason=serializer.validated_data.get('reason', ''))
+    audit_reason = str(
+        serializer.validated_data.get('audit_reason')
+        or serializer.validated_data.get('reason')
+        or 'tenant_admin_revoke_pat'
+    ).strip()
+    revoke_reason = str(serializer.validated_data.get('reason') or audit_reason).strip()
+    credential.revoke(
+        reason=revoke_reason,
+        metadata=_build_audit_metadata(
+            request,
+            action='pat_revoke',
+            audit_reason=audit_reason,
+            extra={'revoked_token_id': credential.public_id},
+        ),
+    )
     return _response(
         {
             'object': 'pat_revocation',
@@ -552,6 +656,7 @@ def partner_pat_revoke_api(request, token_id: str):
 
 
 @api_view(['GET'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_usage_meters_api(request):
     request_id = _request_id()
@@ -565,6 +670,7 @@ def partner_usage_meters_api(request):
 
 
 @api_view(['GET'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_usage_quotas_api(request):
     request_id = _request_id()
@@ -578,6 +684,7 @@ def partner_usage_quotas_api(request):
 
 
 @api_view(['GET'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_billing_subscription_api(request):
     request_id = _request_id()
@@ -586,6 +693,7 @@ def partner_billing_subscription_api(request):
 
 
 @api_view(['GET'])
+@partner_authentication_classes
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_billing_invoices_api(request):
     request_id = _request_id()

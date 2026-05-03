@@ -31,6 +31,11 @@ jest.mock('./pages/Dashboard', () => ({
   default: mockPage('dashboard-page', 'Dashboard'),
 }));
 
+jest.mock('./pages/DashboardShellHost', () => ({
+  __esModule: true,
+  default: mockPage('dashboard-shell-host', 'Dashboard Shell Host'),
+}));
+
 jest.mock('./pages/StockDetail', () => ({
   __esModule: true,
   default: mockPage('stock-detail-page', 'Stock Detail'),
@@ -38,7 +43,7 @@ jest.mock('./pages/StockDetail', () => ({
 
 jest.mock('./pages/WhaleAdvisory', () => ({
   __esModule: true,
-  default: mockPage('whale-advisory-page', 'Whale Advisory'),
+  default: mockPage('ai-advisory-page', 'Whale Advisory'),
 }));
 
 jest.mock('./pages/AiAdvisoryShellHost', () => ({
@@ -66,14 +71,39 @@ jest.mock('./pages/Transactions', () => ({
   default: mockPage('transactions-page', 'Transactions'),
 }));
 
+jest.mock('./pages/TransactionsShellHost', () => ({
+  __esModule: true,
+  default: mockPage('transactions-shell-host', 'Transactions Shell Host'),
+}));
+
 jest.mock('./pages/Support', () => ({
   __esModule: true,
   default: mockPage('support-page', 'Support'),
 }));
 
+jest.mock('./pages/SupportShellHost', () => ({
+  __esModule: true,
+  default: mockPage('support-shell-host', 'Support Shell Host'),
+}));
+
+jest.mock('./pages/SettingsShellHost', () => ({
+  __esModule: true,
+  default: mockPage('settings-shell-host', 'Settings Shell Host'),
+}));
+
+jest.mock('./pages/PortfoliosShellHost', () => ({
+  __esModule: true,
+  default: mockPage('portfolios-shell-host', 'Portfolios Shell Host'),
+}));
+
 jest.mock('./pages/Watchlist', () => ({
   __esModule: true,
   default: mockPage('watchlist-page', 'Watchlist'),
+}));
+
+jest.mock('./pages/WatchlistShellHost', () => ({
+  __esModule: true,
+  default: mockPage('watchlist-shell-host', 'Watchlist Shell Host'),
 }));
 
 jest.mock('./context/PortfolioContext', () => ({
@@ -107,6 +137,11 @@ jest.mock('./context/InterfaceContext', () => ({
 jest.mock('./pages/AdminOps', () => ({
   __esModule: true,
   default: mockPage('admin-ops-page', 'Admin Ops shell'),
+}));
+
+jest.mock('./pages/AdminOpsShellHost', () => ({
+  __esModule: true,
+  default: mockPage('admin-ops-shell-host', 'Admin Ops Shell Host'),
 }));
 
 jest.mock('./pages/AdminCoreOverview', () => ({
@@ -204,6 +239,11 @@ jest.mock('./pages/AICommandCenter', () => ({
   default: mockPage('ai-command-center-page', 'AI Command Center'),
 }));
 
+jest.mock('./pages/AICommandCenterShellHost', () => ({
+  __esModule: true,
+  default: mockPage('ai-command-center-shell-host', 'AI Command Center Shell Host'),
+}));
+
 jest.mock('./pages/Upgrade', () => ({
   __esModule: true,
   default: mockPage('upgrade-page', 'Upgrade'),
@@ -222,9 +262,9 @@ jest.mock('./pages/ResetPassword', () => ({
 const mockUsePortfolio = jest.requireMock('./context/PortfolioContext').usePortfolio;
 const mockUseAbility = jest.requireMock('./context/AbilityContext').useAbility;
 
-function renderAt(pathname) {
+function renderAt(pathname, AppComponent = App) {
   window.history.pushState({}, '', pathname);
-  return render(<App />);
+  return render(<AppComponent />);
 }
 
 describe('App admin core route group', () => {
@@ -326,4 +366,167 @@ describe('App admin core route group', () => {
 
     expect(await screen.findByTestId('upgrade-page')).toBeInTheDocument();
   });
+
+  it('falls back to the dashboard when package shell routes are disabled', async () => {
+    renderAt('/ai-advisory/shell?symbol=BCM&trade_date=2026-04-15');
+
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('ai-advisory-shell-host')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('whale-alerts-shell-host')).not.toBeInTheDocument();
+  });
+
+  it('keeps dashboard on the legacy page when the shell flag is disabled', async () => {
+    renderAt('/dashboard');
+
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('dashboard-shell-host')).not.toBeInTheDocument();
+  });
+
+  it('routes dashboard to the package shell host when the shell flag is enabled', async () => {
+    const previousFlag = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST;
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = '1';
+
+    try {
+      renderAt('/dashboard');
+
+      expect(await screen.findByTestId('dashboard-shell-host')).toBeInTheDocument();
+      expect(screen.queryByTestId('dashboard-page')).not.toBeInTheDocument();
+    } finally {
+      process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = previousFlag;
+    }
+  });
+
+  it('routes support to the package shell host when the shell flag is enabled', async () => {
+    const previousFlag = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST;
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = '1';
+
+    try {
+      renderAt('/support');
+
+      expect(await screen.findByTestId('support-shell-host')).toBeInTheDocument();
+      expect(screen.queryByTestId('support-page')).not.toBeInTheDocument();
+    } finally {
+      process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = previousFlag;
+    }
+  });
+
+  it('routes settings to the package shell host when the shell flag is enabled', async () => {
+    const previousFlag = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST;
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = '1';
+
+    try {
+      renderAt('/settings');
+
+      expect(await screen.findByTestId('settings-shell-host')).toBeInTheDocument();
+      expect(screen.queryByTestId('user-config-page')).not.toBeInTheDocument();
+    } finally {
+      process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = previousFlag;
+    }
+  });
+
+  it('keeps portfolios on the legacy page when the shell flag is disabled', async () => {
+    renderAt('/portfolios');
+
+    expect(await screen.findByTestId('portfolio-management-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('portfolios-shell-host')).not.toBeInTheDocument();
+  });
+
+  it('routes portfolios to the package shell host when the shell flag is enabled', async () => {
+    const previousFlag = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST;
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = '1';
+
+    try {
+      renderAt('/portfolios');
+
+      expect(await screen.findByTestId('portfolios-shell-host')).toBeInTheDocument();
+      expect(screen.queryByTestId('portfolio-management-page')).not.toBeInTheDocument();
+    } finally {
+      process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = previousFlag;
+    }
+  });
+
+  it('keeps admin ops on the legacy page when the shell flag is disabled', async () => {
+    renderAt('/admin-ops');
+
+    expect(await screen.findByTestId('admin-ops-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('admin-ops-shell-host')).not.toBeInTheDocument();
+  });
+
+  it('routes admin ops to the package shell host when the shell flag is enabled', async () => {
+    const previousFlag = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST;
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = '1';
+
+    try {
+      renderAt('/admin-ops');
+
+      expect(await screen.findByTestId('admin-ops-shell-host')).toBeInTheDocument();
+      expect(screen.queryByTestId('admin-ops-page')).not.toBeInTheDocument();
+    } finally {
+      process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = previousFlag;
+    }
+  });
+
+  it('keeps settings AI on the legacy page when the shell flag is disabled', async () => {
+    renderAt('/settings/ai');
+
+    expect(await screen.findByTestId('ai-command-center-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('ai-command-center-shell-host')).not.toBeInTheDocument();
+  });
+
+  it('routes settings AI to the package shell host when the shell flag is enabled', async () => {
+    const previousFlag = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST;
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = '1';
+
+    try {
+      renderAt('/settings/ai');
+
+      expect(await screen.findByTestId('ai-command-center-shell-host')).toBeInTheDocument();
+      expect(screen.queryByTestId('ai-command-center-page')).not.toBeInTheDocument();
+    } finally {
+      process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = previousFlag;
+    }
+  });
+
+  it('keeps watchlist on the legacy page when the shell flag is disabled', async () => {
+    renderAt('/watchlist');
+
+    expect(await screen.findByTestId('watchlist-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('watchlist-shell-host')).not.toBeInTheDocument();
+  });
+
+  it('keeps transactions on the legacy page when the shell flag is disabled', async () => {
+    renderAt('/transactions');
+
+    expect(await screen.findByTestId('transactions-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('transactions-shell-host')).not.toBeInTheDocument();
+  });
+
+  it('routes transactions to the package shell host when the shell flag is enabled', async () => {
+    const previousFlag = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST;
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = '1';
+
+    try {
+      renderAt('/transactions');
+
+      expect(await screen.findByTestId('transactions-shell-host')).toBeInTheDocument();
+      expect(screen.queryByTestId('transactions-page')).not.toBeInTheDocument();
+    } finally {
+      process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = previousFlag;
+    }
+  });
+
+  it('routes watchlist to the package shell host when the shell flag is enabled', async () => {
+    const previousFlag = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST;
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = '1';
+
+    try {
+      renderAt('/watchlist');
+
+      expect(await screen.findByTestId('watchlist-shell-host')).toBeInTheDocument();
+      expect(screen.queryByTestId('watchlist-page')).not.toBeInTheDocument();
+    } finally {
+      process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST = previousFlag;
+    }
+  });
+
 });

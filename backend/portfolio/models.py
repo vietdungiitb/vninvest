@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
 from datetime import timedelta
+import hmac
 import hashlib
 import secrets
 
@@ -1286,7 +1287,31 @@ class CorePATCredential(models.Model):
             return self.StatusChoices.REVOKED
         if self.expires_at and self.expires_at <= timezone.now():
             return self.StatusChoices.EXPIRED
+        if self.status == self.StatusChoices.ROTATING:
+            if not self.grace_until:
+                return self.StatusChoices.EXPIRED
+            if self.grace_until <= timezone.now():
+                return self.StatusChoices.EXPIRED
+            return self.StatusChoices.ROTATING
         return self.status
+
+    @classmethod
+    def resolve_from_raw_secret(cls, raw_secret: str):
+        secret = str(raw_secret or '').strip()
+        if not secret:
+            return None
+
+        prefix = _extract_pat_prefix(secret)
+        if not prefix:
+            return None
+
+        expected_hash = _hash_pat_secret(secret)
+        candidates = cls.objects.select_related('service_account', 'owner_user').filter(token_prefix=prefix).order_by('-created_at', '-pk')
+        for credential in candidates:
+            if hmac.compare_digest(str(credential.token_secret_hash or ''), expected_hash):
+                return credential
+
+        return None
 
     def clean(self):
         super().clean()
@@ -1329,31 +1354,34 @@ class CorePATCredential(models.Model):
         service_account.save(update_fields=['last_rotated_at', 'updated_at'])
         return credential, raw_secret
 
-    def rotate(self, *, grace_period_seconds: int = 3600, expires_at=None, issued_by=None):
+    def rotate(self, *, grace_period_seconds: int = 3600, expires_at=None, issued_by=None, metadata=None):
         grace_seconds = max(int(grace_period_seconds or 0), 0)
         self.status = self.StatusChoices.ROTATING
         self.grace_until = timezone.now() + timedelta(seconds=grace_seconds)
         self.save(update_fields=['status', 'grace_until', 'updated_at'])
 
         next_expiry = expires_at if expires_at is not None else self.expires_at
+        next_metadata = dict(self.metadata or {})
+        next_metadata.update(dict(metadata or {}))
         next_token, raw_secret = self.issue_for_service_account(
             service_account=self.service_account,
             scope_codes=list(self.scope_codes or []),
             expires_at=next_expiry,
             display_name=self.display_name,
             issued_by=issued_by,
-            metadata=dict(self.metadata or {}),
+            metadata=next_metadata,
         )
         return next_token, raw_secret, self.grace_until
 
-    def revoke(self, *, reason: str = '') -> None:
-        metadata = dict(self.metadata or {})
+    def revoke(self, *, reason: str = '', metadata=None) -> None:
+        merged_metadata = dict(self.metadata or {})
         if reason:
-            metadata['revoke_reason'] = str(reason).strip()
+            merged_metadata['revoke_reason'] = str(reason).strip()
+        merged_metadata.update(dict(metadata or {}))
         self.status = self.StatusChoices.REVOKED
         self.revoked_at = timezone.now()
         self.grace_until = None
-        self.metadata = metadata
+        self.metadata = merged_metadata
         self.save(update_fields=['status', 'revoked_at', 'grace_until', 'metadata', 'updated_at'])
 
 

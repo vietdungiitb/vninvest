@@ -17,6 +17,7 @@ Doc theo thu tu:
 3. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md`
 4. taskboard phu hop voi slice dang lam
 5. traceability matrix va evidence template
+6. final SaaS plan khi route program da chot sang cutover phase
 
 Neu co xung dot giua playbook nay va mot taskboard cu, uu tien frozen docs + current audit ledger truoc khi code tiep.
 
@@ -56,6 +57,26 @@ Chi mo lane nay sau khi `PKG-03` da dong hoac khi platform lead cap nhat taskboa
 5. `CA-05` - PAT credentials
 6. `CA-06` - Usage, quotas, billing
 7. `CA-07` - Jobs + audit trace
+
+### 3.3 Lane 3 - SaaS cutover va decommission
+
+Day la lane tiep theo sau khi package track va admin shell da dong xong. Muc tieu cua lane nay khong con la parity hoac scaffold nua, ma la chuyen VNInvest sang SaaS that su va loai bo legacy runtime.
+
+1. `SAAS-00` - Governance freeze va ownership map
+2. `SAAS-01` - Access plane finalization
+3. `SAAS-02` - Partner machine-auth cutover
+4. `SAAS-03` - Tenant lifecycle and commercial parity
+5. `SAAS-04` - Data-plane facts parity and freshness
+6. `SAAS-05` - Shadow run and pilot
+7. `SAAS-06` - Legacy decommission
+8. `SAAS-07` - Production manifest hardening
+
+### 3.4 Final SaaS plan
+
+Sau khi SAAS-07 da dong, route doc chinh cho phien sau khong con la lane PKG/CA nua ma la final SaaS plan.
+
+1. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md`
+2. Doc nay phai duoc mo truoc khi claim SAAS-08 hoac tao board moi.
 
 ### 3.3 Drift response lane
 
@@ -113,12 +134,22 @@ Tam dung slice ngay neu mot trong cac dieu kien sau xuat hien:
 
 Muc tieu mac dinh hien tai la:
 
-1. `PKG-01` la slice next.
-2. Neu platform lead reprioritizes, ghi ro trong taskboard truoc khi code.
-3. Sau `PKG-03`, chuyen sang `CA-01` va tiep tuc theo route o Muc 3.2.
+1. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md` la route canonical truoc khi claim work tiep theo.
+2. Neu platform lead reprioritizes, ghi ro trong taskboard moi truoc khi code.
+3. Route code tiep theo, neu mo, se bat dau tu SAAS-08 sau khi final plan duoc doc va chot.
 
 ---
 
 ## 8. Audit note
 
 Tai lieu nay chi co gia tri neu ledger, progress dashboard va taskboard di cung mot nhiet do. Neu mot trong ba surfaces nay bi tre, code team phai dung lai va dong bo truoc khi mo slice moi.
+
+Sau current-code realignment, route thuc thi tiep theo phai doc them:
+
+1. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md`
+2. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_PLAN_20260503.md`
+3. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`
+4. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TRACEABILITY_MATRIX_20260503.md`
+5. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260503.md`
+6. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260503.md`
+7. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md`

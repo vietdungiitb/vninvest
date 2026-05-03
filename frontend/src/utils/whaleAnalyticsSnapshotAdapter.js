@@ -169,6 +169,8 @@ export function mergeWhaleAnalyticsSnapshots(normalizedSnapshots, timeframe, sel
       view_model: mergedFlowViewModel,
       timeframe_window: flowWindow,
     },
+    materialization: latestSnapshot?.materialization || null,
+    session_summary: latestSnapshot?.session_summary || null,
     meta: {
       ...(latestSnapshot?.meta || {}),
       merged_trade_dates: snapshots
@@ -349,6 +351,8 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
       timeframe_window: timeframeWindow,
       meta: snapshot?.meta || null,
     },
+    materialization: snapshot?.materialization || null,
+    session_summary: snapshot?.session_summary || null,
     flow: {
       cvd_series: normalizedCvdSeries,
       strength_series: normalizedStrengthSeries,

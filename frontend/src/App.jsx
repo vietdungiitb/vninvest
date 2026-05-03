@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocatio
 import Layout from './components/Layout';
 import LoginModal from './components/LoginModal';
 import Dashboard from './pages/Dashboard';
+import DashboardShellHost from './pages/DashboardShellHost';
 import StockDetail from './pages/StockDetail';
 import WhaleAdvisory from './pages/WhaleAdvisory';
 import AiAdvisoryShellHost from './pages/AiAdvisoryShellHost';
@@ -10,9 +11,16 @@ import WhaleAlertsHub from './pages/WhaleAlertsHub';
 import WhaleAlertsDashboard from './pages/WhaleAlertsDashboard';
 import WhaleAlertsShellHost from './pages/WhaleAlertsShellHost';
 import Transactions from './pages/Transactions';
+import TransactionsShellHost from './pages/TransactionsShellHost';
 import Support from './pages/Support';
+import SupportShellHost from './pages/SupportShellHost';
+import SettingsShellHost from './pages/SettingsShellHost';
+import AICommandCenterShellHost from './pages/AICommandCenterShellHost';
+import PortfoliosShellHost from './pages/PortfoliosShellHost';
 import Watchlist from './pages/Watchlist';
+import WatchlistShellHost from './pages/WatchlistShellHost';
 import AdminOps from './pages/AdminOps';
+import AdminOpsShellHost from './pages/AdminOpsShellHost';
 import AdminCoreOverview from './pages/AdminCoreOverview';
 import AdminCoreTenants from './pages/AdminCoreTenants';
 import AdminCoreServiceAccounts from './pages/AdminCoreServiceAccounts';
@@ -40,8 +48,6 @@ import { LangProvider } from './context/LangContext';
 import { RealtimeProvider } from './context/RealtimeContext';
 import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
-
-const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -76,8 +82,10 @@ function AdminCoreShell() {
 }
 
 export default function App() {
+  const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
+
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <PortfolioProvider>
         <LangProvider>
           <InterfaceProvider>
@@ -88,7 +96,12 @@ export default function App() {
                 <Route path="reset-password" element={<ResetPassword />} />
                 <Route path="/" element={<ProtectedLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
-                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route
+                    path="dashboard"
+                    element={(
+                      packageShellHostEnabled ? <DashboardShellHost /> : <Dashboard />
+                    )}
+                  />
                   <Route path="upgrade" element={<Upgrade />} />
                   <Route path="stocks/:symbol" element={<StockDetail />} />
                   <Route
@@ -109,7 +122,6 @@ export default function App() {
                       )}
                     />
                   ) : null}
-                  <Route path="whale-advisory" element={<Navigate to="/ai-advisory" replace />} />
                   <Route path="whale-alerts" element={<WhaleAlertsHub />} />
                   {packageShellHostEnabled ? (
                     <Route
@@ -122,9 +134,24 @@ export default function App() {
                     />
                   ) : null}
                   <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
-                  <Route path="transactions" element={<Transactions />} />
-                  <Route path="support" element={<Support />} />
-                  <Route path="watchlist" element={<Watchlist />} />
+                  <Route
+                    path="transactions"
+                    element={(
+                      packageShellHostEnabled ? <TransactionsShellHost /> : <Transactions />
+                    )}
+                  />
+                  <Route
+                    path="support"
+                    element={(
+                      packageShellHostEnabled ? <SupportShellHost /> : <Support />
+                    )}
+                  />
+                  <Route
+                    path="watchlist"
+                    element={(
+                      packageShellHostEnabled ? <WatchlistShellHost /> : <Watchlist />
+                    )}
+                  />
                   <Route path="admin/core" element={<AdminCoreShell />}>
                     <Route
                       index
@@ -220,7 +247,7 @@ export default function App() {
                     path="admin-ops"
                     element={(
                       <ProtectedRoute action="read" subject="AdminOps">
-                        <AdminOps />
+                        {packageShellHostEnabled ? <AdminOpsShellHost /> : <AdminOps />}
                       </ProtectedRoute>
                     )}
                   />
@@ -282,9 +309,24 @@ export default function App() {
                   />
                   <Route path="tenant-admin" element={<Navigate to="/tenant-admin/home" replace />} />
                   <Route path="screener" element={<Screener />} />
-                  <Route path="portfolios" element={<PortfolioManagement />} />
-                  <Route path="settings" element={<UserConfig />} />
-                  <Route path="settings/ai" element={<AICommandCenter />} />
+                  <Route
+                    path="portfolios"
+                    element={(
+                      packageShellHostEnabled ? <PortfoliosShellHost /> : <PortfolioManagement />
+                    )}
+                  />
+                  <Route
+                    path="settings"
+                    element={(
+                      packageShellHostEnabled ? <SettingsShellHost /> : <UserConfig />
+                    )}
+                  />
+                  <Route
+                    path="settings/ai"
+                    element={(
+                      packageShellHostEnabled ? <AICommandCenterShellHost /> : <AICommandCenter />
+                    )}
+                  />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

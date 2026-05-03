@@ -37,6 +37,47 @@ function renderWithRouter(element, initialEntry) {
   );
 }
 
+function installShellRuntimeGlobals({ origin = 'http://localhost', token = 'shell-token-123' } = {}) {
+  const previousFetch = globalThis.fetch;
+  const previousLocation = globalThis.location;
+  const previousLocalStorage = globalThis.localStorage;
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200 });
+  const localStorageMock = {
+    getItem: jest.fn().mockReturnValue(token),
+  };
+
+  Object.defineProperty(globalThis, 'fetch', {
+    configurable: true,
+    value: fetchMock,
+  });
+  Object.defineProperty(globalThis, 'location', {
+    configurable: true,
+    value: { origin },
+  });
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: localStorageMock,
+  });
+
+  return {
+    fetchMock,
+    restore() {
+      Object.defineProperty(globalThis, 'fetch', {
+        configurable: true,
+        value: previousFetch,
+      });
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: previousLocation,
+      });
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: previousLocalStorage,
+      });
+    },
+  };
+}
+
 describe('package shell host runtime parity proofs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -189,5 +230,43 @@ describe('package shell host runtime parity proofs', () => {
       fetchImpl: packageShellHostFetch,
     }));
     expect(typeof mockShellWhaleAlertsPage.mock.calls[0][0].bootstrapLoader).toBe('function');
+  });
+
+  it('attaches the browser bearer token to same-origin api requests', async () => {
+    const runtime = installShellRuntimeGlobals();
+
+    try {
+      await packageShellHostFetch('/api/health/', {
+        headers: {
+          'X-Request-Id': 'shell-check-1',
+        },
+      });
+
+      expect(runtime.fetchMock).toHaveBeenCalledTimes(1);
+      expect(runtime.fetchMock.mock.calls[0][0]).toBe('/api/health/');
+      expect(runtime.fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer shell-token-123');
+      expect(runtime.fetchMock.mock.calls[0][1].headers.get('X-Request-Id')).toBe('shell-check-1');
+    } finally {
+      runtime.restore();
+    }
+  });
+
+  it('leaves non-api requests without an attached bearer token', async () => {
+    const runtime = installShellRuntimeGlobals({ token: 'shell-token-456' });
+
+    try {
+      await packageShellHostFetch('/core/v1/bootstrap', {
+        headers: {
+          'X-Request-Id': 'shell-check-2',
+        },
+      });
+
+      expect(runtime.fetchMock).toHaveBeenCalledTimes(1);
+      expect(runtime.fetchMock.mock.calls[0][0]).toBe('/core/v1/bootstrap');
+      expect(runtime.fetchMock.mock.calls[0][1].headers.has('Authorization')).toBe(false);
+      expect(runtime.fetchMock.mock.calls[0][1].headers.get('X-Request-Id')).toBe('shell-check-2');
+    } finally {
+      runtime.restore();
+    }
   });
 });

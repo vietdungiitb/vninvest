@@ -39,7 +39,7 @@ class ApiRouteWhaleAdvisoryDeleteCurrentTests(APITestCase):
             ai_model='gpt-4o',
         )
 
-        response = self.client.delete('/api/portfolio/whale-advisory/FPT/current/')
+        response = self.client.delete('/api/portfolio/ai-advisory/FPT/current/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['ok'])
@@ -51,7 +51,7 @@ class ApiRouteWhaleAdvisoryDeleteCurrentTests(APITestCase):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()
 
-        response = self.client.delete('/api/portfolio/whale-advisory/SSI/current/')
+        response = self.client.delete('/api/portfolio/ai-advisory/SSI/current/')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertFalse(response.data['ok'])
@@ -70,7 +70,7 @@ class ApiRouteWhaleAdvisoryDeleteCurrentTests(APITestCase):
             ai_model='gpt-4o',
         )
 
-        response = self.client.delete('/api/portfolio/whale-advisory/FPT/current/')
+        response = self.client.delete('/api/portfolio/ai-advisory/FPT/current/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(response.data['ok'])

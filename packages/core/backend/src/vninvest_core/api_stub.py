@@ -91,6 +91,7 @@ def _capability_bootstrap_payload():
     plan = os.getenv("CORE_STUB_PLAN", "pro")
     return {
         "version": "1.0.0",
+        "snapshot_version": "2026-05-03",
         "principal": {
             "mode": "human",
             "identity": identity,

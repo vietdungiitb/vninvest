@@ -1022,6 +1022,8 @@ export default function StockDetail() {
   const symbolDarkFlowAlert = latestDarkFlowAlert && latestDarkFlowAlert.symbol === normalizedSymbol ? latestDarkFlowAlert : null;
 
   const { data: whaleAnalyticsData } = useWhaleAnalyticsData(normalizedSymbol, activeTimeframe, selectedTradeDate, { includeBaseline: false });
+  const selectedSessionMaterialization = whaleAnalyticsData?.materialization || null;
+  const selectedSessionReadPath = selectedSessionMaterialization?.read_path || null;
 
   const whaleSignalsForChart = useMemo(() => {
     const snapshotOrders = whaleAnalyticsData?.bubbles?.orders;
@@ -2062,6 +2064,13 @@ export default function StockDetail() {
         trade_date: selectedTradeDate,
         timestamp: selectedKlineSession.timestamp ?? null,
         data_index: selectedKlineSession.dataIndex ?? null,
+        read_path: selectedSessionMaterialization?.read_path || null,
+        session_summary_state: selectedSessionMaterialization?.session_summary_state || null,
+        freshness_state: selectedSessionMaterialization?.freshness_state || null,
+        raw_fallback_used: Boolean(selectedSessionMaterialization?.raw_fallback_used),
+        facts_first_primary_path: Boolean(whaleAnalyticsData?.quality_flags?.facts_first_primary_path),
+        has_materialized_facts: Boolean(whaleAnalyticsData?.quality_flags?.has_materialized_facts),
+        has_session_summary: Boolean(whaleAnalyticsData?.quality_flags?.has_session_summary),
       } : null,
       selected_trade_date: selectedTradeDate,
       visible_range: {
@@ -2078,7 +2087,7 @@ export default function StockDetail() {
       },
       client_generated_at: new Date().toISOString(),
     };
-  }, [chartActiveIndicators, chartData, chartPerformance, chartVisibleRange?.from_ts, chartVisibleRange?.to_ts, normalizedSymbol, orderFlowWindow, selectedKlineSession, selectedTradeDate, technical?.atr, technical?.volatility_20]);
+  }, [chartActiveIndicators, chartData, chartPerformance, chartVisibleRange?.from_ts, chartVisibleRange?.to_ts, normalizedSymbol, orderFlowWindow, selectedKlineSession, selectedTradeDate, selectedSessionMaterialization?.read_path, selectedSessionMaterialization?.session_summary_state, selectedSessionMaterialization?.freshness_state, selectedSessionMaterialization?.raw_fallback_used, technical?.atr, technical?.volatility_20, whaleAnalyticsData?.quality_flags?.facts_first_primary_path, whaleAnalyticsData?.quality_flags?.has_materialized_facts, whaleAnalyticsData?.quality_flags?.has_session_summary]);
 
   const handleGenerateAdvisoryComponents = async () => {
     if (!normalizedSymbol) return;
@@ -2558,6 +2567,22 @@ export default function StockDetail() {
               <div>
                 <p className="text-label">{t('stockDetail.klineWorkspace')}</p>
                 <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('stockDetail.candlestickFor', { symbol: normalizedSymbol })}</h2>
+                {selectedSessionMaterialization ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 font-semibold uppercase tracking-[0.12em] ${selectedSessionReadPath === 'facts_first'
+                        ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-200'
+                        : 'border-amber-500/40 bg-amber-950/40 text-amber-200'}`}
+                    >
+                      {selectedSessionReadPath === 'facts_first'
+                        ? t('stockDetail.selectedSessionFactsFirst', { defaultValue: 'Phiên facts-first' })
+                        : t('stockDetail.selectedSessionRawFallback', { defaultValue: 'Phiên raw fallback' })}
+                    </span>
+                    <span className="inline-flex rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-slate-300">
+                      {t('stockDetail.selectedSessionSummaryState', { defaultValue: 'Trạng thái phiên' })}: {selectedSessionMaterialization.session_summary_state || '—'}
+                    </span>
+                  </div>
+                ) : null}
               </div>
               <div />
             </div>

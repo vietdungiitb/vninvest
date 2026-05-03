@@ -6,6 +6,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
+import AlertBadge from './AlertBadge';
 
 /**
  * PerformanceBar: Thanh tiến trình hiển thị mức độ Lãi/Lỗ
@@ -202,15 +203,16 @@ export default function HoldingsTable({ holdings, loading, whaleAlertsBySymbol =
                       {h.industry || 'Khác'}
                     </span>
                     {whaleAlert ? (
-                      <span
-                        className={`mt-1 inline-flex w-fit max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] ${whaleBadgeTone} ${whaleAlert.severity === 'critical' || whaleAlert.severity === 'high' ? 'animate-pulse' : ''}`}
+                      <AlertBadge
+                        href={`/stocks/${h.symbol}`}
+                        icon={whaleIcon}
+                        tone={`${whaleBadgeTone} ${whaleAlert.severity === 'critical' || whaleAlert.severity === 'high' ? 'animate-pulse' : ''}`}
+                        severityLabel={whaleSeverityLabel}
+                        sideLabel={whaleSideLabel}
+                        matchedValueLabel={whaleMatchedValueLabel || ''}
                         title={`${whaleSeverityLabel} ${whaleSideLabel}${whaleMatchedValueLabel ? ` · ${whaleMatchedValueLabel}` : ''}`}
-                      >
-                        <span>{whaleIcon}</span>
-                        <span>{whaleSeverityLabel}</span>
-                        <span>{whaleSideLabel}</span>
-                        {whaleMatchedValueLabel ? <span className="text-[8px] font-black tracking-[0.14em] text-slate-300">{whaleMatchedValueLabel}</span> : null}
-                      </span>
+                        className="mt-1"
+                      />
                     ) : null}
                   </div>
                 </td>

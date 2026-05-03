@@ -71,7 +71,7 @@ Hệ whale detection đầy đủ hiện gồm 3 lớp:
 - WebSocket phát `whale_alert` theo symbol.
 - Celery advisory task tạo AI Advisory và phát `whale_advisory` sau đó.
 
-WhaleAlertsDashboard hiện tập trung vào phân tích giao dịch lớn và trực quan hóa. AI Advisory là module riêng ở route `/whale-advisory`, có phân quyền theo plan.
+WhaleAlertsDashboard hiện tập trung vào phân tích giao dịch lớn và trực quan hóa. AI Advisory là module riêng ở route `/ai-advisory`, có phân quyền theo plan; legacy `/whale-advisory` alias đã được retire.
 
 ### 1.5 Data flow định hướng cho giai đoạn intelligence
 

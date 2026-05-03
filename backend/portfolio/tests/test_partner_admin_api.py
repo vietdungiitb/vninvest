@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 from portfolio.models import CorePATCredential, CoreServiceAccount, CoreTenant, UserConfig
 from portfolio.opencore_revenue import DPIInvoice, DPIRevenuePlan, DPISubscription
@@ -66,6 +66,7 @@ class PartnerAdminApiTests(APITestCase):
                 'name': 'vip-alpha-staging',
                 'environment': 'staging',
                 'policy_ids': ['pol_market_read', 'pol_signals_read'],
+                'audit_reason': 'tenant_admin_create_service_account',
                 'metadata': {'owner_team': 'analytics'},
             },
             format='json',
@@ -76,6 +77,9 @@ class PartnerAdminApiTests(APITestCase):
         self.assertEqual(create_response.data['object'], 'service_account')
         self.assertEqual(create_response.data['environment'], 'staging')
         self.assertEqual(create_response.data['policy_ids'], ['pol_market_read', 'pol_signals_read'])
+        created_service_account = CoreServiceAccount.objects.get(public_id=create_response.data['id'])
+        self.assertEqual(created_service_account.metadata['audit_reason'], 'tenant_admin_create_service_account')
+        self.assertEqual(created_service_account.metadata['auth_mode'], 'session')
 
     def test_partner_tenant_summary_route_returns_current_tenant_snapshot(self):
         self.assertFalse(CoreTenant.objects.filter(owner_user=self.user).exists())
@@ -89,6 +93,9 @@ class PartnerAdminApiTests(APITestCase):
         self.assertEqual(response.data['display_name'], self.user.username)
         self.assertEqual(response.data['status'], CoreTenant.StatusChoices.ACTIVE)
         self.assertEqual(response.data['plan_code'], 'pro')
+        self.assertEqual(response.data['plan_lifecycle']['plan'], 'pro')
+        self.assertEqual(response.data['plan_lifecycle']['plan_source'], 'system_default')
+        self.assertEqual(response.data['plan_lifecycle']['lifecycle_state'], 'system_default')
         self.assertIsNone(response.data['billing_account_id'])
         self.assertEqual(response.data['default_environment'], CoreTenant.EnvironmentChoices.PROD)
         self.assertIn('created_at', response.data)
@@ -110,6 +117,7 @@ class PartnerAdminApiTests(APITestCase):
                 'service_account_id': service_account.public_id,
                 'scope_codes': ['market:read', 'signals:read', 'ai:invoke'],
                 'display_name': 'prod-main-token',
+                'audit_reason': 'tenant_admin_issue_pat',
             },
             format='json',
             HTTP_IDEMPOTENCY_KEY='issue-pat-1',
@@ -123,6 +131,8 @@ class PartnerAdminApiTests(APITestCase):
         credential = CorePATCredential.objects.get(public_id=issue_response.data['id'])
         self.assertNotEqual(credential.token_secret_hash, issue_response.data['secret'])
         self.assertEqual(credential.service_account_id, service_account.id)
+        self.assertEqual(credential.metadata['audit_reason'], 'tenant_admin_issue_pat')
+        self.assertEqual(credential.metadata['auth_mode'], 'session')
 
         list_response = self.client.get('/api/core/v1/partner/pats/')
 
@@ -134,7 +144,7 @@ class PartnerAdminApiTests(APITestCase):
 
         rotate_response = self.client.post(
             f"/api/core/v1/partner/pats/{credential.public_id}/rotate/",
-            {'grace_period_seconds': 1800},
+            {'grace_period_seconds': 1800, 'audit_reason': 'tenant_admin_rotate_pat'},
             format='json',
             HTTP_IDEMPOTENCY_KEY='rotate-pat-1',
         )
@@ -147,11 +157,14 @@ class PartnerAdminApiTests(APITestCase):
         credential.refresh_from_db()
         self.assertEqual(credential.status, CorePATCredential.StatusChoices.ROTATING)
         self.assertIsNotNone(credential.grace_until)
+        new_rotated_token = CorePATCredential.objects.get(public_id=rotate_response.data['new_token']['id'])
+        self.assertEqual(new_rotated_token.metadata['audit_reason'], 'tenant_admin_rotate_pat')
+        self.assertEqual(new_rotated_token.metadata['auth_mode'], 'session')
 
         new_token_id = rotate_response.data['new_token']['id']
         revoke_response = self.client.post(
             f'/api/core/v1/partner/pats/{new_token_id}/revoke/',
-            {'reason': 'credential_leak_suspected'},
+            {'reason': 'credential_leak_suspected', 'audit_reason': 'tenant_admin_revoke_pat'},
             format='json',
             HTTP_IDEMPOTENCY_KEY='revoke-pat-1',
         )
@@ -162,6 +175,73 @@ class PartnerAdminApiTests(APITestCase):
         revoked_token = CorePATCredential.objects.get(public_id=new_token_id)
         self.assertEqual(revoked_token.status, CorePATCredential.StatusChoices.REVOKED)
         self.assertEqual(revoked_token.metadata['revoke_reason'], 'credential_leak_suspected')
+        self.assertEqual(revoked_token.metadata['audit_reason'], 'tenant_admin_revoke_pat')
+        self.assertEqual(revoked_token.metadata['auth_mode'], 'session')
+
+    def test_partner_routes_accept_machine_pat_authentication(self):
+        service_account = CoreServiceAccount.objects.create(
+            owner_user=self.user,
+            created_by=self.user,
+            name='vip-machine-prod',
+            environment=CoreServiceAccount.EnvironmentChoices.PROD,
+            policy_ids=['pol_market_read', 'pol_ai_invoke'],
+        )
+        bootstrap_credential, bootstrap_secret = CorePATCredential.issue_for_service_account(
+            service_account=service_account,
+            scope_codes=['market:read', 'signals:read'],
+            display_name='bootstrap-machine-token',
+            issued_by=self.user,
+            metadata={'audit_reason': 'bootstrap_pat', 'auth_mode': 'session'},
+        )
+
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f'Bearer {bootstrap_secret}')
+
+        list_response = client.get('/api/core/v1/partner/service-accounts/')
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data['object'], 'list')
+
+        issue_response = client.post(
+            '/api/core/v1/partner/pats/issue/',
+            {
+                'service_account_id': service_account.public_id,
+                'scope_codes': ['market:read', 'signals:read'],
+                'display_name': 'machine-auth-token',
+                'audit_reason': 'machine_pat_issue',
+            },
+            format='json',
+            HTTP_IDEMPOTENCY_KEY='issue-pat-machine-1',
+        )
+
+        self.assertEqual(issue_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(issue_response.data['object'], 'pat_credential')
+        self.assertIn('secret', issue_response.data)
+
+        issued_credential = CorePATCredential.objects.get(public_id=issue_response.data['id'])
+        self.assertEqual(issued_credential.metadata['audit_reason'], 'machine_pat_issue')
+        self.assertEqual(issued_credential.metadata['auth_mode'], 'pat')
+        self.assertEqual(issued_credential.metadata['auth_credential_id'], bootstrap_credential.public_id)
+
+    def test_rotating_pat_expires_after_grace_window(self):
+        service_account = CoreServiceAccount.objects.create(
+            owner_user=self.user,
+            created_by=self.user,
+            name='vip-expiry-prod',
+            environment=CoreServiceAccount.EnvironmentChoices.PROD,
+            policy_ids=['pol_market_read'],
+        )
+        credential, _raw_secret = CorePATCredential.issue_for_service_account(
+            service_account=service_account,
+            scope_codes=['market:read'],
+            display_name='expiry-token',
+            issued_by=self.user,
+        )
+
+        credential.status = CorePATCredential.StatusChoices.ROTATING
+        credential.grace_until = timezone.now() - timedelta(seconds=1)
+        credential.save(update_fields=['status', 'grace_until', 'updated_at'])
+
+        self.assertEqual(credential.effective_status, CorePATCredential.StatusChoices.EXPIRED)
 
     def test_free_plan_cannot_access_partner_machine_access(self):
         UserConfig.objects.update_or_create(

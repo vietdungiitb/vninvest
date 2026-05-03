@@ -28,15 +28,16 @@ frontend/src/components/HoldingsTable.jsx
 ```
 *Test*: FPT row shows 🦈 if recent alert
 
-### [ ] 1.2 Sticky Alert Bar  
+### [x] 1.2 Sticky Alert Bar  
 ```
-frontend/src/pages/Dashboard.jsx
+frontend/src/pages/LegacyDashboard.jsx
+frontend/src/pages/modern/ModernDashboard.jsx
 + New StickyAlertBar component
 + Show top 3: symbol + severity + time
 ```
 *Test*: Alerts stick on scroll
 
-### [ ] 1.3 RealtimePanel compact
+### [x] 1.3 RealtimePanel compact
 ```
 frontend/src/components/DashboardRealtimePanel.jsx
 - Observability → icon popover
@@ -46,7 +47,7 @@ frontend/src/components/DashboardRealtimePanel.jsx
 
 ## Phase 2: Alert Polish [New components]
 
-### [ ] 2.1 Unified AlertBadge
+### [x] 2.1 Unified AlertBadge
 ```
 frontend/src/components/AlertBadge.jsx
 - 🦈/🐋 + severity color
@@ -54,15 +55,16 @@ frontend/src/components/AlertBadge.jsx
 - Hover → full details
 ```
 
-### [ ] 2.2 Audio + Settings
+### [x] 2.2 Audio + Settings
 ```
-+ User setting: alert_sound=true
+frontend/src/hooks/usePersistentAlertState.js
++ Persist alert_sound with legacy fallback
 + Extreme → audio ping
 ```
 
 ## Phase 3: Backend Aggregation
 
-### [ ] 3.1 Aggregated Risk API
+### [x] 3.1 Aggregated Risk API
 ```
 backend/portfolio/views.py
 + GET /api/dashboard/aggregated-risk/
@@ -78,5 +80,5 @@ backend/portfolio/views.py
 [ ] Metrics before/after: alert engagement
 ```
 
-**Current Phase**: 1.2 Sticky Alert Bar
+**Current Phase**: Validation
 

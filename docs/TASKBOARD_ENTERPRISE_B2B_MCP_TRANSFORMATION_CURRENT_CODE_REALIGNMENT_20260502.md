@@ -253,3 +253,11 @@ Sau khi current-code handoff pack da READY, route mac dinh cho doi code la:
 4. Sau moi slice phai dong bo `docs/CODE_CHANGE_AUDIT_LEDGER.md` va `PROGRESS_DASHBOARD.md` truoc khi claim slice tiep.
 5. Neu docs va code lech, tam dung va sua drift truoc khi tiep tuc.
 6. `CA-07` da dong xong ben admin board; lane admin cua board nay khong con slice mo.
+
+7. Sau khi `PKG-03` va `CA-07` da dong, route tiep theo la SaaS cutover board:
+	- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md`
+	- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_PLAN_20260503.md`
+	- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`
+	- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TRACEABILITY_MATRIX_20260503.md`
+	- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260503.md`
+	- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260503.md`

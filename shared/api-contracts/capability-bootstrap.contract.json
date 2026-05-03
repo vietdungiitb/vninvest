@@ -17,6 +17,9 @@
     "version": {
       "const": "1.0.0"
     },
+    "snapshot_version": {
+      "type": "string"
+    },
     "principal": {
       "type": "object",
       "additionalProperties": false,

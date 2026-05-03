@@ -47,7 +47,7 @@ class ApiRouteTradingAndP113Tests(APITestCase):
             severity=WhaleAdvisory.SeverityChoices.WARNING,
         )
 
-        response = self.client.get('/api/portfolio/whale-advisory/')
+        response = self.client.get('/api/portfolio/ai-advisory/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         symbols_by_severity = {item['symbol']: item['severity'] for item in response.data}
@@ -79,8 +79,8 @@ class ApiRouteTradingAndP113Tests(APITestCase):
             ai_model='gpt-4o',
         )
 
-        response_all = self.client.get('/api/portfolio/whale-advisory/')
-        response_wl = self.client.get('/api/portfolio/whale-advisory/?watchlist_only=true')
+        response_all = self.client.get('/api/portfolio/ai-advisory/')
+        response_wl = self.client.get('/api/portfolio/ai-advisory/?watchlist_only=true')
 
         self.assertEqual(response_all.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response_all.data), 2)

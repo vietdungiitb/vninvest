@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 @permission_classes([IsAuthenticated, IsProPlan])
 def whale_advisory_symbol_stats_api(request):
     """
-    GET /api/portfolio/whale-advisory-symbol-stats/
+    GET /api/portfolio/ai-advisory-symbol-stats/
     Thong ke BUY/SELL whale theo cung nguon IntradayTick nhu Whale Alerts,
     giup dong nhat so lieu hien thi giua Whale Alerts va Whale Advisory.
     """

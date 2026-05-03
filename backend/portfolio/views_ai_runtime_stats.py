@@ -411,7 +411,7 @@ def ai_command_center_audit_logs_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def whale_advisory_symbol_stats_api(request):
     """
-    GET /api/portfolio/whale-advisory-symbol-stats/
+    GET /api/portfolio/ai-advisory-symbol-stats/
     Thống kê BUY/SELL whale theo cùng nguồn IntradayTick như Whale Alerts,
     giúp đồng nhất số liệu hiển thị giữa Whale Alerts và Whale Advisory.
     """

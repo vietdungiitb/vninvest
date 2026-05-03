@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from portfolio.models import AdvisoryTokenLog, SystemAISettings, TrackedSymbol, UserConfig, WhaleAdvisory
+from portfolio.models import AdvisoryTokenLog, AICommandCenterConfig, SystemAISettings, TrackedSymbol, UserConfig, WhaleAdvisory
 
 
 class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
@@ -15,6 +15,25 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         from . import test_api_routes as legacy_routes
 
         legacy_routes.ApiRouteSmokeTests.setUp(self)
+        command_center_cfg, _ = AICommandCenterConfig.objects.update_or_create(
+            user=self.user,
+            defaults={
+                'ai_provider': 'openai',
+                'ai_model': 'gpt-4o',
+                'ai_prompt_config': {},
+            },
+        )
+        command_center_cfg.set_ai_api_key('sk-refresh-route-smoke')
+        command_center_cfg.save(update_fields=['ai_api_key'])
+        SystemAISettings.objects.update_or_create(
+            name='default',
+            defaults={
+                'is_active': True,
+                'ai_provider': 'openclaw',
+                'ai_model': '',
+                'allow_env_fallback': True,
+            },
+        )
 
     def authenticate(self):
         from . import test_api_routes as legacy_routes
@@ -45,11 +64,11 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         mock_task.id = 'task-123'
         mock_apply_async.return_value = mock_task
 
-        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(response.data['queued'])
-        self.assertEqual(response.data.get('runtime_ai_source'), 'user')
+        self.assertEqual(response.data.get('runtime_ai_source'), 'command_center')
         kwargs = mock_apply_async.call_args.kwargs['kwargs']
         self.assertEqual(kwargs['symbol'], 'FPT')
         self.assertTrue(kwargs['force_refresh'])
@@ -66,7 +85,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         )
         self.authenticate()
 
-        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(response.data['queued'])
@@ -110,7 +129,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
             symbol='FPT',
         )
 
-        response = self.client.get('/api/portfolio/whale-advisory/FPT/auto-refresh-info/')
+        response = self.client.get('/api/portfolio/ai-advisory/FPT/auto-refresh-info/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['ok'])
@@ -131,13 +150,14 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         self.authenticate()
         TrackedSymbol.objects.create(user=self.user, symbol='SSI')
 
-        response = self.client.get('/api/portfolio/whale-advisory/SSI/auto-refresh-info/')
+        response = self.client.get('/api/portfolio/ai-advisory/SSI/auto-refresh-info/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['ok'])
         self.assertEqual(response.data['status'], 'no_advisory')
         self.assertIsNone(response.data['advisory_id'])
 
+    @patch('portfolio.views._get_ai_runtime_config_status', return_value={'ready': False, 'message': 'AI runtime chưa sẵn sàng.', 'reason': 'missing_ai_config'})
     @patch.dict(
         'os.environ',
         {
@@ -149,7 +169,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         },
         clear=False,
     )
-    def test_whale_advisory_refresh_endpoint_returns_409_when_ai_model_missing(self):
+    def test_whale_advisory_refresh_endpoint_returns_409_when_ai_model_missing(self, _mock_ai_runtime_status):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={
@@ -172,13 +192,14 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
             ai_model='gpt-4o',
         )
 
-        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertFalse(response.data['queued'])
         self.assertEqual(response.data['reason'], 'ai_not_configured')
         self.assertTrue(response.data.get('config_issue'))
 
+    @patch('portfolio.views._get_ai_runtime_config_status', return_value={'ready': False, 'message': 'AI runtime chưa sẵn sàng.', 'reason': 'missing_ai_config'})
     @patch.dict(
         'os.environ',
         {
@@ -190,7 +211,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         },
         clear=False,
     )
-    def test_whale_advisory_refresh_endpoint_returns_409_when_ai_api_key_missing(self):
+    def test_whale_advisory_refresh_endpoint_returns_409_when_ai_api_key_missing(self, _mock_ai_runtime_status):
         cfg, _ = UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'pro', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
@@ -209,7 +230,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
             ai_model='gpt-4o',
         )
 
-        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(response.data['reason'], 'ai_not_configured')
@@ -249,7 +270,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         mock_task.id = 'task-system-fallback-1'
         mock_apply_async.return_value = mock_task
 
-        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(response.data['queued'])
@@ -276,7 +297,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
             'ai_model': 'gpt-4o',
         }
 
-        response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/SSI/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data['queued'])
@@ -308,12 +329,12 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         mock_task.id = 'task-existing-1'
         mock_apply_async.return_value = mock_task
 
-        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(response.data['queued'])
         self.assertEqual(response.data['symbol'], 'FPT')
-        self.assertEqual(response.data.get('runtime_ai_source'), 'user')
+        self.assertEqual(response.data.get('runtime_ai_source'), 'command_center')
 
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.views._is_celery_worker_available', return_value=False)
@@ -334,7 +355,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
             'symbol': 'SSI',
         }
 
-        response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/SSI/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data['queued'])
@@ -358,7 +379,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()
 
-        response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/SSI/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
         self.assertFalse(response.data['queued'])
@@ -381,7 +402,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
             ai_model='gpt-4o',
         )
 
-        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        response = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         self.assertFalse(response.data['queued'])
@@ -421,8 +442,8 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         mock_task.id = 'task-123'
         mock_apply_async.return_value = mock_task
 
-        first = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
-        second = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        first = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
+        second = self.client.post('/api/portfolio/ai-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(first.status_code, status.HTTP_202_ACCEPTED)
         self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

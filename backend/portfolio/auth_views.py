@@ -141,7 +141,7 @@ def _build_current_capability_snapshot(user) -> dict:
 
     return {
         'object': 'capability_snapshot',
-        'snapshot_version': '2026-05-02',
+        'snapshot_version': '2026-05-03',
         'generated_at': timezone.now().isoformat(),
         'actor': {
             'user_id': str(user.id),

@@ -229,3 +229,16 @@ Sau khi handoff pack nay READY, code team phai doc playbook continuation truoc k
 3. Chi duoc co mot slice `[/]` trong toan bo chuong trinh tai mot thoi diem.
 4. Sau moi slice phai cap nhat taskboard, audit ledger va progress dashboard truoc khi bat dau slice tiep.
 5. Neu co drift giua docs va code, dung slice va sua drift truoc khi tiep tuc.
+
+## 12. SaaS cutover route
+
+Sau khi current-code realignment va package/admin hardening da dong, route tiep theo khong con la `PKG-*` hay `CA-*` nua. Route chinh phai la bo SaaS cutover:
+
+1. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md`
+2. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_PLAN_20260503.md`
+3. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`
+4. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TRACEABILITY_MATRIX_20260503.md`
+5. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260503.md`
+6. `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260503.md`
+
+One active slice rule van giu nguyen, nhung active slice luc nay phai nam trong SaaS board moi.

@@ -215,6 +215,7 @@ class ApiRouteAuthProfileTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['object'], 'capability_snapshot')
+        self.assertEqual(response.data['snapshot_version'], '2026-05-03')
         self.assertEqual(response.data['actor']['session_type'], 'tenant_human')
         self.assertEqual(response.data['actor']['primary_tenant_id'], f'ten_usr_{self.user.id}')
         self.assertFalse(response.data['surfaces']['central_operator']['enabled'])
@@ -241,6 +242,7 @@ class ApiRouteAuthProfileTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['object'], 'capability_snapshot')
+        self.assertEqual(response.data['snapshot_version'], '2026-05-03')
         self.assertEqual(response.data['actor']['session_type'], 'operator_human')
         self.assertTrue(response.data['surfaces']['central_operator']['enabled'])
         self.assertEqual(response.data['surfaces']['central_operator']['default_route'], '/admin-ops')

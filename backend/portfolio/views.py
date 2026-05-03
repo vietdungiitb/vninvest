@@ -161,6 +161,7 @@ from .views_realtime_symbol import (
     symbol_investigation_api,
     whale_symbol_summary_api,
 )
+from .views_dashboard_risk import dashboard_aggregated_risk_api
 from .views_ai_advisory_trace import (
     _build_advisory_trace_payload_for_user,
     stock_ai_advisory_observability_api,
