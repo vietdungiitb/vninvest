@@ -1,3 +1,36 @@
+# Entry 2026-05-03by - SAAS-15: Legacy Decommission Final Gate
+
+Muc tieu:
+- Gate A: Auth endpoints (login/profile/logout) cho packages/core; URL wiring vao identity_access.
+- Gate A1: docker-compose.core.yml doi tu stub sang Django/gunicorn + Celery.
+- Gate F1: docker-compose.dev.yml core-api service doi sang Django/gunicorn.
+- Gate C: Whale legacy paths migrated — watchlistApi.ts + coreAdapter.js + check-shell test.
+- Formal go/no-go: NOT GO — Gate B (LEGACY_DATABASE_URL live-run deferred) + Gate C portfolio/tx deferred.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/identity_access/views_auth.py (NEW — auth endpoints: login, profile, logout)
+- packages/core/backend/src/identity_access/urls.py (MODIFIED — 3 auth routes)
+- packages/core/docker-compose.core.yml (MODIFIED — real Django/gunicorn/Celery)
+- docker-compose.dev.yml (MODIFIED — core-api sang Django)
+- packages/mobile/src/services/coreApiClient.ts (NEW — typed core API client)
+- packages/mobile/src/services/watchlistApi.ts (MODIFIED — whale paths rerouted to coreApiClient)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED — whale endpoint migrated to /core/v1)
+- packages/web/scripts/check-shell.mjs (MODIFIED — URL assertion updated)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS15.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED — SAAS-15 completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED — add entry 2026-05-03by)
+- PROGRESS_DASHBOARD.md (MODIFIED — SAAS-15 audit file list)
+
+Validation:
+- PASSED: `python manage.py check` -> System check identified no issues (0 silenced)
+- PASSED: `python manage.py makemigrations --check` -> No changes detected
+- PASSED: `python -m unittest discover -s tests` -> Ran 29 tests, OK
+- PASSED: `node --experimental-vm-modules jest` -> 12/12 tests, PASS
+- PASSED: `node scripts/check-shell.mjs` -> packages/web shell check passed
+- PASSED: `node shared/scripts/validate-contracts.mjs` -> 9/9 PASS
+
+Formal go/no-go: NOT GO — Gate B (no live LEGACY_DATABASE_URL), Gate C (portfolio/tx mgmt no core equivalent). Decommission BLOCKED.
+
 # Entry 2026-05-03bx - SAAS-14: Data-plane serving models materialization
 
 Muc tieu:

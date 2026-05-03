@@ -123,9 +123,10 @@ export const coreAdapter = {
   },
   getWhaleAnalyticsSnapshotEndpoint(env = {}, options = {}) {
     const normalizedSymbol = String(options.symbol || "").trim().toUpperCase();
+    const coreBase = resolveCoreBaseUrl(env);
 
     return appendQuery(
-      `${resolvePortfolioApiBaseUrl(env)}/portfolio/whale/analytics/${encodeURIComponent(normalizedSymbol)}/`,
+      `${coreBase}/whale-feed-aggregate/${encodeURIComponent(normalizedSymbol)}/`,
       {
         timeframe: options.timeframe,
         compact: options.compact === false ? 0 : 1,

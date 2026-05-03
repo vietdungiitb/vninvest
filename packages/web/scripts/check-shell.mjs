@@ -285,7 +285,7 @@ assert(fallbackAdvisoryPayload.contract_fallback_reason === "holistic_disabled",
 
 const whaleSnapshotRequests = [];
 const whaleSnapshotClient = createCoreWhaleAnalyticsSnapshotClient({
-  env: { VNINVEST_API_BASE_URL: "http://backend.local/api" },
+  env: { VNINVEST_CORE_BASE_URL: "http://backend.local/core/v1" },
   fetchImpl: async (url) => {
     whaleSnapshotRequests.push(url);
 
@@ -337,8 +337,8 @@ const whaleSnapshotPayload = await whaleSnapshotClient.getWhaleAnalyticsSnapshot
 
 assert(whaleSnapshotPayload.materialization.read_path === "facts_first", "Core whale analytics snapshot client must return facts-first whale snapshot JSON");
 assert(
-  whaleSnapshotRequests[0] === "http://backend.local/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1&trade_date=2026-04-15&include_baseline=0",
-  "Core whale analytics snapshot client must build the whale analytics snapshot endpoint correctly",
+  whaleSnapshotRequests[0] === "http://backend.local/core/v1/whale-feed-aggregate/HPG/?timeframe=session&compact=1&trade_date=2026-04-15&include_baseline=0",
+  "Core whale analytics snapshot client must build the whale-feed-aggregate core endpoint correctly",
 );
 
 const vipControlRequests = [];

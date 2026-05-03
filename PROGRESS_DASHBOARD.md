@@ -1,3 +1,28 @@
+# ✅ AUDIT FILE LIST (2026-05-03by) — SAAS-15: Legacy decommission final gate (code work + gate audit)
+- packages/core/backend/src/identity_access/views_auth.py (NEW — auth endpoints)
+- packages/core/backend/src/identity_access/urls.py (MODIFIED — 3 auth routes)
+- packages/core/docker-compose.core.yml (MODIFIED — Django/gunicorn/Celery)
+- docker-compose.dev.yml (MODIFIED — core-api sang Django)
+- packages/mobile/src/services/coreApiClient.ts (NEW — typed core API client)
+- packages/mobile/src/services/watchlistApi.ts (MODIFIED — whale paths → coreApiClient)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED — whale endpoint → /core/v1)
+- packages/web/scripts/check-shell.mjs (MODIFIED — URL assertion updated)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS15.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED — SAAS-15 completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED — entry 2026-05-03by)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: `python manage.py check` -> System check 0 issues
+- PASSED: `python manage.py makemigrations --check` -> No changes detected
+- PASSED: `python -m unittest discover -s tests` -> Ran 29 tests, OK
+- PASSED: jest coreApiAdapter.test.js -> 12/12 PASS
+- PASSED: node scripts/check-shell.mjs -> packages/web shell check passed
+- PASSED: node shared/scripts/validate-contracts.mjs -> 9/9 PASS
+
+Status:
+- SAAS-15 ✅ completed (code work + formal gate audit). Decommission BLOCKED — Gate B (LEGACY_DATABASE_URL live-run) + Gate C (portfolio/tx mgmt no core equivalent) unresolved.
+
 # ✅ AUDIT FILE LIST (2026-05-03bx) — SAAS-14: Data-plane materialization + coreApiAdapter
 - packages/core/backend/src/vninvest_core/pagination.py (NEW)
 - packages/core/backend/src/market_serving/materializers.py (NEW)
