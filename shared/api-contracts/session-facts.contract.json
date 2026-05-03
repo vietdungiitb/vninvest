@@ -1,0 +1,118 @@
+{
+  "contract_name": "session-facts",
+  "version": "1.0.0",
+  "description": "Session-level aggregate facts cho một mã cổ phiếu — CVD, buy/institutional strength, whale flow, dark flow score.",
+  "last_updated": "2026-05-03",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "vninvest/contracts/session-facts/v1",
+    "title": "SessionFacts",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["symbol", "session_date", "computed_at", "stale", "source"],
+    "properties": {
+      "symbol": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20,
+        "description": "Mã cổ phiếu"
+      },
+      "session_date": {
+        "type": "string",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+        "description": "Ngày phiên giao dịch (ISO date YYYY-MM-DD)"
+      },
+      "cvd_normalized": {
+        "type": ["number", "null"],
+        "minimum": -1.0,
+        "maximum": 1.0,
+        "description": "Cumulative Volume Delta đã normalize về [-1, 1]. Dương = áp lực mua, âm = áp lực bán."
+      },
+      "buy_strength": {
+        "type": ["number", "null"],
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Sức mạnh mua tổng hợp (0.0 = yếu nhất, 1.0 = mạnh nhất)"
+      },
+      "institutional_strength": {
+        "type": ["number", "null"],
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Sức mạnh tổ chức/khối ngoại (0.0 = yếu nhất, 1.0 = mạnh nhất)"
+      },
+      "whale_net_flow": {
+        "type": ["number", "null"],
+        "description": "Dòng tiền cá mập ròng (VND). Dương = mua ròng, âm = bán ròng."
+      },
+      "dark_flow_score": {
+        "type": ["number", "null"],
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Điểm dòng tiền tối (0.0 = không có, 1.0 = rất mạnh)"
+      },
+      "total_buy_volume": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Tổng khối lượng lệnh mua (cổ phiếu)"
+      },
+      "total_sell_volume": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Tổng khối lượng lệnh bán (cổ phiếu)"
+      },
+      "total_buy_vnd": {
+        "type": ["number", "null"],
+        "minimum": 0,
+        "description": "Tổng giá trị mua (VND)"
+      },
+      "total_sell_vnd": {
+        "type": ["number", "null"],
+        "minimum": 0,
+        "description": "Tổng giá trị bán (VND)"
+      },
+      "order_count": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Số lệnh đã xử lý trong phiên"
+      },
+      "computed_at": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Thời điểm tính toán facts (ISO 8601)"
+      },
+      "stale": {
+        "type": "boolean",
+        "description": "true nếu facts chưa được recompute trong threshold cho phép"
+      },
+      "source": {
+        "type": "string",
+        "enum": ["live", "cache", "degraded", "legacy_sync", "core"],
+        "description": "Nguồn dữ liệu"
+      }
+    }
+  },
+  "example": {
+    "symbol": "FPT",
+    "session_date": "2026-05-03",
+    "cvd_normalized": 0.34,
+    "buy_strength": 0.71,
+    "institutional_strength": 0.62,
+    "whale_net_flow": 18500000000,
+    "dark_flow_score": 0.12,
+    "total_buy_volume": 2100000,
+    "total_sell_volume": 1400000,
+    "total_buy_vnd": 262500000000,
+    "total_sell_vnd": 175000000000,
+    "order_count": 4820,
+    "computed_at": "2026-05-03T10:15:30+07:00",
+    "stale": false,
+    "source": "core"
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-05-03",
+      "changes": "Initial contract — SAAS-12 shared contract lock"
+    }
+  ]
+}

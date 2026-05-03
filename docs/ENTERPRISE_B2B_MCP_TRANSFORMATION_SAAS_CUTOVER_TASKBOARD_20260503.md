@@ -1,8 +1,11 @@
 # TASKBOARD - ENTERPRISE B2B MCP TRANSFORMATION SAAS CUTOVER
 
-**Ngay:** 2026-05-03  
-**Trang thai:** Completed execution board sau package parity  
+**Ngay:** 2026-05-03 (cap nhat 2026-05-03 sau kien truc review)  
+**Trang thai:** Active — SAAS-14 completed, SAAS-15 is next  
 **Muc tieu:** Chot cac slice cu the de dua VNInvest sang mo hinh SaaS that su, co machine-auth, tenant lifecycle, data-plane parity va legacy decommission.
+
+**Architecture assessment:** `docs/SAAS_ARCHITECTURE_GAPS_ASSESSMENT_20260503.md`  
+**Master roadmap:** `docs/SAAS_COMPLETION_MASTER_ROADMAP_20260503.md`
 
 ---
 
@@ -31,7 +34,7 @@
 | `SAAS-09` | P0 | Web Lead | Web package consolidation | `frontend/src/pages/SupportShellHost.jsx`, `frontend/src/pages/SettingsShellHost.jsx`, `frontend/src/pages/AICommandCenterShellHost.jsx`, `frontend/src/pages/AdminOpsShellHost.jsx`, `frontend/src/pages/PortfoliosShellHost.jsx`, `frontend/src/pages/WatchlistShellHost.jsx`, `frontend/src/pages/TransactionsShellHost.jsx`, `frontend/src/App.jsx`, `frontend/src/App.adminCoreRoutes.test.jsx`, `packages/web/src/pages/system/ShellSupportPage.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/system/ShellAiCommandCenterPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js`, `packages/web/src/pages/workspace/ShellPortfoliosPage.js`, `packages/web/src/pages/workspace/ShellWatchlistPage.js`, `packages/web/src/pages/workspace/ShellTransactionsPage.js` | support, settings, settings/ai, admin-ops, portfolios, watchlist and transactions routes mount package shell host when flag enabled, legacy fallback remains when disabled, route-level regression tests pass | completed |
 | `SAAS-09B` | P0 | Web Lead | Dashboard shell host follow-up | `frontend/src/pages/DashboardShellHost.jsx`, `frontend/src/pages/DashboardShellHost.test.jsx`, `frontend/src/App.jsx`, `frontend/src/App.adminCoreRoutes.test.jsx`, `frontend/src/pages/Dashboard.jsx`, `packages/web/src/pages/workspace/ShellDashboardPage.js` | dashboard route mount package shell host when flag enabled, legacy Dashboard dispatcher remains when disabled, route-level regression tests pass, browser proof captured on /dashboard | completed |
 | `SAAS-10` | P0 | VIP Lead | VIP app completion | `packages/web/src/pages/vip/VipLocalControlPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/adapters/vip-app/vipAppAdapter.js`, `packages/web/scripts/check-vip-local-control.mjs`, `packages/vip-app/local-backend/api_stub.py`, `packages/vip-app/local-backend/store.py`, `packages/vip-app/docker-compose.vip.yml` | vip-local-control route resolves to VipLocalControlPage, vip-app adapter endpoints and local backend smoke pass, dedicated VIP smoke script passes, no separate frontend source added under packages/vip-app | completed |
-| `SAAS-11` | P0 | Mobile Lead | Mobile runtime config bridge | `packages/mobile/src/runtimeConfig.js`, `packages/mobile/src/index.js`, `packages/mobile/scripts/check-mobile-config.mjs`, `mobile-app/src/services/config.ts`, `mobile-app/metro.config.js`, `packages/mobile/README.md`, `packages/mobile/package.json` | mobile package owns shared runtime config defaults, legacy mobile-app consumes the package boundary through a thin bridge, dedicated mobile config smoke passes, mobile-app Metro resolves the sibling package | in-progress |
+| `SAAS-11` | P0 | Mobile Lead | Mobile package completion | `packages/mobile/src/runtimeConfig.js`, `packages/mobile/src/index.js`, `packages/mobile/src/navigation/mobileNavigation.js`, `packages/mobile/src/components/MobileBottomTabBar.js`, `packages/mobile/src/i18n/index.ts`, `packages/mobile/src/theme/colors.ts`, `packages/mobile/src/types/*.ts`, `packages/mobile/src/services/*.ts`, `packages/mobile/src/store/*.ts`, `packages/mobile/src/screens/*.tsx`, `packages/mobile/scripts/check-mobile-config.mjs`, `packages/mobile/scripts/check-mobile-navigation.mjs`, `mobile-app/src/services/*.ts`, `mobile-app/src/store/*.ts`, `mobile-app/src/i18n/index.ts`, `mobile-app/src/theme/colors.ts`, `mobile-app/src/types/*.ts`, `mobile-app/src/screens/*.tsx`, `mobile-app/src/components/BottomTabBar.tsx`, `mobile-app/src/app/AppRoot.tsx`, `mobile-app/metro.config.js`, `mobile-app/tsconfig.json`, `packages/mobile/README.md`, `packages/mobile/package.json` | mobile package owns shared runtime config, navigation, auth, dashboard, transactions, watchlist, whale and shared primitives; legacy mobile-app keeps thin wrappers and app shell glue only; config/nav smoke plus mobile-app typecheck stay green | completed |
 
 ---
 
@@ -216,25 +219,108 @@ Status note: completed.
 
 ### SAAS-11
 
-Slice nay mo phan dau tien cua mobile package completion bang cach tap trung vao runtime config bridge va screen/navigation bridge: `packages/mobile` phai own shared mobile API/WS/demo defaults, tab catalog va bottom navigation shell; `mobile-app` phai re-export config va consume navigation package boundary thay vi giu logic rieng.
+Slice nay tiep tuc mobile package completion bang cach mo rong `packages/mobile` sang auth/shared-primitives layer: `packages/mobile` phai own shared mobile API/WS/demo defaults, tab catalog, bottom navigation shell, i18n, colors, auth store, locale store, token/http/authApi, va auth/login entrypoint; `mobile-app` phai tiep tuc consume package boundary qua thin wrappers thay vi giu logic rieng.
 
-Current working artifact: `packages/mobile/src/runtimeConfig.js`, `packages/mobile/src/index.js`, `packages/mobile/src/navigation/mobileNavigation.js`, `packages/mobile/src/components/MobileBottomTabBar.js`, `packages/mobile/scripts/check-mobile-config.mjs`, `packages/mobile/scripts/check-mobile-navigation.mjs`, `mobile-app/src/services/config.ts`, `mobile-app/src/components/BottomTabBar.tsx`, `mobile-app/src/app/AppRoot.tsx`, `mobile-app/metro.config.js`, `packages/mobile/README.md`, `packages/mobile/package.json`.
+Current working artifact: `packages/mobile/src/runtimeConfig.js`, `packages/mobile/src/index.js`, `packages/mobile/src/navigation/mobileNavigation.js`, `packages/mobile/src/components/MobileBottomTabBar.js`, `packages/mobile/src/i18n/index.ts`, `packages/mobile/src/theme/colors.ts`, `packages/mobile/src/types/*.ts`, `packages/mobile/src/services/*.ts`, `packages/mobile/src/store/*.ts`, `packages/mobile/src/screens/*.tsx`, `packages/mobile/scripts/check-mobile-config.mjs`, `packages/mobile/scripts/check-mobile-navigation.mjs`, `mobile-app/src/services/*.ts`, `mobile-app/src/store/*.ts`, `mobile-app/src/i18n/index.ts`, `mobile-app/src/theme/colors.ts`, `mobile-app/src/types/*.ts`, `mobile-app/src/screens/*.tsx`, `mobile-app/src/components/BottomTabBar.tsx`, `mobile-app/src/app/AppRoot.tsx`, `mobile-app/metro.config.js`, `mobile-app/tsconfig.json`, `packages/mobile/README.md`, `packages/mobile/package.json`.
 
 Freeze outputs expected from this slice:
 
-1. `packages/mobile` co shared runtime config defaults cho API, websocket va demo creds.
-2. `packages/mobile` own tab catalog va bottom navigation shell for the mobile app.
-3. `mobile-app/src/services/config.ts` consume shared config boundary qua thin bridge.
-4. `mobile-app/src/components/BottomTabBar.tsx` va `mobile-app/src/app/AppRoot.tsx` consume package-owned navigation defs.
-5. Dedicated `check:mobile` va `check:mobile-navigation` smoke pass cho config va navigation contracts.
-6. `mobile-app/metro.config.js` load duoc sibling package path cho future package migration.
+1. `packages/mobile` owns shared runtime config defaults, tab catalog, bottom navigation shell, auth/login screen, dashboard/transactions/watchlist/whale screens, and shared mobile primitives.
+2. `mobile-app` consumes package-owned shared primitives via thin wrappers only; legacy screen bodies no longer live there.
+3. `mobile-app/src/services/config.ts`, `mobile-app/src/services/http.ts`, `mobile-app/src/store/authStore.ts`, `mobile-app/src/store/localeStore.ts`, `mobile-app/src/i18n/index.ts`, `mobile-app/src/theme/colors.ts`, `mobile-app/src/types/*.ts`, and `mobile-app/src/screens/*.tsx` consume package-owned boundaries.
+4. `mobile-app/src/components/BottomTabBar.tsx` and `mobile-app/src/app/AppRoot.tsx` continue to consume package-owned navigation defs and tab ownership.
+5. `mobile-app/metro.config.js` and `mobile-app/tsconfig.json` keep sibling package migration resolvable in Expo/Metro and TypeScript.
+6. Dedicated `check:mobile` and `check:mobile-navigation` smoke plus `mobile-app` typecheck stay green for the package track contracts.
+7. `mobile-app/src/screens/AuthScreen.tsx`, `ProfileScreen.tsx`, `HomeScreen.tsx`, `DashboardScreen.tsx`, `TransactionsScreen.tsx`, `WatchlistScreen.tsx`, and `WhaleScreen.tsx` are thin wrappers only.
 
-Status note: in-progress.
+Status note: completed.
 
 ---
 
 ## 4. Next recommended route
 
-1. `SAAS-11` is in-progress.
-2. Neu future decommission follow-up xuat hien, mo board/slice moi va dong bo audit surfaces truoc khi code.
+1. `SAAS-11` is completed.
+2. Future shared-contract work should start at `SAAS-12`.
 3. Neu taskboard, ledger va progress khong khop, dung ngay va sua drift truoc khi claim slice moi.
+
+---
+
+## 5. Slice board — Phase 2: SaaS completion (SAAS-12 den SAAS-15)
+
+| Slice ID | Priority | Owner | Scope | Anchors | Exit criteria | Status |
+|---|---|---|---|---|---|---|
+| `SAAS-12` | P0 | Platform Lead | Shared contract lock va mobile API migration | `shared/api-contracts/symbol-snapshot.contract.json`, `shared/api-contracts/session-facts.contract.json`, `shared/api-contracts/unified-alert.contract.json`, `shared/api-contracts/whale-feed-aggregate.contract.json`, `shared/api-contracts/tenant-lifecycle.contract.json`, `shared/api-contracts/partner-pat.contract.json`, `shared/scripts/validate-contracts.mjs` | 6 data-plane contracts locked va valid; contract validator script pass (9/9 PASS); mobile migration DEFERRED (mobile-app locked) | ✅ completed |
+| `SAAS-13` | P0 | Core Lead | packages/core domain extraction — Django that | `packages/core/backend/requirements.txt`, `packages/core/backend/manage.py`, `packages/core/backend/src/vninvest_core/settings.py`, `packages/core/backend/src/vninvest_core/urls.py`, `packages/core/backend/src/vninvest_core/celery.py`, `packages/core/backend/src/identity_access/models.py`, `packages/core/backend/src/market_serving/models.py`, `packages/core/backend/src/signal_intelligence/models.py`, `packages/core/backend/src/commercial/models.py`, `packages/core/backend/src/ops_audit/middleware.py`, `packages/core/docker-compose.core.yml` | packages/core chay Django doc lap; CoreTenant/CoreServiceAccount/CorePATCredential trong identity_access; X-Request-ID propagation; khong co import tu backend/portfolio; 23/23 unit tests pass | ✅ completed |
+| `SAAS-14` | P0 | Data Lead | Data-plane serving models materialization + cursor pagination | `packages/core/backend/src/market_serving/materializers.py`, `packages/core/backend/src/signal_intelligence/materializers.py`, `packages/core/backend/src/vninvest_core/pagination.py`, `packages/web/src/adapters/coreApiAdapter.js` | Celery materializers chay on schedule; SymbolSnapshot/SessionFacts/UnifiedAlert co data fresh; cursor pagination tren list APIs; packages/web goi /core/v1 qua coreApiAdapter; 29/29 Python tests + 12/12 jest tests pass | ✅ completed |
+| `SAAS-15` | P1 | Platform/DevOps Lead | Legacy decommission final gate | `docker-compose.dev.yml`, `docker-compose.prod.yml`, `frontend/docker/nginx.conf`, `AGENTS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md` | Gates A-F trong SAAS15 doc deu GREEN; decommission sequence hoan thanh; production traffic 24h khong tang error; legacy containers khong con trong docker ps | not started |
+| `SAAS-16` | P2 | Platform Lead | packages/opencore community distribution | `packages/opencore/` | community/self-host distribution bundle; upgrade journey community → SaaS | future |
+
+---
+
+## 6. Detailed slice notes — Phase 2
+
+### SAAS-12
+
+Slice nay lock toan bo data-plane contracts truoc khi bat dau migration bat ky client nao. Khong co contract lock thi moi client se self-interpret API response khac nhau va khong the test regression.
+
+Anchor doc: `docs/SAAS12_SHARED_CONTRACT_LOCK_EXECUTION_PLAN_20260503.md`
+
+Outputs expected:
+1. 6 contract files trong `shared/api-contracts/` — valid JSON, co version field.
+2. `validate-contracts.mjs` script chay pass.
+3. Mobile services migrate sang `/core/v1` paths.
+4. `packages/mobile/src/services/coreHttp.ts` inject X-Request-ID.
+
+Status note: ✅ completed 2026-05-03. 6 contracts created; validator 9/9 PASS. Mobile migration deferred (user decision — mobile-app locked).
+
+Evidence: `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS12.md`
+
+---
+
+### SAAS-13
+
+Slice nay chuyen packages/core tu ThreadingHTTPServer stub thanh Django/DRF that. Day la backbone slice — tat ca slice sau deu phu thuoc vao day.
+
+Anchor doc: `docs/SAAS13_PACKAGES_CORE_DOMAIN_EXTRACTION_PLAN_20260503.md`
+
+Bounded contexts:
+- `identity_access` — CoreTenant, CoreServiceAccount, CorePATCredential
+- `market_serving` — SymbolSnapshot, SessionFacts (read models)
+- `signal_intelligence` — UnifiedAlert, WhaleAlertCanonical
+- `commercial` — Subscription, Quota, Invoice
+- `ops_audit` — AuditEvent, RequestTraceMiddleware
+
+Isolation rule: khong duoc co import nao tu `backend/portfolio` vao `packages/core`.
+
+Status note: not started.
+
+---
+
+### SAAS-14
+
+Slice nay materialize data vao serving models cua packages/core bang Celery jobs, dong thoi migrate packages/web sang coreApiAdapter va them cursor pagination.
+
+Anchor doc: `docs/SAAS14_DATA_PLANE_SERVING_MODELS_PLAN_20260503.md`
+
+Materializer schedule:
+- `materialize_symbol_snapshot` — moi 60s
+- `materialize_session_facts` — moi 5 phut
+- `materialize_unified_alerts` — moi 5 phut
+- `materialize_whale_feed_aggregate` — moi 5 phut
+
+Status note: not started.
+
+---
+
+### SAAS-15
+
+Slice nay la formal gate truoc khi decommission legacy roots. KHONG duoc bat dau decommission neu chua co explicit go decision tu platform lead.
+
+Anchor doc: `docs/SAAS15_LEGACY_DECOMMISSION_GATES_20260503.md`
+
+Gate checklist: 6 gates (A: core completeness, B: data-plane, C: client migration, D: contract coverage, E: regression tests, F: production routing).
+
+Decommission sequence: Phase 1 (route isolation) → Phase 2 (read-only window 7 ngay) → Phase 3 (legacy shutdown) → Phase 4 (archive).
+
+Status note: not started.
+

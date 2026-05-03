@@ -1,8 +1,10 @@
-# ENTERPRISE B2B MCP TRANSFORMATION CODE TEAM CONTINUATION PLAYBOOK
+# ENTERPRISE B2B MCP TRANSFORMATION CODE TEAM CONTINUATION PLAYBOOK [DEPRECATED]
 
 **Ngay:** 2026-05-03  
-**Trang thai:** Current-code execution route after handoff  
-**Muc tieu:** Cung cap mot route thuc thi don, one active slice at a time, cho doi code tiep tuc hoan thien cac slice con mo ma khong lam docs drift.
+**Trang thai:** Archived reference after final plan canonicalization  
+**Muc tieu:** Luu lai route thuc thi cu cho tham chieu lich su; route canonical go-forward la final SaaS plan.
+
+> **Deprecated:** Use [docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md](docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md) as the canonical route for future sessions. This playbook is archival-only and should not be used to claim new work.
 
 ---
 

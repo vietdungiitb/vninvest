@@ -1,0 +1,108 @@
+{
+  "contract_name": "unified-alert",
+  "version": "1.0.0",
+  "description": "Unified alert item — canonical model cho tất cả alert types (whale, dark_flow, signal, system).",
+  "last_updated": "2026-05-03",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "vninvest/contracts/unified-alert/v1",
+    "title": "UnifiedAlert",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["alert_id", "alert_type", "symbol", "severity", "title", "triggered_at"],
+    "properties": {
+      "alert_id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "UUID duy nhất của alert"
+      },
+      "alert_type": {
+        "type": "string",
+        "enum": ["whale", "dark_flow", "signal", "system"],
+        "description": "Loại alert"
+      },
+      "symbol": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20,
+        "description": "Mã cổ phiếu liên quan"
+      },
+      "severity": {
+        "type": "string",
+        "enum": ["critical", "high", "medium", "low"],
+        "description": "Mức độ nghiêm trọng"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Tiêu đề alert (tiếng Việt)"
+      },
+      "body": {
+        "type": ["string", "null"],
+        "description": "Mô tả chi tiết"
+      },
+      "value": {
+        "type": ["number", "null"],
+        "description": "Giá trị liên quan (VD: khối lượng VND, điểm số)"
+      },
+      "direction": {
+        "type": ["string", "null"],
+        "enum": ["buy", "sell", "neutral", null],
+        "description": "Chiều hướng giao dịch"
+      },
+      "session_date": {
+        "type": ["string", "null"],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+        "description": "Ngày phiên liên quan"
+      },
+      "triggered_at": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Thời điểm alert được kích hoạt (ISO 8601)"
+      },
+      "source_ref": {
+        "type": ["string", "null"],
+        "description": "ID của record nguồn (VD: whale order ID)"
+      },
+      "metadata": {
+        "type": ["object", "null"],
+        "description": "Dữ liệu bổ sung tùy loại alert (key-value)"
+      }
+    }
+  },
+  "list_response": {
+    "description": "Response khi gọi list endpoint /core/v1/unified-alert/",
+    "type": "object",
+    "required": ["results", "count"],
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": { "$ref": "#/schema" }
+      },
+      "count": { "type": "integer" },
+      "next": { "type": ["string", "null"], "description": "Cursor URL cho trang tiếp theo" },
+      "previous": { "type": ["string", "null"], "description": "Cursor URL cho trang trước" }
+    }
+  },
+  "example": {
+    "alert_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "alert_type": "whale",
+    "symbol": "FPT",
+    "severity": "high",
+    "title": "Cá mập mua mạnh FPT — 18.5 tỷ VND",
+    "body": "Lệnh mua lớn vượt ngưỡng được phát hiện trong phiên ATC",
+    "value": 18500000000,
+    "direction": "buy",
+    "session_date": "2026-05-03",
+    "triggered_at": "2026-05-03T14:43:00+07:00",
+    "source_ref": "whale-order-uuid-12345",
+    "metadata": { "price": 125000, "volume": 148000 }
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-05-03",
+      "changes": "Initial contract — SAAS-12 shared contract lock"
+    }
+  ]
+}

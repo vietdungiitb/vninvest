@@ -1,3 +1,359 @@
+# Entry 2026-05-03bx - SAAS-14: Data-plane serving models materialization
+
+Muc tieu:
+- Tao Celery beat tasks de materialize SymbolSnapshot, SessionFacts, UnifiedAlert, WhaleAlertCanonical tu legacy DB.
+- Cursor pagination cho list APIs.
+- coreApiAdapter.js cho packages/web.
+- Degraded mode: skip gracefully khi LEGACY_DATABASE_URL = empty.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/pagination.py (NEW)
+- packages/core/backend/src/market_serving/materializers.py (NEW)
+- packages/core/backend/src/signal_intelligence/materializers.py (NEW)
+- packages/core/backend/tests/test_saas14_materializers.py (NEW - 6 tests)
+- packages/core/backend/src/vninvest_core/celery.py (MODIFIED - beat schedule 4 tasks)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - legacy_readonly DB)
+- packages/core/backend/src/signal_intelligence/views.py (MODIFIED - AlertCursorPagination)
+- packages/core/backend/src/ops_audit/views.py (MODIFIED - AuditCursorPagination)
+- packages/web/src/adapters/coreApiAdapter.js (NEW)
+- packages/web/src/adapters/coreApiAdapter.test.js (NEW - 12 jest tests)
+- packages/web/jest.config.js (NEW)
+- packages/web/package.json (MODIFIED - jest devDependencies)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS14.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-14 completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bx)
+- PROGRESS_DASHBOARD.md (MODIFIED - SAAS-14 audit file list)
+
+Validation:
+- PASSED: `python manage.py check` -> 0 issues
+- PASSED: `python manage.py makemigrations --check` -> No changes detected, exit 0
+- PASSED: `python -m unittest discover -s tests -v` -> Ran 29 tests, OK
+- PASSED: jest coreApiAdapter.test.js -> 12/12 tests pass
+
+Status:
+- SAAS-14 completed. SAAS-15 (docker-compose gate + decommission) is next.
+
+# Entry 2026-05-03bw - SAAS-13: packages/core Django domain extraction
+
+Muc tieu:
+- Chuyen packages/core tu ThreadingHTTPServer stub thanh Django/DRF app day du voi 5 bounded context apps.
+- CoreTenant, CoreServiceAccount, CorePATCredential trong identity_access (isolated, khong import tu backend/portfolio).
+- RequestTraceMiddleware sinh X-Request-ID cho toan bo responses.
+- 23 unit tests pass. Django check 0 errors. Migrations sach.
+
+Danh sach tep cap nhat:
+- packages/core/backend/requirements.txt (NEW)
+- packages/core/backend/manage.py (NEW)
+- packages/core/backend/src/vninvest_core/settings.py (NEW)
+- packages/core/backend/src/vninvest_core/urls.py (NEW)
+- packages/core/backend/src/vninvest_core/wsgi.py (NEW)
+- packages/core/backend/src/vninvest_core/celery.py (NEW)
+- packages/core/backend/src/vninvest_core/views_health.py (NEW)
+- packages/core/backend/src/identity_access/ (NEW - 7 files incl. migration)
+- packages/core/backend/src/market_serving/ (NEW - 6 files incl. migration)
+- packages/core/backend/src/signal_intelligence/ (NEW - 6 files incl. migration)
+- packages/core/backend/src/commercial/ (NEW - 6 files incl. migration)
+- packages/core/backend/src/ops_audit/ (NEW - 7 files incl. migration)
+- packages/core/backend/tests/test_identity_access.py (NEW - 9 tests)
+- packages/core/backend/tests/test_market_serving.py (NEW - 3 tests)
+- packages/core/backend/tests/test_ops_audit.py (NEW - 4 tests)
+- packages/core/backend/tests/test_runtime_baseline.py (MODIFIED - +4 Django health tests)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS13.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-13 marked completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bw)
+- PROGRESS_DASHBOARD.md (MODIFIED - mirror SAAS-13 completion)
+
+Validation:
+- PASSED: `python manage.py check` -> 0 issues
+- PASSED: `python manage.py makemigrations --check` -> No changes detected, exit 0
+- PASSED: `python -m unittest discover -s tests -v` -> Ran 23 tests in 3.167s, OK
+- PASSED: grep isolation check -> 0 actual backend.portfolio imports in packages/core/backend/src/
+
+Status:
+- SAAS-13 completed. SAAS-14 (data-plane serving materialization) is next.
+
+# Entry 2026-05-03bv - SAAS-12: Shared data-plane contract lock + validator
+
+Muc tieu:
+- Lock 6 data-plane contracts trong `shared/api-contracts/` theo format SAAS-12 (contract_name/version/schema/example/changelog wrapper).
+- Tao contract validator script `shared/scripts/validate-contracts.mjs` ho tro ca legacy format (SAAS-01 raw JSON Schema) va new format (SAAS-12+).
+- Mobile API migration DEFERRED do user lock mobile-app.
+
+Noi dung cap nhat chinh:
+- 6 new contract JSON files in `shared/api-contracts/`.
+- `shared/scripts/validate-contracts.mjs`: Node.js ESM validator; exit 0 = all pass; 9/9 contracts PASS.
+- Taskboard updated: SAAS-12 marked completed, status note updated.
+- Evidence packet created.
+
+Danh sach tep cap nhat:
+- shared/api-contracts/symbol-snapshot.contract.json (NEW - stock price/volume snapshot contract v1.0.0)
+- shared/api-contracts/session-facts.contract.json (NEW - session CVD/strength/whale aggregate contract v1.0.0)
+- shared/api-contracts/unified-alert.contract.json (NEW - canonical alert model contract v1.0.0)
+- shared/api-contracts/whale-feed-aggregate.contract.json (NEW - whale feed aggregate per session contract v1.0.0)
+- shared/api-contracts/tenant-lifecycle.contract.json (NEW - tenant status/plan/quota/features contract v1.0.0)
+- shared/api-contracts/partner-pat.contract.json (NEW - partner PAT credential contract v1.0.0)
+- shared/scripts/validate-contracts.mjs (NEW - contract validator script)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS12.md (NEW - SAAS-12 evidence packet)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - mark SAAS-12 completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bv)
+- PROGRESS_DASHBOARD.md (MODIFIED - mirror SAAS-12 completion)
+
+Validation:
+- PASSED: `node shared/scripts/validate-contracts.mjs` -> 9 contracts checked, 9 passed, 0 failed. Exit code 0.
+
+Status:
+- SAAS-12 completed. SAAS-13 (packages/core Django extraction) is next canonical slice.
+
+# Entry 2026-05-03bi - SaaS mobile package completion closeout
+
+Muc tieu:
+- Hoan tat SAAS-11 bang viec dua transactions, watchlist, va whale screen bodies cung related services/types vao `packages/mobile`.
+- Dong bo legacy wrappers, taskboard, progress dashboard va evidence de SAAS-11 co the dong trang thai.
+
+Noi dung cap nhat chinh:
+- `packages/mobile/README.md`:
+  - Document the completed mobile transaction/watchlist surfaces alongside auth, dashboard, and navigation.
+- `packages/mobile/src/types/watchlist.ts`, `packages/mobile/src/services/watchlistApi.ts`, `packages/mobile/src/services/realtime.ts`, `packages/mobile/src/screens/WatchlistScreen.tsx`, `packages/mobile/src/screens/WhaleScreen.tsx`:
+  - Own the remaining mobile watchlist/whale surface.
+- `mobile-app/src/screens/TransactionsScreen.tsx`, `mobile-app/src/screens/WatchlistScreen.tsx`, `mobile-app/src/screens/WhaleScreen.tsx`, `mobile-app/src/services/watchlistApi.ts`, `mobile-app/src/services/realtime.ts`, `mobile-app/src/types/watchlist.ts`:
+  - Convert the legacy mobile modules into thin package wrappers.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Mark SAAS-11 completed and update the canonical route note.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11G.md`:
+  - Add the final mobile package completion evidence packet.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the final closeout and file list.
+- `module_tree_full.md`:
+  - Regenerated after the final mobile package migration.
+
+Danh sach tep cap nhat:
+- packages/mobile/README.md (MODIFIED - document completed mobile transaction/watchlist surfaces)
+- packages/mobile/src/types/watchlist.ts (NEW - shared watchlist/whale contracts)
+- packages/mobile/src/services/watchlistApi.ts (NEW - shared watchlist/whale API)
+- packages/mobile/src/services/realtime.ts (NEW - shared realtime websocket helper)
+- packages/mobile/src/screens/WatchlistScreen.tsx (NEW - package-owned watchlist screen)
+- packages/mobile/src/screens/WhaleScreen.tsx (NEW - package-owned whale screen)
+- mobile-app/src/screens/TransactionsScreen.tsx (MODIFIED - thin wrapper to package transactions screen)
+- mobile-app/src/screens/WatchlistScreen.tsx (MODIFIED - thin wrapper to package watchlist screen)
+- mobile-app/src/screens/WhaleScreen.tsx (MODIFIED - thin wrapper to package whale screen)
+- mobile-app/src/services/watchlistApi.ts (MODIFIED - thin wrapper to package watchlist API)
+- mobile-app/src/services/realtime.ts (MODIFIED - thin wrapper to package realtime helper)
+- mobile-app/src/types/watchlist.ts (MODIFIED - thin wrapper to package watchlist contracts)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - mark SAAS-11 completed)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11G.md (NEW - final mobile package completion evidence packet)
+- PROGRESS_DASHBOARD.md (MODIFIED - mirror the final closeout)
+- module_tree_full.md (MODIFIED - regenerated after final mobile package migration)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; if ($LASTEXITCODE -eq 0) { Write-Output 'TYPECHECK_OK' } else { exit $LASTEXITCODE }; Pop-Location` -> TypeScript typecheck completed cleanly after the final mobile package migration.
+- PASSED: `get_errors` on `packages/mobile/src/screens/WatchlistScreen.tsx`, `packages/mobile/src/screens/WhaleScreen.tsx`, `packages/mobile/src/services/watchlistApi.ts`, `packages/mobile/src/services/realtime.ts`, `packages/mobile/src/types/watchlist.ts`, `mobile-app/src/screens/TransactionsScreen.tsx`, `mobile-app/src/screens/WatchlistScreen.tsx`, `mobile-app/src/screens/WhaleScreen.tsx`, `mobile-app/src/services/watchlistApi.ts`, `mobile-app/src/services/realtime.ts`, `mobile-app/src/types/watchlist.ts`, and `mobile-app/src/app/AppRoot.tsx` -> no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (639 modules).
+
+Status:
+- SAAS-11 mobile package completion slice is completed; SAAS-12 shared contract lock is next canonical slice.
+
+# Entry 2026-05-03bh - Soft-archive continuation playbook behind final plan
+
+Muc tieu:
+- Danh dau `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md` la archival reference sau khi final SaaS plan da tro thanh route canonical.
+- Giam drift cho phien sau bang cach de noi ro tai lieu nao la go-forward va tai lieu nao chi con tham chieu lich su.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md`:
+  - Add deprecation banner and redirect readers to the final SaaS plan.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add archive entry 2026-05-03bh.
+- `PROGRESS_DASHBOARD.md`:
+  - Mirror the archive note and file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (MODIFIED - mark playbook deprecated and point to final plan)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add archive entry 2026-05-03bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - mirror archive note)
+
+Validation:
+- PASSED: `git diff --check` after the doc-only archive update.
+
+Status:
+- Continuation playbook is now archival-only; final SaaS plan remains canonical.
+
+# Entry 2026-05-03bw - SaaS mobile home screen bridge
+
+Muc tieu:
+- Mo tiep slice SAAS-11 de dua home tab screen vao `packages/mobile`, trong luc legacy `mobile-app` chi con lam thin wrapper cho screen nay.
+- Giu profile screen bridge da co san, va chi migrate them home tab entrypoint trong slice nay.
+
+Noi dung cap nhat chinh:
+- `packages/mobile/README.md`:
+  - Document the package-side home tab entrypoint.
+- `packages/mobile/src/i18n/index.ts`:
+  - Add shared home tab translation keys.
+- `packages/mobile/src/screens/HomeScreen.tsx`:
+  - Move the static home tab screen into the mobile package.
+- `mobile-app/src/screens/HomeScreen.tsx`:
+  - Convert the legacy home tab screen into a thin package wrapper.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Expand SAAS-11 to cover the home screen bridge follow-up.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11E.md`:
+  - Add home screen bridge evidence packet.
+
+Danh sach tep cap nhat:
+- packages/mobile/README.md (MODIFIED - document home tab entrypoint)
+- packages/mobile/src/i18n/index.ts (MODIFIED - add home tab translation keys)
+- packages/mobile/src/screens/HomeScreen.tsx (NEW - package-owned home tab screen)
+- mobile-app/src/screens/HomeScreen.tsx (MODIFIED - thin wrapper to package home screen)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to cover home screen bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11E.md (NEW - home screen bridge evidence packet)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; if ($LASTEXITCODE -eq 0) { Write-Output 'TYPECHECK_OK' } else { exit $LASTEXITCODE }; Pop-Location` -> TypeScript typecheck completed cleanly after the home screen bridge.
+- PASSED: `get_errors` on `packages/mobile/src/screens/HomeScreen.tsx`, `mobile-app/src/screens/HomeScreen.tsx`, and `packages/mobile/src/i18n/index.ts` -> no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (628 modules).
+
+Status:
+- SAAS-11 home screen bridge slice is in-progress with package-owned home tab entrypoint validated.
+
+# Entry 2026-05-03bx - SaaS mobile dashboard/portfolio bridge
+
+Muc tieu:
+- Mo tiep slice SAAS-11 de dua dashboard tab va portfolio read boundary vao `packages/mobile`, trong luc legacy `mobile-app` chi con lam thin wrapper cho dashboard, portfolioApi, va portfolio types.
+- Giu auth/shared-primitives, profile, va home bridges da co san, va chi migrate them dashboard tab entrypoint trong slice nay.
+
+Noi dung cap nhat chinh:
+- `packages/mobile/README.md`:
+  - Document the package-side dashboard tab entrypoint and portfolio surfaces.
+- `packages/mobile/src/i18n/index.ts`:
+  - Add the Vietnamese fallback label for the dashboard portfolio card.
+- `packages/mobile/src/types/portfolio.ts`:
+  - Own the shared portfolio data contracts.
+- `packages/mobile/src/services/portfolioApi.ts`:
+  - Own the shared portfolio read API.
+- `packages/mobile/src/screens/DashboardScreen.tsx`:
+  - Move the dashboard tab screen into the mobile package.
+- `mobile-app/src/services/portfolioApi.ts`, `mobile-app/src/types/portfolio.ts`, `mobile-app/src/screens/DashboardScreen.tsx`:
+  - Convert the legacy dashboard/portfolio modules into thin package wrappers.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Expand SAAS-11 to cover the dashboard/portfolio bridge follow-up.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11F.md`:
+  - Add dashboard/portfolio bridge evidence packet.
+
+Danh sach tep cap nhat:
+- packages/mobile/README.md (MODIFIED - document dashboard tab entrypoint and portfolio surfaces)
+- packages/mobile/src/i18n/index.ts (MODIFIED - add dashboard portfolio fallback key)
+- packages/mobile/src/types/portfolio.ts (NEW - shared portfolio data contracts)
+- packages/mobile/src/services/portfolioApi.ts (NEW - shared portfolio read API)
+- packages/mobile/src/screens/DashboardScreen.tsx (NEW - package-owned dashboard tab screen)
+- mobile-app/src/services/portfolioApi.ts (MODIFIED - thin wrapper to package portfolio API)
+- mobile-app/src/types/portfolio.ts (MODIFIED - thin wrapper to package portfolio types)
+- mobile-app/src/screens/DashboardScreen.tsx (MODIFIED - thin wrapper to package dashboard screen)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to cover dashboard/portfolio bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11F.md (NEW - dashboard/portfolio bridge evidence packet)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; if ($LASTEXITCODE -eq 0) { Write-Output 'TYPECHECK_OK' } else { exit $LASTEXITCODE }; Pop-Location` -> TypeScript typecheck completed cleanly after the dashboard/portfolio bridge.
+- PASSED: `get_errors` on `packages/mobile/src/screens/DashboardScreen.tsx`, `packages/mobile/src/services/portfolioApi.ts`, `packages/mobile/src/types/portfolio.ts`, `mobile-app/src/screens/DashboardScreen.tsx`, `mobile-app/src/services/portfolioApi.ts`, `mobile-app/src/types/portfolio.ts`, and `packages/mobile/src/i18n/index.ts` -> no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (631 modules).
+
+Status:
+- SAAS-11 dashboard/portfolio bridge slice is in-progress with package-owned dashboard tab entrypoint and portfolio read boundary validated.
+
+# Entry 2026-05-03bv - SaaS mobile profile screen bridge
+
+Muc tieu:
+- Mo tiep slice SAAS-11 de dua profile tab screen vao `packages/mobile`, trong luc legacy `mobile-app` chi con lam thin wrapper cho screen nay.
+- Giu auth/shared-primitives bridge da co san, va chi migrate them profile tab entrypoint trong slice nay.
+
+Noi dung cap nhat chinh:
+- `packages/mobile/README.md`:
+  - Document the package-side profile tab entrypoint.
+- `packages/mobile/src/screens/ProfileScreen.tsx`:
+  - Move the profile tab screen into the mobile package.
+- `mobile-app/src/screens/ProfileScreen.tsx`:
+  - Convert the legacy profile tab screen into a thin package wrapper.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Expand SAAS-11 to include the profile screen bridge follow-up.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11D.md`:
+  - Add profile screen bridge evidence packet.
+
+Danh sach tep cap nhat:
+- packages/mobile/README.md (MODIFIED - document profile tab entrypoint)
+- packages/mobile/src/screens/ProfileScreen.tsx (NEW - package-owned profile tab screen)
+- mobile-app/src/screens/ProfileScreen.tsx (MODIFIED - thin wrapper to package profile screen)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to cover profile screen bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11D.md (NEW - profile screen bridge evidence packet)
+- module_tree_full.md (MODIFIED - regenerated after adding profile screen bridge)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; Pop-Location` -> TypeScript typecheck completed cleanly after the profile screen bridge.
+- PASSED: `get_errors` on `packages/mobile/src/screens/ProfileScreen.tsx`, `mobile-app/src/screens/ProfileScreen.tsx`, and `mobile-app/src/app/AppRoot.tsx` -> no errors found.
+
+Status:
+- SAAS-11 profile screen bridge slice is in-progress with package-owned profile tab entrypoint validated.
+
+# Entry 2026-05-03bu - SaaS mobile auth/shared-primitives bridge
+
+Muc tieu:
+- Mo tiep slice SAAS-11 de dua auth/login va shared mobile primitives vao `packages/mobile`, trong luc legacy `mobile-app` chi con lam thin wrapper cho cac module nay.
+- Giu navigation bridge da co san, va chi migrate them shared primitives + AuthScreen trong slice nay.
+
+Noi dung cap nhat chinh:
+- `packages/mobile/README.md`:
+  - Document shared auth surfaces alongside config and navigation.
+- `packages/mobile/src/i18n/index.ts`:
+  - Own shared mobile translations and formatting helpers.
+- `packages/mobile/src/theme/colors.ts`:
+  - Own shared mobile color tokens.
+- `packages/mobile/src/types/auth.ts`:
+  - Own shared auth type contracts.
+- `packages/mobile/src/services/tokenStorage.ts`, `packages/mobile/src/services/http.ts`, `packages/mobile/src/services/authApi.ts`:
+  - Own shared auth transport and token persistence.
+- `packages/mobile/src/store/authStore.ts`, `packages/mobile/src/store/localeStore.ts`:
+  - Own shared auth and locale state.
+- `packages/mobile/src/screens/AuthScreen.tsx`:
+  - Move the login/register entrypoint into the mobile package.
+- `mobile-app/src/i18n/index.ts`, `mobile-app/src/theme/colors.ts`, `mobile-app/src/types/auth.ts`, `mobile-app/src/services/tokenStorage.ts`, `mobile-app/src/services/http.ts`, `mobile-app/src/services/authApi.ts`, `mobile-app/src/store/authStore.ts`, `mobile-app/src/store/localeStore.ts`, `mobile-app/src/screens/AuthScreen.tsx`:
+  - Convert legacy app modules into thin package wrappers.
+- `mobile-app/metro.config.js`:
+  - Keep sibling package resolution explicit for Metro.
+- `mobile-app/tsconfig.json`:
+  - Keep TypeScript resolution aligned with the package-track workspace layout.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md`:
+  - Expand SAAS-11 to cover auth/shared-primitives bridge follow-up.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11C.md`:
+  - Add auth/shared-primitives bridge evidence packet.
+
+Danh sach tep cap nhat:
+- packages/mobile/README.md (MODIFIED - document shared auth surfaces)
+- packages/mobile/src/i18n/index.ts (NEW - shared mobile translations and formatting helpers)
+- packages/mobile/src/theme/colors.ts (NEW - shared mobile color tokens)
+- packages/mobile/src/types/auth.ts (NEW - shared auth type contracts)
+- packages/mobile/src/services/tokenStorage.ts (NEW - shared token persistence)
+- packages/mobile/src/services/http.ts (NEW - shared auth HTTP client)
+- packages/mobile/src/services/authApi.ts (NEW - shared auth API surface)
+- packages/mobile/src/store/authStore.ts (NEW - shared auth store)
+- packages/mobile/src/store/localeStore.ts (NEW - shared locale store)
+- packages/mobile/src/screens/AuthScreen.tsx (NEW - package-owned auth entrypoint)
+- mobile-app/src/i18n/index.ts (MODIFIED - thin wrapper to package i18n)
+- mobile-app/src/theme/colors.ts (MODIFIED - thin wrapper to package colors)
+- mobile-app/src/types/auth.ts (MODIFIED - thin wrapper to package auth types)
+- mobile-app/src/services/tokenStorage.ts (MODIFIED - thin wrapper to package token storage)
+- mobile-app/src/services/http.ts (MODIFIED - thin wrapper to package HTTP client)
+- mobile-app/src/services/authApi.ts (MODIFIED - thin wrapper to package auth API)
+- mobile-app/src/store/authStore.ts (MODIFIED - thin wrapper to package auth store)
+- mobile-app/src/store/localeStore.ts (MODIFIED - thin wrapper to package locale store)
+- mobile-app/src/screens/AuthScreen.tsx (MODIFIED - thin wrapper to package AuthScreen)
+- mobile-app/metro.config.js (MODIFIED - keep sibling package resolution explicit)
+- mobile-app/tsconfig.json (MODIFIED - keep TypeScript resolution aligned with package-track layout)
+- packages/mobile/.gitignore (NEW - ignore local node_modules junction used for validation)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to cover auth/shared-primitives bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11C.md (NEW - auth/shared-primitives bridge evidence packet)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; Pop-Location` -> TypeScript typecheck completed cleanly after the auth/shared-primitives bridge.
+
+Status:
+- SAAS-11 mobile auth/shared-primitives bridge slice is in-progress with package-owned auth/login entrypoint and shared primitives validated.
+
 # Entry 2026-05-03bt - SaaS mobile screen/navigation bridge
 
 Muc tieu:
