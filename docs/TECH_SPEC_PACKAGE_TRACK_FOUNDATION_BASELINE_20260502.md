@@ -256,6 +256,18 @@ Khóa session shape tối thiểu để `packages/web` và `packages/vip-app` c�
 3. `scripts.check:shell` để validate imports/exports của package shell.
 4. version hiện tại vẫn có thể là `0.1.0`, nhưng description phải phản ánh đây là `shared frontend shell baseline`.
 
+## 4.1A Unified UI template governance
+
+Mọi UI surface mới trong `packages/web` thuộc phần nâng cấp này phải tuân thủ một chuẩn template chung thống nhất thay vì tự thiết kế riêng theo từng route.
+
+### Hard rules
+
+1. Template chuẩn phải ưu tiên giao diện giàu thông tin: page shell phải mang đủ session, status, metrics, actions và data trong một viewport hợp lý.
+2. Mật độ bố cục phải ở mức compact: margin ngoài, padding panel, khoảng cách giữa section, khoảng cách giữa label-control và khoảng cách giữa list rows phải thấp theo một chuẩn chung, không được drift sang style quá thoáng.
+3. Mọi page mới phải reuse cùng một grammar bố cục nền: header ngắn, status band hoặc metrics band, action zone gần data zone, danh sách, form và audit panel đặt theo nhịp nhất quán.
+4. Sự khác biệt giữa các route chỉ được nằm ở capability, data shape và thao tác đặc thù; không được tạo visual language mới làm đội code hoặc auditor phải học lại template từ đầu.
+5. Nếu một surface buộc phải lệch template chung vì responsive hoặc nghiệp vụ đặc biệt, deviation đó phải được ghi rõ trong taskboard và audit evidence.
+
 ## 4.2 Route catalog contract
 
 ### File
@@ -351,6 +363,7 @@ Export một surface nhỏ, ổn định để validation script và các packag
 3. `navigationCatalog`
 4. `coreAdapter`
 5. `vipAppAdapter`
+6. page registry và các route-level pages đã được duyệt.
 
 ## 4.6 Validation script
 

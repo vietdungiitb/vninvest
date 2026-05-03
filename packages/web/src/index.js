@@ -1,8 +1,21 @@
 export { BUILD_TARGETS, DEFAULT_BUILD_TARGET, getBuildTarget, isBuildTarget, normalizeBuildTarget } from "./config/buildTarget.js";
 export { routeCatalog, getRouteCatalogIds, getRoutesForBuildTarget } from "./app/routeCatalog.js";
 export { navigationCatalog, getNavigationGroupIds, getNavigationForBuildTarget } from "./app/navigationCatalog.js";
-export { coreAdapter } from "./adapters/core/index.js";
-export { vipAppAdapter } from "./adapters/vip-app/index.js";
+export { renderShellField, renderShellMetric, renderShellPageChrome, renderShellPanel, renderShellSelectField } from "./components/ShellPageTemplate.js";
+export { getPageComponent, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
+export { ShellAdminOpsPage } from "./pages/admin/ShellAdminOpsPage.js";
+export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.js";
+export { ShellWhaleAlertsPage } from "./pages/signals/ShellWhaleAlertsPage.js";
+export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.js";
+export { ShellDashboardPage } from "./pages/workspace/ShellDashboardPage.js";
+export { ShellPortfoliosPage } from "./pages/workspace/ShellPortfoliosPage.js";
+export { ShellTransactionsPage } from "./pages/workspace/ShellTransactionsPage.js";
+export { ShellWatchlistPage } from "./pages/workspace/ShellWatchlistPage.js";
+export { ShellSettingsPage } from "./pages/system/ShellSettingsPage.js";
+export { ShellSupportPage } from "./pages/system/ShellSupportPage.js";
+export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.js";
+export { coreAdapter, createCoreAdvisorySessionClient, createCoreWhaleAnalyticsSnapshotClient } from "./adapters/core/index.js";
+export { createVipAppControlClient, vipAppAdapter } from "./adapters/vip-app/index.js";
 export {
 	createBootstrapClient,
 	deriveLegacyAuthState,

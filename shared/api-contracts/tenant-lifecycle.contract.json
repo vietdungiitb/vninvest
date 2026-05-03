@@ -1,0 +1,124 @@
+{
+  "contract_name": "tenant-lifecycle",
+  "version": "1.0.0",
+  "description": "Tenant lifecycle projection — trạng thái, gói dịch vụ, quota và features của một tenant.",
+  "last_updated": "2026-05-03",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "vninvest/contracts/tenant-lifecycle/v1",
+    "title": "TenantLifecycle",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["tenant_id", "status", "plan", "quota_used", "quota_limit", "features"],
+    "properties": {
+      "tenant_id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "UUID duy nhất của tenant"
+      },
+      "name": {
+        "type": ["string", "null"],
+        "description": "Tên tổ chức / tenant"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["active", "trial", "suspended", "deprovisioned", "pending_activation"],
+        "description": "Trạng thái lifecycle hiện tại"
+      },
+      "plan": {
+        "type": "string",
+        "enum": ["free", "starter", "pro", "enterprise", "custom"],
+        "description": "Gói dịch vụ đang đăng ký"
+      },
+      "quota_used": {
+        "type": "object",
+        "description": "Quota đã sử dụng trong kỳ billing hiện tại",
+        "required": ["api_calls", "symbols", "users"],
+        "properties": {
+          "api_calls": { "type": "integer", "minimum": 0 },
+          "symbols": { "type": "integer", "minimum": 0 },
+          "users": { "type": "integer", "minimum": 0 },
+          "storage_mb": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "quota_limit": {
+        "type": "object",
+        "description": "Giới hạn quota theo gói. -1 = unlimited.",
+        "required": ["api_calls", "symbols", "users"],
+        "properties": {
+          "api_calls": { "type": "integer", "minimum": -1 },
+          "symbols": { "type": "integer", "minimum": -1 },
+          "users": { "type": "integer", "minimum": -1 },
+          "storage_mb": { "type": "integer", "minimum": -1 }
+        }
+      },
+      "features": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Danh sách feature flags đang được bật cho tenant này"
+      },
+      "trial_ends_at": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Thời điểm hết trial (null nếu không phải trial)"
+      },
+      "activated_at": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Thời điểm tenant được kích hoạt lần đầu"
+      },
+      "suspended_at": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Thời điểm bị suspend (null nếu không bị suspend)"
+      },
+      "billing_period_start": {
+        "type": ["string", "null"],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+        "description": "Ngày bắt đầu kỳ billing hiện tại"
+      },
+      "billing_period_end": {
+        "type": ["string", "null"],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+        "description": "Ngày kết thúc kỳ billing hiện tại"
+      },
+      "last_updated": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Lần cập nhật gần nhất"
+      }
+    }
+  },
+  "example": {
+    "tenant_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "name": "Công ty CP Đầu tư ABC",
+    "status": "active",
+    "plan": "pro",
+    "quota_used": {
+      "api_calls": 45230,
+      "symbols": 38,
+      "users": 5,
+      "storage_mb": 128
+    },
+    "quota_limit": {
+      "api_calls": 100000,
+      "symbols": 100,
+      "users": 20,
+      "storage_mb": 1024
+    },
+    "features": ["whale_alerts", "ai_advisory", "dark_flow", "export_csv"],
+    "trial_ends_at": null,
+    "activated_at": "2026-03-01T08:00:00+07:00",
+    "suspended_at": null,
+    "billing_period_start": "2026-05-01",
+    "billing_period_end": "2026-05-31",
+    "last_updated": "2026-05-03T09:00:00+07:00"
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-05-03",
+      "changes": "Initial contract — SAAS-12 shared contract lock"
+    }
+  ]
+}

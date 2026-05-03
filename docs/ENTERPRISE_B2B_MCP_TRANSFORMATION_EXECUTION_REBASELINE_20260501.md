@@ -1,444 +1,346 @@
 # EXECUTION REBASELINE: ENTERPRISE B2B MCP TRANSFORMATION
 
 **Date:** 2026-05-01  
-**Updated:** 2026-05-02 - Owner approved packages-first parallel migration  
-**Status:** Current-code aligned execution override  
-**Applies to:** Toàn bộ bộ tài liệu enterprise transformation ngày 2026-05-01
+**Updated:** 2026-05-02 - current-code realignment after package-track baseline and core-admin doc audit  
+**Status:** Current-code-aligned execution baseline and sequencing override  
+**Applies to:** Toan bo bo tai lieu enterprise transformation ngay 2026-05-01 va cac companion docs `core` ngay 2026-05-02
 
 ---
 
-## 1. Mục đích và thứ tự ưu tiên
+## 1. Muc dich va thu tu uu tien
 
-Tài liệu này tồn tại để **neo lại bộ kế hoạch enterprise vào code hiện có** của VNInvest.
+Tai lieu nay ton tai de **neo bo ke hoach enterprise vao code dang ton tai trong repo**, khong cho doi code tiep tuc doc target-state docs theo cach nhu the moi thu van con tren giay.
 
-- Các tài liệu enterprise ngày 2026-05-01 vẫn đúng với vai trò **target-state architecture**.
-- Khi có xung đột giữa target-state và thực tế code hiện tại, **thứ tự triển khai trong tài liệu này được ưu tiên**.
-- Mục tiêu không thay đổi: tách bạch dần `core`, `web`, `opencore`, `vip-app`, `mobile`, đồng thời đưa `core` lên mức phục vụ hàng chục nghìn truy vấn dữ liệu.
-- Điều thay đổi là **đường đi**: đi từ monolith hiện tại sang architecture mới bằng các bước nhỏ, có rollback, tái sử dụng tối đa nền móng đang chạy.
+- Cac tai lieu enterprise ngay 2026-05-01 van dung voi vai tro **target-state architecture**.
+- Khi co xung dot giua target-state va thuc te code hien tai, **thu tu trien khai trong tai lieu nay duoc uu tien**.
+- Sau dot realignment 2026-05-02, rebaseline nay phai duoc doc cung bo tai lieu `core` 2026-05-02 va bo handoff `current-code realignment` de doi code biet ro: cai gi da co, cai gi moi la hop dong muc tieu, va cai gi van con la backlog.
 
----
+**Thu tu uu tien de thuc thi:**
 
-## 2. Baseline thực tế của code hiện tại
-
-### 2.1 Deploy units và tổ chức repo hiện có
-
-Hiện tại repo vẫn vận hành theo các đơn vị triển khai sau:
-
-- `backend/` — Django + DRF + Channels + Celery, đang là lõi nghiệp vụ thật sự.
-- `frontend/` — React web app hiện hành.
-- `mobile-app/` — mobile surface riêng.
-- `opennews-main/` — nguồn phụ trợ cho tin tức/sentiment.
-- `infra/` — hạ tầng và deployment helpers.
-
-**Thực tế quan trọng:** repo **chưa có** `packages/`, **chưa có** `shared/api-contracts/` ở cấp root, **chưa có** `buildTarget.js`, và chưa có bất kỳ boundary enforcement tự động nào cho mô hình `core/web/vip-app/mobile`.
-
-### 2.2 Nền móng scale đã có sẵn trong core hiện tại
-
-Code hiện có đã sở hữu nhiều thành phần có thể dùng làm bước đệm cho high concurrency:
-
-- `backend/config/asgi.py` — đã chạy ASGI + Channels.
-- `backend/config/settings.py` — đã có Redis channel layer, Redis Streams config, Celery beat schedules, throttling/limit knobs.
-- `backend/portfolio/realtime/tick_producer.py` — đã push intraday ticks vào Redis Streams.
-- `backend/portfolio/realtime/stream_consumers.py` — đã có consumer groups `db-writer`, `ws-broadcaster`, `alert-engine`.
-- `backend/portfolio/tasks_realtime.py` và `backend/portfolio/tasks_maintenance.py` — đã có luồng collect, publish, consume, trim stream.
-- `backend/config/health.py` — đã có health endpoints cho realtime và streams.
-
-**Kết luận:** core chưa phải enterprise-ready, nhưng **không bắt đầu từ số 0**. VNInvest đã có sẵn một lõi realtime Redis-first đủ tốt để làm Phase 0-2 mà chưa cần nhảy ngay sang Kong hay ClickHouse.
-
-### 2.3 Nền móng entitlement / OpenCore đã có sẵn
-
-Repo hiện đã có khối entitlement và quota user-level:
-
-- `backend/portfolio/opencore_api.py`
-- `backend/portfolio/opencore_analytics.py`
-- `backend/config/settings.py` với `OPEN_CORE_QUOTA_*`
-- `frontend/src/context/PortfolioContext.jsx` với `userPlan`
-- `frontend/src/components/ProtectedRoute.jsx`
-- `frontend/src/components/Can.jsx`
-
-**Kết luận:** `opencore` khong nen duoc thiet ke nhu mot greenfield backend truth rieng. Huong dung la xem day la **hat giong entitlement/commercial lane** de tien hoa thanh `packages/opencore` - mot package distribution va upgrade funnel dung lai primitives cua `core`.
-
-### 2.4 Nền móng AI runtime đã có sẵn
-
-Repo hiện đã có một trục AI configuration thật sự đang chạy:
-
-- `backend/portfolio/models.py` với `AICommandCenterConfig` và `SystemAISettings`
-- `backend/portfolio/serializers.py`
-- `backend/portfolio/ai_runtime_config.py`
-- `backend/portfolio/views_ai_runtime_stats.py`
-- `frontend/src/pages/AICommandCenter.jsx`
-
-**Kết luận:** lộ trình BYOK/BYOM phải **đi qua việc mở rộng trục hiện tại**, không nên bỏ qua nó để tạo một schema hoàn toàn mới ngay từ bước đầu.
+1. Current runtime va package-track code dang ton tai trong repo
+2. Tai lieu nay
+3. Bo `ENTERPRISE_CORE_*` ngay 2026-05-02
+4. `PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502`
+5. Cac tai lieu target-state 2026-05-01 con lai
 
 ---
 
-## 3. Các quyết định rebaseline bắt buộc
+## 2. Baseline thuc te cua repo hien tai
 
-### 3.1 Không move legacy folders trực tiếp; `packages/` là track song song
+### 2.1 Hai lane dang ton tai song song
 
-Trong code hiện tại, move `backend/` sang `packages/core/` và `frontend/` sang `packages/web/` ngay lập tức sẽ tạo rủi ro lớn cho:
+Repo hien tai **khong con o trang thai chi co legacy runtime**. No dang co hai lane ro rang:
 
-- Docker compose paths
-- import/runtime settings
-- IDE/workspace scripts
-- test commands
-- operator workflow đang chạy
+#### Legacy runtime dang phuc vu nghiep vu that
 
-**Rebaseline:**
+- `backend/` - Django + DRF + Channels + Celery, van la noi so huu nghiep vu that, auth that, data serving that.
+- `frontend/` - React app dang duoc docker/dev stack build va phuc vu.
+- `mobile-app/` - mobile surface rieng.
+- `opennews-main/` - lane ho tro tin tuc va sentiment.
+- `infra/` - deployment helpers va environment assets.
 
-- Không rename hoặc bulk-move các thư mục legacy làm bước khởi đầu.
-- Tạo `packages/` và `shared/` sớm để làm **implementation track mới** theo mô hình song song.
-- `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` tiếp tục giữ runtime đang chạy, reference semantics và rollback lane cho tới cutover.
-- Chỉ cutover khi `packages` đã đạt parity, validation gates và readiness rõ ràng; sau đó mới decommission legacy runtime.
+#### Package-track baseline da ton tai that trong repo
 
-### 3.2 Giữ Redis-first async stack trước khi nghĩ tới RabbitMQ
+- `packages/core/` - da co Python manifest, compose topology stub, runtime stubs va contract namespaces.
+- `packages/web/` - da co build-target config, route catalog, navigation catalog, adapter seams, bootstrap/auth runtime, shell pages va validation script.
+- `packages/vip-app/` - da co local backend stub va control-plane skeleton.
+- `shared/api-contracts/` - da co JSON contracts cho `build target`, `capability bootstrap`, `session payload`.
+- `shared/constants/` - da co shared namespace foundation.
 
-Tài liệu target-state có đề cập mở rộng queueing. Tuy nhiên code hiện tại đã dùng:
+**Ket luan quan trong:**
 
-- Redis cho Celery broker/result
-- Redis cho cache
-- Redis cho Channels
-- Redis Streams cho realtime tick pipeline
+- `packages/` va `shared/` **da ton tai that**.
+- `buildTarget.js` **da ton tai that** o `packages/web/src/config/buildTarget.js`.
+- Package track **chua dat parity runtime**, nhung no khong con la y tuong greenfield.
+- Vi vay, moi doan van trong bo docs mo ta `packages/*` nhu mot buoc phai tao moi tu dau deu phai duoc hieu la **historical sequencing**, khong phai baseline hien tai nua.
 
-**Rebaseline:**
+### 2.2 Nhung package-track artifacts da duoc xac nhan co that
 
-- Chưa đưa RabbitMQ vào phase đầu.
-- Chỉ cân nhắc RabbitMQ khi có bằng chứng rõ ràng rằng Redis-based Celery không còn đáp ứng QoS, retry isolation hoặc queue separation mong muốn.
-- Phase đầu nên tối ưu cái đang có: stream batching, fanout, materialized facts, cache locality, queue split bằng naming/runtime knobs.
+#### `packages/core`
 
-### 3.3 Giữ PostgreSQL + materialized facts trước khi đưa ClickHouse vào
+- `packages/core/pyproject.toml` - package identity cho `vninvest-core`.
+- `packages/core/backend/src/vninvest_core/app_manifest.py` - manifest topology va contract namespaces.
+- `packages/core/backend/src/vninvest_core/api_stub.py` - health, manifest, capability bootstrap va session payload stub.
+- `packages/core/backend/src/vninvest_core/worker_stub.py` va `beat_stub.py` - execution entrypoints cho worker/beat lane.
+- `packages/core/docker-compose.core.yml` - topology `core-db`, `core-redis`, `core-api`, `core-worker`, `core-beat`.
 
-ClickHouse là hướng đi hợp lý cho OLAP lớn, nhưng hiện tại codebase chưa có:
+#### `packages/web`
 
-- database router cho ClickHouse
-- query abstraction dual-store
-- migration strategy cho cold/hot path
-- operational playbook cho backup/retention/replay hai hệ DB
+- `packages/web/src/config/buildTarget.js` - canonical build targets `community`, `saas`, `vip`.
+- `packages/web/src/app/routeCatalog.js` - route registry cho workspace, signals, system, admin, vip-local.
+- `packages/web/src/app/navigationCatalog.js` - navigation registry theo build target va capabilities.
+- `packages/web/src/context/bootstrapClient.js` - bootstrap client dung chung cho `core` va `vip-app` adapters.
+- `packages/web/src/context/authRuntime.js` va `authReact.js` - package-track auth runtime/provider.
+- `packages/web/src/pages/...` - shell pages cho dashboard, watchlist, transactions, portfolios, AI advisory, whale alerts, admin ops, AI command center, VIP local control.
+- `packages/web/scripts/check-shell.mjs` - focused validation lane cho shell/package runtime.
 
-**Rebaseline:**
+#### Host integration trong legacy frontend
 
-- Trước tiên tối ưu `core` bằng PostgreSQL + Redis cache + Redis Streams + facts/materialization tables.
-- Chỉ đưa ClickHouse vào khi các truy vấn raw ticks vẫn vượt ngưỡng sau khi đã áp dụng:
-  - partition / retention rõ ràng,
-  - facts-first path,
-  - session summaries,
-  - cached bucket/materialization,
-  - selective forensic windows.
+- `frontend/src/pages/WhaleAlertsShellHost.jsx` - mount `ShellWhaleAlertsPage` tu `@vninvest/web` trong runtime that.
+- `frontend/src/pages/AiAdvisoryShellHost.jsx` - mount lane AI advisory shell trong runtime that.
+- `frontend/src/pages/packageShellHostRuntime.js` - glue layer cho auth-aware package shell host.
 
-### 3.4 Internal realtime tiếp tục đi bằng WebSocket; SSE dành cho external AI stream sau
+#### Shared contracts
 
-Hiện tại VNInvest đã có WebSocket runtime thật sự cho feed thị trường. Do đó:
+- `shared/api-contracts/build-target.contract.json`
+- `shared/api-contracts/capability-bootstrap.contract.json`
+- `shared/api-contracts/session-payload.contract.json`
 
-- Internal web realtime nên tiếp tục tái sử dụng Channels/WebSocket.
-- SSE nên được coi là **transport mục tiêu cho external orchestration stream / VIP client contract**, không phải lý do để rewrite ngay toàn bộ internal live path.
+### 2.3 Nhan dien dung ve maturity hien tai
 
-### 3.5 Kong không phải bước đầu tiên của partner access
+Package track hien tai nen duoc xem la **foundation baseline + shell/runtime bootstrap baseline**, khong nen bi thoi phong thanh package platform da xong.
 
-Kong là công cụ đúng khi external partner traffic đủ lớn. Nhưng ở trạng thái code hiện tại, thứ còn thiếu trước Kong là:
+Da co that:
 
-- tenant model / partner account model
-- PAT/API key issuance
-- throttling semantics per tenant
-- MCP route contract ổn định
-- audit log cho external data consumption
+1. package ownership baseline,
+2. build-target semantics,
+3. capability/session bootstrap contracts muc co ban,
+4. adapter seams `core` va `vip-app`,
+5. mot so shell routes proof-of-runtime trong host frontend that.
 
-**Rebaseline:**
+Chua xong:
 
-- Bắt đầu bằng Django + DRF throttling + Redis-backed quota + NGINX edge.
-- Chỉ đưa Kong vào sau khi partner API thực sự hình thành và route contract đã đóng.
+1. `packages/core` chua la backend truth thay cho `backend/`,
+2. operator/partner APIs field-complete chua duoc build trong package-core,
+3. dev compose chinh van build `./frontend`, khong build `packages/web` truc tiep,
+4. package-track auth bootstrap van con transitional semantics o mot so diem,
+5. schema/commercial/resource docs van di truoc code.
 
-### 3.6 OpenCore là package distribution/commercial, nhưng truth vẫn nằm ở `core`
+### 2.4 Nhan dinh lai ve scale foundation, commercial foundation va AI runtime
 
-`opencore` hiện nên được hiểu là:
+Nhung nhan dinh sau van dung va duoc giu nguyen:
 
-- plan/quota/billing primitives,
-- feature boundary enforcement,
-- packaging rules,
-- community/self-host lane policy,
-- distribution/activation/upgrade funnel package.
-
-`opencore` co the va nen tro thanh mot package rieng trong package track, nhung:
-
-- khong duoc tu giu entitlement/quota/billing truth rieng,
-- khong duoc fork frontend source khoi `web`,
-- khong duoc tro thanh backend platform thu hai.
-
-### 3.7 VIP app nên bắt đầu bằng “thin local control plane”
-
-VIP app giai đoạn đầu không cần ôm toàn bộ backlog quản trị ngay.
-
-**Mốc khả thi đầu tiên:**
-
-- local credential store,
-- local audit/chat log,
-- local prompt overrides,
-- PAT connection tới core,
-- thin orchestrator gọi MCP/core API.
-
-Sub-user management, branding suite, cost analytics chi tiết là phase sau khi PAT + MCP + AI orchestration path đã ổn định.
+1. Redis-first async stack trong `backend/` van la nen tang phu hop cho pha dau; chua co trigger thuc te de nhay ngay sang RabbitMQ.
+2. PostgreSQL + facts/materialized models van la huong uu tien truoc khi dua ClickHouse vao.
+3. `opencore` nen duoc xem la distribution/commercial lane, khong phai backend truth doc lap.
+4. AI runtime phai di qua viec mo rong truc `SystemAISettings` va `AICommandCenterConfig` dang ton tai, khong duoc bo qua de ve lai greenfield schema.
 
 ---
 
-## 4. Kiến trúc chuyển đổi khả thi theo phase
+## 3. Nhung su that quan trong phai ghi ro de tranh doc sai docs
 
-### Phase 0 — Governance freeze và package boundaries
+### 3.1 Legacy runtime van la SSOT nghiep vu hien tai
 
-**Mục tiêu:** Chốt mô hình `packages-first parallel migration` mà không phá runtime đang chạy.
+O thoi diem nay, `backend/` va `frontend/` van la noi so huu:
 
-**Làm ngay:**
+- auth/me,
+- tenant-admin runtime that,
+- partner service accounts/PAT/usage/billing APIs that,
+- operator AI runtime API that,
+- portfolio/workspace/whale/advisory routes that.
 
-- Đóng băng mở rộng kiến trúc trong `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/`; các path này chỉ nhận hotfix hoặc parity fixes khi thật sự cần.
-- Chốt ownership, contract inventory, build-target model, parity evidence và decommission rules.
-- Xem legacy runtime là reference system cho semantics và rollback.
+Do do:
 
-**Exit criteria:**
+- Khong duoc xem `packages/core` la backend truth hien tai.
+- Khong duoc viet docs nhu the package-core da thay the duoc legacy backend.
 
-- Owner đã chốt execution model song song.
-- Có cutover gates và evidence model cho từng package track.
+### 3.2 Package track da vuot qua moc "chi la de xuat"
 
-### Phase 1 — Tạo `packages/` và `shared/` như implementation track mới
+Sau baseline va package-shell slices 2026-05-02:
 
-**Mục tiêu:** Dựng workspace mới cho kiến trúc đích mà không bulk-move legacy folders.
+- Package track da co code import/run/validate duoc.
+- Shared contracts da co that va duoc tieu thu boi package-web runtime.
+- Mot so shell routes da duoc host trong legacy frontend that.
 
-**Làm ngay:**
+Do do:
 
-- Tạo `packages/core`, `packages/web`, `packages/mobile`, `packages/vip-app`, `shared/api-contracts`, `shared/constants`.
-- Bootstrap manifest, workspace config, compose/dev helpers cho track mới.
-- Giữ nguyên runtime hiện hành để tiếp tục vận hành và làm lane đối chiếu.
+- Khong duoc mo ta `packages/*` nhu mot muc tieu xa chua bat dau.
+- Pha tiep theo phai duoc mo ta la **parity va production hardening**, khong phai `tao scaffold` nua.
 
-**Exit criteria:**
+### 3.3 Package-track capability bootstrap chua duoc xem la bridge-free final state
 
-- Có package tree tối thiểu để bắt đầu implementation theo boundaries mới.
-- CI/workspace có thể nhìn thấy cả legacy track và package track.
+Mac du huong di da dung, package-core stub hien tai van co transitional fallback qua ability `manage all` cho staff/superuser. Package-web helpers cung van coi subject `all` la wildcard fallback.
 
-### Phase 2 — Build `packages/core` trên các seam đã được chứng minh
+**He qua:**
 
-**Mục tiêu:** Dựng `packages/core` như core-ready monolith mới, bám theo semantics đã chứng minh từ runtime hiện tại.
+- Docs khong duoc noi rang bridge semantics da bien mat hoan toan trong package track.
+- Tai lieu phai ghi ro: legacy runtime da duoc lam chat hon, nhung package track hien tai van con mot lop bridge tam thoi o stub/auth helper lane.
 
-**Làm ngay:**
+### 3.4 Bo docs `ENTERPRISE_CORE_*` hien dang la contract/backlog pack, khong phai bang chung code parity
 
-- Thực thi tenant / partner access, PAT, quota, billing, capability snapshot trong `packages/core`.
-- Dựng core serving models: symbol snapshot, session facts, partner APIs, AI runtime contracts.
-- Tiếp tục ưu tiên Redis/PostgreSQL/Channels/Streams-first trước hạ tầng nặng hơn.
+Sau audit 2026-05-02, can coi bo `ENTERPRISE_CORE_*` theo ba nhom sau:
 
-**Không làm ngay:**
+#### Nhom gan voi code hien tai nhat
 
-- Không đưa Kong vào trước khi partner routes và quota semantics ổn định.
-- Không đưa ClickHouse vào trước khi facts/materialization path đã chứng minh không đủ.
+- `ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502`
+- `ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502`
+- `ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502`
 
-### Phase 3 — Build `packages/web` và `packages/vip-app`
+#### Nhom contract target-state nhung moi phan da co code that
 
-**Mục tiêu:** Dựng shared shell và thin local control plane hoàn toàn trong `packages`.
+- `ENTERPRISE_CORE_CONTRACT_PACK_20260502`
+- `ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502`
+- `ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502`
+- `ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502`
 
-**Làm ngay:**
+#### Nhom schema/resource/convergence van di truoc code
 
-- Xây `packages/web` với build targets, route catalog, capability bootstrap, adapters cho `core` và `vip-app`.
-- Xây `packages/vip-app` với local auth, secret vault, prompt studio, local API gateway và usage analytics tối thiểu.
-- Giữ rule bất biến: VIP không có frontend riêng, browser VIP không cầm PAT.
+- `ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502`
+- `ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502`
+- `ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502`
 
-**Exit criteria:**
-
-- SaaS/VIP builds chạy từ `packages/web`.
-- VIP browser đi qua `packages/vip-app` local APIs thay vì gọi thẳng `core`.
-
-### Phase 4 — Parity verification và pilot rollout
-
-**Mục tiêu:** Chứng minh package track đủ ổn định để thay legacy runtime.
-
-**Làm ngay:**
-
-- So sánh payload, route behavior, auth flow, capability gating và UX flows giữa legacy và `packages`.
-- Chạy focused suites theo workstream và thu evidence parity.
-- Nếu cần, chạy pilot hoặc shadow traffic trước cutover.
-
-**Exit criteria:**
-
-- Contracts ổn định.
-- Focused tests/builds pass.
-- Runbook cutover/rollback đã sẵn sàng.
-
-### Phase 5 — Cutover sang `packages` và decommission legacy runtime
-
-**Mục tiêu:** Chuyển runtime chính sang kiến trúc mới và loại bỏ kiến trúc cũ.
-
-**Làm ngay:**
-
-- Chuyển compose, CI, workspace, scripts và deployment sang `packages/*`.
-- Đánh dấu legacy folders là read-only fallback trong thời gian ổn định ngắn.
-- Sau khi cutover ổn định, xóa legacy runtime paths và tài liệu/scripts bám đường cũ.
-
-### Phase 6 — Heavy-scale infra uplift theo trigger đo được
-
-**Kong trigger:** external tenants thực sự chạy production, cần route governance, API key rotation, per-tenant analytics.
-
-**ClickHouse trigger:** raw tick analytics vẫn là bottleneck sau khi đã tối ưu facts/materialization/cache trên PostgreSQL.
-
-**Queue topology trigger:** Redis-based Celery không còn đáp ứng latency/throughput isolation mong muốn.
+Noi cach khac: bo docs `core` nay rat gia tri de huong dan implementation, nhung **khong duoc doc nhu inventory cua nhung gi da ton tai day du trong models/routes hien tai**.
 
 ---
 
-## 5. Tập trung vào `core`: runtime services, enrichment, và API readiness
+## 4. Cac quyet dinh rebaseline van giu nguyen
 
-> [!IMPORTANT]
-> Phần này là executive summary cho `core`. Blueprint chi tiết về boundary, tổ chức CSDL, services architecture và global APIs nằm tại [ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md).
->
-> Bộ companion docs để hoàn thiện `core` theo hướng contract-first/schema-last gồm:
-> - [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
-> - [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
-> - [ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md)
-> - [ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md)
-> - [ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md)
-> - [ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md)
-> - [ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md)
-> - [ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md)
-> - [ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)
-> - [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)
-> - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
-> - [ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)
+### 4.1 Khong bulk-move legacy folders
 
-### 5.1 Legacy runtime deploy units phải được giữ làm reference SSOT trong giai đoạn song song
+Quyet dinh nay van dung 100%.
 
-| Deploy unit hiện có | Vai trò trong `core` | Nhiệm vụ chính | Hướng xử lý đúng |
-|---|---|---|---|
-| `db` | PostgreSQL source-of-record | Lưu dữ liệu giao dịch, profile, entitlement, signal events, billing/quota state | Phải giữ làm SSOT; tối ưu bằng partition, retention và read models trước khi nghĩ đến dual-store |
-| `redis` | Runtime bus dùng chung | Cache, Celery broker/result backend, Channels layer, Redis Streams | Phải giữ; ưu tiên chuẩn hóa keyspace, TTL, queue naming và isolation trước khi thêm substrate mới |
-| `backend` | ASGI API + auth + quota + WebSocket | Phục vụ REST APIs, operator APIs, health endpoints, realtime websocket | Tiếp tục là runtime đang chạy và nguồn đối chiếu semantics cho tới khi `packages/core` cutover; chưa thay bằng API gateway mesh |
-| `celery_worker` | Compute engine nền | Chạy prefetch, realtime collect, signal detection, off-peak ingest, enrichment, quota/billing jobs | Phải giữ; về sau có thể tách queue pools theo domain thay vì tách service vật lý quá sớm |
-| `celery_beat` | Scheduler trung tâm | Kích hoạt prefetch, cleanup, lifecycle, detection, ingest, enrichment | Phải giữ; lịch chạy hiện tại đã là nhịp điều phối thật của `core` |
+- Khong rename `backend/` thanh `packages/core/` ngay lap tuc.
+- Khong rename `frontend/` thanh `packages/web/` ngay lap tuc.
+- Legacy runtime van la rollback lane va semantics reference cho den khi package track dat parity co bang chung.
 
-### 5.2 Danh sách background services hiện đang chạy và nhiệm vụ
+### 4.2 Redis-first truoc RabbitMQ
 
-| Nhóm service | Task / pipeline hiện có | Nhiệm vụ hiện tại | Định hướng enterprise |
-|---|---|---|---|
-| Realtime universe + prefetch | `build_realtime_symbol_universe_snapshot`, `schedule_realtime_prefetch_shards`, `prefetch_realtime_ticker_shard` | Chọn universe `hot/warm/cold`, áp budget upstream, làm ấm `ticker:*` cache theo shard | Phải giữ và tối ưu; đây là nền của mọi read path cache-first |
-| Realtime collector/publisher | `collect_and_publish_realtime` | Thu dữ liệu intraday theo lock, bỏ qua path thừa khi prefetch còn tươi, đẩy ticker/whale/advisory events | Phải giữ; về sau có thể tách ingest và fanout thành queue pools riêng |
-| Redis stream consumers | `run_stream_consumer_batch` cho `db-writer`, `ws-broadcaster`, `alert-engine`; `trim_streams` | Persist stream vào DB, broadcast websocket, chạy alert engine, giữ stream bounded | Phải giữ; đây là xương sống realtime của `core` hiện tại |
-| Lifecycle maintenance | `run_intraday_side_backfill_apply`, `cleanup_old_intraday_ticks`, `cleanup_old_signal_service_runs` | Recompute, retention cleanup, cache invalidation, giữ dữ liệu thô không phình vô hạn | Phải giữ; cần tiếp tục facts-first và retention-first |
-| Off-peak ingest | `offpeak_vnstock_ingest` | Hút dữ liệu lịch sử/reference ngoài giờ giao dịch để giảm áp lực giờ mở cửa | Nên mở rộng; đây là đường rẻ nhất để làm giàu dữ liệu an toàn |
-| Order-flow / dark-flow detection | `detect_and_store_order_flow` | Phát hiện dark-flow, bucketize tín hiệu dòng tiền, phục vụ operator/runtime surfaces | Phải giữ; cần dịch dần sang facts/materialization thay vì đọc raw nhiều lần |
-| Global whale detection + distribution | `detect_and_store_global_whale_alerts`, `distribute_whale_alert_event` | Quét universe, tạo whale events, tạo forensic windows, phát tán alert | Phải giữ; candidate tách fanout ngoài sau khi partner traffic đủ lớn |
-| Global screener materialization | `run_global_screener_scheduled_task`, `auto_generate_advisories_for_all_tracked` | Precompute market snapshot, match active rules, broadcast kết quả, queue advisory | Phải tối ưu; nên chuyển hẳn sang read-model/materialized snapshot rõ ràng hơn |
-| OpenCore quota / billing lifecycle | `sync_all_dpi_licenses`, `reset_monthly_quotas`, `generate_monthly_invoices`, `create_analytics_snapshots`, `check_overquota_users`, `process_plan_lifecycle_transitions` | Duy trì entitlement, quota, billing và analytics cho packaging thương mại | Phải giữ trong `core`; đây là nền B2B/commercialization thật sự |
-| Reference/news enrichment | `sync_stock_profiles_from_snapshot`, `generate_all_portfolio_news_digests_task`, `sync_news_sentiment`, `compute_watchlist_indicators`, `verify_signals_daily` | Đồng bộ profile, digest tin tức, sentiment, chỉ báo và kiểm chứng tín hiệu | Nên mở rộng; đây là lớp làm giàu dữ liệu có giá trị user-facing nhanh |
+Van giu nguyen. Chua co bang chung runtime bat buoc dua RabbitMQ vao pha dau.
 
-### 5.3 Phân loại thực tế để đưa `core` đi đúng hướng
+### 4.3 PostgreSQL + facts/materialization truoc ClickHouse
 
-- Phải giữ trong monolith `core` ở phase đầu: ASGI API, Redis cache/streams, prefetch scheduler, stream consumers, quota-billing lifecycle, whale/order-flow detection, health/ops endpoints.
-- Phải tối ưu trước khi mở rộng B2B: `price-board` fetch-on-demand, `stock workspace overview` composite assembly, whale analytics cold path, các fallback còn chạm upstream theo request.
-- Chỉ nên tách thành service riêng ở phase sau: external notification fanout, partner projection APIs, AI orchestrator runtime, off-peak ingest pools, heavy analytics stores.
+Van giu nguyen. Pha dau phai uu tien facts-first, session summaries, cached buckets, selective forensic windows.
 
-### 5.4 Hướng phát triển bổ sung services để làm giàu dữ liệu hữu ích nhanh nhất có thể
+### 4.4 Internal realtime tiep tuc bang WebSocket
 
-1. `core_symbol_snapshot_materializer`
-  Precompute read model cho `stocks/:symbol/overview`: giá hiện tại, reference/open/high/low, 52W high/low, company profile, exchange, liquidity summary. Đây là service nên làm đầu tiên vì hiện tại `get_stock_workspace_overview()` còn fan-out nhiều upstream call trên cache miss và chỉ cache ngắn.
-2. `session_facts_materializer`
-  Tạo session/day facts cho từng mã: tổng giá trị mua/bán, CVD, imbalance, whale count, order-flow markers, bucket summary, selected-session metadata. Service này dùng lại được cho Whale Alerts, Stock Detail, partner APIs và AI prompt context.
-3. `sector_regime_snapshot_service`
-  Làm giàu dữ liệu theo ngành/thị trường: breadth, leaders/laggards, peer rank, regime score, sector money-flow. Đây là lớp có giá trị cao cho cả web lẫn B2B nhưng chi phí vận hành thấp hơn việc mở thêm nhiều raw APIs.
-4. `fundamental_event_enrichment_service`
-  Chuẩn hóa và cache hóa ratios, insider deals, dividend, ownership/fundamental delta, earnings calendar theo lịch off-hours. Nên chạy ngoài giờ và phát hành facts ổn định thay vì kéo trực tiếp từ upstream ở request time.
-5. `news_impact_linker_service`
-  Gắn news/sentiment với symbol, sector, session và event-score; xuất ra digest facts dùng chung cho AI, watchlists và partner feeds. Điều này tận dụng tốt pipeline news/sentiment hiện có thay vì xây nhánh mới.
-6. `partner_projection_service`
-  Không phải enrichment thô, nhưng là bước bắt buộc để B2B khả thi: xuất stable JSON contracts từ các bảng facts/materialized snapshots thay vì expose trực tiếp các API composite nội bộ đang còn nhiều fallback.
+Van giu nguyen. SSE la lane sau cho external orchestration stream, khong phai ly do de rewrite internal live path.
 
-### 5.5 Đánh giá thẳng về tốc độ của các global system APIs hiện tại
+### 4.5 Kong khong phai entry step cho partner access
 
-Kết luận ngắn: **chưa thể nói toàn bộ global APIs hiện tại đủ để phục vụ nhiều nghìn concurrent users**. Nhóm API cache-first cho ticker đã ở trạng thái khá tốt; nhóm API composite hoặc còn phụ thuộc upstream tại request time thì chưa đủ an toàn để mở rộng mass traffic.
+Van giu nguyen. Thu tu dung la:
 
-| API / read path | Path hiện tại | Mức sẵn sàng | Nhận định thực tế | Việc phải làm trước khi mở lớn |
-|---|---|---|---|---|
-| `/api/realtime/tickers/` | `get_realtime_tickers()` | Mạnh | Dùng `cache.get_many`, có `session_close` fallback, phù hợp fan-out lớn nếu prefetch khỏe | Giữ cache-first và giám sát freshness/prefetch health |
-| `/api/realtime/ticker/<symbol>/` | `get_realtime_ticker()` | Mạnh | Cache-first, degrade có kiểm soát, hợp với traffic cao hơn hầu hết read paths khác | Giữ nguyên pattern; không để miss path trở thành mặc định |
-| `/api/realtime/intraday/<symbol>/` | `get_intraday_matched()` | Trung bình | Mạnh khi Redis stream hoặc last-good cache còn ấm; yếu hơn khi phải rơi xuống DB/vnstock fallback | Tạo session facts store và kéo dài read-model lifetime thay vì chỉ cache ngắn |
-| `/api/realtime/price-board/<symbol>/` | `get_price_board()` | Yếu | Cache miss còn gọi upstream trực tiếp; đây không phải design phù hợp cho mass concurrency | Phải có `price_board_snapshot` service/materializer trước khi mở rộng lớn |
-| `/api/stock-management/stocks/<symbol>/overview/` | `get_stock_workspace_overview()` | Yếu | Trên miss còn fan-out nhiều fetch (`price_board`, `history`, `listing`) và chỉ cache `12s`; chưa phù hợp cho nhiều nghìn users | Ưu tiên làm `core_symbol_snapshot_materializer` và tách user overlay khỏi shared snapshot |
-| `/api/portfolio/whale/analytics/<symbol>/` | `build_whale_analytics_snapshot()` | Trung bình | Đã tốt hơn nhờ shared bucket-facts cache và cache revision, nhưng cold path vẫn build facts từ `IntradayTick` | Chuyển sang facts-first materialization lâu dài cho selected session |
+1. chot tenant/service-account/PAT/quota semantics,
+2. chot route contracts,
+3. build operator va partner read/write surfaces can thiet,
+4. toi uu DRF throttling + Redis quota,
+5. chi sau do moi can danh gia API gateway mesh.
 
-DRF throttling trong `market_views.py` là lớp bảo vệ cần thiết, nhưng throttling **không thay thế** cho việc tối ưu read path. Nếu một endpoint vẫn fan-out sang upstream hoặc scan dữ liệu thô ở cache miss, endpoint đó chưa thể coi là B2B-ready chỉ vì đã có rate limit.
+### 4.6 `packages/web` la frontend source duy nhat
 
-**Hàm ý thực thi:** partner/global APIs nên chỉ được dựng trên các lớp read model sau khi đã materialize xong: ticker snapshot, symbol snapshot, session facts, sector snapshot. Không nên lấy `stock workspace overview` hay `price-board` hiện tại làm API đối ngoại hàng loạt theo nguyên trạng.
+Quyet dinh nay con duoc tang cuong hon nua sau baseline 2026-05-02:
 
-### 5.6 Pattern quốc tế cần áp dụng cho `vip-app` access layer
-
-Để phần `core` khả thi theo chuẩn B2B SaaS/API platform thực tế, `vip-app` nên đi theo 4 pattern đã được chứng minh rộng rãi:
-
-1. **Fine-grained machine tokens, không dùng personal token dài hạn**
-  `vip-app` phải gọi `core` bằng service account PAT của tenant, không dùng token cá nhân của user vận hành làm credential nền.
-2. **Entitlements tách khỏi metering**
-  Gói/plan quyết định tenant có được dùng `signals`, `ai`, `bulk export`, `operator APIs` hay không; usage meter quyết định tenant đã dùng bao nhiêu và có bị overage hay không.
-3. **Quota nhiều lớp**
-  Tách riêng feature gate, request throttling, monthly quota và budget guard; không gom tất cả vào một khái niệm “quota”.
-4. **Billing từ usage aggregates, không từ raw request logs**
-  Hóa đơn của `vip-app` phải được dựng từ meter aggregates ổn định theo giờ/ngày, thay vì scan logs request thô.
-
-Hàm ý cho execution plan hiện tại:
-
-- `core` phải bổ sung `CoreServiceAccount`, `CoreAccessPolicy`, `CoreTokenSecretVersion`, `CoreUsageMeter`, `CoreUsageAggregateHourly`, `CoreBillingAccount`.
-- `vip-app` cần các control-plane APIs riêng cho token rotation, quota visibility, usage visibility và invoice visibility.
-- Đường đi đúng là `tenant -> service account -> PAT -> versioned partner APIs`, không phải `local user -> generic API key -> mọi route`.
-
-### 5.7 Contract-first và schema-last mới là đường triển khai thực tế
-
-Nếu bám theo các hệ API platform production đang hoạt động, VNInvest chưa nên nhảy vào implementation public APIs hay tách schema CSDL khi chưa chốt contract pack.
-
-`Contract pack` tối thiểu phải có:
-
-- resource catalog,
-- endpoint matrix,
-- field dictionary,
-- auth and scope matrix,
-- error model,
-- pagination semantics,
-- quota and meter semantics,
-- additive vs breaking change policy.
-
-Thứ tự đúng nên là:
-
-1. chốt contract,
-2. chốt serving model và read-model ownership,
-3. rồi mới quyết định thêm bảng hay tách schema vật lý.
-
-Điều này đặc biệt quan trọng với `vip-app`, vì nếu schema tách trước contract thì token, billing, quota và tenant semantics sẽ rất dễ drift giữa `core` và consumer.
+- `packages/web` da co that va da co shell pages dung chung,
+- `packages/vip-app` khong co shared React source rieng,
+- `packages/opencore` khong duoc fork frontend ra khoi `packages/web`.
 
 ---
 
-## 6. Mapping mục tiêu `core / web / opencore / vip-app / mobile` vào repo hiện tại
+## 5. Sequencing da duoc cap nhat theo thuc te code
 
-| Boundary mục tiêu | Legacy reference runtime | Package track da duoc phe duyet | Ý nghĩa thực tế trong giai đoạn song song |
-|---|---|---|---|
-| `core` | `backend/` + `opennews-main/` + phần infra/data ops liên quan | `packages/core/` | Legacy giữ vai trò runtime thật + source đối chiếu; implementation mới đi vào `packages/core/` |
-| `web` | `frontend/` | `packages/web/` | Legacy frontend chỉ là reference/fallback; shared shell mới được xây trong `packages/web/` |
-| `opencore` | `backend/portfolio/opencore_*` + frontend plan gating | `packages/opencore/` + `packages/web` community build + `packages/core` commercial contracts | Reuse semantics entitlement hiện có, nhưng đóng gói thành package funnel/distribution riêng trong package track mới |
-| `vip-app` | Chưa có runtime thật | `packages/vip-app/` | Thin local control plane + orchestrator được dựng greenfield trong package track |
-| `mobile` | `mobile-app/` | `packages/mobile/` | Có thể migration sau khi `core/web/vip-app` đã ổn định hơn |
+### Phase 0 - Governance freeze va package ownership
+
+**Trang thai:** HOAN THANH
+
+Da chot:
+
+1. `packages-first parallel migration`,
+2. package ownership `core/web/opencore/mobile/vip-app`,
+3. `packages/web` la frontend source duy nhat,
+4. package-track foundation phai di theo slice nho va co validation lane rieng.
+
+### Phase 1 - Package/shared foundation baseline
+
+**Trang thai:** HOAN THANH
+
+Da co:
+
+1. `packages/core` foundation,
+2. `packages/web` shell baseline,
+3. `shared/api-contracts` baseline,
+4. `packages/vip-app` local backend stub baseline,
+5. `npm run check:shell` va compile/manifest proof cho package track.
+
+### Phase 2 - Package-shell runtime hardening va host integration
+
+**Trang thai:** DANG DIEN RA TUNG PHAN
+
+Da co mot phan:
+
+1. host pages trong legacy frontend cho advisory/whale shell,
+2. auth-aware bootstrap glue,
+3. package shell smoke proofs.
+
+Con thieu:
+
+1. route coverage rong hon,
+2. dev/runtime lane build truc tiep `packages/web`,
+3. cat bot bridge semantics du thua trong package bootstrap,
+4. parity test ro hon giua package shell va legacy runtime that.
+
+### Phase 3 - Core admin va partner parity tren legacy truth
+
+**Trang thai:** BAT DAU O MUC DOCS/CONTRACT, CODE MOI MOT PHAN
+
+Thuc te code hien tai:
+
+1. legacy backend da co partner service accounts/PAT/usage/billing APIs,
+2. legacy frontend da co tenant-admin surfaces cho usage, billing, service accounts, PATs,
+3. legacy backend da co operator AI runtime read API,
+4. nhung operator overview, tenant registry, jobs, audit trace, health read models van chua du.
+
+**Pha tiep theo dung:**
+
+- dua bo docs `ENTERPRISE_CORE_*` ve current-code truthful state,
+- build read-first operator surfaces tren legacy truth truoc,
+- chi sau do moi quyet dinh resource/schema split nao can dua vao package-core that.
+
+### Phase 4 - Schema/commercial/resource convergence
+
+**Trang thai:** CHUA BAT DAU O MUC CODE PUBLIC
+
+Cong viec dung la:
+
+1. chot resource freeze theo current code va target delta,
+2. xac dinh object nao can bang moi, object nao moi can read model,
+3. lap migration/backfill plan sau khi contract on dinh,
+4. khong viet docs nhu the `CoreTenantMembership`, `CoreBillingAccount`, `CoreTokenSecretVersion` da ton tai day du neu code chua co.
+
+### Phase 5 - Package-core/package-web parity va cutover readiness
+
+**Trang thai:** CHUA BAT DAU
+
+Dieu kien vao pha nay:
+
+1. operator/partner contracts chot lai theo current-code truth,
+2. read-first parity da co bang chung,
+3. schema/resource decisions da qua freeze gates,
+4. package-core khong con o muc stub cho cac lane uu tien.
 
 ---
 
-## 7. Override matrix cho bộ tài liệu ngày 2026-05-01
+## 6. Backlog uu tien sau khi realignment docs
 
-| Tài liệu | Cách hiểu mới sau rebaseline |
-|---|---|
-| `HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md` | Là target-state tech stack. Thứ tự áp dụng phải đi qua Redis/PostgreSQL/Channels foundations hiện có trước. |
-| `REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md` | `packages/` là implementation track song song đã được owner chấp nhận; không bulk-move legacy folders trước. |
-| `CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md` | Là map thư mục mục tiêu và workspace plan cho package track, không phải blind move của runtime cũ. |
-| `IMPLEMENTATION_PLAN_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md` | Phải mở rộng AI config/runtime hiện có trước khi giới thiệu schema/route greenfield. |
-| `VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md` | Là phase-later backlog. Thin local control plane đi trước full admin suite. |
-| `OPEN_CORE_*` docs | Gắn với entitlement/commercial lane hiện có, nay được diễn giải thành `packages/opencore` nhưng vẫn không thay `core` làm truth backend. |
+Thu tu uu tien cho doi code sau khi doc pack nay:
+
+1. Lam sach control docs de docs no dung voi code hien tai.
+2. Freeze lai capability/admin/operator/partner semantics theo current runtime that.
+3. Build P0 operator reads con thieu tren legacy backend truth.
+4. Bo sung partner tenant summary route va chinh contract drift giua doc va code.
+5. Chot resource freeze/schema strategy theo object nao da co, object nao con la target.
+6. Chi sau do moi danh gia slice nao nen dua vao `packages/core` that thay vi tiep tuc o legacy truth.
 
 ---
 
-## 8. Kết luận thực thi
+## 7. Hard guardrails cho moi slice tiep theo
 
-Nếu bám vào code hiện tại, đường nâng cấp khả thi của VNInvest là:
+1. Khong duoc doc package track nhu parity proof day du cho operator/partner/commercial lanes.
+2. Khong duoc doc bo `ENTERPRISE_CORE_*` nhu inventory day du cua tables/routes neu chua doi chieu code.
+3. Khong duoc them docs moi ma khong danh dau ro `implemented now`, `partial`, `target-state`.
+4. Khong duoc mo schema split hay infra split som hon contract/resource freeze.
+5. Khong duoc claim bridge-free auth model trong package track khi stub va helper van con wildcard fallback.
+6. Khong duoc cutover package track khi dev/runtime chinh van phu thuoc `frontend/` va `backend/` cho luong nghiep vu that.
 
-1. **Packages-first theo mô hình song song, không bulk-move legacy folders trước.**
-2. **Core-first trên runtime semantics đã chứng minh, nhưng implementation mới đi vào `packages/core`.**
-3. **Redis/PostgreSQL/Channels-first trước khi đưa infra nặng hơn.**
-4. **Mở rộng AICommandCenter và OpenCore hiện có thay vì bỏ qua chúng.**
-5. **`packages/opencore` là package funnel/distribution truoc VIP, nhung `core` van giu entitlement/quota/billing truth.**
-6. **`packages/web` là nơi dựng build variants mới; legacy frontend chỉ làm fallback/reference cho tới cutover.**
-7. **VIP self-host bắt đầu bằng thin local orchestrator, không phải mini-platform hoàn chỉnh ngay từ ngày đầu.**
-8. **Sau khi package track đạt parity và cutover ổn định, legacy runtime phải bị decommission.**
+---
 
-Theo cách này, mục tiêu enterprise vẫn giữ nguyên nhưng lộ trình bớt rủi ro, bám sát repo hiện tại và tạo ra các điểm dừng kiểm chứng rõ ràng cho đội code.
+## 8. Companion docs bat buoc di kem
+
+Doc cung tai lieu nay voi:
+
+1. `./ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`
+2. `./ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md`
+3. `./PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md`
+4. `./ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`
+5. `./ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`
+6. `./ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`
+
+Neu mot doc nao khac mau thuan voi tai lieu nay ve `package track da ton tai hay chua`, `build target da ton tai hay chua`, `shared contracts da ton tai hay chua`, thi hieu rang doc do **can duoc cap nhat hoac danh dau la target-state only**.

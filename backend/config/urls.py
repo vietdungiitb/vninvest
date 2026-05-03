@@ -7,6 +7,7 @@ from .health import healthcheck, market_observability_health, prefetch_health, r
 import portfolio.views as portfolio_views
 from portfolio.views import AdminOpsStatsView
 from portfolio.auth_views import (
+    CapabilitySnapshotView,
     GoogleOAuthView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
@@ -17,6 +18,18 @@ from portfolio.auth_views import (
     VerifyEmailView,
 )
 from portfolio.legal_views import LegalPagePublicView
+from portfolio.views_partner_admin import (
+    partner_billing_invoices_api,
+    partner_billing_subscription_api,
+    partner_tenant_api,
+    partner_pat_issue_api,
+    partner_pat_list_api,
+    partner_pat_revoke_api,
+    partner_pat_rotate_api,
+    partner_service_accounts_api,
+    partner_usage_meters_api,
+    partner_usage_quotas_api,
+)
 
 
 def api_root(_request):
@@ -44,6 +57,7 @@ urlpatterns = [
     path('api/auth/token/', csrf_exempt(VerifiedEmailTokenObtainPairView.as_view()), name='token_obtain_pair'),
     path('api/auth/token/refresh/', csrf_exempt(TokenRefreshView.as_view()), name='token_refresh'),
     path('api/auth/me/', UserMeView.as_view(), name='auth-me'),
+    path('api/core/v1/access/capabilities/', CapabilitySnapshotView.as_view(), name='core-access-capabilities'),
     path('api/auth/register/', RegisterView.as_view(), name='auth-register'),
     path('api/auth/oauth/google/', GoogleOAuthView.as_view(), name='auth-oauth-google'),
     path('api/auth/verify-email/', VerifyEmailView.as_view(), name='auth-verify-email'),
@@ -68,6 +82,17 @@ urlpatterns = [
     path('api/admin-ops/runtime-kpi/whale-pipeline/', portfolio_views.admin_runtime_kpi_whale_pipeline_api, name='admin-ops-runtime-kpi-whale-pipeline'),
     path('api/admin-ops/runtime-kpi/whale-preflight-metrics/', portfolio_views.admin_runtime_kpi_whale_preflight_metrics_api, name='admin-ops-runtime-kpi-whale-preflight-metrics'),
     path('api/admin-ops/runtime-kpi/advisory-metrics/', portfolio_views.admin_runtime_kpi_advisory_metrics_api, name='admin-ops-runtime-kpi-advisory-metrics'),
+    path('api/core/v1/operator/overview/', portfolio_views.operator_overview_api, name='core-operator-overview'),
+    path('api/core/v1/operator/health/', portfolio_views.operator_health_api, name='core-operator-health'),
+    path('api/core/v1/operator/tenants/', portfolio_views.operator_tenants_api, name='core-operator-tenants'),
+    path('api/core/v1/operator/tenants/<str:tenant_id>/service-accounts/', portfolio_views.operator_tenant_service_accounts_api, name='core-operator-tenant-service-accounts'),
+    path('api/core/v1/operator/tenants/<str:tenant_id>/pats/', portfolio_views.operator_tenant_pats_api, name='core-operator-tenant-pats'),
+    path('api/core/v1/operator/tenants/<str:tenant_id>/', portfolio_views.operator_tenant_detail_api, name='core-operator-tenant-detail'),
+    path('api/core/v1/operator/jobs/', portfolio_views.operator_jobs_api, name='core-operator-jobs'),
+    path('api/core/v1/operator/audit/requests/', portfolio_views.operator_audit_requests_api, name='core-operator-audit-requests'),
+    path('api/core/v1/operator/audit/requests/<str:request_id>/', portfolio_views.operator_audit_request_detail_api, name='core-operator-audit-request-detail'),
+    path('api/core/v1/operator/ai-runtime/', portfolio_views.operator_ai_runtime_api, name='core-operator-ai-runtime'),
+    path('api/core/v1/partner/tenant/', partner_tenant_api, name='core-partner-tenant'),
     path('api/admin-ops/system-ai-settings/', portfolio_views.admin_system_ai_settings_api, name='admin-ops-system-ai-settings'),
     path('api/admin-ops/system-ai-settings/test-connection/', portfolio_views.admin_system_ai_test_connection_api, name='admin-ops-system-ai-test-connection'),
     path('api/admin-ops/system-ai-settings/audit-logs/', portfolio_views.admin_system_ai_audit_logs_api, name='admin-ops-system-ai-audit-logs'),
@@ -99,6 +124,15 @@ urlpatterns = [
     path('api/admin-ops/signals/jobs/<int:run_id>/retry/', portfolio_views.signal_admin_job_retry_api, name='admin-ops-signals-jobs-retry'),
     path('api/admin-ops/signals/events/recent/', portfolio_views.signal_admin_recent_events_api, name='admin-ops-signals-events-recent'),
     path('api/admin-ops/signals/retention/preview/', portfolio_views.signal_admin_retention_preview_api, name='admin-ops-signals-retention-preview'),
+    path('api/core/v1/partner/service-accounts/', partner_service_accounts_api, name='core-partner-service-accounts'),
+    path('api/core/v1/partner/pats/', partner_pat_list_api, name='core-partner-pats'),
+    path('api/core/v1/partner/pats/issue/', partner_pat_issue_api, name='core-partner-pats-issue'),
+    path('api/core/v1/partner/pats/<str:token_id>/rotate/', partner_pat_rotate_api, name='core-partner-pats-rotate'),
+    path('api/core/v1/partner/pats/<str:token_id>/revoke/', partner_pat_revoke_api, name='core-partner-pats-revoke'),
+    path('api/core/v1/partner/usage/meters/', partner_usage_meters_api, name='core-partner-usage-meters'),
+    path('api/core/v1/partner/usage/quotas/', partner_usage_quotas_api, name='core-partner-usage-quotas'),
+    path('api/core/v1/partner/billing/subscription/', partner_billing_subscription_api, name='core-partner-billing-subscription'),
+    path('api/core/v1/partner/billing/invoices/', partner_billing_invoices_api, name='core-partner-billing-invoices'),
     path('api/v1/admin/crawl/', include('portfolio.urls_crawl')),
     path('api/ai-options/', portfolio_views.ai_options_api, name='ai-options'),
     path('api/ai-config/', portfolio_views.ai_config_api, name='ai-config'),

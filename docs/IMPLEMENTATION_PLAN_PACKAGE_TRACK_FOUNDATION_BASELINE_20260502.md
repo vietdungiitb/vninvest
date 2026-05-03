@@ -26,6 +26,7 @@ Hiện trạng còn thiếu bốn mảnh nền tảng:
 1. Khóa baseline đầu tiên cho package track mà không động vào runtime legacy.
 2. Tạo bề mặt code đủ rõ để các slice sau có thể đi tiếp vào feature-level work thay vì tiếp tục tranh luận về structure.
 3. Giảm rủi ro drift giữa `core`, `web`, `vip-app` bằng các contracts và adapter shapes đầu tiên.
+4. Khóa một template UI chung cho toàn bộ phần nâng cấp để các surface mới giữ cùng nhịp thông tin, spacing và bố cục nền.
 
 ---
 
@@ -109,6 +110,7 @@ Tạo route và navigation catalogs cùng adapter seams bám theo current auth/c
 
 1. `npm run check:shell` pass trong `packages/web`.
 2. Route/navigation/adapters export được cùng một surface ổn định.
+3. Mọi UI page hoặc surface mới trong `packages/web` phải bám template chung: giàu thông tin, spacing thấp và không trôi sang layout quá thoáng.
 
 ### Step 4 - Refresh repo indexing and audit docs
 
@@ -247,6 +249,16 @@ Hai adapter `core` và `vip-app` phải cùng một interface tối thiểu:
 5. `getCapabilityBootstrapEndpoint()`,
 6. `getSessionPayloadEndpoint()`,
 7. `getHealthcheckEndpoint()`.
+
+#### D. Unified UI template governance
+
+Mọi UI route-level page, panel và form được dựng trong `packages/web` cho phần nâng cấp này phải tuân thủ các quy tắc sau:
+
+1. Dùng một template chung thống nhất ở cấp page shell: header gọn, dải status/metrics ngắn, action zone gần data zone.
+2. Ưu tiên giao diện giàu thông tin: một viewport phải mang đủ bối cảnh, số liệu, thao tác và trạng thái thay vì trải thông tin thành nhiều khối rời, thưa hoặc quá nhiều khoảng trắng.
+3. Margin ngoài, padding panel, row gaps và section spacing phải giữ ở mức thấp theo chuẩn chung; chỉ được nới rộng khi có lý do readability hoặc responsive thật sự rõ ràng.
+4. Không được tự ý tạo template riêng cho từng lane `community`, `saas`, `vip`; khác biệt chỉ được nằm ở dữ liệu, capability gating và labels, không phải ở visual language nền.
+5. Slice UI nào muốn lệch template chung phải ghi lý do và xin owner duyệt trước khi merge.
 
 ---
 

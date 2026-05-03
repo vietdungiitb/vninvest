@@ -1,1 +1,1 @@
-export { coreAdapter } from "./coreAdapter.js";
+export { coreAdapter, createCoreAdvisorySessionClient, createCoreWhaleAnalyticsSnapshotClient } from "./coreAdapter.js";

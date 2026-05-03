@@ -95,7 +95,7 @@ describe('AdminOps legacy writer link-out', () => {
 
     expect(await screen.findByText('Admin Ops')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: 'Mở surface chuyên trách' })).toHaveAttribute('href', '/admin-crawl-control');
+      expect(screen.getByRole('link', { name: 'Mở surface chuyên trách' })).toHaveAttribute('href', '/admin/core/crawl-control');
     });
   });
 });

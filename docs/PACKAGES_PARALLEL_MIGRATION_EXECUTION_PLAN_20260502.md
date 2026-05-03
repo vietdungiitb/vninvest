@@ -224,6 +224,24 @@ Chỉ được cắt chuyển khi đồng thời đạt đủ các điều kiệ
 3. Auth model, capability gating và secret handling đã được kiểm tra lại trên package track.
 4. Compose/CI/workspace có thể chạy trực tiếp theo package paths.
 5. Có rollback runbook rõ ràng nếu cutover gặp sự cố.
+6. Taskboard, audit ledger và progress dashboard khớp nhau trước khi mở cutover window.
+7. Route coverage và runtime ownership của từng package phải được chốt bằng văn bản trước khi ban cutover.
+
+### 6.1 Readiness gate matrix
+
+| Gate | Mục tiêu | Minimum evidence | Pass khi |
+|---|---|---|---|
+| Parity gate | Chứng minh package track khớp contract, behavior và capability/routing cho flows ưu tiên | route catalog diff, payload snapshots, shell parity proofs | surfaces trọng yếu khớp expectation của current-code contract |
+| Validation gate | Đảm bảo package build/test có thể lặp lại và không chỉ pass một lần | `npm run check:shell`, `compileall`, focused tests | ít nhất một vòng validation focused PASS ổn định cho lane đã chọn |
+| Rollback gate | Có thể quay lại legacy runtime mà không đoán đường | rollback runbook, compose switchback path, restore order | runbook chỉ rõ kích hoạt, verify và restore path |
+| Route coverage gate | Route families cốt lõi đã cover đủ cho cutover scope | route inventory, navigation inventory, missing-route list | không còn missing route trong scope đã freeze |
+| Runtime ownership gate | Không còn ambiguity về package owner của runtime path | ownership matrix, adapter boundary notes, import/call graph review | package path là owner của runtime mới; legacy chỉ còn reference/fallback |
+| Audit gate | Trạng thái slice phải khớp across board | taskboard diff, audit ledger entry, progress dashboard mirror, handoff packet | taskboard, ledger, progress và evidence packet đều đồng bộ |
+| Approval gate | Chỉ ký cutover khi các gate trên đều xanh | completed gate matrix, signoff note, freeze window | owner review evidence pack và mở cutover window |
+
+### 6.2 Cutover approval rule
+
+Package track hiện tại chưa được xem là cutover-ready chỉ vì baseline tồn tại. Chỉ khi `PKG-01` đến `PKG-03` hoàn tất, cùng với parity/validation/rollback/route coverage/runtime ownership gates đều xanh, thì mới được chuyển sang Phase 7.
 
 ---
 

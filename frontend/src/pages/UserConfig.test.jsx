@@ -27,7 +27,11 @@ const mockT = (key) => {
     'settings.movedTitle': 'AI settings moved to AI Command Center',
     'settings.movedDescription': 'Provider, model, API key, and prompt config are now managed centrally in AI Command Center.',
     'settings.openAiCommandCenter': 'Mở AI Command Center',
-    'settings.generalOnlyNotice': 'This page now only keeps general user preferences such as language, theme, and alert thresholds.',
+    'settings.generalOnlyNotice': 'This page keeps general preferences and the event-based advisory gate. Provider, model, and API key stay in AI Command Center.',
+    'settings.eventBasedAuto': 'Enable event-based auto advisory',
+    'settings.eventBasedAutoHelp': 'Controls auto advisory creation from whale, dark flow, and reversal events.',
+    'settings.eventBasedAutoStateOn': 'Event-based advisory is on',
+    'settings.eventBasedAutoStateOff': 'Event-based advisory is off',
   };
   return translations[key] || key;
 };
@@ -41,6 +45,7 @@ const mockUserConfig = {
   language: 'vi',
   theme: 'dark',
   whale_alert_threshold: 500,
+  advisory_whale_signal_enabled: false,
 };
 
 describe('UserConfig', () => {
@@ -75,6 +80,7 @@ describe('UserConfig', () => {
     // Verify general settings are loaded
     expect(screen.getByDisplayValue('500')).toBeInTheDocument(); // whale threshold
     expect(screen.getByLabelText('settings.theme')).toHaveValue('dark'); // theme
+    expect(screen.getByLabelText('Enable event-based auto advisory')).not.toBeChecked();
   });
 
   it('persists language setting after save', async () => {
@@ -167,15 +173,34 @@ describe('UserConfig', () => {
     );
   });
 
-  it('does not render advisory policy editor anymore', async () => {
+  it('shows event-based advisory gate near AI handoff', async () => {
     renderUserConfig();
 
     await waitFor(() => {
       expect(getLanguageSelect()).toHaveValue('vi');
     });
 
-    expect(screen.queryByText('AI advisory policy')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Enable periodic auto-generation')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Enable event-based auto advisory')).toBeInTheDocument();
+    expect(screen.getByText('Event-based advisory is off')).toBeInTheDocument();
+  });
+
+  it('persists event-based advisory gate after save', async () => {
+    renderUserConfig();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Enable event-based auto advisory')).not.toBeChecked();
+    });
+
+    fireEvent.click(screen.getByLabelText('Enable event-based auto advisory'));
+    fireEvent.click(screen.getAllByText('Save')[0]);
+
+    await waitFor(() => {
+      expect(client.updatePortfolioUserConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          advisory_whale_signal_enabled: true,
+        }),
+      );
+    });
   });
 
   it('handles data reload after page refresh simulation', async () => {

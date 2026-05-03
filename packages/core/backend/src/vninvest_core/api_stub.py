@@ -45,13 +45,23 @@ def _ability_rules(identity, build_target):
     rules = [
         {"action": "read", "subject": "Dashboard"},
         {"action": "read", "subject": "WhaleAdvisory"},
+        {"action": "read", "subject": "Support"},
         {"action": "read", "subject": "Watchlist"},
         {"action": "read", "subject": "Settings"},
     ]
     if build_target in {"saas", "vip"}:
-        rules.append({"action": "read", "subject": "Transactions"})
+        rules.extend([
+            {"action": "read", "subject": "Transactions"},
+            {"action": "manage", "subject": "Portfolios"},
+        ])
     if identity["is_staff"] or identity["is_superuser"]:
-        rules.append({"action": "manage", "subject": "all"})
+        if build_target in {"saas", "vip"}:
+            rules.extend([
+                {"action": "read", "subject": "admin.operator.read"},
+                {"action": "manage", "subject": "system.ai_command_center.manage"},
+            ])
+        if build_target == "vip":
+            rules.append({"action": "read", "subject": "vip.local_control.read"})
     return rules
 
 
@@ -67,7 +77,7 @@ def _visible_groups(identity, build_target):
 def _visible_routes(identity, build_target):
     routes = ["dashboard", "watchlist", "support", "settings"]
     if build_target in {"saas", "vip"}:
-        routes.extend(["ai-advisory", "whale-alerts", "transactions"])
+        routes.extend(["ai-advisory", "whale-alerts", "transactions", "portfolios"])
     if build_target in {"saas", "vip"} and (identity["is_staff"] or identity["is_superuser"]):
         routes.extend(["admin-ops", "ai-command-center"])
     if build_target == "vip":
@@ -137,16 +147,24 @@ ROUTE_HANDLERS = {
     "/healthz": _health_payload,
     "/manifest": get_core_manifest,
     "/access/capabilities": _capability_bootstrap_payload,
+    "/auth/me": _session_payload,
     "/session/me": _session_payload,
     "/core/v1/health": _health_payload,
     "/core/v1/healthz": _health_payload,
     "/core/v1/manifest": get_core_manifest,
     "/core/v1/access/capabilities": _capability_bootstrap_payload,
+    "/core/v1/auth/me": _session_payload,
     "/core/v1/session/me": _session_payload,
 }
 
 
 class _CoreApiStubHandler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._write_cors_headers()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def do_GET(self):
         path = urlparse(self.path).path.rstrip("/") or "/"
         payload_factory = ROUTE_HANDLERS.get(path)
@@ -169,10 +187,16 @@ class _CoreApiStubHandler(BaseHTTPRequestHandler):
     def _write_json(self, status_code, payload):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status_code)
+        self._write_cors_headers()
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _write_cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", os.getenv("CORE_STUB_ALLOW_ORIGIN", "*"))
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization")
 
 
 def main():

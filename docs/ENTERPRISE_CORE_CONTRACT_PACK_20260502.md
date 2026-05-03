@@ -1,8 +1,29 @@
 # ENTERPRISE CORE CONTRACT PACK
 
 **Date:** 2026-05-02  
-**Status:** Contract-first companion artifact for `core`  
+**Status:** Current-code truth plus contract-first companion artifact for `core`  
 **Purpose:** Chốt bộ contract tối thiểu để `core` có thể phục vụ `web`, `opencore`, `vip-app`, `mobile` theo kiểu production platform mà chưa cần triển khai sớm hay tách schema CSDL.
+
+---
+
+## 0. Current-code freeze posture
+
+Tại thời điểm hiện tại, không phải mọi resource trong contract pack này đều đã live dưới `core` public contract. Bảng dưới đây là truth table để đội code và auditors không đọc nhầm giữa contract freeze và runtime availability.
+
+| Resource | Current-code trạng thái | Ghi chú |
+|---|---|---|
+| `tenant` | Live wrapper route | `GET /api/core/v1/partner/tenant/` da live; `GET /core/v1/partner/tenant` van la target-state owner path |
+| `service_account` | Live self-service | partner self-service list/create đã chạy thật |
+| `pat_credential` | Live self-service | list/issue/rotate/revoke đã chạy thật |
+| `usage_meter` | Partial | mới có projection list qua `/core/v1/partner/usage/meters/`, chưa có catalog resource độc lập |
+| `quota_snapshot` | Live self-service projection | `/core/v1/partner/usage/quotas/` đã chạy thật |
+| `subscription_summary` | Live self-service projection | `/core/v1/partner/billing/subscription/` đã chạy thật |
+| `invoice_summary` | Live self-service list | `/core/v1/partner/billing/invoices/` đã chạy thật |
+| `symbol_snapshot` | Target-state | chưa có route `core` contract family ổn định |
+| `session_facts` | Target-state | current repo có whale/session logic, nhưng chưa freeze thành `core` public contract resource |
+| `unified_alert` | Target-state | current repo có alert surfaces, nhưng chưa freeze thành `core` public contract resource |
+
+Ghi chu: ma tran implemented-vs-target resource chi tiet nam trong `docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md`; bang nay chi giu truth table runtime availability va target-state wording de khong tron semantic freeze.
 
 ---
 
@@ -327,6 +348,8 @@ Error response chuẩn:
 ---
 
 ## 6. Auth, scope, quota và meter matrix
+
+Bảng dưới đây là target-state contract matrix. Trong current runtime, toàn bộ partner self-service endpoints hiện đang dùng human session/JWT thay vì tenant PAT machine auth.
 
 | Endpoint family | Auth mode | Scope tối thiểu | Meter | Quota gate |
 |---|---|---|---|---|

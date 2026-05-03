@@ -1,8 +1,27 @@
 # ENTERPRISE CORE RESOURCE FREEZE CHECKLIST
 
 **Date:** 2026-05-02  
-**Status:** Review artifact before implementation  
+**Status:** Current-code truth plus review artifact before implementation  
 **Purpose:** Chốt checklist freeze cho các resource lõi đầu tiên của `core` để đội triển khai không nhảy vào code khi object semantics, auth semantics, meter semantics và storage semantics còn mơ hồ.
+
+---
+
+## 0. Current-code freeze snapshot
+
+| Resource | Current runtime trạng thái | Ghi chú handoff |
+|---|---|---|
+| `tenant` | Partial | model `CoreTenant` đã có, nhưng public partner route `GET /core/v1/partner/tenant` chưa live |
+| `service_account` | Live self-service | list/create đang chạy dưới partner self-service APIs |
+| `pat_credential` | Live self-service | list/issue/rotate/revoke đang chạy dưới partner self-service APIs |
+| `usage_meter` | Partial | hiện mới là projection list từ static meter definitions + quota service |
+| `symbol_snapshot` | Target-state | chưa freeze thành `core` public route family |
+| `session_facts` | Target-state | chưa freeze thành `core` public route family |
+
+Ghi chu: thu tu migration/backfill/rollback identity/commercial deltas nam trong `docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md`; checklist nay chi freeze posture.
+
+Ghi chu: ma tran implemented-vs-target resource chi tiet nam trong `docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md`; checklist nay chi freeze posture va khong thay the canonical matrix.
+
+Trừ khi một mục bên dưới ghi rõ khác đi, các bảng freeze trong tài liệu này phải được đọc như `target-state freeze posture`, không mặc định là current live contract.
 
 ---
 
@@ -69,7 +88,7 @@ Nếu thiếu một câu trả lời, resource chưa nên bước sang implement
 | Primary consumers | `vip-app`, `opencore`, operator | Stable |
 | Auth mode | tenant PAT hoặc operator session tùy route | Stable |
 | Scope | `tenant:read` | Stable |
-| Public route | `GET /core/v1/partner/tenant` | Stable |
+| Public route | `GET /api/core/v1/partner/tenant/` la current live wrapper route; `GET /core/v1/partner/tenant` van la target-state owner path | Partial |
 | Source-of-truth | `CoreTenant` + entitlement/billing overlay | Stable |
 | Mutable fields | `display_name`, `status`, `default_environment`, metadata | Stable |
 | Breaking hotspots | `status` semantics, `plan_code`, billing owner semantics | Open |
@@ -102,7 +121,7 @@ Nếu thiếu một câu trả lời, resource chưa nên bước sang implement
 |---|---|---|
 | Object key | `service_account` | Stable |
 | Primary consumers | `vip-app`, operator | Stable |
-| Auth mode | tenant PAT cho self-management, operator session cho override | Stable |
+| Auth mode | human session/JWT cho self-management trong current runtime; tenant PAT hoặc operator session là target-state | Partial |
 | Scope | `tenant:service_accounts:read/write` | Stable |
 | Public routes | list/create service accounts | Stable |
 | Source-of-truth | `CoreServiceAccount` | Stable |
@@ -138,7 +157,7 @@ Nếu thiếu một câu trả lời, resource chưa nên bước sang implement
 | Object key | `pat_credential` | Stable |
 | Secret policy | chỉ hiển thị một lần, chỉ lưu hash + prefix | Stable |
 | Primary consumers | `vip-app`, operator | Stable |
-| Auth mode | tenant PAT with privileged scope hoặc operator session | Stable |
+| Auth mode | human session/JWT cho self-service trong current runtime; tenant PAT hoặc operator session là target-state | Partial |
 | Scopes | fine-grained, gắn theo policy bundle và explicit scope set | Stable |
 | Routes | list, issue, rotate, revoke | Stable |
 | Idempotency | bắt buộc cho issue/rotate/revoke | Stable |
@@ -174,7 +193,7 @@ Nếu thiếu một câu trả lời, resource chưa nên bước sang implement
 | Object key | `usage_meter` | Stable |
 | Primary consumers | `vip-app`, `opencore`, operator | Stable |
 | Meter categories | market reads, session facts reads, signal delivery, AI advisory, bulk export, realtime minute | Stable |
-| Source-of-truth | `CoreUsageMeter` | Stable |
+| Source-of-truth | projection từ static meter definitions + `quota_service` hôm nay; `CoreUsageMeter` là target-state catalog | Partial |
 | Aggregation | hourly rollup + billing period aggregates | Stable |
 | Billing relation | plan entitlements + overage policy + credits | Stable |
 | Breaking hotspots | unit semantics, rounding rules, meter matching rules | Open |

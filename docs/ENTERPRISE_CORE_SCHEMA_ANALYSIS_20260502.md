@@ -1,10 +1,57 @@
 # ENTERPRISE CORE SCHEMA ANALYSIS
 
 **Date:** 2026-05-02  
-**Status:** Detailed schema analysis before implementation  
+**Status:** Current-code truth plus detailed schema analysis before implementation  
 **Purpose:** Phân tích sâu candidate schema của `core` theo domain, quan hệ dữ liệu, cardinality, storage class, hot paths, và split boundaries để chốt trước khi viết migrations.
 
 ---
+
+## 0. Current-code model snapshot
+
+Tài liệu này phân tích schema target-state, nhưng current repo hiện mới materialize một phần các thực thể cốt lõi:
+
+- `Implemented now`:
+   - `CoreTenant`, `CoreServiceAccount`, `CorePATCredential`,
+   - commercial primitives hiện có qua `DPIInvoice`, `DPISubscription` và quota projections,
+   - signal-side canonical models đã có ở legacy runtime như `WhaleAlertEvent`, `WhaleAdvisory`, `SignalServiceRun`.
+- `Not yet materialized as first-class core tables`:
+   - `CoreTenantMembership`,
+   - `CoreTokenSecretVersion`,
+   - `CoreAccessPolicy`,
+   - `CoreBillingAccount`, `CoreUsageMeter`, `TenantQuotaLedger`, `CoreUsageAggregateHourly`,
+   - `CoreSymbolSnapshot`, `SessionFacts`, `UnifiedAlertProjection` dưới contract family `core`.
+
+Vì vậy mọi quyết định schema ở các mục sau phải được đọc như `target-state analysis grounded on current anchors`, không phải danh sách bảng đã tồn tại đầy đủ trong DB hiện tại.
+
+---
+
+## 0.1 Implemented-vs-target resource matrix
+
+Bang nay la canonical summary cho DATA-01. No tach ro resource nao da co current-code anchor that, resource nao chi co projection/read-model, va resource nao con la target-state only.
+
+| Resource | Current-code status | Target-state posture | Evidence anchor |
+|---|---|---|---|
+| `CoreTenant` | implemented now | control-plane root | `backend/portfolio/models.py`, partner tenant route |
+| `CoreServiceAccount` | implemented now | control-plane machine principal | `backend/portfolio/models.py`, partner service-account routes |
+| `CorePATCredential` | implemented now | token credential lifecycle | `backend/portfolio/models.py`, partner PAT routes |
+| `CoreUsageMeter` | partial | commercial catalog projection | contract pack, resource freeze checklist |
+| `CoreBillingAccount` | read-model only | commercial owner table | billing summary / invoice projections |
+| `CoreTenantMembership` | missing | human membership join model | schema docs only |
+| `CoreAccessPolicy` | missing | policy bundle catalog | schema docs only |
+| `CoreTokenSecretVersion` | target-state only | rotate-safe secret version table | schema docs only |
+| `TenantQuotaLedger` | target-state only | quota ledger / audit trail | schema docs only |
+| `CoreUsageAggregateHourly` | target-state only | hourly usage aggregate | schema docs only |
+| `CoreSymbolSnapshot` | target-state only | market serving snapshot | schema docs only |
+| `SessionFacts` | target-state only | selected-session serving model | schema docs only |
+| `UnifiedAlertProjection` | target-state only | unified alert serving model | schema docs only |
+
+Current-code anchor rule:
+
+1. `implemented now` mean co first-class model hoac live wrapper/service da chay that trong current backend.
+2. `partial` mean chi co projection hoac derived list, chua co canonical table duoc freeze.
+3. `missing` mean current code chua co first-class resource, va docs con mo ve implementation path.
+4. `read-model only` mean current runtime co read surface that, nhung resource canon chua co.
+5. `target-state only` mean resource duoc giu o pha backlog/schema future, chua can code in slice nay.
 
 ## 1. Vai trò của tài liệu này
 
@@ -33,6 +80,10 @@ Nó không nhằm viết migration SQL cụ thể, mà để trả lời câu h�
    symbol snapshots, session facts, unified alerts, regime snapshots.
 4. **Ops and audit schema**
    token usage logs, anomaly logs, service runs, policy audit logs.
+
+### 2.1.1 Current implementation note
+
+Trong bốn lớp trên, current code mới có control-plane subset và một phần ops/commercial reuse. Market-and-signal serving read models và commercial ledgers chuẩn `core` vẫn là backlog materialization.
 
 ### 2.2 Kết luận split boundary
 

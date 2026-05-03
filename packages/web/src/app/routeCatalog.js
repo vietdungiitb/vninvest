@@ -61,7 +61,7 @@ export const routeCatalog = Object.freeze([
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["workspace.portfolios.manage"],
     adapter: "core",
-    status: "planned",
+    status: "baseline",
   },
   {
     id: "support",
@@ -91,7 +91,7 @@ export const routeCatalog = Object.freeze([
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["system.ai_command_center.manage"],
     adapter: "core",
-    status: "planned",
+    status: "baseline",
   },
   {
     id: "admin-ops",
@@ -101,7 +101,7 @@ export const routeCatalog = Object.freeze([
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["admin.operator.read"],
     adapter: "core",
-    status: "planned",
+    status: "baseline",
   },
   {
     id: "vip-local-control",
@@ -111,7 +111,7 @@ export const routeCatalog = Object.freeze([
     buildTargets: ["vip"],
     requiredCapabilities: ["vip.local_control.read"],
     adapter: "vip-app",
-    status: "planned",
+    status: "baseline",
   },
 ]);
 

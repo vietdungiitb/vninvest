@@ -307,7 +307,7 @@ Day la nhom route nen giu chung source va chung component ownership:
 ### SaaS-only routes
 
 - `/admin/core/*`
-- `/admin/tenant/*`
+- `/tenant-admin/*`
 - central support / operator-only control routes
 
 ### VIP-only routes
@@ -439,7 +439,7 @@ Phuong an nay cho 5 loi ich ro rang:
 | Rui ro | Neu mac phai | Giam thieu |
 |---|---|---|
 | Shared source bi ro ri logic variant | Component chung day `if vip` khap noi | Dua variant logic vao route catalog, nav catalog, adapters va feature folders |
-| VIP local admin lan vao central admin | Role va route nham lan | Tach route namespace: `/admin/core/*`, `/admin/tenant/*`, `/vip-admin/*` |
+| VIP local admin lan vao central admin | Role va route nham lan | Tach route namespace: `/admin/core/*`, `/tenant-admin/*`, `/vip-admin/*` |
 | Browser VIP goi thang `core` | Lo PAT / audit sai / kho revoke | Bat buoc browser goi local backend, local backend goi `core` |
 | `manage all` tiep tuc ton tai qua lau | Khong scale duoc admin matrix | Chot capability snapshot va granular abilities som |
 | Fork giua legacy va `packages/web` | UI drift, fix mot noi vo noi khac | Chi `packages/web` nhan work kien truc moi; legacy `frontend/` chi hotfix/parity cho toi cutover |

@@ -1,0 +1,130 @@
+{
+  "contract_name": "whale-feed-aggregate",
+  "version": "1.0.0",
+  "description": "Whale feed aggregate response cho một symbol — tổng hợp dòng tiền cá mập theo phiên.",
+  "last_updated": "2026-05-03",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "vninvest/contracts/whale-feed-aggregate/v1",
+    "title": "WhaleFeedAggregate",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["symbol", "session_date", "aggregated_at", "stale"],
+    "properties": {
+      "symbol": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20,
+        "description": "Mã cổ phiếu"
+      },
+      "session_date": {
+        "type": "string",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+        "description": "Ngày phiên giao dịch"
+      },
+      "total_whale_buy_vnd": {
+        "type": ["number", "null"],
+        "minimum": 0,
+        "description": "Tổng giá trị lệnh cá mập mua (VND)"
+      },
+      "total_whale_sell_vnd": {
+        "type": ["number", "null"],
+        "minimum": 0,
+        "description": "Tổng giá trị lệnh cá mập bán (VND)"
+      },
+      "net_whale_flow_vnd": {
+        "type": ["number", "null"],
+        "description": "Dòng tiền cá mập ròng (VND). Dương = mua ròng."
+      },
+      "whale_order_count": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Số lệnh cá mập trong phiên"
+      },
+      "whale_buy_count": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Số lệnh cá mập mua"
+      },
+      "whale_sell_count": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Số lệnh cá mập bán"
+      },
+      "avg_whale_order_vnd": {
+        "type": ["number", "null"],
+        "description": "Giá trị trung bình mỗi lệnh cá mập (VND)"
+      },
+      "top_orders": {
+        "type": "array",
+        "description": "Top lệnh lớn nhất trong phiên",
+        "items": {
+          "type": "object",
+          "required": ["order_id", "side", "matched_value", "executed_at"],
+          "properties": {
+            "order_id": { "type": "string" },
+            "side": { "type": "string", "enum": ["buy", "sell"] },
+            "price": { "type": ["number", "null"] },
+            "volume": { "type": ["integer", "null"] },
+            "matched_value": { "type": "number", "description": "Giá trị khớp (VND)" },
+            "executed_at": { "type": "string", "format": "date-time" },
+            "is_dark_flow": { "type": "boolean" }
+          }
+        }
+      },
+      "aggregated_at": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Thời điểm tổng hợp data (ISO 8601)"
+      },
+      "stale": {
+        "type": "boolean",
+        "description": "true nếu aggregate chưa được refresh trong threshold"
+      }
+    }
+  },
+  "list_response": {
+    "description": "Response khi gọi list endpoint /core/v1/whale-feed-aggregate/ (multi-symbol)",
+    "type": "object",
+    "required": ["results"],
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": { "$ref": "#/schema" }
+      },
+      "next": { "type": ["string", "null"] },
+      "previous": { "type": ["string", "null"] }
+    }
+  },
+  "example": {
+    "symbol": "FPT",
+    "session_date": "2026-05-03",
+    "total_whale_buy_vnd": 32500000000,
+    "total_whale_sell_vnd": 14000000000,
+    "net_whale_flow_vnd": 18500000000,
+    "whale_order_count": 12,
+    "whale_buy_count": 8,
+    "whale_sell_count": 4,
+    "avg_whale_order_vnd": 3875000000,
+    "top_orders": [
+      {
+        "order_id": "ord-uuid-001",
+        "side": "buy",
+        "price": 125000,
+        "volume": 148000,
+        "matched_value": 18500000000,
+        "executed_at": "2026-05-03T14:43:00+07:00",
+        "is_dark_flow": false
+      }
+    ],
+    "aggregated_at": "2026-05-03T14:45:00+07:00",
+    "stale": false
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-05-03",
+      "changes": "Initial contract — SAAS-12 shared contract lock"
+    }
+  ]
+}

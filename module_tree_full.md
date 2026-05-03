@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-03 16:00:33`
+Generated at: `2026-05-03 19:02:34`
 
 ## Summary
 
-- Total modules: 617
+- Total modules: 639
 - Python modules: 352
-- JS/TS modules: 265
+- JS/TS modules: 287
 - Total classes: 580
 - Total functions: 2448
-- Total top-level variables: 4059
+- Total top-level variables: 4063
 
 ## Python Modules
 
@@ -3821,10 +3821,7 @@ Generated at: `2026-05-03 16:00:33`
 
 ### `mobile-app/src/i18n/index.ts`
 
-- Functions:
-  - `createTranslator`, `formatNumber`, `formatTime`, `getLocaleTag`
-- Top-level variables:
-  - `LOCALES`, `LOCALE_LABELS`, `LOCALE_TAGS`, `SUPPORTED_LOCALES`, `date`, `dict`, `node`, `parsed`, `parts`, `result`, `safeValue`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/i18n/vi.ts`
 
@@ -3833,59 +3830,35 @@ Generated at: `2026-05-03 16:00:33`
 
 ### `mobile-app/src/screens/AuthScreen.tsx`
 
-- Functions:
-  - `AuthScreen`, `fillTestAccount`, `onSubmit`
-- Top-level variables:
-  - `clearMessages`, `errorMessage`, `hasDemoCredentials`, `infoMessage`, `isLoading`, `login`, `normalizedUsername`, `register`, `styles`, `submitLabel`, `success`, `t`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/screens/DashboardScreen.tsx`
 
-- Functions:
-  - `DashboardScreen`
-- Top-level variables:
-  - `formatPct`, `formatVnd`, `isFirst`, `loadDashboard`, `locale`, `logout`, `num`, `onLogout`, `onOpenProfile`, `onOpenSettings`, `onToggleLanguage`, `parsed`, `plColor`, `portfolioId`, `portfolios`, `setLocale`, `styles`, `t`, `toNumber`, `topAllocation`, `topHoldings`, `user`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/screens/HomeScreen.tsx`
 
-- Functions:
-  - `HomeScreen`
-- Top-level variables:
-  - `styles`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/screens/ProfileScreen.tsx`
 
-- Functions:
-  - `ProfileScreen`
-- Top-level variables:
-  - `locale`, `logout`, `nextLocale`, `setLocale`, `styles`, `t`, `user`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/screens/TransactionsScreen.tsx`
 
-- Functions:
-  - `TransactionsScreen`, `onDelete`, `onEdit`, `onPickSubAccount`, `onSubmit`, `pickSuggestion`, `resetForm`
-- Top-level variables:
-  - `TX_TYPES`, `accounts`, `active`, `activeSubAccount`, `bootstrap`, `day`, `debounceRef`, `defaultId`, `emptyForm`, `formatNumber`, `isValidSymbol`, `loadTransactions`, `locale`, `month`, `normalized`, `now`, `parsed`, `payload`, `raw`, `results`, `styles`, `symbol`, `t`, `toDecimal`, `todayString`, `txs`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/screens/WatchlistScreen.tsx`
 
-- Functions:
-  - `WatchlistScreen`, `onAddSymbol`, `onDeleteSymbol`
-- Top-level variables:
-  - `bootstrap`, `clone`, `direction`, `flashDirection`, `flashTimeoutsRef`, `formatPct`, `loadData`, `nextPrev`, `nextValue`, `num`, `onRefresh`, `parsed`, `positive`, `prefix`, `prevChangePctRef`, `prevValue`, `styles`, `symbol`, `t`, `toNumber`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/screens/WhaleScreen.tsx`
 
-- Functions:
-  - `WhaleScreen`, `initSocket`, `onRefreshAdvisory`
-- Top-level variables:
-  - `accessToken`, `active`, `bootstrap`, `cancelled`, `clearPolling`, `closeSocket`, `connectionText`, `date`, `deduped`, `eventType`, `exists`, `filteredAlerts`, `formatTime`, `formatVnd`, `id`, `isAppActive`, `loadData`, `loadWhaleSnapshot`, `locale`, `matchedValue`, `nextAlert`, `normalizeWhaleAlert`, `normalized`, `onRefresh`, `parsed`, `payload`, `pollingRef`, `response`, `result`, `selectedAdvisories`, `startPolling`, `styles`, `subscription`, `symbol`, `symbolRaw`, `t`, `toNumber`, `trackedSymbolCodes`, `ts`, `ws`, `wsRef`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/services/authApi.ts`
 
-- Functions:
-  - `getMe`, `login`, `logout`, `register`, `restoreSession`
-- Top-level variables:
-  - `accessToken`, `response`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/services/config.ts`
 
@@ -3893,58 +3866,39 @@ Generated at: `2026-05-03 16:00:33`
 
 ### `mobile-app/src/services/http.ts`
 
-- Functions:
-  - `drainRefreshQueue`
-- Top-level variables:
-  - `accessToken`, `authClient`, `isRefreshing`, `newAccessToken`, `originalRequest`, `refreshQueue`, `refreshResponse`, `refreshToken`, `statusCode`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/services/portfolioApi.ts`
 
-- Functions:
-  - `getAllocation`, `getHoldings`, `getPortfolios`, `getSummary`
-- Top-level variables:
-  - `response`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/services/realtime.ts`
 
-- Top-level variables:
-  - `buildRealtimeWebSocketUrl`, `normalizeWsBase`, `trimmed`, `wsBase`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/services/tokenStorage.ts`
 
-- Functions:
-  - `clearTokens`, `getAccessToken`, `getRefreshToken`, `saveAccessToken`, `saveRefreshToken`, `saveTokens`
-- Top-level variables:
-  - `ACCESS_TOKEN_KEY`, `REFRESH_TOKEN_KEY`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/services/transactionApi.ts`
 
-- Functions:
-  - `createTransaction`, `deleteTransaction`, `getSubAccounts`, `getTransactions`, `searchStocks`, `updateTransaction`, `validateStockSymbol`
-- Top-level variables:
-  - `data`, `response`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/services/watchlistApi.ts`
 
-- Functions:
-  - `addTrackedSymbol`, `deleteTrackedSymbol`, `getAggregateWhaleFeed`, `getTrackedSymbols`, `getWatchlistGroups`, `getWhaleAdvisories`, `refreshWhaleAdvisory`
-- Top-level variables:
-  - `query`, `response`, `search`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/store/authStore.ts`
 
-- Top-level variables:
-  - `data`, `fallback`, `firstKey`, `firstValue`, `readApiError`, `result`, `useAuthStore`, `user`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/store/localeStore.ts`
 
-- Top-level variables:
-  - `STORAGE_KEY`, `resolved`, `stored`, `useLocaleStore`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/theme/colors.ts`
 
-- Top-level variables:
-  - `colors`
+- No parseable top-level symbols found
 
 ### `mobile-app/src/types/auth.ts`
 
@@ -3969,6 +3923,13 @@ Generated at: `2026-05-03 16:00:33`
 - Top-level variables:
   - `active`, `styles`
 
+### `packages/mobile/src/i18n/index.ts`
+
+- Functions:
+  - `createTranslator`, `formatNumber`, `formatTime`, `getLocaleTag`
+- Top-level variables:
+  - `LOCALES`, `LOCALE_LABELS`, `LOCALE_TAGS`, `SUPPORTED_LOCALES`, `date`, `dict`, `en`, `node`, `parsed`, `parts`, `result`, `safeValue`, `vi`
+
 ### `packages/mobile/src/index.js`
 
 - No parseable top-level symbols found
@@ -3986,6 +3947,133 @@ Generated at: `2026-05-03 16:00:33`
   - `createMobileRuntimeConfig`, `normalizeBaseUrl`
 - Top-level variables:
   - `API_BASE_URL`, `API_PREFIX`, `DEMO_PASSWORD`, `DEMO_USERNAME`, `WS_BASE_URL`, `apiBaseUrl`, `mobileRuntimeConfig`, `trimmed`, `wsBaseUrl`
+
+### `packages/mobile/src/screens/AuthScreen.tsx`
+
+- Functions:
+  - `AuthScreen`, `fillTestAccount`, `onSubmit`
+- Top-level variables:
+  - `clearMessages`, `errorMessage`, `hasDemoCredentials`, `infoMessage`, `isLoading`, `login`, `normalizedUsername`, `register`, `styles`, `submitLabel`, `success`, `t`
+
+### `packages/mobile/src/screens/DashboardScreen.tsx`
+
+- Functions:
+  - `DashboardScreen`
+- Top-level variables:
+  - `formatPct`, `formatVnd`, `isFirst`, `loadDashboard`, `locale`, `logout`, `num`, `onLogout`, `onOpenProfile`, `onOpenSettings`, `onToggleLanguage`, `parsed`, `plColor`, `portfolioId`, `portfolios`, `setLocale`, `styles`, `t`, `toNumber`, `topAllocation`, `topHoldings`, `user`
+
+### `packages/mobile/src/screens/HomeScreen.tsx`
+
+- Functions:
+  - `HomeScreen`
+- Top-level variables:
+  - `styles`, `t`
+
+### `packages/mobile/src/screens/ProfileScreen.tsx`
+
+- Functions:
+  - `ProfileScreen`
+- Top-level variables:
+  - `locale`, `logout`, `nextLocale`, `setLocale`, `styles`, `t`, `user`
+
+### `packages/mobile/src/screens/TransactionsScreen.tsx`
+
+- Functions:
+  - `TransactionsScreen`, `onDelete`, `onEdit`, `onPickSubAccount`, `onSubmit`, `pickSuggestion`, `resetForm`
+- Top-level variables:
+  - `TRANSACTION_TYPE_LABEL_KEYS`, `TX_TYPES`, `accounts`, `active`, `activeSubAccount`, `bootstrap`, `day`, `debounceRef`, `defaultId`, `emptyForm`, `formatNumber`, `isValidSymbol`, `loadTransactions`, `locale`, `month`, `normalized`, `now`, `parsed`, `payload`, `raw`, `results`, `styles`, `symbol`, `t`, `toDecimal`, `todayString`, `txs`
+
+### `packages/mobile/src/screens/WatchlistScreen.tsx`
+
+- Functions:
+  - `WatchlistScreen`, `onAddSymbol`, `onDeleteSymbol`
+- Top-level variables:
+  - `bootstrap`, `clone`, `direction`, `flashDirection`, `flashTimeoutsRef`, `formatPct`, `loadData`, `nextPrev`, `nextValue`, `num`, `onRefresh`, `parsed`, `positive`, `prefix`, `prevChangePctRef`, `prevValue`, `styles`, `symbol`, `t`, `toNumber`
+
+### `packages/mobile/src/screens/WhaleScreen.tsx`
+
+- Functions:
+  - `WhaleScreen`, `initSocket`, `onRefreshAdvisory`
+- Top-level variables:
+  - `accessToken`, `active`, `bootstrap`, `cancelled`, `clearPolling`, `closeSocket`, `connectionText`, `date`, `deduped`, `eventType`, `exists`, `filteredAlerts`, `formatTime`, `formatVnd`, `id`, `isAppActive`, `loadData`, `loadWhaleSnapshot`, `locale`, `matchedValue`, `nextAlert`, `normalizeWhaleAlert`, `normalized`, `onRefresh`, `parsed`, `payload`, `pollingRef`, `response`, `result`, `selectedAdvisories`, `startPolling`, `styles`, `subscription`, `symbol`, `symbolRaw`, `t`, `toNumber`, `trackedSymbolCodes`, `ts`, `ws`, `wsRef`
+
+### `packages/mobile/src/services/authApi.ts`
+
+- Functions:
+  - `getMe`, `login`, `logout`, `register`, `restoreSession`
+- Top-level variables:
+  - `accessToken`, `response`
+
+### `packages/mobile/src/services/http.ts`
+
+- Functions:
+  - `drainRefreshQueue`
+- Top-level variables:
+  - `accessToken`, `authClient`, `isRefreshing`, `newAccessToken`, `originalRequest`, `refreshQueue`, `refreshResponse`, `refreshToken`, `statusCode`
+
+### `packages/mobile/src/services/portfolioApi.ts`
+
+- Functions:
+  - `getAllocation`, `getHoldings`, `getPortfolios`, `getSummary`
+- Top-level variables:
+  - `response`
+
+### `packages/mobile/src/services/realtime.ts`
+
+- Top-level variables:
+  - `buildRealtimeWebSocketUrl`, `normalizeWsBase`, `trimmed`, `wsBase`
+
+### `packages/mobile/src/services/tokenStorage.ts`
+
+- Functions:
+  - `clearTokens`, `getAccessToken`, `getRefreshToken`, `saveAccessToken`, `saveRefreshToken`, `saveTokens`
+- Top-level variables:
+  - `ACCESS_TOKEN_KEY`, `REFRESH_TOKEN_KEY`
+
+### `packages/mobile/src/services/transactionApi.ts`
+
+- Functions:
+  - `createTransaction`, `deleteTransaction`, `getSubAccounts`, `getTransactions`, `searchStocks`, `updateTransaction`, `validateStockSymbol`
+- Top-level variables:
+  - `data`, `response`
+
+### `packages/mobile/src/services/watchlistApi.ts`
+
+- Functions:
+  - `addTrackedSymbol`, `deleteTrackedSymbol`, `getAggregateWhaleFeed`, `getTrackedSymbols`, `getWatchlistGroups`, `getWhaleAdvisories`, `refreshWhaleAdvisory`
+- Top-level variables:
+  - `query`, `response`, `search`
+
+### `packages/mobile/src/store/authStore.ts`
+
+- Top-level variables:
+  - `data`, `fallback`, `firstKey`, `firstValue`, `readApiError`, `result`, `useAuthStore`, `user`
+
+### `packages/mobile/src/store/localeStore.ts`
+
+- Top-level variables:
+  - `STORAGE_KEY`, `resolved`, `stored`, `useLocaleStore`
+
+### `packages/mobile/src/theme/colors.ts`
+
+- Top-level variables:
+  - `colors`
+
+### `packages/mobile/src/types/auth.ts`
+
+- No parseable top-level symbols found
+
+### `packages/mobile/src/types/portfolio.ts`
+
+- No parseable top-level symbols found
+
+### `packages/mobile/src/types/transaction.ts`
+
+- No parseable top-level symbols found
+
+### `packages/mobile/src/types/watchlist.ts`
+
+- No parseable top-level symbols found
 
 ### `packages/web/src/adapters/core/coreAdapter.js`
 

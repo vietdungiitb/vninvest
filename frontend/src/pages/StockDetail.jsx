@@ -938,7 +938,7 @@ export default function StockDetail() {
   const ability = useAbility();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
-  const canViewAdvancedTab = ability.can('manage', 'all');
+  const canViewAdvancedTab = ability.can('read', 'StockDetailAdvancedTab');
   const [overview, setOverview] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [technical, setTechnical] = useState(null);

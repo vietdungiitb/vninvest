@@ -6,13 +6,14 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from portfolio.models import SystemAISettings, SystemAISettingsAuditLog
+from portfolio.models import AICommandCenterConfig, SystemAISettings, SystemAISettingsAuditLog
 
 
 class SystemAIAdminApiTests(APITestCase):
     URL = '/api/admin-ops/system-ai-settings/'
     TEST_URL = '/api/admin-ops/system-ai-settings/test-connection/'
     AUDIT_URL = '/api/admin-ops/system-ai-settings/audit-logs/'
+    OPERATOR_URL = '/api/core/v1/operator/ai-runtime/'
 
     def setUp(self):
         cache.delete('admin_ops:holistic_governance_delta_thresholds')
@@ -315,6 +316,65 @@ class SystemAIAdminApiTests(APITestCase):
         self.assertTrue(response.data.get('ok'))
         self.assertGreaterEqual(response.data.get('count', 0), 1)
         self.assertIn('results', response.data)
+
+    def test_admin_can_get_operator_ai_runtime_snapshot(self):
+        command_center_cfg = AICommandCenterConfig.objects.create(
+            user=self.admin_user,
+            ai_provider='openai',
+            ai_model='gpt-4o',
+            ai_prompt_config={},
+        )
+        command_center_cfg.set_ai_api_key('sk-command-center-key')
+        command_center_cfg.save(update_fields=['ai_api_key'])
+
+        system_cfg, _ = SystemAISettings.objects.update_or_create(
+            name='default',
+            defaults={
+                'is_active': True,
+                'ai_provider': 'openclaw',
+                'ai_model': '',
+                'allow_env_fallback': True,
+            },
+        )
+        system_cfg.set_ai_api_key('sk-system-key')
+        system_cfg.save(update_fields=['ai_api_key', 'updated_at'])
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(self.OPERATOR_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('object'), 'operator_ai_runtime_snapshot')
+        self.assertIn('generated_at', response.data)
+        self.assertIn('provider_rows', response.data)
+        self.assertIn('effective_policy_bundle', response.data)
+        self.assertIn('rollout_state', response.data)
+
+        rows_by_source = {row['source']: row for row in response.data['provider_rows']}
+        self.assertIn('command_center', rows_by_source)
+        self.assertIn('system', rows_by_source)
+        self.assertTrue(rows_by_source['command_center']['ready'])
+        self.assertTrue(rows_by_source['system']['ready'])
+        self.assertIsNone(rows_by_source['command_center']['warning_code'])
+        self.assertIsNone(rows_by_source['system']['warning_code'])
+
+        policy_bundle = response.data['effective_policy_bundle']
+        self.assertIn('governance_delta_thresholds', policy_bundle)
+        self.assertIn('prefetch_runtime_settings', policy_bundle)
+        self.assertIn('prefetch_time_policy', policy_bundle)
+        self.assertTrue(policy_bundle['effective_ready'])
+        self.assertEqual(policy_bundle['effective_source'], 'command_center')
+
+        rollout_state = response.data['rollout_state']
+        self.assertTrue(rollout_state['ready'])
+        self.assertEqual(rollout_state['source'], 'command_center')
+        self.assertEqual(rollout_state['provider'], 'openai')
+        self.assertEqual(rollout_state['model'], 'gpt-4o')
+
+    def test_operator_ai_runtime_requires_admin_permission(self):
+        self.client.force_authenticate(user=self.normal_user)
+        response = self.client.get(self.OPERATOR_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_can_filter_audit_logs_by_action(self):
         settings_obj = SystemAISettings.objects.create(name='default', is_active=True)
