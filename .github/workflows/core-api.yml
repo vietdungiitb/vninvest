@@ -9,6 +9,12 @@ on:
     branches: [main, enterprise]
     paths:
       - "packages/core/backend/**"
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: "Push Docker image (only applies to enterprise/main)"
+        required: false
+        default: "true"
 
 jobs:
   test:
@@ -63,7 +69,7 @@ jobs:
           DJANGO_ALLOWED_HOSTS: localhost
           CORS_ALLOWED_ORIGINS: http://localhost:3000
           DJANGO_DEBUG: "true"
-        run: python src/manage.py test --keepdb --failfast
+        run: python manage.py test --keepdb --failfast
 
   build:
     name: Build & push Docker image
