@@ -107,7 +107,7 @@ class TestPR2TickRateFieldMapping(TestCase):
         assert mock_dark_flow['components']['tick_rate']['tick_rate_per_min'] == 12.5
 
     @patch('portfolio.ai_advisory_helpers.resolve_ai_runtime_config')
-    @patch('portfolio.ai_advisory_helpers._openclaw_call')
+    @patch('portfolio.openclaw_client._call')
     def test_generate_component_templates_reads_tick_rate_per_min(self, mock_openclaw, mock_resolve_cfg):
         """
         P0 FIX: When _sprint17_generate_component_templates_with_ai processes dark_flow,
