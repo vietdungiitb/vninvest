@@ -1,3 +1,2358 @@
+# ✅ AUDIT FILE LIST (2026-05-04-SFI-DOCS) — SaaS Full Independence (Option B) — Documentation Pack
+
+Files changed (NEW):
+- docs/SAAS_FULL_INDEPENDENCE_HANDOFF_MASTER_20260504.md
+- docs/IMPLEMENTATION_PLAN_SAAS_FULL_INDEPENDENCE_20260504.md
+- docs/TECH_SPEC_SAAS_FULL_INDEPENDENCE_20260504.md
+- docs/TASKBOARD_SAAS_FULL_INDEPENDENCE_20260504.md
+- docs/SAAS_FULL_INDEPENDENCE_TRACEABILITY_MATRIX_20260504.md
+- docs/SAAS_FULL_INDEPENDENCE_SELF_AUDIT_AND_TEST_PROTOCOL_20260504.md
+- docs/SAAS_FULL_INDEPENDENCE_EXECUTION_EVIDENCE_TEMPLATE_20260504.md
+- docs/SAAS_FULL_INDEPENDENCE_CONFIG_OWNERSHIP_MATRIX_20260504.md
+- docs/SAAS_FULL_INDEPENDENCE_CODE_QUALITY_CONSTITUTION_20260504.md
+- docs/RUN_CODE_REVIEW_SAAS_FULL_INDEPENDENCE_20260504.md
+- docs/RUN_INTEGRATION_TESTS_SAAS_FULL_INDEPENDENCE_20260504.md
+- docs/RUN_SPEC_AUDIT_SAAS_FULL_INDEPENDENCE_20260504.md
+
+Files changed (MODIFIED):
+- AGENTS.md (added SaaS Full Independence doc pack to sections 1 & 2; added hard constraints section 9)
+- PROGRESS_DASHBOARD.md (added SaaS Full Independence section)
+
+Validation:
+- PASSED: All 12 documentation files created successfully
+
+SaaS Full Independence (Option B) Progress:
+- Phase B1 (Proxy Gateway): ✅ COMPLETE — evidence: docs/evidence/SFI-B1-EXECUTION-EVIDENCE-20260504.md
+- Phase B2 (Auth Native): ✅ COMPLETE — evidence: docs/evidence/SFI-B2-EXECUTION-EVIDENCE-20260504.md
+- Phase B3 (Market + Realtime Native): ✅ COMPLETE — evidence: docs/evidence/SFI-B3-EXECUTION-EVIDENCE-20260504.md
+- Phase B4 (Portfolio Cutover): ✅ COMPLETE — evidence: docs/evidence/SFI-B4-EXECUTION-EVIDENCE-20260504.md
+- Phase B5 (AI Advisory Native): ✅ COMPLETE — evidence: docs/evidence/SFI-B5-EXECUTION-EVIDENCE-20260504.md
+- Phase B6 (Admin Ops Native): ✅ COMPLETE — evidence: docs/evidence/SFI-B6-EXECUTION-EVIDENCE-20260504.md
+- Phase B7 (WebSocket via Channels): ✅ COMPLETE — evidence: docs/evidence/SFI-B7-EXECUTION-EVIDENCE-20260504.md
+- Phase B8 (Decommission Legacy): ⏳ GATE BLOCKED — requires 3-day parity validation before cutover
+
+SaaS Migration Progress:
+- Phase 0 (Baseline Infra): ✅ COMPLETE
+- Phase 1 (Security Hardening): ✅ COMPLETE
+- Phase 2 (Core Infra Activation): ✅ COMPLETE
+- Phase 3 (Business Logic Migration): ✅ COMPLETE
+- Phase 4 (Frontend Cutover): ✅ COMPLETE
+- Phase 5 (Infrastructure Hardening): ✅ COMPLETE
+- Phase 6 (Legacy Decommission): ⏳ GATES PENDING
+- Phase 7 (Post-Production): ⏳ NOT STARTED
+
+# ✅ AUDIT FILE LIST (2026-05-04-SM-P3) — SM-P3: SaaS Migration Phase 3 — Business Logic Migration
+
+Files changed:
+- packages/core/backend/src/identity_access/models.py (UserProfile)
+- packages/core/backend/src/identity_access/migrations/0002_userprofile.py (NEW)
+- packages/core/backend/src/identity_access/management/commands/migrate_userprofiles_to_core.py (NEW)
+- packages/core/backend/src/signal_intelligence/models.py (OrderFlowEvent)
+- packages/core/backend/src/signal_intelligence/migrations/0002_orderflow_event.py (NEW)
+- packages/core/backend/src/advisory/ (NEW DOMAIN)
+- packages/core/backend/src/user_workspace/ (NEW DOMAIN)
+- packages/core/backend/src/market_data/ (NEW DOMAIN)
+- packages/core/backend/src/vninvest_core/settings.py (3 new apps)
+- packages/core/backend/src/vninvest_core/db_router.py (3 new apps in _CORE_APPS)
+- docs/evidence/SM-P3-EXECUTION-EVIDENCE-20260504.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: All 13 Python files syntax OK
+
+SaaS Migration Progress:
+- Phase 0 (Baseline Infra): ✅ COMPLETE
+- Phase 1 (Security Hardening): ✅ COMPLETE
+- Phase 2 (Core Infra Activation): ✅ COMPLETE
+- Phase 3 (Business Logic Migration): ✅ COMPLETE (models + migrations + management cmds; shadow runs pending)
+- Phase 4 (Frontend Cutover): ✅ COMPLETE (6 new pages, Caddy routing, compat views, frontend build OK)
+- Phase 5 (Infrastructure Hardening): ✅ COMPLETE (PgBouncer, Prometheus/Grafana, Sentry, CI/CD, backup, partitioning, k6)
+- Phase 6 (Legacy Decommission): ⏳ GATES PENDING (7 gates A-G require prod shadow data; runbook + gate check script ready)
+- Phase 7 (Post-Production): ⏳ NOT STARTED (checklist created; starts after Phase 6)
+
+# ✅ AUDIT FILE LIST (2026-05-04-SM-P4) — SM-P4: SaaS Migration Phase 4 — Frontend Cutover
+
+Files changed:
+- packages/core/backend/src/market_data/views.py (NEW)
+- packages/core/backend/src/market_data/urls.py (NEW)
+- packages/core/backend/src/signal_intelligence/serializers.py (MODIFIED)
+- packages/core/backend/src/signal_intelligence/views.py (MODIFIED)
+- packages/core/backend/src/signal_intelligence/urls.py (MODIFIED)
+- packages/core/backend/src/identity_access/views.py (MODIFIED)
+- packages/core/backend/src/identity_access/urls.py (MODIFIED)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED)
+- packages/core/backend/src/vninvest_core/compat_portfolio.py (MODIFIED)
+- packages/web/src/pages/DashboardPage.js (NEW)
+- packages/web/src/pages/WhaleAlertsPage.js (NEW)
+- packages/web/src/pages/StockDetailPage.js (NEW)
+- packages/web/src/pages/PortfoliosPage.js (NEW)
+- packages/web/src/pages/TransactionsPage.js (NEW)
+- packages/web/src/pages/UserSettingsPage.js (NEW)
+- packages/web/src/pages/pageRegistry.js (MODIFIED)
+- packages/web/src/index.js (MODIFIED)
+- infra/caddy/Caddyfile (MODIFIED)
+- docs/evidence/SM-P4-EXECUTION-EVIDENCE-20260504.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: 9 Python files syntax OK
+- PASSED: npm run build (frontend) SUCCESS
+
+SaaS Migration Progress:
+- Phase 0 (Baseline Infra): ✅ COMPLETE
+- Phase 1 (Security Hardening): ✅ COMPLETE
+- Phase 2 (Core Infra Activation): ✅ COMPLETE
+- Phase 3 (Business Logic Migration): ✅ COMPLETE
+- Phase 4 (Frontend Cutover): ✅ COMPLETE
+- Phase 5 (Infrastructure Hardening): 🔄 NEXT
+- Phase 6-7: Not started
+
+# ✅ AUDIT FILE LIST (2026-05-04-SM-P2) — SM-P2: SaaS Migration Phase 2 — Core Infra Activation
+
+Files changed:
+- packages/core/backend/src/vninvest_core/db_router.py (NEW - CoreRouter)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - DATABASE_ROUTERS, beat schedule, CACHES, data_ingest app)
+- packages/core/backend/requirements.txt (MODIFIED - django-celery-beat)
+- packages/core/backend/src/data_ingest/ (NEW - models, tasks, migration)
+- packages/core/backend/src/market_serving/views.py (MODIFIED - Redis cache)
+- docker-compose.dev.yml (MODIFIED - real Celery workers)
+- scripts/smoke_test_core_api.sh (NEW)
+- docs/evidence/SM-P2-EXECUTION-EVIDENCE-20260504.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: All 6 Python files syntax OK
+- PASSED: docker-compose.dev.yml config exit 0
+
+SaaS Migration Progress:
+- Phase 0 (Baseline Infra): ✅ COMPLETE
+- Phase 1 (Security Hardening): ✅ COMPLETE
+- Phase 2 (Core Infra Activation): ✅ COMPLETE
+- Phase 3 (Business Logic Migration): 🔄 NEXT
+- Phase 4-7: Not started
+
+# ✅ AUDIT FILE LIST (2026-05-04-SM-P1) — SM-P1: SaaS Migration Phase 1 — Security Hardening
+
+Files changed:
+- backend/config/settings.py (MODIFIED - SM-P1.1: JWT blacklist + BLACKLIST_AFTER_ROTATION=True)
+- backend/portfolio/models.py (MODIFIED - SM-P1.2: PAT HMAC pepper upgrade)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - SM-P1.3/P1.4: ALLOWED_HOSTS/CORS/SECRET_KEY guards)
+- docs/evidence/SM-P1-EXECUTION-EVIDENCE-20260504.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: All 3 Python files syntax OK (ast.parse)
+- PASSED: All security assertions verified
+
+SaaS Migration Progress:
+- Phase 0 (Baseline Infra): ✅ COMPLETE
+- Phase 1 (Security Hardening): ✅ COMPLETE (SM-P1.1 SM-P1.2 SM-P1.3 SM-P1.4)
+- Phase 2 (Core Infra Activation): 🔄 NEXT
+- Phase 3-7: Not started
+
+# ✅ AUDIT FILE LIST (2026-05-04-SM-P0) — SM-P0: SaaS Migration Phase 0 — Baseline Infra & Materializer Fix
+
+Files changed:
+- packages/core/backend/src/market_serving/materializers.py (MODIFIED - SM-P0.1: rewrote 4 tasks with correct SQL)
+- backend/config/settings.py (MODIFIED - SM-P0.2: added CONN_MAX_AGE=60s)
+- packages/core/backend/Dockerfile (NEW - SM-P0.3: multi-stage immutable prod build)
+- docker-compose.prod.yml (MODIFIED - SM-P0.3: built image, mandatory secret guards, no source mounts)
+- packages/core/backend/entrypoint.sh (NEW - SM-P0.4: api/worker/beat entrypoint)
+- docs/evidence/SM-P0-EXECUTION-EVIDENCE-20260504.md (NEW - full evidence file)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - entry 2026-05-04-SM-P0)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: materializers.py syntax check (ast.parse)
+- PASSED: settings.py syntax check (ast.parse)
+- PASSED: docker-compose.prod.yml config --quiet (with required vars) exit code 0
+- PASSED: docker-compose.prod.yml mandatory guard fires on missing CORE_DB_PASSWORD
+
+SaaS Migration Progress:
+- Phase 0 (Baseline Infra): ✅ COMPLETE (SM-P0.1 SM-P0.2 SM-P0.3 SM-P0.4)
+- Phase 1 (Security Hardening): 🔄 NEXT
+- Phase 2-7: Not started
+
+Residual risks:
+- dark_flow_score=0.0 for Phase 0 SessionFacts; Phase 3 backfill required
+- django_celery_beat missing from requirements.txt; Phase 2 action
+- entrypoint.sh must use LF line endings for Docker build
+
+# ✅ AUDIT FILE LIST (2026-05-04) — SAAS-INFRA: SaaS Infrastructure Isolated Audit
+- docker-compose.dev.yml (MODIFIED - isolated core-api, worker, beat; shared DB/Redis)
+- backend/portfolio/migrations/0067_coretenant.py (VIEWED - schema parity)
+- packages/core/backend/src/market_serving/materializers.py (AUDITED - materialization drift found)
+- docs/audit reports/audit_saas_report_20260504.md (NEW - formal audit report)
+
+Validation:
+- PASSED: `docker compose up -d` -> core-api healthy on port 8100.
+- PASSED: superuser admin created and PAT issued for CoreTenant.
+- FAILED: Materialization sync (skipped) -> portfolio_symbolsnapshot table missing in legacy DB.
+
+Status:
+- SaaS infrastructure isolated and admin-ready.
+- Critical Blocker: Materializer drift against legacy DB schema.
+- Next: Fix materializers and decommission legacy celery workers.
+
+# ✅ AUDIT FILE LIST (2026-05-03cb) — SAAS-16: OpenCore auth compatibility and dashboard proof
+- packages/core/backend/src/identity_access/views_auth.py (MODIFIED - legacy auth payloads, capabilities, user config bridge)
+- packages/core/backend/src/identity_access/compat_urls.py (NEW - /api auth compatibility routes)
+- packages/core/backend/src/vninvest_core/compat_portfolio.py (NEW - in-memory portfolio collection shim)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - include /api compatibility routes)
+- packages/opencore/distribution/nginx-opencore.conf (MODIFIED - /api proxy + Docker DNS TTL refresh)
+- module_tree_full.md (MODIFIED - regenerated after compatibility modules)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03cb)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: `Invoke-RestMethod POST http://127.0.0.1:8088/api/auth/token/` -> token issued for `testuser`.
+- PASSED: `Invoke-RestMethod GET http://127.0.0.1:8088/api/auth/me/` -> 200 with flattened auth payload.
+- PASSED: `Invoke-RestMethod GET http://127.0.0.1:8088/api/core/v1/access/capabilities/` -> 200 with capability snapshot payload.
+- PASSED: `Invoke-RestMethod GET http://127.0.0.1:8088/api/portfolio/userconfig/` -> 200 with vi/dark defaults.
+- PASSED: `Invoke-RestMethod GET http://127.0.0.1:8088/api/portfolio/portfolios/` -> 200 empty list.
+- PASSED: `Push-Location 'C:\Mujoco Projects\vninvest'; & '.\.venv\Scripts\python.exe' 'scripts\ops\generate_module_tree.py'; Pop-Location` -> module tree regenerated (701 modules).
+- PASSED: browser proof at `http://127.0.0.1:8088/dashboard` -> dashboard shell rendered successfully.
+
+Status:
+- SAAS-16 runtime visual test path is now unblocked on the new SaaS topology.
+- Remaining follow-up is broader legacy `/api/portfolio/*` parity and release automation/publication.
+
+# ✅ AUDIT FILE LIST (2026-05-03ca) — SAAS-16: OpenCore community distribution build pipeline wired
+- packages/web/package.json (MODIFIED - build-community script)
+- packages/web/scripts/build-community.mjs (NEW - community build producer)
+- packages/web/dist/community/build-manifest.json (GENERATED - community artifact manifest)
+- packages/opencore/README.md (MODIFIED - package boundary update)
+- packages/opencore/activation/README.md (MODIFIED - activation notes)
+- packages/opencore/activation/bootstrap.json (MODIFIED - build-community step added)
+- packages/opencore/distribution/README.md (MODIFIED - bundle/install notes)
+- packages/opencore/distribution/community-bundle.json (MODIFIED - build_command/build_manifest added)
+- packages/opencore/distribution/install-community.ps1 (MODIFIED - clearer build hint)
+- packages/opencore/distribution/nginx-opencore.conf (NEW - self-host Nginx config)
+- packages/opencore/docker-compose.opencore.yml (MODIFIED - real overlay)
+- packages/opencore/docs-public/README.md (MODIFIED - public-safe doc index)
+- packages/opencore/docs-public/quickstart.md (MODIFIED - build-community command)
+- packages/opencore/docs-public/self-host-install.md (MODIFIED - build-community command)
+- packages/opencore/docs-public/upgrade-path.md (NEW)
+- packages/opencore/docs-public/feature-pricing-catalog.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS16.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-16 build pipeline wired)
+- docs/SAAS_COMPLETION_MASTER_ROADMAP_20260503.md (MODIFIED - SAAS-16 build pipeline wired)
+- docs/SAAS_ARCHITECTURE_GAPS_ASSESSMENT_20260503.md (MODIFIED - gap 8 build pipeline wired)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ca)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: `node ./scripts/build-community.mjs` -> `packages/web/dist/community` written
+- PASSED: JSON parse of `packages/opencore/distribution/community-bundle.json` -> OK
+- PASSED: JSON parse of `packages/opencore/activation/bootstrap.json` -> OK
+- PASSED: PowerShell syntax parse of `packages/opencore/distribution/install-community.ps1` -> OK
+- PASSED: `docker compose -f packages/opencore/docker-compose.opencore.yml config` -> overlay parses successfully
+
+Status:
+- SAAS-16 build pipeline wired at package level; release automation remains in progress.
+
+# ✅ AUDIT FILE LIST (2026-05-03by) — SAAS-15: Legacy decommission final gate (code work + gate audit)
+- packages/core/backend/src/identity_access/views_auth.py (NEW — auth endpoints)
+- packages/core/backend/src/identity_access/urls.py (MODIFIED — 3 auth routes)
+- packages/core/docker-compose.core.yml (MODIFIED — Django/gunicorn/Celery)
+- docker-compose.dev.yml (MODIFIED — core-api sang Django)
+- packages/mobile/src/services/coreApiClient.ts (NEW — typed core API client)
+- packages/mobile/src/services/watchlistApi.ts (MODIFIED — whale paths → coreApiClient)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED — whale endpoint → /core/v1)
+- packages/web/scripts/check-shell.mjs (MODIFIED — URL assertion updated)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS15.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED — SAAS-15 completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED — entry 2026-05-03by)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: `python manage.py check` -> System check 0 issues
+- PASSED: `python manage.py makemigrations --check` -> No changes detected
+- PASSED: `python -m unittest discover -s tests` -> Ran 29 tests, OK
+- PASSED: jest coreApiAdapter.test.js -> 12/12 PASS
+- PASSED: node scripts/check-shell.mjs -> packages/web shell check passed
+- PASSED: node shared/scripts/validate-contracts.mjs -> 9/9 PASS
+
+Status:
+- SAAS-15 ✅ completed (code work + formal gate audit). Decommission BLOCKED — Gate B (LEGACY_DATABASE_URL live-run) + Gate C (portfolio/tx mgmt no core equivalent) unresolved.
+
+# ✅ AUDIT FILE LIST (2026-05-03bx) — SAAS-14: Data-plane materialization + coreApiAdapter
+- packages/core/backend/src/vninvest_core/pagination.py (NEW)
+- packages/core/backend/src/market_serving/materializers.py (NEW)
+- packages/core/backend/src/signal_intelligence/materializers.py (NEW)
+- packages/core/backend/tests/test_saas14_materializers.py (NEW - 6 tests)
+- packages/core/backend/src/vninvest_core/celery.py (MODIFIED - beat schedule)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - legacy_readonly DB)
+- packages/core/backend/src/signal_intelligence/views.py (MODIFIED - cursor pagination)
+- packages/core/backend/src/ops_audit/views.py (MODIFIED - cursor pagination)
+- packages/web/src/adapters/coreApiAdapter.js (NEW)
+- packages/web/src/adapters/coreApiAdapter.test.js (NEW - 12 jest tests)
+- packages/web/jest.config.js (NEW)
+- packages/web/package.json (MODIFIED - jest devDependencies)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS14.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-14 completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - entry 2026-05-03bx)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: `python manage.py check` -> 0 issues
+- PASSED: `python manage.py makemigrations --check` -> No changes detected, exit 0
+- PASSED: `python -m unittest discover -s tests -v` -> Ran 29 tests, OK
+- PASSED: jest coreApiAdapter.test.js -> 12/12 PASS
+
+Status:
+- SAAS-14 ✅ completed. Next: SAAS-15 (docker-compose gate + legacy decommission).
+
+# ✅ AUDIT FILE LIST (2026-05-03bw) — SAAS-13: packages/core Django extraction
+- packages/core/backend/requirements.txt (NEW)
+- packages/core/backend/manage.py (NEW)
+- packages/core/backend/src/vninvest_core/settings.py (NEW)
+- packages/core/backend/src/vninvest_core/urls.py (NEW)
+- packages/core/backend/src/vninvest_core/wsgi.py (NEW)
+- packages/core/backend/src/vninvest_core/celery.py (NEW)
+- packages/core/backend/src/vninvest_core/views_health.py (NEW)
+- packages/core/backend/src/identity_access/ (NEW - models, auth, serializers, views, urls, migration)
+- packages/core/backend/src/market_serving/ (NEW - models, serializers, views, urls, migration)
+- packages/core/backend/src/signal_intelligence/ (NEW - models, serializers, views, urls, migration)
+- packages/core/backend/src/commercial/ (NEW - models, serializers, views, urls, migration)
+- packages/core/backend/src/ops_audit/ (NEW - middleware, models, serializers, views, urls, migration)
+- packages/core/backend/tests/test_identity_access.py (NEW - 9 tests)
+- packages/core/backend/tests/test_market_serving.py (NEW - 3 tests)
+- packages/core/backend/tests/test_ops_audit.py (NEW - 4 tests)
+- packages/core/backend/tests/test_runtime_baseline.py (MODIFIED - +4 Django health tests)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS13.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-13 completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bw)
+- PROGRESS_DASHBOARD.md (MODIFIED - mirror SAAS-13 completion)
+
+Validation:
+- PASSED: `python manage.py check` -> 0 issues
+- PASSED: `python manage.py makemigrations --check` -> No changes detected, exit 0
+- PASSED: `python -m unittest discover -s tests -v` -> Ran 23 tests in 3.167s, OK
+- PASSED: isolation grep -> 0 actual backend.portfolio imports
+
+Status:
+- SAAS-13 ✅ completed. Next: SAAS-14 (data-plane serving models + cursor pagination).
+
+# ✅ AUDIT FILE LIST (2026-05-03bv) — SAAS-12: Shared contract lock
+- shared/api-contracts/symbol-snapshot.contract.json (NEW - stock snapshot contract v1.0.0)
+- shared/api-contracts/session-facts.contract.json (NEW - session facts contract v1.0.0)
+- shared/api-contracts/unified-alert.contract.json (NEW - unified alert contract v1.0.0)
+- shared/api-contracts/whale-feed-aggregate.contract.json (NEW - whale feed aggregate contract v1.0.0)
+- shared/api-contracts/tenant-lifecycle.contract.json (NEW - tenant lifecycle contract v1.0.0)
+- shared/api-contracts/partner-pat.contract.json (NEW - partner PAT contract v1.0.0)
+- shared/scripts/validate-contracts.mjs (NEW - contract validator; 9/9 PASS)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS12.md (NEW - evidence packet)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-12 marked completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bv)
+- PROGRESS_DASHBOARD.md (MODIFIED - mirror SAAS-12 completion)
+
+Validation:
+- PASSED: `node shared/scripts/validate-contracts.mjs` -> Checked: 9, Passed: 9, Failed: 0. Exit code 0.
+
+Status:
+- SAAS-12 ✅ completed. Next: SAAS-13 (packages/core Django extraction).
+
+# ✅ AUDIT FILE LIST (2026-05-03bi)
+- packages/mobile/README.md (MODIFIED - document completed mobile transaction/watchlist surfaces)
+- packages/mobile/src/types/watchlist.ts (NEW - shared watchlist/whale contracts)
+- packages/mobile/src/services/watchlistApi.ts (NEW - shared watchlist/whale API)
+- packages/mobile/src/services/realtime.ts (NEW - shared realtime websocket helper)
+- packages/mobile/src/screens/WatchlistScreen.tsx (NEW - package-owned watchlist screen)
+- packages/mobile/src/screens/WhaleScreen.tsx (NEW - package-owned whale screen)
+- mobile-app/src/screens/TransactionsScreen.tsx (MODIFIED - thin wrapper to package transactions screen)
+- mobile-app/src/screens/WatchlistScreen.tsx (MODIFIED - thin wrapper to package watchlist screen)
+- mobile-app/src/screens/WhaleScreen.tsx (MODIFIED - thin wrapper to package whale screen)
+- mobile-app/src/services/watchlistApi.ts (MODIFIED - thin wrapper to package watchlist API)
+- mobile-app/src/services/realtime.ts (MODIFIED - thin wrapper to package realtime helper)
+- mobile-app/src/types/watchlist.ts (MODIFIED - thin wrapper to package watchlist contracts)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - mark SAAS-11 completed)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11G.md (NEW - final mobile package completion evidence packet)
+- module_tree_full.md (MODIFIED - regenerated after final mobile package migration)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; if ($LASTEXITCODE -eq 0) { Write-Output 'TYPECHECK_OK' } else { exit $LASTEXITCODE }; Pop-Location` -> TypeScript typecheck completed cleanly after the final mobile package migration.
+- PASSED: `get_errors` on `packages/mobile/src/screens/WatchlistScreen.tsx`, `packages/mobile/src/screens/WhaleScreen.tsx`, `packages/mobile/src/services/watchlistApi.ts`, `packages/mobile/src/services/realtime.ts`, `packages/mobile/src/types/watchlist.ts`, `mobile-app/src/screens/TransactionsScreen.tsx`, `mobile-app/src/screens/WatchlistScreen.tsx`, `mobile-app/src/screens/WhaleScreen.tsx`, `mobile-app/src/services/watchlistApi.ts`, `mobile-app/src/services/realtime.ts`, `mobile-app/src/types/watchlist.ts`, and `mobile-app/src/app/AppRoot.tsx` -> no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (639 modules).
+
+Status:
+- SAAS-11 mobile package completion slice is completed; SAAS-12 shared contract lock is next canonical slice.
+
+# ✅ AUDIT FILE LIST (2026-05-03bh)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (MODIFIED - mark playbook deprecated and point to final plan)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add archive entry 2026-05-03bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - mirror archive note)
+
+Validation:
+- PASSED: `git diff --check` after the doc-only archive update.
+
+Status:
+- Continuation playbook is now archival-only; final SaaS plan remains canonical.
+
+# ✅ AUDIT FILE LIST (2026-05-03bw)
+- packages/mobile/README.md (MODIFIED - document home tab entrypoint)
+- packages/mobile/src/i18n/index.ts (MODIFIED - add home tab translation keys)
+- packages/mobile/src/screens/HomeScreen.tsx (NEW - package-owned home tab screen)
+- mobile-app/src/screens/HomeScreen.tsx (MODIFIED - thin wrapper to package home screen)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to cover home screen bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11E.md (NEW - home screen bridge evidence packet)
+- module_tree_full.md (MODIFIED - regenerated after adding home screen bridge)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; if ($LASTEXITCODE -eq 0) { Write-Output 'TYPECHECK_OK' } else { exit $LASTEXITCODE }; Pop-Location` -> TypeScript typecheck completed cleanly after the home screen bridge.
+- PASSED: `get_errors` on `packages/mobile/src/screens/HomeScreen.tsx`, `mobile-app/src/screens/HomeScreen.tsx`, and `packages/mobile/src/i18n/index.ts` -> no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (628 modules).
+
+Status:
+- SAAS-11 home screen bridge slice is in-progress with package-owned home tab entrypoint validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bx)
+- packages/mobile/README.md (MODIFIED - document dashboard tab entrypoint and portfolio surfaces)
+- packages/mobile/src/i18n/index.ts (MODIFIED - add dashboard portfolio fallback key)
+- packages/mobile/src/types/portfolio.ts (NEW - shared portfolio data contracts)
+- packages/mobile/src/services/portfolioApi.ts (NEW - shared portfolio read API)
+- packages/mobile/src/screens/DashboardScreen.tsx (NEW - package-owned dashboard tab screen)
+- mobile-app/src/services/portfolioApi.ts (MODIFIED - thin wrapper to package portfolio API)
+- mobile-app/src/types/portfolio.ts (MODIFIED - thin wrapper to package portfolio types)
+- mobile-app/src/screens/DashboardScreen.tsx (MODIFIED - thin wrapper to package dashboard screen)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to cover dashboard/portfolio bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11F.md (NEW - dashboard/portfolio bridge evidence packet)
+- module_tree_full.md (MODIFIED - regenerated after adding dashboard/portfolio bridge)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; if ($LASTEXITCODE -eq 0) { Write-Output 'TYPECHECK_OK' } else { exit $LASTEXITCODE }; Pop-Location` -> TypeScript typecheck completed cleanly after the dashboard/portfolio bridge.
+- PASSED: `get_errors` on `packages/mobile/src/screens/DashboardScreen.tsx`, `packages/mobile/src/services/portfolioApi.ts`, `packages/mobile/src/types/portfolio.ts`, `mobile-app/src/screens/DashboardScreen.tsx`, `mobile-app/src/services/portfolioApi.ts`, `mobile-app/src/types/portfolio.ts`, and `packages/mobile/src/i18n/index.ts` -> no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (631 modules).
+
+Status:
+- SAAS-11 dashboard/portfolio bridge slice is in-progress with package-owned dashboard tab entrypoint and portfolio read boundary validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bv)
+- packages/mobile/README.md (MODIFIED - document profile tab entrypoint)
+- packages/mobile/src/screens/ProfileScreen.tsx (NEW - package-owned profile tab screen)
+- mobile-app/src/screens/ProfileScreen.tsx (MODIFIED - thin wrapper to package profile screen)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to cover profile screen bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11D.md (NEW - profile screen bridge evidence packet)
+- module_tree_full.md (MODIFIED - regenerated after adding profile screen bridge)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; Pop-Location` -> TypeScript typecheck completed cleanly after the profile screen bridge.
+- PASSED: `get_errors` on `packages/mobile/src/screens/ProfileScreen.tsx`, `mobile-app/src/screens/ProfileScreen.tsx`, and `mobile-app/src/app/AppRoot.tsx` -> no errors found.
+
+Status:
+- SAAS-11 profile screen bridge slice is in-progress with package-owned profile tab entrypoint validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bu)
+- packages/mobile/README.md (MODIFIED - document shared auth surfaces)
+- packages/mobile/src/i18n/index.ts (NEW - shared mobile translations and formatting helpers)
+- packages/mobile/src/theme/colors.ts (NEW - shared mobile color tokens)
+- packages/mobile/src/types/auth.ts (NEW - shared auth type contracts)
+- packages/mobile/src/services/tokenStorage.ts (NEW - shared token persistence)
+- packages/mobile/src/services/http.ts (NEW - shared auth HTTP client)
+- packages/mobile/src/services/authApi.ts (NEW - shared auth API surface)
+- packages/mobile/src/store/authStore.ts (NEW - shared auth store)
+- packages/mobile/src/store/localeStore.ts (NEW - shared locale store)
+- packages/mobile/src/screens/AuthScreen.tsx (NEW - package-owned auth entrypoint)
+- mobile-app/src/i18n/index.ts (MODIFIED - thin wrapper to package i18n)
+- mobile-app/src/theme/colors.ts (MODIFIED - thin wrapper to package colors)
+- mobile-app/src/types/auth.ts (MODIFIED - thin wrapper to package auth types)
+- mobile-app/src/services/tokenStorage.ts (MODIFIED - thin wrapper to package token storage)
+- mobile-app/src/services/http.ts (MODIFIED - thin wrapper to package HTTP client)
+- mobile-app/src/services/authApi.ts (MODIFIED - thin wrapper to package auth API)
+- mobile-app/src/store/authStore.ts (MODIFIED - thin wrapper to package auth store)
+- mobile-app/src/store/localeStore.ts (MODIFIED - thin wrapper to package locale store)
+- mobile-app/src/screens/AuthScreen.tsx (MODIFIED - thin wrapper to package AuthScreen)
+- mobile-app/metro.config.js (MODIFIED - keep sibling package resolution explicit)
+- mobile-app/tsconfig.json (MODIFIED - keep TypeScript resolution aligned with package-track layout)
+- packages/mobile/.gitignore (NEW - ignore local node_modules junction used for validation)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to cover auth/shared-primitives bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11C.md (NEW - auth/shared-primitives bridge evidence packet)
+
+Validation:
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; Pop-Location` -> TypeScript typecheck completed cleanly after the auth/shared-primitives bridge.
+
+Status:
+- SAAS-11 mobile auth/shared-primitives bridge slice is in-progress with package-owned auth/login entrypoint and shared primitives validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bt)
+- packages/mobile/package.json (MODIFIED - add check:mobile-navigation script)
+- packages/mobile/README.md (MODIFIED - document package-owned navigation surfaces)
+- packages/mobile/src/index.js (MODIFIED - re-export navigation helpers)
+- packages/mobile/src/navigation/mobileNavigation.js (NEW - shared mobile navigation catalog)
+- packages/mobile/src/components/MobileBottomTabBar.js (NEW - package-owned bottom navigation shell)
+- packages/mobile/scripts/check-mobile-navigation.mjs (NEW - mobile navigation smoke proof)
+- mobile-app/src/components/BottomTabBar.tsx (MODIFIED - bridge legacy app to package-owned bottom tab shell)
+- mobile-app/src/app/AppRoot.tsx (MODIFIED - use package-owned default active tab)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-11 to include screen/navigation bridge)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11B.md (NEW - mobile screen/navigation bridge evidence packet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bt)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bt)
+- module_tree_full.md (MODIFIED - regenerate after adding the mobile navigation package surfaces)
+
+Validation:
+- PASSED: `Push-Location ./packages/mobile; node ./scripts/check-mobile-navigation.mjs; Pop-Location` -> mobile navigation smoke passed.
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; Pop-Location` -> TypeScript typecheck completed cleanly after the package-owned navigation bridge.
+- PASSED: `Push-Location ./mobile-app; node -e "const config = require('./metro.config.js'); console.log(config.watchFolders[0]);"; Pop-Location` -> Metro config still resolves the sibling `packages/mobile` folder.
+- PASSED: `get_errors` on the touched mobile files returned no errors.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (617 modules).
+
+Status:
+- SAAS-11 mobile screen/navigation bridge slice is in-progress with package-owned tab catalog and bottom navigation shell validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bs)
+- packages/mobile/package.json (MODIFIED - add type module and check:mobile script)
+- packages/mobile/README.md (MODIFIED - document mobile runtime config boundary)
+- packages/mobile/src/runtimeConfig.js (NEW - shared mobile runtime config defaults)
+- packages/mobile/src/index.js (NEW - re-export shared mobile config surface)
+- packages/mobile/scripts/check-mobile-config.mjs (NEW - mobile package smoke proof)
+- mobile-app/src/services/config.ts (MODIFIED - re-export shared package config boundary)
+- mobile-app/metro.config.js (NEW - Metro watch folder bridge for sibling package)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - add SAAS-11 mobile runtime config bridge slice)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS11.md (NEW - mobile runtime config evidence packet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bs)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bs)
+- module_tree_full.md (MODIFIED - regenerate after adding the mobile package bridge)
+
+Validation:
+- PASSED: `Push-Location ./packages/mobile; node ./scripts/check-mobile-config.mjs; Pop-Location` -> mobile package config smoke passed.
+- PASSED: `Push-Location ./mobile-app; npm run typecheck; Pop-Location` -> TypeScript typecheck completed cleanly.
+- PASSED: `Push-Location ./mobile-app; node -e "const config = require('./metro.config.js'); console.log(config.watchFolders[0]);"; Pop-Location` -> Metro config loaded and resolved the sibling `packages/mobile` folder.
+- PASSED: `get_errors` on the touched mobile files returned no errors.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (615 modules).
+
+Status:
+- SAAS-11 mobile runtime config bridge slice is in-progress with package boundary, bridge, and smoke proof validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03br)
+- frontend/src/App.jsx (MODIFIED - cleanup React Router future flags in touched route harness)
+- frontend/src/pages/DashboardShellHost.test.jsx (MODIFIED - cleanup React Router future flags in touched package-shell wrapper test harness)
+- packages/web/package.json (MODIFIED - add check:vip script)
+- packages/web/scripts/check-vip-local-control.mjs (NEW - VIP local control smoke proof)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - mark SAAS-10 completed and close the board)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS10.md (NEW - VIP app completion evidence packet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03br)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03br)
+- module_tree_full.md (MODIFIED - regenerate after adding the VIP smoke script)
+
+Validation:
+- PASSED: `Push-Location ./packages/web; npm run check:vip; Pop-Location` -> VIP local control smoke passed.
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx src/pages/DashboardShellHost.test.jsx; Pop-Location` -> 2 suites passed, 28 tests passed.
+- PASSED: `get_errors` on `frontend/src/App.jsx`, `frontend/src/pages/DashboardShellHost.test.jsx`, and `packages/web/scripts/check-vip-local-control.mjs` -> no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` -> module tree regenerated successfully (612 modules).
+
+Status:
+- SAAS-10 VIP local control slice is completed with route, adapter, smoke proof, and audit sync validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bq)
+- frontend/src/pages/DashboardShellHost.jsx (NEW - package-shell host for dashboard lane)
+- frontend/src/pages/DashboardShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route dashboard use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for dashboard shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - open and close SAAS-09B dashboard slice)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09B.md (NEW - dashboard shell proof packet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bq)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bq)
+- module_tree_full.md (MODIFIED - regenerate after dashboard shell host slice)
+
+Validation:
+- PASSED: focused frontend route tests for dashboard shell host and App route gating.
+- PASSED: dev frontend/backend stack refreshed and containers reported healthy.
+- PASSED: browser proof captured on /dashboard after login as testpro.
+- PASSED: module tree regenerated successfully after the dashboard shell host slice.
+
+Status:
+- SAAS-09B dashboard shell host follow-up is completed with route wrapper tests, browser proof, and audit sync validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bp)
+- frontend/src/pages/PortfoliosShellHost.jsx (NEW - package-shell host for portfolios lane)
+- frontend/src/pages/PortfoliosShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route portfolios use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for portfolios shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md (MODIFIED - add portfolios shell proof)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bp)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bp)
+
+Validation:
+- PASSED: focused frontend route tests for portfolios shell host and App route gating.
+- PASSED: module tree regenerated successfully after the portfolios shell host slice.
+- PASSED: dev frontend/backend stack refreshed and containers reported healthy.
+
+Status:
+- SAAS-09 web package consolidation is completed with support + settings + settings/ai + admin-ops + portfolios + watchlist + transactions route migration and wrapper tests validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bo)
+- frontend/src/pages/AdminOpsShellHost.jsx (NEW - package-shell host for admin ops lane)
+- frontend/src/pages/AdminOpsShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route admin-ops use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for admin ops shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md (MODIFIED - add admin ops shell proof)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bo)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bo)
+
+Validation:
+- PASSED: focused frontend route tests for admin ops shell host and App route gating.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings + settings/ai + admin-ops + watchlist + transactions route migration and wrapper tests validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bn)
+- frontend/src/pages/AICommandCenterShellHost.jsx (NEW - package-shell host for AI command center lane)
+- frontend/src/pages/AICommandCenterShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route settings/ai use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for settings AI shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md (MODIFIED - add settings AI shell proof)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bn)
+- module_tree_full.md (MODIFIED - regenerate after AI command center shell host slice)
+
+Validation:
+- PASSED: focused frontend route tests for settings AI shell host and App route gating.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location`.
+- PASSED: `Push-Location .; docker compose -f ./docker-compose.dev.yml up -d --build frontend backend; Pop-Location`.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings + settings/ai + watchlist + transactions route migration and wrapper tests validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bm)
+- frontend/src/pages/TransactionsShellHost.jsx (NEW - package-shell host for transactions lane)
+- frontend/src/pages/TransactionsShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route transactions use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for transactions shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS09.md (MODIFIED - add transactions shell proof)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bm)
+
+Validation:
+- PASSED: focused frontend route tests for transactions shell host and App route gating.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings + watchlist + transactions route migration and wrapper tests validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bl)
+- frontend/src/pages/SupportShellHost.jsx (NEW - package-shell host for support lane)
+- frontend/src/pages/SupportShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/pages/SettingsShellHost.jsx (NEW - package-shell host for settings lane)
+- frontend/src/pages/SettingsShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/pages/WatchlistShellHost.jsx (NEW - package-shell host for watchlist lane)
+- frontend/src/pages/WatchlistShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route support/settings/watchlist use package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for watchlist shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bl)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bl)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false --runTestsByPath src/App.adminCoreRoutes.test.jsx src/pages/WatchlistShellHost.test.jsx; Pop-Location`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; npm test -- --runInBand --watch=false src/pages/SupportShellHost.test.jsx; Pop-Location`.
+
+Status:
+- SAAS-09 web package consolidation is in-progress with support + settings + watchlist route migration and wrapper tests validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03bk)
+- frontend/src/pages/SupportShellHost.jsx (NEW - package-shell host for support lane)
+- frontend/src/pages/SupportShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/pages/SettingsShellHost.jsx (NEW - package-shell host for settings lane)
+- frontend/src/pages/SettingsShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route support uses package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for support shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - expand SAAS-09 scope)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bk)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bk)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false --runTestsByPath src/App.adminCoreRoutes.test.jsx src/pages/SettingsShellHost.test.jsx; Pop-Location`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; npm test -- --runInBand --watch=false src/pages/SupportShellHost.test.jsx; Pop-Location`.
+
+Status:
+- SAAS-09 support + settings shell route consolidation is implemented and validated with wrapper coverage.
+
+# ✅ AUDIT FILE LIST (2026-05-03bj)
+- frontend/src/pages/SupportShellHost.jsx (NEW - package-shell host for support lane)
+- frontend/src/pages/SupportShellHost.test.jsx (NEW - wrapper regression test)
+- frontend/src/App.jsx (MODIFIED - route support uses package shell host when enabled)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route regression for support shell host)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - complete SAAS-08 and open SAAS-09)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bj)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx; Pop-Location`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; npm test -- --runInBand --watch=false src/pages/SupportShellHost.test.jsx; Pop-Location`.
+
+Status:
+- SAAS-09 support shell route consolidation is implemented and validated.
+- SAAS-09 support shell route consolidation is implemented and validated with wrapper coverage.
+
+# ✅ AUDIT FILE LIST (2026-05-03bi)
+- docker-compose.prod.yml (MODIFIED - wire core package runtime into production topology)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS08.md (MODIFIED - record prod wiring validation)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - extend SAAS-08 scope)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bi)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; docker compose -f ./docker-compose.yml -f ./docker-compose.prod.yml config; Pop-Location`.
+
+Status:
+- SAAS-08 production topology wiring is implemented and validated, but truth migration remains pending.
+
+# ✅ AUDIT FILE LIST (2026-05-03bh)
+- packages/core/backend/tests/__init__.py (NEW - package marker for unittest discovery)
+- packages/core/backend/tests/test_runtime_baseline.py (NEW - core runtime smoke proof tests)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - add SAAS-08 in-progress)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS08.md (NEW - core package smoke proof evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bh)
+- module_tree_full.md (MODIFIED - regenerated after new package-core test files)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:PYTHONPATH = "$PWD/src"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m unittest discover -s tests -p "test_*.py"; Pop-Location`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & ".\.venv\Scripts\python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location`.
+
+Status:
+- SAAS-08 core package smoke proof is implemented and validated, but production adoption wiring remains pending.
+
+# ✅ AUDIT FILE LIST (2026-05-03bg)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_FINAL_PLAN_20260503.md (NEW - canonical go-forward SaaS plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (MODIFIED - route to final SaaS plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - index final plan in route pack)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md (MODIFIED - point post-SAAS-07 route to final plan)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bg)
+
+Validation:
+- Pending: focused markdown validation after patch application.
+
+Status:
+- Final SaaS plan is created and linked from canonical route surfaces.
+
+# ✅ AUDIT FILE LIST (2026-05-03bf)
+- docker-compose.prod.yml (MODIFIED - harden production manifest and package-shell frontend build path)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - add SAAS-07 production manifest hardening slice)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS07.md (NEW - production manifest hardening evidence)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bf)
+
+Validation:
+- PASSED: `docker compose -f ./docker-compose.yml -f ./docker-compose.prod.yml config`.
+
+Status:
+- SAAS-07 production manifest package-shell hardening is implemented and validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03be)
+- backend/portfolio/urls.py (MODIFIED - remove legacy whale-advisory backend alias)
+- backend/portfolio/tests/test_api_routes_whale_advisory_access.py (MODIFIED - retarget to ai-advisory)
+- backend/portfolio/tests/test_api_routes_whale_advisory_refresh.py (MODIFIED - retarget to ai-advisory and seed command-center runtime)
+- backend/portfolio/tests/test_api_routes_whale_advisory_delete_current.py (MODIFIED - retarget to ai-advisory)
+- backend/portfolio/tests/test_api_routes_trading_and_p1_13.py (MODIFIED - retarget list routes to ai-advisory)
+- backend/portfolio/views_ai_advisory_management.py (MODIFIED - align canonical route docstring)
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - align ai-advisory-symbol-stats docstring)
+- backend/portfolio/views_stock_order_flow.py (MODIFIED - align ai-advisory-symbol-stats docstring)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - remove redundant legacy fallback test)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - complete SAAS-06)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS06.md (MODIFIED - final closeout proof)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03be)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+
+Validation:
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_whale_advisory_access portfolio.tests.test_api_routes_whale_advisory_refresh portfolio.tests.test_api_routes_whale_advisory_delete_current portfolio.tests.test_api_routes_trading_and_p1_13 --keepdb; Pop-Location`.
+- PASSED: `Push-Location ./frontend; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx; Pop-Location`.
+- PASSED: `grep_search` on backend/frontend code roots found no `whale-advisory` matches.
+- PASSED: `Push-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py; Pop-Location`.
+
+Status:
+- SAAS-06 is completed; live runtime code surfaces are clean.
+
+# ✅ AUDIT FILE LIST (2026-05-03bd)
+- docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md (MODIFIED - canonicalize advisory route copy)
+- docs/WHALE_ADVISORY_AUTO_GENERATION_ROADMAP.md (MODIFIED - canonicalize visual validation route copy)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - track roadmap docs in SAAS-06 artifact list)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS06.md (MODIFIED - record doc cleanup validation)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-03bd)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bd)
+
+Validation:
+- PASSED: `grep_search` on the advisory roadmap docs showed `/ai-advisory` as the route copy and limited `/whale-advisory` wording to retire notes.
+- PASSED: `get_errors` on touched markdown files returned no errors.
+
+Status:
+- SAAS-06 is still in-progress, but the remaining user-facing advisory route copy is now normalized.
+
+# ✅ AUDIT FILE LIST (2026-05-03bc)
+- frontend/src/App.jsx (MODIFIED - remove legacy whale-advisory alias route)
+- frontend/src/components/ProtectedRoute.jsx (MODIFIED - update stale route comment to canonical ai-advisory)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - add legacy whale-advisory fallback test)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - mark SAAS-06 in-progress)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bc)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+
+Validation:
+- PASSED: `Push-Location ./frontend; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx; Pop-Location`
+- PASSED: `get_errors` on touched frontend files returned no errors.
+- PASSED: `Push-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py; Pop-Location`
+
+Status:
+- SAAS-06 decommission slice is now in-progress with the first legacy alias removed and covered by regression tests.
+
+# ✅ AUDIT FILE LIST (2026-05-03bb)
+- frontend/src/pages/packageShellHostRuntime.test.jsx (MODIFIED - add bearer-token and non-API fetch parity coverage)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - add package shell rollback-gate route fallback coverage)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - close SAAS-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bb)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS05.md (NEW - package shell shadow run evidence)
+
+Validation:
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/pages/packageShellHostRuntime.test.jsx; Pop-Location`
+- PASSED: `Push-Location ./packages/web; npm run check:shell; Pop-Location`
+- PASSED: `Push-Location ./frontend; $env:CI='true'; $env:REACT_APP_ENABLE_PACKAGE_SHELL_HOST='0'; npm test -- --runInBand --watch=false src/App.adminCoreRoutes.test.jsx; Pop-Location`
+- PASSED: `get_errors` on touched frontend test files returned no errors.
+
+Status:
+- SAAS-05 shadow run and rollback gate slice is implemented and validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03ba)
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.js (MODIFIED - preserve materialization/session summary witness)
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.test.js (MODIFIED - assert facts-first/raw fallback preservation)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - thread selected-session witness into chart context and header badge)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - advance board status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ba)
+
+Validation:
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/utils/whaleAnalyticsSnapshotAdapter.test.js; Pop-Location`
+- PASSED: `get_errors` on touched frontend files returned no errors.
+- PASSED: `Push-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py; Pop-Location`
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`
+
+Status:
+- SAAS-04 data-plane facts-first selected-session witness slice is implemented and validated.
+
+# ✅ AUDIT FILE LIST (2026-05-03az)
+- backend/portfolio/views_partner_admin.py (MODIFIED - add plan lifecycle summary to partner tenant snapshot)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - project plan lifecycle into operator snapshots)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - assert partner plan lifecycle projection)
+- backend/portfolio/tests/test_operator_tenant_registry_api.py (MODIFIED - assert operator plan lifecycle projection)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - advance board status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03az)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_partner_admin_api portfolio.tests.test_operator_tenant_registry_api --keepdb --noinput`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py`
+- PASSED: `get_errors` on changed backend files returned no errors.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`
+
+Status:
+- SAAS-03 tenant lifecycle summary parity slice is implemented and test-verified.
+
+# ✅ AUDIT FILE LIST (2026-05-03ay)
+- backend/portfolio/authentication_partner.py (NEW - Bearer PAT authentication)
+- backend/portfolio/models.py (MODIFIED - PAT secret resolver and grace-expiry semantics)
+- backend/portfolio/views_partner_admin.py (MODIFIED - partner PAT auth, audit metadata, and defaults)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - session and machine auth coverage)
+- frontend/src/api/client.js (MODIFIED - default audit_reason for partner PAT writes)
+- module_tree_full.md (MODIFIED - regenerate module tree)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - advance board status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ay)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_partner_admin_api --keepdb --noinput`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py`
+- PASSED: `get_errors` on changed backend/frontend files returned no errors.
+
+Status:
+- SAAS-02 partner machine-auth slice is implemented, validated, and handoff-ready.
+
+# ✅ AUDIT FILE LIST (2026-05-03ax)
+- backend/portfolio/auth_views.py (MODIFIED - bump capability snapshot version)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert snapshot version in access-capabilities tests)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add snapshot_version to package stub)
+- shared/api-contracts/capability-bootstrap.contract.json (MODIFIED - permit snapshot_version in contract)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - advance SAAS-00/SAAS-01 status to completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ax)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb --noinput`
+
+Status:
+- SAAS-01 access plane versioning slice is implemented and test-verified.
+
+# ✅ AUDIT FILE LIST (2026-05-03aw)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_HANDOFF_MASTER_20260503.md (NEW - SaaS cutover handoff master)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_PLAN_20260503.md (NEW - SaaS cutover execution plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (NEW - SaaS cutover taskboard)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TRACEABILITY_MATRIX_20260503.md (NEW - SaaS cutover traceability matrix)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260503.md (NEW - SaaS cutover self-audit protocol)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260503.md (NEW - SaaS cutover evidence template)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (MODIFIED - redirect next route to SaaS board)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add SaaS cutover route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add SaaS cutover route links)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add SaaS route pointer)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aw)
+
+Validation:
+- PASSED: read-back and grep_search cross-check confirmed the SaaS route, decommission gate, and audit obligations are present across the new SaaS pack and linked control docs.
+
+Status:
+- SaaS cutover program docs are now discoverable from the current-code handoff route and the next active board is the new SaaS taskboard.
+
+# ✅ AUDIT FILE LIST (2026-05-03av)
+# ✅ AUDIT FILE LIST (2026-05-03au)
+- backend/portfolio/views_dashboard_risk.py (NEW - dashboard aggregated risk snapshot API)
+- backend/portfolio/views.py (MODIFIED - export dashboard aggregated risk API)
+- backend/config/urls.py (MODIFIED - register dashboard aggregated risk route)
+- backend/portfolio/tests/test_dashboard_aggregated_risk_api.py (NEW - focused dashboard risk API test)
+- TODO.md (MODIFIED - mark 3.1 complete and advance current phase)
+- DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md (MODIFIED - sync backend aggregation note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03av)
+
+Validation:
+- Pending: focused backend test run after patch application.
+
+# ✅ AUDIT FILE LIST (2026-05-03au)
+- frontend/src/hooks/usePersistentAlertState.js (MODIFIED - migrate to alert_sound storage key)
+- frontend/src/hooks/usePersistentAlertState.test.js (NEW - migration/toggle test)
+- TODO.md (MODIFIED - mark 2.2 complete and advance current phase)
+- DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md (MODIFIED - sync phase-2 note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03au)
+
+Validation:
+- PASSED: `Push-Location frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/hooks/usePersistentAlertState.test.js; Pop-Location` => 1 suite passed.
+
+# ✅ AUDIT FILE LIST (2026-05-03at)
+- frontend/src/components/AlertBadge.jsx (NEW - unified clickable whale alert badge)
+- frontend/src/components/AlertBadge.test.jsx (NEW - focused badge render test)
+- frontend/src/hooks/useDashboardAlerts.js (NEW - dashboard alert filter/priority hook)
+- frontend/src/hooks/useDashboardAlerts.test.js (NEW - filter/priority hook test)
+- frontend/src/components/HoldingsTable.jsx (MODIFIED - render reusable alert badge)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - source whale badge map from dashboard hook)
+- TODO.md (MODIFIED - mark 2.1 complete and advance current phase)
+- DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md (MODIFIED - sync phase-2 note)
+
+Validation:
+- PASSED: `Push-Location frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/components/AlertBadge.test.jsx src/hooks/useDashboardAlerts.test.js; Pop-Location` => 2 suites passed.
+
+# ✅ AUDIT FILE LIST (2026-05-03as)
+- frontend/src/components/DashboardRealtimePanel.jsx (MODIFIED - add observability icon popover and mounted guard)
+- frontend/src/components/DashboardRealtimePanel.test.jsx (MODIFIED - add popover interaction coverage)
+- TODO.md (MODIFIED - mark 1.3 complete and advance current phase)
+- DASHBOARD_AUDIT_REPORT_AND_IMPROVEMENT_PLAN.md (MODIFIED - sync observability popover note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03as)
+
+Validation:
+- PASSED: `Push-Location frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/components/DashboardRealtimePanel.test.jsx; Pop-Location` => 2 passed.
+
+# ✅ AUDIT FILE LIST (2026-05-03ar)
+- frontend/src/components/StickyAlertBar.jsx (NEW - sticky top-3 alert bar component)
+- frontend/src/components/StickyAlertBar.test.jsx (NEW - focused sticky/top-3 render test)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - insert sticky alert bar above dashboard body)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - insert sticky alert bar above workspace grid)
+- TODO.md (MODIFIED - mark 1.2 complete and advance current phase)
+- module_tree_full.md (MODIFIED - regenerate after frontend code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ar)
+
+Validation:
+- PASSED: `Push-Location frontend; $env:CI='true'; npm test -- --runInBand --watch=false src/components/StickyAlertBar.test.jsx; Pop-Location` => sticky bar test passed.
+
+# ✅ AUDIT FILE LIST (2026-05-03aq)
+- frontend/src/api/client.js (MODIFIED - add core operator jobs/audit helpers)
+- frontend/src/pages/AdminCoreJobs.jsx (NEW - dedicated operator jobs page)
+- frontend/src/pages/AdminCoreJobs.test.jsx (NEW - focused jobs page tests)
+- frontend/src/pages/AdminCoreAuditTrace.jsx (NEW - dedicated operator audit trace page)
+- frontend/src/pages/AdminCoreAuditTrace.test.jsx (NEW - focused audit trace page tests)
+- frontend/src/pages/AdminCoreOverview.jsx (MODIFIED - add jobs/audit deep links)
+- frontend/src/pages/AdminCoreOverview.test.jsx (MODIFIED - navigation assertions for jobs/audit links)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/runtime/jobs` and `/admin/core/audit/requests` now render dedicated pages)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for jobs/audit pages)
+- backend/portfolio/permissions.py (MODIFIED - add CoreJobOps/CoreAuditTrace abilities)
+- backend/portfolio/auth_views.py (MODIFIED - central operator snapshot recognizes new abilities)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - ability snapshot assertions)
+- module_tree_full.md (MODIFIED - regenerated after frontend/backend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-07 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - close admin continuation note)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreJobs.test.jsx src/pages/AdminCoreAuditTrace.test.jsx src/pages/AdminCoreOverview.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `4 passed, 17 total`.
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb; Pop-Location` => `10 passed`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 585 modules.
+
+Status:
+- `CA-07` da hoan tat. `/admin/core/runtime/jobs` va `/admin/core/audit/requests` now render dedicated current-code read-only pages, va board admin hien khong con slice mo.
+
+# ✅ AUDIT FILE LIST (2026-05-03ap)
+- frontend/src/pages/AdminCoreUsage.jsx (NEW - dedicated meter usage/quota page)
+- frontend/src/pages/AdminCoreBilling.jsx (NEW - dedicated billing/subscription page)
+- frontend/src/pages/AdminCoreUsage.test.jsx (NEW - focused usage page tests)
+- frontend/src/pages/AdminCoreBilling.test.jsx (NEW - focused billing page tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down links to usage/billing routes)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertions for usage/billing routes)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/usage` and `/billing` now render dedicated pages)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for usage/billing pages)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-06 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-07)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreUsage.test.jsx src/pages/AdminCoreBilling.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 581 modules.
+
+Status:
+- `CA-06` da hoan tat. `/admin/core/tenants/:tenantId/usage` and `/admin/core/tenants/:tenantId/billing` now render dedicated current-code usage/billing pages, and the next open admin slice is `CA-07`.
+
+# ✅ AUDIT FILE LIST (2026-05-03ao)
+- frontend/src/api/client.js (MODIFIED - add core operator tenant PAT helper)
+- frontend/src/pages/AdminCorePATs.jsx (NEW - dedicated operator PAT page)
+- frontend/src/pages/AdminCorePATs.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to PAT route)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for PAT route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/pats` now renders AdminCorePATs)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for PAT page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-05 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCorePATs.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `12 passed, 12 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 577 modules.
+
+Status:
+- `CA-05` da hoan tat. `/admin/core/tenants/:tenantId/pats` now renders a dedicated current-code PAT page with read-first gating, and the next open admin slice is `CA-06`.
+
+# ✅ AUDIT FILE LIST (2026-05-03an)
+- frontend/src/api/client.js (MODIFIED - add core operator tenant service-account helper)
+- frontend/src/pages/AdminCoreServiceAccounts.jsx (NEW - dedicated operator service-account page)
+- frontend/src/pages/AdminCoreServiceAccounts.test.jsx (NEW - focused list/detail/gating tests)
+- frontend/src/pages/AdminCoreTenants.jsx (MODIFIED - drill-down link to service accounts)
+- frontend/src/pages/AdminCoreTenants.test.jsx (MODIFIED - navigation assertion for service-account route)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants/:tenantId/service-accounts` now renders AdminCoreServiceAccounts)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for service-account page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-04 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreServiceAccounts.test.jsx src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `11 passed, 11 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 575 modules.
+
+Status:
+- `CA-04` da hoan tat. `/admin/core/tenants/:tenantId/service-accounts` now renders a dedicated current-code service-account page with read-first gating, and the next open admin slice is `CA-05`.
+
+# ✅ AUDIT FILE LIST (2026-05-03am)
+- frontend/src/api/client.js (MODIFIED - add core operator tenants/detail helpers)
+- frontend/src/pages/AdminCoreTenants.jsx (NEW - dedicated tenant registry/detail page)
+- frontend/src/pages/AdminCoreTenants.test.jsx (NEW - focused registry/detail render tests)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/tenants` and `/admin/core/tenants/:tenantId` now render AdminCoreTenants)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for tenant registry/detail pages)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-03 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-04)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreTenants.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `2 passed, 8 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 573 modules.
+
+Status:
+- `CA-03` da hoan tat. `/admin/core/tenants` and `/admin/core/tenants/:tenantId` now render dedicated current-code registry/detail pages and the next open admin slice is `CA-04`.
+
+# ✅ AUDIT FILE LIST (2026-05-03al)
+- frontend/src/api/client.js (MODIFIED - add core operator overview/health helpers)
+- frontend/src/pages/AdminCoreOverview.jsx (NEW - dedicated platform overview/runtime health page)
+- frontend/src/pages/AdminCoreOverview.test.jsx (NEW - focused overview/health render test)
+- frontend/src/App.jsx (MODIFIED - route `/admin/core/overview` now renders AdminCoreOverview)
+- frontend/src/App.adminCoreRoutes.test.jsx (MODIFIED - route-group expectations for dedicated overview page)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-02 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - advance continuation route note to CA-03)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/AdminCoreOverview.test.jsx src/App.adminCoreRoutes.test.jsx; Pop-Location` => `2 passed, 5 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 571 modules.
+
+Status:
+- `CA-02` da hoan tat. `/admin/core/overview` now renders a dedicated current-code overview page and the next open admin slice is `CA-03`.
+
+# ✅ AUDIT FILE LIST (2026-05-03ak)
+- frontend/src/App.jsx (MODIFIED - add admin core route group shell and guarded routes)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - switch special surface link to canonical admin core route)
+- frontend/src/pages/AdminOps.test.jsx (MODIFIED - expect canonical admin core crawl-control link)
+- frontend/src/App.adminCoreRoutes.test.jsx (NEW - route-group guard and redirect tests)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm test -- --runInBand --watch=false --runTestsByPath src/App.adminCoreRoutes.test.jsx src/pages/AdminOps.test.jsx; Pop-Location` => `2 passed, 5 total`.
+- PASSED: `& ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with 569 modules.
+
+Status:
+- `CA-01` da hoan tat. Route group `/admin/core/*` now exists with guards, and next open admin slice is `CA-02`.
+
+# ✅ AUDIT FILE LIST (2026-05-03aj)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add explicit package cutover readiness gate matrix)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add package migration plan to control docs pack)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-03 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search`/read-back xac nhan package migration plan da co gate matrix ro rang cho parity, validation, rollback, route coverage, runtime ownership va approval.
+
+Status:
+- `PKG-03` da hoan tat. Package-track cutover readiness now co explicit gate matrix va code-team continuation route can move sang `CA-01` theo playbook.
+
+# ✅ AUDIT FILE LIST (2026-05-03ai)
+- frontend/src/pages/packageShellHostRuntime.test.jsx (NEW - package shell host parity proofs)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm test -- --runInBand --watch=false --runTestsByPath src/pages/packageShellHostRuntime.test.jsx; Pop-Location` => `3 passed, 3 total`.
+
+Status:
+- `PKG-02` da hoan tat. Package-shell host parity proofs now co machine-readable coverage cho loader overlay, query carry-over va shared env/fetch wiring; next slice recommended la `PKG-03`.
+
+# ✅ AUDIT FILE LIST (2026-05-03ah)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - switch session endpoint to auth/me wrapper path)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add auth/me route aliases for session payload)
+- packages/web/scripts/check-shell.mjs (MODIFIED - lock core wrapper-style session endpoint)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PKG-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\packages\web; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: Python smoke import against `packages/core/backend/src/vninvest_core/api_stub.py` verified `/auth/me` and `/core/v1/auth/me` aliases and stable session fields.
+- PASSED: `get_errors` clean on the touched JS and Python files.
+
+Status:
+- `PKG-01` da hoan tat. Package-core session lane nay gio khop current-code wrapper naming hon, trong khi alias cu van giu compat cho lane baseline.
+
+# ✅ AUDIT FILE LIST (2026-05-03ag)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CODE_TEAM_CONTINUATION_PLAYBOOK_20260503.md (NEW - code-team continuation route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (MODIFIED - add playbook reference and continuation route)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add playbook link)
+- docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add Lane C and audit gates)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - add continuation route section)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add HND-01 row)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (MODIFIED - add continuation route and risk note)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (MODIFIED - add playbook audit checklist)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` xac nhan playbook link xuat hien trong master index, handoff master va evidence template.
+
+Status:
+- Code-team continuation route da duoc them vao docs control pack; next recommended slice la `PKG-01`.
+
+# ✅ AUDIT FILE LIST (2026-05-03af)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (MODIFIED - add migration order section)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add migration order cross-reference)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DATA-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `git diff --stat` tren storage strategy va freeze checklist cho thay dung scope thay doi.
+
+Status:
+- `DATA-02` da hoan tat. Storage strategy now has the canonical migration/backfill/rollback order; freeze checklist chỉ cross-reference.
+
+# ✅ AUDIT FILE LIST (2026-05-03ae)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (MODIFIED - add canonical resource matrix)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - add matrix cross-reference)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add matrix cross-reference)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DATA-01 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `git diff --stat` tren 3 file matrix cap nhat cho thay dung scope thay doi.
+
+Status:
+- `DATA-01` da hoan tat. `ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md` la canonical matrix; contract pack va freeze checklist chi cross-reference de giu thanh phan current-code va target-state khong bi tron.
+
+# ✅ AUDIT FILE LIST (2026-05-03ad)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-03 complete)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - update tenant summary mapping)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - update tenant-admin capability inventory)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - update live wrapper route posture)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - update tenant route freeze posture)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - mark partner tenant route live)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: spot check with grep confirmed live tenant route strings in updated docs.
+
+Status:
+- `PART-03` da hoan tat. Tenant-admin docs now reflect live wrapper route `GET /api/core/v1/partner/tenant/` va target-state owner path `GET /core/v1/partner/tenant`.
+
+# ✅ AUDIT FILE LIST (2026-05-03ac)
+- frontend/src/api/client.js (MODIFIED - add coreRequestId response metadata and tenant summary helper)
+- module_tree_full.md (MODIFIED - regenerated after frontend code changes)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => `Compiled successfully`.
+
+Status:
+- `PART-02` da hoan tat. Frontend partner client now co `getTenantSummary()` va `coreRequestId` metadata cho response/error handling.
+
+# ✅ AUDIT FILE LIST (2026-05-03ab)
+- backend/portfolio/views_partner_admin.py (MODIFIED - add partner tenant summary wrapper)
+- backend/config/urls.py (MODIFIED - register partner tenant route)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - add tenant summary route test)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - mark partner tenant route live)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - update tenant current-code freeze posture)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - update tenant route freeze posture)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - update Tenant Home API mapping)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark PART-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_partner_admin_api --keepdb; Pop-Location` => `Ran 5 tests ... OK`.
+
+Status:
+- `PART-01` da hoan tat. Tenant Home da co current live wrapper route `GET /api/core/v1/partner/tenant/`.
+
+# ✅ AUDIT FILE LIST (2026-05-03aa)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-05 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - add AI Command Center UI naming note)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - add AI Command Center UI naming note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_system_ai_admin_api --keepdb; Pop-Location` => `Ran 20 tests ... OK`.
+
+Status:
+- `OPS-05` da hoan tat. Operator AI runtime route, test coverage va AI Command Center UI naming da khop nhau trong current-code truth.
+
+# ✅ AUDIT FILE LIST (2026-05-02bq)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator jobs and audit trace wrappers)
+- backend/portfolio/views.py (MODIFIED - export operator jobs and audit trace views)
+- backend/config/urls.py (MODIFIED - register operator jobs and audit routes)
+- backend/portfolio/tests/test_operator_jobs_audit_api.py (NEW - focused operator jobs and audit trace tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-04 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - update current-code reality check)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - update current-code reality check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_operator_jobs_audit_api.py`.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_jobs_audit_api --keepdb; Pop-Location` xanh.
+
+Status:
+- `OPS-04` da hoan tat. Operator jobs table va audit trace routes da live; backlog tiep theo la `OPS-05`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bp)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator tenant registry/detail and principal list projections)
+- backend/portfolio/views.py (MODIFIED - export operator tenant/principal views)
+- backend/config/urls.py (MODIFIED - register operator tenant/principal routes)
+- backend/portfolio/tests/test_operator_tenant_registry_api.py (NEW - focused admin, registry and principal projection tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-02 and OPS-03 complete)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - update current-code reality check)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - update current-code reality check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bp)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_tenant_registry_api --keepdb; Pop-Location` xanh.
+- PASSED: live runtime probe via `manage.py shell` xac nhan operator tenant/principal routes tra payload JSON dung shape.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` rebuild/restart backend thanh cong.
+
+Status:
+- `OPS-02` va `OPS-03` da hoan tat. Operator tenant registry/detail va service-account/PAT projections da live; backlog tiep theo la `OPS-04`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bo)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - add operator overview/health read projections)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/operator/overview/` and `/api/core/v1/operator/health/`)
+- backend/portfolio/views.py (MODIFIED - export operator overview/health views)
+- backend/portfolio/tests/test_operator_admin_runtime_api.py (NEW - focused admin access and snapshot structure tests)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark OPS-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bo)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_operator_admin_runtime_api --keepdb; Pop-Location` xanh.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend` rebuild/restart backend thanh cong.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md`.
+
+Status:
+- `OPS-01` da hoan tat. Operator overview/health now la thin read projection layer tren current runtime truth; backlog tiep theo la `OPS-02`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bn)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - replace manage-all wildcard with explicit package capabilities)
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - remove wildcard subject all from subject filtering)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add regression assertions for explicit capabilities)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-03 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./packages/web; npm run check:shell; Pop-Location` thanh cong.
+- PASSED: `& ".\.venv\Scripts\python.exe" -m py_compile packages/core/backend/src/vninvest_core/api_stub.py` thanh cong.
+
+Status:
+- `ACC-03` da hoan tat. Package-track wildcard fallback da duoc lo bo; next lane work con lai la parity/hardening khac neu can.
+
+# ✅ AUDIT FILE LIST (2026-05-02bm)
+- frontend/src/api/auth.js (MODIFIED - add capability snapshot helper)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - consume capability snapshot in auth bootstrap)
+- frontend/src/components/TopNav.jsx (MODIFIED - prefer capability snapshot navigation hints)
+- frontend/src/components/Sidebar.jsx (MODIFIED - prefer capability snapshot navigation hints)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - mark frontend cutover complete)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - mark CA-00 complete)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-02 complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` thanh cong.
+- PASSED: browser proof tren `/dashboard` xac nhan tenant/admin nav rendering dung sau cutover capability snapshot.
+- PASSED: `read_page`/`get_errors` cho docs/taskboards lien quan clean.
+
+Status:
+- `ACC-02` da hoan tat. Backlog tiep theo trong lane nay la `ACC-03` de lo wildcard fallback package-track.
+
+# ✅ AUDIT FILE LIST (2026-05-02bl)
+- backend/portfolio/auth_views.py (MODIFIED - add current-code capability snapshot wrapper and auth bootstrap helper reuse)
+- backend/config/urls.py (MODIFIED - expose `/api/core/v1/access/capabilities/`)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - add tenant/operator focused tests for the new capability route)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - document live wrapper route and current wrapper semantics)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - update CA-00 partial state and add implementation note)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark ACC-01 complete)
+- module_tree_full.md (MODIFIED - regenerated after backend code changes, total modules 564)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: focused Django suite `portfolio.tests.test_api_routes_auth_profile --keepdb` xanh ca truoc va sau doc sync (`Ran 10 tests ... OK`).
+- PASSED: backend runtime rebuilt qua `docker compose -f ./docker-compose.dev.yml up -d --build backend`; container `vninvest-dev-backend` len `healthy`.
+- PASSED: runtime proxy proof qua `http://127.0.0.1/api/core/v1/access/capabilities/` voi user `testpro` tra `capability_snapshot` hop le, tenant surface enabled va wildcard bridge disabled.
+- PASSED: `get_errors` clean tren code files va docs/taskboards vua cap nhat.
+- PASSED: `module_tree_full.md` duoc regenerate thanh cong sau code change.
+
+Status:
+- `ACC-01` da hoan tat. Backlog tu nhien tiep theo la `ACC-02` de frontend bat dau doc wrapper route moi va can bang route/nav gating theo capability snapshot.
+
+# ✅ AUDIT FILE LIST (2026-05-02bk)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - add current/live vs target-state interpretation and live route inventory)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - mark operator screen family as target-state and live tenant/admin surfaces as implemented-now)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - replace outdated manage-all assumption with explicit current ability inventory)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - document `/api/auth/me/` as current bootstrap and map to future capability snapshot)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - update CA slice states to match current code)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - mark most operator routes as backlog and ai-runtime wrapper as live)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (MODIFIED - mark only operator ai-runtime route as implemented-now)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (MODIFIED - document live partner self-service routes and target-state machine-auth/data-plane lanes)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (MODIFIED - add per-resource current-code freeze posture)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add current boundary reality for legacy runtime and package-track coexistence)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (MODIFIED - add current storage reality snapshot)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (MODIFIED - add current materialized model snapshot vs target-state)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (MODIFIED - add current freeze snapshot and correct route/auth semantics)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (MODIFIED - mark DOC-04, DOC-05, DOC-06 complete)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (MODIFIED - refresh positive impact and residual risks after doc-family completion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bk)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren toan bo 15 docs vua realign/cap nhat trong dot nay.
+- PASSED: `grep_search` xac nhan nhom Access/Admin docs da ghi ro current bootstrap `/api/auth/me/`, live tenant/admin routes va explicit abilities thay cho `manage all`.
+- PASSED: `grep_search` xac nhan nhom Operator/Partner/Core contract docs da ghi ro auth `human session/JWT`, `GET /api/core/v1/operator/ai-runtime/` la live, `GET /core/v1/partner/tenant` va data-plane partner APIs la target-state.
+- PASSED: `grep_search` xac nhan nhom Resource/Schema docs da co implemented-vs-target snapshots cho `CoreTenant`, `CoreServiceAccount`, `CorePATCredential` va object backlog.
+- PASSED: `get_errors` clean va `grep_search` confirm tren current-code taskboard + handoff audit report sau khi danh dau xong `DOC-04`, `DOC-05`, `DOC-06`.
+
+Status:
+- Current-code handoff pack nay gio da day du o mat docs. Cac muc con mo cua chuong trinh chi con la code backlog `ACC-*`, `OPS-*`, `PART-*`, `DATA-*`, `PKG-*`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bj)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - rewrite current execution baseline around actual legacy + package-track repo state)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add current-code execution control entry points and section `PHAN 0`)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_MASTER_20260502.md (NEW - current-code handoff master)
+- docs/IMPLEMENTATION_PLAN_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (NEW - execution plan for docs realignment and code backlog)
+- docs/TASKBOARD_ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_REALIGNMENT_20260502.md (NEW - live execution taskboard)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_TRACEABILITY_MATRIX_20260502.md (NEW - requirement/slice traceability)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (NEW - internal audit and validation protocol)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (NEW - slice evidence template)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_CURRENT_CODE_HANDOFF_AUDIT_REPORT_20260502.md (NEW - handoff audit report)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` xac nhan rebaseline moi da ghi ro `packages/`, `shared/`, `buildTarget.js`, package-track wildcard fallback va sequencing `Phase 1`.
+- PASSED: `get_errors` clean tren rebaseline va 8 docs control moi/cap nhat cua handoff pack.
+- PASSED: `grep_search` xac nhan master index da tro dung sang handoff master, implementation plan, taskboard, traceability, self-audit va evidence template moi.
+- PASSED: `grep_search` xac nhan traceability matrix va taskboard co chung task IDs chinh `DOC-01`, `ACC-01`, `OPS-01`, `PART-01`, `DATA-01`, `PKG-01`.
+- PASSED: read review tren master index xac nhan `PHAN 0` da duoc chen vao truoc `PHAN 1A` va current-code execution control docs da tro thanh entry point chinh.
+
+# ✅ AUDIT FILE LIST (2026-05-02bi)
+- frontend/src/components/HoldingsTable.jsx (MODIFIED - whale badge + row glow for recent whale alerts)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - 5-minute whale alert map from realtime feed)
+- TODO.md (MODIFIED - mark 1.1 done and advance current phase to 1.2)
+- module_tree_full.md (MODIFIED - regenerated after dashboard badge slice, total modules 564)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/components/HoldingsTable.jsx` va `frontend/src/pages/LegacyDashboard.jsx` sau khi them whale badge map.
+- PASSED: `npm run build` trong `frontend` thanh cong voi HoldingsTable whale badge update.
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` refresh dev stack thanh cong; backend va frontend healthy.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerate thanh cong `module_tree_full.md` voi tong 564 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02bh)
+- backend/portfolio/models.py (MODIFIED - add CoreTenant canonical registry and align tenant-scoped primitives)
+- backend/portfolio/partner_tenant_context.py (MODIFIED - resolve tenant context through CoreTenant)
+- backend/portfolio/migrations/0067_coretenant.py (NEW - create canonical tenant registry)
+- backend/portfolio/migrations/0068_rename_portfolio_c_status_4cc731_idx_portfolio_c_status_3f2e9e_idx.py (NEW - clean CoreTenant index-name drift)
+- backend/portfolio/permissions.py (MODIFIED - replace manage all bridge with explicit admin abilities)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert explicit admin abilities and no manage all)
+- backend/portfolio/tests/test_partner_admin_api.py (MODIFIED - keep tenant contract stable under canonical registry)
+- frontend/src/App.jsx (MODIFIED - explicit protected routes for admin surfaces)
+- frontend/src/components/TopNav.jsx (MODIFIED - explicit admin/tenant nav gating)
+- frontend/src/components/Sidebar.jsx (MODIFIED - explicit tenant nav gating)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - advanced tab gate uses explicit ability)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - tenant home shortcuts use explicit abilities)
+- frontend/src/pages/admin/tenant/TenantCapabilities.jsx (MODIFIED - tenant capability summary)
+- frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx (MODIFIED - tenant service account management)
+- frontend/src/pages/admin/tenant/TenantPATs.jsx (MODIFIED - tenant PAT lifecycle)
+- frontend/src/pages/admin/tenant/TenantUsage.jsx (MODIFIED - tenant usage/quota surface)
+- frontend/src/pages/admin/tenant/TenantBilling.jsx (MODIFIED - tenant billing/invoice surface)
+- frontend/src/api/client.js (MODIFIED - tenant partner API client methods and idempotency keys)
+- frontend/src/i18n/vi.js (MODIFIED - Vietnamese copy for tenant surfaces)
+- frontend/src/i18n/en.js (MODIFIED - English copy for tenant surfaces)
+- module_tree_full.md (MODIFIED - regenerated after slice, total modules 564)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-12 completion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` green, explicit admin abilities present and manage all absent.
+- PASSED: `manage.py test portfolio.tests.test_partner_admin_api --keepdb` green, tenant contract stable under canonical registry.
+- PASSED: `npm run build` trong `frontend` thanh cong.
+- PASSED: `manage.py makemigrations portfolio --check --dry-run` xanh sau khi them 0068.
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` refresh thanh cong; backend va frontend healthy.
+- PASSED: browser proof tren `/admin-ops`, `/admin-crawl-control`, `/tenant-admin/usage`, `/tenant-admin/billing` voi `ability_admin` va `testpro`.
+
+# ✅ AUDIT FILE LIST (2026-05-02bf)
+- backend/portfolio/models.py (MODIFIED - add CoreServiceAccount/CorePATCredential primitives, PAT hash/prefix helpers and lifecycle methods)
+- backend/portfolio/migrations/0066_userconfig_ai_prompt_config_and_more.py (MODIFIED - add CA-10 tables/indexes and make ai_prompt_config add-field idempotent on drifted DBs)
+- backend/portfolio/views_partner_admin.py (NEW - partner tenant control-plane APIs for service accounts and PAT lifecycle)
+- backend/portfolio/permissions.py (MODIFIED - add CA-10 tenant machine-access abilities and entitlements for pro+)
+- backend/config/urls.py (MODIFIED - register `/api/core/v1/partner/*` routes)
+- backend/portfolio/tests/test_partner_admin_api.py (NEW - cover service account create/list and PAT issue/rotate/revoke flows)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - assert CA-10 tenant entitlements and abilities in auth/me)
+- frontend/src/api/client.js (MODIFIED - add tenant partner API client methods with Idempotency-Key headers)
+- frontend/src/App.jsx (MODIFIED - add `/tenant-admin/service-accounts` and `/tenant-admin/pats` routes)
+- frontend/src/components/TopNav.jsx (MODIFIED - expose tenant machine-access nav items)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant machine-access quick links)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (MODIFIED - add shortcuts to service accounts and PATs lanes)
+- frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx (NEW - tenant service account management page)
+- frontend/src/pages/admin/tenant/TenantPATs.jsx (NEW - tenant PAT lifecycle page)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for CA-10 tenant machine-access UI)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for CA-10 tenant machine-access UI)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-10 implementation and live proof)
+- module_tree_full.md (MODIFIED - regenerated after CA-10 implementation and docs sync, total modules 560)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` green after CA-10 auth/me entitlement expansion.
+- PASSED: `manage.py test portfolio.tests.test_partner_admin_api --keepdb` green for service account create/list and PAT issue/rotate/revoke flows.
+- PASSED: `npm run build` trong `frontend` thanh cong voi tenant machine-access routes/pages/client copy moi.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend backend` refresh lai dev stack thanh cong; backend healthy, frontend started.
+- PASSED: `manage.py migrate` apply `portfolio.0066_userconfig_ai_prompt_config_and_more` thanh cong sau khi patch migration drift.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerate thanh cong `module_tree_full.md` voi tong 560 module.
+- PASSED: browser proof tren `/tenant-admin/service-accounts` va `/tenant-admin/pats` voi session `testpro` xac nhan tao service account, issue PAT, rotate PAT va revoke PAT thanh cong tren runtime live.
+
+# ✅ AUDIT FILE LIST (2026-05-02be)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - expose userEntitlements from auth/me for tenant console surfaces)
+- backend/portfolio/permissions.py (MODIFIED - add tenant read abilities for pro+ plans)
+- frontend/src/pages/admin/tenant/TenantAdminHome.jsx (NEW - tenant home summary page)
+- frontend/src/pages/admin/tenant/TenantCapabilities.jsx (NEW - tenant capabilities page)
+- frontend/src/App.jsx (MODIFIED - add tenant admin routes under `/tenant-admin/*`)
+- frontend/src/components/TopNav.jsx (MODIFIED - surface tenant nav group)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add tenant quick links)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - cover tenant entitlements in auth/me)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-09 live tenant bootstrap)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (MODIFIED - align tenant route examples with live namespace)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - align tenant route matrix with live namespace)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - align tenant screen routes with live namespace)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - align tenant route tree with live namespace)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - align shared blueprint route namespace with live tenant-admin routes)
+- module_tree_full.md (MODIFIED - regenerated after tenant bootstrap slice, total modules 556)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: browser proof tren `http://127.0.0.1/tenant-admin/home` va `http://127.0.0.1/tenant-admin/capabilities` voi session `testpro` xac nhan tenant console render live sau rebuild frontend.
+- PASSED: `get_errors` clean tren `backend/portfolio/permissions.py`, `backend/portfolio/tests/test_api_routes_auth_profile.py`, `frontend/src/context/PortfolioContext.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`, `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi them tenant console routes va pages.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend backend` refresh lai dev stack thanh cong voi frontend/backend moi.
+- PASSED: direct Python permission probe `build_abilities('pro')` va `resolve_user_entitlements(user=pro)` tra tenant abilities + tenant flags dung nhu mong doi.
+- PASSED: `module_tree_full.md` regenerated successfully with 556 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02bd)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - expose operator AI runtime snapshot route)
+- backend/portfolio/views.py (MODIFIED - re-export operator AI runtime route symbol)
+- backend/config/urls.py (MODIFIED - add `/api/core/v1/operator/ai-runtime/` route)
+- backend/portfolio/tests/test_system_ai_admin_api.py (MODIFIED - cover operator snapshot shape and admin gate)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note CA-08 backend wrapper completion)
+- module_tree_full.md (MODIFIED - regenerated after the backend route slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_admin_runtime.py`, `backend/portfolio/views.py`, `backend/config/urls.py`, `backend/portfolio/tests/test_system_ai_admin_api.py`.
+- PASSED: `manage.py test portfolio.tests.test_system_ai_admin_api --keepdb` => 20/20 tests pass, including operator AI runtime snapshot route.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend` refresh lai dev backend thanh cong.
+- PASSED: live payload snapshot de `GET /api/core/v1/operator/ai-runtime/` voi admin auth tra `object=operator_ai_runtime_snapshot`, 2 provider rows, `effective_source=command_center`, `ready=true`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02bc)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - surface provider/model/source/readiness grid and policy summary panel for AI runtime governance)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (MODIFIED - note the CA-08 frontend surfacing step)
+- module_tree_full.md (MODIFIED - regenerated after the AI runtime governance surfacing slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/AICommandCenter.jsx` sau khi them runtime summary/policy panel.
+- PASSED: `npm run build` trong `frontend` thanh cong sau AI Command Center summary update.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: browser proof tren `/settings/ai` xac nhan provider/model/source/readiness grid va policy summary cho gate sự kiện / budget / cadence.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02bb)
+- frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell session id to a frontend-auth synthetic id for authenticated frontend users)
+- module_tree_full.md (MODIFIED - regenerated after the final shell session-id bridge adjustment, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/packageShellHostRuntime.js` sau khi them guard `frontend-auth` cho session id.
+- PASSED: `npm run build` trong `frontend` thanh cong sau session-id bridge.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan `Session ID: frontend-auth:testpro` cho `testpro`, advisory `BCM` van giu `Contract: v2`, `Quality: 33.5`.
+- PASSED: browser proof tren `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` xac nhan `Session ID: frontend-auth:testpro` cho `testpro`, whale snapshot `SSI` van giu `latest_completed_session` va `raw_fallback`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ba)
+- frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell bootstrap through frontend auth context and strip admin-only runtime flags for non-admin users)
+- frontend/src/pages/AiAdvisoryShellHost.jsx (MODIFIED - pass frontend auth-backed bootstrap loader into the advisory shell host)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (MODIFIED - pass frontend auth-backed bootstrap loader into the whale shell host)
+- module_tree_full.md (MODIFIED - regenerated after the shell auth-parity slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx` va `frontend/src/pages/WhaleAlertsShellHost.jsx`.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi bridge shell bootstrap qua `usePortfolio()` va cleanup admin-only navigation.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi host-runtime auth bridge moi.
+- PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan `Username: testpro`, `Plan: pro`, khong con `admin` group, khong con `show_admin_ops`, ability list chi con `read WhaleAdvisory`, va advisory that cua `BCM` van giu `Contract: v2`, `Quality: 33.5`.
+- PASSED: browser proof tren `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` xac nhan `Username: testpro`, `Plan: pro`, khong con `admin` group, `Enabled surfaces` chi con `show_ai_command_center`, va whale snapshot that van giu `latest_completed_session` / `raw_fallback` nhu truoc.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02az)
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - commit shell bootstrap snapshot state directly so host metadata no longer stays empty/loading)
+- module_tree_full.md (MODIFIED - regenerated after the advisory shell bootstrap fix, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`.
+- PASSED: `npm run check:shell` trong `packages/web` xanh sau khi bo `startTransition` khoi shared bootstrap state helper.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi package-shell helper moi duoc consume boi host app.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan badge thanh `Lane AI advisory san sang cho kiem tra`, `Build target: saas`, `Username: package-admin`, `Plan: pro`, `Signals routes visible: 2`, `Advisory routes active: 1`, va advisory that cua `BCM` van giu `Contract: v2`, `Quality: 33.5`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ay)
+- frontend/src/pages/UserConfig.jsx (MODIFIED - surface and persist `advisory_whale_signal_enabled` in settings)
+- frontend/src/pages/UserConfig.test.jsx (MODIFIED - cover the visible event-based advisory gate and save payload)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - warn when runtime is ready but event-based advisory is still disabled)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for the event-based advisory gate)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for the event-based advisory gate)
+- module_tree_full.md (MODIFIED - regenerated after the advisory gate UX slice, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/UserConfig.jsx`, `frontend/src/pages/UserConfig.test.jsx`, `frontend/src/pages/AICommandCenter.jsx`, `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`.
+- PASSED: `npm test -- --watchAll=false --runInBand src/pages/UserConfig.test.jsx` => 11/11 PASS.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi them advisory gate visible UI va runtime warning.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: sync `testpro` theo runtime path cua `admin` trong dev DB va bat `advisory_whale_signal_enabled=True`.
+- PASSED: `resolve_ai_runtime_config(user=testpro)` xac nhan `ready=True`, `source=command_center`, `provider=copilot`, `model=openai/gpt-4.1-mini`.
+- PASSED: advisory session endpoint cua `testpro` tren `/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2` tra `200`, `queued=False`, `advisory_id=29`.
+- PASSED: DB proof xac nhan latest `WhaleAdvisory` cua `testpro/BCM` la `id=29`, `ai_provider='copilot'`, `ai_model='openai/gpt-4.1-mini'`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ax)
+- docker-compose.dev.yml (MODIFIED - add heartbeat-backed Docker healthchecks for `core-worker` and `core-beat`)
+- packages/core/backend/src/vninvest_core/stub_heartbeat.py (NEW - shared helper to write and validate core stub heartbeat files)
+- packages/core/backend/src/vninvest_core/worker_stub.py (MODIFIED - emit worker heartbeat snapshots and flush startup/runtime logs)
+- packages/core/backend/src/vninvest_core/beat_stub.py (MODIFIED - emit beat heartbeat snapshots and flush startup/runtime logs)
+- module_tree_full.md (MODIFIED - regenerated after the core health signaling slice, total modules 554)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-54, OPS-30)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/stub_heartbeat.py`, `packages/core/backend/src/vninvest_core/worker_stub.py`, `packages/core/backend/src/vninvest_core/beat_stub.py` va `docker-compose.dev.yml`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` recreate thanh cong hai service sau khi them heartbeat signal va healthcheck.
+- PASSED: `docker logs --tail 20 vninvest-dev-core-worker; docker logs --tail 20 vninvest-dev-core-beat` xac nhan logs startup co duong dan heartbeat file cho ca worker va beat.
+- PASSED: `docker inspect --format "{{.Name}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-health{{end}}" vninvest-dev-core-worker vninvest-dev-core-beat` xac nhan ca hai service deu `healthy`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02aw)
+- docker-compose.dev.yml (MODIFIED - add compose-managed `core-worker` and `core-beat` stub services alongside `core-api`)
+- module_tree_full.md (MODIFIED - regenerated after the core topology completion slice, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-53, OPS-29)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `docker-compose.dev.yml`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` dua `vninvest-dev-core-worker` va `vninvest-dev-core-beat` len `Up`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml ps core-api core-worker core-beat` xac nhan ca ba service `core-api`, `core-worker`, `core-beat` deu dang chay trong root dev stack.
+- PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02av)
+- docker-compose.dev.yml (MODIFIED - add compose-managed `core-api` stub service and make frontend wait for it)
+- frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to `core-api:8100` instead of the host)
+- module_tree_full.md (MODIFIED - regenerated after the core stub compose cutover, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-52, OPS-28)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `docker-compose.dev.yml` va `frontend/docker/nginx.conf`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build core-api frontend` dua `vninvest-dev-core-api` len healthy va restart frontend thanh cong.
+- PASSED: host proof sau khi kill host terminal cu => `NO_HOST_LISTENER` tren `:8100`.
+- PASSED: browser proof `http://127.0.0.1/core/v1/health` van tra JSON qua frontend host du khong con host listener `:8100`.
+- PASSED: browser sanity reload tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` van vao duoc host page sau khi doi upstream sang compose service.
+- PASSED: backend-container investigation xac nhan `ai_not_configured` hien do runtime secret thieu: khong co provider env key, `testpro` khong co `AICommandCenterConfig`, va `SystemAISettings` active khong co DB key.
+- PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02au)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - parse JSON error payloads and retry advisory `v1` when a `v2` request is blocked by the holistic rollout gate)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add shell regression proof for advisory fallback from `v2` to `v1`)
+- backend/create_test_users.py (MODIFIED - initialize canonical DPI plans before seeding `testpro` so Pro feature access is not silently empty)
+- module_tree_full.md (MODIFIED - regenerated after the advisory resilience slice, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-51, OPS-27)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/scripts/check-shell.mjs` va `backend/create_test_users.py`.
+- PASSED: `npm run check:shell` trong `packages/web` xanh sau khi them fallback advisory `holistic_disabled` + regression proof.
+- PASSED: `npm run build` trong `frontend` thanh cong voi advisory client moi.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle advisory moi.
+- PASSED: `create_test_users.py` seed lai `testpro` tren canonical DPI plans va xac nhan Pro feature access khong con bi drift.
+- PASSED: browser fetch proof tren `/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1` voi token moi cua `testpro` da tra `200` thay vi `403 feature_locked`.
+- PASSED: browser proof `/ai-advisory/shell?symbol=BCM&ts=1777707400` khong con hien error `403`; advisory session card render voi `Contract: v1`.
+- PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02at)
+- frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to the host core stub)
+- frontend/Dockerfile.dev-package-shell (MODIFIED - default the package-shell core base URL to `/core/v1`)
+- docker-compose.dev.yml (MODIFIED - feed `/core/v1` into the frontend build and map `host.docker.internal` for the dev container)
+- frontend/src/pages/packageShellHostRuntime.js (NEW - shared auth-aware fetch and env helper for package-shell host pages)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (MODIFIED - reuse shared host runtime helper and update copy for same-origin core proxy)
+- frontend/src/pages/AiAdvisoryShellHost.jsx (NEW - mount `ShellAiAdvisoryPage` inside the real frontend runtime)
+- frontend/src/App.jsx (MODIFIED - add gated `/ai-advisory/shell` host route)
+- frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx (MODIFIED - expose a shell host link seam in the advisory legacy header)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - link the legacy AI advisory page to the shell host with symbol carry-over and `BCM` fallback)
+- module_tree_full.md (MODIFIED - regenerated after package-shell host expansion, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-49, WEB-50, OPS-26)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/docker/nginx.conf`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx`, `frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx`, `frontend/src/pages/WhaleAdvisory.jsx` va `frontend/src/App.jsx`.
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi doi core host sang same-origin `/core/v1` va them AI advisory shell host route.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi same-origin proxy va consumer advisory moi.
+- PASSED: browser proof `http://127.0.0.1/core/v1/health` tra JSON qua frontend host, xac nhan core stub da di same-origin.
+- PASSED: browser proof `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` van render whale shell host voi copy same-origin moi.
+- PASSED: browser proof `http://127.0.0.1/ai-advisory` xac nhan link `Mở shell kiểm chứng` tro thanh `/ai-advisory/shell?symbol=BCM`.
+- PASSED: browser proof `http://127.0.0.1/ai-advisory/shell?symbol=BCM` render duoc host header `AI advisory shell chạy trong frontend thật`, `ShellAiAdvisoryPage` va symbol `BCM`; advisory data request hien tra `403 Forbidden` tu backend, nhung route host moi da dung.
+- PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02as)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - preserve current query and fallback symbol when opening the whale shell host route)
+- module_tree_full.md (MODIFIED - regenerated after the whale hub context slice, total modules 551)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-48, OPS-25)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend` thanh cong sau khi nut `Mo shell kiem chung` duoc doi sang href co context.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: browser proof tren `/whale-alerts?symbol=SSI&trade_date=2026-04-19` xac nhan link shell tro thanh `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19`, va click vao shell host giu dung `SSI`/`2026-04-19` cho ca nut quay lai.
+- PASSED: `module_tree_full.md` regenerated successfully with 551 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ar)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add latest-valid trade-date quick action and query-safe fallback jump for the whale shell)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate degraded-session fallback metadata and quick action rendering)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add browser CORS/OPTIONS support for the core stub host runtime)
+- frontend/package.json (MODIFIED - add local `@vninvest/web` dependency for the frontend host app)
+- frontend/package-lock.json (MODIFIED - lock the local `@vninvest/web` package dependency)
+- frontend/src/App.jsx (MODIFIED - add gated `/whale-alerts/shell` host route)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - add visible entry link to the whale shell host route)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (NEW - mount `ShellWhaleAlertsPage` inside the real frontend runtime with auth-aware fetch)
+- frontend/Dockerfile.dev-package-shell (NEW - dev-only frontend image that vendors `packages/web` without nested React dependencies)
+- docker-compose.dev.yml (MODIFIED - point dev frontend build to the package-shell host Dockerfile and enable host env flags)
+- backend/portfolio/models.py (MODIFIED - restore `UserConfig.ai_prompt_config` to match the live DB schema)
+- module_tree_full.md (MODIFIED - regenerated after the whale host-runtime slice, total modules 551)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-46, WEB-47, OPS-24)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/api_stub.py`, `frontend/src/App.jsx`, `frontend/src/pages/WhaleAlertsHub.jsx`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `backend/portfolio/models.py` va `frontend/Dockerfile.dev-package-shell`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them quick action fallback va host-runtime glue cho whale shell.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` build lai dev frontend thanh cong; `vninvest-dev-frontend` start va khong con duplicate React tu vendor copy `@vninvest/web`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend python create_test_users.py` seed lai `testfree/testpro` thanh cong sau khi model drift `UserConfig.ai_prompt_config` duoc dong bo.
+- PASSED: live browser route `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` render duoc package-shell host header, facts card `Whale snapshot that (SSI)` va session source `latest_completed_session`; loi `useRef` runtime da duoc loai bo.
+- PASSED: `module_tree_full.md` regenerated successfully with 551 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02aq)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add selected trade-date resolution, date input control and query sync for the whale snapshot shell slice)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale trade-date SSR and query-string proof)
+- module_tree_full.md (MODIFIED - regenerated after the whale trade-date slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-45, OPS-23)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them selected trade-date control cho whale shell.
+- PASSED: focused Django contract suite `test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date` => 1/1 PASS.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ap)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add whale analytics snapshot endpoint resolver and thin facts-first client)
+- packages/web/src/adapters/core/index.js (MODIFIED - export whale snapshot client)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - render whale snapshot facts-first data slice with query-driven symbol control)
+- packages/web/src/index.js (MODIFIED - export `createCoreWhaleAnalyticsSnapshotClient` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale snapshot client URL, facts-first SSR proof and query-driven symbol resolution)
+- module_tree_full.md (MODIFIED - regenerated after the whale snapshot shell slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-44, OPS-22)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/web/src/adapters/core/index.js` va `packages/web/src/index.js`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them whale snapshot client va facts-first panel cho `whale-alerts`.
+- PASSED: focused Django contract suite `test_snapshot_endpoint_returns_contract_and_headers` + `test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date` => 2/2 PASS.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ao)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - add query-driven symbol resolution, local symbol form control and URL sync for the advisory data slice)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate advisory symbol control and query-string resolution proof)
+- module_tree_full.md (MODIFIED - regenerated after the advisory symbol routing slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-43, OPS-21)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellAiAdvisoryPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them query-driven symbol routing va control doi ma advisory.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02an)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - remove package-shell signal aliases so live bootstrap only exposes `WhaleAdvisory`)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add stock advisory session endpoint resolver and thin read-only client)
+- packages/web/src/adapters/core/index.js (MODIFIED - export advisory session client)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - render read-only advisory session summary and benchmark aggregate on top of canonical signal subject)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - filter whale abilities by canonical `WhaleAdvisory` subject only)
+- packages/web/src/index.js (MODIFIED - export `createCoreAdvisorySessionClient` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate canonical signal payload, advisory client URL building and advisory session SSR proof)
+- module_tree_full.md (MODIFIED - regenerated after the advisory read-model slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-41, WEB-42, OPS-20)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi doi signals lane sang canonical `WhaleAdvisory` va them advisory session data slice.
+- PASSED: focused Django contract suite `test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled` + `test_stock_ai_advisory_session_v2_includes_benchmark_enrichment` => 2/2 PASS.
+- PASSED: core stub tren `:8100` da duoc refresh lai va live payload proof xac nhan khong con `AiAdvisory`/`WhaleAlerts`, chi con `WhaleAdvisory` cho signals lane.
+- PASSED: live parity tren core runtime `:8100` da xac nhan `ShellAiAdvisoryPage` render duoc advisory session data slice va `ShellWhaleAlertsPage` van render route `whale-alerts` tren canonical payload.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02am)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read WhaleAlerts` while keeping `WhaleAdvisory` for compatibility)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (NEW - first whale-alerts signals shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `whale-alerts` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellWhaleAlertsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale-alerts route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the whale-alerts shell slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-39, WEB-40, OPS-19)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `whale-alerts` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `WhaleAlerts` dong thoi giu `WhaleAdvisory`.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `whale-alerts`, `signals`, `package-admin`, `Signals routes` va `Whale abilities` deu co trong markup render tu payload that.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02al)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read AiAdvisory` while keeping `WhaleAdvisory` for compatibility)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (NEW - first AI advisory signals shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `ai-advisory` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAiAdvisoryPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate ai-advisory route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the AI advisory shell slice, total modules 549)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-37, WEB-38, OPS-18)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `ai-advisory` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `AiAdvisory`.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `ai-advisory`, `signals`, `package-admin`, `Signals routes` va `Advisory abilities` deu co trong markup render tu payload that.
+- PASSED: `module_tree_full.md` regenerated successfully with 549 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ak)
+- packages/web/src/pages/workspace/ShellTransactionsPage.js (NEW - first workspace transactions shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `transactions` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellTransactionsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate transactions route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the transactions shell slice, total modules 548)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-35, WEB-36, OPS-17)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/workspace/ShellTransactionsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `transactions` vao shared shell surface va registry.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `transactions`, `workspace`, `package-admin`, `Workspace routes` va `Transactions abilities` deu co trong markup render tu payload that.
+- PASSED: `module_tree_full.md` regenerated successfully with 548 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02aj)
+- packages/web/src/pages/workspace/ShellWatchlistPage.js (NEW - first workspace watchlist shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `watchlist` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellWatchlistPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate watchlist route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the watchlist shell slice, total modules 547)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-33, WEB-34, OPS-16)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/workspace/ShellWatchlistPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `watchlist` vao shared shell surface va registry.
+- FAILED -> FIXED: lan live parity dau tien dung assertion token tieng Viet trong inline Node script qua PowerShell nen bi skew encoding; da doi sang ASCII-safe markers va rerun thanh cong ma khong can sua source code.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `watchlist`, `workspace`, `package-admin`, `Workspace routes` va `Watchlist abilities` deu co trong markup render tu payload that.
+- PASSED: `module_tree_full.md` regenerated successfully with 547 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ai)
+- packages/web/src/pages/workspace/ShellDashboardPage.js (NEW - first workspace dashboard shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `dashboard` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellDashboardPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate dashboard route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the dashboard shell slice, total modules 546)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-31, WEB-32, OPS-15)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/workspace/ShellDashboardPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `dashboard` vao shared shell surface va registry.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `dashboard`, `support`, `settings`, `portfolios`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected; bootstrap payload da chua dashboard ability san co.
+- PASSED: `module_tree_full.md` regenerated successfully with 546 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ah)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read Support` in the core bootstrap ability set)
+- packages/web/src/pages/system/ShellSupportPage.js (NEW - first system support shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `support` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellSupportPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate support route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the support shell slice, total modules 545)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-29, WEB-30, OPS-14)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/system/ShellSupportPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `support` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose support ability.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `support`, `settings`, `portfolios`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected; bootstrap payload da chua support ability.
+- PASSED: `module_tree_full.md` regenerated successfully with 545 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ag)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `portfolios` route visibility and portfolio ability in the core bootstrap stub)
+- packages/web/src/pages/workspace/ShellPortfoliosPage.js (NEW - first workspace portfolio shell page using the shared helper layer)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `portfolios` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `portfolios` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellPortfoliosPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate portfolios route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the portfolios shell slice, total modules 544)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-27, WEB-28, OPS-13)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/workspace/ShellPortfoliosPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `portfolios` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose `portfolios`.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `portfolios`, `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected; bootstrap payload da chua `portfolios` trong `visible_routes`.
+- PASSED: `module_tree_full.md` regenerated successfully with 544 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02af)
+- packages/web/src/pages/coreShellPageHelpers.js (MODIFIED - add shared snapshot/view-model mapper helpers for core shell pages)
+- packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - consume shared snapshot normalization, refresh action and health pill helpers)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (MODIFIED - consume shared route/flag/ability mapper helpers for the admin lane)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (MODIFIED - consume shared route/flag/ability mapper helpers for the AI lane)
+- module_tree_full.md (MODIFIED - regenerated after the mapper cleanup slice, total modules 543)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-25, WEB-26, OPS-12)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi tach mapper helpers chung cho snapshot, flags, route visibility va health actions.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected sau cleanup.
+- PASSED: `module_tree_full.md` regenerated successfully with 543 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ae)
+- packages/web/src/pages/coreShellPageHelpers.js (NEW - shared bootstrap state and render helpers for core shell pages)
+- packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - adopt the shared core shell helper for bootstrap state and summary/list renderers)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (MODIFIED - adopt the shared core shell helper for bootstrap state and admin renderers)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (MODIFIED - adopt the shared core shell helper for bootstrap state and AI renderers)
+- module_tree_full.md (MODIFIED - regenerated after the helper extraction slice, total modules 543)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-23, WEB-24, OPS-11)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi tach helper bootstrap/render dung chung cho ba core shell page.
+- FAILED -> FIXED: lan live parity dau tien dung sai env key `VNINVEST_CORE_API_BASE_URL`, tao loi `Failed to parse URL from /core/v1/health`; da doi ve `VNINVEST_CORE_BASE_URL` va rerun thanh cong.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected.
+- PASSED: `module_tree_full.md` regenerated successfully with 543 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ad)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (NEW - first AI command center shell page using the shared template)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `ai-command-center` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `ai-command-center` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAiCommandCenterPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate AI command center registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the AI shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-21, WEB-22, OPS-10)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren AI command center page, route catalog, page registry, root exports va shell validation script.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `ai-command-center` vao shared shell surface.
+- PASSED: live SSR parity tren core runtime `:8100` da render `shellPage__panel`, `package-admin`, `show_ai_command_center` va `ai-command-center`.
+- PASSED: `module_tree_full.md` regenerated successfully with 542 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ac)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (NEW - first admin operations shell page using the shared template)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `admin-ops` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `admin-ops` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAdminOpsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate admin ops registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the admin shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-19, WEB-20, OPS-09)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren admin ops page, route catalog, page registry, root exports va shell validation script.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `admin-ops` vao shared shell surface.
+- PASSED: live SSR parity tren core runtime `:8100` da render `shellPage__panel`, `package-admin`, `show_admin_ops` va `admin-ops`.
+- PASSED: `module_tree_full.md` regenerated successfully with 541 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02ab)
+- packages/web/src/pages/system/ShellSettingsPage.js (NEW - first core-backed settings shell page using the shared template)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `settings` as the second route-level page in the package shell)
+- packages/web/src/index.js (MODIFIED - export `ShellSettingsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate settings page registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the core settings shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-17, WEB-18, OPS-08)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren core settings page, page registry, root exports va shell validation script.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `settings` vao page registry.
+- PASSED: core stub da duoc start lai dung cwd va live SSR parity tren `:8100` da render `shellPage__panel`, `package-admin` va `core-api`.
+- PASSED: `module_tree_full.md` regenerated successfully with 540 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02aa)
+- packages/web/src/components/ShellPageTemplate.js (NEW - first shared shell page template primitive for package-track UI)
+- packages/web/src/pages/vip/VipLocalControlPage.js (MODIFIED - move VIP local control page onto shared shell helpers)
+- packages/web/src/index.js (MODIFIED - export shared shell template helpers on the root package surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate shared helper exports and retain VIP page SSR proof)
+- module_tree_full.md (MODIFIED - regenerated after the shared shell template slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-15, WEB-16, OPS-07)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren shared template module, VIP local control page, root exports va shell validation script.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi shared shell helpers duoc tich hop vao `VipLocalControlPage`.
+- PASSED: React key warning da duoc sua va rerun `check:shell` khong con warning.
+- PASSED: live SSR parity tren runtime `:8200` da xac nhan markup moi van render shared classes `shellPage__panel`, `shellPage__heroBadge` va seeded local identity `vip-local-admin`.
+- PASSED: `module_tree_full.md` regenerated successfully after adding the new shared component module.
+
+# ✅ AUDIT FILE LIST (2026-05-02z)
+- packages/web/src/pages/pageRegistry.js (NEW - minimal route-to-page registry for the package shell)
+- packages/web/src/pages/vip/VipLocalControlPage.js (NEW - first VIP local control page for login, user list and audit log)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `vip-local-control` route status to `baseline`)
+- packages/web/src/index.js (MODIFIED - expose page registry and `VipLocalControlPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate page registry and SSR rendering of the VIP local control page)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (MODIFIED - freeze the unified UI template rule at approval level)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - add execution and DoD rules for the shared UI template)
+- docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - add hard technical rules for information-dense, low-spacing UI)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (MODIFIED - add UI template compliance gate)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add `GOV-05` for unified UI template governance)
+- module_tree_full.md (MODIFIED - regenerated after the VIP shell UI slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-13, WEB-14, OPS-06)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren page registry, VIP local control page va toan bo doc pack vua cap nhat.
+- PASSED: `npm run check:shell` trong `packages/web` da cover page registry, route `vip-local-control` status `baseline` va SSR render cua `VipLocalControlPage`.
+- PASSED: live SSR parity tren runtime `:8200` da xac nhan page moi tieu thu duoc `health`, `session`, `users` va `auditLogs`.
+- PASSED: integrated browser preview va screenshot da xac nhan giao dien bam template thong tin dam, metric band ro, panel compact va spacing thap.
+- PASSED: `module_tree_full.md` regenerated successfully with 538 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02y)
+- packages/web/src/adapters/vip-app/vipAppAdapter.js (MODIFIED - add vip-app control-plane endpoint metadata and thin control client)
+- packages/web/src/adapters/vip-app/index.js (MODIFIED - export the VIP control client)
+- packages/web/src/index.js (MODIFIED - expose the VIP control client on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate VIP control client route metadata and request semantics)
+- module_tree_full.md (MODIFIED - regenerated after the VIP control client slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-11, WEB-12, OPS-05)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/adapters/vip-app/vipAppAdapter.js`, `packages/web/src/adapters/vip-app/index.js`, `packages/web/src/index.js`, va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm install` trong `packages/web` da khoi phuc local deps can thiet de chay standard shell validation.
+- PASSED: `npm run check:shell` trong `packages/web` da cover them VIP control client route metadata va request semantics.
+- PASSED: live smoke tren runtime `:8200` da xac nhan `login`, `listUsers`, `upsertUser`, `listAuditLogs`, `resetSession`, `logout` qua `createVipAppControlClient`.
+- PASSED: public export parity qua `packages/web/src/index.js` thanh cong tren compose runtime `:8200`.
+- PASSED: `module_tree_full.md` regenerated successfully with 536 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02x)
+- .gitignore (MODIFIED - ignore generated VIP local backend state data)
+- packages/vip-app/local-backend/store.py (NEW - file-backed persistence for users, session, tenant and audit logs)
+- packages/vip-app/local-backend/api_stub.py (MODIFIED - persistent auth/RBAC/audit HTTP surface while preserving bootstrap endpoints)
+- packages/vip-app/docker-compose.vip.yml (MODIFIED - explicit compose runtime data dir and default smoke password)
+- packages/vip-app/local-backend/README.md (MODIFIED - document persisted runtime surface and HTTP endpoints)
+- module_tree_full.md (MODIFIED - regenerated after VIP persistence slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out VIP persistence and audit slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/vip-app/local-backend/store.py` va `packages/vip-app/local-backend/api_stub.py`.
+- PASSED: store smoke da xac nhan `logout -> login -> rbac user upsert -> reload -> auth reset -> audit logs` va giu nguyen role `vip_operator` sau persist/reload.
+- PASSED: dedicated HTTP smoke tren `:8220` da xac nhan `auth/login`, `auth/reset`, `rbac/users`, `audit/logs` va capability bootstrap path.
+- PASSED: `docker compose -f packages/vip-app/docker-compose.vip.yml up -d --build` da refresh runtime that tren `:8200`.
+- PASSED: compose HTTP smoke tren `:8200` va shell bootstrap parity qua `packages/web/src/context/bootstrapClient.js` deu thanh cong.
+- PASSED: `module_tree_full.md` regenerated successfully with 536 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02w)
+- packages/web/src/context/authReact.js (NEW - React provider/hook wrapper for the package-track auth runtime)
+- packages/web/package.json (MODIFIED - add auth-react export and React dependency declarations)
+- packages/web/package-lock.json (NEW - local package lockfile after installing React dependencies for shell validation)
+- packages/web/src/index.js (MODIFIED - export React auth provider/hook surface)
+- packages/web/src/context/README.md (MODIFIED - document the current context foundation layout)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add and fix React-focused shell smoke)
+- module_tree_full.md (MODIFIED - regenerated after the React auth shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out React shell slice and queue the next VIP persistence lane)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run check:shell` trong `packages/web` sau khi React dependency va SSR assertions duoc chot.
+- PASSED: React provider smoke voi core stub song tra ve `status=ready`, `ready=true`, `authenticated=true`, `plan=pro`, `username=package-admin`, `staff=true`, `buildTarget=saas`.
+- PASSED: `module_tree_full.md` regenerated successfully with 535 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02v)
+- packages/vip-app/local-backend/api_stub.py (NEW - bootstrap-ready VIP local backend stub)
+- packages/vip-app/docker-compose.vip.yml (MODIFIED - runnable compose artifact for vip-local-api)
+- packages/vip-app/local-backend/README.md (MODIFIED - focused runbook for stub bootstrap validation)
+- module_tree_full.md (MODIFIED - regenerated after the VIP stub slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out VIP runtime slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: VIP local stub served bootstrap endpoints on `:8200`.
+- PASSED: auth runtime smoke through `vipAppAdapter` returned `status=ready`, `ready=true`, `authenticated=true`, `plan=vip`, `username=vip-local-admin`, `vipShell=true`, `abilityCount=7`, `buildTarget=vip`.
+- PASSED: `docker compose -f packages/vip-app/docker-compose.vip.yml up -d` started `vip-local-api` successfully after fixing YAML indentation.
+- PASSED: `module_tree_full.md` regenerated successfully with 534 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02u)
+- packages/web/src/context/authRuntime.js (NEW - runtime auth state manager for package-track web bootstrap/auth flows)
+- packages/web/src/context/bootstrapClient.js (MODIFIED - align legacy auth bridge shape with runtime-ready identity flags)
+- packages/web/src/index.js (MODIFIED - export auth runtime helpers)
+- packages/web/package.json (MODIFIED - add auth-runtime export path)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate auth runtime state derivation and refresh flow)
+- module_tree_full.md (MODIFIED - regenerated after the web auth runtime slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - sync runtime queue state)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: auth runtime smoke against `http://127.0.0.1:8100/core/v1` returned `status=ready`, `ready=true`, `authenticated=true`, `plan=pro`, `username=package-admin`, `staff=true`, `abilityCount=6`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (533 modules).
+
+# ✅ AUDIT FILE LIST (2026-05-02t)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add live control-surface and handoff rules for package-track multi-session delivery)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (MODIFIED - define taskboard authority, one-active-slice rule and mandatory handoff packet)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - extend close-out step with live execution state and handoff packet requirements)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - sync completed tasks, add continuity guard and open next runtime queue with `WEB-07` active)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add continuity and handoff governance requirements)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (MODIFIED - add resume/claim workflow and handoff completeness audit gates)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (MODIFIED - add taskboard sync and handoff packet fields)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on the edited planning/audit docs => no errors found.
+- PASSED: docs-only continuity slice; khong co runtime/package source nao thay doi, nen khong can module tree refresh hay docker restart.
+
+# ✅ AUDIT FILE LIST (2026-05-02s)
+- packages/web/src/context/bootstrapClient.js (NEW - shell bootstrap client and legacy auth bridge for package-track web)
+- packages/web/src/index.js (MODIFIED - export bootstrap helpers from the shell public surface)
+- packages/web/package.json (MODIFIED - add bootstrap-client package export)
+- module_tree_full.md (MODIFIED - regenerated after the web bootstrap client slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: `loadShellBootstrap()` smoke check against `http://127.0.0.1:8100/core/v1` returned adapter `core`, service `core-api`, target `saas`, plan `pro`, username `package-admin`, and ability count `6`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (532 modules).
+- PASSED: package-track shell slice only; khong can refresh docker stack.
+
+# ✅ AUDIT FILE LIST (2026-05-02r)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add adapter-compatible health, capability bootstrap and session payload endpoints for the package-track core stub)
+- module_tree_full.md (MODIFIED - regenerated after the core bootstrap endpoint slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `packages/core/backend/src/vninvest_core/api_stub.py` => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m compileall "packages/core/backend/src"` => compiled updated `vninvest_core.api_stub` successfully.
+- PASSED: Python smoke snippet imported `ROUTE_HANDLERS` from `vninvest_core.api_stub` and confirmed the capability, session and health payloads expose the expected top-level keys.
+- PASSED: HTTP probe on `/core/v1/health`, `/core/v1/access/capabilities`, and `/core/v1/session/me` returned the expected service identity and bootstrap payload summary.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (531 modules).
+- PASSED: package-track stub slice only; khong can refresh docker stack.
+
+# ✅ AUDIT FILE LIST (2026-05-02q)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (NEW - master handoff for the package foundation baseline slice)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - ordered execution plan for shared contracts, core baseline, web shell and governance close-out)
+- docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - technical spec for contracts, package manifests, adapters and compose stubs)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - execution taskboard for architecture, shared, core, web, QA and ops tasks)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (NEW - requirement to task and evidence mapping for the baseline)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (NEW - focused audit and validation protocol for the slice)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (NEW - execution evidence template for future package-track slices)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_AUDIT_REPORT_20260502.md (NEW - audit verdict for the handoff pack)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add foundation baseline phase to the package migration plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - index the new package foundation handoff pack)
+- packages/core/README.md (MODIFIED - describe real core package boundary and manifest)
+- packages/core/backend/README.md (MODIFIED - document the new vninvest_core baseline modules)
+- packages/core/docker-compose.core.yml (MODIFIED - replace placeholder with core service topology stub)
+- packages/core/pyproject.toml (NEW - Python package manifest for vninvest-core)
+- packages/core/backend/src/vninvest_core/__init__.py (NEW - export package manifest helper)
+- packages/core/backend/src/vninvest_core/app_manifest.py (NEW - SSOT manifest for core service names and contract namespaces)
+- packages/core/backend/src/vninvest_core/api_stub.py (NEW - HTTP health and manifest stub for core-api)
+- packages/core/backend/src/vninvest_core/worker_stub.py (NEW - heartbeat worker stub for core-worker)
+- packages/core/backend/src/vninvest_core/beat_stub.py (NEW - scheduler heartbeat stub for core-beat)
+- packages/core/backend/src/vninvest_core/contracts/__init__.py (NEW - core contract namespace registry)
+- packages/core/backend/src/vninvest_core/contracts/access/__init__.py (NEW - access namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/market/__init__.py (NEW - market namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/operator/__init__.py (NEW - operator namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/partner/__init__.py (NEW - partner namespace marker)
+- shared/api-contracts/README.md (MODIFIED - register initial shared package-track contracts)
+- shared/api-contracts/build-target.contract.json (NEW - shared build target contract)
+- shared/api-contracts/capability-bootstrap.contract.json (NEW - shared capability bootstrap contract)
+- shared/api-contracts/session-payload.contract.json (NEW - shared session payload contract)
+- packages/web/package.json (MODIFIED - promote the web package to an ESM shell with exports and shell validation)
+- packages/web/src/README.md (MODIFIED - document the shared shell baseline artifacts)
+- packages/web/src/app/routeCatalog.js (NEW - canonical route catalog for build-target-aware package shell)
+- packages/web/src/app/navigationCatalog.js (NEW - canonical navigation group catalog for the package shell)
+- packages/web/src/adapters/core/coreAdapter.js (NEW - core API adapter seam for package-track web)
+- packages/web/src/adapters/core/index.js (NEW - core adapter export surface)
+- packages/web/src/adapters/vip-app/vipAppAdapter.js (NEW - vip-app local adapter seam for package-track web)
+- packages/web/src/adapters/vip-app/index.js (NEW - vip-app adapter export surface)
+- packages/web/src/index.js (NEW - package shell public exports and adapter registry)
+- packages/web/scripts/check-shell.mjs (NEW - focused shell consistency validation for packages/web)
+- module_tree_full.md (MODIFIED - regenerated after package foundation docs and baseline source files were added)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on the new package foundation doc pack and updated index docs => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m compileall "packages/core/backend/src"` => compiled `vninvest_core` package successfully.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: `get_errors` on the new `packages/web` shell files and `shared/api-contracts/*.json` => no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (531 modules).
+- PASSED: package-track baseline slice only; khong co runtime legacy/front-end nao duoc wire vao compose dev hien tai nen khong can refresh docker stack.
+
+# ✅ AUDIT FILE LIST (2026-05-02p)
+- packages/README.md (NEW - root package-track entrypoint and rules)
+- packages/core/README.md (NEW - boundary and ownership scaffold for core)
+- packages/core/backend/README.md (NEW - tracked placeholder for future package-track backend)
+- packages/core/docker-compose.core.yml (NEW - placeholder compose entry for core package track)
+- packages/core/infra/README.md (NEW - tracked placeholder for core infrastructure subtree)
+- packages/core/opennews-main/README.md (NEW - tracked placeholder for news/content subtree)
+- packages/core/scripts/README.md (NEW - tracked placeholder for core script subtree)
+- packages/mobile/README.md (NEW - boundary scaffold for mobile package track)
+- packages/mobile/package.json (NEW - placeholder manifest for mobile package track)
+- packages/opencore/README.md (NEW - boundary scaffold for OpenCore package track)
+- packages/opencore/activation/README.md (NEW - tracked placeholder for activation assets)
+- packages/opencore/distribution/README.md (NEW - tracked placeholder for self-host distribution assets)
+- packages/opencore/docker-compose.opencore.yml (NEW - placeholder compose entry for OpenCore package track)
+- packages/opencore/docs-public/README.md (NEW - public-safe documentation scaffold)
+- packages/vip-app/README.md (NEW - boundary scaffold for VIP local backend package)
+- packages/vip-app/docker-compose.vip.yml (NEW - placeholder compose entry for VIP package track)
+- packages/vip-app/local-backend/README.md (NEW - tracked placeholder for VIP local backend)
+- packages/vip-app/orchestrator/README.md (NEW - tracked placeholder for VIP orchestration lane)
+- packages/web/README.md (NEW - boundary scaffold for shared frontend shell)
+- packages/web/package.json (NEW - placeholder manifest for package-track web shell)
+- packages/web/src/README.md (NEW - shared frontend subtree guide)
+- packages/web/src/components/README.md (NEW - tracked placeholder for shared component subtree)
+- packages/web/src/config/README.md (NEW - tracked placeholder for build-target config subtree)
+- packages/web/src/config/buildTarget.js (NEW - initial compile-time build-target helper for package-track web shell)
+- packages/web/src/context/README.md (NEW - tracked placeholder for shared context subtree)
+- packages/web/src/features/community/README.md (NEW - tracked placeholder for community lane)
+- packages/web/src/features/saas/README.md (NEW - tracked placeholder for SaaS lane)
+- packages/web/src/features/vip/README.md (NEW - tracked placeholder for VIP lane)
+- packages/web/src/pages/README.md (NEW - tracked placeholder for route/page subtree)
+- shared/README.md (NEW - shared SSOT entrypoint)
+- shared/api-contracts/README.md (NEW - contract scaffold for cross-package APIs)
+- shared/constants/README.md (NEW - constants scaffold for cross-package usage)
+- scripts/ops/generate_module_tree.py (MODIFIED - include packages and shared in module tree scan)
+- module_tree_full.md (MODIFIED - regenerated after package-track scaffold and buildTarget anchor)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `list_dir` confirmed `packages/`, `shared/`, `packages/core/`, `packages/web/src/`, and `packages/opencore/` scaffolds exist as expected.
+- PASSED: `get_errors` on scaffold READMEs, package manifests, compose placeholders, `scripts/ops/generate_module_tree.py`, `packages/web/src/config/buildTarget.js`, and `module_tree_full.md` => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"` => regenerated `module_tree_full.md` successfully and total modules increased to 514.
+- PASSED: `grep_search` confirmed `module_tree_full.md` now contains `packages/web/src/config/buildTarget.js`.
+- PASSED: scaffold-only slice; khong co thay doi runtime/UI nen khong can refresh docker stack.
+
+# ✅ AUDIT FILE LIST (2026-05-02o)
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (MODIFIED - add opencore as a first-class package and funnel/distribution plane)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - expand monorepo package strategy from 4 to 5 packages)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - add packages/opencore to target tree and package descriptions)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add packages/opencore to execution phases and workstreams)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - reinterpret opencore as package funnel while keeping core as truth backend)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add opencore to visual ownership and package-track diagrams)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - clarify opencore as a package, not a second backend truth)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - update current package count and opencore placement)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - clarify opencore packages the community build rather than owning a separate frontend)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02o)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`, `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`, `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`, `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, and `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02n)
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (MODIFIED - encode packages-first parallel migration in the integrated architecture SSOT)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - re-sequence enterprise transformation around package track, cutover and decommission)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - adopt 3-phase roadmap with package build, cutover and optional repo split)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - reinterpret restructuring doc as workspace plan for package track)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - move shared frontend implementation target to packages/web)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (NEW - owner-approved execution plan for packages-first parallel migration)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add transition model visual for package track)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add execution plan to official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02n)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`, `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`, `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`, `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`, `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, and `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02m)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - normalize the visual blueprint as a standards-aligned companion document)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - mark the visual blueprint as companion, not authoritative SSOT)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02m)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02l)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (NEW - comprehensive system architecture blueprint artifact)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add visual blueprint to architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: kiến trúc tổng thể VNInvest (Core, Web, VIP-App) đã được hình ảnh hóa và chuẩn hóa SSOT.
+- PASSED: doc-only slice; không cần build hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02k)
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (NEW - integrated architecture SSOT for core, web and vip-app)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - link shared frontend blueprint to the integrated architecture SSOT)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add integrated architecture SSOT to official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02j)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (NEW - unified frontend blueprint for shared SaaS web and VIP build variants)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add the shared web/VIP frontend blueprint to the official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
 # ✅ AUDIT FILE LIST (2026-05-02i)
 - frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - current worktree keeps Whale Advisory shell and grid layout adjustments that must be included in the commit bundle)
 - docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md (MODIFIED - align target-state database segregation guidance with current core doc pack)
@@ -526,7 +2881,6 @@ Validation:
 
 ---
 
-## ✅ AUDIT FILE LIST (2026-04-24cl)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - khoi phuc box line-reference rieng trong panel mac dinh, day zoom slider xuong duoi truc X va doi icon toggle thanh chevron ngang)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cl)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
@@ -539,6 +2893,7 @@ Validation:
 
 ## ✅ AUDIT FILE LIST (2026-04-24ck)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo thong tin lap trong panel mac dinh, chi giu mot khoi tong hop duy nhat; doi nut an/hien sang icon tron kieu modern dashboard; dieu chinh theme zoom slider ve slate trung tinh)
+# ✅ AUDIT FILE LIST (2026-05-03au)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ck)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 

@@ -1,8 +1,26 @@
 # ENTERPRISE CORE ADMIN UI ARCHITECTURE
 
 **Date:** 2026-05-02  
-**Status:** Current-code-aligned UI architecture decision  
+**Status:** Current-code truth plus target-state UI architecture decision  
 **Purpose:** Chốt rõ `Core Admin UI` sẽ được thiết kế như thế nào, nằm ở package nào, phân ranh ra sao với `core` backend và với `VIP Internal Admin`.
+
+---
+
+## 0. Cách đọc tài liệu này
+
+Tài liệu này dùng ba nhãn bắt buộc để tránh auditors và đội code đọc nhầm giữa code đang chạy và đích kiến trúc:
+
+- `Implemented now`:
+   - legacy operator surfaces đang live ở `frontend/src/pages/AdminOps.jsx` và `frontend/src/pages/AdminCrawlControl.jsx`, được gate bằng explicit abilities `AdminOps` và `AdminCrawlControl`,
+   - tenant admin console đang live ở `/tenant-admin/*` với các page `TenantAdminHome`, `TenantCapabilities`, `TenantUsage`, `TenantBilling`, `TenantServiceAccounts`, `TenantPATs`,
+   - auth bootstrap hiện tại đi qua `/api/auth/me/`, không phải dedicated capability route.
+- `Partial`:
+   - `packages/web/` và package-shell baseline đã tồn tại,
+   - legacy runtime đã có `GET /api/core/v1/operator/ai-runtime/`, nhưng chưa có central operator route family `/admin/core/*` hay full operator API pack.
+- `Target-state`:
+   - central operator console `/admin/core/*`,
+   - dedicated `GET /core/v1/access/capabilities`,
+   - move vật lý phần admin UI từ `frontend/src/` sang `packages/web/src/`.
 
 **Companion artifacts:**
 
@@ -129,20 +147,28 @@ Do đó, `core` chỉ nên export:
 Theo chiến lược `boundary-first, no-move-first`, admin UI nên được tổ chức trong frontend hiện tại trước:
 
 ```text
-frontend/src/pages/admin/core/
-frontend/src/pages/admin/tenant/
-frontend/src/components/admin/core/
-frontend/src/components/admin/tenant/
-frontend/src/api/coreAdminClient.js
-frontend/src/api/tenantAdminClient.js
-frontend/src/config/buildTarget.js
+frontend/src/pages/AdminOps.jsx
+frontend/src/pages/AdminCrawlControl.jsx
+frontend/src/pages/AICommandCenter.jsx
+frontend/src/pages/admin/tenant/TenantAdminHome.jsx
+frontend/src/pages/admin/tenant/TenantCapabilities.jsx
+frontend/src/pages/admin/tenant/TenantUsage.jsx
+frontend/src/pages/admin/tenant/TenantBilling.jsx
+frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx
+frontend/src/pages/admin/tenant/TenantPATs.jsx
+frontend/src/App.jsx
+frontend/src/components/TopNav.jsx
+frontend/src/components/Sidebar.jsx
+frontend/src/api/client.js
 ```
 
 ### Cách nghĩ đúng ở phase hiện tại
 
 - chưa cần move vật lý sang `packages/web/` ngay,
-- nhưng phải code như thể admin UI đã là phần của `web` shell,
-- mọi calls đi qua API contracts thay vì import backend logic.
+- tenant console đang chạy thật ngay trong `frontend/src/pages/admin/tenant/`,
+- operator shell tổng quát `/admin/core/*` chưa tồn tại; code hiện tại mới có hai legacy operator surfaces `/admin-ops` và `/admin-crawl-control`,
+- auth bootstrap thực tế đi qua `/api/auth/me/` và entitlements/abilities hiện có,
+- mọi follow-up operator work phải đi qua API contracts thay vì import backend logic.
 
 ## 5.2 Target state sau khi move sang `packages/`
 
@@ -222,6 +248,22 @@ Các surface đó là của `VIP Internal Admin`, không phải của `core` ope
 
 ## 7. Route layout đề xuất
 
+## 7.0 Current live route inventory
+
+```text
+/admin-ops
+/admin-crawl-control
+/tenant-admin
+/tenant-admin/home
+/tenant-admin/capabilities
+/tenant-admin/usage
+/tenant-admin/billing
+/tenant-admin/service-accounts
+/tenant-admin/pats
+```
+
+Hai route operator đầu là legacy runtime surfaces đang chạy thật. Toàn bộ route family `/admin/core/*` bên dưới vẫn là target-state contract cho phase operator console tiếp theo.
+
 ## 7.1 Central Operator Admin routes
 
 ```text
@@ -242,13 +284,13 @@ Các surface đó là của `VIP Internal Admin`, không phải của `core` ope
 ## 7.2 Tenant Admin routes
 
 ```text
-/admin/tenant
-/admin/tenant/home
-/admin/tenant/service-accounts
-/admin/tenant/pats
-/admin/tenant/usage
-/admin/tenant/billing
-/admin/tenant/capabilities
+/tenant-admin
+/tenant-admin/home
+/tenant-admin/service-accounts
+/tenant-admin/pats
+/tenant-admin/usage
+/tenant-admin/billing
+/tenant-admin/capabilities
 ```
 
 ## 7.3 VIP Internal Admin routes
@@ -268,7 +310,7 @@ Các surface đó là của `VIP Internal Admin`, không phải của `core` ope
 | UI module | Primary APIs | API owner |
 |---|---|---|
 | Platform Overview | `GET /core/v1/operator/health`, `GET /core/v1/operator/jobs` | `core` |
-| Tenant Home | `GET /core/v1/partner/tenant` | `core` |
+| Tenant Home | `GET /api/core/v1/partner/tenant/` | `core` |
 | Service Accounts | `GET /core/v1/partner/service-accounts`, `POST /core/v1/partner/service-accounts` | `core` |
 | PAT Credentials | `GET /core/v1/partner/pats`, `POST /core/v1/partner/pats/issue`, `POST /core/v1/partner/pats/{token_id}/rotate`, `POST /core/v1/partner/pats/{token_id}/revoke` | `core` |
 | Usage | `GET /core/v1/partner/usage/meters`, `GET /core/v1/partner/usage/quotas` | `core` |

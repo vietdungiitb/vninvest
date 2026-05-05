@@ -45,6 +45,7 @@ export default function DashboardRealtimePanel({
   const [realtimeHealth, setRealtimeHealth] = useState(null);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('alerts');
   const [compact, setCompact] = useState(false);
+  const [showObservabilityPopover, setShowObservabilityPopover] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [sourceFilter, setSourceFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
@@ -133,9 +134,22 @@ export default function DashboardRealtimePanel({
   const isEventStale = eventAgeSeconds !== null && eventAgeSeconds > 120;
 
   useEffect(() => {
+    let isActive = true;
     getRealtimeHealth()
-      .then((res) => setRealtimeHealth(res.data))
-      .catch(() => setRealtimeHealth(null));
+      .then((res) => {
+        if (isActive) {
+          setRealtimeHealth(res.data);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setRealtimeHealth(null);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const unreadCount = useMemo(
@@ -233,6 +247,17 @@ export default function DashboardRealtimePanel({
     : realtimeStatus === 'connecting'
       ? 'border-amber-700 bg-amber-950/30 text-amber-300'
       : 'border-gray-700 bg-gray-950 text-gray-400';
+
+  const observabilityMetricChips = [
+    {
+      key: 'ticker_update',
+      label: t('dashboardRealtime.eventTickers', { count: formatNumber(metrics?.eventCounts?.ticker_update ?? 0) }),
+    },
+    {
+      key: 'whale_alert',
+      label: t('dashboardRealtime.eventWhale', { count: formatNumber(metrics?.eventCounts?.whale_alert ?? 0) }),
+    },
+  ];
 
   return (
     <div className="space-y-5 rounded-xl border border-gray-800 bg-gray-900 p-5">
@@ -489,15 +514,54 @@ export default function DashboardRealtimePanel({
         </div>
       )}
 
-      <div className="mt-2 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-xs">
-        <span className="text-gray-600">{t('dashboardRealtime.observability')}</span>
-        <span className="shrink-0 rounded border border-gray-800 bg-gray-950 px-2 py-0.5 text-gray-500">{t('dashboardRealtime.eventTickers', { count: formatNumber(metrics?.eventCounts?.ticker_update ?? 0) })}</span>
-        <span className="shrink-0 rounded border border-gray-800 bg-gray-950 px-2 py-0.5 text-gray-500">{t('dashboardRealtime.eventWhale', { count: formatNumber(metrics?.eventCounts?.whale_alert ?? 0) })}</span>
-        {realtimeHealth && (
-          <span className={`shrink-0 rounded border bg-gray-950 px-2 py-0.5 ${realtimeHealth.channel_layer_type === 'inmemory' ? 'border-yellow-800 text-yellow-500' : realtimeHealth.redis_ok === false ? 'border-red-800 text-red-400' : 'border-emerald-900 text-emerald-500'}`}>
-            {realtimeHealth.channel_layer_type === 'inmemory' ? t('dashboardRealtime.channelInmemory') : realtimeHealth.redis_ok === false ? t('dashboardRealtime.channelRedisDown') : t('dashboardRealtime.channelRedisUp')}
-          </span>
+      <div className="relative mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs">
+        <button
+          type="button"
+          onClick={() => setShowObservabilityPopover((value) => !value)}
+          aria-label={t('dashboardRealtime.observability')}
+          aria-expanded={showObservabilityPopover}
+          aria-controls="dashboard-realtime-observability-popover"
+          className={`v2-chip-focus flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold transition-colors ${showObservabilityPopover ? 'border-cyan-600 bg-cyan-950/45 text-cyan-200' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600 hover:text-gray-200'}`}
+        >
+          i
+        </button>
+
+        {showObservabilityPopover && (
+          <div
+            id="dashboard-realtime-observability-popover"
+            className="absolute bottom-full left-0 z-20 mb-2 w-72 rounded-xl border border-gray-700 bg-gray-950/95 p-3 shadow-xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">{t('dashboardRealtime.observability')}</p>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  {t('dashboardRealtime.observabilityPopoverHint', { defaultValue: 'Cảnh báo nghiêm trọng vẫn được ghim lên đầu danh sách.' })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowObservabilityPopover(false)}
+                className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-[10px] font-semibold text-gray-300 hover:border-gray-600 hover:text-gray-100"
+              >
+                {t('dashboardRealtime.collapsePanel')}
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {observabilityMetricChips.map((chip) => (
+                <span key={chip.key} className="shrink-0 rounded border border-gray-800 bg-gray-950 px-2 py-0.5 text-gray-500">
+                  {chip.label}
+                </span>
+              ))}
+              {realtimeHealth && (
+                <span className={`shrink-0 rounded border bg-gray-950 px-2 py-0.5 ${realtimeHealth.channel_layer_type === 'inmemory' ? 'border-yellow-800 text-yellow-500' : realtimeHealth.redis_ok === false ? 'border-red-800 text-red-400' : 'border-emerald-900 text-emerald-500'}`}>
+                  {realtimeHealth.channel_layer_type === 'inmemory' ? t('dashboardRealtime.channelInmemory') : realtimeHealth.redis_ok === false ? t('dashboardRealtime.channelRedisDown') : t('dashboardRealtime.channelRedisUp')}
+                </span>
+              )}
+            </div>
+          </div>
         )}
+
         <div className="ml-auto flex items-center gap-1.5 pl-2">
           <button onClick={() => setActiveWorkspaceTab('alerts')} className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold ${activeWorkspaceTab === 'alerts' ? 'border-brand-600 bg-brand-900/30 text-brand-200' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600 hover:text-gray-200'}`}>
             {t('dashboardRealtime.workspaceTabAlerts')}

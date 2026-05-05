@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vninvest-core"
+version = "0.1.0"
+description = "VNInvest core package-track foundation baseline"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "Django>=4.2,<5.0",
+  "djangorestframework>=3.15,<4.0",
+  "celery>=5.4,<6.0",
+  "redis>=5.0,<6.0",
+  "psycopg[binary]>=3.2,<3.3",
+  "pandas>=2.2,<3.0",
+]
+
+[project.scripts]
+vninvest-core-api = "vninvest_core.api_stub:main"
+vninvest-core-worker = "vninvest_core.worker_stub:main"
+vninvest-core-beat = "vninvest_core.beat_stub:main"
+
+[tool.setuptools]
+package-dir = {"" = "backend/src"}
+
+[tool.setuptools.packages.find]
+where = ["backend/src"]

@@ -24,6 +24,7 @@ function fmtTime(ts) {
 export default function WhaleAdvisory() {
   const { userPlan } = usePortfolio();
   const { t } = useI18n();
+  const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
 
   const [riskMode, setRiskMode] = useState(() => localStorage.getItem('vninvest:risk-mode') || 'balanced');
   const [activeSymbol, setActiveSymbol] = useState('');
@@ -78,12 +79,30 @@ export default function WhaleAdvisory() {
     if (!activeSymbol) return null;
     return items.filter(i => i.symbol === activeSymbol).sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
   }, [activeSymbol, items]);
+
+  const advisoryShellHostHref = useMemo(() => {
+    const params = new URLSearchParams();
+    const resolvedSymbol = String(activeSymbol || filteredStats[0]?.symbol || 'BCM').trim().toUpperCase();
+
+    if (resolvedSymbol) {
+      params.set('symbol', resolvedSymbol);
+    }
+
+    const query = params.toString();
+    return query ? `/ai-advisory/shell?${query}` : '/ai-advisory/shell';
+  }, [activeSymbol, filteredStats]);
   
   const refreshInfo = activeSymbol ? refreshInfoMap[activeSymbol] : null;
 
   return (
     <div className="mx-auto max-w-[1800px] pt-6 pb-8 px-4 lg:px-8 space-y-4 min-h-screen bg-slate-950/20">
-      <WhaleAdvisoryBentoHeader userPlan={userPlan} statsLoading={statsLoading} onRefresh={fetchData} />
+      <WhaleAdvisoryBentoHeader
+        userPlan={userPlan}
+        statsLoading={statsLoading}
+        onRefresh={fetchData}
+        shellHostHref={advisoryShellHostHref}
+        showShellHostLink={packageShellHostEnabled}
+      />
 
       {error ? (
         <div className="p-20 text-center neon-glass-panel border-rose-500/20">

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vninvest/contracts/session-payload/v1",
+  "title": "VNInvest Session Payload Contract",
+  "description": "Minimal session envelope shared across package-track web and vip-app surfaces.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "session_id",
+    "principal",
+    "tenant",
+    "build_target",
+    "issued_at"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "user_id",
+        "username"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "machine-bridge"
+          ]
+        },
+        "user_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "tenant_slug",
+        "service_account_id"
+      ],
+      "properties": {
+        "tenant_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tenant_slug": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "service_account_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "build_target": {
+      "enum": [
+        "community",
+        "saas",
+        "vip"
+      ]
+    },
+    "issued_at": {
+      "type": "string"
+    }
+  }
+}

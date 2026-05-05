@@ -1,0 +1,34 @@
+{
+  "name": "@vninvest/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "VNInvest shared frontend package-track shell baseline",
+  "scripts": {
+    "build-community": "node ./scripts/build-community.mjs",
+    "check:shell": "node ./scripts/check-shell.mjs",
+    "check:vip": "node ./scripts/check-vip-local-control.mjs",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --no-coverage"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./build-target": "./src/config/buildTarget.js",
+    "./route-catalog": "./src/app/routeCatalog.js",
+    "./navigation-catalog": "./src/app/navigationCatalog.js",
+    "./bootstrap-client": "./src/context/bootstrapClient.js",
+    "./auth-runtime": "./src/context/authRuntime.js",
+    "./auth-react": "./src/context/authReact.js",
+    "./adapters/core": "./src/adapters/core/index.js",
+    "./adapters/vip-app": "./src/adapters/vip-app/index.js"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1 || ^19.0.0",
+    "react-dom": "^18.3.1 || ^19.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

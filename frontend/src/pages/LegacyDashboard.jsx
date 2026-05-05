@@ -12,10 +12,12 @@ import StatCard from '../components/StatCard';
 import HoldingsTable from '../components/HoldingsTable';
 import UnifiedAlertBar from '../components/UnifiedAlertBar';
 import UnifiedAlertCenter from '../components/UnifiedAlertCenter';
+import StickyAlertBar from '../components/StickyAlertBar';
 import PortfolioHeatmap from '../components/PortfolioHeatmap';
 import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import useUnifiedAlerts from '../hooks/useUnifiedAlerts';
+import useDashboardAlerts from '../hooks/useDashboardAlerts';
 import usePersistentAlertState from '../hooks/usePersistentAlertState';
 import {
   buildLiveHoldingsOverlay,
@@ -128,6 +130,8 @@ export default function LegacyDashboard() {
     () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
     [monitoredSymbols, quotesBySymbol],
   );
+
+  const { whaleAlertsBySymbol: dashboardWhaleAlertsBySymbol } = useDashboardAlerts({ alerts });
 
   const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
   const liveSummary = buildLiveSummaryFromHoldings(liveHoldings);
@@ -530,6 +534,8 @@ export default function LegacyDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
+        <StickyAlertBar alerts={filteredUnifiedAlerts} />
+
         <PortfolioHeatmap
           holdings={(holdingsReady && trackedSymbolsReady) ? heatmapData : []}
           title={t('dashboardRealtime.watchlistHeatmapTitle', { defaultValue: 'Biến động Watchlist & Danh mục' })}
@@ -645,7 +651,7 @@ export default function LegacyDashboard() {
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-300">
           {t('dashboard.holdings')}
         </h2>
-        <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} />
+        <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} whaleAlertsBySymbol={dashboardWhaleAlertsBySymbol} />
       </div>
     </div>
   );

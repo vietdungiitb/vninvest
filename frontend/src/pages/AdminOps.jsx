@@ -1360,7 +1360,7 @@ export default function AdminOps() {
           title={t('adminOps.legacyWriterSurfaceTitle', { defaultValue: 'Trung tâm Điều khiển Dịch vụ Nền' })}
           description={t('adminOps.legacyWriterSurfaceDescription', { defaultValue: 'Các thao tác đồng bộ stock profile, watchlist, market groups và job crawl đã được hạ xuống surface chuyên trách. Khi thiếu quyền upstream, nút mở sẽ bị khóa.' })}
           actionLabel={t('adminOps.legacyWriterSurfaceAction', { defaultValue: 'Mở surface chuyên trách' })}
-          actionTo="/admin-crawl-control"
+          actionTo="/admin/core/crawl-control"
           actionDisabled={!canOpenLegacyCrawlControl}
           disabledHint={!canOpenLegacyCrawlControl ? t('adminOps.legacyWriterSurfaceDisabledHint', { defaultValue: 'Cần quyền upstream để mở surface này.' }) : null}
         />

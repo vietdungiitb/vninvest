@@ -8,6 +8,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from portfolio.models import UserConfig, UserPlanLifecycle
 from portfolio.opencore_dpi import DPIPlan, DPILicense
 from django.utils import timezone
@@ -18,21 +19,17 @@ TEST_PASSWORD = 'test@123456'
 # Clean up old test users
 User.objects.filter(username__in=['testfree', 'testpro', 'testpremium']).delete()
 
-# Create DPI Plans if they don't exist
-free_plan, _ = DPIPlan.objects.get_or_create(
-    name='free',
-    defaults={'tier': 'community', 'max_api_calls': 300}
-)
-pro_plan, _ = DPIPlan.objects.get_or_create(
-    name='pro',
-    defaults={'tier': 'pro_individual', 'max_api_calls': 3000}
-)
+# Ensure test users inherit the canonical feature matrix instead of ad-hoc empty plan shells.
+call_command('initialize_dpi_plans', verbosity=0)
+free_plan = DPIPlan.objects.get(name='free')
+pro_plan = DPIPlan.objects.get(name='pro')
 
 # 1. FREE USER (should get 403 on premium endpoints)
 user_free = User.objects.create_user('testfree', 'free@test.local', TEST_PASSWORD)
 UserConfig.objects.create(user=user_free, plan='free', email_verified=True)
 # License auto-created via signal, just update it
 license_free = user_free.dpi_license
+license_free.plan = free_plan
 license_free.status = 'active'
 license_free.expiry_date = timezone.now() + timedelta(days=30)
 license_free.start_date = timezone.now()

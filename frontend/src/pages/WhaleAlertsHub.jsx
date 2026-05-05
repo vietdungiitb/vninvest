@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleAdvisories, getWhaleCampaigns, getSymbolInvestigation } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
@@ -239,6 +239,7 @@ function getFrequencyLabel(totalValue, t) {
 }
 
 const FEED_PAGE_SIZE_OPTIONS = [3, 6, 9, 12];
+const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
 
 function TrackedSymbolCard({ symbol, stats, t, localeTag, formatDateTimeFn }) {
   const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0, latestAlertAt: null };
@@ -804,6 +805,7 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
 }
 
 export default function WhaleAlertsHub() {
+  const location = useLocation();
   const { ability, userPlan, isAuthenticated } = usePortfolio();
   const { t, localeTag, formatDateTime } = useI18n();
   const [trackedSymbols, setTrackedSymbols] = useState([]);
@@ -855,6 +857,18 @@ export default function WhaleAlertsHub() {
     () => watchlistGroups.find((group) => group.id === activeWatchlistGroupId) || null,
     [activeWatchlistGroupId, watchlistGroups]
   );
+
+  const shellHostHref = useMemo(() => {
+    const params = new URLSearchParams(location.search || '');
+    const fallbackSymbol = String(selectedSymbolInvestigation || trackedSymbols[0]?.symbol || '').trim().toUpperCase();
+
+    if (fallbackSymbol && !params.get('symbol')) {
+      params.set('symbol', fallbackSymbol);
+    }
+
+    const query = params.toString();
+    return query ? `/whale-alerts/shell?${query}` : '/whale-alerts/shell';
+  }, [location.search, selectedSymbolInvestigation, trackedSymbols]);
 
   const loadAggregateFeed = useCallback(async ({
     cursor = null,
@@ -1186,6 +1200,14 @@ export default function WhaleAlertsHub() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {packageShellHostEnabled ? (
+              <Link
+                to={shellHostHref}
+                className="rounded-full border border-amber-700/60 bg-amber-950/30 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-colors hover:border-amber-500 hover:text-amber-100"
+              >
+                Mở shell kiểm chứng
+              </Link>
+            ) : null}
             <div className="rounded-full border border-cyan-900/60 bg-cyan-950/30 px-3 py-1.5 text-xs text-cyan-200">
               {t('whaleHub.currentPlan', { plan: userPlan || 'free' })}
             </div>

@@ -45,6 +45,18 @@ DEFAULT_QUOTA_CAPS_BY_TIER = {
     },
 }
 
+ADMIN_CONSOLE_ABILITIES = [
+    {'action': 'read', 'subject': 'AdminOps'},
+    {'action': 'read', 'subject': 'AdminCrawlControl'},
+    {'action': 'read', 'subject': 'CoreJobOps'},
+    {'action': 'read', 'subject': 'CoreAuditTrace'},
+    {'action': 'read', 'subject': 'StockDetailAdvancedTab'},
+]
+
+
+def _is_operator_user(user) -> bool:
+    return bool(user and getattr(user, 'is_authenticated', False) and (user.is_staff or user.is_superuser))
+
 
 def _resolve_tier(plan: str) -> str:
     return PLAN_TIER_MAP.get(plan, 'community')
@@ -100,6 +112,8 @@ def _resolve_trial_state(user, plan: str) -> dict:
 
 def _get_plan(user) -> str:
     """Trả về plan hiện tại của user, tự động downgrade nếu hết hạn."""
+    if _is_operator_user(user):
+        return 'admin'
     cfg = getattr(user, 'user_config', None)
     if not cfg:
         return 'free'
@@ -137,14 +151,24 @@ def build_abilities(plan: str) -> list:
     if PLAN_ORDER.index(plan) >= PLAN_ORDER.index('pro'):
         abilities += [
             {'action': 'read', 'subject': 'WhaleAdvisory'},
+            {'action': 'read', 'subject': 'TenantAdminHome'},
+            {'action': 'read', 'subject': 'TenantCapabilityView'},
+            {'action': 'read', 'subject': 'TenantUsageView'},
+            {'action': 'read', 'subject': 'TenantBillingView'},
+            {'action': 'read', 'subject': 'TenantServiceAccountAdmin'},
+            {'action': 'create', 'subject': 'TenantServiceAccountAdmin'},
+            {'action': 'update', 'subject': 'TenantServiceAccountAdmin'},
+            {'action': 'read', 'subject': 'TenantPATAdmin'},
+            {'action': 'issue', 'subject': 'TenantPATAdmin'},
+            {'action': 'rotate', 'subject': 'TenantPATAdmin'},
+            {'action': 'revoke', 'subject': 'TenantPATAdmin'},
         ]
     if PLAN_ORDER.index(plan) >= PLAN_ORDER.index('premium'):
         abilities += [
             {'action': 'read', 'subject': 'WhaleAdvisoryDetail'},
         ]
     if plan == 'admin':
-        # Ghi đè tất cả bằng manage all
-        abilities = [{'action': 'manage', 'subject': 'all'}]
+        abilities += ADMIN_CONSOLE_ABILITIES
     return abilities
 
 
@@ -164,6 +188,18 @@ def resolve_user_entitlements(user) -> dict:
         'can_read_whale_feed': True,
         'can_read_whale_advisory': has_plan(user, 'pro'),
         'can_read_whale_advisory_detail': has_plan(user, 'premium'),
+        'can_read_tenant_admin_home': has_plan(user, 'pro'),
+        'can_read_tenant_capabilities': has_plan(user, 'pro'),
+        'can_read_tenant_usage': has_plan(user, 'pro'),
+        'can_read_tenant_billing': has_plan(user, 'pro'),
+        'can_read_tenant_service_accounts': has_plan(user, 'pro'),
+        'can_write_tenant_service_accounts': has_plan(user, 'pro'),
+        'can_read_tenant_pats': has_plan(user, 'pro'),
+        'can_write_tenant_pats': has_plan(user, 'pro'),
+        'can_read_admin_ops': has_plan(user, 'admin'),
+        'can_read_admin_crawl_control': has_plan(user, 'admin'),
+        'can_read_admin_core_jobs': has_plan(user, 'admin'),
+        'can_read_admin_core_audit_trace': has_plan(user, 'admin'),
     }
 
 

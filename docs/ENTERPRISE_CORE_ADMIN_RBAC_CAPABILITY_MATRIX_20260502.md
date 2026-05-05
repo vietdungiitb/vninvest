@@ -1,7 +1,7 @@
 # ENTERPRISE CORE ADMIN RBAC AND CAPABILITY MATRIX
 
 **Date:** 2026-05-02  
-**Status:** Current-code-aligned authorization matrix for admin surfaces  
+**Status:** Current-code truth plus target-state authorization matrix for admin surfaces  
 **Purpose:** Chuyển quyết định kiến trúc của `Core Admin UI` thành ma trận quyền cụ thể đủ để frontend và backend cùng triển khai mà không tự diễn giải khác nhau.
 
 **Companion artifact:**
@@ -14,9 +14,9 @@
 
 Tài liệu này đứng giữa:
 
-- [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
-- [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
-- [ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md)
+- [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](./ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
+- [ENTERPRISE_CORE_CONTRACT_PACK_20260502](./ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
+- [ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502](./ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md)
 
 Nó chốt 4 thứ:
 
@@ -37,7 +37,23 @@ Frontend hiện tại đã có nền authorization khá rõ:
 - `frontend/src/components/ProtectedRoute.jsx`
 - `frontend/src/components/TopNav.jsx`
 
-Điểm quan trọng nhất ở trạng thái hiện tại là `/admin-ops` vẫn đang được gate kiểu rộng bằng `ability.can('manage', 'all')`. Với `Core Admin UI`, cách đó chỉ được coi là cầu nối tạm thời, không phải mô hình quyền mục tiêu.
+Điểm quan trọng nhất ở trạng thái hiện tại là live runtime đã bỏ `manage all` khỏi `auth/me` và route guards. Operator legacy surfaces đang dùng explicit abilities `AdminOps`, `AdminCrawlControl`, `StockDetailAdvancedTab`; tenant console dùng explicit `Tenant*` abilities lấy từ `/api/auth/me`. Wildcard fallback hiện chỉ còn là debt ở package-track stub, không phải semantics của legacy runtime đang chạy.
+
+## 2.1 Current live ability inventory
+
+| Surface hiện đang chạy | Ability live | Nguồn bootstrap hiện tại |
+|---|---|---|
+| `/admin-ops` | `read AdminOps` | `/api/auth/me` -> `abilities[]` |
+| `/admin-crawl-control` | `read AdminCrawlControl` | `/api/auth/me` -> `abilities[]` |
+| advanced stock detail tab | `read StockDetailAdvancedTab` | `/api/auth/me` -> `abilities[]` |
+| `/tenant-admin/home` | `read TenantAdminHome` | `/api/auth/me` -> `abilities[]` |
+| `/tenant-admin/capabilities` | `read TenantCapabilityView` | `/api/auth/me` -> `abilities[]` |
+| `/tenant-admin/usage` | `read TenantUsageView` | `/api/auth/me` -> `abilities[]` |
+| `/tenant-admin/billing` | `read TenantBillingView` | `/api/auth/me` -> `abilities[]` |
+| `/tenant-admin/service-accounts` | `read/create/update TenantServiceAccountAdmin` | `/api/auth/me` -> `abilities[]` |
+| `/tenant-admin/pats` | `read/issue/rotate/revoke TenantPATAdmin` | `/api/auth/me` -> `abilities[]` |
+
+Các role catalog, subjects và routes cho Central Operator Admin ở các mục tiếp theo là vocabulary target-state cho phase operator console, chưa phải full ability set đang được phát ra trong runtime hiện tại.
 
 ---
 
@@ -175,12 +191,12 @@ Dùng cho `vip-app` local backend hoặc automation services. Lớp này **khôn
 | `/admin/core/runtime/jobs` | `read CoreJobOps` | `run CoreJobOps` cho manual actions |
 | `/admin/core/audit/requests` | `read CoreAuditTrace` | export gated separately |
 | `/admin/core/ai-runtime` | `read CoreAIRuntimeAdmin` | update policy needs `update CoreAIRuntimeAdmin` |
-| `/admin/tenant/home` | `read TenantAdminHome` | self tenant only |
-| `/admin/tenant/service-accounts` | `read TenantServiceAccountAdmin` | create/update gated separately |
-| `/admin/tenant/pats` | `read TenantPATAdmin` | issue/rotate/revoke gated separately |
-| `/admin/tenant/usage` | `read TenantUsageView` | self tenant only |
-| `/admin/tenant/billing` | `read TenantBillingView` | self tenant only |
-| `/admin/tenant/capabilities` | `read TenantCapabilityView` | self tenant only |
+| `/tenant-admin/home` | `read TenantAdminHome` | self tenant only |
+| `/tenant-admin/service-accounts` | `read TenantServiceAccountAdmin` | create/update gated separately |
+| `/tenant-admin/pats` | `read TenantPATAdmin` | issue/rotate/revoke gated separately |
+| `/tenant-admin/usage` | `read TenantUsageView` | self tenant only |
+| `/tenant-admin/billing` | `read TenantBillingView` | self tenant only |
+| `/tenant-admin/capabilities` | `read TenantCapabilityView` | self tenant only |
 
 ---
 

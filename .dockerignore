@@ -1,0 +1,61 @@
+# ── Root .dockerignore ────────────────────────────────────────────────────────
+# Applies when Docker build context is the repo root (frontend Dockerfile).
+# Goal: reduce build context from ~1GB down to ~30MB by excluding large dirs.
+
+# Git
+.git/
+.github/
+.gitignore
+
+# Python virtualenv / caches
+.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.egg-info/
+
+# Node modules (all packages — reinstalled inside container)
+**/node_modules/
+
+# Frontend build output (not needed as input)
+frontend/build/
+packages/web/dist/
+
+# Backend static / media (not part of frontend image)
+backend/staticfiles/
+backend/mediafiles/
+backend/celerybeat-schedule*
+backend/db.sqlite3*
+
+# Test / coverage artifacts
+**/coverage/
+**/.pytest_cache/
+**/htmlcov/
+**/*.log
+
+# Env / secrets (never bake into images)
+**/.env
+**/.env.*
+**/secrets/
+
+# Docker compose / infra (not needed inside images)
+docker-compose*.yml
+infra/
+scratch/
+tests/
+docs/
+quality/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Mobile / opencore (not part of frontend or backend builds)
+mobile-app/
+opennews-main/
+packages/opencore/

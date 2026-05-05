@@ -29,6 +29,36 @@ Với task liên quan `Money Flow Control Center`, `Signal Control Center`, `Dat
 11. `docs/RUN_INTEGRATION_TESTS_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
 12. `docs/RUN_SPEC_AUDIT_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
 
+Với task liên quan `SaaS Full Independence`, `Option B`, `proxy gateway`, `loại bỏ phụ thuộc legacy`, `legacy_proxy.py`, `B1 proxy`, `B4 portfolio cutover`, `B7 WebSocket`, `B8 decommission`, đọc gói:
+
+1. `docs/SAAS_FULL_INDEPENDENCE_HANDOFF_MASTER_20260504.md`
+2. `docs/IMPLEMENTATION_PLAN_SAAS_FULL_INDEPENDENCE_20260504.md`
+3. `docs/TECH_SPEC_SAAS_FULL_INDEPENDENCE_20260504.md`
+4. `docs/TASKBOARD_SAAS_FULL_INDEPENDENCE_20260504.md`
+5. `docs/SAAS_FULL_INDEPENDENCE_TRACEABILITY_MATRIX_20260504.md`
+6. `docs/SAAS_FULL_INDEPENDENCE_SELF_AUDIT_AND_TEST_PROTOCOL_20260504.md`
+7. `docs/SAAS_FULL_INDEPENDENCE_EXECUTION_EVIDENCE_TEMPLATE_20260504.md`
+8. `docs/SAAS_FULL_INDEPENDENCE_CONFIG_OWNERSHIP_MATRIX_20260504.md`
+9. `docs/SAAS_FULL_INDEPENDENCE_CODE_QUALITY_CONSTITUTION_20260504.md`
+10. `docs/RUN_CODE_REVIEW_SAAS_FULL_INDEPENDENCE_20260504.md`
+11. `docs/RUN_INTEGRATION_TESTS_SAAS_FULL_INDEPENDENCE_20260504.md`
+12. `docs/RUN_SPEC_AUDIT_SAAS_FULL_INDEPENDENCE_20260504.md`
+
+Với task liên quan `SaaS Production Migration`, `legacy decommission`, `domain migration`, `packages/core`, `vninvest_core`, `identity_access`, `commercial`, `signal_intelligence`, `market_serving`, `advisory`, `user_workspace`, `market_data`, `data_ingest`, đọc gói:
+
+1. `docs/SAAS_MIGRATION_HANDOFF_MASTER_20260504.md`
+2. `docs/IMPLEMENTATION_PLAN_SAAS_MIGRATION_20260504.md`
+3. `docs/TECH_SPEC_SAAS_MIGRATION_20260504.md`
+4. `docs/TASKBOARD_SAAS_MIGRATION_20260504.md`
+5. `docs/SAAS_MIGRATION_TRACEABILITY_MATRIX_20260504.md`
+6. `docs/SAAS_MIGRATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260504.md`
+7. `docs/SAAS_MIGRATION_EXECUTION_EVIDENCE_TEMPLATE_20260504.md`
+8. `docs/SAAS_MIGRATION_CONFIG_OWNERSHIP_MATRIX_20260504.md`
+9. `docs/SAAS_MIGRATION_CODE_QUALITY_CONSTITUTION_20260504.md`
+10. `docs/RUN_CODE_REVIEW_SAAS_MIGRATION_20260504.md`
+11. `docs/RUN_INTEGRATION_TESTS_SAAS_MIGRATION_20260504.md`
+12. `docs/RUN_SPEC_AUDIT_SAAS_MIGRATION_20260504.md`
+
 ## 2. Read-first quality docs
 
 Trước mọi thay đổi có liên quan feature này, đọc theo thứ tự:
@@ -55,6 +85,34 @@ Trước mọi thay đổi liên quan `Money Flow Control Center` hoặc lifecyc
 9. `docs/RUN_CODE_REVIEW_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
 10. `docs/RUN_INTEGRATION_TESTS_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
 11. `docs/RUN_SPEC_AUDIT_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+
+Trước mọi thay đổi liên quan `SaaS Production Migration`, `packages/core`, `legacy decommission`, hoặc domain migration, đọc theo thứ tự:
+
+1. `quality/QUALITY.md`
+2. `docs/SAAS_MIGRATION_HANDOFF_MASTER_20260504.md`
+3. `docs/TECH_SPEC_SAAS_MIGRATION_20260504.md`
+4. `docs/IMPLEMENTATION_PLAN_SAAS_MIGRATION_20260504.md`
+5. `docs/SAAS_MIGRATION_TRACEABILITY_MATRIX_20260504.md`
+6. `docs/SAAS_MIGRATION_CONFIG_OWNERSHIP_MATRIX_20260504.md`
+7. `docs/SAAS_MIGRATION_CODE_QUALITY_CONSTITUTION_20260504.md`
+8. `docs/SAAS_MIGRATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260504.md`
+9. `docs/RUN_CODE_REVIEW_SAAS_MIGRATION_20260504.md`
+10. `docs/RUN_INTEGRATION_TESTS_SAAS_MIGRATION_20260504.md`
+11. `docs/RUN_SPEC_AUDIT_SAAS_MIGRATION_20260504.md`
+
+Trước mọi thay đổi liên quan `SaaS Full Independence`, `Option B`, `proxy gateway`, `B1-B8 phases`, hoặc `loại bỏ phụ thuộc legacy`, đọc theo thứ tự:
+
+1. `quality/QUALITY.md`
+2. `docs/SAAS_FULL_INDEPENDENCE_HANDOFF_MASTER_20260504.md`
+3. `docs/TECH_SPEC_SAAS_FULL_INDEPENDENCE_20260504.md`
+4. `docs/IMPLEMENTATION_PLAN_SAAS_FULL_INDEPENDENCE_20260504.md`
+5. `docs/SAAS_FULL_INDEPENDENCE_TRACEABILITY_MATRIX_20260504.md`
+6. `docs/SAAS_FULL_INDEPENDENCE_CONFIG_OWNERSHIP_MATRIX_20260504.md`
+7. `docs/SAAS_FULL_INDEPENDENCE_CODE_QUALITY_CONSTITUTION_20260504.md`
+8. `docs/SAAS_FULL_INDEPENDENCE_SELF_AUDIT_AND_TEST_PROTOCOL_20260504.md`
+9. `docs/RUN_CODE_REVIEW_SAAS_FULL_INDEPENDENCE_20260504.md`
+10. `docs/RUN_INTEGRATION_TESTS_SAAS_FULL_INDEPENDENCE_20260504.md`
+11. `docs/RUN_SPEC_AUDIT_SAAS_FULL_INDEPENDENCE_20260504.md`
 
 ## 3. Hard constraints for this feature pack
 
@@ -140,3 +198,30 @@ Template chuẩn nằm tại:
 
 - `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_EXECUTION_EVIDENCE_TEMPLATE_20260428.md`
 - `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_EXECUTION_EVIDENCE_TEMPLATE_20260501.md`
+- `docs/SAAS_MIGRATION_EXECUTION_EVIDENCE_TEMPLATE_20260504.md`
+
+## 8. Hard constraints for SaaS Migration
+
+1. **Không ghi vào legacy DB từ core containers** — `CoreRouter` phải block; không workaround.
+2. **Shadow run bắt buộc** trước mọi Celery task cutover — tối thiểu 3 ngày trade thật.
+3. **Parity gate >= 99%** trên mọi domain migration trước khi cutover.
+4. **7 pre-decommission gates** (A-G) phải PASS và có Tech Lead sign-off trước khi xoá legacy code.
+5. **Không có default passwords** trong prod compose — dùng `${VAR:?error}` syntax.
+6. **PAT hash phải dùng HMAC với pepper** — tuyệt đối không plain SHA-256.
+7. **ALLOWED_HOSTS** và **CORS** không được wildcard/DEBUG-gated trong production.
+8. **Tất cả API calls từ packages/web** phải qua `coreApiAdapter.js` — không direct fetch.
+9. **Text mới trong packages/web** phải qua i18n tiếng Việt đầy đủ dấu.
+10. **Immutable production builds** — không source mount, không runtime pip install.
+
+## 9. Hard constraints for SaaS Full Independence (Option B)
+
+1. **Proxy route phải là route cuối** trong `urls.py` — các native routes không bao giờ bị shadow.
+2. **Hop-by-hop headers phải bị strip** trong `legacy_proxy.py` — tuyệt đối không forward `Connection`, `Keep-Alive`, `Transfer-Encoding`.
+3. **Timeout proxy**: connect 5s, read 120s (file upload 300s) — không dùng default httpx timeout.
+4. **Port 8000 không được exposed** trong bất kỳ compose file nào sau B1.
+5. **frontend không được depends_on backend** sau B1 — phải depends_on core-api.
+6. **B4 portfolio cutover bắt buộc shadow run >= 3 ngày** với parity_score >= 0.99 trên từng ngày.
+7. **Proxy route phải bị xóa hoàn toàn** trước B8 decommission — không để lại dead code.
+8. **`legacy_proxy.py` không được log request body** — chỉ log method + path + status code.
+9. **WebSocket symbol parameter phải được sanitize** trước khi dùng làm Redis channel key.
+10. **LEGACY_BACKEND_URL phải là biến môi trường** — không hardcode trong source.

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { getTrackedSymbols } from '../api/client';
 import { useI18n } from '../context/LangContext';
@@ -7,8 +7,31 @@ import SidebarWatchlist from './SidebarWatchlist';
 
 export default function Sidebar() {
   const { t } = useI18n();
-  const { logout, portfolios, activePortfolioId, setActivePortfolioId, userPlan, userIdentity } = usePortfolio();
+  const {
+    logout,
+    portfolios,
+    activePortfolioId,
+    setActivePortfolioId,
+    userPlan,
+    userIdentity,
+    capabilitySnapshot,
+    ability,
+  } = usePortfolio();
   const [trackedSymbols, setTrackedSymbols] = useState([]);
+  const capabilityMenus = capabilitySnapshot?.navigation?.menus || [];
+  const hasCapabilityMenus = capabilityMenus.length > 0;
+  const visibleRoutes = useMemo(
+    () => new Set(capabilityMenus.filter((item) => item?.enabled).map((item) => item.route)),
+    [capabilityMenus],
+  );
+  const tenantSurfaceEnabled = capabilitySnapshot?.surfaces?.tenant_admin?.enabled;
+  const canNavigateTo = (route, fallback) => (hasCapabilityMenus ? visibleRoutes.has(route) : fallback);
+  const canReadTenantHome = canNavigateTo('/tenant-admin/home', ability.can('read', 'TenantAdminHome'));
+  const canReadTenantCapabilities = canNavigateTo('/tenant-admin/capabilities', ability.can('read', 'TenantCapabilityView'));
+  const canReadTenantUsage = canNavigateTo('/tenant-admin/usage', ability.can('read', 'TenantUsageView'));
+  const canReadTenantBilling = canNavigateTo('/tenant-admin/billing', ability.can('read', 'TenantBillingView'));
+  const canReadTenantServiceAccounts = canNavigateTo('/tenant-admin/service-accounts', ability.can('read', 'TenantServiceAccountAdmin'));
+  const canReadTenantPATs = canNavigateTo('/tenant-admin/pats', ability.can('read', 'TenantPATAdmin'));
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +89,59 @@ export default function Sidebar() {
         >
           {t('layout.nav.support')}
         </NavLink>
+        {tenantSurfaceEnabled !== false && canReadTenantHome && (
+          <div className="mt-2 rounded-xl border border-slate-800 bg-slate-900/60 p-2">
+            <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              {t('layout.nav.group.tenant')}
+            </p>
+            <NavLink
+              to="/tenant-admin/home"
+              className="btn-pill w-full border-violet-700 bg-violet-900/20 px-3 py-2 text-xs text-violet-200 hover:bg-violet-900/35"
+            >
+              {t('layout.nav.tenantHome')}
+            </NavLink>
+            {canReadTenantCapabilities ? (
+              <NavLink
+                to="/tenant-admin/capabilities"
+                className="btn-pill mt-2 w-full border-violet-700/80 bg-violet-900/15 px-3 py-2 text-xs text-violet-200 hover:bg-violet-900/30"
+              >
+                {t('layout.nav.tenantCapabilities')}
+              </NavLink>
+            ) : null}
+            {canReadTenantUsage ? (
+              <NavLink
+                to="/tenant-admin/usage"
+                className="btn-pill mt-2 w-full border-violet-700/80 bg-violet-900/15 px-3 py-2 text-xs text-violet-200 hover:bg-violet-900/30"
+              >
+                {t('layout.nav.tenantUsage')}
+              </NavLink>
+            ) : null}
+            {canReadTenantBilling ? (
+              <NavLink
+                to="/tenant-admin/billing"
+                className="btn-pill mt-2 w-full border-violet-700/80 bg-violet-900/15 px-3 py-2 text-xs text-violet-200 hover:bg-violet-900/30"
+              >
+                {t('layout.nav.tenantBilling')}
+              </NavLink>
+            ) : null}
+            {canReadTenantServiceAccounts ? (
+              <NavLink
+                to="/tenant-admin/service-accounts"
+                className="btn-pill mt-2 w-full border-violet-700/80 bg-violet-900/15 px-3 py-2 text-xs text-violet-200 hover:bg-violet-900/30"
+              >
+                {t('layout.nav.tenantServiceAccounts')}
+              </NavLink>
+            ) : null}
+            {canReadTenantPATs ? (
+              <NavLink
+                to="/tenant-admin/pats"
+                className="btn-pill mt-2 w-full border-violet-700/80 bg-violet-900/15 px-3 py-2 text-xs text-violet-200 hover:bg-violet-900/30"
+              >
+                {t('layout.nav.tenantPats')}
+              </NavLink>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <SidebarWatchlist trackedSymbols={trackedSymbols} />

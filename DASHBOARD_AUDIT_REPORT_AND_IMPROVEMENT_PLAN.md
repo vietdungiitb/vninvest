@@ -6,7 +6,7 @@
 
 **Priority Issues** (per user request):
 1. **Alert Visibility**: Whale/dark warnings not overlaid on holdings rows
-2. **Information Density**: No aggregated risk summary (stale %, exposure)
+2. **Information Density**: Backend aggregated risk API now exists; UI risk summary card still needs wiring
 3. **Meaningfulness**: Observability noise reduces trader focus
 4. **Clarity**: Severity badges need actionability context
 
@@ -62,33 +62,34 @@ Backend APIs (backend/portfolio/views.py):
    + Add whaleAlertsBySymbol prop → 🦈 badges per row
    + Row highlighting (extreme=red glow)
 
-2. frontend/src/pages/Dashboard.jsx  
-   + StickyAlertBar (top 3 alerts)
+2. frontend/src/pages/LegacyDashboard.jsx / frontend/src/pages/modern/ModernDashboard.jsx  
+   + StickyAlertBar (top 3 alerts) [implemented in current-code dashboard slice]
    + RiskSummaryCard (stale %, whale exposure)
 
 3. frontend/src/components/DashboardRealtimePanel.jsx
-   - Collapsible observability popover
+   + Observability icon popover [implemented in current-code dashboard slice]
    + Pin high/extreme alerts
 ```
 
 ### Phase 2: Alert System Polish (0.5 day)
 ```
-New: frontend/src/components/AlertBadge.jsx (unified)
-New: useDashboardAlerts.js (filter/priority)
-+ Audio ping toggle for extreme
+New: frontend/src/components/AlertBadge.jsx (unified) [implemented in current-code dashboard slice]
+New: useDashboardAlerts.js (filter/priority) [implemented in current-code dashboard slice]
++ Audio ping toggle for extreme [implemented in current-code dashboard slice]
 ```
 
 ### Phase 3: Backend Aggregation (0.5 day)
 ```
 backend/portfolio/views.py
-+ /api/dashboard/aggregated-risk/ → stale %, whale exposure, dark flow avg
++ /api/dashboard/aggregated-risk/ → stale %, whale exposure, dark flow avg [implemented]
 ```
 
 ## 3. Dependent Files
 ```
 Phase 1 [Must]:
 ├── frontend/src/components/HoldingsTable.jsx
-├── frontend/src/pages/Dashboard.jsx  
+├── frontend/src/pages/LegacyDashboard.jsx
+├── frontend/src/pages/modern/ModernDashboard.jsx  
 ├── frontend/src/components/DashboardRealtimePanel.jsx
 └── frontend/src/context/RealtimeContext.jsx
 

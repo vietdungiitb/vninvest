@@ -1,8 +1,29 @@
+import json
+from datetime import timedelta
+
+from django.db.models import Count, Max, Q
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from django.core.cache import cache
+from django.utils import timezone
+
+from config.health import healthcheck, market_observability_health, prefetch_health, realtime_health, streams_health
+from .models import (
+    AdvisoryAggregateAuditLog,
+    CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
+    CrawlAuditLog,
+    CrawlRun,
+    SignalServiceRun,
+    SystemAISettingsAuditLog,
+    WhaleConfigAuditLog,
+)
+from .partner_tenant_context import resolve_partner_tenant_context
+from .serializers import CrawlRunSerializer, SignalServiceRunSerializer
+from .views_partner_admin import PARTNER_USAGE_METERS, _build_plan_lifecycle_summary, _build_quota_snapshot_row, _build_subscription_summary
 
 from portfolio.tasks_prefetch import _read_offpeak_ingest_history
 from portfolio.runtime_policy_helpers import (
@@ -50,6 +71,839 @@ def _forbidden_surface_response(surface_name: str):
         {'detail': f'Tài khoản không có quyền ghi {surface_name}.'},
         status=status.HTTP_403_FORBIDDEN,
     )
+
+
+def _response_payload(response):
+    data = getattr(response, 'data', None)
+    if isinstance(data, dict):
+        return data
+    if data is not None:
+        return {'data': data}
+
+    content = getattr(response, 'content', None)
+    if content is None:
+        return {}
+
+    try:
+        return json.loads(content.decode('utf-8'))
+    except Exception:
+        return {}
+
+
+def _http_request(request):
+    return getattr(request, '_request', request)
+
+
+def _parse_multi_query_param(request, param_name: str) -> list[str]:
+    values = [str(value).strip() for value in request.query_params.getlist(param_name) if str(value).strip()]
+    if values:
+        return values
+    raw_value = str(request.query_params.get(param_name) or '').strip()
+    if not raw_value:
+        return []
+    return [value.strip() for value in raw_value.split(',') if value.strip()]
+
+
+def _worst_risk_state(risk_states) -> str:
+    severity = {'normal': 0, 'warning': 1, 'critical': 2}
+    worst_state = 'normal'
+    for risk_state in risk_states:
+        normalized = str(risk_state or 'normal').strip().lower()
+        if severity.get(normalized, 0) > severity.get(worst_state, 0):
+            worst_state = normalized
+    return worst_state
+
+
+def _build_operator_tenant_usage_snapshot(tenant: CoreTenant) -> dict:
+    tenant_context = resolve_partner_tenant_context(tenant.owner_user)
+    now = timezone.now()
+    period_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    period_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    usage_rows = [
+        _build_quota_snapshot_row(tenant.owner_user, tenant_context, meter_definition, period_start, period_end)
+        for meter_definition in PARTNER_USAGE_METERS
+    ]
+    current_usage_risk = _worst_risk_state(row.get('risk_state') for row in usage_rows)
+    subscription_summary = _build_subscription_summary(tenant.owner_user, tenant_context)
+    invoice_state = str(subscription_summary.get('invoice_state') or 'current')
+    suspension_state = 'manual' if tenant.status == CoreTenant.StatusChoices.SUSPENDED else ('billing' if invoice_state in {'past_due', 'overdue', 'credit_hold'} else ('quota' if current_usage_risk == 'critical' else 'none'))
+
+    return {
+        'tenant_context': tenant_context,
+        'usage_rows': usage_rows,
+        'current_usage_risk': current_usage_risk,
+        'invoice_state': invoice_state,
+        'suspension_state': suspension_state,
+        'subscription_summary': subscription_summary,
+    }
+
+
+def _build_recent_operator_actions(tenant: CoreTenant, tenant_context, service_accounts, pat_credentials) -> list[dict]:
+    actions: list[dict] = []
+
+    for service_account in service_accounts.order_by('-updated_at', '-pk')[:5]:
+        actions.append({
+            'object': 'operator_action',
+            'action': 'service_account_created',
+            'source': 'service_account',
+            'id': service_account.public_id,
+            'tenant_id': tenant_context.tenant_id,
+            'summary': f'Tạo service account {service_account.name}',
+            'at': service_account.created_at.isoformat() if service_account.created_at else None,
+            'severity': 'info',
+        })
+        if service_account.last_rotated_at:
+            actions.append({
+                'object': 'operator_action',
+                'action': 'service_account_rotated',
+                'source': 'service_account',
+                'id': service_account.public_id,
+                'tenant_id': tenant_context.tenant_id,
+                'summary': f'Luân chuyển PAT cho service account {service_account.name}',
+                'at': service_account.last_rotated_at.isoformat(),
+                'severity': 'info',
+            })
+
+    for credential in pat_credentials.order_by('-updated_at', '-pk')[:5]:
+        actions.append({
+            'object': 'operator_action',
+            'action': 'pat_issued',
+            'source': 'pat_credential',
+            'id': credential.public_id,
+            'tenant_id': tenant_context.tenant_id,
+            'service_account_id': credential.service_account.public_id,
+            'summary': f'Issue PAT {credential.display_name or credential.token_prefix}',
+            'at': credential.created_at.isoformat() if credential.created_at else None,
+            'severity': 'info',
+        })
+        if credential.last_used_at:
+            actions.append({
+                'object': 'operator_action',
+                'action': 'pat_used',
+                'source': 'pat_credential',
+                'id': credential.public_id,
+                'tenant_id': tenant_context.tenant_id,
+                'service_account_id': credential.service_account.public_id,
+                'summary': f'PAT {credential.display_name or credential.token_prefix} used',
+                'at': credential.last_used_at.isoformat(),
+                'severity': 'info',
+            })
+        if credential.revoked_at:
+            actions.append({
+                'object': 'operator_action',
+                'action': 'pat_revoked',
+                'source': 'pat_credential',
+                'id': credential.public_id,
+                'tenant_id': tenant_context.tenant_id,
+                'service_account_id': credential.service_account.public_id,
+                'summary': f'Revoke PAT {credential.display_name or credential.token_prefix}',
+                'at': credential.revoked_at.isoformat(),
+                'severity': 'warning',
+            })
+        if credential.status == CorePATCredential.StatusChoices.ROTATING and credential.grace_until:
+            actions.append({
+                'object': 'operator_action',
+                'action': 'pat_rotated',
+                'source': 'pat_credential',
+                'id': credential.public_id,
+                'tenant_id': tenant_context.tenant_id,
+                'service_account_id': credential.service_account.public_id,
+                'summary': f'Rotate PAT {credential.display_name or credential.token_prefix}',
+                'at': credential.grace_until.isoformat(),
+                'severity': 'info',
+            })
+
+    actions.sort(key=lambda item: str(item.get('at') or ''), reverse=True)
+    return actions[:10]
+
+
+def _build_operator_tenant_snapshot(tenant: CoreTenant) -> dict:
+    tenant_context = resolve_partner_tenant_context(tenant.owner_user)
+    plan_lifecycle = _build_plan_lifecycle_summary(tenant.owner_user)
+    usage_snapshot = _build_operator_tenant_usage_snapshot(tenant)
+    service_account_qs = CoreServiceAccount.objects.filter(owner_user=tenant.owner_user)
+    pat_qs = CorePATCredential.objects.select_related('service_account').filter(owner_user=tenant.owner_user)
+
+    active_service_account_count = getattr(tenant, 'active_service_account_count', None)
+    if active_service_account_count is None:
+        active_service_account_count = service_account_qs.filter(status=CoreServiceAccount.StatusChoices.ACTIVE).count()
+
+    active_pat_count = getattr(tenant, 'active_pat_count', None)
+    if active_pat_count is None:
+        active_pat_count = pat_qs.filter(status__in=[CorePATCredential.StatusChoices.ACTIVE, CorePATCredential.StatusChoices.ROTATING]).count()
+
+    latest_pat_last_used_at = pat_qs.order_by('-last_used_at', '-updated_at').values_list('last_used_at', flat=True).first()
+    rotations_due_count = pat_qs.filter(
+        status=CorePATCredential.StatusChoices.ACTIVE,
+        expires_at__isnull=False,
+        expires_at__lte=timezone.now() + timedelta(days=14),
+    ).count()
+
+    service_account_total_count = service_account_qs.count()
+    anomaly_state = 'critical' if usage_snapshot['current_usage_risk'] == 'critical' or usage_snapshot['invoice_state'] in {'past_due', 'overdue', 'credit_hold'} else ('warning' if usage_snapshot['current_usage_risk'] == 'warning' else 'normal')
+
+    return {
+        'object': 'tenant_summary',
+        'id': tenant.public_id,
+        'tenant_code': tenant.tenant_code,
+        'display_name': tenant.display_name,
+        'status': tenant.status,
+        'plan_code': tenant_context.plan_code,
+        'plan_lifecycle': plan_lifecycle,
+        'suspension_state': usage_snapshot['suspension_state'],
+        'current_usage_risk': usage_snapshot['current_usage_risk'],
+        'invoice_state': usage_snapshot['invoice_state'],
+        'active_service_account_count': active_service_account_count,
+        'active_pat_count': active_pat_count,
+        'updated_at': tenant.updated_at.isoformat() if tenant.updated_at else None,
+        'tenant_context': {
+            'tenant_id': tenant_context.tenant_id,
+            'plan_code': tenant_context.plan_code,
+            'status': tenant_context.status,
+            'default_environment': tenant_context.default_environment,
+        },
+        'commercial_summary': {
+            'plan_code': usage_snapshot['subscription_summary']['plan_code'],
+            'invoice_state': usage_snapshot['invoice_state'],
+            'billing_cycle': usage_snapshot['subscription_summary']['billing_cycle'],
+            'current_period_start': usage_snapshot['subscription_summary']['current_period_start'],
+            'current_period_end': usage_snapshot['subscription_summary']['current_period_end'],
+            'next_invoice_date': usage_snapshot['subscription_summary']['next_invoice_date'],
+        },
+        'security_summary': {
+            'service_account_count': service_account_total_count,
+            'active_service_account_count': active_service_account_count,
+            'active_pat_count': active_pat_count,
+            'rotations_due_count': rotations_due_count,
+            'anomaly_state': anomaly_state,
+            'latest_pat_last_used_at': latest_pat_last_used_at.isoformat() if latest_pat_last_used_at else None,
+        },
+        'usage_meters': usage_snapshot['usage_rows'],
+        'recent_operator_actions': _build_recent_operator_actions(tenant, tenant_context, service_account_qs, pat_qs),
+        'generated_at': timezone.now().isoformat(),
+    }
+
+
+def _build_operator_tenant_list_snapshot(request, tenants: list[CoreTenant]) -> dict:
+    summary_rows = [_build_operator_tenant_snapshot(tenant) for tenant in tenants]
+    status_filters = set(_parse_multi_query_param(request, 'status'))
+    plan_filters = set(_parse_multi_query_param(request, 'plan_code'))
+    suspension_filters = set(_parse_multi_query_param(request, 'suspension_state'))
+    usage_risk_filters = set(_parse_multi_query_param(request, 'current_usage_risk'))
+    invoice_state_filters = set(_parse_multi_query_param(request, 'invoice_state'))
+
+    if status_filters:
+        summary_rows = [row for row in summary_rows if row['status'] in status_filters]
+    if plan_filters:
+        summary_rows = [row for row in summary_rows if row['plan_code'] in plan_filters]
+    if suspension_filters:
+        summary_rows = [row for row in summary_rows if row['suspension_state'] in suspension_filters]
+    if usage_risk_filters:
+        summary_rows = [row for row in summary_rows if row['current_usage_risk'] in usage_risk_filters]
+    if invoice_state_filters:
+        summary_rows = [row for row in summary_rows if row['invoice_state'] in invoice_state_filters]
+
+    search_term = str(request.query_params.get('search') or '').strip().lower()
+    if search_term:
+        summary_rows = [
+            row for row in summary_rows
+            if search_term in row['tenant_code'].lower()
+            or search_term in row['display_name'].lower()
+            or search_term in row['id'].lower()
+            or search_term in str(row.get('tenant_context', {}).get('plan_code') or '').lower()
+        ]
+
+    limit = min(max(int(request.query_params.get('limit', 25) or 25), 1), 100)
+    starting_after = str(request.query_params.get('starting_after') or '').strip()
+    ending_before = str(request.query_params.get('ending_before') or '').strip()
+
+    if starting_after:
+        for index, row in enumerate(summary_rows):
+            if row['id'] == starting_after:
+                summary_rows = summary_rows[index + 1:]
+                break
+    elif ending_before:
+        for index, row in enumerate(summary_rows):
+            if row['id'] == ending_before:
+                summary_rows = summary_rows[:index]
+                break
+
+    page_rows = summary_rows[:limit]
+    has_more = len(summary_rows) > limit
+
+    total_count = len(summary_rows)
+    active_count = sum(1 for row in summary_rows if row['status'] == CoreTenant.StatusChoices.ACTIVE)
+    suspended_count = sum(1 for row in summary_rows if row['status'] == CoreTenant.StatusChoices.SUSPENDED)
+    critical_usage_count = sum(1 for row in summary_rows if row['current_usage_risk'] == 'critical')
+    billing_risk_count = sum(1 for row in summary_rows if row['invoice_state'] in {'past_due', 'overdue', 'credit_hold'})
+
+    return {
+        'object': 'list',
+        'url': request.path,
+        'summary_cards': [
+            {'key': 'tenant_total', 'label': 'Tổng tenant', 'value': total_count, 'detail': 'Matching current filters'},
+            {'key': 'tenant_active', 'label': 'Tenant active', 'value': active_count, 'detail': 'Visible in current filter set'},
+            {'key': 'tenant_suspended', 'label': 'Tenant suspended', 'value': suspended_count, 'detail': 'Manual suspension state'},
+            {'key': 'tenant_critical_usage', 'label': 'Critical usage', 'value': critical_usage_count, 'detail': 'Quota risk critical'},
+            {'key': 'tenant_billing_risk', 'label': 'Billing risk', 'value': billing_risk_count, 'detail': 'Past due or overdue invoices'},
+        ],
+        'data': [
+            {
+                'object': 'tenant_summary',
+                'id': row['id'],
+                'tenant_code': row['tenant_code'],
+                'display_name': row['display_name'],
+                'status': row['status'],
+                'plan_code': row['plan_code'],
+                'plan_lifecycle': row['plan_lifecycle'],
+                'suspension_state': row['suspension_state'],
+                'current_usage_risk': row['current_usage_risk'],
+                'invoice_state': row['invoice_state'],
+                'active_service_account_count': row['active_service_account_count'],
+                'active_pat_count': row['active_pat_count'],
+                'updated_at': row['updated_at'],
+            }
+            for row in page_rows
+        ],
+        'has_more': has_more,
+        'next_cursor': page_rows[-1]['id'] if has_more and page_rows else None,
+        'prev_cursor': page_rows[0]['id'] if page_rows and (starting_after or ending_before) else None,
+        'generated_at': timezone.now().isoformat(),
+    }
+
+
+def _build_operator_tenant_detail_snapshot(tenant: CoreTenant) -> dict:
+    tenant_snapshot = _build_operator_tenant_snapshot(tenant)
+    return {
+        'object': 'operator_tenant_detail',
+        'tenant': tenant_snapshot,
+        'commercial_summary': tenant_snapshot['commercial_summary'],
+        'security_summary': tenant_snapshot['security_summary'],
+        'recent_operator_actions': tenant_snapshot['recent_operator_actions'],
+        'generated_at': timezone.now().isoformat(),
+    }
+
+
+def _paginate_operator_rows(request, rows: list[dict]):
+    limit = min(max(int(request.query_params.get('limit', 25) or 25), 1), 100)
+    starting_after = str(request.query_params.get('starting_after') or '').strip()
+    ending_before = str(request.query_params.get('ending_before') or '').strip()
+
+    if starting_after:
+        for index, row in enumerate(rows):
+            if row['id'] == starting_after:
+                rows = rows[index + 1:]
+                break
+    elif ending_before:
+        for index, row in enumerate(rows):
+            if row['id'] == ending_before:
+                rows = rows[:index]
+                break
+
+    page_rows = rows[:limit]
+    has_more = len(rows) > limit
+    return page_rows, has_more, starting_after, ending_before
+
+
+def _resolve_operator_tenant(tenant_id: str):
+    tenant = CoreTenant.objects.select_related('owner_user').filter(public_id=tenant_id).first()
+    if tenant is None:
+        return None, Response({'detail': 'Tenant operator không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
+    return tenant, None
+
+
+def _resolve_service_account_rotation_risk(service_account) -> str:
+    now = timezone.now()
+    if getattr(service_account, 'active_pat_count', 0) in (None, 0):
+        return 'critical'
+    last_rotated_at = getattr(service_account, 'last_rotated_at', None)
+    latest_pat_last_used_at = getattr(service_account, 'latest_pat_last_used_at', None)
+    if last_rotated_at and last_rotated_at <= now - timedelta(days=180):
+        return 'warning'
+    if latest_pat_last_used_at and latest_pat_last_used_at <= now - timedelta(days=30):
+        return 'warning'
+    return 'normal'
+
+
+def _build_operator_service_account_snapshot(tenant: CoreTenant, service_account) -> dict:
+    tenant_context = resolve_partner_tenant_context(tenant.owner_user)
+    last_operator_action_at = max(
+        [
+            value for value in [
+                service_account.updated_at,
+                service_account.created_at,
+                service_account.last_rotated_at,
+                getattr(service_account, 'latest_pat_last_used_at', None),
+            ]
+            if value is not None
+        ] or [timezone.now()]
+    )
+
+    return {
+        'object': 'service_account',
+        'id': service_account.public_id,
+        'tenant_id': tenant_context.tenant_id,
+        'name': service_account.name,
+        'environment': service_account.environment,
+        'status': service_account.status,
+        'policy_ids': list(service_account.policy_ids or []),
+        'pat_count': int(getattr(service_account, 'pat_count', 0) or 0),
+        'active_pat_count': int(getattr(service_account, 'active_pat_count', 0) or 0),
+        'latest_pat_last_used_at': getattr(service_account, 'latest_pat_last_used_at', None).isoformat() if getattr(service_account, 'latest_pat_last_used_at', None) else None,
+        'rotation_risk': _resolve_service_account_rotation_risk(service_account),
+        'last_operator_action_at': last_operator_action_at.isoformat() if last_operator_action_at else None,
+        'created_at': service_account.created_at.isoformat() if service_account.created_at else None,
+        'updated_at': service_account.updated_at.isoformat() if service_account.updated_at else None,
+    }
+
+
+def _build_operator_pat_snapshot(tenant: CoreTenant, credential) -> dict:
+    tenant_context = resolve_partner_tenant_context(tenant.owner_user)
+    issuer = credential.issued_by
+    issuer_actor_type = 'system'
+    if issuer is not None:
+        issuer_actor_type = 'operator_user' if issuer.is_staff or issuer.is_superuser else 'tenant_user'
+    now = timezone.now()
+    anomaly_state = 'normal'
+    if credential.status == CorePATCredential.StatusChoices.REVOKED:
+        anomaly_state = 'warning'
+    elif credential.expires_at and credential.expires_at <= now:
+        anomaly_state = 'critical'
+    elif credential.expires_at and credential.expires_at <= now + timedelta(days=7):
+        anomaly_state = 'warning'
+    elif credential.grace_until and credential.grace_until > now:
+        anomaly_state = 'warning'
+    elif credential.last_used_at and credential.last_used_at <= now - timedelta(days=30):
+        anomaly_state = 'warning'
+
+    metadata = credential.metadata if isinstance(credential.metadata, dict) else {}
+
+    return {
+        'object': 'pat_credential',
+        'id': credential.public_id,
+        'tenant_id': tenant_context.tenant_id,
+        'service_account_id': credential.service_account.public_id,
+        'token_prefix': credential.token_prefix,
+        'scope_codes': list(credential.scope_codes or []),
+        'status': credential.effective_status,
+        'expires_at': credential.expires_at.isoformat() if credential.expires_at else None,
+        'last_used_at': credential.last_used_at.isoformat() if credential.last_used_at else None,
+        'last_ip': credential.last_ip,
+        'revoked_at': credential.revoked_at.isoformat() if credential.revoked_at else None,
+        'issuer_actor_type': issuer_actor_type,
+        'issuer_actor_id': str(issuer.id) if issuer is not None else None,
+        'anomaly_state': anomaly_state,
+        'grace_period_active': bool(credential.status == CorePATCredential.StatusChoices.ROTATING and credential.grace_until and credential.grace_until > now),
+        'last_used_ip_country': metadata.get('last_used_ip_country'),
+        'last_audit_request_id': metadata.get('last_audit_request_id'),
+        'created_at': credential.created_at.isoformat() if credential.created_at else None,
+        'updated_at': credential.updated_at.isoformat() if credential.updated_at else None,
+    }
+
+
+def _build_operator_service_account_list_snapshot(request, tenant: CoreTenant, service_accounts) -> dict:
+    service_account_rows = [
+        _build_operator_service_account_snapshot(tenant, service_account)
+        for service_account in service_accounts
+    ]
+
+    search_term = str(request.query_params.get('search') or '').strip().lower()
+    if search_term:
+        service_account_rows = [
+            row for row in service_account_rows
+            if search_term in row['id'].lower()
+            or search_term in row['name'].lower()
+            or search_term in row['environment'].lower()
+            or search_term in ' '.join(row.get('policy_ids') or []).lower()
+        ]
+
+    status_filters = set(_parse_multi_query_param(request, 'status'))
+    if status_filters:
+        service_account_rows = [row for row in service_account_rows if row['status'] in status_filters]
+
+    environment_filters = set(_parse_multi_query_param(request, 'environment'))
+    if environment_filters:
+        service_account_rows = [row for row in service_account_rows if row['environment'] in environment_filters]
+
+    policy_id_filter = str(request.query_params.get('policy_id') or '').strip()
+    if policy_id_filter:
+        service_account_rows = [row for row in service_account_rows if policy_id_filter in (row.get('policy_ids') or [])]
+
+    rotation_risk_filters = set(_parse_multi_query_param(request, 'rotation_risk'))
+    if rotation_risk_filters:
+        service_account_rows = [row for row in service_account_rows if row['rotation_risk'] in rotation_risk_filters]
+
+    page_rows, has_more, starting_after, ending_before = _paginate_operator_rows(request, service_account_rows)
+
+    total_count = len(service_account_rows)
+    active_count = sum(1 for row in service_account_rows if row['status'] == CoreServiceAccount.StatusChoices.ACTIVE)
+    disabled_count = sum(1 for row in service_account_rows if row['status'] == CoreServiceAccount.StatusChoices.DISABLED)
+    pending_count = sum(1 for row in service_account_rows if row['status'] == CoreServiceAccount.StatusChoices.PENDING_APPROVAL)
+    critical_count = sum(1 for row in service_account_rows if row['rotation_risk'] == 'critical')
+
+    return {
+        'object': 'list',
+        'url': request.path,
+        'summary_cards': [
+            {'key': 'service_account_total', 'label': 'Tổng service account', 'value': total_count, 'detail': tenant.public_id},
+            {'key': 'service_account_active', 'label': 'Active', 'value': active_count, 'detail': 'Visible in current filter set'},
+            {'key': 'service_account_disabled', 'label': 'Disabled', 'value': disabled_count, 'detail': 'Dormant machine principals'},
+            {'key': 'service_account_pending', 'label': 'Pending approval', 'value': pending_count, 'detail': 'Awaiting activation'},
+            {'key': 'service_account_rotation_critical', 'label': 'Rotation critical', 'value': critical_count, 'detail': 'PAT posture needs review'},
+        ],
+        'data': page_rows,
+        'has_more': has_more,
+        'next_cursor': page_rows[-1]['id'] if has_more and page_rows else None,
+        'prev_cursor': page_rows[0]['id'] if page_rows and (starting_after or ending_before) else None,
+        'generated_at': timezone.now().isoformat(),
+    }
+
+
+def _build_operator_pat_list_snapshot(request, tenant: CoreTenant, credentials) -> dict:
+    pat_rows = [
+        _build_operator_pat_snapshot(tenant, credential)
+        for credential in credentials
+    ]
+
+    search_term = str(request.query_params.get('search') or '').strip().lower()
+    if search_term:
+        pat_rows = [
+            row for row in pat_rows
+            if search_term in row['id'].lower()
+            or search_term in row['token_prefix'].lower()
+            or search_term in (row.get('service_account_id') or '').lower()
+            or search_term in ' '.join(row.get('scope_codes') or []).lower()
+        ]
+
+    status_filters = set(_parse_multi_query_param(request, 'status'))
+    if status_filters:
+        pat_rows = [row for row in pat_rows if row['status'] in status_filters]
+
+    service_account_id_filter = str(request.query_params.get('service_account_id') or '').strip()
+    if service_account_id_filter:
+        pat_rows = [row for row in pat_rows if row['service_account_id'] == service_account_id_filter]
+
+    anomaly_filters = set(_parse_multi_query_param(request, 'anomaly_state'))
+    if anomaly_filters:
+        pat_rows = [row for row in pat_rows if row['anomaly_state'] in anomaly_filters]
+
+    expires_within_days = request.query_params.get('expires_within_days')
+    if expires_within_days not in (None, ''):
+        try:
+            expires_window_days = max(int(expires_within_days), 0)
+        except (TypeError, ValueError):
+            expires_window_days = None
+        if expires_window_days is not None:
+            threshold = timezone.now() + timedelta(days=expires_window_days)
+            pat_rows = [
+                row for row in pat_rows
+                if row['expires_at'] is not None and row['expires_at'] <= threshold.isoformat()
+            ]
+
+    page_rows, has_more, starting_after, ending_before = _paginate_operator_rows(request, pat_rows)
+
+    total_count = len(pat_rows)
+    active_count = sum(1 for row in pat_rows if row['status'] == CorePATCredential.StatusChoices.ACTIVE)
+    rotating_count = sum(1 for row in pat_rows if row['status'] == CorePATCredential.StatusChoices.ROTATING)
+    revoked_count = sum(1 for row in pat_rows if row['status'] == CorePATCredential.StatusChoices.REVOKED)
+    critical_count = sum(1 for row in pat_rows if row['anomaly_state'] == 'critical')
+
+    return {
+        'object': 'list',
+        'url': request.path,
+        'summary_cards': [
+            {'key': 'pat_total', 'label': 'Tổng PAT', 'value': total_count, 'detail': tenant.public_id},
+            {'key': 'pat_active', 'label': 'Active', 'value': active_count, 'detail': 'Visible in current filter set'},
+            {'key': 'pat_rotating', 'label': 'Rotating', 'value': rotating_count, 'detail': 'Grace windows in effect'},
+            {'key': 'pat_revoked', 'label': 'Revoked', 'value': revoked_count, 'detail': 'Non-secret projection only'},
+            {'key': 'pat_anomaly_critical', 'label': 'Critical anomaly', 'value': critical_count, 'detail': 'Rotation or expiry posture'},
+        ],
+        'data': page_rows,
+        'has_more': has_more,
+        'next_cursor': page_rows[-1]['id'] if has_more and page_rows else None,
+        'prev_cursor': page_rows[0]['id'] if page_rows and (starting_after or ending_before) else None,
+        'generated_at': timezone.now().isoformat(),
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_tenant_service_accounts_api(request, tenant_id: str):
+    """
+    GET /api/core/v1/operator/tenants/{tenant_id}/service-accounts/
+    Admin-only service-account projection for the tenant registry.
+    """
+
+    tenant, error_response = _resolve_operator_tenant(tenant_id)
+    if error_response is not None:
+        return error_response
+
+    service_accounts = CoreServiceAccount.objects.filter(owner_user=tenant.owner_user).annotate(
+        pat_count=Count('pat_credentials', distinct=True),
+        active_pat_count=Count(
+            'pat_credentials',
+            filter=Q(pat_credentials__status__in=[CorePATCredential.StatusChoices.ACTIVE, CorePATCredential.StatusChoices.ROTATING]),
+            distinct=True,
+        ),
+        latest_pat_last_used_at=Max('pat_credentials__last_used_at'),
+    ).order_by('-updated_at', '-pk')
+
+    return Response(_build_operator_service_account_list_snapshot(request, tenant, service_accounts), status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_tenant_pats_api(request, tenant_id: str):
+    """
+    GET /api/core/v1/operator/tenants/{tenant_id}/pats/
+    Admin-only PAT projection for the tenant registry.
+    """
+
+    tenant, error_response = _resolve_operator_tenant(tenant_id)
+    if error_response is not None:
+        return error_response
+
+    credentials = CorePATCredential.objects.select_related('service_account', 'issued_by').filter(owner_user=tenant.owner_user).order_by('-created_at', '-pk')
+    return Response(_build_operator_pat_list_snapshot(request, tenant, credentials), status=status.HTTP_200_OK)
+
+
+def _build_operator_health_snapshot(request) -> dict:
+    http_request = _http_request(request)
+
+    service_payload = _response_payload(healthcheck(http_request))
+    realtime_payload = _response_payload(realtime_health(http_request))
+    streams_payload = _response_payload(streams_health(http_request))
+    prefetch_response = prefetch_health(http_request)
+    prefetch_payload = _response_payload(prefetch_response)
+    market_payload = _response_payload(market_observability_health(http_request))
+
+    admin_kpi_response = admin_runtime_kpi_api(http_request)
+    admin_kpi_payload = getattr(admin_kpi_response, 'data', {}) or {}
+    ai_runtime_response = operator_ai_runtime_api(http_request)
+    ai_runtime_payload = getattr(ai_runtime_response, 'data', {}) or {}
+
+    realtime_healthy = bool(realtime_payload.get('redis_ok')) or str(realtime_payload.get('channel_layer_type') or '').lower() == 'inmemory'
+    streams_healthy = bool(streams_payload.get('redis_ok')) and not streams_payload.get('error')
+    prefetch_healthy = bool(prefetch_payload.get('healthy'))
+    market_overall = market_payload.get('overall') or {}
+    market_freshness = market_payload.get('intraday_freshness') or {}
+    market_pipeline = market_payload.get('whale_pipeline') or {}
+    market_healthy = (
+        int(market_overall.get('http_5xx') or 0) == 0
+        and int(market_overall.get('external_timeouts') or 0) == 0
+        and bool(market_pipeline.get('healthy', True))
+        and bool(market_freshness.get('healthy', True))
+    )
+    celery_payload = admin_kpi_payload.get('celery') or {}
+    celery_healthy = bool(celery_payload.get('alive'))
+    ai_runtime_rollout = ai_runtime_payload.get('rollout_state') or {}
+    ai_runtime_healthy = bool(ai_runtime_rollout.get('ready'))
+
+    components = [
+        {
+            'key': 'service',
+            'label': 'Core service',
+            'healthy': str(service_payload.get('status') or '').lower() == 'ok',
+            'status': str(service_payload.get('status') or 'unknown').lower(),
+            'detail': service_payload.get('service') or 'vninvest-backend',
+        },
+        {
+            'key': 'realtime',
+            'label': 'Realtime layer',
+            'healthy': realtime_healthy,
+            'status': 'healthy' if realtime_healthy else 'degraded',
+            'detail': realtime_payload,
+        },
+        {
+            'key': 'streams',
+            'label': 'Streams layer',
+            'healthy': streams_healthy,
+            'status': 'healthy' if streams_healthy else 'degraded',
+            'detail': streams_payload,
+        },
+        {
+            'key': 'prefetch',
+            'label': 'Prefetch layer',
+            'healthy': prefetch_healthy,
+            'status': 'healthy' if prefetch_healthy else 'degraded',
+            'detail': prefetch_payload,
+        },
+        {
+            'key': 'market_observability',
+            'label': 'Market observability',
+            'healthy': market_healthy,
+            'status': 'healthy' if market_healthy else 'degraded',
+            'detail': market_overall,
+        },
+        {
+            'key': 'celery',
+            'label': 'Celery workers',
+            'healthy': celery_healthy,
+            'status': 'healthy' if celery_healthy else 'degraded',
+            'detail': celery_payload,
+        },
+        {
+            'key': 'ai_runtime',
+            'label': 'AI runtime',
+            'healthy': ai_runtime_healthy,
+            'status': 'healthy' if ai_runtime_healthy else 'degraded',
+            'detail': ai_runtime_rollout,
+        },
+    ]
+
+    healthy_components = sum(1 for component in components if component['healthy'])
+    degraded_components = [component['key'] for component in components if not component['healthy']]
+    overall_healthy = healthy_components == len(components)
+
+    return {
+        'object': 'operator_health_snapshot',
+        'generated_at': timezone.now().isoformat(),
+        'healthy': overall_healthy,
+        'health_status': 'healthy' if overall_healthy else 'degraded',
+        'healthy_component_count': healthy_components,
+        'degraded_component_count': len(degraded_components),
+        'degraded_components': degraded_components,
+        'components': components,
+        'sources': {
+            'service': service_payload,
+            'realtime': realtime_payload,
+            'streams': streams_payload,
+            'prefetch': prefetch_payload,
+            'market_observability': market_payload,
+            'admin_runtime_kpi': admin_kpi_payload,
+            'ai_runtime': ai_runtime_payload,
+        },
+    }
+
+
+def _build_operator_overview_snapshot(request) -> dict:
+    health_snapshot = _build_operator_health_snapshot(request)
+    admin_kpi_payload = health_snapshot['sources']['admin_runtime_kpi']
+    ai_runtime_payload = health_snapshot['sources']['ai_runtime']
+    market_payload = health_snapshot['sources']['market_observability']
+    prefetch_payload = health_snapshot['sources']['prefetch']
+    realtime_payload = health_snapshot['sources']['realtime']
+
+    ai_runtime_rollout = ai_runtime_payload.get('rollout_state') or {}
+    health_cards = [
+        {
+            'key': component['key'],
+            'label': component['label'],
+            'value': 'Healthy' if component['healthy'] else 'Degraded',
+            'detail': component.get('detail'),
+            'status': component['status'],
+        }
+        for component in health_snapshot['components']
+    ]
+
+    summary_cards = [
+        {
+            'key': 'operator_health',
+            'label': 'Trạng thái tổng quan',
+            'value': health_snapshot['health_status'],
+            'detail': f"{health_snapshot['healthy_component_count']}/{len(health_snapshot['components'])} thành phần khỏe",
+        },
+        {
+            'key': 'realtime',
+            'label': 'Realtime',
+            'value': 'OK' if health_snapshot['sources']['realtime'].get('redis_ok') or str(health_snapshot['sources']['realtime'].get('channel_layer_type') or '').lower() == 'inmemory' else 'Degraded',
+            'detail': f"layer={realtime_payload.get('channel_layer_type') or 'unknown'}",
+        },
+        {
+            'key': 'prefetch',
+            'label': 'Prefetch',
+            'value': str(prefetch_payload.get('status') or 'unknown'),
+            'detail': prefetch_payload.get('reason') or 'n/a',
+        },
+        {
+            'key': 'market_observability',
+            'label': 'Market observability',
+            'value': 'healthy' if health_snapshot['components'][4]['healthy'] else 'degraded',
+            'detail': f"{int((market_payload.get('overall') or {}).get('http_requests') or 0)} request(s)",
+        },
+        {
+            'key': 'ai_runtime',
+            'label': 'AI runtime',
+            'value': 'ready' if ai_runtime_rollout.get('ready') else 'degraded',
+            'detail': f"{ai_runtime_rollout.get('effective_provider') or 'n/a'} / {ai_runtime_rollout.get('effective_model') or 'n/a'}",
+        },
+    ]
+
+    return {
+        'object': 'operator_overview_snapshot',
+        'generated_at': timezone.now().isoformat(),
+        'health_status': health_snapshot['health_status'],
+        'summary_cards': summary_cards,
+        'health_cards': health_cards,
+        'sections': {
+            'health': health_snapshot,
+            'admin_runtime_kpi': admin_kpi_payload,
+            'ai_runtime': ai_runtime_payload,
+        },
+    }
+
+
+def _operator_tenant_queryset(request):
+    queryset = CoreTenant.objects.select_related('owner_user').annotate(
+        active_service_account_count=Count(
+            'owner_user__core_service_accounts',
+            filter=Q(owner_user__core_service_accounts__status=CoreServiceAccount.StatusChoices.ACTIVE),
+            distinct=True,
+        ),
+        active_pat_count=Count(
+            'owner_user__core_pat_credentials',
+            filter=Q(owner_user__core_pat_credentials__status__in=[CorePATCredential.StatusChoices.ACTIVE, CorePATCredential.StatusChoices.ROTATING]),
+            distinct=True,
+        ),
+        latest_pat_last_used_at=Max('owner_user__core_pat_credentials__last_used_at'),
+    ).order_by('-updated_at', '-pk')
+
+    search_term = str(request.query_params.get('search') or '').strip()
+    if search_term:
+        queryset = queryset.filter(
+            Q(public_id__icontains=search_term)
+            | Q(tenant_code__icontains=search_term)
+            | Q(display_name__icontains=search_term)
+            | Q(owner_user__username__icontains=search_term)
+            | Q(owner_user__email__icontains=search_term)
+        )
+
+    status_values = _parse_multi_query_param(request, 'status')
+    if status_values:
+        queryset = queryset.filter(status__in=status_values)
+
+    plan_values = _parse_multi_query_param(request, 'plan_code')
+    if plan_values:
+        queryset = queryset.filter(plan_code__in=plan_values)
+
+    return queryset
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_tenants_api(request):
+    """
+    GET /api/core/v1/operator/tenants/
+    Admin-only tenant registry projection for the operator console.
+    """
+
+    tenants = list(_operator_tenant_queryset(request))
+    return Response(_build_operator_tenant_list_snapshot(request, tenants), status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_tenant_detail_api(request, tenant_id: str):
+    """
+    GET /api/core/v1/operator/tenants/{tenant_id}/
+    Admin-only tenant detail projection for the operator console.
+    """
+
+    tenant = CoreTenant.objects.select_related('owner_user').filter(public_id=tenant_id).first()
+    if tenant is None:
+        return Response({'detail': 'Tenant operator không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(_build_operator_tenant_detail_snapshot(tenant), status=status.HTTP_200_OK)
 
 def _parse_bool_query_param(raw_value, *, default: bool = False) -> bool:
     if raw_value in (None, ''):
@@ -644,7 +1498,6 @@ def admin_system_ai_test_connection_api(request):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
-
     runtime_cfg = resolve_ai_runtime_config(user=None, system_settings=settings_obj)
     if not runtime_cfg.get('ready'):
         SystemAISettingsAuditLog.objects.create(
@@ -691,6 +1544,613 @@ def admin_system_ai_test_connection_api(request):
     )
     status_code = status.HTTP_200_OK if payload.get('ok') else status.HTTP_400_BAD_REQUEST
     return Response(payload, status=status_code)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_ai_runtime_api(request):
+    """
+    GET /api/core/v1/operator/ai-runtime/
+    Admin-only operator projection for AI runtime governance.
+    """
+    from django.utils import timezone
+
+    from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_provider
+    from .ai_runtime_config import resolve_ai_runtime_config
+    from .ai_service import _resolve_provider_api_key
+    from .models import AICommandCenterConfig, SystemAISettings
+
+    settings_obj = SystemAISettings.get_active()
+    if settings_obj is None:
+        settings_obj = SystemAISettings.objects.create(name='default', is_active=True)
+
+    command_center_cfg = None
+    if getattr(request.user, 'is_authenticated', False):
+        command_center_cfg = AICommandCenterConfig.objects.filter(user=request.user).first()
+
+    def _resolve_row(*, source: str, cfg_provider: str, cfg_model: str, raw_key: str, allow_env_fallback: bool, config_present: bool, missing_config_code: str):
+        provider = str(cfg_provider or '').strip().lower()
+        model = str(cfg_model or '').strip()
+        if provider and not model:
+            model = str(get_default_model(provider) or '').strip()
+        resolved_key = str(raw_key or '').strip()
+        if provider and not resolved_key and allow_env_fallback:
+            resolved_key = _resolve_provider_api_key(provider, '')
+
+        if not config_present:
+            warning_code = missing_config_code
+        elif not is_valid_provider(provider):
+            warning_code = f'invalid_{source}_provider'
+        elif not model:
+            warning_code = f'missing_{source}_model'
+        elif not is_model_allowed_for_capability(provider, model, ADVISORY_CAPABILITY):
+            warning_code = f'invalid_{source}_model'
+        elif not resolved_key:
+            warning_code = f'missing_{source}_ai_api_key'
+        else:
+            warning_code = None
+
+        return {
+            'provider': provider,
+            'model': model,
+            'ready': warning_code is None,
+            'source': source,
+            'warning_code': warning_code,
+        }
+
+    command_center_row = _resolve_row(
+        source='command_center',
+        cfg_provider=getattr(command_center_cfg, 'ai_provider', '') if command_center_cfg else '',
+        cfg_model=command_center_cfg.get_effective_ai_model() if command_center_cfg else '',
+        raw_key=command_center_cfg.get_ai_api_key() if command_center_cfg else '',
+        allow_env_fallback=True,
+        config_present=command_center_cfg is not None,
+        missing_config_code='missing_command_center_ai_config',
+    )
+
+    system_row = _resolve_row(
+        source='system',
+        cfg_provider=getattr(settings_obj, 'ai_provider', ''),
+        cfg_model=settings_obj.get_effective_ai_model(),
+        raw_key=settings_obj.get_ai_api_key(),
+        allow_env_fallback=bool(settings_obj.allow_env_fallback),
+        config_present=settings_obj is not None,
+        missing_config_code='missing_system_ai_settings',
+    )
+
+    effective_runtime = resolve_ai_runtime_config(user=getattr(request, 'user', None), system_settings=settings_obj)
+    governance_thresholds = _get_runtime_governance_delta_thresholds()
+    prefetch_runtime_settings = _get_runtime_prefetch_settings()
+    prefetch_time_policy = _get_runtime_prefetch_time_policy()
+
+    rollout_warnings = [row['warning_code'] for row in (command_center_row, system_row) if row.get('warning_code')]
+
+    return Response(
+        {
+            'object': 'operator_ai_runtime_snapshot',
+            'generated_at': timezone.now().isoformat(),
+            'provider_rows': [command_center_row, system_row],
+            'effective_policy_bundle': {
+                'advisory_capability': ADVISORY_CAPABILITY,
+                'governance_delta_thresholds': governance_thresholds,
+                'prefetch_runtime_settings': prefetch_runtime_settings,
+                'prefetch_time_policy': prefetch_time_policy,
+                'runtime_source_priority': ['command_center', 'system'],
+                'effective_ready': bool(effective_runtime.get('ready')),
+                'effective_provider': effective_runtime.get('provider'),
+                'effective_model': effective_runtime.get('model'),
+                'effective_source': effective_runtime.get('source'),
+                'effective_message': effective_runtime.get('message'),
+            },
+            'rollout_state': {
+                'ready': bool(effective_runtime.get('ready')),
+                'source': effective_runtime.get('source'),
+                'provider': effective_runtime.get('provider'),
+                'model': effective_runtime.get('model'),
+                'reason': effective_runtime.get('reason'),
+                'message': effective_runtime.get('message'),
+                'command_center_configured': command_center_cfg is not None,
+                'system_configured': settings_obj is not None,
+                'warnings': rollout_warnings,
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_health_api(request):
+    """
+    GET /api/core/v1/operator/health/
+    Admin-only operator health projection for platform overview.
+    """
+
+    return Response(_build_operator_health_snapshot(request), status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_overview_api(request):
+    """
+    GET /api/core/v1/operator/overview/
+    Admin-only operator overview combining runtime health and AI runtime snapshots.
+    """
+
+    return Response(_build_operator_overview_snapshot(request), status=status.HTTP_200_OK)
+
+
+def _parse_operator_limit(request, *, default: int = 25) -> int:
+    try:
+        parsed = int(request.query_params.get('limit', default) or default)
+    except (TypeError, ValueError):
+        parsed = default
+    return min(max(parsed, 1), 100)
+
+
+def _operator_request_id(kind: str, identifier) -> str:
+    return f'{kind}:{identifier}'
+
+
+def _split_operator_request_id(request_id: str) -> tuple[str | None, str | None]:
+    kind, _, source_id = str(request_id or '').partition(':')
+    kind = kind.strip().lower()
+    source_id = str(source_id or '').strip()
+    if not kind or not source_id:
+        return None, None
+    return kind, source_id
+
+
+def _text_contains(search_term: str, *parts) -> bool:
+    if not search_term:
+        return True
+    return any(search_term in str(part or '').strip().lower() for part in parts if str(part or '').strip())
+
+
+def _build_operator_signal_job_row(run: SignalServiceRun) -> dict:
+    payload = SignalServiceRunSerializer(run).data
+    status = str(payload.get('status') or '').strip().lower() or 'unknown'
+    summary = ' - '.join(
+        part for part in [payload.get('service_domain_display') or payload.get('service_domain'), payload.get('run_type_display') or payload.get('run_type')] if part
+    ) or 'Lệnh signal'
+    return {
+        'object': 'operator_job',
+        'id': _operator_request_id('signal_run', run.id),
+        'request_id': _operator_request_id('signal_run', run.id),
+        'kind': 'signal_run',
+        'source_model': 'SignalServiceRun',
+        'service_domain': payload.get('service_domain'),
+        'service_domain_display': payload.get('service_domain_display'),
+        'run_type': payload.get('run_type'),
+        'run_type_display': payload.get('run_type_display'),
+        'status': payload.get('status'),
+        'status_category': status,
+        'status_display': payload.get('status_display') or status.title(),
+        'task_id': payload.get('task_id') or '',
+        'progress_pct': float(payload.get('progress_pct') or 0.0),
+        'processed_items': int(payload.get('processed_items') or 0),
+        'stored_items': int(payload.get('stored_items') or 0),
+        'failed_items': int(payload.get('failed_items') or 0),
+        'created_by_username': payload.get('created_by_username') or '',
+        'summary': summary,
+        'log_excerpt': str(payload.get('log') or '')[:240],
+        'created_at': payload.get('created_at'),
+        'updated_at': payload.get('updated_at'),
+        'started_at': payload.get('started_at'),
+        'finished_at': payload.get('finished_at'),
+        'created_at_dt': run.created_at or timezone.now(),
+    }
+
+
+def _build_operator_crawl_job_row(run: CrawlRun) -> dict:
+    status = str(run.status or '').strip().lower() or 'unknown'
+    status_category = 'completed' if status == 'success' else status
+    trigger_label = 'Thủ công' if str(run.trigger_type or '').strip().lower() == 'manual' else 'Lịch chạy'
+    summary = f'{run.job.service_code} - {trigger_label}' if run.job_id else 'Lệnh crawl'
+    return {
+        'object': 'operator_job',
+        'id': _operator_request_id('crawl_run', run.id),
+        'request_id': _operator_request_id('crawl_run', run.id),
+        'kind': 'crawl_run',
+        'source_model': 'CrawlRun',
+        'service_code': run.job.service_code if run.job_id else '',
+        'job_id': run.job_id,
+        'job_description': run.job.description if run.job_id else '',
+        'trigger_type': run.trigger_type,
+        'trigger_type_display': trigger_label,
+        'task_id': run.task_id or '',
+        'status': run.status,
+        'status_category': status_category,
+        'status_display': {
+            'queued': 'Đang chờ',
+            'running': 'Đang chạy',
+            'success': 'Hoàn thành',
+            'failed': 'Thất bại',
+        }.get(status, status.title()),
+        'summary': summary,
+        'log_excerpt': str(run.log or '')[:240],
+        'created_at': run.created_at.isoformat() if run.created_at else None,
+        'updated_at': run.updated_at.isoformat() if run.updated_at else None,
+        'started_at': run.started_at.isoformat() if run.started_at else None,
+        'finished_at': run.finished_at.isoformat() if run.finished_at else None,
+        'created_at_dt': run.created_at or timezone.now(),
+    }
+
+
+def _build_operator_jobs_snapshot(request) -> dict:
+    limit = _parse_operator_limit(request, default=25)
+    kind_filters = {value for value in _parse_multi_query_param(request, 'kind') if value and value != 'all'}
+    status_filters = {value.lower() for value in _parse_multi_query_param(request, 'status') if value and value.lower() != 'all'}
+    service_domain_filters = {value.lower() for value in _parse_multi_query_param(request, 'service_domain') if value}
+    service_code_filters = {value.lower() for value in _parse_multi_query_param(request, 'service_code') if value}
+    search_term = str(request.query_params.get('search') or '').strip().lower()
+
+    rows = []
+    if not kind_filters or 'signal_run' in kind_filters:
+        signal_runs = SignalServiceRun.objects.select_related('created_by').order_by('-created_at', '-id')
+        if service_domain_filters:
+            signal_runs = signal_runs.filter(service_domain__in=service_domain_filters)
+        for run in signal_runs:
+            row = _build_operator_signal_job_row(run)
+            if status_filters and row['status_category'] not in status_filters and str(row['status'] or '').strip().lower() not in status_filters:
+                continue
+            if search_term and not _text_contains(
+                search_term,
+                row['request_id'],
+                row['summary'],
+                row['created_by_username'],
+                row['service_domain'],
+                row['run_type'],
+                row['task_id'],
+                row['log_excerpt'],
+            ):
+                continue
+            rows.append(row)
+
+    if not kind_filters or 'crawl_run' in kind_filters:
+        crawl_runs = CrawlRun.objects.select_related('job').order_by('-created_at', '-id')
+        if service_code_filters:
+            crawl_runs = crawl_runs.filter(job__service_code__in=service_code_filters)
+        for run in crawl_runs:
+            row = _build_operator_crawl_job_row(run)
+            if status_filters and row['status_category'] not in status_filters and str(row['status'] or '').strip().lower() not in status_filters:
+                continue
+            if search_term and not _text_contains(
+                search_term,
+                row['request_id'],
+                row['summary'],
+                row['job_description'],
+                row['service_code'],
+                row['task_id'],
+                row['log_excerpt'],
+            ):
+                continue
+            rows.append(row)
+
+    rows.sort(key=lambda row: (row['created_at_dt'], row['id']), reverse=True)
+    total_count = len(rows)
+    page_rows, has_more, starting_after, ending_before = _paginate_operator_rows(request, rows)
+
+    signal_count = sum(1 for row in rows if row['kind'] == 'signal_run')
+    crawl_count = sum(1 for row in rows if row['kind'] == 'crawl_run')
+    running_count = sum(1 for row in rows if row['status_category'] == 'running')
+    queued_count = sum(1 for row in rows if row['status_category'] == 'queued')
+    failed_count = sum(1 for row in rows if row['status_category'] == 'failed')
+
+    return {
+        'object': 'list',
+        'url': request.path,
+        'summary_cards': [
+            {'key': 'job_total', 'label': 'Tổng job', 'value': total_count, 'detail': 'Các lượt chạy operator đang hiển thị'},
+            {'key': 'job_signal', 'label': 'Lệnh signal', 'value': signal_count, 'detail': 'Các dòng SignalServiceRun'},
+            {'key': 'job_crawl', 'label': 'Lệnh crawl', 'value': crawl_count, 'detail': 'Các dòng CrawlRun'},
+            {'key': 'job_running', 'label': 'Đang chạy', 'value': running_count, 'detail': 'Các lượt chạy đang hoạt động'},
+            {'key': 'job_queued', 'label': 'Đang chờ', 'value': queued_count, 'detail': 'Các lượt chạy đang chờ'},
+            {'key': 'job_failed', 'label': 'Thất bại', 'value': failed_count, 'detail': 'Các lượt chạy thất bại'},
+        ],
+        'data': [
+            {key: value for key, value in row.items() if key != 'created_at_dt'}
+            for row in page_rows
+        ],
+        'has_more': has_more,
+        'next_cursor': page_rows[-1]['id'] if has_more and page_rows else None,
+        'prev_cursor': page_rows[0]['id'] if page_rows and (starting_after or ending_before) else None,
+        'generated_at': timezone.now().isoformat(),
+    }
+
+
+def _build_operator_system_ai_settings_audit_row(log: SystemAISettingsAuditLog) -> dict:
+    actor = log.actor.username if log.actor_id else 'Hệ thống'
+    return {
+        'object': 'operator_audit_request',
+        'id': _operator_request_id('system_ai_settings', log.id),
+        'request_id': _operator_request_id('system_ai_settings', log.id),
+        'kind': 'system_ai_settings',
+        'source_model': 'SystemAISettingsAuditLog',
+        'action': log.action,
+        'actor': actor,
+        'reason': log.reason,
+        'settings_id': log.settings_id,
+        'summary': f'{log.action} - {log.reason or actor}',
+        'before_json': log.before_json,
+        'after_json': log.after_json,
+        'created_at': log.created_at.isoformat() if log.created_at else None,
+        'created_at_dt': log.created_at or timezone.now(),
+    }
+
+
+def _build_operator_whale_config_audit_row(log: WhaleConfigAuditLog) -> dict:
+    actor = log.actor.username if log.actor_id else 'Hệ thống'
+    return {
+        'object': 'operator_audit_request',
+        'id': _operator_request_id('whale_config', log.id),
+        'request_id': _operator_request_id('whale_config', log.id),
+        'kind': 'whale_config',
+        'source_model': 'WhaleConfigAuditLog',
+        'action': log.action,
+        'actor': actor,
+        'reason': log.reason,
+        'draft_id': log.draft_id,
+        'version_id': log.version_id,
+        'rollout_id': log.rollout_id,
+        'ticket_ref': log.ticket_ref,
+        'summary': f'{log.action} - {log.reason or log.ticket_ref or actor}',
+        'before_json': log.before_json,
+        'after_json': log.after_json,
+        'created_at': log.created_at.isoformat() if log.created_at else None,
+        'created_at_dt': log.created_at or timezone.now(),
+    }
+
+
+def _build_operator_advisory_audit_row(log: AdvisoryAggregateAuditLog) -> dict:
+    return {
+        'object': 'operator_audit_request',
+        'id': _operator_request_id('advisory', log.id),
+        'request_id': _operator_request_id('advisory', log.id),
+        'kind': 'advisory',
+        'source_model': 'AdvisoryAggregateAuditLog',
+        'action': log.reason,
+        'actor': log.actor,
+        'actor_id': log.actor_id,
+        'user_id': log.user_id,
+        'symbol': log.symbol,
+        'reason': log.reason,
+        'summary': f'{log.reason} - {log.symbol}',
+        'before_state_json': log.before_state_json,
+        'after_state_json': log.after_state_json,
+        'metadata_json': log.metadata_json,
+        'created_at': log.created_at.isoformat() if log.created_at else None,
+        'created_at_dt': log.created_at or timezone.now(),
+    }
+
+
+def _build_operator_crawl_audit_row(log: CrawlAuditLog) -> dict:
+    service_code = log.run.job.service_code if log.run_id and log.run and log.run.job_id else ''
+    return {
+        'object': 'operator_audit_request',
+        'id': _operator_request_id('crawl_audit', log.id),
+        'request_id': _operator_request_id('crawl_audit', log.id),
+        'kind': 'crawl_audit',
+        'source_model': 'CrawlAuditLog',
+        'event': log.event,
+        'run_id': log.run_id,
+        'job_id': log.run.job_id if log.run_id and log.run else None,
+        'service_code': service_code,
+        'summary': f'{log.event} - {service_code or "crawl"}',
+        'payload': log.payload,
+        'timestamp': log.timestamp.isoformat() if log.timestamp else None,
+        'created_at': log.timestamp.isoformat() if log.timestamp else None,
+        'created_at_dt': log.timestamp or timezone.now(),
+    }
+
+
+def _build_operator_audit_rows(request) -> list[dict]:
+    kind_filters = {value for value in _parse_multi_query_param(request, 'kind') if value and value != 'all'}
+    action_filters = {value.lower() for value in _parse_multi_query_param(request, 'action') if value and value.lower() != 'all'}
+    actor_filters = {value.lower() for value in _parse_multi_query_param(request, 'actor') if value}
+    reason_filters = {value.lower() for value in _parse_multi_query_param(request, 'reason') if value}
+    symbol_filters = {value.lower() for value in _parse_multi_query_param(request, 'symbol') if value}
+    service_code_filters = {value.lower() for value in _parse_multi_query_param(request, 'service_code') if value}
+    search_term = str(request.query_params.get('search') or '').strip().lower()
+
+    rows = []
+    if not kind_filters or 'system_ai_settings' in kind_filters:
+        for log in SystemAISettingsAuditLog.objects.select_related('actor', 'settings').order_by('-created_at', '-id'):
+            row = _build_operator_system_ai_settings_audit_row(log)
+            if action_filters and row['action'] not in action_filters:
+                continue
+            if actor_filters and str(row['actor'] or '').strip().lower() not in actor_filters:
+                continue
+            if reason_filters and str(row['reason'] or '').strip().lower() not in reason_filters:
+                continue
+            if search_term and not _text_contains(search_term, row['request_id'], row['action'], row['actor'], row['reason']):
+                continue
+            rows.append(row)
+
+    if not kind_filters or 'whale_config' in kind_filters:
+        for log in WhaleConfigAuditLog.objects.select_related('actor', 'draft', 'version', 'rollout').order_by('-created_at', '-id'):
+            row = _build_operator_whale_config_audit_row(log)
+            if action_filters and row['action'] not in action_filters:
+                continue
+            if actor_filters and str(row['actor'] or '').strip().lower() not in actor_filters:
+                continue
+            if reason_filters and str(row['reason'] or '').strip().lower() not in reason_filters:
+                continue
+            if search_term and not _text_contains(search_term, row['request_id'], row['action'], row['actor'], row['reason'], row['ticket_ref']):
+                continue
+            rows.append(row)
+
+    if not kind_filters or 'advisory' in kind_filters:
+        for log in AdvisoryAggregateAuditLog.objects.select_related('user').order_by('-created_at', '-id'):
+            row = _build_operator_advisory_audit_row(log)
+            if action_filters and row['action'] not in action_filters:
+                continue
+            if actor_filters and str(row['actor'] or '').strip().lower() not in actor_filters:
+                continue
+            if reason_filters and str(row['reason'] or '').strip().lower() not in reason_filters:
+                continue
+            if symbol_filters and str(row['symbol'] or '').strip().lower() not in symbol_filters:
+                continue
+            if search_term and not _text_contains(search_term, row['request_id'], row['action'], row['actor'], row['reason'], row['symbol'], row['actor_id']):
+                continue
+            rows.append(row)
+
+    if not kind_filters or 'crawl_audit' in kind_filters:
+        for log in CrawlAuditLog.objects.select_related('run', 'run__job').order_by('-timestamp', '-id'):
+            row = _build_operator_crawl_audit_row(log)
+            if action_filters and row['event'].strip().lower() not in action_filters:
+                continue
+            if service_code_filters and str(row['service_code'] or '').strip().lower() not in service_code_filters:
+                continue
+            if search_term and not _text_contains(search_term, row['request_id'], row['event'], row['service_code'], row['summary']):
+                continue
+            rows.append(row)
+
+    rows.sort(key=lambda row: (row['created_at_dt'], row['id']), reverse=True)
+    return rows
+
+
+def _resolve_operator_audit_request_record(request_id: str):
+    kind, source_id = _split_operator_request_id(request_id)
+    if kind is None or source_id is None:
+        return None, None
+
+    if kind == 'system_ai_settings':
+        log = SystemAISettingsAuditLog.objects.select_related('actor', 'settings').filter(id=source_id).first()
+        if log is None:
+            return None, None
+        row = _build_operator_system_ai_settings_audit_row(log)
+        return row, {
+            'settings': {
+                'id': log.settings_id,
+                'name': log.settings.name if log.settings_id and log.settings else None,
+                'provider': log.settings.ai_provider if log.settings_id and log.settings else None,
+                'model': log.settings.get_effective_ai_model() if log.settings_id and log.settings else None,
+            },
+            'before_json': log.before_json,
+            'after_json': log.after_json,
+        }
+
+    if kind == 'whale_config':
+        log = WhaleConfigAuditLog.objects.select_related('actor', 'draft', 'version', 'rollout').filter(id=source_id).first()
+        if log is None:
+            return None, None
+        row = _build_operator_whale_config_audit_row(log)
+        return row, {
+            'draft_id': log.draft_id,
+            'version_id': log.version_id,
+            'rollout_id': log.rollout_id,
+            'ticket_ref': log.ticket_ref,
+            'before_json': log.before_json,
+            'after_json': log.after_json,
+        }
+
+    if kind == 'advisory':
+        log = AdvisoryAggregateAuditLog.objects.select_related('user').filter(id=source_id).first()
+        if log is None:
+            return None, None
+        row = _build_operator_advisory_audit_row(log)
+        return row, {
+            'before_state_json': log.before_state_json,
+            'after_state_json': log.after_state_json,
+            'metadata_json': log.metadata_json,
+        }
+
+    if kind == 'crawl_audit':
+        log = CrawlAuditLog.objects.select_related('run', 'run__job').filter(id=source_id).first()
+        if log is None:
+            return None, None
+        row = _build_operator_crawl_audit_row(log)
+        return row, {
+            'payload': log.payload,
+            'run': {
+                'id': log.run_id,
+                'job_id': log.run.job_id if log.run_id and log.run else None,
+                'service_code': log.run.job.service_code if log.run_id and log.run and log.run.job_id else None,
+                'status': log.run.status if log.run_id and log.run else None,
+            },
+        }
+
+    return None, None
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_jobs_api(request):
+    """
+    GET /api/core/v1/operator/jobs/
+    Admin-only operator jobs table over current runtime signal and crawl runs.
+    """
+
+    return Response(_build_operator_jobs_snapshot(request), status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_audit_requests_api(request):
+    """
+    GET /api/core/v1/operator/audit/requests/
+    Admin-only operator audit trace table over current runtime audit logs.
+    """
+
+    limit = _parse_operator_limit(request, default=25)
+    rows = _build_operator_audit_rows(request)
+    total_count = len(rows)
+    page_rows, has_more, starting_after, ending_before = _paginate_operator_rows(request, rows)
+
+    kind_counts = {
+        'system_ai_settings': sum(1 for row in rows if row['kind'] == 'system_ai_settings'),
+        'whale_config': sum(1 for row in rows if row['kind'] == 'whale_config'),
+        'advisory': sum(1 for row in rows if row['kind'] == 'advisory'),
+        'crawl_audit': sum(1 for row in rows if row['kind'] == 'crawl_audit'),
+    }
+
+    return Response(
+        {
+            'object': 'list',
+            'url': request.path,
+            'summary_cards': [
+                {'key': 'audit_total', 'label': 'Tổng audit', 'value': total_count, 'detail': 'Các audit trace operator đang hiển thị'},
+                {'key': 'audit_system_ai_settings', 'label': 'AI cài đặt', 'value': kind_counts['system_ai_settings'], 'detail': 'Audit log cài đặt System AI'},
+                {'key': 'audit_whale_config', 'label': 'Cấu hình whale', 'value': kind_counts['whale_config'], 'detail': 'Audit log cấu hình Whale'},
+                {'key': 'audit_advisory', 'label': 'Advisory', 'value': kind_counts['advisory'], 'detail': 'Audit log Advisory aggregate'},
+                {'key': 'audit_crawl', 'label': 'Crawl', 'value': kind_counts['crawl_audit'], 'detail': 'Audit log Crawl'},
+            ],
+            'data': [
+                {key: value for key, value in row.items() if key != 'created_at_dt'}
+                for row in page_rows
+            ],
+            'has_more': has_more,
+            'next_cursor': page_rows[-1]['id'] if has_more and page_rows else None,
+            'prev_cursor': page_rows[0]['id'] if page_rows and (starting_after or ending_before) else None,
+            'generated_at': timezone.now().isoformat(),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def operator_audit_request_detail_api(request, request_id: str):
+    """
+    GET /api/core/v1/operator/audit/requests/{request_id}/
+    Admin-only operator audit trace detail.
+    """
+
+    row, source_record = _resolve_operator_audit_request_record(request_id)
+    if row is None:
+        return Response({'detail': 'Không tìm thấy operator audit trace.'}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(
+        {
+            'object': 'operator_audit_request_detail',
+            'request_id': request_id,
+            'request': {key: value for key, value in row.items() if key != 'created_at_dt'},
+            'source_record': source_record,
+            'generated_at': timezone.now().isoformat(),
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(['GET'])

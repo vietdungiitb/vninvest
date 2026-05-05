@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .ai_advisory_helpers import _parse_prompt_config
+from .ai_prompt_config_ssot import ensure_ai_prompt_config_ssot, mirror_ai_prompt_config_to_legacy
 from .permissions import IsProPlan
 from .models import AICommandCenterAuditLog, AICommandCenterConfig
 from .serializers import AICommandCenterConfigSerializer
@@ -23,12 +24,13 @@ def _get_or_create_ai_command_center_config(user):
             'ai_prompt_config': {},
         },
     )
+    ensure_ai_prompt_config_ssot(command_center_cfg)
     return command_center_cfg
 
 
 def _ai_command_center_snapshot(command_center_cfg, runtime_cfg=None):
     runtime_cfg = runtime_cfg or {}
-    prompt_config = _parse_prompt_config(getattr(command_center_cfg, 'ai_prompt_config', {}))
+    prompt_config = ensure_ai_prompt_config_ssot(command_center_cfg)
     return {
         'id': command_center_cfg.id,
         'user_id': command_center_cfg.user_id,
@@ -254,7 +256,7 @@ def ai_config_api(request):
     ai_status = _get_ai_runtime_config_status(command_center_cfg)
 
     if request.method == 'GET':
-        prompt_config = _parse_prompt_config(command_center_cfg.ai_prompt_config)
+        prompt_config = ensure_ai_prompt_config_ssot(command_center_cfg)
         return Response(
             {
                 'id': command_center_cfg.id,
@@ -283,6 +285,8 @@ def ai_config_api(request):
 
     before_snapshot = _ai_command_center_snapshot(command_center_cfg, ai_status)
     updated_cfg = serializer.save()
+    mirror_ai_prompt_config_to_legacy(request.user, updated_cfg.ai_prompt_config)
+    updated_cfg.refresh_from_db()
     updated_status = _get_ai_runtime_config_status(updated_cfg)
     after_snapshot = _ai_command_center_snapshot(updated_cfg, updated_status)
 
@@ -309,8 +313,8 @@ def ai_config_api(request):
             'effective_ai_provider': updated_status['provider'],
             'effective_ai_model': updated_status['model'],
             'effective_ai_source': updated_status.get('source'),
-            'ai_prompt_config': _parse_prompt_config(updated_cfg.ai_prompt_config),
-            'prompt_config': _parse_prompt_config(updated_cfg.ai_prompt_config),
+            'ai_prompt_config': ensure_ai_prompt_config_ssot(updated_cfg),
+            'prompt_config': ensure_ai_prompt_config_ssot(updated_cfg),
             'updated_at': updated_cfg.updated_at.isoformat() if updated_cfg.updated_at else None,
         },
         status=status.HTTP_200_OK,
@@ -407,7 +411,7 @@ def ai_command_center_audit_logs_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def whale_advisory_symbol_stats_api(request):
     """
-    GET /api/portfolio/whale-advisory-symbol-stats/
+    GET /api/portfolio/ai-advisory-symbol-stats/
     Thống kê BUY/SELL whale theo cùng nguồn IntradayTick như Whale Alerts,
     giúp đồng nhất số liệu hiển thị giữa Whale Alerts và Whale Advisory.
     """

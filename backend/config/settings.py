@@ -110,6 +110,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third-party
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'channels',
     # Local
@@ -161,6 +162,7 @@ if DB_ENGINE == "postgres":
             "PASSWORD": os.getenv("POSTGRES_PASSWORD", "postgres"),
             "HOST": os.getenv("POSTGRES_HOST", "localhost"),
             "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
         }
     }
 else:
@@ -233,6 +235,10 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        # SFI transitional: PAT tokens from core-api must go first.
+        # JWTAuthentication raises AuthenticationFailed (not None) for non-JWT tokens,
+        # which would block PAT auth if placed first.
+        'core_pat_auth.LegacyCorePATAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     # Keep production API responses strictly JSON to avoid loading browsable API
@@ -270,8 +276,8 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     # Rotate refresh token mỗi lần dùng → client.js sẽ lưu token mới
     'ROTATE_REFRESH_TOKENS': True,
-    # Không cần blacklist app (chưa cài)
-    'BLACKLIST_AFTER_ROTATION': False,
+    # SM-P1.1: Blacklist rotated refresh tokens to prevent replay attacks
+    'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
 }
 
@@ -531,6 +537,11 @@ CELERY_BEAT_SCHEDULE["eod-cleanup-ticks"] = {
 CELERY_BEAT_SCHEDULE["cleanup-signal-service-runs"] = {
     "task": "portfolio.tasks.cleanup_old_signal_service_runs",
     "schedule": _crontab_intraday_cleanup(hour=19, minute=15),
+}
+# SM-P5.6: Auto-create next month's IntradayTick partition on the 20th at 02:15 AM
+CELERY_BEAT_SCHEDULE["create-next-month-partition"] = {
+    "task": "portfolio.create_next_month_partition",
+    "schedule": _crontab_intraday_cleanup(day_of_month=20, hour=2, minute=15),
 }
 
 if _REALTIME_ENABLED_FLAG:

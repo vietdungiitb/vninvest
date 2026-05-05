@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState } from 'react';
 
 const READ_ALERTS_KEY = 'dashboard.alerts.read_ids';
 const MUTED_SYMBOLS_KEY = 'dashboard.alerts.muted_symbols';
-const SOUND_ENABLED_KEY = 'dashboard.alerts.critical_sound_enabled';
+const ALERT_SOUND_KEY = 'dashboard.alerts.alert_sound';
+const LEGACY_SOUND_ENABLED_KEY = 'dashboard.alerts.critical_sound_enabled';
 
 function safeParse(raw, fallback) {
   try {
@@ -37,9 +38,16 @@ function loadMutedSymbols() {
 
 function loadCriticalSoundEnabled() {
   if (typeof window === 'undefined') return true;
-  const raw = window.localStorage.getItem(SOUND_ENABLED_KEY);
-  if (raw === null) return true;
-  return raw === 'true';
+  const raw = window.localStorage.getItem(ALERT_SOUND_KEY);
+  if (raw !== null) return raw === 'true';
+
+  const legacyRaw = window.localStorage.getItem(LEGACY_SOUND_ENABLED_KEY);
+  if (legacyRaw !== null) {
+    window.localStorage.setItem(ALERT_SOUND_KEY, legacyRaw);
+    return legacyRaw === 'true';
+  }
+
+  return true;
 }
 
 export default function usePersistentAlertState() {
@@ -91,7 +99,9 @@ export default function usePersistentAlertState() {
     setCriticalSoundEnabled((prev) => {
       const next = !prev;
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(SOUND_ENABLED_KEY, String(next));
+        const serialized = String(next);
+        window.localStorage.setItem(ALERT_SOUND_KEY, serialized);
+        window.localStorage.setItem(LEGACY_SOUND_ENABLED_KEY, serialized);
       }
       return next;
     });

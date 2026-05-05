@@ -1,0 +1,107 @@
+{
+  "contract_name": "partner-pat",
+  "version": "1.0.0",
+  "description": "Partner Personal Access Token (PAT) — machine credential cho partner/service account authentication.",
+  "last_updated": "2026-05-03",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "vninvest/contracts/partner-pat/v1",
+    "title": "PartnerPAT",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["pat_id", "service_account_id", "tenant_id", "token_prefix", "scopes", "expires_at", "created_at", "revoked"],
+    "properties": {
+      "pat_id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "UUID duy nhất của PAT"
+      },
+      "service_account_id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "UUID của service account sở hữu PAT"
+      },
+      "tenant_id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "UUID của tenant chủ quản"
+      },
+      "label": {
+        "type": ["string", "null"],
+        "description": "Nhãn mô tả mục đích sử dụng (VD: 'Trading Bot Production')"
+      },
+      "token_prefix": {
+        "type": "string",
+        "minLength": 8,
+        "maxLength": 8,
+        "description": "8 ký tự đầu của token để nhận dạng (không bao gồm full token vì lý do bảo mật)"
+      },
+      "scopes": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Danh sách scopes được cấp (VD: ['read:market', 'read:portfolio', 'write:orders'])"
+      },
+      "expires_at": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Thời điểm hết hạn (ISO 8601)"
+      },
+      "created_at": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Thời điểm tạo (ISO 8601)"
+      },
+      "last_used_at": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Lần sử dụng gần nhất (null nếu chưa dùng)"
+      },
+      "revoked": {
+        "type": "boolean",
+        "description": "true nếu PAT đã bị thu hồi"
+      },
+      "revoked_at": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Thời điểm thu hồi (null nếu chưa bị thu hồi)"
+      },
+      "audit_reason": {
+        "type": ["string", "null"],
+        "description": "Lý do thao tác gần nhất (issue/rotate/revoke)"
+      }
+    }
+  },
+  "issue_response": {
+    "description": "Response khi tạo PAT mới — token đầy đủ chỉ trả về một lần duy nhất lúc issue.",
+    "type": "object",
+    "required": ["pat", "token"],
+    "properties": {
+      "pat": { "$ref": "#/schema" },
+      "token": {
+        "type": "string",
+        "description": "Full token — chỉ hiển thị một lần, không lưu server-side sau khi issue"
+      }
+    }
+  },
+  "example": {
+    "pat_id": "a3f1e2d4-c5b6-7890-abcd-012345678901",
+    "service_account_id": "b2e3f4a5-d6c7-8901-bcde-123456789012",
+    "tenant_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "label": "Trading Bot Production v2",
+    "token_prefix": "vnpat_ab",
+    "scopes": ["read:market", "read:portfolio", "write:orders"],
+    "expires_at": "2026-11-03T00:00:00+07:00",
+    "created_at": "2026-05-03T10:00:00+07:00",
+    "last_used_at": "2026-05-03T14:30:00+07:00",
+    "revoked": false,
+    "revoked_at": null,
+    "audit_reason": "Issued for production deployment"
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-05-03",
+      "changes": "Initial contract — SAAS-12 shared contract lock"
+    }
+  ]
+}

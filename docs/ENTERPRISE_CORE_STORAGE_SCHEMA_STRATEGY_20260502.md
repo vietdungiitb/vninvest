@@ -1,8 +1,25 @@
 # ENTERPRISE CORE STORAGE AND SCHEMA STRATEGY
 
 **Date:** 2026-05-02  
-**Status:** Schema-last companion artifact for `core`  
+**Status:** Current-code truth plus schema-last companion artifact for `core`  
 **Purpose:** Chốt chiến lược lưu trữ và tổ chức schema cho `core` theo kiểu production platform thực tế: contract trước, serving model trước, storage split sau.
+
+---
+
+## 0. Current-code storage reality
+
+Current runtime đã materialize một phần storage boundary của `core`, nhưng mới ở mức control-plane self-service và reuse commercial primitives:
+
+- `Implemented now`:
+	- mutable control-plane tables `CoreTenant`, `CoreServiceAccount`, `CorePATCredential`,
+	- partner usage/billing projections đọc từ `quota_service` và `DPI*` models,
+	- Redis tiếp tục làm runtime substrate cho cache/broker/streams, không phải source-of-record public contract.
+- `Partial`:
+	- canonical tenant ownership seam đã có, nhưng catalog/resources như `CoreUsageMeter`, `CoreBillingAccount`, `TenantQuotaLedger`, `CoreUsageAggregateHourly` chưa materialize thành first-class `core` tables,
+	- operator read path mới có wrapper hẹp `operator/ai-runtime`, chưa có read-model families đầy đủ.
+- `Target-state`:
+	- `SessionFacts`, `UnifiedAlertProjection`, `CoreSymbolSnapshot` dưới `core` contract family,
+	- physical schema split hoặc logical namespaces được materialize mạnh hơn.
 
 ---
 
@@ -135,6 +152,33 @@ Ví dụ:
 - hoặc consumer contract còn chưa chốt.
 
 Không nên tách bảng chỉ để “nghe có vẻ enterprise”.
+
+### 6.4 Migration/backfill/rollback order cho identity/commercial deltas
+
+Thu tu nay giu identity ownership on dinh truoc, commercial owner on dinh tiep theo, roi moi den secret rotation delta.
+
+| Step | Object | Backfill source | Rollback note | Reason |
+|---|---|---|---|---|
+| 1 | `CoreTenantMembership` | `auth_user`, `UserConfig`, tenant ownership seam | delete derived membership rows; no public contract should depend on them yet | unlock human membership mapping first |
+| 2 | `CoreAccessPolicy` | capability snapshot / role bundles | restore previous bundle version and keep old scopes active until cutover | policies need stable membership semantics |
+| 3 | `CoreBillingAccount` | `DPISubscription`, invoice/billing projections | archive generated rows, preserve source projections, recompute summary if needed | commercial owner should freeze after identity semantics |
+| 4 | `CoreTokenSecretVersion` | PAT metadata / credential state | revoke generated secret versions and keep previous hash/prefix mapping until cutover is verified | secret rotation is the most rollback-sensitive delta |
+
+Khong bat dau backfill neu contract freeze trong schema analysis va resource freeze checklist chua dong.
+
+### 6.5 Read-model priority order
+
+Day la canonical ladder cho DATA-03. Thu tu uu tien phai di tu control-plane read surfaces co live wrapper sang data-plane read models con target-state.
+
+| Priority | Read model | Current posture | Why first / why later |
+|---|---|---|---|
+| 1 | `operator_overview` | live wrapper / control-plane read | visibility co ban cho operator, health gating, nav gating |
+| 2 | `tenant_summary` | live wrapper / partner home read | landing surface cho tenant admin va partner self-service |
+| 3 | `quota_snapshot` | live self-service projection | commercial visibility, quota/overage decisioning |
+| 4 | `session_facts` | target-state | selected-session facts-first path, can stable session semantics |
+| 5 | `unified_alert` | target-state | normalized alert feed, phu thuoc session facts va signal canon |
+
+Khong dau tu `session_facts` hoac `unified_alert` truoc khi `operator_overview`, `tenant_summary`, `quota_snapshot` da on dinh tren contract freeze.
 
 ---
 

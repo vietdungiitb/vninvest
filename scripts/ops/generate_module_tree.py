@@ -26,6 +26,8 @@ INCLUDE_DIRS = [
     "backend",
     "frontend",
     "mobile-app",
+    "packages",
+    "shared",
     "scripts",
 ]
 

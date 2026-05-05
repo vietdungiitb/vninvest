@@ -161,6 +161,7 @@ from .views_realtime_symbol import (
     symbol_investigation_api,
     whale_symbol_summary_api,
 )
+from .views_dashboard_risk import dashboard_aggregated_risk_api
 from .views_ai_advisory_trace import (
     _build_advisory_trace_payload_for_user,
     stock_ai_advisory_observability_api,
@@ -213,6 +214,16 @@ from .views_admin_runtime import (
     admin_runtime_kpi_api,
     admin_runtime_kpi_whale_preflight_metrics_api,
     admin_runtime_kpi_whale_pipeline_api,
+    operator_health_api,
+    operator_ai_runtime_api,
+    operator_audit_request_detail_api,
+    operator_audit_requests_api,
+    operator_jobs_api,
+    operator_tenant_detail_api,
+    operator_tenant_pats_api,
+    operator_tenant_service_accounts_api,
+    operator_tenants_api,
+    operator_overview_api,
     admin_system_ai_audit_logs_api,
     admin_system_ai_settings_api,
     admin_system_ai_test_connection_api,

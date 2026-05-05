@@ -29,7 +29,7 @@ class ApiRouteWhaleAdvisoryAccessTests(APITestCase):
             ai_detail='Phan tich chi tiet',
         )
 
-        response = self.client.get('/api/portfolio/whale-advisory/')
+        response = self.client.get('/api/portfolio/ai-advisory/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -47,7 +47,7 @@ class ApiRouteWhaleAdvisoryAccessTests(APITestCase):
             ai_model='gpt-4o',
         )
 
-        response = self.client.get('/api/portfolio/whale-advisory/')
+        response = self.client.get('/api/portfolio/ai-advisory/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -73,7 +73,7 @@ class ApiRouteWhaleAdvisoryAccessTests(APITestCase):
             ai_model='gpt-4o',
         )
 
-        response = self.client.get('/api/portfolio/whale-advisory/')
+        response = self.client.get('/api/portfolio/ai-advisory/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]['ai_detail'], 'Chi tiet premium day du')
@@ -106,7 +106,7 @@ class ApiRouteWhaleAdvisoryAccessTests(APITestCase):
             source=WhaleAdvisory.SourceChoices.PERIODIC_JOB,
         )
 
-        response = self.client.get('/api/portfolio/whale-advisory/?refresh_status=ready')
+        response = self.client.get('/api/portfolio/ai-advisory/?refresh_status=ready')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)

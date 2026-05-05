@@ -39,6 +39,8 @@ frontend/.env.*.local
 
 # ── Node / React ─────────────────────────────────────────────────────────────
 frontend/node_modules/
+packages/web/node_modules/
+packages/vip-app/local-backend/data/
 frontend/build/
 frontend/.pnp
 frontend/.pnp.js

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vninvest/contracts/build-target/v1",
+  "title": "VNInvest Build Target Contract",
+  "description": "Canonical build target contract for package-track web surfaces.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "envKey",
+    "defaultTarget",
+    "allowedTargets",
+    "visibilityGroups"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "envKey": {
+      "const": "REACT_APP_BUILD_TARGET"
+    },
+    "defaultTarget": {
+      "const": "saas"
+    },
+    "allowedTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "enum": [
+          "community",
+          "saas",
+          "vip"
+        ]
+      }
+    },
+    "visibilityGroups": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "workspace",
+          "signals",
+          "system",
+          "admin",
+          "vip-local"
+        ]
+      }
+    }
+  }
+}

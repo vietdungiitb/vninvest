@@ -18,7 +18,7 @@ def _legacy_views_module():
 
 class WhaleAdvisoryListView(generics.ListAPIView):
     """
-    GET /api/portfolio/whale-advisory/
+    GET /api/portfolio/ai-advisory/
     Pro+: trả về danh sách advisory (ẩn ai_detail nếu chưa Premium).
     """
 

@@ -11,6 +11,7 @@ from django.contrib.auth.models import AnonymousUser, User
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import AccessToken
+from core_pat_auth import _resolve_user_from_pat
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +214,34 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
 
             return await self._get_user(user_id)
         except Exception:
-            return AnonymousUser()
+            pass
+
+        # Fallback: PAT token (vni_XXXX) issued by core-api
+        if token.startswith('vni_'):
+            user = await self._resolve_pat_user(token)
+            if user and not isinstance(user, AnonymousUser):
+                snapshot = await self._build_auth_snapshot(int(user.id))
+                if snapshot:
+                    return WSAuthPrincipal(
+                        id=int(snapshot["user_id"]),
+                        username=str(snapshot.get("username", "")),
+                        plan=str(snapshot.get("plan", "free") or "free").lower(),
+                    )
+                return WSAuthPrincipal(
+                    id=int(user.id),
+                    username=str(user.username),
+                    plan="free",
+                )
+
+        return AnonymousUser()
+
+    @database_sync_to_async
+    def _resolve_pat_user(self, raw_token: str):
+        """Validate a PAT token and return the Django User or None."""
+        try:
+            return _resolve_user_from_pat(raw_token)
+        except Exception:
+            return None
 
     @database_sync_to_async
     def _build_auth_snapshot(self, user_id: int):

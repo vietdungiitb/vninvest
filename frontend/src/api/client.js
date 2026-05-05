@@ -30,6 +30,36 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function getCoreRequestId(headers = {}) {
+  return String(headers['x-core-request-id'] || headers['X-Core-Request-Id'] || '').trim();
+}
+
+function attachCoreRequestId(response) {
+  if (!response || typeof response !== 'object') {
+    return response;
+  }
+
+  const requestId = getCoreRequestId(response.headers || {});
+  if (requestId) {
+    response.coreRequestId = requestId;
+  }
+  return response;
+}
+
+function buildIdempotencyKey(prefix = 'request') {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function withDefaultAuditReason(payload = {}, defaultReason) {
+  return {
+    ...payload,
+    audit_reason: payload.audit_reason || defaultReason,
+  };
+}
+
 const AUTH_PUBLIC_ENDPOINT_PATTERN = /\/auth\/(token\/?|token\/refresh\/?|register\/?|verify-email\/?|resend-verification\/?)$/i;
 let refreshRequestPromise = null;
 
@@ -84,9 +114,13 @@ apiClient.interceptors.request.use((config) => {
 
 // Interceptor response: 401 -> refresh token -> retry, fail -> logout
 apiClient.interceptors.response.use(
-  (res) => res,
+  (res) => attachCoreRequestId(res),
   async (err) => {
     const originalRequest = err.config || {};
+    attachCoreRequestId(err.response);
+    if (err.response?.coreRequestId) {
+      err.coreRequestId = err.response.coreRequestId;
+    }
 
     // Login/register/verify endpoints must return their own errors to UI.
     // If we auto-redirect here, the login page appears to refresh without message.
@@ -136,6 +170,64 @@ export const refreshAccessToken = async () => {
     return null;
   }
 };
+
+export const getTenantServiceAccounts = (params = {}) =>
+  apiClient.get('/core/v1/partner/service-accounts/', { params });
+
+export const getTenantSummary = () =>
+  apiClient.get('/core/v1/partner/tenant/');
+
+export const createTenantServiceAccount = (payload) =>
+  apiClient.post('/core/v1/partner/service-accounts/', payload, {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-service-account'),
+    },
+  });
+
+export const getTenantPATs = (params = {}) =>
+  apiClient.get('/core/v1/partner/pats/', { params });
+
+export const getTenantUsageMeters = (params = {}) =>
+  apiClient.get('/core/v1/partner/usage/meters/', { params });
+
+export const getTenantUsageQuotas = (params = {}) =>
+  apiClient.get('/core/v1/partner/usage/quotas/', { params });
+
+export const getTenantBillingSubscription = () =>
+  apiClient.get('/core/v1/partner/billing/subscription/');
+
+export const getTenantBillingInvoices = (params = {}) =>
+  apiClient.get('/core/v1/partner/billing/invoices/', { params });
+
+export const getCoreOperatorJobs = (params = {}) =>
+  apiClient.get('/core/v1/operator/jobs/', { params });
+
+export const getCoreOperatorAuditRequests = (params = {}) =>
+  apiClient.get('/core/v1/operator/audit/requests/', { params });
+
+export const getCoreOperatorAuditRequestDetail = (requestId) =>
+  apiClient.get(`/core/v1/operator/audit/requests/${requestId}/`);
+
+export const issueTenantPAT = (payload) =>
+  apiClient.post('/core/v1/partner/pats/issue/', withDefaultAuditReason(payload, 'tenant_admin_issue_pat'), {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-pat-issue'),
+    },
+  });
+
+export const rotateTenantPAT = (tokenId, payload = {}) =>
+  apiClient.post(`/core/v1/partner/pats/${tokenId}/rotate/`, withDefaultAuditReason(payload, 'tenant_admin_rotate_pat'), {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-pat-rotate'),
+    },
+  });
+
+export const revokeTenantPAT = (tokenId, payload = {}) =>
+  apiClient.post(`/core/v1/partner/pats/${tokenId}/revoke/`, withDefaultAuditReason(payload, 'tenant_admin_revoke_pat'), {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-pat-revoke'),
+    },
+  });
 
 // --- Portfolio APIs (prefix portfolio/ theo urls.py) ---
 export const getPortfolios = () => apiClient.get('/portfolio/portfolios/');
@@ -531,6 +623,12 @@ export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management
 // --- Admin Ops (is_staff only) ---
 export const getAdminOpsStats = () => apiClient.get('/admin-ops/stats/');
 export const getAdminRuntimeKPI = () => apiClient.get('/admin-ops/runtime-kpi/');
+export const getCoreOperatorOverview = () => apiClient.get('/core/v1/operator/overview/');
+export const getCoreOperatorHealth = () => apiClient.get('/core/v1/operator/health/');
+export const getCoreOperatorTenants = (params = {}) => apiClient.get('/core/v1/operator/tenants/', { params });
+export const getCoreOperatorTenantDetail = (tenantId) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/`);
+export const getCoreOperatorTenantServiceAccounts = (tenantId, params = {}) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/service-accounts/`, { params });
+export const getCoreOperatorTenantPATs = (tenantId, params = {}) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/pats/`, { params });
 export const getAdminSystemAiSettings = () => apiClient.get('/admin-ops/system-ai-settings/');
 export const updateAdminSystemAiSettings = (payload) => apiClient.put('/admin-ops/system-ai-settings/', payload);
 export const getAdminPrefetchRuntimeSettings = () => apiClient.get('/admin-ops/system-ai-settings/');

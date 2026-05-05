@@ -1,6 +1,6 @@
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DashboardRealtimePanel from './DashboardRealtimePanel';
 
 const mockUseI18n = jest.fn();
@@ -56,7 +56,7 @@ describe('DashboardRealtimePanel', () => {
       muteSymbolFor30m: jest.fn(),
       toggleCriticalSound: jest.fn(),
     });
-    mockGetRealtimeHealth.mockResolvedValue({ data: { ok: true } });
+    mockGetRealtimeHealth.mockImplementation(() => new Promise(() => {}));
     mockUseUnifiedAlerts.mockReturnValue({
       quoteList: [],
       filteredUnifiedAlerts: [
@@ -109,5 +109,35 @@ describe('DashboardRealtimePanel', () => {
     });
     expect(screen.getByText('Mô tả cảnh báo object')).toBeTruthy();
     expect(screen.queryByText('[object Object]')).toBeNull();
+  });
+
+  it('opens the observability popover from the icon button', async () => {
+    render(
+      <MemoryRouter>
+        <DashboardRealtimePanel
+          holdings={[]}
+          trackedSymbolNames={[]}
+          quotesBySymbol={{}}
+          realtimeStatus="live"
+          lastEventAt="2026-05-01T10:00:00Z"
+          alerts={[]}
+          darkFlowAlerts={[]}
+          metrics={{ eventCounts: { ticker_update: 7, whale_alert: 2 } }}
+          monitoredSymbols={[]}
+          enableSnapshot
+          onSyncRequest={null}
+          showSummaryMetrics={false}
+          portfolioId={null}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: 'dashboardRealtime.observability' })).toBeTruthy();
+
+    const observabilityButton = screen.getByRole('button', { name: 'dashboardRealtime.observability' });
+    fireEvent.click(observabilityButton);
+
+    expect(screen.getByText('dashboardRealtime.eventTickers')).toBeTruthy();
+    expect(screen.getByText('dashboardRealtime.eventWhale')).toBeTruthy();
   });
 });

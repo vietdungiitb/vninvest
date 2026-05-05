@@ -11,13 +11,14 @@ import { WatchlistScreen } from '../screens/WatchlistScreen';
 import { useAuthStore } from '../store/authStore';
 import { useLocaleStore } from '../store/localeStore';
 import { colors } from '../theme/colors';
+import { DEFAULT_ACTIVE_TAB } from '../../../packages/mobile/src/index.js';
 
 export function AppRoot() {
   const user = useAuthStore((state) => state.user);
   const isLoading = useAuthStore((state) => state.isLoading);
   const bootstrap = useAuthStore((state) => state.bootstrap);
   const localeBootstrap = useLocaleStore((state) => state.bootstrap);
-  const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_ACTIVE_TAB);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export function AppRoot() {
 
   useEffect(() => {
     if (!user) {
-      setActiveTab('dashboard');
+      setActiveTab(DEFAULT_ACTIVE_TAB);
     }
   }, [user]);
 

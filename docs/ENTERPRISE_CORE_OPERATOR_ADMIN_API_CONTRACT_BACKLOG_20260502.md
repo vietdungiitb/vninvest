@@ -1,8 +1,26 @@
 # ENTERPRISE CORE OPERATOR ADMIN API CONTRACT BACKLOG
 
 **Date:** 2026-05-02  
-**Status:** Backlog contract draft before freeze  
+**Status:** Current-code truth plus backlog contract draft before freeze  
 **Purpose:** Bổ sung phần contract còn thiếu cho `Central Operator Admin`, vì partner contract draft hiện mới phủ tenant-facing partner APIs chứ chưa phủ đầy đủ operator admin surfaces của VNInvest nội bộ.
+
+---
+
+## 0. Current-code reality check
+
+Trong runtime hiện tại, family operator đang ở trạng thái sau:
+
+- `Implemented now`:
+  - `GET /api/core/v1/operator/overview/`, `GET /api/core/v1/operator/health/`, `GET /api/core/v1/operator/tenants/`, `GET /api/core/v1/operator/tenants/{tenant_id}/`, `GET /api/core/v1/operator/tenants/{tenant_id}/service-accounts/`, `GET /api/core/v1/operator/tenants/{tenant_id}/pats/`, `GET /api/core/v1/operator/jobs/`, `GET /api/core/v1/operator/audit/requests/`, `GET /api/core/v1/operator/audit/requests/{request_id}/` và `GET /api/core/v1/operator/ai-runtime/` đã tồn tại như current-code wrapper routes,
+  - `frontend/src/pages/AICommandCenter.jsx` la current human-facing AI Command Center surface cho AI runtime governance; UI naming va route naming da khop trong current-code truth.
+  - legacy operator runtime surfaces và APIs vẫn còn tồn tại dưới `/api/admin-ops/*`, nhưng P0 operator read projections đã có lớp wrapper mới.
+- `Partial`:
+  - operator sessions đã có explicit abilities `AdminOps` và `AdminCrawlControl`, nhưng chưa có central operator CASL vocabulary kiểu `CoreAdminOverview`, `CoreTenantRegistry`, `CoreJobOps` phát ra từ live auth bootstrap;
+  - route family chuẩn `/core/v1/operator/*` chưa phải owner path cuối cùng, hiện vẫn là `api` wrapper route trên legacy backend.
+- `Target-state`:
+  - hầu hết route families trong tài liệu này, bao gồm operator commercial/security projections còn lại.
+
+Ghi chu: read-model priority ladder chung do storage strategy 6.5 chot la `operator_overview` -> `tenant_summary` -> `quota_snapshot` -> `session_facts` -> `unified_alert`. Freeze order ben duoi chi ap cho operator endpoints, khong thay the ladder nay.
 
 **Companion artifact:**
 
@@ -14,9 +32,9 @@
 
 Tài liệu này là lớp bổ sung cho:
 
-- [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
-- [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
-- [ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md)
+- [ENTERPRISE_CORE_CONTRACT_PACK_20260502](./ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
+- [ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502](./ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md)
+- [ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502](./ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md)
 
 Nó chưa phải final frozen contract pack. Mục tiêu là:
 
@@ -72,6 +90,8 @@ Nó không thay thế:
 ---
 
 ## 5. P0 read-first operator APIs
+
+Trừ các route `overview`, `health`, `tenants`, `tenants/{tenant_id}`, `tenants/{tenant_id}/service-accounts`, `tenants/{tenant_id}/pats`, `jobs`, `audit/requests` và `ai-runtime` đã có live wrapper route trong legacy runtime dưới `/api/core/v1/operator/*`, các P0 read APIs còn lại bên dưới vẫn là target-state backlog contracts.
 
 ## 5.1 `GET /core/v1/operator/overview`
 

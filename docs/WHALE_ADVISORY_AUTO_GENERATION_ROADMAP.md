@@ -669,7 +669,7 @@ Rate Limiting
    }
    ```
 
-**Validation**: Visual test on `/whale-advisory` page, verify buttons work
+**Validation**: Visual test on `/ai-advisory` page, verify buttons work; legacy `/whale-advisory` path is retired.
 
 ---
 

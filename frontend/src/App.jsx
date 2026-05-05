@@ -1,20 +1,44 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginModal from './components/LoginModal';
 import Dashboard from './pages/Dashboard';
+import DashboardShellHost from './pages/DashboardShellHost';
 import StockDetail from './pages/StockDetail';
 import WhaleAdvisory from './pages/WhaleAdvisory';
+import AiAdvisoryShellHost from './pages/AiAdvisoryShellHost';
 import WhaleAlertsHub from './pages/WhaleAlertsHub';
 import WhaleAlertsDashboard from './pages/WhaleAlertsDashboard';
+import WhaleAlertsShellHost from './pages/WhaleAlertsShellHost';
 import Transactions from './pages/Transactions';
+import TransactionsShellHost from './pages/TransactionsShellHost';
 import Support from './pages/Support';
+import SupportShellHost from './pages/SupportShellHost';
+import SettingsShellHost from './pages/SettingsShellHost';
+import AICommandCenterShellHost from './pages/AICommandCenterShellHost';
+import PortfoliosShellHost from './pages/PortfoliosShellHost';
 import Watchlist from './pages/Watchlist';
+import WatchlistShellHost from './pages/WatchlistShellHost';
 import AdminOps from './pages/AdminOps';
+import AdminOpsShellHost from './pages/AdminOpsShellHost';
+import AdminCoreOverview from './pages/AdminCoreOverview';
+import AdminCoreTenants from './pages/AdminCoreTenants';
+import AdminCoreServiceAccounts from './pages/AdminCoreServiceAccounts';
+import AdminCorePATs from './pages/AdminCorePATs';
+import AdminCoreUsage from './pages/AdminCoreUsage';
+import AdminCoreBilling from './pages/AdminCoreBilling';
+import AdminCoreJobs from './pages/AdminCoreJobs';
+import AdminCoreAuditTrace from './pages/AdminCoreAuditTrace';
 import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import PortfolioManagement from './pages/PortfolioManagement';
 import UserConfig from './pages/UserConfig';
+import TenantAdminHome from './pages/admin/tenant/TenantAdminHome';
+import TenantBilling from './pages/admin/tenant/TenantBilling';
+import TenantCapabilities from './pages/admin/tenant/TenantCapabilities';
+import TenantPATs from './pages/admin/tenant/TenantPATs';
+import TenantServiceAccounts from './pages/admin/tenant/TenantServiceAccounts';
+import TenantUsage from './pages/admin/tenant/TenantUsage';
 import AICommandCenter from './pages/AICommandCenter';
 import Upgrade from './pages/Upgrade';
 import VerifyEmail from './pages/VerifyEmail';
@@ -53,9 +77,15 @@ function ProtectedLayout() {
   return <Layout />;
 }
 
+function AdminCoreShell() {
+  return <Outlet />;
+}
+
 export default function App() {
+  const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
+
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <PortfolioProvider>
         <LangProvider>
           <InterfaceProvider>
@@ -66,7 +96,12 @@ export default function App() {
                 <Route path="reset-password" element={<ResetPassword />} />
                 <Route path="/" element={<ProtectedLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
-                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route
+                    path="dashboard"
+                    element={(
+                      packageShellHostEnabled ? <DashboardShellHost /> : <Dashboard />
+                    )}
+                  />
                   <Route path="upgrade" element={<Upgrade />} />
                   <Route path="stocks/:symbol" element={<StockDetail />} />
                   <Route
@@ -77,18 +112,221 @@ export default function App() {
                       </ProtectedRoute>
                     )}
                   />
-                  <Route path="whale-advisory" element={<Navigate to="/ai-advisory" replace />} />
+                  {packageShellHostEnabled ? (
+                    <Route
+                      path="ai-advisory/shell"
+                      element={(
+                        <ProtectedRoute action="read" subject="WhaleAdvisory">
+                          <AiAdvisoryShellHost />
+                        </ProtectedRoute>
+                      )}
+                    />
+                  ) : null}
                   <Route path="whale-alerts" element={<WhaleAlertsHub />} />
+                  {packageShellHostEnabled ? (
+                    <Route
+                      path="whale-alerts/shell"
+                      element={(
+                        <ProtectedRoute action="read" subject="WhaleAdvisory">
+                          <WhaleAlertsShellHost />
+                        </ProtectedRoute>
+                      )}
+                    />
+                  ) : null}
                   <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
-                  <Route path="transactions" element={<Transactions />} />
-                  <Route path="support" element={<Support />} />
-                  <Route path="watchlist" element={<Watchlist />} />
-                  <Route path="admin-ops" element={<AdminOps />} />
-                  <Route path="admin-crawl-control" element={<AdminCrawlControl />} />
+                  <Route
+                    path="transactions"
+                    element={(
+                      packageShellHostEnabled ? <TransactionsShellHost /> : <Transactions />
+                    )}
+                  />
+                  <Route
+                    path="support"
+                    element={(
+                      packageShellHostEnabled ? <SupportShellHost /> : <Support />
+                    )}
+                  />
+                  <Route
+                    path="watchlist"
+                    element={(
+                      packageShellHostEnabled ? <WatchlistShellHost /> : <Watchlist />
+                    )}
+                  />
+                  <Route path="admin/core" element={<AdminCoreShell />}>
+                    <Route
+                      index
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <Navigate to="/admin/core/overview" replace />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="overview"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreOverview />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreTenants />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants/:tenantId"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreTenants />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants/:tenantId/service-accounts"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreServiceAccounts />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants/:tenantId/pats"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCorePATs />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants/:tenantId/usage"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreUsage />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="tenants/:tenantId/billing"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminOps">
+                          <AdminCoreBilling />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="crawl-control"
+                      element={(
+                        <ProtectedRoute action="read" subject="AdminCrawlControl">
+                          <AdminCrawlControl />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="runtime/jobs"
+                      element={(
+                        <ProtectedRoute action="read" subject="CoreJobOps">
+                          <AdminCoreJobs />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route
+                      path="audit/requests"
+                      element={(
+                        <ProtectedRoute action="read" subject="CoreAuditTrace">
+                          <AdminCoreAuditTrace />
+                        </ProtectedRoute>
+                      )}
+                    />
+                    <Route path="*" element={<Navigate to="/admin/core/overview" replace />} />
+                  </Route>
+                  <Route
+                    path="admin-ops"
+                    element={(
+                      <ProtectedRoute action="read" subject="AdminOps">
+                        {packageShellHostEnabled ? <AdminOpsShellHost /> : <AdminOps />}
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="admin-crawl-control"
+                    element={(
+                      <ProtectedRoute action="read" subject="AdminCrawlControl">
+                        <AdminCrawlControl />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/home"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantAdminHome">
+                        <TenantAdminHome />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/capabilities"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantCapabilityView">
+                        <TenantCapabilities />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/usage"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantUsageView">
+                        <TenantUsage />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/billing"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantBillingView">
+                        <TenantBilling />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/service-accounts"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantServiceAccountAdmin">
+                        <TenantServiceAccounts />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/pats"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantPATAdmin">
+                        <TenantPATs />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route path="tenant-admin" element={<Navigate to="/tenant-admin/home" replace />} />
                   <Route path="screener" element={<Screener />} />
-                  <Route path="portfolios" element={<PortfolioManagement />} />
-                  <Route path="settings" element={<UserConfig />} />
-                  <Route path="settings/ai" element={<AICommandCenter />} />
+                  <Route
+                    path="portfolios"
+                    element={(
+                      packageShellHostEnabled ? <PortfoliosShellHost /> : <PortfolioManagement />
+                    )}
+                  />
+                  <Route
+                    path="settings"
+                    element={(
+                      packageShellHostEnabled ? <SettingsShellHost /> : <UserConfig />
+                    )}
+                  />
+                  <Route
+                    path="settings/ai"
+                    element={(
+                      packageShellHostEnabled ? <AICommandCenterShellHost /> : <AICommandCenter />
+                    )}
+                  />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

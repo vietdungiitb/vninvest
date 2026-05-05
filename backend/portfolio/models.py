@@ -5,6 +5,11 @@ from django.core import signing
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
+from datetime import timedelta
+import hmac
+import hashlib
+import os
+import secrets
 
 from .ai_options import ADVISORY_CAPABILITY, PROVIDER_CHOICES, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
 from .encryption_utils import decrypt_text, encrypt_text
@@ -814,6 +819,11 @@ class UserConfig(models.Model):
         default='',
         verbose_name='AI API key (encrypted)',
     )
+    ai_prompt_config = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='AI prompt_config canonical',
+    )
     
     # PHASE 1 fields: Advisory auto-generation & cost control
     advisory_auto_generation_enabled = models.BooleanField(
@@ -976,6 +986,418 @@ class AICommandCenterAuditLog(models.Model):
 
     def __str__(self):
         return f'AICommandCenterAuditLog#{self.pk or 0} ({self.action})'
+
+
+def _generate_public_id(prefix: str, length: int = 12) -> str:
+    return f'{prefix}_{secrets.token_hex(length)}'
+
+
+def _build_pat_secret() -> str:
+    suffix = secrets.token_urlsafe(24).replace('-', '').replace('_', '')[:32]
+    return f'vni_pat_live_{suffix}'
+
+
+def _hash_pat_secret(raw_secret: str) -> str:
+    """SM-P1.2: HMAC-SHA256 with pepper. Plain SHA-256 is insufficient for PAT storage."""
+    pepper = os.environ.get('CORE_PAT_PEPPER', '')
+    if not pepper:
+        import warnings
+        warnings.warn(
+            "CORE_PAT_PEPPER is not set — PAT hashing is using empty pepper. "
+            "Set CORE_PAT_PEPPER in production.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    return hmac.new(
+        pepper.encode('utf-8'),
+        str(raw_secret or '').encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _extract_pat_prefix(raw_secret: str) -> str:
+    secret = str(raw_secret or '').strip()
+    if not secret:
+        return ''
+    return secret[: min(len(secret), 16)]
+
+
+class CoreTenant(models.Model):
+    class StatusChoices(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        SUSPENDED = 'suspended', 'Suspended'
+
+    class EnvironmentChoices(models.TextChoices):
+        PROD = 'prod', 'Production'
+        STAGING = 'staging', 'Staging'
+        DEV = 'dev', 'Development'
+
+    public_id = models.CharField(
+        max_length=32,
+        unique=True,
+        db_index=True,
+        editable=False,
+        verbose_name='Canonical tenant public id',
+    )
+    owner_user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='core_tenant',
+        verbose_name='Canonical tenant owner',
+    )
+    tenant_code = models.CharField(
+        max_length=96,
+        unique=True,
+        db_index=True,
+        verbose_name='Tenant code',
+    )
+    display_name = models.CharField(max_length=120, verbose_name='Tenant display name')
+    plan_code = models.CharField(max_length=32, default='free', db_index=True, verbose_name='Plan code')
+    status = models.CharField(
+        max_length=24,
+        choices=StatusChoices.choices,
+        default=StatusChoices.ACTIVE,
+        db_index=True,
+        verbose_name='Tenant status',
+    )
+    default_environment = models.CharField(
+        max_length=16,
+        choices=EnvironmentChoices.choices,
+        default=EnvironmentChoices.PROD,
+        verbose_name='Default environment',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Core Tenant'
+        verbose_name_plural = 'Core Tenants'
+        ordering = ['display_name', 'pk']
+        indexes = [
+            models.Index(fields=['status', 'plan_code']),
+        ]
+
+    def __str__(self):
+        return f'{self.display_name} ({self.public_id})'
+
+    @property
+    def tenant_id(self) -> str:
+        return self.public_id
+
+    @staticmethod
+    def _normalize_tenant_code(raw_value: str, fallback: str, owner_user_id: int) -> str:
+        value = str(raw_value or '').strip().lower().replace('_', '-')
+        normalized = ''.join(ch if ch.isalnum() or ch == '-' else '-' for ch in value)
+        normalized = '-'.join(part for part in normalized.split('-') if part)
+        if not normalized:
+            normalized = fallback
+        suffix = str(owner_user_id or 0)
+        if not normalized.endswith(f'-{suffix}'):
+            normalized = f'{normalized}-{suffix}'
+        return normalized[:96]
+
+    @classmethod
+    def ensure_for_user(cls, user):
+        owner_user_id = getattr(user, 'pk', None)
+        if not owner_user_id:
+            raise ValueError('owner_user must be saved before resolving CoreTenant.')
+
+        username = str(getattr(user, 'username', '') or '').strip()
+        email = str(getattr(user, 'email', '') or '').strip()
+        email_local = email.split('@', 1)[0] if email else ''
+        display_name = username or email or f'user-{owner_user_id}'
+        plan_code = str(getattr(getattr(user, 'user_config', None), 'plan', 'free') or 'free').strip().lower()
+        defaults = {
+            'public_id': f'ten_usr_{owner_user_id}',
+            'tenant_code': cls._normalize_tenant_code(username or email_local, fallback=f'tenant-{owner_user_id}', owner_user_id=owner_user_id),
+            'display_name': display_name,
+            'plan_code': plan_code,
+            'status': cls.StatusChoices.ACTIVE,
+            'default_environment': cls.EnvironmentChoices.PROD,
+        }
+        tenant, created = cls.objects.get_or_create(owner_user=user, defaults=defaults)
+        if created:
+            return tenant
+
+        update_fields = []
+        if not tenant.public_id:
+            tenant.public_id = defaults['public_id']
+            update_fields.append('public_id')
+        if not tenant.tenant_code:
+            tenant.tenant_code = defaults['tenant_code']
+            update_fields.append('tenant_code')
+        if tenant.display_name != defaults['display_name']:
+            tenant.display_name = defaults['display_name']
+            update_fields.append('display_name')
+        if tenant.plan_code != defaults['plan_code']:
+            tenant.plan_code = defaults['plan_code']
+            update_fields.append('plan_code')
+        if not tenant.status:
+            tenant.status = defaults['status']
+            update_fields.append('status')
+        if not tenant.default_environment:
+            tenant.default_environment = defaults['default_environment']
+            update_fields.append('default_environment')
+        if update_fields:
+            tenant.save(update_fields=[*update_fields, 'updated_at'])
+        return tenant
+
+
+class CoreServiceAccount(models.Model):
+    class EnvironmentChoices(models.TextChoices):
+        PROD = 'prod', 'Production'
+        STAGING = 'staging', 'Staging'
+        DEV = 'dev', 'Development'
+
+    class StatusChoices(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        DISABLED = 'disabled', 'Disabled'
+        PENDING_APPROVAL = 'pending_approval', 'Pending approval'
+
+    public_id = models.CharField(
+        max_length=32,
+        unique=True,
+        db_index=True,
+        editable=False,
+        verbose_name='Service account public id',
+    )
+    owner_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='core_service_accounts',
+        verbose_name='Tenant owner surrogate',
+    )
+    name = models.CharField(max_length=120, verbose_name='Service account name')
+    environment = models.CharField(
+        max_length=16,
+        choices=EnvironmentChoices.choices,
+        default=EnvironmentChoices.PROD,
+        verbose_name='Environment',
+        db_index=True,
+    )
+    status = models.CharField(
+        max_length=24,
+        choices=StatusChoices.choices,
+        default=StatusChoices.ACTIVE,
+        verbose_name='Status',
+        db_index=True,
+    )
+    policy_ids = models.JSONField(default=list, blank=True, verbose_name='Access policy ids')
+    metadata = models.JSONField(default=dict, blank=True, verbose_name='Non-sensitive metadata')
+    created_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='created_core_service_accounts',
+        verbose_name='Human creator',
+    )
+    last_rotated_at = models.DateTimeField(null=True, blank=True, verbose_name='Last PAT rotation at')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Core Service Account'
+        verbose_name_plural = 'Core Service Accounts'
+        ordering = ['-created_at', '-pk']
+        indexes = [
+            models.Index(fields=['owner_user', 'status', 'environment']),
+        ]
+
+    def __str__(self):
+        return f'{self.name} ({self.environment})'
+
+    @property
+    def tenant_id(self) -> str:
+        tenant = getattr(self.owner_user, 'core_tenant', None)
+        return getattr(tenant, 'public_id', f'ten_usr_{self.owner_user_id}')
+
+    def clean(self):
+        super().clean()
+        if self.policy_ids is not None and not isinstance(self.policy_ids, list):
+            raise ValidationError({'policy_ids': 'policy_ids phải là danh sách.'})
+        if self.metadata is not None and not isinstance(self.metadata, dict):
+            raise ValidationError({'metadata': 'metadata phải là object.'})
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            self.public_id = _generate_public_id('sat')
+        super().save(*args, **kwargs)
+
+
+class CorePATCredential(models.Model):
+    class StatusChoices(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        ROTATING = 'rotating', 'Rotating'
+        REVOKED = 'revoked', 'Revoked'
+        EXPIRED = 'expired', 'Expired'
+
+    public_id = models.CharField(
+        max_length=32,
+        unique=True,
+        db_index=True,
+        editable=False,
+        verbose_name='PAT public id',
+    )
+    owner_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='core_pat_credentials',
+        verbose_name='Tenant owner surrogate',
+    )
+    service_account = models.ForeignKey(
+        CoreServiceAccount,
+        on_delete=models.CASCADE,
+        related_name='pat_credentials',
+        verbose_name='Service account',
+    )
+    token_prefix = models.CharField(max_length=32, verbose_name='Safe token prefix')
+    token_secret_hash = models.CharField(max_length=64, verbose_name='Token secret hash')
+    display_name = models.CharField(max_length=120, blank=True, default='', verbose_name='Display name')
+    scope_codes = models.JSONField(default=list, blank=True, verbose_name='Effective scope codes')
+    status = models.CharField(
+        max_length=24,
+        choices=StatusChoices.choices,
+        default=StatusChoices.ACTIVE,
+        verbose_name='Status',
+        db_index=True,
+    )
+    expires_at = models.DateTimeField(null=True, blank=True, verbose_name='Token expiry')
+    last_used_at = models.DateTimeField(null=True, blank=True, verbose_name='Last used at')
+    last_ip = models.GenericIPAddressField(null=True, blank=True, verbose_name='Last IP')
+    issued_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='issued_core_pat_credentials',
+        verbose_name='Human issuer',
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True, verbose_name='Revoked at')
+    grace_until = models.DateTimeField(null=True, blank=True, verbose_name='Old token grace window end')
+    metadata = models.JSONField(default=dict, blank=True, verbose_name='Non-sensitive metadata')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Core PAT Credential'
+        verbose_name_plural = 'Core PAT Credentials'
+        ordering = ['-created_at', '-pk']
+        indexes = [
+            models.Index(fields=['owner_user', 'status']),
+            models.Index(fields=['service_account', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.public_id or "pat"} ({self.status})'
+
+    @property
+    def tenant_id(self) -> str:
+        tenant = getattr(self.owner_user, 'core_tenant', None)
+        return getattr(tenant, 'public_id', f'ten_usr_{self.owner_user_id}')
+
+    @property
+    def effective_status(self) -> str:
+        if self.status == self.StatusChoices.REVOKED:
+            return self.StatusChoices.REVOKED
+        if self.expires_at and self.expires_at <= timezone.now():
+            return self.StatusChoices.EXPIRED
+        if self.status == self.StatusChoices.ROTATING:
+            if not self.grace_until:
+                return self.StatusChoices.EXPIRED
+            if self.grace_until <= timezone.now():
+                return self.StatusChoices.EXPIRED
+            return self.StatusChoices.ROTATING
+        return self.status
+
+    @classmethod
+    def resolve_from_raw_secret(cls, raw_secret: str):
+        secret = str(raw_secret or '').strip()
+        if not secret:
+            return None
+
+        prefix = _extract_pat_prefix(secret)
+        if not prefix:
+            return None
+
+        expected_hash = _hash_pat_secret(secret)
+        candidates = cls.objects.select_related('service_account', 'owner_user').filter(token_prefix=prefix).order_by('-created_at', '-pk')
+        for credential in candidates:
+            if hmac.compare_digest(str(credential.token_secret_hash or ''), expected_hash):
+                return credential
+
+        return None
+
+    def clean(self):
+        super().clean()
+        if self.scope_codes is not None and not isinstance(self.scope_codes, list):
+            raise ValidationError({'scope_codes': 'scope_codes phải là danh sách.'})
+        if self.metadata is not None and not isinstance(self.metadata, dict):
+            raise ValidationError({'metadata': 'metadata phải là object.'})
+        if self.service_account_id and self.owner_user_id and self.service_account.owner_user_id != self.owner_user_id:
+            raise ValidationError({'service_account': 'service_account không thuộc tenant owner hiện tại.'})
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            self.public_id = _generate_public_id('pat')
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def issue_for_service_account(
+        cls,
+        *,
+        service_account: CoreServiceAccount,
+        scope_codes: list,
+        expires_at=None,
+        display_name: str = '',
+        issued_by=None,
+        metadata=None,
+    ):
+        raw_secret = _build_pat_secret()
+        credential = cls.objects.create(
+            owner_user=service_account.owner_user,
+            service_account=service_account,
+            token_prefix=_extract_pat_prefix(raw_secret),
+            token_secret_hash=_hash_pat_secret(raw_secret),
+            display_name=str(display_name or '').strip(),
+            scope_codes=list(scope_codes or []),
+            expires_at=expires_at,
+            issued_by=issued_by,
+            metadata=metadata or {},
+        )
+        service_account.last_rotated_at = timezone.now()
+        service_account.save(update_fields=['last_rotated_at', 'updated_at'])
+        return credential, raw_secret
+
+    def rotate(self, *, grace_period_seconds: int = 3600, expires_at=None, issued_by=None, metadata=None):
+        grace_seconds = max(int(grace_period_seconds or 0), 0)
+        self.status = self.StatusChoices.ROTATING
+        self.grace_until = timezone.now() + timedelta(seconds=grace_seconds)
+        self.save(update_fields=['status', 'grace_until', 'updated_at'])
+
+        next_expiry = expires_at if expires_at is not None else self.expires_at
+        next_metadata = dict(self.metadata or {})
+        next_metadata.update(dict(metadata or {}))
+        next_token, raw_secret = self.issue_for_service_account(
+            service_account=self.service_account,
+            scope_codes=list(self.scope_codes or []),
+            expires_at=next_expiry,
+            display_name=self.display_name,
+            issued_by=issued_by,
+            metadata=next_metadata,
+        )
+        return next_token, raw_secret, self.grace_until
+
+    def revoke(self, *, reason: str = '', metadata=None) -> None:
+        merged_metadata = dict(self.metadata or {})
+        if reason:
+            merged_metadata['revoke_reason'] = str(reason).strip()
+        merged_metadata.update(dict(metadata or {}))
+        self.status = self.StatusChoices.REVOKED
+        self.revoked_at = timezone.now()
+        self.grace_until = None
+        self.metadata = merged_metadata
+        self.save(update_fields=['status', 'revoked_at', 'grace_until', 'metadata', 'updated_at'])
 
 
 class RuntimeVnstockConfig(models.Model):

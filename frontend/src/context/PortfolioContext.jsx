@@ -17,6 +17,7 @@ import {
   register as registerRequest,
   resendVerification as resendVerificationRequest,
   refreshToken as refreshTokenRequest,
+  getCapabilitySnapshot,
   getUserConfig,
   updateUserConfig as updateUserConfigRequest,
 } from '../api/auth';
@@ -40,6 +41,8 @@ export function PortfolioProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
   const [userIdentity, setUserIdentity] = useState({ id: null, username: '', email: '', isStaff: false, isSuperuser: false });
+  const [userEntitlements, setUserEntitlements] = useState(null);
+  const [capabilitySnapshot, setCapabilitySnapshot] = useState(null);
   const [ability, setAbility] = useState(() => createAbilityFromRules([]));
 
   const logout = useCallback(() => {
@@ -53,6 +56,8 @@ export function PortfolioProvider({ children }) {
     setUserConfig(null);
     setUserPlan('free');
     setUserIdentity({ id: null, username: '', email: '', isStaff: false, isSuperuser: false });
+    setUserEntitlements(null);
+    setCapabilitySnapshot(null);
     setAbility(createAbilityFromRules([]));
     setAuthStateReady(true);
   }, []);
@@ -70,22 +75,42 @@ export function PortfolioProvider({ children }) {
   }, []);
 
   const syncAuthState = useCallback(async () => {
-    const [meResult, userConfigResult] = await Promise.allSettled([
+    const [meResult, capabilityResult, userConfigResult] = await Promise.allSettled([
       apiClient.get('/auth/me/'),
+      getCapabilitySnapshot(),
       getUserConfig(),
     ]);
 
     let authFailed = false;
+    let mePayload = null;
+
+    if (capabilityResult.status === 'fulfilled') {
+      setCapabilitySnapshot(capabilityResult.value.data || null);
+      setAbility(createAbilityFromRules(capabilityResult.value.data?.abilities || []));
+      setUserEntitlements(capabilityResult.value.data?.entitlements || null);
+      if (capabilityResult.value.data?.actor?.plan) {
+        setUserPlan(capabilityResult.value.data.actor.plan);
+      }
+    } else if (capabilityResult.reason?.response?.status === 401) {
+      authFailed = true;
+    } else {
+      console.error('Sync capability snapshot failed:', capabilityResult.reason);
+      setCapabilitySnapshot(null);
+    }
 
     if (meResult.status === 'fulfilled') {
-      setUserPlan(meResult.value.data.plan || 'free');
-      setAbility(createAbilityFromRules(meResult.value.data.abilities || []));
+      mePayload = meResult.value.data;
+      setUserPlan(mePayload.plan || 'free');
+      if (capabilityResult.status !== 'fulfilled') {
+        setUserEntitlements(mePayload.entitlements || null);
+        setAbility(createAbilityFromRules(mePayload.abilities || []));
+      }
       setUserIdentity({
-        id: meResult.value.data.id || null,
-        username: meResult.value.data.username || '',
-        email: meResult.value.data.email || '',
-        isStaff: Boolean(meResult.value.data.is_staff),
-        isSuperuser: Boolean(meResult.value.data.is_superuser),
+        id: mePayload.id || null,
+        username: mePayload.username || '',
+        email: mePayload.email || '',
+        isStaff: Boolean(mePayload.is_staff),
+        isSuperuser: Boolean(mePayload.is_superuser),
       });
     } else {
       if (meResult.reason?.response?.status === 401) {
@@ -268,6 +293,8 @@ export function PortfolioProvider({ children }) {
     fetchPortfolios,
     userPlan,
     userIdentity,
+    userEntitlements,
+    capabilitySnapshot,
     ability,
     createPortfolio,
     updatePortfolio,
@@ -279,6 +306,8 @@ export function PortfolioProvider({ children }) {
     portfolios, activePortfolioId, isAuthenticated, authStateReady, login, register,
     resendVerification, logout, refreshAccessToken, userConfig,
     updateUserConfig, loading, fetchPortfolios, userPlan, userIdentity,
+    userEntitlements,
+    capabilitySnapshot,
     ability, createPortfolio, updatePortfolio, deletePortfolio,
     createSubAccount, updateSubAccount, deleteSubAccount,
   ]);

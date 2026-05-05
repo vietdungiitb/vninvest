@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   CpuChipIcon, 
   AdjustmentsHorizontalIcon, 
@@ -14,6 +15,7 @@ import { Tab } from '@headlessui/react';
 import {
   getAICommandCenterAuditLogs,
   getAICommandCenterConfig,
+  getPortfolioUserConfig,
   testAICommandCenterConnection,
   updateAICommandCenterConfig,
 } from '../api/client';
@@ -501,13 +503,51 @@ const AICommandCenter = () => {
   const [auditTotal, setAuditTotal] = useState(0);
   const [auditFilters, setAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
   const [appliedAuditFilters, setAppliedAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
+  const [userRuntimeConfig, setUserRuntimeConfig] = useState(null);
   const currentConfig = config || DEFAULT_AI_CONFIG;
   const currentPromptConfig = normalizePromptConfig(currentConfig.ai_prompt_config);
   const totalAuditPages = Math.max(1, Math.ceil((auditTotal || 0) / AUDIT_PAGE_SIZE));
   const activeSourceCount = PROMPT_SOURCE_DEFINITIONS.filter((definition) => currentPromptConfig?.[definition.id]?.enabled).length;
+  const eventBasedAdvisoryEnabled = userRuntimeConfig == null
+    ? null
+    : userRuntimeConfig.advisory_whale_signal_enabled !== false;
+  const eventBasedAdvisoryDisabled = eventBasedAdvisoryEnabled === false;
+  const effectiveRuntimeProvider = String(currentConfig.effective_ai_provider || currentConfig.ai_provider || 'openclaw').trim().toLowerCase();
+  const effectiveRuntimeModel = String(currentConfig.effective_ai_model || currentConfig.ai_model || '').trim() || 'Chưa cấu hình';
+  const effectiveRuntimeSource = String(currentConfig.effective_ai_source || 'Unknown').trim() || 'Unknown';
+  const effectiveRuntimeMessage = String(currentConfig.ai_config_message || '').trim();
+  const eventBasedAdvisoryLabel = eventBasedAdvisoryEnabled === null ? 'Chưa đọc' : (eventBasedAdvisoryDisabled ? 'Tắt' : 'Bật');
+  const runtimePolicySummary = `${currentConfig.advisory_refresh_interval_hours || 0} giờ làm mới · ${currentConfig.advisory_max_auto_refreshes_per_day || 0} lần auto refresh/ngày · ${currentConfig.advisory_max_tokens_per_day || 0} token/ngày`;
+  const runtimeSummaryCards = [
+    {
+      label: 'Nhà cung cấp hiệu lực',
+      value: effectiveRuntimeProvider,
+      valueClassName: 'font-mono text-slate-100',
+      caption: 'Nguồn đọc từ AI Command Center.',
+    },
+    {
+      label: 'Mô hình hiệu lực',
+      value: effectiveRuntimeModel,
+      valueClassName: 'font-mono text-slate-100',
+      caption: 'Mô hình đang dùng cho advisory runtime.',
+    },
+    {
+      label: 'Nguồn hiệu lực',
+      value: effectiveRuntimeSource,
+      valueClassName: 'font-mono text-slate-100',
+      caption: 'command_center hoặc system fallback.',
+    },
+    {
+      label: 'Trạng thái runtime',
+      value: currentConfig.ai_ready ? 'Sẵn sàng' : 'Cần cấu hình',
+      valueClassName: currentConfig.ai_ready ? 'text-emerald-400' : 'text-red-400',
+      caption: currentConfig.ai_ready ? 'Runtime có thể sinh advisory.' : 'Thiếu key, model hoặc source hợp lệ.',
+    },
+  ];
 
   useEffect(() => {
     fetchConfig();
+    fetchUserRuntimeConfig();
     loadAuditLogs(1);
   }, []);
 
@@ -546,6 +586,15 @@ const AICommandCenter = () => {
       setAuditError(err?.response?.data?.message || 'Không tải được lịch sử audit.');
     } finally {
       setAuditLoading(false);
+    }
+  };
+
+  const fetchUserRuntimeConfig = async () => {
+    try {
+      const resp = await getPortfolioUserConfig();
+      setUserRuntimeConfig(resp?.data || null);
+    } catch (err) {
+      console.error('Failed to fetch UserConfig for AI Command Center:', err);
     }
   };
 
@@ -723,6 +772,72 @@ const AICommandCenter = () => {
         </div>
       </div>
 
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {runtimeSummaryCards.map((card) => (
+              <div key={card.label} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 shadow-xl backdrop-blur-xl">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{card.label}</div>
+                <div className={classNames('mt-2 text-sm font-semibold', card.valueClassName || 'text-slate-100')}>
+                  {card.value}
+                </div>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{card.caption}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/50 p-4 shadow-xl backdrop-blur-xl md:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Chính sách vận hành</div>
+                <h2 className="mt-2 text-lg font-bold text-white">Khung đọc nhanh policy</h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  Tổng hợp gate, budget và nguồn hiệu lực đang áp dụng cho runtime này.
+                </p>
+              </div>
+              <span className={classNames(
+                'rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-widest',
+                currentConfig.ai_api_key_configured ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300',
+              )}>
+                {currentConfig.ai_api_key_configured ? 'Đã có key' : 'Chưa có key'}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Gate sự kiện</div>
+                <div className={classNames('mt-1 text-sm font-semibold', eventBasedAdvisoryDisabled ? 'text-amber-300' : 'text-emerald-300')}>
+                  {eventBasedAdvisoryLabel}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Khoảng làm mới</div>
+                <div className="mt-1 text-sm font-semibold text-slate-100">
+                  {currentConfig.advisory_refresh_interval_hours || 0} giờ/lần
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Auto refresh/ngày</div>
+                <div className="mt-1 text-sm font-semibold text-slate-100">
+                  {currentConfig.advisory_max_auto_refreshes_per_day || 0}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Token/ngày</div>
+                <div className="mt-1 text-sm font-semibold text-slate-100">
+                  {currentConfig.advisory_max_tokens_per_day || 0}
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-3 text-xs leading-5 text-slate-400">
+              {runtimePolicySummary}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              {effectiveRuntimeMessage || 'AI Command Center đang phản ánh cấu hình hiệu lực của runtime và các gate vận hành hiện hành.'}
+            </p>
+          </div>
+        </div>
+
       {/* Main Configuration Tabs */}
       <Tab.Group>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
@@ -855,6 +970,26 @@ const AICommandCenter = () => {
                     </span>
                   </div>
                 </div>
+
+                {currentConfig.ai_ready && eventBasedAdvisoryDisabled && (
+                  <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-100 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-3">
+                      <ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+                      <div>
+                        <div className="text-sm font-semibold">AI runtime đã sẵn sàng nhưng advisory theo sự kiện đang tắt</div>
+                        <p className="mt-1 text-xs leading-5 text-amber-100/80">
+                          Whale, dark flow và reversal sẽ không tự sinh AI Advisory cho tới khi bạn bật lại gate sự kiện trong UserConfig.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/settings"
+                      className="inline-flex items-center justify-center rounded-xl border border-amber-300/40 bg-slate-950/40 px-4 py-2 text-xs font-semibold text-amber-100 transition hover:border-amber-200 hover:bg-slate-950/70"
+                    >
+                      Mở UserConfig
+                    </Link>
+                  </div>
+                )}
 
                 {/* Test Connection Section */}
                 <div className="mt-5 space-y-3 rounded-2xl border border-slate-700/50 bg-slate-800/30 p-4">
