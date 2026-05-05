@@ -17,7 +17,7 @@ class SeedWhaleMissionControlCommandTests(TestCase):
     def test_seed_command_populates_whale_mission_control_models(self):
         stdout = StringIO()
 
-        call_command('seed_whale_mission_control', '--reset', stdout=stdout)
+        call_command('seed_whale_mission_control', '--reset', '--allow-production', stdout=stdout)
 
         self.assertIn('Seeded Whale Mission Control demo data.', stdout.getvalue())
         self.assertEqual(WhaleConfigDraft.objects.filter(name__startswith='Demo Whale').count(), 4)
@@ -28,7 +28,7 @@ class SeedWhaleMissionControlCommandTests(TestCase):
         self.assertEqual(WhaleAdvisory.objects.filter(ai_provider='seed-demo').count(), 2)
 
     def test_seed_command_reset_is_idempotent(self):
-        call_command('seed_whale_mission_control', '--reset')
+        call_command('seed_whale_mission_control', '--reset', '--allow-production')
         first_counts = {
             'drafts': WhaleConfigDraft.objects.filter(name__startswith='Demo Whale').count(),
             'approvals': WhaleConfigApproval.objects.count(),
@@ -37,7 +37,7 @@ class SeedWhaleMissionControlCommandTests(TestCase):
             'worker_acks': WhaleConfigWorkerAck.objects.count(),
         }
 
-        call_command('seed_whale_mission_control', '--reset')
+        call_command('seed_whale_mission_control', '--reset', '--allow-production')
         second_counts = {
             'drafts': WhaleConfigDraft.objects.filter(name__startswith='Demo Whale').count(),
             'approvals': WhaleConfigApproval.objects.count(),
