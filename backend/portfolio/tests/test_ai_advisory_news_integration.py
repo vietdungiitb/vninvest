@@ -336,7 +336,7 @@ class TestIntegrationNewsIntoSynthesis(TestCase):
 
         # Run synthesis
         summary_payload = _sprint17_compute_summary_from_components([component])
-        news_ctx = mock_fetch_news('TEST', self.user)
+        news_ctx = mock_fetch_news(symbol='TEST', user=self.user, max_headlines=4)
         
         result = _sprint17_generate_executive_synthesis_with_ai(
             user=self.user,
