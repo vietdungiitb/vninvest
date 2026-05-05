@@ -2126,15 +2126,15 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(second.data['remaining'], 0)
 
     @patch('portfolio.realtime.stream_reader.StreamReader')
-    @patch('vnstock.Vnstock')
-    def test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss(self, mock_vnstock, mock_stream_reader):
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss(self, mock_fetch_intraday, mock_stream_reader):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
         )
         TrackedSymbol.objects.create(user=self.user, symbol='FPT')
         mock_stream_reader.return_value.get_intraday_ticks.return_value = []
-        mock_vnstock.return_value.stock.return_value.quote.intraday.return_value = pd.DataFrame([
+        mock_fetch_intraday.return_value = pd.DataFrame([
             {
                 'time': (timezone.now() - timedelta(minutes=1)).isoformat(),
                 'price': 100000,
