@@ -317,3 +317,23 @@ from .views_notifications import (
 )
 from .views_backtest import backtest_stats_api
 
+
+# ── PR-3: first-create threshold resolution helper ─────────────────────────────
+def _resolve_first_create_threshold_vnd(user, symbol: str, user_default_threshold_vnd: int):
+    """
+    Resolve the effective first-create threshold (in VND) for a given user/symbol.
+
+    Resolution order:
+      1. If a TrackedSymbol row exists for this user+symbol AND has
+         whale_alert_threshold_million set → return (override, 'symbol_override')
+      2. Otherwise → return (user_default, 'user_default')
+
+    Returns:
+        (threshold_vnd: int, source: str)
+    """
+    from .models import TrackedSymbol
+    ts = TrackedSymbol.objects.filter(user=user, symbol=symbol).first()
+    if ts is not None and ts.whale_alert_threshold_million is not None:
+        return int(ts.whale_alert_threshold_million * 1_000_000), 'symbol_override'
+    return user_default_threshold_vnd, 'user_default'
+
