@@ -51,8 +51,10 @@ class PriceUnitNormalizationTests(SimpleTestCase):
 
     def test_resolve_price_scale_to_system_unit_for_vnd_input(self):
         scale = services._resolve_price_scale_to_system_unit('VND')
-        self.assertEqual(scale, Decimal('1'))
+        # VND → system THOUSAND_VND: must divide by 1000 → scale = 0.001
+        self.assertEqual(scale, Decimal('0.001'))
 
     def test_resolve_price_scale_to_system_unit_for_thousand_vnd_input(self):
         scale = services._resolve_price_scale_to_system_unit('THOUSAND_VND')
-        self.assertEqual(scale, Decimal('1000'))
+        # Adapter already outputs THOUSAND_VND (canonical); no conversion needed → scale = 1
+        self.assertEqual(scale, Decimal('1'))
