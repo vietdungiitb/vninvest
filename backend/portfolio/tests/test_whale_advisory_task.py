@@ -45,8 +45,8 @@ class WhaleAdvisoryTaskTests(TestCase):
         cache.clear()
         return super().setUp()
 
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_persists_threshold_and_broadcast_metadata(
         self,
@@ -90,8 +90,13 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(advisory.ai_summary, 'Tom tat AI')
         self.assertEqual(advisory.ai_detail, 'Phan tich sau AI')
 
-        mock_sender.assert_called_once()
-        group_name, event = mock_sender.call_args.args
+        mock_sender.assert_called()
+        user_alerts_call = next(
+            (c for c in mock_sender.call_args_list if c.args and f'user_{staff_user.id}_alerts' in str(c.args[0])),
+            None,
+        )
+        self.assertIsNotNone(user_alerts_call, "Expected user_alerts broadcast call not found")
+        group_name, event = user_alerts_call.args
         self.assertEqual(group_name, f'user_{staff_user.id}_alerts')
         self.assertEqual(event['type'], 'whale_advisory')
         self.assertEqual(event['payload']['threshold'], 5_000_000_000)
@@ -161,8 +166,8 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(latest.ai_summary, 'new summary')
 
     @patch.dict('os.environ', {'COPILOT_API_KEY': 'ghp_test_env_token'}, clear=False)
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_uses_env_api_key_when_staff_config_has_no_saved_key(
         self,
@@ -194,8 +199,8 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(first_call.kwargs['model'], 'openai/gpt-4.1-mini')
         self.assertEqual(first_call.kwargs['api_key'], 'ghp_test_env_token')
 
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     def test_task_generates_provider_aware_placeholder_when_staff_key_missing(
         self,
         mock_get_channel_layer,
@@ -215,7 +220,7 @@ class WhaleAdvisoryTaskTests(TestCase):
         )
 
         self.assertEqual(result['status'], 'skipped')
-        self.assertEqual(result['reason'], 'missing_system_ai_settings')
+        self.assertEqual(result['reason'], 'missing_command_center_ai_config')
         self.assertFalse(WhaleAdvisory.objects.filter(symbol='VNM').exists())
 
     def test_task_skips_when_user_has_no_ai_model(self):
@@ -231,11 +236,11 @@ class WhaleAdvisoryTaskTests(TestCase):
         )
 
         self.assertEqual(result['status'], 'skipped')
-        self.assertEqual(result['reason'], 'missing_system_ai_settings')
+        self.assertEqual(result['reason'], 'missing_command_center_ai_config')
         self.assertFalse(WhaleAdvisory.objects.filter(symbol='VCB').exists())
 
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     @patch('portfolio.tasks_whale_ai_call.generate_advisory_concise')
     def test_periodic_job_uses_concise_mode_and_logs_tokens(
         self,
@@ -273,8 +278,8 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(token_log.tokens_used, 55)
         self.assertEqual(token_log.source, AdvisoryTokenLog.SourceChoices.AUTO_GENERATION)
 
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_persists_metrics_into_aggregate_audit_log(
         self,
@@ -317,8 +322,8 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertIn('actionability_score', audit.metadata_json)
         self.assertIn('confidence', audit.metadata_json)
 
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_persists_snapshot_with_monotonic_sequence(
         self,
@@ -365,8 +370,8 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(advisories[0].aggregate_snapshot_id, snapshots[0].id)
         self.assertEqual(advisories[1].aggregate_snapshot_id, snapshots[1].id)
 
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     @patch('portfolio.tasks_whale_ai_call.generate_advisory_concise')
     def test_periodic_task_metrics_use_scheduler_audit_labels(
         self,
@@ -673,8 +678,8 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(kwargs['symbol'], 'HPG')
         self.assertEqual(kwargs['thresholds'], [620_000_000])
 
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_sets_severity_based_on_value_threshold_ratio(
         self,
@@ -798,8 +803,8 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(sorted(queued_kwargs['merged_sources']), ['dark_flow', 'whale_alert'])
         self.assertEqual(queued_kwargs['threshold_source'], 'user_default')
 
-    @patch('asgiref.sync.async_to_sync')
-    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.tasks_whale_broadcast.async_to_sync')
+    @patch('portfolio.tasks_whale_broadcast.get_channel_layer')
     @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_generate_task_persists_merge_metadata(
         self,
