@@ -163,7 +163,7 @@ class TestGenerateExecutiveSynthesisWithNews(TestCase):
         }
 
     @patch('portfolio.ai_advisory_helpers.resolve_ai_runtime_config')
-    @patch('portfolio.ai_advisory_helpers._openclaw_call')
+    @patch('portfolio.openclaw_client._call')
     def test_generate_synthesis_with_news_context(self, mock_openclaw, mock_config):
         """Test synthesis generation with news context included"""
         mock_config.return_value = self._get_mock_config()
@@ -201,7 +201,7 @@ class TestGenerateExecutiveSynthesisWithNews(TestCase):
         self.assertIn('- RSI va Volume', result)
 
     @patch('portfolio.ai_advisory_helpers.resolve_ai_runtime_config')
-    @patch('portfolio.ai_advisory_helpers._openclaw_call')
+    @patch('portfolio.openclaw_client._call')
     def test_generate_synthesis_without_news_context(self, mock_openclaw, mock_config):
         """Test synthesis generation without news context (fallback)"""
         mock_config.return_value = self._get_mock_config()
@@ -231,7 +231,7 @@ class TestGenerateExecutiveSynthesisWithNews(TestCase):
         self.assertIn('- RSI va Volume', result)
 
     @patch('portfolio.ai_advisory_helpers.resolve_ai_runtime_config')
-    @patch('portfolio.ai_advisory_helpers._openclaw_call')
+    @patch('portfolio.openclaw_client._call')
     def test_news_context_injected_into_prompt(self, mock_openclaw, mock_config):
         """Test that news context is actually injected into LLM prompt"""
         mock_config.return_value = self._get_mock_config()
@@ -256,7 +256,7 @@ class TestGenerateExecutiveSynthesisWithNews(TestCase):
         self.assertIn('CAC TUAN NHAN TIN TUC', prompt_arg)  # Instruction updated
 
     @patch('portfolio.ai_advisory_helpers.resolve_ai_runtime_config')
-    @patch('portfolio.ai_advisory_helpers._openclaw_call')
+    @patch('portfolio.openclaw_client._call')
     def test_prompt_includes_news_instruction(self, mock_openclaw, mock_config):
         """Test that prompt includes news consideration in instructions"""
         mock_config.return_value = self._get_mock_config()
@@ -289,7 +289,7 @@ class TestIntegrationNewsIntoSynthesis(TestCase):
 
     @patch('portfolio.ai_advisory_helpers._fetch_news_context_for_advisory')
     @patch('portfolio.ai_advisory_helpers.resolve_ai_runtime_config')
-    @patch('portfolio.ai_advisory_helpers._openclaw_call')
+    @patch('portfolio.openclaw_client._call')
     def test_full_synthesis_pipeline_with_news(self, mock_openclaw, mock_config, mock_fetch_news):
         """Test full pipeline: components → summary_payload → synthesis with news"""
         mock_config.return_value = {
