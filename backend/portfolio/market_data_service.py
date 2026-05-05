@@ -1405,6 +1405,10 @@ class MarketDataService:
         def _resolve_threshold_for_symbol(resolved_symbol: str) -> float:
             return symbol_threshold_overrides.get(str(resolved_symbol or '').strip().upper(), threshold_vnd)
 
+        def _resolve_threshold_source_for_symbol(resolved_symbol: str) -> str:
+            key = str(resolved_symbol or '').strip().upper()
+            return 'symbol_override' if key in symbol_threshold_overrides else 'user_default'
+
         min_threshold_vnd = min([_resolve_threshold_for_symbol(symbol) for symbol in symbols], default=threshold_vnd)
         limit = self._parse_limit(query_params.get('limit', 20))
         sort = self._parse_sort(query_params.get('sort', 'ts'))
@@ -1627,6 +1631,7 @@ class MarketDataService:
                 _resolve_threshold_for_symbol(getattr(row, 'symbol', '')),
                 score_config=score_config,
                 now=request_now,
+                threshold_source=_resolve_threshold_source_for_symbol(getattr(row, 'symbol', '')),
             )
             for row in page_rows
         ]
@@ -3267,7 +3272,7 @@ class MarketDataService:
         symbols = _resolve_tracked_symbols()
         return symbols, 'tracked', [], 'default_tracked'
 
-    def _build_aggregate_event_payload(self, row, threshold_vnd: float, score_config: dict | None = None, now=None) -> dict:
+    def _build_aggregate_event_payload(self, row, threshold_vnd: float, score_config: dict | None = None, now=None, threshold_source: str = 'user_default') -> dict:
         matched_value = float(getattr(row, 'matched_value', 0) or 0)
         occurred_at = self._build_tick_timestamp(row)
         symbol = row.symbol.upper()
@@ -3323,6 +3328,7 @@ class MarketDataService:
             'alert_first_seen_at': occurred_at,
             'alert_age_seconds': display_result['age_seconds'],
             'source': 'intraday_tick_db',
+            'threshold_source': str(threshold_source or 'user_default'),
             'event_score': score_result['event_score'],
             'display_score': display_result['display_score'],
             'severity': display_result['severity'],
