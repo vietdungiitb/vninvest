@@ -84,7 +84,7 @@ class UserConfigAdminVerificationTests(TestCase):
         mock_send_verification_email.assert_called_once_with(self.pending_user)
         self.pending_config.refresh_from_db()
         self.assertIsNotNone(self.pending_config.email_verification_sent_at)
-        self.assertContains(response, 'Da gui lai email xac thuc cho pendingverify.')
+        self.assertContains(response, 'Đã gửi lại email xác thực cho pendingverify.')
 
     @patch('portfolio.admin.send_verification_email', return_value=1)
     def test_userconfig_detail_route_can_resend_verification_email(self, mock_send_verification_email):
@@ -97,7 +97,7 @@ class UserConfigAdminVerificationTests(TestCase):
         mock_send_verification_email.assert_called_once_with(self.pending_user)
         self.pending_config.refresh_from_db()
         self.assertIsNotNone(self.pending_config.email_verification_sent_at)
-        self.assertContains(response, 'Da gui lai email xac thuc cho pendingverify.')
+        self.assertContains(response, 'Đã gửi lại email xác thực cho pendingverify.')
 
     def test_userconfig_detail_route_skips_verified_user(self):
         response = self.client.post(
@@ -106,7 +106,7 @@ class UserConfigAdminVerificationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Tai khoan verifieduser da xac thuc email, khong can gui lai.')
+        self.assertContains(response, 'Tài khoản verifieduser đã xác thực email, không cần gửi lại.')
 
     def test_admin_route_warns_when_no_pending_verification_accounts(self):
         self.pending_config.email_verified = True
@@ -119,7 +119,7 @@ class UserConfigAdminVerificationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Khong con tai khoan nao dang cho xac thuc email.')
+        self.assertContains(response, 'Không còn tài khoản nào đang chờ xác thực email.')
 
     @patch('portfolio.admin.send_verification_email', return_value=1)
     def test_admin_action_resends_only_for_unverified_accounts(self, mock_send_verification_email):
