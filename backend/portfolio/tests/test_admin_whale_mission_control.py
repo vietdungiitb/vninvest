@@ -593,7 +593,7 @@ class WhaleMissionControlModelTests(TestCase):
         self.assertEqual(version.status, WhaleConfigVersion.StatusChoices.APPROVED)
         message_texts = self._message_texts(request)
         self.assertTrue(any('Dependency check' in text for text in message_texts))
-        self.assertTrue(any('Apply bi chan boi integrity checks.' in text for text in message_texts))
+        self.assertTrue(any('Apply bị chặn bởi integrity checks.' in text for text in message_texts))
 
     @patch('portfolio.admin.build_whale_config_runtime_preview')
     @patch('portfolio.admin.initialize_whale_config_rollout')
