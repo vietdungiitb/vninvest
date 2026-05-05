@@ -18,6 +18,11 @@ from portfolio.auth_views import (
     VerifyEmailView,
 )
 from portfolio.legal_views import LegalPagePublicView
+from portfolio.views_core_compat import (
+    core_health,
+    CoreAuthMeView,
+    CoreCapabilitiesView,
+)
 from portfolio.views_partner_admin import (
     partner_billing_invoices_api,
     partner_billing_subscription_api,
@@ -139,4 +144,9 @@ urlpatterns = [
     path('api/ai-config/test-connection/', portfolio_views.ai_test_connection_api, name='ai-test-connection'),
     # Sprint 28 — Public legal content (no auth required)
     path('api/public/legal-pages/', LegalPagePublicView.as_view(), name='public-legal-pages'),
+    # SFI compat: /core/v1/* served by backend while core-api is not yet in prod stack.
+    path('core/v1/health', core_health, name='core-v1-health'),
+    path('core/v1/healthz', core_health, name='core-v1-healthz'),
+    path('core/v1/auth/me', CoreAuthMeView.as_view(), name='core-v1-auth-me'),
+    path('core/v1/access/capabilities', CoreCapabilitiesView.as_view(), name='core-v1-capabilities'),
 ]
