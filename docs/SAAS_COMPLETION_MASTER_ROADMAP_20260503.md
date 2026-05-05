@@ -37,7 +37,7 @@ SAAS-12 [ ]  Shared contract lock + mobile API migration    ← TIẾP THEO
 SAAS-13 [ ]  packages/core domain extraction (Django thực)
 SAAS-14 [ ]  Data-plane serving models materialization
 SAAS-15 [ ]  Legacy decommission final gate + cleanup
-SAAS-16 [ ]  packages/opencore community distribution
+SAAS-16 [~]  packages/opencore community distribution (build pipeline wired; release automation pending)
 ```
 
 ---
@@ -162,7 +162,7 @@ packages/core/backend/
 
 ---
 
-### SAAS-16 — packages/opencore Community Distribution (Future)
+### SAAS-16 — packages/opencore Community Distribution (Build pipeline wired)
 
 **Mục tiêu:** Xây dựng community/self-host distribution bundle từ packages/opencore. Tạo upgrade journey từ community → SaaS.
 
@@ -170,7 +170,9 @@ packages/core/backend/
 
 **Phụ thuộc:** Tất cả SAAS-12 đến SAAS-15 phải xong.
 
-**Tài liệu sẽ tạo khi SAAS-15 hoàn thành.**
+**Trạng thái bootstrap:** compose overlay, activation bootstrap, distribution manifest va public-safe docs da co; `packages/web/scripts/build-community.mjs` da sinh `packages/web/dist/community`.
+
+**Evidence:** `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS16.md`
 
 ---
 

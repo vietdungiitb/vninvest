@@ -9,6 +9,13 @@ import { ShellDashboardPage } from "./workspace/ShellDashboardPage.js";
 import { ShellPortfoliosPage } from "./workspace/ShellPortfoliosPage.js";
 import { ShellTransactionsPage } from "./workspace/ShellTransactionsPage.js";
 import { ShellWatchlistPage } from "./workspace/ShellWatchlistPage.js";
+// SM-P4 new core user-facing pages
+import { DashboardPage } from "./DashboardPage.js";
+import { WhaleAlertsPage } from "./WhaleAlertsPage.js";
+import { StockDetailPage } from "./StockDetailPage.js";
+import { PortfoliosPage } from "./PortfoliosPage.js";
+import { TransactionsPage } from "./TransactionsPage.js";
+import { UserSettingsPage } from "./UserSettingsPage.js";
 
 export const pageRegistry = Object.freeze([
   {
@@ -65,6 +72,37 @@ export const pageRegistry = Object.freeze([
     routeId: "vip-local-control",
     component: VipLocalControlPage,
     status: "baseline",
+  },
+  // SM-P4 core user-facing pages
+  {
+    routeId: "core-dashboard",
+    component: DashboardPage,
+    status: "core",
+  },
+  {
+    routeId: "core-whale-alerts",
+    component: WhaleAlertsPage,
+    status: "core",
+  },
+  {
+    routeId: "core-stock-detail",
+    component: StockDetailPage,
+    status: "core",
+  },
+  {
+    routeId: "core-portfolios",
+    component: PortfoliosPage,
+    status: "core",
+  },
+  {
+    routeId: "core-transactions",
+    component: TransactionsPage,
+    status: "core",
+  },
+  {
+    routeId: "core-user-settings",
+    component: UserSettingsPage,
+    status: "core",
   },
 ]);
 

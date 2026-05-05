@@ -1,0 +1,57 @@
+name: Frontend & packages/web — CI
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "frontend/**"
+      - "packages/web/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "packages/web/**"
+
+jobs:
+  lint-and-build:
+    name: Lint and build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: ["20.x"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install packages/web deps
+        working-directory: packages/web
+        run: npm ci
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          CI: "true"
+          REACT_APP_API_BASE_URL: /api
+          REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
+          REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+        run: npm run build
+
+      - name: Upload build artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: frontend/build
+          retention-days: 7

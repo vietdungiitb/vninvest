@@ -8,6 +8,7 @@ from decimal import Decimal
 from datetime import timedelta
 import hmac
 import hashlib
+import os
 import secrets
 
 from .ai_options import ADVISORY_CAPABILITY, PROVIDER_CHOICES, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
@@ -997,7 +998,21 @@ def _build_pat_secret() -> str:
 
 
 def _hash_pat_secret(raw_secret: str) -> str:
-    return hashlib.sha256(str(raw_secret or '').encode('utf-8')).hexdigest()
+    """SM-P1.2: HMAC-SHA256 with pepper. Plain SHA-256 is insufficient for PAT storage."""
+    pepper = os.environ.get('CORE_PAT_PEPPER', '')
+    if not pepper:
+        import warnings
+        warnings.warn(
+            "CORE_PAT_PEPPER is not set — PAT hashing is using empty pepper. "
+            "Set CORE_PAT_PEPPER in production.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    return hmac.new(
+        pepper.encode('utf-8'),
+        str(raw_secret or '').encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def _extract_pat_prefix(raw_secret: str) -> str:

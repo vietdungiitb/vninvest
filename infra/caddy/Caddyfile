@@ -1,7 +1,16 @@
 {$DOMAIN} {
     encode gzip
 
-    # Frontend SPA
+    # SM-P4.8: Core API — route /core/v1/* and /api/* to core-api container
+    handle /core/* {
+        reverse_proxy core-api:8100
+    }
+
+    handle /api/* {
+        reverse_proxy core-api:8100
+    }
+
+    # Frontend SPA (catch-all)
     reverse_proxy frontend:80
 
     # Automatic HTTPS via Let's Encrypt

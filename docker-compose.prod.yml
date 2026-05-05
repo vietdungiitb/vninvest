@@ -55,7 +55,7 @@ services:
     environment:
       POSTGRES_DB: vninvest_core
       POSTGRES_USER: vninvest
-      POSTGRES_PASSWORD: vninvest
+      POSTGRES_PASSWORD: ${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set for core-db}
     volumes:
       - core_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -84,23 +84,24 @@ services:
     cpus: ${CORE_REDIS_CPUS:-0.5}
 
   core-api:
-    image: python:3.13-slim
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+    image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-api
     restart: unless-stopped
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
     environment:
       CORE_ENV: production
       CORE_API_PORT: "8100"
-      POSTGRES_HOST: core-db
-      POSTGRES_PORT: "5432"
-      POSTGRES_DB: vninvest_core
-      POSTGRES_USER: vninvest
-      POSTGRES_PASSWORD: vninvest
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:-}
       REDIS_URL: redis://core-redis:6379/0
-      PYTHONPATH: /workspace/src
-    command: ["python", "-m", "vninvest_core.api_stub"]
+    command: ["api"]
     depends_on:
       core-db:
         condition: service_healthy
@@ -110,94 +111,67 @@ services:
       test:
         [
           "CMD",
-          "python",
-          "-c",
-          "from urllib.request import urlopen; import sys; sys.exit(0 if urlopen('http://127.0.0.1:8100/health').status == 200 else 1)",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://127.0.0.1:8100/health/",
         ]
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 10s
+      start_period: 30s
+    expose:
+      - "8100"
     networks:
       - vninvest_network
     mem_limit: ${CORE_API_MEM_LIMIT:-256m}
     cpus: ${CORE_API_CPUS:-0.5}
 
   core-worker:
-    image: python:3.13-slim
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+    image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker
     restart: unless-stopped
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
     environment:
       CORE_ENV: production
-      CORE_STUB_INTERVAL_SECONDS: "30"
-      CORE_STUB_HEALTH_FILE: /tmp/vninvest-core-worker-health.json
-      CORE_STUB_HEALTH_MAX_AGE_SECONDS: "90"
-      POSTGRES_HOST: core-db
-      POSTGRES_PORT: "5432"
-      POSTGRES_DB: vninvest_core
-      POSTGRES_USER: vninvest
-      POSTGRES_PASSWORD: vninvest
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:-}
       REDIS_URL: redis://core-redis:6379/0
-      PYTHONPATH: /workspace/src
-    command: ["python", "-m", "vninvest_core.worker_stub"]
+    command: ["worker"]
     depends_on:
       core-api:
         condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "from vninvest_core.stub_heartbeat import run_healthcheck; run_healthcheck('/tmp/vninvest-core-worker-health.json')",
-        ]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     networks:
       - vninvest_network
     mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
     cpus: ${CORE_WORKER_CPUS:-0.25}
 
   core-beat:
-    image: python:3.13-slim
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+    image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-beat
     restart: unless-stopped
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
     environment:
       CORE_ENV: production
-      CORE_STUB_INTERVAL_SECONDS: "30"
-      CORE_STUB_HEALTH_FILE: /tmp/vninvest-core-beat-health.json
-      CORE_STUB_HEALTH_MAX_AGE_SECONDS: "90"
-      POSTGRES_HOST: core-db
-      POSTGRES_PORT: "5432"
-      POSTGRES_DB: vninvest_core
-      POSTGRES_USER: vninvest
-      POSTGRES_PASSWORD: vninvest
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:-}
       REDIS_URL: redis://core-redis:6379/0
-      PYTHONPATH: /workspace/src
-    command: ["python", "-m", "vninvest_core.beat_stub"]
+    command: ["beat"]
     depends_on:
       core-api:
         condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "from vninvest_core.stub_heartbeat import run_healthcheck; run_healthcheck('/tmp/vninvest-core-beat-health.json')",
-        ]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     networks:
       - vninvest_network
     mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}
@@ -334,6 +308,83 @@ services:
     mem_limit: ${CELERY_BEAT_MEM_LIMIT:-750m}
     cpus: ${CELERY_BEAT_CPUS:-0.75}
 
+  # SM-P5.1: PgBouncer connection pooling
+  pgbouncer:
+    image: bitnami/pgbouncer:latest
+    container_name: vninvest-pgbouncer
+    restart: unless-stopped
+    environment:
+      POSTGRESQL_HOST: db
+      POSTGRESQL_PORT: "5432"
+      POSTGRESQL_DATABASE: ${POSTGRES_DB:-vninvest}
+      POSTGRESQL_USERNAME: ${POSTGRES_USER:-postgres}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: "500"
+      PGBOUNCER_DEFAULT_POOL_SIZE: "20"
+      PGBOUNCER_MIN_POOL_SIZE: "5"
+      PGBOUNCER_RESERVE_POOL_SIZE: "10"
+      PGBOUNCER_LISTEN_PORT: "6432"
+      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "6432"
+    networks:
+      - vninvest_network
+    mem_limit: ${PGBOUNCER_MEM_LIMIT:-64m}
+    cpus: ${PGBOUNCER_CPUS:-0.25}
+
+  # SM-P5.2: Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vninvest-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    expose:
+      - "9090"
+    networks:
+      - vninvest_network
+    mem_limit: ${PROMETHEUS_MEM_LIMIT:-512m}
+    cpus: ${PROMETHEUS_CPUS:-0.5}
+
+  # SM-P5.2: Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vninvest-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    expose:
+      - "3000"
+    networks:
+      - vninvest_network
+    mem_limit: ${GRAFANA_MEM_LIMIT:-256m}
+    cpus: ${GRAFANA_CPUS:-0.25}
+
   frontend:
     build:
       context: .
@@ -370,6 +421,8 @@ volumes:
   postgres_data:
   core_pgdata:
   redis_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   vninvest_network:

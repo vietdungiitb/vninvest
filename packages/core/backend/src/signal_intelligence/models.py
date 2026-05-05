@@ -92,3 +92,61 @@ class WhaleAlertCanonical(models.Model):
 
     def __str__(self):
         return f'{self.side.upper()} {self.symbol} {self.matched_value:,}đ'
+
+
+class OrderFlowEvent(models.Model):
+    """
+    Canonical order flow signal event in the SaaS core.
+
+    Mirrors portfolio_orderflowsignal from legacy DB.
+    ISOLATION RULE: No FK to backend.portfolio models.
+    """
+
+    class SideChoices(models.TextChoices):
+        BUY = 'buy', 'Buy'
+        SELL = 'sell', 'Sell'
+        NEUTRAL = 'neutral', 'Neutral'
+
+    class SignalTypeChoices(models.TextChoices):
+        WHALE_BUY = 'whale_buy', 'Whale Buy'
+        WHALE_SELL = 'whale_sell', 'Whale Sell'
+        DARK_FLOW = 'dark_flow', 'Dark Flow'
+        ORDER_IMBALANCE = 'order_imbalance', 'Order Imbalance'
+        CVD_DIVERGENCE = 'cvd_divergence', 'CVD Divergence'
+        OTHER = 'other', 'Other'
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True, editable=False)
+    symbol = models.CharField(max_length=32, db_index=True)
+    session_date = models.DateField(db_index=True)
+    signal_type = models.CharField(max_length=32, choices=SignalTypeChoices.choices, db_index=True)
+    side = models.CharField(max_length=8, choices=SideChoices.choices, default=SideChoices.NEUTRAL, db_index=True)
+    # Core signal metrics
+    strength = models.FloatField(default=0.0)
+    whale_intensity = models.FloatField(default=0.0)
+    cvd_at_signal = models.FloatField(null=True, blank=True)
+    price_at_signal = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    volume_at_signal = models.BigIntegerField(null=True, blank=True)
+    # Forensic linkage
+    source_ref = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    unified_alert = models.ForeignKey(
+        UnifiedAlert,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='order_flow_events',
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    triggered_at = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Order Flow Event'
+        verbose_name_plural = 'Order Flow Events'
+        ordering = ['-triggered_at', '-pk']
+        indexes = [
+            models.Index(fields=['symbol', 'session_date', 'signal_type']),
+            models.Index(fields=['side', 'triggered_at']),
+        ]
+
+    def __str__(self) -> str:
+        return f'[{self.signal_type}] {self.symbol} @ {self.session_date}'

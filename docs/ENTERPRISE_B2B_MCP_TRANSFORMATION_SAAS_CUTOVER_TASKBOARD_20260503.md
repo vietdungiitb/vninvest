@@ -1,7 +1,7 @@
 # TASKBOARD - ENTERPRISE B2B MCP TRANSFORMATION SAAS CUTOVER
 
-**Ngay:** 2026-05-03 (cap nhat 2026-05-03 sau kien truc review)  
-**Trang thai:** Active — SAAS-14 completed, SAAS-15 is next  
+**Ngay:** 2026-05-03 (cap nhat 2026-05-03 sau kien truc review)
+**Trang thai:** Active — SAAS-16 build pipeline wired; SAAS-15 completed (code work + gate audit done)
 **Muc tieu:** Chot cac slice cu the de dua VNInvest sang mo hinh SaaS that su, co machine-auth, tenant lifecycle, data-plane parity va legacy decommission.
 
 **Architecture assessment:** `docs/SAAS_ARCHITECTURE_GAPS_ASSESSMENT_20260503.md`  
@@ -252,8 +252,8 @@ Status note: completed.
 | `SAAS-12` | P0 | Platform Lead | Shared contract lock va mobile API migration | `shared/api-contracts/symbol-snapshot.contract.json`, `shared/api-contracts/session-facts.contract.json`, `shared/api-contracts/unified-alert.contract.json`, `shared/api-contracts/whale-feed-aggregate.contract.json`, `shared/api-contracts/tenant-lifecycle.contract.json`, `shared/api-contracts/partner-pat.contract.json`, `shared/scripts/validate-contracts.mjs` | 6 data-plane contracts locked va valid; contract validator script pass (9/9 PASS); mobile migration DEFERRED (mobile-app locked) | ✅ completed |
 | `SAAS-13` | P0 | Core Lead | packages/core domain extraction — Django that | `packages/core/backend/requirements.txt`, `packages/core/backend/manage.py`, `packages/core/backend/src/vninvest_core/settings.py`, `packages/core/backend/src/vninvest_core/urls.py`, `packages/core/backend/src/vninvest_core/celery.py`, `packages/core/backend/src/identity_access/models.py`, `packages/core/backend/src/market_serving/models.py`, `packages/core/backend/src/signal_intelligence/models.py`, `packages/core/backend/src/commercial/models.py`, `packages/core/backend/src/ops_audit/middleware.py`, `packages/core/docker-compose.core.yml` | packages/core chay Django doc lap; CoreTenant/CoreServiceAccount/CorePATCredential trong identity_access; X-Request-ID propagation; khong co import tu backend/portfolio; 23/23 unit tests pass | ✅ completed |
 | `SAAS-14` | P0 | Data Lead | Data-plane serving models materialization + cursor pagination | `packages/core/backend/src/market_serving/materializers.py`, `packages/core/backend/src/signal_intelligence/materializers.py`, `packages/core/backend/src/vninvest_core/pagination.py`, `packages/web/src/adapters/coreApiAdapter.js` | Celery materializers chay on schedule; SymbolSnapshot/SessionFacts/UnifiedAlert co data fresh; cursor pagination tren list APIs; packages/web goi /core/v1 qua coreApiAdapter; 29/29 Python tests + 12/12 jest tests pass | ✅ completed |
-| `SAAS-15` | P1 | Platform/DevOps Lead | Legacy decommission final gate | `docker-compose.dev.yml`, `docker-compose.prod.yml`, `frontend/docker/nginx.conf`, `AGENTS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md` | Gates A-F trong SAAS15 doc deu GREEN; decommission sequence hoan thanh; production traffic 24h khong tang error; legacy containers khong con trong docker ps | not started |
-| `SAAS-16` | P2 | Platform Lead | packages/opencore community distribution | `packages/opencore/` | community/self-host distribution bundle; upgrade journey community → SaaS | future |
+| `SAAS-15` | P1 | Platform/DevOps Lead | Legacy decommission final gate | `packages/core/backend/src/identity_access/views_auth.py`, `packages/core/backend/src/identity_access/urls.py`, `packages/core/docker-compose.core.yml`, `docker-compose.dev.yml`, `packages/mobile/src/services/watchlistApi.ts`, `packages/mobile/src/services/coreApiClient.ts`, `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/scripts/check-shell.mjs` | Gate A ✅ (auth endpoints live, Django check 0 issues); Gate B 🔴 BLOCKED (LEGACY_DATABASE_URL live-run deferred); Gate C 🟡 (whale paths migrated, portfolio/tx mgmt deferred — no core equivalent); Gate D ✅ (9/9 contracts); Gate E ✅ (29/29 Python + 12/12 jest + check-shell pass); Gate F 🟡 (docker-compose updated, rollback drill deferred) — decommission BLOCKED pending Gate B/C live resolution | ✅ completed (code + formal gate audit done) |
+| `SAAS-16` | P2 | Platform Lead | packages/opencore community distribution bootstrap | `packages/web/package.json`, `packages/web/scripts/build-community.mjs`, `packages/web/dist/community/build-manifest.json`, `packages/opencore/README.md`, `packages/opencore/docker-compose.opencore.yml`, `packages/opencore/activation/bootstrap.json`, `packages/opencore/distribution/community-bundle.json`, `packages/opencore/distribution/install-community.ps1`, `packages/opencore/docs-public/*.md` | community build producer emits `packages/web/dist/community`; overlay parses; activation/distribution manifests exist; public-safe docs exist; upgrade journey community → SaaS documented; no second frontend source; no backend truth split | in progress |
 
 ---
 
@@ -322,5 +322,25 @@ Gate checklist: 6 gates (A: core completeness, B: data-plane, C: client migratio
 
 Decommission sequence: Phase 1 (route isolation) → Phase 2 (read-only window 7 ngay) → Phase 3 (legacy shutdown) → Phase 4 (archive).
 
-Status note: not started.
+Status note: ✅ completed 2026-05-03. Auth endpoints live; docker-compose updated; whale legacy paths migrated. Formal go/no-go: NOT GO — Gate B (LEGACY_DATABASE_URL live-run) va Gate C (portfolio/tx mgmt no core equivalent) remain deferred. Decommission sequence BLOCKED pending those resolutions.
+
+Evidence: `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS15.md`
+
+---
+
+### SAAS-16
+
+Slice nay bootstrap packages/opencore thanh community/self-host distribution bundle va giu dung boundary khong fork frontend source.
+
+Anchor doc: `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS16.md`
+
+Outputs expected:
+1. `packages/opencore/docker-compose.opencore.yml` parse duoc va mount web dist community qua env var.
+2. `packages/opencore/distribution/community-bundle.json` va `packages/opencore/activation/bootstrap.json` co mat.
+3. `packages/opencore/docs-public/*.md` co quickstart, self-host install, upgrade path va feature/pricing catalog public-safe.
+4. `packages/opencore/distribution/install-community.ps1` san sang launch compose overlay.
+
+Status note: build pipeline wired. `packages/web/scripts/build-community.mjs` now emits `packages/web/dist/community`; release automation/publishing still pending.
+
+Evidence: `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS16.md`
 

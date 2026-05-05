@@ -55,6 +55,78 @@ async function coreGet(path, options = {}) {
   return response.json();
 }
 
+async function corePost(path, body = undefined) {
+  const base = resolveCoreApiBase();
+  const requestId = generateRequestId();
+
+  const response = await fetch(`${base}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Request-ID": requestId,
+    },
+    credentials: "include",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `Core API POST error ${response.status} ${response.statusText} — ${path}: ${text}`
+    );
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+async function corePatch(path, body = undefined) {
+  const base = resolveCoreApiBase();
+  const requestId = generateRequestId();
+
+  const response = await fetch(`${base}${path}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Request-ID": requestId,
+    },
+    credentials: "include",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `Core API PATCH error ${response.status} ${response.statusText} — ${path}: ${text}`
+    );
+  }
+
+  return response.json();
+}
+
+async function coreDelete(path) {
+  const base = resolveCoreApiBase();
+  const requestId = generateRequestId();
+
+  const response = await fetch(`${base}${path}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Request-ID": requestId,
+    },
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `Core API DELETE error ${response.status} ${response.statusText} — ${path}: ${text}`
+    );
+  }
+
+  return null;
+}
+
 /**
  * coreApiAdapter — facade object exposing all data-plane serving calls.
  *
@@ -125,5 +197,238 @@ export const coreApiAdapter = {
    */
   getTenantLifecycle() {
     return coreGet("/tenant/lifecycle/");
+  },
+
+  // ─── Advisory ────────────────────────────────────────────────────────────
+
+  /**
+   * Get the latest advisory for a symbol on a given session date.
+   * @param {string} symbol
+   * @param {string} [date] - ISO date YYYY-MM-DD; defaults to today
+   * @returns {Promise<object>}
+   */
+  getAdvisoryLatest(symbol, date) {
+    if (!symbol) throw new Error("symbol is required for getAdvisoryLatest");
+    const query = date ? `?date=${encodeURIComponent(date)}` : "";
+    return coreGet(`/advisory/latest/${encodeURIComponent(symbol.toUpperCase())}/${query}`);
+  },
+
+  /**
+   * Request an advisory refresh/generation for a symbol.
+   * @param {string} symbol
+   * @returns {Promise<object>}
+   */
+  refreshAdvisory(symbol) {
+    if (!symbol) throw new Error("symbol is required for refreshAdvisory");
+    return corePost(`/advisory/refresh/${encodeURIComponent(symbol.toUpperCase())}/`);
+  },
+
+  /**
+   * Get advisory history for a symbol.
+   * @param {string} symbol
+   * @param {object} [params] - cursor, session_date
+   * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
+   */
+  getAdvisoryHistory(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getAdvisoryHistory");
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(
+      `/advisory/history/${encodeURIComponent(symbol.toUpperCase())}/${query ? `?${query}` : ""}`
+    );
+  },
+
+  // ─── User Workspace ───────────────────────────────────────────────────────
+
+  /**
+   * List portfolios for the authenticated user.
+   * @returns {Promise<{results: object[]}>}
+   */
+  getPortfolios() {
+    return coreGet("/workspace/portfolios/");
+  },
+
+  /**
+   * Create a new portfolio.
+   * @param {{ name: string, description?: string }} data
+   * @returns {Promise<object>}
+   */
+  createPortfolio(data) {
+    return corePost("/workspace/portfolios/", data);
+  },
+
+  /**
+   * Update an existing portfolio.
+   * @param {number|string} portfolioId
+   * @param {{ name?: string, description?: string }} data
+   * @returns {Promise<object>}
+   */
+  updatePortfolio(portfolioId, data) {
+    return corePatch(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/`, data);
+  },
+
+  /**
+   * Delete a portfolio.
+   * @param {number|string} portfolioId
+   * @returns {Promise<void>}
+   */
+  deletePortfolio(portfolioId) {
+    return coreDelete(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/`);
+  },
+
+  /**
+   * List transactions for a portfolio.
+   * @param {number|string} portfolioId
+   * @param {object} [params] - symbol, date_from, date_to, cursor
+   * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
+   */
+  getTransactions(portfolioId, params = {}) {
+    if (!portfolioId) throw new Error("portfolioId is required for getTransactions");
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(
+      `/workspace/portfolios/${encodeURIComponent(portfolioId)}/transactions/${query ? `?${query}` : ""}`
+    );
+  },
+
+  /**
+   * Create a transaction in a portfolio.
+   * @param {number|string} portfolioId
+   * @param {{ symbol: string, transaction_type: string, date: string, price: number, quantity: number, fee?: number }} data
+   * @returns {Promise<object>}
+   */
+  createTransaction(portfolioId, data) {
+    return corePost(
+      `/workspace/portfolios/${encodeURIComponent(portfolioId)}/transactions/`,
+      data
+    );
+  },
+
+  /**
+   * List watchlists for the authenticated user.
+   * @returns {Promise<{results: object[]}>}
+   */
+  getWatchlists() {
+    return coreGet("/workspace/watchlists/");
+  },
+
+  /**
+   * Create a watchlist.
+   * @param {{ name: string, description?: string }} data
+   * @returns {Promise<object>}
+   */
+  createWatchlist(data) {
+    return corePost("/workspace/watchlists/", data);
+  },
+
+  /**
+   * List items in a watchlist.
+   * @param {number|string} watchlistId
+   * @returns {Promise<{results: object[]}>}
+   */
+  getWatchlistItems(watchlistId) {
+    if (!watchlistId) throw new Error("watchlistId is required for getWatchlistItems");
+    return coreGet(`/workspace/watchlists/${encodeURIComponent(watchlistId)}/items/`);
+  },
+
+  /**
+   * Add a symbol to a watchlist.
+   * @param {number|string} watchlistId
+   * @param {string} symbol
+   * @returns {Promise<object>}
+   */
+  addWatchlistItem(watchlistId, symbol) {
+    return corePost(`/workspace/watchlists/${encodeURIComponent(watchlistId)}/items/`, { symbol });
+  },
+
+  /**
+   * Remove a symbol from a watchlist.
+   * @param {number|string} watchlistId
+   * @param {string} symbol
+   * @returns {Promise<void>}
+   */
+  removeWatchlistItem(watchlistId, symbol) {
+    return coreDelete(
+      `/workspace/watchlists/${encodeURIComponent(watchlistId)}/items/${encodeURIComponent(symbol)}/`
+    );
+  },
+
+  // ─── User Profile ─────────────────────────────────────────────────────────
+
+  /**
+   * Get the profile for the currently authenticated user.
+   * @returns {Promise<object>}
+   */
+  getUserProfile() {
+    return coreGet("/identity/profile/");
+  },
+
+  /**
+   * Update the authenticated user's profile.
+   * @param {{ display_name?: string, language?: string, theme?: string, whale_alert_threshold?: number }} data
+   * @returns {Promise<object>}
+   */
+  updateUserProfile(data) {
+    return corePatch("/identity/profile/", data);
+  },
+
+  // ─── Market Data ──────────────────────────────────────────────────────────
+
+  /**
+   * List available symbols (with optional exchange/industry filter).
+   * @param {object} [params] - exchange, industry, status, cursor
+   * @returns {Promise<{results: object[], next: string|null}>}
+   */
+  getSymbolList(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/market-data/symbols/${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Get OHLCV daily prices for a symbol.
+   * @param {string} symbol
+   * @param {object} [params] - date_from, date_to, cursor
+   * @returns {Promise<{results: object[]}>}
+   */
+  getDailyPrices(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getDailyPrices");
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(
+      `/market-data/daily-prices/${encodeURIComponent(symbol.toUpperCase())}/${query ? `?${query}` : ""}`
+    );
+  },
+
+  /**
+   * Get stock profile/metadata for a symbol.
+   * @param {string} symbol
+   * @returns {Promise<object>}
+   */
+  getStockProfile(symbol) {
+    if (!symbol) throw new Error("symbol is required for getStockProfile");
+    return coreGet(`/market-data/symbols/${encodeURIComponent(symbol.toUpperCase())}/`);
+  },
+
+  // ─── Order Flow ───────────────────────────────────────────────────────────
+
+  /**
+   * List OrderFlowEvent records for a symbol.
+   * @param {string} symbol
+   * @param {object} [params] - session_date, signal_type, cursor
+   * @returns {Promise<{results: object[], next: string|null}>}
+   */
+  getOrderFlowEvents(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getOrderFlowEvents");
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(
+      `/signals/order-flow/${encodeURIComponent(symbol.toUpperCase())}/${query ? `?${query}` : ""}`
+    );
   },
 };

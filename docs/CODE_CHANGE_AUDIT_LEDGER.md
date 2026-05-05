@@ -1,3 +1,421 @@
+# Entry 2026-05-04-SFI-docs - SaaS Full Independence (Option B) documentation bundle (12 docs)
+
+Muc tieu:
+- Tao bo tai lieu day du 12-doc cho chuong trinh SaaS Full Independence (Option B) — 8 phase loai bo phu thuoc legacy backend hoan toan.
+- Bo tai lieu theo chuan du an de doi code co the thuc hien ma khong can hoi lai.
+
+Danh sach tep tao moi:
+- docs/SAAS_FULL_INDEPENDENCE_HANDOFF_MASTER_20260504.md (NEW - master coordination document)
+- docs/TECH_SPEC_SAAS_FULL_INDEPENDENCE_20260504.md (NEW - technical specifications: proxy, auth, B3-B8)
+- docs/IMPLEMENTATION_PLAN_SAAS_FULL_INDEPENDENCE_20260504.md (NEW - phase-by-phase plan B1-B8)
+- docs/TASKBOARD_SAAS_FULL_INDEPENDENCE_20260504.md (NEW - 30 slices SFI-B1.1 through SFI-B8.6)
+- docs/SAAS_FULL_INDEPENDENCE_TRACEABILITY_MATRIX_20260504.md (NEW - 20 SFI-REQ requirements mapped)
+- docs/SAAS_FULL_INDEPENDENCE_SELF_AUDIT_AND_TEST_PROTOCOL_20260504.md (NEW - validation per phase)
+- docs/SAAS_FULL_INDEPENDENCE_EXECUTION_EVIDENCE_TEMPLATE_20260504.md (NEW - evidence template)
+- docs/SAAS_FULL_INDEPENDENCE_CODE_QUALITY_CONSTITUTION_20260504.md (NEW - coding standards)
+- docs/SAAS_FULL_INDEPENDENCE_CONFIG_OWNERSHIP_MATRIX_20260504.md (NEW - 13 env vars, ownership)
+- docs/RUN_CODE_REVIEW_SAAS_FULL_INDEPENDENCE_20260504.md (NEW - PR review checklist per phase)
+- docs/RUN_INTEGRATION_TESTS_SAAS_FULL_INDEPENDENCE_20260504.md (NEW - IT suites B1-B7+regression)
+- docs/RUN_SPEC_AUDIT_SAAS_FULL_INDEPENDENCE_20260504.md (NEW - spec audit PowerShell checks)
+- AGENTS.md (MODIFIED - added SaaS Full Independence doc set + read-first list + hard constraints sec 9)
+- PROGRESS_DASHBOARD.md (MODIFIED - added SaaS Full Independence section)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-04-SFI-docs)
+
+Validation:
+- PASSED: All 12 doc files created and exist in docs/
+- PASSED: AGENTS.md updated with SaaS Full Independence references in sections 1, 2, and 9
+- NOTE: Documentation-only changes, no runtime validation required
+
+Residual risk:
+- None for docs-only change.
+
+---
+
+# Entry 2026-05-04-docs - SaaS Migration documentation bundle (12 docs)
+
+Muc tieu:
+- Tao bo tai lieu day du 12-doc cho chuong trinh SaaS Production Migration & Legacy Monolith Decommission.
+- Bo tai lieu theo chuan du an (giong Money Flow Control Center) de doi code co the thuc hien ma khong can hoi lai.
+
+Danh sach tep tao moi:
+- docs/SAAS_MIGRATION_HANDOFF_MASTER_20260504.md (NEW - master coordination document)
+- docs/TECH_SPEC_SAAS_MIGRATION_20260504.md (NEW - technical specifications)
+- docs/IMPLEMENTATION_PLAN_SAAS_MIGRATION_20260504.md (NEW - phase-by-phase implementation plan)
+- docs/TASKBOARD_SAAS_MIGRATION_20260504.md (NEW - 62 tasks across 8 phases)
+- docs/SAAS_MIGRATION_TRACEABILITY_MATRIX_20260504.md (NEW - 34 SM-REQ + 4 GOV requirements mapped)
+- docs/SAAS_MIGRATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260504.md (NEW - slice audit checklist)
+- docs/SAAS_MIGRATION_EXECUTION_EVIDENCE_TEMPLATE_20260504.md (NEW - evidence template per slice)
+- docs/SAAS_MIGRATION_CODE_QUALITY_CONSTITUTION_20260504.md (NEW - coding standards and prohibitions)
+- docs/SAAS_MIGRATION_CONFIG_OWNERSHIP_MATRIX_20260504.md (NEW - who owns what config, by phase)
+- docs/RUN_CODE_REVIEW_SAAS_MIGRATION_20260504.md (NEW - code review protocol per phase)
+- docs/RUN_INTEGRATION_TESTS_SAAS_MIGRATION_20260504.md (NEW - integration test commands + templates)
+- docs/RUN_SPEC_AUDIT_SAAS_MIGRATION_20260504.md (NEW - Council of Three spec audit)
+- AGENTS.md (MODIFIED - added SaaS Migration doc set reference)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-04-docs)
+
+Validation:
+- PASSED: All 12 doc files created and exist in docs/
+- PASSED: AGENTS.md updated with SaaS Migration section referencing all 12 docs
+- NOTE: Documentation-only changes, no runtime validation required
+
+Residual risk:
+- None for docs-only change.
+
+---
+
+# Entry 2026-05-04-SM-P0 - SaaS Migration Phase 0: Baseline Infra & Materializer Fix
+
+Muc tieu:
+- SM-P0.1: Fix materializers.py - rewrite SQL to use correct legacy tables (portfolio_tickersessionclose, portfolio_whalealertevent, portfolio_orderflowsignal)
+- SM-P0.2: Add CONN_MAX_AGE to legacy backend postgres settings
+- SM-P0.3: Create packages/core/backend/Dockerfile + fix docker-compose.prod.yml (immutable build, mandatory secret guards, remove stub commands)
+- SM-P0.4: Create packages/core/backend/entrypoint.sh (api/worker/beat roles)
+
+Danh sach tep thay doi:
+- packages/core/backend/src/market_serving/materializers.py (MODIFIED - SM-P0.1: fix all 4 tasks)
+- backend/config/settings.py (MODIFIED - SM-P0.2: add CONN_MAX_AGE=60s default)
+- packages/core/backend/Dockerfile (NEW - SM-P0.3: multi-stage immutable build)
+- docker-compose.prod.yml (MODIFIED - SM-P0.3: built image, mandatory secrets, no source mounts)
+- packages/core/backend/entrypoint.sh (NEW - SM-P0.4: api/worker/beat entrypoint)
+- docs/evidence/SM-P0-EXECUTION-EVIDENCE-20260504.md (NEW - evidence file)
+
+Validation:
+- PASSED: materializers.py syntax check (ast.parse) - SYNTAX OK
+- PASSED: settings.py syntax check (ast.parse) - SYNTAX OK
+- PASSED: docker-compose.prod.yml config check (with required vars set) - exit code 0
+- PASSED: docker-compose.prod.yml mandatory guard check (without vars) - error message correct
+
+Residual risk:
+- dark_flow_score=0.0 for all Phase 0 SessionFacts rows; Phase 3 must backfill
+- django_celery_beat not yet in requirements.txt; add in Phase 2 beat activation
+- entrypoint.sh line endings must be LF (not CRLF) for Docker build to work on Linux containers
+
+---
+
+# Entry 2026-05-04-SM-P1 - SaaS Migration Phase 1: Security Hardening
+
+Muc tieu:
+- SM-P1.1: JWT blacklist activation (token_blacklist app + BLACKLIST_AFTER_ROTATION=True)
+- SM-P1.2: PAT HMAC pepper upgrade in legacy portfolio/models.py (was plain SHA-256)
+- SM-P1.3: ALLOWED_HOSTS production guard in vninvest_core/settings.py (no wildcard default)
+- SM-P1.4: CORS hardening in vninvest_core/settings.py (CORS_ALLOW_ALL_ORIGINS=False + explicit list)
+
+Danh sach tep thay doi:
+- backend/config/settings.py (MODIFIED - SM-P1.1)
+- backend/portfolio/models.py (MODIFIED - SM-P1.2)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - SM-P1.3+P1.4)
+- docs/evidence/SM-P1-EXECUTION-EVIDENCE-20260504.md (NEW)
+
+Validation:
+- PASSED: All 3 files syntax check OK
+- PASSED: token_blacklist in INSTALLED_APPS, BLACKLIST_AFTER_ROTATION=True confirmed
+- PASSED: HMAC pepper, ImproperlyConfigured guards, CORS_ALLOW_ALL_ORIGINS=False confirmed
+
+Residual risk:
+- Existing PAT tokens must be re-issued after CORE_PAT_PEPPER deployment
+- JWT blacklist migration must run before traffic
+- CORE_PAT_PEPPER must be in secret manager before first production deploy
+
+---
+
+# Entry 2026-05-04-SM-P2 - SaaS Migration Phase 2: Core Infra Activation
+
+Muc tieu:
+- SM-P2.1: CoreRouter (db_router.py) blocks legacy writes; DATABASE_ROUTERS set
+- SM-P2.2: Real Celery workers (replace stubs); django-celery-beat added; CELERY_BEAT_SCHEDULE wired
+- SM-P2.3: data_ingest domain skeleton (IngestJob, IngestRun, fetch_and_upsert_price_board task)
+- SM-P2.4: Redis cache layer on SymbolSnapshot+SessionFacts detail views (15s/30s TTL)
+- SM-P2.5: smoke_test_core_api.sh script
+
+Danh sach tep thay doi:
+- packages/core/backend/src/vninvest_core/db_router.py (NEW - SM-P2.1: CoreRouter)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - SM-P2.1/P2.2/P2.4: DATABASE_ROUTERS, CELERY_BEAT_SCHEDULE, CACHES, data_ingest in INSTALLED_APPS)
+- packages/core/backend/requirements.txt (MODIFIED - SM-P2.2: django-celery-beat)
+- packages/core/backend/src/data_ingest/ (NEW - SM-P2.3: app skeleton + migration)
+- packages/core/backend/src/market_serving/views.py (MODIFIED - SM-P2.4: Redis cache layer)
+- docker-compose.dev.yml (MODIFIED - SM-P2.2: real Celery worker+beat commands)
+- scripts/smoke_test_core_api.sh (NEW - SM-P2.5: smoke test)
+- docs/evidence/SM-P2-EXECUTION-EVIDENCE-20260504.md (NEW)
+
+Validation:
+- PASSED: All 6 Python files syntax check OK
+- PASSED: docker-compose.dev.yml config check exit 0
+
+Residual risk:
+- django_celery_beat tables must be migrated before beat activates
+- IngestRun.job FK is non-nullable (intentional; task only creates run when job is found)
+
+---
+
+# Entry 2026-05-04-SM-P3 - SaaS Migration Phase 3: Business Logic Migration
+
+Muc tieu:
+- SM-P3.1: UserProfile model + migration + management command migrate_userprofiles_to_core
+- SM-P3.3: OrderFlowEvent model + migration (signal_intelligence)
+- SM-P3.4: advisory domain NEW (SystemAISettings, AdvisoryRecord, migration)
+- SM-P3.5: user_workspace domain NEW (Portfolio, Transaction, Watchlist, WatchlistItem, migration)
+- SM-P3.6: market_data domain NEW (StockProfile, DailyPrice, VnstockRuntimeConfig, migration)
+- Settings: added advisory/user_workspace/market_data to INSTALLED_APPS
+- CoreRouter: added new apps to _CORE_APPS frozenset
+
+Danh sach tep thay doi:
+- packages/core/backend/src/identity_access/models.py (MODIFIED - SM-P3.1: UserProfile)
+- packages/core/backend/src/identity_access/migrations/0002_userprofile.py (NEW)
+- packages/core/backend/src/identity_access/management/commands/migrate_userprofiles_to_core.py (NEW)
+- packages/core/backend/src/signal_intelligence/models.py (MODIFIED - SM-P3.3: OrderFlowEvent)
+- packages/core/backend/src/signal_intelligence/migrations/0002_orderflow_event.py (NEW)
+- packages/core/backend/src/advisory/ (NEW DOMAIN)
+- packages/core/backend/src/user_workspace/ (NEW DOMAIN)
+- packages/core/backend/src/market_data/ (NEW DOMAIN)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - 3 new apps)
+- packages/core/backend/src/vninvest_core/db_router.py (MODIFIED - 3 new apps in _CORE_APPS)
+- docs/evidence/SM-P3-EXECUTION-EVIDENCE-20260504.md (NEW)
+
+Validation:
+- PASSED: All 13 Python files syntax check OK
+
+Residual risk:
+- Shadow run tasks (SM-P3.2.3, SM-P3.3.3/4, SM-P3.4.4, SM-P3.5.3, SM-P3.6.4) not yet wired — require 3-day prod shadow before cutover
+- Migration command requires legacy_readonly DB reachable
+- advisory needs AI provider secret at runtime
+
+---
+
+# Entry 2026-05-04-SM-P4 - SaaS Migration Phase 4: Frontend Cutover
+
+Slices completed:
+- SM-P4.1: coreApiAdapter.js fully expanded (done prior session, 15 endpoint methods)
+- SM-P4.2: compat_portfolio.py extended (CompatWhaleAlertsView, CompatWhaleSummaryView, CompatAdvisoryView + urlpatterns)
+- SM-P4.3: DashboardPage.js (NEW)
+- SM-P4.4: WhaleAlertsPage.js (NEW)
+- SM-P4.5: StockDetailPage.js (NEW)
+- SM-P4.6: PortfoliosPage.js + TransactionsPage.js (NEW)
+- SM-P4.7: UserSettingsPage.js (NEW)
+- SM-P4.8: Caddy routing cutover (infra/caddy/Caddyfile)
+
+Files changed:
+- packages/core/backend/src/market_data/views.py (NEW)
+- packages/core/backend/src/market_data/urls.py (NEW)
+- packages/core/backend/src/signal_intelligence/serializers.py (MODIFIED - OrderFlowEventSerializer)
+- packages/core/backend/src/signal_intelligence/views.py (MODIFIED - OrderFlowEventListView)
+- packages/core/backend/src/signal_intelligence/urls.py (MODIFIED - order-flow route)
+- packages/core/backend/src/identity_access/views.py (MODIFIED - UserProfileView)
+- packages/core/backend/src/identity_access/urls.py (MODIFIED - /identity/profile/ route)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - added 4 new domain includes)
+- packages/core/backend/src/vninvest_core/compat_portfolio.py (MODIFIED - extended compat views)
+- packages/web/src/pages/DashboardPage.js (NEW)
+- packages/web/src/pages/WhaleAlertsPage.js (NEW)
+- packages/web/src/pages/StockDetailPage.js (NEW)
+- packages/web/src/pages/PortfoliosPage.js (NEW)
+- packages/web/src/pages/TransactionsPage.js (NEW)
+- packages/web/src/pages/UserSettingsPage.js (NEW)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - 6 new entries)
+- packages/web/src/index.js (MODIFIED - 6 new exports)
+- infra/caddy/Caddyfile (MODIFIED - SM-P4.8 routing)
+- docs/evidence/SM-P4-EXECUTION-EVIDENCE-20260504.md (NEW)
+
+Validation:
+- PASSED: 9 Python files syntax check OK
+- PASSED: npm run build (frontend) SUCCESS
+
+Residual risk:
+- Shadow run tasks still deferred (requires 3-day prod)
+- Caddy routing: verify access logs after prod deploy to confirm legacy backend:8000 receives 0 /api/* requests
+- compat_portfolio in-memory store is bridge only; real data in user_workspace domain
+
+---
+
+# Entry 2026-05-04-SM-P5 - SaaS Migration Phase 5: Infrastructure Hardening
+
+Slices completed:
+- SM-P5.1: PgBouncer config + compose service
+- SM-P5.2: Prometheus + Grafana (4 panels, alert for p95>500ms)
+- SM-P5.3: Sentry SDK + django-prometheus integrated (conditional on env vars)
+- SM-P5.4: GitHub Actions CI (core-api.yml + web.yml)
+- SM-P5.5: ops_audit daily_db_backup Celery task (pg_dump + S3/R2 upload)
+- SM-P5.6: IntradayTick RANGE partitioning migration + auto-partition Celery task
+- SM-P5.7: k6 load test script (500 VUs, p95<200ms threshold)
+
+Files changed:
+- infra/pgbouncer/pgbouncer.ini (NEW)
+- infra/pgbouncer/userlist.txt.example (NEW)
+- docker-compose.prod.yml (MODIFIED - pgbouncer + prometheus + grafana + volumes)
+- infra/prometheus/prometheus.yml (NEW)
+- infra/grafana/provisioning/datasources/prometheus.yml (NEW)
+- infra/grafana/provisioning/dashboards/dashboard-provider.yml (NEW)
+- infra/grafana/dashboards/api-overview.json (NEW)
+- packages/core/backend/requirements.txt (MODIFIED - sentry-sdk, django-prometheus)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - Sentry init, prometheus middleware, daily-backup beat)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - /metrics/ endpoint)
+- packages/core/backend/src/ops_audit/tasks.py (NEW)
+- .github/workflows/core-api.yml (NEW)
+- .github/workflows/web.yml (NEW)
+- backend/portfolio/migrations/0069_partition_intradaytick.py (NEW)
+- backend/portfolio/tasks.py (MODIFIED - create_next_month_partition task)
+- backend/config/settings.py (MODIFIED - create-next-month-partition beat schedule)
+- infra/load-tests/api-load.js (NEW)
+- docs/evidence/SM-P5-EXECUTION-EVIDENCE-20260504.md (NEW)
+
+Validation:
+- PASSED: 6 Python files syntax OK
+- PASSED: docker-compose.prod.yml config OK (with required env stubs)
+
+Residual risk:
+- PgBouncer userlist.txt must use md5 hashes (not plain passwords) before prod
+- Migration 0069 must run after backup verification
+- Sentry DSN needed in prod env
+
+---
+
+# Entry 2026-05-04-SM-P6-SCAFFOLD - SaaS Migration Phase 6: Decommission Scaffold
+
+Status: SCAFFOLD ONLY — Awaiting 7 pre-decommission gates sign-off
+
+Files created:
+- scripts/pre_decommission_gates_check.py (NEW — automated gate check tool)
+- docs/SM-P6-DECOMMISSION-RUNBOOK.md (NEW — step-by-step runbook)
+- docs/evidence/SM-P6-STATUS-20260504.md (NEW — status tracking)
+- docs/evidence/SM-P7-CHECKLIST-20260504.md (NEW — post-prod checklist)
+- docker-compose.dev.yml (MODIFIED — DJANGO_DEBUG: true for core services, fixes pre-existing crash)
+
+Gates A-G: Require production shadow run data (72h min), load test results, backup restore test.
+No destructive actions taken.
+
+---
+
+# Entry 2026-05-03cb - SAAS-16: OpenCore auth compatibility and dashboard proof
+
+- Mo khoa luong login, auth/me, capability snapshot, user config va portfolio bootstrap tren SaaS topology moi.
+- Xac nhan dashboard co the render truc quan tren OpenCore sau khi recreate runtime containers.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/identity_access/views_auth.py (MODIFIED - legacy auth payloads, capabilities, user config bridge)
+- packages/core/backend/src/identity_access/compat_urls.py (NEW - /api auth compatibility routes)
+- packages/core/backend/src/vninvest_core/compat_portfolio.py (NEW - in-memory portfolio collection shim)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - include /api compatibility routes)
+- packages/opencore/distribution/nginx-opencore.conf (MODIFIED - /api proxy + Docker DNS TTL refresh)
+- module_tree_full.md (MODIFIED - regenerated after compatibility modules)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03cb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synced)
+
+Validation:
+- PASSED: `Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8088/api/auth/token/' -ContentType 'application/json' -Body '{"username":"testuser","password":"Test@123456"}'` -> access/refresh/token payload issued successfully.
+- PASSED: `Invoke-RestMethod -Method Get -Uri 'http://127.0.0.1:8088/api/auth/me/' -Headers @{ Authorization = 'Bearer <token>' }` -> 200 with flattened identity, tenant, abilities and entitlements payload.
+- PASSED: `Invoke-RestMethod -Method Get -Uri 'http://127.0.0.1:8088/api/core/v1/access/capabilities/' -Headers @{ Authorization = 'Bearer <token>' }` -> 200 with capability snapshot payload.
+- PASSED: `Invoke-RestMethod -Method Get -Uri 'http://127.0.0.1:8088/api/portfolio/userconfig/' -Headers @{ Authorization = 'Bearer <token>' }` -> 200 with startup user config payload.
+- PASSED: `Invoke-RestMethod -Method Get -Uri 'http://127.0.0.1:8088/api/portfolio/portfolios/' -Headers @{ Authorization = 'Bearer <token>' }` -> 200 with empty portfolio list payload.
+- PASSED: `Push-Location 'C:\Mujoco Projects\vninvest'; & '.\.venv\Scripts\python.exe' 'scripts\ops\generate_module_tree.py'; Pop-Location` -> `module_tree_full.md` regenerated successfully (701 modules).
+- PASSED: browser proof at `http://127.0.0.1:8088/dashboard` -> dashboard shell rendered for `testuser` / `pro` on OpenCore.
+
+Residual risk:
+- `userconfig` and `portfolio` compatibility shims are in-memory bridges for the visual test lane; they are not yet durable across worker restarts or multi-worker writes.
+- Additional legacy `/api/portfolio/*` routes may still need shims for deeper feature parity beyond the dashboard bootstrap path.
+
+# Entry 2026-05-03ca - SAAS-16: OpenCore community distribution build pipeline wired
+
+Muc tieu:
+- Dua community build pipeline vao packages/web de sinh artifact `packages/web/dist/community`.
+- Dong bo OpenCore bundle metadata va docs voi command build thuc te `npm run build-community`.
+- Giu dung boundary: OpenCore consume artifact tu packages/web, khong so huu frontend source moi.
+
+Danh sach tep cap nhat:
+- packages/web/package.json (MODIFIED - add build-community script)
+- packages/web/scripts/build-community.mjs (NEW - community build producer)
+- packages/web/dist/community/build-manifest.json (GENERATED - community artifact manifest)
+- packages/opencore/activation/bootstrap.json (MODIFIED - build-community bootstrap step)
+- packages/opencore/distribution/community-bundle.json (MODIFIED - build_command + build_manifest)
+- packages/opencore/distribution/install-community.ps1 (MODIFIED - clearer build hint)
+- packages/opencore/docs-public/quickstart.md (MODIFIED - exact build command)
+- packages/opencore/docs-public/self-host-install.md (MODIFIED - exact build command)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS16.md (MODIFIED - build pipeline status)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-16 build pipeline wired)
+- docs/SAAS_COMPLETION_MASTER_ROADMAP_20260503.md (MODIFIED - SAAS-16 build pipeline wired)
+- docs/SAAS_ARCHITECTURE_GAPS_ASSESSMENT_20260503.md (MODIFIED - gap 8 build pipeline wired)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synced)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03ca)
+
+Validation:
+- PASSED: `node ./scripts/build-community.mjs` -> community build artifact written to packages/web/dist/community
+- PASSED: JSON parse of `packages/opencore/distribution/community-bundle.json` -> OK
+- PASSED: JSON parse of `packages/opencore/activation/bootstrap.json` -> OK
+- PASSED: PowerShell syntax parse of `packages/opencore/distribution/install-community.ps1` -> OK
+- PASSED: `docker compose -f packages/opencore/docker-compose.opencore.yml config` -> overlay parses successfully
+
+Residual risk:
+- Release automation and artifact publication are still manual.
+- `packages/web/dist/community` is a generated artifact and must be recreated after frontend changes.
+
+# Entry 2026-05-03bz - SAAS-16: OpenCore community distribution bootstrap
+
+Muc tieu:
+- Bootstrap packages/opencore thanh community/self-host distribution bundle.
+- Dong goi compose overlay, activation bootstrap, distribution manifest va public-safe docs.
+- Giu dung boundary: consume artifact tu packages/web, consume contract tu packages/core, khong fork frontend source.
+
+Danh sach tep cap nhat:
+- packages/opencore/README.md (MODIFIED - package boundary update)
+- packages/opencore/activation/README.md (MODIFIED - activation metadata notes)
+- packages/opencore/activation/bootstrap.json (NEW - activation bootstrap manifest)
+- packages/opencore/distribution/README.md (MODIFIED - bundle/install notes)
+- packages/opencore/distribution/community-bundle.json (NEW - distribution manifest)
+- packages/opencore/distribution/install-community.ps1 (NEW - install helper)
+- packages/opencore/distribution/nginx-opencore.conf (NEW - self-host Nginx config)
+- packages/opencore/docker-compose.opencore.yml (MODIFIED - real overlay)
+- packages/opencore/docs-public/README.md (MODIFIED - public-safe doc index)
+- packages/opencore/docs-public/quickstart.md (NEW)
+- packages/opencore/docs-public/self-host-install.md (NEW)
+- packages/opencore/docs-public/upgrade-path.md (NEW)
+- packages/opencore/docs-public/feature-pricing-catalog.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS16.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED - SAAS-16 bootstrap in progress)
+- docs/SAAS_COMPLETION_MASTER_ROADMAP_20260503.md (MODIFIED - SAAS-16 bootstrap in progress)
+- docs/SAAS_ARCHITECTURE_GAPS_ASSESSMENT_20260503.md (MODIFIED - gap 8 bootstrap status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-03bz)
+- PROGRESS_DASHBOARD.md (MODIFIED - SAAS-16 audit file list)
+
+Validation:
+- PASSED: JSON parse of `packages/opencore/distribution/community-bundle.json` -> OK
+- PASSED: JSON parse of `packages/opencore/activation/bootstrap.json` -> OK
+- PASSED: PowerShell syntax parse of `packages/opencore/distribution/install-community.ps1` -> OK
+- PASSED: `docker compose -f packages/opencore/docker-compose.opencore.yml config` -> overlay parses successfully
+
+Residual risk:
+- Community bundle still depends on an actual `packages/web` community dist artifact at runtime.
+- Build automation for the community lane is not finished yet; this is a bootstrap slice, not the full release pipeline.
+
+# Entry 2026-05-03by - SAAS-15: Legacy Decommission Final Gate
+
+Muc tieu:
+- Gate A: Auth endpoints (login/profile/logout) cho packages/core; URL wiring vao identity_access.
+- Gate A1: docker-compose.core.yml doi tu stub sang Django/gunicorn + Celery.
+- Gate F1: docker-compose.dev.yml core-api service doi sang Django/gunicorn.
+- Gate C: Whale legacy paths migrated — watchlistApi.ts + coreAdapter.js + check-shell test.
+- Formal go/no-go: NOT GO — Gate B (LEGACY_DATABASE_URL live-run deferred) + Gate C portfolio/tx deferred.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/identity_access/views_auth.py (NEW — auth endpoints: login, profile, logout)
+- packages/core/backend/src/identity_access/urls.py (MODIFIED — 3 auth routes)
+- packages/core/docker-compose.core.yml (MODIFIED — real Django/gunicorn/Celery)
+- docker-compose.dev.yml (MODIFIED — core-api sang Django)
+- packages/mobile/src/services/coreApiClient.ts (NEW — typed core API client)
+- packages/mobile/src/services/watchlistApi.ts (MODIFIED — whale paths rerouted to coreApiClient)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED — whale endpoint migrated to /core/v1)
+- packages/web/scripts/check-shell.mjs (MODIFIED — URL assertion updated)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS15.md (NEW)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_TASKBOARD_20260503.md (MODIFIED — SAAS-15 completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED — add entry 2026-05-03by)
+- PROGRESS_DASHBOARD.md (MODIFIED — SAAS-15 audit file list)
+
+Validation:
+- PASSED: `python manage.py check` -> System check identified no issues (0 silenced)
+- PASSED: `python manage.py makemigrations --check` -> No changes detected
+- PASSED: `python -m unittest discover -s tests` -> Ran 29 tests, OK
+- PASSED: `node --experimental-vm-modules jest` -> 12/12 tests, PASS
+- PASSED: `node scripts/check-shell.mjs` -> packages/web shell check passed
+- PASSED: `node shared/scripts/validate-contracts.mjs` -> 9/9 PASS
+
+Formal go/no-go: NOT GO — Gate B (no live LEGACY_DATABASE_URL), Gate C (portfolio/tx mgmt no core equivalent). Decommission BLOCKED.
+
 # Entry 2026-05-03bx - SAAS-14: Data-plane serving models materialization
 
 Muc tieu:

@@ -1,16 +1,21 @@
 # packages/opencore
 
-Purpose:
-- Package the community and self-host lane without creating a second frontend source.
-- Own install assets, compose overlays, activation hooks, and public-safe onboarding materials.
+Muc dich:
+- Dong goi lane Community va self-host ma khong tao frontend source thu hai.
+- So huu install asset, compose overlay, activation hook va tai lieu public-safe cho upgrade journey.
 
-Boundary rules:
-- Consume build artifacts from packages/web.
-- Consume activation and commercial contracts from packages/core.
-- Do not own entitlement, quota, billing, or market truth.
+Ranh gioi bat buoc:
+- Tieu thu build artifact tu packages/web.
+- Tieu thu activation va commercial contract tu packages/core.
+- Khong so huu entitlement, quota, billing hoac market truth.
 
-Initial scaffold:
-- distribution/
-- activation/
-- docs-public/
+Tai san hien co:
+- distribution/community-bundle.json
+- distribution/install-community.ps1
+- distribution/nginx-opencore.conf
+- activation/bootstrap.json
+- docs-public/quickstart.md
+- docs-public/self-host-install.md
+- docs-public/upgrade-path.md
+- docs-public/feature-pricing-catalog.md
 - docker-compose.opencore.yml
