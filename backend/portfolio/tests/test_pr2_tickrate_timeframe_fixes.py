@@ -140,9 +140,11 @@ class TestPR2TickRateFieldMapping(TestCase):
         advisory = WhaleAdvisory.objects.create(
             user=self.user,
             symbol=self.symbol,
+            matched_value=1_000_000_000,
             side='BUY',
             severity='warning',
             threshold_source='user_default',
+            ai_summary='test advisory',
         )
 
         # Mock dark_flow with correct tick_rate structure
@@ -204,8 +206,10 @@ class TestPR2TimeframeAPIIntegration(TestCase):
         WhaleAdvisory.objects.create(
             user=self.user,
             symbol=self.symbol,
+            matched_value=1_000_000_000,
             side='BUY',
             severity='warning',
+            ai_summary='test advisory',
         )
 
     @patch('portfolio.views.detect_dark_flow')
