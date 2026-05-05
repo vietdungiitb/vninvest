@@ -66,7 +66,9 @@ class ApiRouteAuthOauthGoogleTests(APITestCase):
         cfg.plan = UserConfig.PlanChoices.PREMIUM
         cfg.plan_source = UserConfig.PlanSourceChoices.PAID
         cfg.email_verified = True
-        cfg.save(update_fields=['plan', 'plan_source', 'email_verified', 'updated_at'])
+        cfg.oauth_provider = 'google'
+        cfg.oauth_uid = 'oauth-existing@example.com'
+        cfg.save(update_fields=['plan', 'plan_source', 'email_verified', 'oauth_provider', 'oauth_uid', 'updated_at'])
 
         OnboardingPlanPolicy.objects.create(
             is_active=True,
