@@ -1878,7 +1878,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         )
         self.authenticate()
         mock_stream_reader.return_value.get_intraday_ticks.return_value = [
-            {'price': 79.3, 'volume': 697800, 'side': 'UNKNOWN', 'ts': '2026-04-03T14:45:00+07:00'},
+            {'price': 62000, 'volume': 100, 'side': 'UNKNOWN', 'ts': '2026-04-03T14:45:00+07:00'},
         ]
         mock_fetch_intraday.side_effect = RuntimeError('vnstock unavailable')
 
@@ -1907,8 +1907,8 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
                 symbol='MWG',
                 trade_date=date.today(),
                 trade_time=datetime.strptime('14:45:00', '%H:%M:%S').time(),
-                price=Decimal('79.30'),
-                volume=697800,
+                price=Decimal('62000'),
+                volume=100,
                 side='UNKNOWN',
                 stream_id=f'mwg-small-{index}',
             )
