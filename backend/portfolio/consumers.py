@@ -40,6 +40,7 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             self.user_alert_group = f"user_{self.user.id}_alerts"
             await self.channel_layer.group_add(self.user_alert_group, self.channel_name)
             await self.accept()
+            await self.send_json({"event_type": "connected", "user_id": self.user.id})
             logger.info("WebSocket: User %d connected", self.user.id)
         except Exception as e:
             logger.error("WebSocket: Connect error: %s", e)
