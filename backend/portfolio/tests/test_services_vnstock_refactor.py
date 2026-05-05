@@ -34,7 +34,7 @@ class ServicesVnstockRefactorTests(SimpleTestCase):
         self.assertEqual(result['sectors'][0]['industry_code'], 101)
         self.assertEqual(result['sectors'][0]['symbols'], ['BID', 'VCB'])
         self.assertEqual(len(result['cap_groups']), 3)
-        mock_fetch_industries.assert_called_once_with(anchor_symbol='ACB', source='VCI')
+        mock_fetch_industries.assert_called_once_with(anchor_symbol='ACB')
 
     @patch('portfolio.adapters.vnstock_adapter.fetch_symbols_by_exchange_dataframe')
     def test_fetch_exchange_lookup_uses_adapter_exchange_wrapper(self, mock_fetch_exchange):
@@ -47,6 +47,6 @@ class ServicesVnstockRefactorTests(SimpleTestCase):
 
         result = services._fetch_exchange_lookup(timeout=1)
 
-        mock_fetch_exchange.assert_called_once_with(anchor_symbol='ACB', source='VCI')
+        mock_fetch_exchange.assert_called_once_with(anchor_symbol='ACB')
         self.assertEqual(result['VCB']['company_name'], 'Vietcombank')
         self.assertEqual(result['BID']['exchange'], 'HOSE')
