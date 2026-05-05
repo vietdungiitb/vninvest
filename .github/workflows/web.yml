@@ -98,7 +98,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          dockerfile: frontend/Dockerfile.dev-package-shell
+          file: frontend/Dockerfile.dev-package-shell
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
