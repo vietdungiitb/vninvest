@@ -22,7 +22,7 @@ class H2ReplayTraceCommandTests(TestCase):
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     @patch('portfolio.tasks_whale_preflight_ai.resolve_ai_runtime_config')
     def test_replay_command_outputs_snapshot_and_audit_trace(
         self,
