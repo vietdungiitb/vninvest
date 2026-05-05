@@ -10,6 +10,7 @@ from django.utils import timezone
 from portfolio.models import UserConfig, WhaleAdvisory
 from portfolio.tasks_advisory_helpers import (
     _get_remaining_advisory_budget,
+    _get_remaining_auto_refreshes,
     _resolve_advisory_threshold_vnd,
 )
 
@@ -53,6 +54,7 @@ def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None
     generated_count = 0
     skipped_count = 0
     failed_count = 0
+    users_skipped_budget_set: set[int] = set()
 
     for ts in tracked_symbols:
         try:
@@ -63,6 +65,13 @@ def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None
 
             remaining_budget = _get_remaining_advisory_budget(user_cfg)
             if remaining_budget <= 0:
+                users_skipped_budget_set.add(ts.user_id)
+                skipped_count += 1
+                continue
+
+            remaining_refreshes = _get_remaining_auto_refreshes(user_cfg)
+            if remaining_refreshes <= 0:
+                users_skipped_budget_set.add(ts.user_id)
                 skipped_count += 1
                 continue
 
@@ -93,4 +102,5 @@ def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None
         'elapsed_seconds': elapsed,
         'batch_size': batch_size,
         'matched_symbol_count': len(normalized_matched_symbols),
+        'users_skipped_budget': len(users_skipped_budget_set),
     }
