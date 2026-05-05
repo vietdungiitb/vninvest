@@ -456,7 +456,9 @@ class TrackedSymbol(models.Model):
     whale_alert_threshold_million = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=Decimal('500.00'),
+        null=True,
+        blank=True,
+        default=None,
         validators=[MinValueValidator(Decimal('1'))],
         verbose_name='Ngưỡng whale riêng (triệu VNĐ)',
     )
