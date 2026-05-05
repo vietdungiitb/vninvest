@@ -23,13 +23,24 @@ class H2ReplayTraceCommandTests(TestCase):
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
     @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_preflight_ai.resolve_ai_runtime_config')
     def test_replay_command_outputs_snapshot_and_audit_trace(
         self,
+        mock_resolve_ai_runtime_config,
         mock_generate_text,
         mock_get_channel_layer,
         mock_async_to_sync,
     ):
         user = self._create_user_with_config('h2-replay-user')
+        mock_resolve_ai_runtime_config.return_value = {
+            'ready': True,
+            'source': 'command_center',
+            'provider': 'openai',
+            'model': 'gpt-4o',
+            'api_key': 'sk-test-h2-replay',
+            'reason': None,
+            'message': '',
+        }
         mock_generate_text.side_effect = [
             {'text': 'summary replay', 'prompt_tokens': 10, 'completion_tokens': 20},
             {'text': 'detail replay', 'prompt_tokens': 30, 'completion_tokens': 40},
