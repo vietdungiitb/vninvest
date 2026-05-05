@@ -3766,6 +3766,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
     @patch('portfolio.market_views.market_data_service._build_stock_workspace_overview_base')
     def test_stock_workspace_overview_fallback_when_base_builder_crashes(self, mock_build_overview):
         self.authenticate()
+        cache.delete('overview:VNM')  # Clear Redis cache set by earlier tests in this suite
         # No StockProfile → no fallback data → code raises ExternalSystemException → 502
         mock_build_overview.side_effect = RuntimeError('unexpected error')
 
