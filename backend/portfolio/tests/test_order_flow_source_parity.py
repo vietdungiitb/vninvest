@@ -25,8 +25,45 @@ class SourceParityTestBase(TestCase):
 
     def setUp(self):
         """Set up test environment with authenticated client."""
+        from portfolio.opencore_dpi import DPILicense, DPIPlan
+
         self.client = APIClient()
         self.user = User.objects.create_user(username="parity-test", password="Test@123456")
+        pro_plan, _ = DPIPlan.objects.update_or_create(
+            name='pro',
+            defaults={
+                'description': 'pro test plan',
+                'display_name': 'Professional',
+                'annual_price_usd': 99,
+                'monthly_price_usd': 9.99,
+                'max_watchlist_items': 50,
+                'max_portfolio_accounts': 5,
+                'max_alerts': 100,
+                'max_api_calls_per_month': 100000,
+                'features': {
+                    'sma': True, 'rsi': True, 'volume_profile': True,
+                    'whale_momentum': True, 'dark_pool_flow': True,
+                    'correlation_matrix': True, 'volatility_surface': True,
+                    'sentiment_score': True, 'predictive_ml': True,
+                    'cross_market_alpha': True, 'fund_flow_analysis': True,
+                    'hedging_strategy': True,
+                },
+                'is_active': True,
+            },
+        )
+        from django.utils import timezone as tz
+        DPILicense.objects.update_or_create(
+            user=self.user,
+            defaults={
+                'plan': pro_plan,
+                'status': 'active',
+                'billing_cycle': 'annual',
+                'start_date': tz.now(),
+                'expiry_date': tz.now() + tz.timedelta(days=30),
+                'grace_until': None,
+            },
+        )
+        self.user = User.objects.get(pk=self.user.pk)
         self.client.force_authenticate(user=self.user)
         self.symbol = 'ACB'
         self.base_time = datetime(2026, 4, 10, 10, 0, 0, tzinfo=timezone.utc)
