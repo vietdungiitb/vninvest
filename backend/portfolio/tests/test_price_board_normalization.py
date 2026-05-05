@@ -26,7 +26,7 @@ class PriceBoardNormalizationTests(SimpleTestCase):
         self.assertEqual(normalized[('bid_ask', 'bid_1_price')].iloc[0], 24900.0)
         self.assertEqual(normalized[('bid_ask', 'bid_1_volume')].iloc[0], 1000)
         self.assertEqual(normalized[('match', 'accumulated_volume')].iloc[0], 500000)
-        self.assertEqual(normalized[('', 'symbol')].iloc[0], 'MBS')
+        self.assertEqual(normalized[('listing', 'symbol')].iloc[0], 'MBS')
 
     def test_vci_multiindex_idempotent(self):
         # Mock VCI MultiIndex DataFrame structure
