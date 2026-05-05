@@ -333,6 +333,18 @@ class TrackedSymbolListCreateView(APIView):
 
         grp = ts.source_group
         info = get_price_changes([symbol]).get(symbol, {})
+
+        # Trigger symbol engagement warm-up after commit
+        from django.db import transaction as _db_transaction
+        from .services_symbol_engagement import activate_symbol_engagement as _activate
+        _db_transaction.on_commit(
+            lambda: _activate(
+                user_id=request.user.id,
+                symbol=symbol,
+                source='tracked_add',
+            )
+        )
+
         row = {
             'id': ts.id,
             'symbol': ts.symbol,
