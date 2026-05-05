@@ -30,7 +30,9 @@ class WhaleAdvisoryTaskTests(TestCase):
         return user
 
     def setUp(self):
+        from django.core.cache import cache
         reset_market_observability()
+        cache.clear()
         return super().setUp()
 
     @patch('asgiref.sync.async_to_sync')
@@ -571,6 +573,7 @@ class WhaleAdvisoryTaskTests(TestCase):
 
         self.assertEqual(threshold_vnd, 640_000_000)
 
+    @override_settings(REALTIME_ENABLED=True)
     @patch('portfolio.tasks.RealtimePublisher')
     @patch('portfolio.tasks.detect_whale_signals')
     @patch('portfolio.tasks.collect_intraday_frame')
@@ -615,6 +618,7 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(kwargs['symbol'], 'FPT')
         self.assertEqual(kwargs['thresholds'], [850_000_000])
 
+    @override_settings(REALTIME_ENABLED=True)
     @patch('portfolio.tasks.RealtimePublisher')
     @patch('portfolio.tasks.detect_whale_signals')
     @patch('portfolio.tasks.collect_intraday_frame')
