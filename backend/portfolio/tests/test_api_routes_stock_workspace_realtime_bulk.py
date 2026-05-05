@@ -1466,7 +1466,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(set(summary.used_component_ids), {first.id, second.id})
 
     @patch('portfolio.views._cache_get', return_value=None)
-    @patch('portfolio.views._sprint17_generate_executive_synthesis_with_ai', return_value='- Dong 1\n- Dong 2\n- Dong 3')
+    @patch('portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai', return_value='- Dong 1\n- Dong 2\n- Dong 3')
     def test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis(self, _mock_ai_synthesis, _mock_cache_get):
         self.authenticate()
         first = AIAdvisoryComponentRecord.objects.create(
@@ -1496,7 +1496,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertIn('Invalidating conditions:', summary.synthesis_text)
 
     @patch('portfolio.views._cache_get', return_value=None)
-    @patch('portfolio.views._sprint17_generate_executive_synthesis_with_ai', return_value='- Chi tiet')
+    @patch('portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai', return_value='- Chi tiet')
     def test_stock_ai_advisory_summary_regenerate_passes_synthesis_preference(self, mock_ai_synthesis, _mock_cache_get):
         self.authenticate()
         component = AIAdvisoryComponentRecord.objects.create(
