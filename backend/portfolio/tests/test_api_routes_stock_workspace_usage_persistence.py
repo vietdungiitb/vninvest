@@ -11,6 +11,10 @@ class ApiRouteStockWorkspaceUsagePersistenceTests(APITestCase):
         from . import test_api_routes as legacy_routes
 
         legacy_routes.ApiRouteSmokeTests.setUp(self)
+        _ai_ready = {'ready': True, 'message': 'ok', 'reason': ''}
+        self._patcher_ai_status = patch('portfolio.views._get_ai_runtime_config_status', return_value=_ai_ready)
+        self._patcher_ai_status.start()
+        self.addCleanup(self._patcher_ai_status.stop)
 
     def authenticate(self):
         from . import test_api_routes as legacy_routes
