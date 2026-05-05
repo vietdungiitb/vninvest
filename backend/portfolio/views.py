@@ -332,7 +332,7 @@ def _resolve_first_create_threshold_vnd(user, symbol: str, user_default_threshol
         (threshold_vnd: int, source: str)
     """
     from .models import TrackedSymbol
-    ts = TrackedSymbol.objects.filter(user=user, symbol=symbol).first()
+    ts = TrackedSymbol.objects.filter(user=user, symbol=symbol.upper()).first()
     if ts is not None and ts.whale_alert_threshold_million is not None:
         return int(ts.whale_alert_threshold_million * 1_000_000), 'symbol_override'
     return user_default_threshold_vnd, 'user_default'
