@@ -14,7 +14,9 @@ from portfolio.throttles import RealtimeOpsMetricsRateThrottle
 
 class RealtimeOpsMetricsApiTests(TestCase):
     def setUp(self):
+        from django.core.cache import cache
         reset_realtime_metrics_for_test()
+        cache.clear()  # clear throttle state between tests
         self.client = APIClient()
         self.staff_user = User.objects.create_user(username='ops_staff', password='Test@123456', is_staff=True)
         self.normal_user = User.objects.create_user(username='ops_user', password='Test@123456', is_staff=False)
