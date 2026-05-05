@@ -2435,6 +2435,31 @@ class WhaleConfigApprovalAdmin(admin.ModelAdmin):
     def has_view_permission(self, request, obj=None):
         return _is_analyst(request.user)
 
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if obj.decision == obj.DecisionChoices.APPROVED:
+            obj.draft.status = obj.draft.StatusChoices.APPROVED
+            obj.draft.save(update_fields=['status', 'updated_at'])
+            WhaleConfigAuditLog.objects.create(
+                actor=request.user,
+                action='approve',
+                draft=obj.draft,
+                reason=obj.comment or '',
+                before_json={'status': 'submitted'},
+                after_json={'status': 'approved'},
+            )
+        elif obj.decision == obj.DecisionChoices.REJECTED:
+            obj.draft.status = obj.draft.StatusChoices.REJECTED
+            obj.draft.save(update_fields=['status', 'updated_at'])
+            WhaleConfigAuditLog.objects.create(
+                actor=request.user,
+                action='reject',
+                draft=obj.draft,
+                reason=obj.comment or '',
+                before_json={'status': 'submitted'},
+                after_json={'status': 'rejected'},
+            )
+
 
 # ---------------------------------------------------------------------------
 # Sprint 28 — LegalPage Admin
