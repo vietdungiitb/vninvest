@@ -2418,12 +2418,6 @@ class SystemSettingAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser
 
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return _is_supervisor(request.user)
-
 
 @admin.register(WhaleConfigApproval)
 class WhaleConfigApprovalAdmin(admin.ModelAdmin):
@@ -2434,6 +2428,15 @@ class WhaleConfigApprovalAdmin(admin.ModelAdmin):
 
     def has_view_permission(self, request, obj=None):
         return _is_analyst(request.user)
+
+    def has_add_permission(self, request):
+        return _is_supervisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
