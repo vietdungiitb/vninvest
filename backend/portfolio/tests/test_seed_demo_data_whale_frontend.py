@@ -11,7 +11,7 @@ class SeedDemoDataWhaleFrontendTests(TestCase):
     def test_seed_demo_data_populates_testuser_whale_frontend_data(self):
         stdout = StringIO()
 
-        call_command('seed_demo_data', '--reset', stdout=stdout)
+        call_command('seed_demo_data', '--reset', '--allow-production', stdout=stdout)
 
         testuser = User.objects.get(username='testuser')
         user_config = UserConfig.objects.get(user=testuser)
