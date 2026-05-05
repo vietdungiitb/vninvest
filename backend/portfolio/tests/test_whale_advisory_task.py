@@ -18,6 +18,7 @@ from portfolio.tasks import _resolve_advisory_threshold_vnd
 @override_settings(WHALE_ADVISORY_COOLDOWN_SECONDS=900)
 class WhaleAdvisoryTaskTests(TestCase):
     def _create_user_config(self, username: str, provider: str = 'openai', model: str = 'gpt-4o', api_key: str = ''):
+        from portfolio.models import AICommandCenterConfig
         user = User.objects.create_user(username=username, password='Test@123456', is_staff=True)
         cfg = UserConfig.objects.create(
             user=user,
@@ -27,6 +28,15 @@ class WhaleAdvisoryTaskTests(TestCase):
         if api_key:
             cfg.set_ai_api_key(api_key)
             cfg.save(update_fields=['ai_api_key'])
+        # Create AICommandCenterConfig so resolve_ai_runtime_config finds it
+        ai_cmd_cfg = AICommandCenterConfig.objects.create(
+            user=user,
+            ai_provider=provider,
+            ai_model=model or '',
+        )
+        if api_key:
+            ai_cmd_cfg.set_ai_api_key(api_key)
+            ai_cmd_cfg.save(update_fields=['ai_api_key'])
         return user
 
     def setUp(self):
