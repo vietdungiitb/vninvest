@@ -1734,10 +1734,10 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['symbol'], 'BCM')
         self.assertIn('queue', response.data['message'].lower())
 
-    @patch('portfolio.views._cache_set')
-    @patch('portfolio.views._cache_get', return_value=None)
-    @patch('vnstock.Vnstock')
-    def test_whale_feed_cache_key_scopes_by_user_and_threshold(self, mock_vnstock, _mock_cache_get, mock_cache_set):
+    @patch('portfolio.market_data_service.set_cache')
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_whale_feed_cache_key_scopes_by_user_and_threshold(self, mock_fetch_intraday, _mock_cache_get, mock_cache_set):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 750},
@@ -1748,7 +1748,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
             {'time': '2026-04-03T09:30:00+07:00', 'price': 100000, 'volume': 12000, 'match_type': 'buy'},
             {'time': '2026-04-03T09:31:00+07:00', 'price': 99500, 'volume': 4000, 'match_type': 'sell'},
         ])
-        mock_vnstock.return_value.stock.return_value.quote.intraday.return_value = intraday_df
+        mock_fetch_intraday.return_value = intraday_df
 
         response = self.client.get('/api/realtime/whale-feed/FPT/')
 
@@ -1758,9 +1758,9 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(cache_key, f'whale_feed:{self.user.id}:FPT:750000000')
 
     @patch('portfolio.realtime.stream_reader.StreamReader')
-    @patch('portfolio.views._cache_get', return_value=None)
-    @patch('vnstock.Vnstock')
-    def test_whale_feed_response_contains_scoring_contract(self, mock_vnstock, _mock_cache_get, mock_stream_reader):
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_whale_feed_response_contains_scoring_contract(self, mock_fetch_intraday, _mock_cache_get, mock_stream_reader):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
@@ -1772,7 +1772,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
             {'time': '2026-04-03T09:30:00+07:00', 'price': 100000, 'volume': 12000, 'match_type': 'buy'},
             {'time': '2026-04-03T09:31:00+07:00', 'price': 99500, 'volume': 4000, 'match_type': 'sell'},
         ])
-        mock_vnstock.return_value.stock.return_value.quote.intraday.return_value = intraday_df
+        mock_fetch_intraday.return_value = intraday_df
 
         response = self.client.get('/api/realtime/whale-feed/FPT/')
 
@@ -1790,16 +1790,16 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertLessEqual(order['display_score'], order['event_score'])
 
     @patch('portfolio.realtime.stream_reader.StreamReader')
-    @patch('portfolio.views._cache_get', return_value=None)
-    @patch('vnstock.Vnstock')
-    def test_whale_feed_falls_back_to_intraday_tick_db_when_stream_and_vnstock_unavailable(self, mock_vnstock, _mock_cache_get, mock_stream_reader):
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_whale_feed_falls_back_to_intraday_tick_db_when_stream_and_vnstock_unavailable(self, mock_fetch_intraday, _mock_cache_get, mock_stream_reader):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'premium', 'email_verified': True, 'whale_alert_threshold': 500},
         )
         self.authenticate()
         mock_stream_reader.return_value.get_intraday_ticks.return_value = []
-        mock_vnstock.return_value.stock.return_value.quote.intraday.side_effect = RuntimeError('vnstock unavailable')
+        mock_fetch_intraday.side_effect = RuntimeError('vnstock unavailable')
 
         IntradayTick.objects.create(
             symbol='MWG',
@@ -1828,9 +1828,9 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['whale_orders'][0]['side'], 'sell')
 
     @patch('portfolio.realtime.stream_reader.StreamReader')
-    @patch('portfolio.views._cache_get', return_value=None)
-    @patch('vnstock.Vnstock')
-    def test_whale_feed_falls_back_to_intraday_tick_db_when_stream_has_no_threshold_hits(self, mock_vnstock, _mock_cache_get, mock_stream_reader):
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_whale_feed_falls_back_to_intraday_tick_db_when_stream_has_no_threshold_hits(self, mock_fetch_intraday, _mock_cache_get, mock_stream_reader):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'premium', 'email_verified': True, 'whale_alert_threshold': 750},
@@ -1840,7 +1840,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
             {'price': 61800, 'volume': 60, 'side': 'BUY', 'ts': '2026-04-03T10:31:15+07:00'},
             {'price': 60500, 'volume': 120, 'side': 'SELL', 'ts': '2026-04-03T11:22:33+07:00'},
         ]
-        mock_vnstock.return_value.stock.return_value.quote.intraday.side_effect = RuntimeError('vnstock unavailable')
+        mock_fetch_intraday.side_effect = RuntimeError('vnstock unavailable')
 
         IntradayTick.objects.create(
             symbol='MWG',
@@ -1869,9 +1869,9 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['whale_orders'][0]['side'], 'sell')
 
     @patch('portfolio.realtime.stream_reader.StreamReader')
-    @patch('portfolio.views._cache_get', return_value=None)
-    @patch('vnstock.Vnstock')
-    def test_whale_feed_db_fallback_keeps_older_threshold_hits_beyond_latest_500_ticks(self, mock_vnstock, _mock_cache_get, mock_stream_reader):
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_whale_feed_db_fallback_keeps_older_threshold_hits_beyond_latest_500_ticks(self, mock_fetch_intraday, _mock_cache_get, mock_stream_reader):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'premium', 'email_verified': True, 'whale_alert_threshold': 750},
@@ -1880,7 +1880,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         mock_stream_reader.return_value.get_intraday_ticks.return_value = [
             {'price': 79.3, 'volume': 697800, 'side': 'UNKNOWN', 'ts': '2026-04-03T14:45:00+07:00'},
         ]
-        mock_vnstock.return_value.stock.return_value.quote.intraday.side_effect = RuntimeError('vnstock unavailable')
+        mock_fetch_intraday.side_effect = RuntimeError('vnstock unavailable')
 
         older_hits = [
             IntradayTick(
@@ -2361,8 +2361,8 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
     @patch.dict('os.environ', {'WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS': '2'}, clear=False)
     @patch('portfolio.realtime.stream_reader.StreamReader')
-    @patch('vnstock.Vnstock')
-    def test_whale_feed_aggregate_skips_vnstock_fallback_for_large_symbol_sets(self, mock_vnstock, mock_stream_reader):
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_whale_feed_aggregate_skips_vnstock_fallback_for_large_symbol_sets(self, mock_fetch_intraday, mock_stream_reader):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
@@ -2377,7 +2377,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['source'], 'intraday_tick_db')
         self.assertEqual(response.data['results'], [])
-        mock_vnstock.assert_not_called()
+        mock_fetch_intraday.assert_not_called()
 
     def test_whale_feed_aggregate_supports_watchlist_filter(self):
         UserConfig.objects.update_or_create(
