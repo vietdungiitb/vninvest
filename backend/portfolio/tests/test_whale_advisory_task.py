@@ -47,7 +47,7 @@ class WhaleAdvisoryTaskTests(TestCase):
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_persists_threshold_and_broadcast_metadata(
         self,
         mock_generate_text,
@@ -102,7 +102,7 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertIn('ts', event['payload'])
         self.assertEqual(result['threshold_source'], 'user_default')
 
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_auto_generation_skips_if_existing_advisory(self, mock_generate_text):
         symbol = 'AAA'
         WhaleAdvisory.objects.create(
@@ -127,7 +127,7 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(WhaleAdvisory.objects.filter(symbol=symbol).count(), 1)
         mock_generate_text.assert_not_called()
 
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_force_refresh_generates_new_advisory_even_if_existing(self, mock_generate_text):
         symbol = 'BBB'
         staff_user = self._create_user_config('staff-force-refresh', api_key='sk-test-force')
@@ -163,7 +163,7 @@ class WhaleAdvisoryTaskTests(TestCase):
     @patch.dict('os.environ', {'COPILOT_API_KEY': 'ghp_test_env_token'}, clear=False)
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_uses_env_api_key_when_staff_config_has_no_saved_key(
         self,
         mock_generate_text,
@@ -236,7 +236,7 @@ class WhaleAdvisoryTaskTests(TestCase):
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_advisory_concise')
+    @patch('portfolio.tasks_whale_ai_call.generate_advisory_concise')
     def test_periodic_job_uses_concise_mode_and_logs_tokens(
         self,
         mock_generate_concise,
@@ -275,7 +275,7 @@ class WhaleAdvisoryTaskTests(TestCase):
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_persists_metrics_into_aggregate_audit_log(
         self,
         mock_generate_text,
@@ -319,7 +319,7 @@ class WhaleAdvisoryTaskTests(TestCase):
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_persists_snapshot_with_monotonic_sequence(
         self,
         mock_generate_text,
@@ -367,7 +367,7 @@ class WhaleAdvisoryTaskTests(TestCase):
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_advisory_concise')
+    @patch('portfolio.tasks_whale_ai_call.generate_advisory_concise')
     def test_periodic_task_metrics_use_scheduler_audit_labels(
         self,
         mock_generate_concise,
@@ -675,7 +675,7 @@ class WhaleAdvisoryTaskTests(TestCase):
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_task_sets_severity_based_on_value_threshold_ratio(
         self,
         mock_generate_text,
@@ -800,7 +800,7 @@ class WhaleAdvisoryTaskTests(TestCase):
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
-    @patch('portfolio.ai_service.generate_whale_text')
+    @patch('portfolio.tasks_whale_ai_call.generate_whale_text')
     def test_generate_task_persists_merge_metadata(
         self,
         mock_generate_text,
