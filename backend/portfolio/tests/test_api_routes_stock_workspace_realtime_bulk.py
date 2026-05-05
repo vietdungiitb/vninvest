@@ -688,7 +688,8 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         },
         clear=False,
     )
-    def test_stock_ai_advisory_components_generate_returns_409_when_ai_api_not_configured(self):
+    @patch('portfolio.views._get_ai_runtime_config_status', return_value={'ready': False, 'message': 'AI API not configured.', 'reason': 'missing_api_key'})
+    def test_stock_ai_advisory_components_generate_returns_409_when_ai_api_not_configured(self, _mock_ai_status):
         self.authenticate()
         cfg = UserConfig.objects.get(user=self.user)
         cfg.ai_model = ''
