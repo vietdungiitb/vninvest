@@ -10,5 +10,5 @@ services:
       OPENCORE_CHANNEL: community
     volumes:
       - "${OPENCORE_WEB_DIST_DIR:-../web/dist/community}:/usr/share/nginx/html:ro"
-      - "./distribution/nginx-opencore.conf:/etc/nginx/conf.d/default.conf:ro"
+      - "../opencore/distribution/nginx-opencore.conf:/etc/nginx/conf.d/default.conf:ro"
     restart: unless-stopped

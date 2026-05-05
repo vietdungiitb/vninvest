@@ -52,6 +52,7 @@ class CoreTenant(models.Model):
         PRO = 'pro', 'Pro'
         ENTERPRISE = 'enterprise', 'Enterprise'
         CUSTOM = 'custom', 'Custom'
+        INTERNAL = 'internal', 'Internal (Staff)'
 
     public_id = models.CharField(
         max_length=36,
@@ -287,3 +288,68 @@ class CorePATCredential(models.Model):
         self.status = self.StatusChoices.REVOKED
         self.audit_reason = str(reason or '').strip()
         self.save(update_fields=['revoked', 'revoked_at', 'status', 'audit_reason', 'updated_at'])
+
+
+class UserProfile(models.Model):
+    """
+    Extended profile for a Django User within the SaaS core.
+
+    Mirrors UserConfig from the legacy backend, but lives in core identity_access.
+    Provides per-user display preferences and metadata for the SaaS platform.
+
+    ISOLATION RULE: No FK to backend.portfolio models.
+    """
+
+    class LanguageChoices(models.TextChoices):
+        VI = 'vi', 'Tiếng Việt'
+        EN = 'en', 'English'
+
+    class ThemeChoices(models.TextChoices):
+        DARK = 'dark', 'Dark'
+        LIGHT = 'light', 'Light'
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='core_profile',
+        verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        CoreTenant,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='user_profiles',
+        verbose_name='Tenant',
+    )
+    display_name = models.CharField(max_length=120, blank=True, verbose_name='Tên hiển thị')
+    language = models.CharField(
+        max_length=8,
+        choices=LanguageChoices.choices,
+        default=LanguageChoices.VI,
+        verbose_name='Ngôn ngữ',
+    )
+    theme = models.CharField(
+        max_length=10,
+        choices=ThemeChoices.choices,
+        default=ThemeChoices.DARK,
+        verbose_name='Chủ đề giao diện',
+    )
+    whale_alert_threshold = models.DecimalField(
+        max_digits=12,
+        decimal_places=0,
+        default=500,
+        verbose_name='Ngưỡng lệnh cá mập (triệu VNĐ)',
+    )
+    preferences = models.JSONField(default=dict, blank=True, verbose_name='Tuỳ chọn bổ sung')
+    # Source field for migration tracking
+    legacy_user_id = models.IntegerField(null=True, blank=True, db_index=True, verbose_name='Legacy user ID')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'User Profile'
+        verbose_name_plural = 'User Profiles'
+
+    def __str__(self) -> str:
+        return f'UserProfile({self.user.username})'

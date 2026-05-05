@@ -124,13 +124,15 @@ function shouldAttachApiToken(requestUrl) {
     return false;
   }
 
-  if (requestUrl.startsWith('/api/')) {
+  if (requestUrl.startsWith('/api/') || requestUrl.startsWith('/core/v1/')) {
     return true;
   }
 
   try {
     const resolvedUrl = new URL(requestUrl, globalThis.location?.origin || 'http://127.0.0.1');
-    return resolvedUrl.origin === globalThis.location?.origin && resolvedUrl.pathname.startsWith('/api/');
+    const path = resolvedUrl.pathname;
+    return resolvedUrl.origin === globalThis.location?.origin
+      && (path.startsWith('/api/') || path.startsWith('/core/v1/'));
   } catch {
     return false;
   }

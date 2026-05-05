@@ -1,98 +1,92 @@
 name: vninvest-core-package
 
 services:
-	core-db:
-		image: postgres:16-alpine
-		environment:
-			POSTGRES_DB: vninvest_core
-			POSTGRES_USER: vninvest
-			POSTGRES_PASSWORD: vninvest
-		ports:
-			- "5434:5432"
-		volumes:
-			- core_pgdata:/var/lib/postgresql/data
+  core-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vninvest_core
+      POSTGRES_USER: vninvest
+      POSTGRES_PASSWORD: vninvest
+    ports:
+      - "5434:5432"
+    volumes:
+      - core_pgdata:/var/lib/postgresql/data
 
-	core-redis:
-		image: redis:7-alpine
-		command: ["redis-server", "--save", "", "--appendonly", "no"]
-		ports:
-			- "6381:6379"
+  core-redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6381:6379"
 
-	core-api:
-		image: python:3.13-slim
-		working_dir: /workspace
-		volumes:
-			- ./backend:/workspace
-		environment:
-			CORE_ENV: development
-			DJANGO_SETTINGS_MODULE: vninvest_core.settings
-			DJANGO_DEBUG: "false"
-			DJANGO_ALLOWED_HOSTS: "*"
-			CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-			REDIS_URL: redis://core-redis:6379/0
-			CELERY_BROKER_URL: redis://core-redis:6379/0
-			LEGACY_DATABASE_URL: ""
-			CORE_PAT_PEPPER: "dev-pat-pepper-replace-in-production"
-			PYTHONPATH: /workspace/src
-		command: >
-			sh -c "pip install -r requirements.txt -q &&
-			       python manage.py migrate --noinput &&
-			       python -m gunicorn vninvest_core.wsgi:application
-			         --bind 0.0.0.0:8100
-			         --workers 2
-			         --timeout 60
-			         --access-logfile -"
-		depends_on:
-			core-db:
-				condition: service_started
-			core-redis:
-				condition: service_started
-		ports:
-			- "8100:8100"
+  core-api:
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./backend:/workspace
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: "*"
+      CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CELERY_BROKER_URL: redis://core-redis:6379/0
+      LEGACY_DATABASE_URL: ""
+      CORE_PAT_PEPPER: "dev-pat-pepper-replace-in-production"
+      PYTHONPATH: /workspace/src
+    command: >-
+      sh -c "pip install -r requirements.txt -q && python manage.py migrate --noinput && python -m gunicorn vninvest_core.wsgi:application --bind 0.0.0.0:8100 --workers 2 --timeout 60 --access-logfile -"
+    depends_on:
+      core-db:
+        condition: service_started
+      core-redis:
+        condition: service_started
+    ports:
+      - "8100:8100"
 
-	core-worker:
-		image: python:3.13-slim
-		working_dir: /workspace
-		volumes:
-			- ./backend:/workspace
-		environment:
-			CORE_ENV: development
-			DJANGO_SETTINGS_MODULE: vninvest_core.settings
-			CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-			REDIS_URL: redis://core-redis:6379/0
-			CELERY_BROKER_URL: redis://core-redis:6379/0
-			LEGACY_DATABASE_URL: ""
-			PYTHONPATH: /workspace/src
-		command: >
-			sh -c "pip install -r requirements.txt -q &&
-			       python -m celery -A vninvest_core worker --loglevel=info --concurrency=2"
-		depends_on:
-			core-db:
-				condition: service_started
-			core-redis:
-				condition: service_started
+  core-worker:
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./backend:/workspace
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CELERY_BROKER_URL: redis://core-redis:6379/0
+      LEGACY_DATABASE_URL: ""
+      PYTHONPATH: /workspace/src
+    command: >
+      sh -c "pip install -r requirements.txt -q &&
+             python -m celery -A vninvest_core worker --loglevel=info --concurrency=2"
+    depends_on:
+      core-db:
+        condition: service_started
+      core-redis:
+        condition: service_started
 
-	core-beat:
-		image: python:3.13-slim
-		working_dir: /workspace
-		volumes:
-			- ./backend:/workspace
-		environment:
-			CORE_ENV: development
-			DJANGO_SETTINGS_MODULE: vninvest_core.settings
-			CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-			REDIS_URL: redis://core-redis:6379/0
-			CELERY_BROKER_URL: redis://core-redis:6379/0
-			LEGACY_DATABASE_URL: ""
-			PYTHONPATH: /workspace/src
-		command: >
-			sh -c "pip install -r requirements.txt -q &&
-			       python -m celery -A vninvest_core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
-		depends_on:
-			core-db:
-				condition: service_started
-			core-redis:
-				condition: service_started
+  core-beat:
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./backend:/workspace
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CELERY_BROKER_URL: redis://core-redis:6379/0
+      LEGACY_DATABASE_URL: ""
+      PYTHONPATH: /workspace/src
+    command: >
+      sh -c "pip install -r requirements.txt -q &&
+             python -m celery -A vninvest_core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    depends_on:
+      core-db:
+        condition: service_started
+      core-redis:
+        condition: service_started
 
 volumes:
-	core_pgdata:
+  core_pgdata:

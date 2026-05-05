@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import UnifiedAlert, WhaleAlertCanonical
+from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 
 
 class UnifiedAlertSerializer(serializers.ModelSerializer):
@@ -22,4 +22,14 @@ class WhaleAlertCanonicalSerializer(serializers.ModelSerializer):
             'alert_id', 'symbol', 'session_date', 'side', 'price',
             'volume', 'matched_value', 'is_dark_flow', 'order_id', 'executed_at',
             'severity',
+        ]
+
+
+class OrderFlowEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderFlowEvent
+        fields = [
+            'event_id', 'symbol', 'session_date', 'signal_type', 'side',
+            'strength', 'whale_intensity', 'cvd_at_signal', 'price_at_signal',
+            'volume_at_signal', 'source_ref', 'triggered_at',
         ]

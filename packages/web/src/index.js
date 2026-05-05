@@ -14,6 +14,13 @@ export { ShellWatchlistPage } from "./pages/workspace/ShellWatchlistPage.js";
 export { ShellSettingsPage } from "./pages/system/ShellSettingsPage.js";
 export { ShellSupportPage } from "./pages/system/ShellSupportPage.js";
 export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.js";
+// SM-P4 core user-facing pages
+export { DashboardPage } from "./pages/DashboardPage.js";
+export { WhaleAlertsPage } from "./pages/WhaleAlertsPage.js";
+export { StockDetailPage } from "./pages/StockDetailPage.js";
+export { PortfoliosPage } from "./pages/PortfoliosPage.js";
+export { TransactionsPage } from "./pages/TransactionsPage.js";
+export { UserSettingsPage } from "./pages/UserSettingsPage.js";
 export { coreAdapter, createCoreAdvisorySessionClient, createCoreWhaleAnalyticsSnapshotClient } from "./adapters/core/index.js";
 export { createVipAppControlClient, vipAppAdapter } from "./adapters/vip-app/index.js";
 export {

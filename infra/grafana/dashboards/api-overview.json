@@ -1,0 +1,86 @@
+{
+  "title": "VNInvest — API Overview",
+  "uid": "vninvest-api-overview",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Core API — Request Rate",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "expr": "rate(django_http_requests_total_by_method_total{job=\"core-api\"}[5m])",
+          "legendFormat": "{{method}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Core API — p95 Latency (ms)",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(django_http_requests_latency_seconds_by_view_method_bucket{job=\"core-api\"}[5m])) * 1000",
+          "legendFormat": "p95"
+        }
+      ],
+      "alert": {
+        "conditions": [
+          {
+            "evaluator": {"params": [0.5], "type": "gt"},
+            "operator": {"type": "and"},
+            "query": {"params": ["A", "5m", "now"]},
+            "reducer": {"params": [], "type": "avg"},
+            "type": "query"
+          }
+        ],
+        "name": "Core API p95 > 500ms",
+        "noDataState": "NoData",
+        "executionErrorState": "Alerting",
+        "frequency": "60s",
+        "handler": 1,
+        "message": "Core API p95 latency vượt 500ms"
+      }
+    },
+    {
+      "id": 3,
+      "type": "graph",
+      "title": "Core API — Error Rate (5xx)",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 4},
+      "targets": [
+        {
+          "expr": "rate(django_http_responses_total_by_status_view_method_total{job=\"core-api\",status=~\"5..\"}[5m])",
+          "legendFormat": "{{status}} {{view}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "graph",
+      "title": "PgBouncer — Active Connections",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 4},
+      "targets": [
+        {
+          "expr": "pgbouncer_stats_total_query_count",
+          "legendFormat": "{{database}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "graph",
+      "title": "Redis — Memory Usage",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 4},
+      "targets": [
+        {
+          "expr": "redis_memory_used_bytes",
+          "legendFormat": "Used"
+        }
+      ]
+    }
+  ]
+}

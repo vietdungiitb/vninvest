@@ -209,3 +209,56 @@ def warmup_realtime_ticker_cache(self):
     return {'status': 'completed'}
 
 
+
+
+# SM-P5.6: Auto-create next month partition for portfolio_intradaytick.
+@shared_task(name='portfolio.create_next_month_partition', bind=True, max_retries=1, default_retry_delay=3600)
+def create_next_month_partition(self):
+    """
+    Creates the next month's partition for portfolio_intradaytick if it doesn't exist.
+    Scheduled to run on the 20th of each month at 02:15 AM.
+    """
+    from datetime import date
+    from django.db import connection
+    import calendar
+
+    today = date.today()
+    # Calculate next month
+    if today.month == 12:
+        next_month = date(today.year + 1, 1, 1)
+    else:
+        next_month = date(today.year, today.month + 1, 1)
+
+    # Month after next (partition end boundary)
+    if next_month.month == 12:
+        month_after = date(next_month.year + 1, 1, 1)
+    else:
+        month_after = date(next_month.year, next_month.month + 1, 1)
+
+    partition_name = f"portfolio_intradaytick_y{next_month.year}m{next_month.month:02d}"
+    start_str = next_month.strftime('%Y-%m-%d')
+    end_str = month_after.strftime('%Y-%m-%d')
+
+    check_sql = """
+        SELECT EXISTS (
+            SELECT 1 FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relname = %s
+        );
+    """
+    create_sql = f"""
+        CREATE TABLE {partition_name}
+            PARTITION OF portfolio_intradaytick
+            FOR VALUES FROM ('{start_str}') TO ('{end_str}');
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(check_sql, [partition_name])
+            exists = cursor.fetchone()[0]
+            if exists:
+                return {'status': 'already_exists', 'partition': partition_name}
+            cursor.execute(create_sql)
+        return {'status': 'created', 'partition': partition_name, 'range': f'{start_str}..{end_str}'}
+    except Exception as exc:
+        logger.error('Failed to create partition %s: %s', partition_name, exc)
+        raise self.retry(exc=exc)

@@ -1,12 +1,14 @@
 from rest_framework import generics, permissions
 
+from identity_access.permissions import IsCoreOperator
 from vninvest_core.pagination import AuditCursorPagination
 
 from .models import AuditEvent
 
 
 class AuditLogListView(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # SFI-B6: Operator-only access for audit logs.
+    permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
     pagination_class = AuditCursorPagination
 
     def get_queryset(self):
