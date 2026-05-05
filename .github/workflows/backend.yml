@@ -9,6 +9,12 @@ on:
     branches: [main, enterprise]
     paths:
       - "backend/**"
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: "Push Docker image (only applies to enterprise/main)"
+        required: false
+        default: "true"
 
 jobs:
   test:

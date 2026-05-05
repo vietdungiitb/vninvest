@@ -11,6 +11,12 @@ on:
     paths:
       - "frontend/**"
       - "packages/web/**"
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: "Push Docker image (only applies to enterprise/main)"
+        required: false
+        default: "true"
 
 jobs:
   lint-and-build:
