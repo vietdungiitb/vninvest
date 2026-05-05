@@ -24,7 +24,8 @@ class SourceParityTestBase(TestCase):
     """Base class for source parity validation tests."""
 
     def setUp(self):
-        """Set up test environment with authenticated client."""
+        """Set up test environment with authenticated client and pro DPI license."""
+        from django.utils import timezone as tz
         from portfolio.opencore_dpi import DPILicense, DPIPlan
 
         self.client = APIClient()
@@ -51,7 +52,6 @@ class SourceParityTestBase(TestCase):
                 'is_active': True,
             },
         )
-        from django.utils import timezone as tz
         DPILicense.objects.update_or_create(
             user=self.user,
             defaults={
