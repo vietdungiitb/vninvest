@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
 
-from portfolio.models import IntradayTick
+from portfolio.models import WhaleAdvisory
 from portfolio.views_dark_money_history import dark_money_history_api
 
 
@@ -42,21 +42,22 @@ class TestDarkMoneyHistoryApi(TestCase):
         mock_resolve_threshold_vnd.return_value = (1_000_000, 'test')
         mock_build_reference_price_by_trade_date.return_value = {self.trade_date: 15.0}
 
-        IntradayTick.objects.create(
-            symbol='SHB',
-            trade_date=self.trade_date,
-            trade_time='09:15:00',
-            price=15.2,
-            volume=5_000_000,
-            side='BUY',
+        # Upstream pipeline already deduplicates identical IntradayTick records before persisting
+        # to WhaleAdvisory. Simulate a single de-duplicated advisory record (15200 VND/share x 5M
+        # shares = 76B VND matched_value).
+        from django.utils import timezone as tz
+        import datetime as _dt
+        created_at = tz.make_aware(
+            _dt.datetime.combine(self.trade_date, _dt.time(9, 15, 0))
         )
-        IntradayTick.objects.create(
+        WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='SHB',
-            trade_date=self.trade_date,
-            trade_time='09:15:00',
-            price=15.2,
-            volume=5_000_000,
+            matched_value=76_000_000_000,
             side='BUY',
+            threshold=1_000_000,
+            ai_summary='test dedup advisory',
+            created_at=created_at,
         )
 
         request = self.factory.get('/api/stock-management/stocks/SHB/dark-money-history/?period=3M&interval=1D')
