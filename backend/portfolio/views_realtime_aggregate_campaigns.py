@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 
 from .exceptions import ExternalSystemException, MarketDataValidationException
 from .market_data_service import market_data_service
+from .permissions import resolve_user_entitlements
+from .quota_service import build_quota_exceeded_payload, consume_quota
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,13 @@ class WhaleFeedAggregateView(APIView):
     throttle_scope = 'realtime_whale_aggregate'
 
     def get(self, request):
+        entitlements = resolve_user_entitlements(request.user)
+        quota_result = consume_quota(request.user, quota_key='api_calls_per_day', entitlements=entitlements)
+        if not quota_result.get('allowed', True):
+            return Response(
+                build_quota_exceeded_payload(quota_result, 'Bạn đã dùng hết quota API trong ngày.'),
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
         try:
             payload = market_data_service.get_whale_feed_aggregate(request.user, request.query_params)
             return Response(payload)
