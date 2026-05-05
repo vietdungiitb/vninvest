@@ -486,7 +486,7 @@ class WhaleAdvisoryTaskTests(TestCase):
         result = auto_generate_advisories_for_all_tracked(batch_size=10)
 
         self.assertEqual(result['status'], 'ok')
-        self.assertEqual(result['queued_count'], 2)
+        self.assertEqual(result['generated_count'], 2)
         self.assertEqual(mock_apply_async.call_count, 2)
         first_kwargs = mock_apply_async.call_args_list[0].kwargs['kwargs']
         second_kwargs = mock_apply_async.call_args_list[1].kwargs['kwargs']
@@ -536,7 +536,7 @@ class WhaleAdvisoryTaskTests(TestCase):
         result = auto_generate_advisories_for_all_tracked(batch_size=10)
 
         self.assertEqual(result['status'], 'ok')
-        self.assertEqual(result['queued_count'], 0)
+        self.assertEqual(result['generated_count'], 0)
         self.assertEqual(result['users_skipped_budget'], 1)
         mock_apply_async.assert_not_called()
 
