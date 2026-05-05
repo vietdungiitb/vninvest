@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 
 from portfolio.models import WhaleAdvisory, UserConfig
 from portfolio.ai_advisory_helpers import _sprint17_generate_component_templates_with_ai
-from portfolio.views import _timeframe_to_minutes
+from portfolio.views_stock_order_flow import _timeframe_to_minutes
 
 
 class TestPR2TimeframeConversion(TestCase):
