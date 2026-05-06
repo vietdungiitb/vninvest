@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useInterface } from '../context/InterfaceContext';
@@ -13,12 +13,6 @@ function groupLinkClass(isActive) {
 function NavGroup({ label, items, icon }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const location = useLocation();
-
-  // Close dropdown after navigation completes (avoids interrupting React Router's startTransition)
-  useEffect(() => {
-    setOpen(false);
-  }, [location.pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -47,6 +41,7 @@ function NavGroup({ label, items, icon }) {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => setOpen(false)}
               className={({ isActive }) => groupLinkClass(isActive)}
             >
               {item.label}

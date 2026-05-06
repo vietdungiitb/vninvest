@@ -85,7 +85,7 @@ export default function App() {
   const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
 
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter future={{ v7_relativeSplatPath: true }}>
       <PortfolioProvider>
         <LangProvider>
           <InterfaceProvider>
