@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -11,22 +11,44 @@ function groupLinkClass(isActive) {
 }
 
 function NavGroup({ label, items, icon }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutsideClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [open]);
+
   return (
-    <div className="group relative">
+    <div className="relative" ref={ref}>
       <button
         type="button"
-        className="btn-pill inline-flex items-center gap-1 border-slate-700/90 bg-slate-900/72 py-1.5 text-sm text-slate-200 hover:border-slate-500"
+        onClick={() => setOpen((v) => !v)}
+        className={`btn-pill inline-flex items-center gap-1 border-slate-700/90 bg-slate-900/72 py-1.5 text-sm text-slate-200 hover:border-slate-500 ${open ? 'border-slate-500' : ''}`}
       >
         <span className="text-[12px] text-slate-400">{icon}</span>
         {label}
       </button>
-      <div className="invisible absolute left-0 top-[110%] z-[90] min-w-[220px] rounded-lg border border-slate-800 bg-slate-950/95 p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
-        {items.map((item) => (
-          <NavLink key={item.to} to={item.to} className={({ isActive }) => groupLinkClass(isActive)}>
-            {item.label}
-          </NavLink>
-        ))}
-      </div>
+      {open && (
+        <div className="absolute left-0 top-full z-[200] mt-1 min-w-[220px] rounded-lg border border-slate-800 bg-slate-950/98 p-2 shadow-2xl">
+          {items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) => groupLinkClass(isActive)}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
