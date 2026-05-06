@@ -288,6 +288,96 @@ class RegisterSerializer(serializers.Serializer):
         return user
 
 
+class PATLoginView(APIView):
+    """
+    POST /api/auth/token/
+    Đăng nhập bằng username + password, trả về PAT token.
+    Tương thích với interface JWT cũ: {access, refresh, token_type}.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from django.contrib.auth import authenticate as django_authenticate
+        from core_pat_auth import _issue_pat_for_user
+
+        username = str(request.data.get('username') or '').strip()
+        password = str(request.data.get('password') or '')
+
+        if not username or not password:
+            return Response(
+                {'detail': 'Vui lòng nhập tên đăng nhập và mật khẩu.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = django_authenticate(request, username=username, password=password)
+        if user is None:
+            return Response(
+                {'detail': 'Tên đăng nhập hoặc mật khẩu không đúng.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if not user.is_active:
+            return Response(
+                {'detail': 'Tài khoản đã bị vô hiệu hóa.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        cfg = getattr(user, 'user_config', None)
+        if cfg is not None and not cfg.email_verified:
+            return Response(
+                {'detail': 'Email chưa được xác thực. Vui lòng kiểm tra hộp thư.', 'code': 'email_not_verified'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            raw_token = _issue_pat_for_user(user, label='password-login')
+        except Exception:
+            logger.exception('Failed to issue PAT for user %s', user.pk)
+            return Response(
+                {'detail': 'Hệ thống đang bận. Vui lòng thử lại sau.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response({
+            'access': raw_token,
+            'refresh': raw_token,
+            'token_type': 'PAT',
+        })
+
+
+class PATTokenRefreshView(APIView):
+    """
+    POST /api/auth/token/refresh/
+    Validate PAT token và trả về access token mới.
+    PAT tokens long-lived — chỉ validate và trả lại token gốc nếu còn hợp lệ.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from core_pat_auth import _resolve_user_from_pat
+
+        refresh_token = str(request.data.get('refresh') or '').strip()
+        if not refresh_token:
+            return Response(
+                {'detail': 'Refresh token không hợp lệ.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = _resolve_user_from_pat(refresh_token)
+        if user is None:
+            return Response(
+                {'detail': 'Token đã hết hạn hoặc bị thu hồi.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        return Response({
+            'access': refresh_token,
+            'refresh': refresh_token,
+        })
+
+
 class RegisterView(CreateAPIView):
     """
     POST /api/auth/register/

@@ -8,6 +8,8 @@ from portfolio.views import AdminOpsStatsView
 from portfolio.auth_views import (
     CapabilitySnapshotView,
     GoogleOAuthView,
+    PATLoginView,
+    PATTokenRefreshView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RegisterView,
@@ -58,6 +60,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', api_root, name='api-root'),
     path('api/auth/me/', UserMeView.as_view(), name='auth-me'),
+    path('api/auth/token/', PATLoginView.as_view(), name='token_obtain_pair'),
+    path('api/auth/token/refresh/', PATTokenRefreshView.as_view(), name='token_refresh'),
     path('api/core/v1/access/capabilities/', CapabilitySnapshotView.as_view(), name='core-access-capabilities'),
     path('api/auth/register/', RegisterView.as_view(), name='auth-register'),
     path('api/auth/oauth/google/', GoogleOAuthView.as_view(), name='auth-oauth-google'),
