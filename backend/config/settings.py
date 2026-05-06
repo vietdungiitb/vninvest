@@ -235,11 +235,9 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        # SFI transitional: PAT tokens from core-api must go first.
-        # JWTAuthentication raises AuthenticationFailed (not None) for non-JWT tokens,
-        # which would block PAT auth if placed first.
+        # PAT-only architecture: all tokens are issued by core-api as PATs (vni_ prefix).
+        # JWTAuthentication removed — core-api is the single auth entry point.
         'core_pat_auth.LegacyCorePATAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     # Keep production API responses strictly JSON to avoid loading browsable API
     # static assets through frontend routing.

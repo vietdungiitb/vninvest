@@ -10,7 +10,7 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User
 from django.core.cache import cache
 from django.utils import timezone
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import AccessToken  # retained for legacy JWT token fallback during migration window
 from core_pat_auth import _resolve_user_from_pat
 
 logger = logging.getLogger(__name__)
@@ -192,6 +192,30 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
         token = self._get_query_token()
         if not token:
             return AnonymousUser()
+
+        # PAT-only architecture: try PAT first (vni_ prefix tokens issued by core-api).
+        if token.startswith('vni_'):
+            user = await self._resolve_pat_user(token)
+            if user and not isinstance(user, AnonymousUser):
+                snapshot = await self._build_auth_snapshot(int(user.id))
+                if snapshot:
+                    cache_ttl = max(int(getattr(settings, "REALTIME_WS_AUTH_CACHE_TTL_SECONDS", 120)), 1)
+                    await self._cache_set(f"ws_auth:{snapshot['user_id']}", snapshot, cache_ttl)
+                    return WSAuthPrincipal(
+                        id=int(snapshot["user_id"]),
+                        username=str(snapshot.get("username", "")),
+                        plan=str(snapshot.get("plan", "free") or "free").lower(),
+                    )
+                return WSAuthPrincipal(
+                    id=int(user.id),
+                    username=str(user.username),
+                    plan="free",
+                )
+            return AnonymousUser()
+
+        # Legacy fallback: JWT tokens (migration window only — will be removed once all
+        # clients have migrated to PAT). JWT is no longer issued; this handles outstanding
+        # sessions created before PAT-only cutover.
         try:
             access_token = AccessToken(token)
             user_id = access_token.get("user_id")
@@ -216,23 +240,6 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             return await self._get_user(user_id)
         except Exception:
             pass
-
-        # Fallback: PAT token (vni_XXXX) issued by core-api
-        if token.startswith('vni_'):
-            user = await self._resolve_pat_user(token)
-            if user and not isinstance(user, AnonymousUser):
-                snapshot = await self._build_auth_snapshot(int(user.id))
-                if snapshot:
-                    return WSAuthPrincipal(
-                        id=int(snapshot["user_id"]),
-                        username=str(snapshot.get("username", "")),
-                        plan=str(snapshot.get("plan", "free") or "free").lower(),
-                    )
-                return WSAuthPrincipal(
-                    id=int(user.id),
-                    username=str(user.username),
-                    plan="free",
-                )
 
         return AnonymousUser()
 
