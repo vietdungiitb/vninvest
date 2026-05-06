@@ -10,7 +10,6 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User
 from django.core.cache import cache
 from django.utils import timezone
-from rest_framework_simplejwt.tokens import AccessToken  # retained for legacy JWT token fallback during migration window
 from core_pat_auth import _resolve_user_from_pat
 
 logger = logging.getLogger(__name__)
@@ -213,34 +212,6 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
                 )
             return AnonymousUser()
 
-        # Legacy fallback: JWT tokens (migration window only — will be removed once all
-        # clients have migrated to PAT). JWT is no longer issued; this handles outstanding
-        # sessions created before PAT-only cutover.
-        try:
-            access_token = AccessToken(token)
-            user_id = access_token.get("user_id")
-            if not user_id:
-                return AnonymousUser()
-
-            if getattr(settings, "REALTIME_WS_AUTH_CACHE_ENABLED", True):
-                cache_key = f"ws_auth:{int(user_id)}"
-                snapshot = await self._cache_get(cache_key)
-                if not snapshot:
-                    snapshot = await self._build_auth_snapshot(int(user_id))
-                    if not snapshot:
-                        return AnonymousUser()
-                    cache_ttl = max(int(getattr(settings, "REALTIME_WS_AUTH_CACHE_TTL_SECONDS", 120)), 1)
-                    await self._cache_set(cache_key, snapshot, cache_ttl)
-                return WSAuthPrincipal(
-                    id=int(snapshot["user_id"]),
-                    username=str(snapshot.get("username", "")),
-                    plan=str(snapshot.get("plan", "free") or "free").lower(),
-                )
-
-            return await self._get_user(user_id)
-        except Exception:
-            pass
-
         return AnonymousUser()
 
     @database_sync_to_async
@@ -284,10 +255,3 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
         query_params = parse_qs(query_string)
         token = query_params.get("token", [None])[0]
         return token
-
-    @database_sync_to_async
-    def _get_user(self, user_id: int):
-        try:
-            return User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return AnonymousUser()

@@ -14,9 +14,7 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import APIException, AuthenticationFailed, ValidationError
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
+from core_pat_auth import _issue_pat_for_user
 
 from .email_verification import resolve_email_verification_token, send_verification_email
 from .google_oauth_service import fetch_google_user_email
@@ -247,27 +245,7 @@ class CapabilitySnapshotView(APIView):
         return Response(_build_current_capability_snapshot(request.user))
 
 
-class VerifiedEmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def validate(self, attrs):
-        # Accept either username or email for login, normalize before JWT auth.
-        username_or_email = str(attrs.get('username', '')).strip()
-        if username_or_email:
-            if '@' in username_or_email:
-                user = User.objects.filter(email__iexact=username_or_email).only('username').first()
-                if user:
-                    attrs['username'] = user.username
-            else:
-                attrs['username'] = username_or_email.lower()
 
-        data = super().validate(attrs)
-        user_config, _ = UserConfig.objects.get_or_create(user=self.user)
-        if not self.user.is_superuser and not user_config.email_verified:
-            raise AuthenticationFailed('Tài khoản chưa xác thực email. Vui lòng kiểm tra email và kích hoạt tài khoản trước khi đăng nhập.')
-        return data
-
-
-class VerifiedEmailTokenObtainPairView(TokenObtainPairView):
-    serializer_class = VerifiedEmailTokenObtainPairSerializer
 
 
 # ---------- /api/auth/register ----------
@@ -627,15 +605,16 @@ class GoogleOAuthView(APIView):
                 except Exception:
                     logger.exception('Failed to provision starter portfolios for Google OAuth user_id=%s', user.id)
 
-        refresh = RefreshToken.for_user(user)
+        raw_token = _issue_pat_for_user(user, label='google-oauth-session')
         return Response(
             {
                 'username': user.username,
                 'email': user.email,
                 'plan': _get_plan(user),
                 'created': created,
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
+                'access': raw_token,
+                'refresh': raw_token,
+                'token_type': 'PAT',
             },
             status=status.HTTP_200_OK,
         )

@@ -110,7 +110,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third-party
     'rest_framework',
-    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'channels',
     # Local
@@ -266,17 +265,6 @@ REST_FRAMEWORK = {
         'support_ticket_create': _get_throttle_rate('DRF_SUPPORT_TICKET_CREATE_RATE', '5/hour'),
         'support_ticket_reply': _get_throttle_rate('DRF_SUPPORT_TICKET_REPLY_RATE', '30/hour'),
     },
-}
-
-SIMPLE_JWT = {
-    # Access token dài hơn để WS reconnect không bị 401 sau 5 phút
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    # Rotate refresh token mỗi lần dùng → client.js sẽ lưu token mới
-    'ROTATE_REFRESH_TOKENS': True,
-    # SM-P1.1: Blacklist rotated refresh tokens to prevent replay attacks
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': False,
 }
 
 # CORS / CSRF (frontend origins)
