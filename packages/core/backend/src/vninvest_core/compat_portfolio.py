@@ -99,8 +99,9 @@ class CompatAdvisoryView(APIView):
 
 
 # URL patterns (mounted at /api/ in vninvest_core/urls.py)
+# NOTE: portfolio/portfolios/ intentionally omitted — falls through to legacy_proxy_view
+# which forwards to backend:8000 where the real Portfolio ORM data lives.
 urlpatterns = [
-    path('portfolios/', portfolio_collection_view, name='compat-portfolio-list'),
     path('whale-alerts/', CompatWhaleAlertsView.as_view(), name='compat-whale-alerts'),
     path('whale-summary/', CompatWhaleSummaryView.as_view(), name='compat-whale-summary'),
     path('advisory/<str:symbol>/', CompatAdvisoryView.as_view(), name='compat-advisory'),
