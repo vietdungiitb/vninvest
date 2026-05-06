@@ -1,3 +1,23 @@
+# ✅ AUDIT FILE LIST (2026-05-06-PAT-AUTH-FIX) — PAT Auth Login Endpoints — Dev Verified
+
+## Dev Verification: 2026-05-06
+
+Files changed:
+- `backend/portfolio/auth_views.py` — Added `PATLoginView`, `PATTokenRefreshView` (commit 26a8b52f)
+- `backend/config/urls.py` — Restored `api/auth/token/` + `api/auth/token/refresh/` routes (commit 26a8b52f)
+- `backend/core_pat_auth.py` — Added `_issue_pat_for_user()` (commit 92331e86)
+- `backend/config/settings.py` — Removed JWT/simplejwt (commit 92331e86)
+- `backend/portfolio/consumers.py` — Removed JWT fallback (commit 92331e86)
+
+Validation (dev stack — 2026-05-06):
+- ✅ `POST /api/auth/token/` → 200, PAT `vni_...` returned (through nginx → core-api → backend)
+- ✅ `GET /api/auth/me/` → 200, `username: admin`
+- ✅ `POST /api/auth/token/refresh/` → 200, PAT valid
+
+Status: DEV VERIFIED — production sync pending user approval
+
+---
+
 # ✅ AUDIT FILE LIST (2026-05-04-SFI-DOCS) — SaaS Full Independence (Option B) — Documentation Pack
 
 Files changed (NEW):
