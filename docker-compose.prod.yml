@@ -405,6 +405,10 @@ services:
       REACT_APP_API_BASE_URL: /api
       REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
       REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+      VIRTUAL_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@edusuccess.vn}
     depends_on:
       backend:
         condition: service_healthy
@@ -412,10 +416,11 @@ services:
         condition: service_healthy
     labels:
       com.vninvest.release: ${APP_RELEASE:-main-local}
+    expose:
+      - "80"
     networks:
       - vninvest_network
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - nginx-proxy_default
     mem_limit: ${FRONTEND_MEM_LIMIT:-750m}
     cpus: ${FRONTEND_CPUS:-0.75}
 
@@ -429,3 +434,5 @@ volumes:
 networks:
   vninvest_network:
     driver: bridge
+  nginx-proxy_default:
+    external: true
