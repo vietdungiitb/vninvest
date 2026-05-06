@@ -21,6 +21,7 @@ import logging
 import httpx
 from django.conf import settings
 from django.http import HttpResponse, StreamingHttpResponse
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,7 @@ def _filter_response_headers(httpx_headers) -> dict:
     return result
 
 
+@csrf_exempt
 def legacy_proxy_view(request, remaining=''):
     """
     Synchronous Django view: transparent proxy to legacy backend.
