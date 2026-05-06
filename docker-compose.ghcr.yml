@@ -193,6 +193,8 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS must be set}
       APP_RELEASE: ${APP_RELEASE:-latest}
+      # PAT-only: pepper must match core-api for LegacyCorePATAuthentication to validate tokens.
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set in production}
     depends_on:
       db:
         condition: service_healthy

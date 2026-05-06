@@ -199,6 +199,8 @@ services:
       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
       APP_RELEASE: ${APP_RELEASE:-main-local}
+      # PAT-only: pepper must match core-api for LegacyCorePATAuthentication to validate tokens.
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set in production}
     labels:
       com.vninvest.release: ${APP_RELEASE:-main-local}
     depends_on:
