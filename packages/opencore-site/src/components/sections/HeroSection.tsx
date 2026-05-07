@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { DashboardPreview } from './DashboardPreview';
 
 function localeHref(pathname: string, targetPath: string) {
   const currentLocale = pathname.split('/')[1] || 'vi';
@@ -24,7 +25,7 @@ export function HeroSection() {
           </h1>
           <p className="max-w-2xl text-base leading-8 text-slate-300 md:text-lg">{t('description')}</p>
           <div className="flex flex-wrap gap-3">
-            <Link href={`/${pathname.split('/')[1] || 'vi'}/chart`} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
+            <Link href={localeHref(pathname, '/chart')} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
               {common('learnMore')}
             </Link>
             <a
@@ -42,19 +43,7 @@ export function HeroSection() {
             <div className="md:col-span-2 text-sm leading-6 text-slate-300">{t('statsValue')}</div>
           </div>
         </div>
-        <div className="card overflow-hidden rounded-[2rem] p-5">
-          <div className="rounded-[1.5rem] border border-white/8 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6">
-            <div className="badge">{t('eyebrow')}</div>
-            <div className="mt-5 text-lg font-semibold text-white">{t('featureHeading')}</div>
-            <p className="mt-3 text-sm leading-7 text-slate-300">{t('featureLead')}</p>
-            <div className="mt-6 grid gap-3 text-sm text-slate-200">
-              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3">{t('feature1')}</div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3">{t('feature2')}</div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3">{t('feature3')}</div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3">{t('feature4')}</div>
-            </div>
-          </div>
-        </div>
+        <DashboardPreview />
       </div>
     </section>
   );

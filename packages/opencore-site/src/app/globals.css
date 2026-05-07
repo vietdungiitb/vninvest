@@ -101,3 +101,55 @@ a {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* Dashboard preview animations */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.75); }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes chart-draw {
+  from { stroke-dashoffset: 620; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes whale-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+  50%       { box-shadow: 0 0 0 4px rgba(251,191,36,0.18); }
+}
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes price-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+@keyframes grow-bar {
+  from { width: 0%; }
+  to   { width: 62%; }
+}
+.anim-pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+.anim-chart-draw {
+  stroke-dasharray: 620;
+  stroke-dashoffset: 620;
+  animation: chart-draw 2s cubic-bezier(0.4,0,0.2,1) 0.4s forwards;
+}
+.anim-fade-up {
+  opacity: 0;
+  animation: fade-up 0.5s ease forwards;
+}
+.anim-whale-glow {
+  animation: whale-glow 2.4s ease-in-out infinite;
+}
+.anim-price-blink {
+  animation: price-blink 1.2s ease-in-out 3;
+}
