@@ -11,7 +11,7 @@ export function middleware(request: NextRequest) {
   }
 
   const firstSegment = pathname.split('/')[1];
-  if (!isLocale(firstSegment) && !pathname.startsWith('/api') && !pathname.startsWith('/_next') && !pathname.includes('.')) {
+  if (!isLocale(firstSegment) && !pathname.startsWith('/api') && !pathname.startsWith('/admin') && !pathname.startsWith('/_next') && !pathname.includes('.')) {
     const url = request.nextUrl.clone();
     url.pathname = `/${defaultLocale}${pathname}`;
     return NextResponse.redirect(url);
