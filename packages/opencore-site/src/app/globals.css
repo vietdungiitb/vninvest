@@ -1,15 +1,5 @@
 @import 'tailwindcss';
 
-/* Override Tailwind v4 container to always center + add horizontal padding */
-@layer utilities {
-  .container {
-    margin-inline: auto;
-    padding-inline: 1.5rem;
-    max-width: 80rem;
-    width: 100%;
-  }
-}
-
 :root {
   --bg: #07111f;
   --bg-soft: #0e1a2e;
@@ -37,6 +27,14 @@ body {
   min-height: 100vh;
   color: var(--text);
   background: transparent;
+}
+
+/* Tailwind v4 does not auto-center container — override explicitly outside any layer */
+.container {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
 }
 
 * {
