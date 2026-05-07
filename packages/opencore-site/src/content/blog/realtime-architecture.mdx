@@ -1,3 +1,10 @@
+---
+title: 'Kiến trúc realtime: từ vnstock API đến WebSocket trình duyệt'
+summary: 'Luồng dữ liệu đầy đủ: prefetch Celery, Redis pub/sub, Django Channels, time-based policy và provider fallback khi rate-limit.'
+date: '2026-05-07'
+readingTime: '5 phút'
+---
+
 # Kiến trúc realtime: từ vnstock API đến WebSocket trình duyệt
 
 Bài này mô tả luồng dữ liệu realtime trong VNInvest — từ lúc kéo giá từ nhà cung cấp đến lúc hiển thị trên Dashboard, Watchlist và StockDetail mà không có độ trễ giao diện nhìn thấy được.

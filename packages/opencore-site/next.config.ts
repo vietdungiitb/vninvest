@@ -11,19 +11,19 @@ const isProduction = process.env.NODE_ENV === 'production';
 const csp = isProduction
   ? [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
+      "style-src 'self' 'unsafe-inline' https://unpkg.com",
       "img-src 'self' data: https:",
-      "connect-src 'self' https://cdn.jsdelivr.net",
+      "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://api.github.com https://github.com",
       "worker-src 'self' blob:",
       "frame-ancestors 'none'"
     ].join('; ')
   : [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://cdn.jsdelivr.net https://unpkg.com",
+      "style-src 'self' 'unsafe-inline' https://unpkg.com",
       "img-src 'self' data: https:",
-      "connect-src 'self' http://localhost:* https://cdn.jsdelivr.net",
+      "connect-src 'self' http://localhost:* https://cdn.jsdelivr.net https://unpkg.com https://api.github.com https://github.com",
       "worker-src 'self' blob:"
     ].join('; ');
 

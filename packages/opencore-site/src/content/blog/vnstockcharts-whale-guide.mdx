@@ -1,3 +1,10 @@
+---
+title: 'VNStockCharts: whale flow, CVD và biểu đồ theo ngữ cảnh phiên'
+summary: 'Tại sao cần chart engine riêng, cách whale marker và CVD bám session truth, và nguyên tắc độ trung thực thị giác.'
+date: '2026-05-07'
+readingTime: '6 phút'
+---
+
 # VNStockCharts: whale flow, CVD và biểu đồ theo ngữ cảnh phiên
 
 VNStockCharts là bộ chart engine được xây dựng riêng cho VNInvest, thay thế KLineCharts trên route `whale-alerts/:symbol`. Lý do không dùng thư viện chung: khi overlay whale marker hoặc CVD lệch ngữ cảnh phiên, người dùng sẽ đọc sai mật độ giao dịch — điều đó tệ hơn một empty state.
