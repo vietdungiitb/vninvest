@@ -7,7 +7,8 @@
   </head>
   <body>
     <div id="nc-root"></div>
-    <script src="https://unpkg.com/decap-cms@3.3.3/dist/decap-cms.js"></script>
+    <!-- netlify-cms 2.x: stable, không có React 18 concurrent mode bug -->
+    <script src="https://unpkg.com/netlify-cms-app@2.15.72/dist/netlify-cms.js"></script>
     <script>
       CMS.init({
         config: {
