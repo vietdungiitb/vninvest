@@ -282,6 +282,19 @@ services:
     mem_limit: ${CELERY_BEAT_MEM_LIMIT:-512m}
     cpus: ${CELERY_BEAT_CPUS:-0.5}
 
+  opencore-site:
+    container_name: vninvest-dev-opencore-site
+    build:
+      context: .
+      dockerfile: packages/opencore-site/Dockerfile.dev
+    ports:
+      - "${OPENCORE_SITE_PORT:-3007}:3007"
+    restart: unless-stopped
+    networks:
+      - vninvest_network
+    mem_limit: ${OPENCORE_SITE_MEM_LIMIT:-512m}
+    cpus: ${OPENCORE_SITE_CPUS:-0.5}
+
   frontend:
     container_name: vninvest-dev-frontend
     build:

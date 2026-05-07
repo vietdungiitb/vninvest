@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { VNStockChart, WhaleBubbleOverlay } from '../../../../../../react-stockcharts-master/dist/index.js';
+import { VNStockChart, WhaleBubbleOverlay } from '@/vendor/react-stockcharts/dist/index.js';
 import type { OHLCVBar } from 'vnstockcharts';
 import { ALLOWED_SYMBOLS, type AllowedSymbol, normalizeTimeframe } from '@/lib/validation';
 import { fetchChartFeed } from '@/lib/api';
