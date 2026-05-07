@@ -56,13 +56,14 @@ const nextConfig: NextConfig = {
     ];
     return [
       {
+        source: '/:path*',
+        headers: [...commonHeaders, { key: 'Content-Security-Policy', value: csp }]
+      },
+      {
+        // Admin rule comes AFTER so it overrides /:path* for /admin path
         source: '/admin',
         headers: [...commonHeaders, { key: 'Content-Security-Policy', value: adminCsp }]
       },
-      {
-        source: '/:path*',
-        headers: [...commonHeaders, { key: 'Content-Security-Policy', value: csp }]
-      }
     ];
   }
 };
