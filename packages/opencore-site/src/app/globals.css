@@ -29,12 +29,10 @@ body {
   background: transparent;
 }
 
-/* Tailwind v4 does not auto-center container — override explicitly outside any layer */
+/* Tailwind v4: @apply ensures mx-auto and px are injected via Tailwind mechanism, not CSS cascade */
 .container {
-  width: 100%;
+  @apply mx-auto w-full px-4 sm:px-6 lg:px-8;
   max-width: 80rem;
-  margin-inline: auto;
-  padding-inline: 1.5rem;
 }
 
 * {
