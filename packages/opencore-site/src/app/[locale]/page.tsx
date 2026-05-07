@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { HeroSection } from '@/components/sections/HeroSection';
 import { ProductCards } from '@/components/sections/ProductCards';
 import { FeatureGrid } from '@/components/sections/FeatureGrid';
+import { StatsStrip } from '@/components/sections/StatsStrip';
 import { SiteFrame } from '@/components/layout/SiteFrame';
 import { buildPageMetadata } from '@/lib/seo';
 
@@ -21,6 +22,7 @@ export default function HomePage() {
   return (
     <SiteFrame>
       <HeroSection />
+      <StatsStrip />
       <ProductCards />
       <FeatureGrid />
     </SiteFrame>

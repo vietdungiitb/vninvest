@@ -34,7 +34,13 @@
     "vnstockTitle": "vnstock",
     "vnstockText": "Python library truy xuất dữ liệu thị trường Việt Nam.",
     "chartTitle": "VNStockCharts",
-    "chartText": "Bộ công cụ chart kỹ thuật tự phát triển, thay cho KLineCharts."
+    "chartText": "Bộ công cụ chart kỹ thuật tự phát triển, thay cho KLineCharts.",
+    "vinvestMetric": "Quản lý danh mục · Robo-advisor · Tín hiệu whale",
+    "vnstockMetric": "600+ mã · HNX, HOSE, UPCOM · REST API",
+    "chartMetric": "KLine engine · CVD · Whale overlay · Real-time",
+    "vinvestCta": "Dùng ngay",
+    "vnstockCta": "Xem tài liệu",
+    "chartCta": "Xem demo chart"
   },
   "chart": {
     "badge": "Live demo",
@@ -66,7 +72,19 @@
     "cta": "Đăng ký ngay",
     "free": "Miễn phí",
     "pro": "Pro",
-    "enterprise": "Enterprise"
+    "enterprise": "Enterprise",
+    "recommended": "Phổ biến nhất",
+    "freeF1": "Xem dữ liệu thị trường cơ bản",
+    "freeF2": "Theo dõi tối đa 3 mã cổ phiếu",
+    "freeF3": "Truy cập Pyodide sandbox",
+    "proF1": "Tất cả tính năng gói Miễn phí",
+    "proF2": "Phân tích whale và dòng tiền không giới hạn",
+    "proF3": "Theo dõi không giới hạn mã cổ phiếu",
+    "proF4": "Cảnh báo tín hiệu real-time qua email",
+    "entF1": "Tất cả tính năng gói Pro",
+    "entF2": "API tích hợp riêng cho đội trading",
+    "entF3": "Hỗ trợ ưu tiên 24/7",
+    "entF4": "Tùy chỉnh alert threshold theo yêu cầu"
   },
   "blog": {
     "badge": "Blog",
@@ -96,10 +114,27 @@
     "learnMore": "Tìm hiểu thêm",
     "open": "Mở",
     "copy": "Sao chép",
-    "copied": "Đã sao chép"
+    "copied": "Đã sao chép",
+    "siteSubtitle": "Nền tảng công khai",
+    "footerDescription": "Mặt tiền công khai cho VNInvest, vnstock và VNStockCharts.",
+    "openMenu": "Mở menu",
+    "closeMenu": "Đóng menu"
   },
   "seo": {
     "siteName": "VNInvest",
     "description": "About site của hệ sinh thái VNInvest, vnstock và VNStockCharts."
+  },
+  "featureGrid": {
+    "heading": "Năng lực nền tảng",
+    "item1": "Phân tích dòng tiền thông minh với dữ liệu whale theo thời gian thực.",
+    "item2": "Bộ lọc tín hiệu tùy chỉnh cho từng chiến lược giao dịch.",
+    "item3": "Pyodide sandbox — chạy Python phân tích ngay trên trình duyệt.",
+    "item4": "Engine VNStockCharts tự phát triển, hiệu năng cao, không phụ thuộc ngoài."
+  },
+  "stats": {
+    "symbolsLabel": "Mã cổ phiếu",
+    "productsLabel": "Sản phẩm",
+    "languagesLabel": "Ngôn ngữ",
+    "openLabel": "Mã nguồn mở"
   }
 }

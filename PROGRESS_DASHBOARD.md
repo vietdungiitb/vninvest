@@ -1,3 +1,22 @@
+# ✅ AUDIT FILE LIST (2026-05-07-OPENCORE-UI-UPGRADE-DOCS) — OpenCore Site UI Upgrade documentation bundle
+
+Files changed:
+- docs/OPENCORE_SITE_UI_UPGRADE_HANDOFF_MASTER_20260507.md (NEW)
+- docs/TECH_SPEC_OPENCORE_SITE_UI_UPGRADE_20260507.md (NEW)
+- docs/IMPLEMENTATION_PLAN_OPENCORE_SITE_UI_UPGRADE_20260507.md (NEW)
+- docs/TASKBOARD_OPENCORE_SITE_UI_UPGRADE_20260507.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- N/A: Documentation-only. Goi tai lieu san sang giao cho doi code thuc hien.
+
+Status:
+- 4 bugs da xac nhan (BUG-01..04), 5 slices duoc thiet ke (S1..S5)
+- S1-S2-S4-S5 co the bat dau ngay. S3 blocked cho asset.
+
+---
+
 # ✅ AUDIT FILE LIST (2026-05-07-DEV-ADMIN-PASSWORD) — Dev admin password alignment
 
 Files changed:

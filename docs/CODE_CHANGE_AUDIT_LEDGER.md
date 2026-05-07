@@ -1,3 +1,27 @@
+# Entry 2026-05-07-OPENCORE-UI-UPGRADE-DOCS - OpenCore Site UI Upgrade documentation bundle
+
+Muc tieu:
+- Tao goi tai lieu chi tiet cho doi code thuc hien nang cap giao dien opencore-site.
+- Bao gom: HANDOFF_MASTER, TECH_SPEC, IMPLEMENTATION_PLAN, TASKBOARD.
+- Ghi lai 4 bugs da xac nhan (BUG-01..04) va 5 upgrade slices (S1..S5).
+
+Danh sach tep thay doi:
+- docs/OPENCORE_SITE_UI_UPGRADE_HANDOFF_MASTER_20260507.md (NEW)
+- docs/TECH_SPEC_OPENCORE_SITE_UI_UPGRADE_20260507.md (NEW)
+- docs/IMPLEMENTATION_PLAN_OPENCORE_SITE_UI_UPGRADE_20260507.md (NEW)
+- docs/TASKBOARD_OPENCORE_SITE_UI_UPGRADE_20260507.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- N/A: Documentation-only change, no build required.
+
+Residual risk:
+- Slice S3 (Hero right panel) bi block cho den khi Product Owner cung cap asset.
+- So lieu StatsStrip (100% open source) can Product Owner confirm truoc khi code.
+
+---
+
 # Entry 2026-05-07-DEV-ADMIN-PASSWORD - Dev admin password alignment
 
 Muc tieu:

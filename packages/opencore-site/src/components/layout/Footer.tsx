@@ -19,7 +19,7 @@ export function Footer() {
         <div>
           <div className="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-200">VNInvest</div>
           <p className="mt-3 max-w-sm text-sm leading-6 text-slate-400">
-            Public surface cho VNInvest, vnstock và VNStockCharts.
+            {t('footerDescription')}
           </p>
         </div>
         <div className="text-sm text-slate-300">

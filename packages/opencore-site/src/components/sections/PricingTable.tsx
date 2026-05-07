@@ -3,12 +3,38 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useReveal } from '@/hooks/useReveal';
 
-const plans = [
-  { key: 'free', accent: 'text-cyan-200', price: '0đ' },
-  { key: 'pro', accent: 'text-amber-200', price: '299k/tháng' },
-  { key: 'enterprise', accent: 'text-emerald-200', price: 'Liên hệ' }
-] as const;
+type PlanKey = 'free' | 'pro' | 'enterprise';
+type FeatureKey = 'freeF1' | 'freeF2' | 'freeF3' | 'proF1' | 'proF2' | 'proF3' | 'proF4' | 'entF1' | 'entF2' | 'entF3' | 'entF4';
+
+const plans: Array<{
+  key: PlanKey;
+  accent: string;
+  price: string;
+  featureKeys: FeatureKey[];
+  highlight?: boolean;
+}> = [
+  {
+    key: 'free',
+    accent: 'text-cyan-200',
+    price: '0đ',
+    featureKeys: ['freeF1', 'freeF2', 'freeF3'],
+  },
+  {
+    key: 'pro',
+    accent: 'text-amber-200',
+    price: '299k/tháng',
+    featureKeys: ['proF1', 'proF2', 'proF3', 'proF4'],
+    highlight: true,
+  },
+  {
+    key: 'enterprise',
+    accent: 'text-emerald-200',
+    price: 'Liên hệ',
+    featureKeys: ['entF1', 'entF2', 'entF3', 'entF4'],
+  },
+];
 
 function localeHref(pathname: string, targetPath: string) {
   const currentLocale = pathname.split('/')[1] || 'vi';
@@ -19,9 +45,10 @@ export function PricingTable() {
   const pathname = usePathname();
   const t = useTranslations('pricing');
   const common = useTranslations('common');
+  const ref = useReveal();
 
   return (
-    <section className="container pb-16 md:pb-20">
+    <section ref={ref} className="reveal container pb-16 md:pb-20">
       <div className="mb-6 space-y-3">
         <div className="badge">{t('badge')}</div>
         <h2 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">{t('title')}</h2>
@@ -30,13 +57,26 @@ export function PricingTable() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {plans.map((plan) => (
-          <article key={plan.key} className="card rounded-[1.75rem] p-6">
+          <article
+            key={plan.key}
+            className={`card rounded-[1.75rem] p-6${
+              plan.highlight ? ' ring-1 ring-amber-300/40' : ''
+            }`}
+          >
+            {plan.highlight && (
+              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+                {t('recommended')}
+              </div>
+            )}
             <div className={`text-xs uppercase tracking-[0.24em] ${plan.accent}`}>{t(plan.key)}</div>
             <div className="mt-3 text-3xl font-semibold text-white">{plan.price}</div>
             <ul className="mt-5 space-y-3 text-sm leading-7 text-slate-300">
-              <li>• Bảng giá public rõ ràng</li>
-              <li>• Tập trung vào điều nhà đầu tư cần</li>
-              <li>• Nâng cấp theo hành trình sử dụng</li>
+              {plan.featureKeys.map((fk) => (
+                <li key={fk} className="flex items-start gap-2">
+                  <span className="mt-0.5 shrink-0 text-cyan-400">✓</span>
+                  {t(fk)}
+                </li>
+              ))}
             </ul>
           </article>
         ))}

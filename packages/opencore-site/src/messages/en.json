@@ -34,7 +34,13 @@
     "vnstockTitle": "vnstock",
     "vnstockText": "A Python library for Vietnam market data access.",
     "chartTitle": "VNStockCharts",
-    "chartText": "A custom-built technical chart toolkit replacing KLineCharts."
+    "chartText": "A custom-built technical chart toolkit replacing KLineCharts.",
+    "vinvestMetric": "Portfolio manager \u00b7 Robo-advisor \u00b7 Whale signals",
+    "vnstockMetric": "600+ symbols \u00b7 HNX, HOSE, UPCOM \u00b7 REST API",
+    "chartMetric": "KLine engine \u00b7 CVD \u00b7 Whale overlay \u00b7 Real-time",
+    "vinvestCta": "Get started",
+    "vnstockCta": "View docs",
+    "chartCta": "See chart demo"
   },
   "chart": {
     "badge": "Live demo",
@@ -66,7 +72,19 @@
     "cta": "Register now",
     "free": "Free",
     "pro": "Pro",
-    "enterprise": "Enterprise"
+    "enterprise": "Enterprise",
+    "recommended": "Most popular",
+    "freeF1": "View basic market data",
+    "freeF2": "Track up to 3 stock symbols",
+    "freeF3": "Access Pyodide sandbox",
+    "proF1": "Everything in Free",
+    "proF2": "Unlimited whale and money-flow analysis",
+    "proF3": "Unlimited symbol watchlist",
+    "proF4": "Real-time signal alerts via email",
+    "entF1": "Everything in Pro",
+    "entF2": "Dedicated API integration for trading teams",
+    "entF3": "Priority 24/7 support",
+    "entF4": "Custom alert thresholds on request"
   },
   "blog": {
     "badge": "Blog",
@@ -96,10 +114,27 @@
     "learnMore": "Learn more",
     "open": "Open",
     "copy": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "siteSubtitle": "Public platform",
+    "footerDescription": "The public front door for VNInvest, vnstock, and VNStockCharts.",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "seo": {
     "siteName": "VNInvest",
     "description": "The public about site for the VNInvest, vnstock, and VNStockCharts ecosystem."
+  },
+  "featureGrid": {
+    "heading": "Platform capabilities",
+    "item1": "Smart money-flow analysis with real-time whale data.",
+    "item2": "Customizable signal filters for any trading strategy.",
+    "item3": "Pyodide sandbox \u2014 run Python analysis directly in the browser.",
+    "item4": "Custom-built VNStockCharts engine, high performance, zero external dependency."
+  },
+  "stats": {
+    "symbolsLabel": "Stock symbols",
+    "productsLabel": "Products",
+    "languagesLabel": "Languages",
+    "openLabel": "Open source"
   }
 }
