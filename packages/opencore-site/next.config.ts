@@ -29,7 +29,7 @@ const csp = isProduction
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  pageExtensions: ['ts', 'tsx', 'mdx'],
+  pageExtensions: ['ts', 'tsx'],
   experimental: {
     externalDir: true
   },

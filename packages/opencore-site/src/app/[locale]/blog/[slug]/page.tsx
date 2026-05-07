@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
+import { MDXRemote } from 'next-mdx-remote/rsc';
 import { SiteFrame } from '@/components/layout/SiteFrame';
-import { blogPosts, getBlogPostBySlug } from '@/lib/blog';
+import { blogPosts, getBlogPostBySlug, getBlogPostSource } from '@/lib/blog';
 import { buildPageMetadata } from '@/lib/seo';
 
 export function generateStaticParams() {
@@ -34,12 +35,11 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = getBlogPostBySlug(slug);
+  const source = getBlogPostSource(slug);
 
-  if (!post) {
+  if (!post || !source) {
     notFound();
   }
-
-  const Content = post.Component;
 
   return (
     <SiteFrame>
@@ -48,7 +48,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <div className="text-xs uppercase tracking-[0.24em] text-slate-500">{post.date} · {post.readingTime}</div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-5xl">{post.title}</h1>
           <div className="prose prose-invert mt-8 max-w-none">
-            <Content />
+            <MDXRemote source={source} options={{ parseFrontmatter: true }} />
           </div>
         </article>
       </section>
