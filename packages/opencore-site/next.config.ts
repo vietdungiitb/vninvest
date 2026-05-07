@@ -33,6 +33,11 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true
   },
+  async rewrites() {
+    return [
+      { source: '/admin', destination: '/admin/index.html' }
+    ];
+  },
   async headers() {
     return [
       {
