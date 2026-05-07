@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+/* Override Tailwind v4 container to always center + add horizontal padding */
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+  max-width: 80rem; /* 1280px */
+}
+
 :root {
   --bg: #07111f;
   --bg-soft: #0e1a2e;
