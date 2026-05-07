@@ -1,0 +1,64 @@
+# Kiến trúc realtime: từ vnstock API đến WebSocket trình duyệt
+
+Bài này mô tả luồng dữ liệu realtime trong VNInvest — từ lúc kéo giá từ nhà cung cấp đến lúc hiển thị trên Dashboard, Watchlist và StockDetail mà không có độ trễ giao diện nhìn thấy được.
+
+## Tổng quan luồng dữ liệu
+
+```
+vnstock API (provider: TCBS, SSI, KBS...)
+  → Celery worker (chu kỳ 5 giây)
+    → collector task: fetch price board → compute VWAP + whale threshold
+      → Redis pub/sub (channel layer)
+        → Django Channels (ASGI)
+          → WebSocket (JWT auth)
+            → useRealtimeFeed.js (hook duy nhất)
+              → Dashboard  /  Watchlist  /  StockDetail
+```
+
+Toàn bộ frontend đọc từ một hook duy nhất — `useRealtimeFeed` — để tránh nhiều component tự gọi API riêng và lệch timestamp.
+
+## Prefetch cache: tại sao cần thêm lớp
+
+vnstock provider có rate limit. Khi có nhiều người dùng cùng truy cập, gọi thẳng API mỗi request sẽ kích hoạt throttle. VNInvest giải quyết bằng **prefetch layer**:
+
+1. Celery beat chạy task `prefetch_ticker_price_board` theo chu kỳ.
+2. Kết quả được lưu vào Redis với key `vninvest:1:ticker:<symbol>`.
+3. HTTP fallback endpoint `/api/realtime/ticker/<symbol>/` phục vụ từ cache (fast path `source=prefetch`, p95 ~50-60ms).
+4. Nếu cache miss, fallback DB.
+
+## Time-based policy
+
+Tần suất prefetch thay đổi theo khung giờ thị trường:
+
+| Khung giờ | Profile | Hành vi |
+|-----------|---------|---------|
+| 09:00–09:15 | `pre_open` | Interval ngắn, warm cache trước phiên |
+| 09:15–11:30 | `market_open` | Full rate, batch toàn bộ universe |
+| 11:30–13:00 | `lunch_break` | Giảm tần suất |
+| 13:00–14:45 | `market_open` | Quay lại full rate |
+| 14:45–15:00 | `pre_close` | Tăng tần suất, bắt lệnh đóng cửa ATC |
+| Sau 15:00 | `post_close` / `offhours` | Giảm mạnh hoặc tắt query |
+
+Admin có thể chỉnh policy này trực tiếp trên Admin Ops mà không cần sửa `.env` hay restart service.
+
+## Provider fallback
+
+Khi provider đầu tiên trả 429 (rate-limited), collector tự động thử provider tiếp theo theo thứ tự ưu tiên. Benchmark nội bộ cho thấy KBS ổn định hơn VCI ở cùng tải cao.
+
+## Xác minh nhanh sau deploy
+
+```powershell
+# Redis có key ticker
+redis-cli keys "vninvest:1:ticker:*" | head -5
+
+# API trả source=prefetch
+curl http://localhost:8000/api/realtime/ticker/VNM/
+
+# Health check prefetch layer
+curl http://localhost:8000/api/health/prefetch/
+# Kỳ vọng: {"healthy": true, ...}
+```
+
+## WebSocket auth
+
+Kết nối WebSocket yêu cầu JWT token hợp lệ trong query param hoặc header. Sau khi xác thực, client nhận push updates cho tất cả mã trong watchlist và danh mục mà không cần poll.

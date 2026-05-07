@@ -1,22 +1,70 @@
 # vnstock quickstart cho nhà nghiên cứu dữ liệu
 
-`vnstock` là lớp công cụ Python để kéo dữ liệu thị trường Việt Nam vào notebook, script và workflow phân tích.
+`vnstock` là thư viện Python để truy cập dữ liệu thị trường chứng khoán Việt Nam — giá lịch sử, realtime quote, thông tin doanh nghiệp và nhiều hơn nữa — không cần tài khoản môi giới hay key trả phí.
 
-## Cách dùng cơ bản
+VNInvest sử dụng một fork nội bộ của `vnstock` (`vietdung-edusuccess/vnstock`) với một số bản vá chưa merge vào upstream, nhưng API public không thay đổi.
+
+## Cài đặt
+
+```bash
+pip install vnstock
+```
+
+Hoặc cài fork nội bộ (nếu bạn đang chạy cùng pipeline với VNInvest):
+
+```bash
+pip install git+https://github.com/vietdung-edusuccess/vnstock.git@main
+```
+
+## Lấy dữ liệu giá lịch sử
 
 ```python
 from vnstock import *
 
-price = quote.history(symbol='VNM', start='2024-01-01', end='2024-03-01')
+# Giá ngày VNM từ đầu năm 2024
+price = quote.history(symbol='VNM', start='2024-01-01', end='2024-06-30')
 print(price.head())
+#    time    open    high     low   close  volume
+# 0  2024-01-02  79.1  80.4  78.9   79.8  1234567
 ```
 
-## Khi nào nên dùng
+## Lấy dữ liệu intraday
 
-- Khi muốn backtest nhanh.
-- Khi cần data source chuẩn cho nghiên cứu.
-- Khi muốn prototype một pipeline nội bộ mà không xây lại lớp truy cập dữ liệu từ đầu.
+```python
+# Dữ liệu khớp lệnh trong phiên hôm nay
+intraday = quote.intraday(symbol='VCB', page_size=100)
+```
 
-## Lưu ý
+## Thông tin doanh nghiệp
 
-Dữ liệu thị trường luôn cần kiểm tra nguồn và timeframe. `vnstock` giúp bạn lấy nhanh, nhưng quyết định đầu tư vẫn cần đọc đúng ngữ cảnh.
+```python
+from vnstock import company
+
+profile = company.overview(symbol='HPG')
+# Trả về: tên, ngành, vốn hóa, EPS, P/E...
+```
+
+## Danh sách mã chứng khoán
+
+```python
+from vnstock import listing
+
+# Tất cả mã HOSE/HNX/UPCOM
+all_symbols = listing.all_symbols()
+print(f"Tổng cộng: {len(all_symbols)} mã")
+```
+
+## Khi nào nên dùng vnstock
+
+| Tình huống | Phù hợp? |
+|-----------|---------|
+| Backtest chiến lược | ✅ |
+| Nghiên cứu dữ liệu / notebook | ✅ |
+| Prototype pipeline nội bộ | ✅ |
+| Production realtime feed (sub-second) | ⚠️ Xem xét thêm lớp cache |
+
+## Lưu ý về dữ liệu
+
+`vnstock` kéo dữ liệu từ các nguồn công khai. Với dữ liệu intraday, rate limit của provider có thể kích hoạt khi query tần suất cao. VNInvest giải quyết điều này bằng lớp prefetch Celery + Redis: dữ liệu được cache trước theo chu kỳ 5 giây và phục vụ từ cache thay vì gọi thẳng vnstock mỗi request.
+
+Xem thêm playground tương tác tại trang **vnstock** trên site này.

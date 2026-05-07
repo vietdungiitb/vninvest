@@ -1,19 +1,37 @@
-# VNInvest: vì sao chúng tôi xây một hệ sinh thái public
+# VNInvest: nền tảng theo dõi danh mục và robo-advisor cho thị trường Việt Nam
 
-VNInvest không chỉ là một ứng dụng quản lý danh mục. Nó là một hệ sinh thái dữ liệu và công cụ dành cho nhà đầu tư Việt Nam. Khi người mới tìm thấy `vnstock` hoặc các bài viết về thị trường, họ cần một mặt tiền công khai để hiểu rằng còn có cả SaaS, cả chart engine và cả playground thực hành.
+VNInvest là hệ thống quản lý danh mục và cố vấn đầu tư dành riêng cho thị trường chứng khoán Việt Nam — bao gồm HOSE, HNX và UPCOM. Dự án được xây dựng theo mô hình **Open Core**: phần nền tảng mã nguồn mở, phần intelligence cao cấp cho người dùng Pro.
 
-Site `about.vninvest.edusuccess.vn` được tạo ra vì lý do đó: làm rõ sản phẩm, làm rõ giá trị, và làm rõ lộ trình sử dụng.
+## Ba sản phẩm trong một hệ sinh thái
 
-## Ba mảnh ghép
+Hệ sinh thái gồm ba mảnh ghép độc lập nhưng liên kết chặt:
 
-- **VNInvest SaaS**: workspace cho portfolio, signals và advisory.
-- **vnstock**: thư viện Python để lấy dữ liệu Việt Nam.
-- **VNStockCharts**: chart toolkit tự phát triển, thay cho KLineCharts.
+- **VNInvest SaaS** — workspace đầy đủ: portfolio tracker, whale alerts, AI advisory và signal intelligence.
+- **vnstock** — thư viện Python để truy cập dữ liệu thị trường Việt Nam, sử dụng trong cả SaaS lẫn nghiên cứu độc lập.
+- **VNStockCharts** — bộ chart engine tự phát triển, thay thế các thư viện chung bằng một surface được kiểm soát từ nguồn dữ liệu đến overlay.
 
-## Điều chúng tôi muốn tránh
+## Tính năng cốt lõi
 
-Không để người dùng phải đoán xem sản phẩm nào là gì. Không để một landing page đẹp nhưng không dẫn tới hành động. Và không để thị trường nghĩ rằng dữ liệu Việt Nam phải đi qua một chart engine chung chung.
+**Quản lý danh mục:**
+- NAV realtime, lãi/lỗ biến động theo phiên.
+- Analytics định lượng: Sharpe, Sortino, Max Drawdown, TWR, Volatility.
+- Phân bổ tài sản theo ngành, vốn hóa, loại tài sản.
 
-## Kết luận
+**Realtime Radar:**
+- Whale Alerts: phát hiện lệnh lớn (Smart Money) theo ngưỡng tùy chỉnh.
+- Market breadth và dòng tiền theo WebSocket.
+- Watchlist với cảnh báo giá tự động.
 
-Public site không phải phần phụ. Nó là phần giúp hệ sinh thái được hiểu đúng ngay từ lần chạm đầu tiên.
+**AI Advisory (Pro):**
+- Tổng hợp tin tức và biến động giá thành insight đầu tư.
+- Đánh giá sức khỏe danh mục theo hồ sơ rủi ro.
+
+## Stack kỹ thuật
+
+Hệ thống chạy trên Django 6.0.3 + Daphne ASGI + Django Channels cho lớp WebSocket, Celery + Redis cho pipeline realtime, Pandas cho xử lý dữ liệu, và React + TailwindCSS cho frontend. Dữ liệu thị trường được cấp qua thư viện `vnstock` — một fork nội bộ với các bản vá chưa merge vào upstream.
+
+## Mô hình Open Core
+
+Phần Community cung cấp công cụ tracking và chart nền tảng, có thể tự vận hành (self-hosted). Phần Pro tập trung vào intelligence layer: whale và dark-flow analytics, AI advisory, signal intelligence và hạ tầng throughput cao.
+
+Mặt tiền công khai này — site bạn đang đọc — là điểm chạm đầu tiên để người dùng hiểu đúng sản phẩm trước khi đăng ký hoặc tự host.

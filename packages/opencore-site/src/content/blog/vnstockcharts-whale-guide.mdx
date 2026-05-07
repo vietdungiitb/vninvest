@@ -1,21 +1,52 @@
-# VNStockCharts và whale flow trên biểu đồ
+# VNStockCharts: whale flow, CVD và biểu đồ theo ngữ cảnh phiên
 
-VNStockCharts là bộ công cụ chart tự phát triển để thay cho KLineCharts trong các workflow mà chúng tôi cần kiểm soát chặt hơn: whale bubbles, CVD, session truth và overlay logic.
+VNStockCharts là bộ chart engine được xây dựng riêng cho VNInvest, thay thế KLineCharts trên route `whale-alerts/:symbol`. Lý do không dùng thư viện chung: khi overlay whale marker hoặc CVD lệch ngữ cảnh phiên, người dùng sẽ đọc sai mật độ giao dịch — điều đó tệ hơn một empty state.
 
-## Điểm khác biệt
+## Whale Alerts là gì
 
-- Dữ liệu VN thật được hiển thị theo ngữ cảnh phiên giao dịch.
-- Whale markers và session summaries bám theo cùng một truth source.
-- Overlay có thể mở rộng mà không phá chart surface.
+Whale Alert là cơ chế phát hiện lệnh giao dịch lớn (Smart Money) trong phiên. Hệ thống theo dõi luồng khớp lệnh realtime và đánh dấu các lệnh vượt ngưỡng tùy chỉnh (mặc định 1 tỷ VNĐ) theo hai cấp:
+
+- 🦈 **Shark** — lệnh lớn, ngưỡng thấp hơn
+- 🐋 **Whale** — lệnh rất lớn, top 10% trong viewport hiện tại
+
+Icon được áp dụng cho **top 10% nến đang hiển thị trong viewport**, không phải toàn bộ dataset — đây là quyết định thiết kế quan trọng để tránh nhiễu khi zoom ra khung thời gian dài.
+
+## CVD — Cumulative Volume Delta
+
+CVD (Cumulative Volume Delta) đo lường chênh lệch lũy tiến giữa volume mua chủ động và bán chủ động trong phiên. CVD tăng khi bên mua chiếm ưu thế, CVD giảm khi áp lực bán mạnh hơn.
+
+Trong VNStockCharts, CVD được hiển thị ở pane riêng bên dưới candlestick, dùng chung trục X và cùng `selected-session` truth với tất cả overlay.
+
+## Kiến trúc pipeline realtime
+
+```
+vnstock API
+  → Celery worker (chu kỳ 5 giây)
+    → collector (gom tick + compute VWAP, whale threshold)
+      → Redis pub/sub
+        → Django Channels
+          → WebSocket
+            → useRealtimeFeed.js (hook duy nhất trên frontend)
+              → Dashboard, Watchlist, StockDetail
+```
+
+Toàn bộ surface chart đọc từ cùng một truth source — tránh tình trạng mỗi component gọi API riêng và lệch nhau vài giây.
+
+## Nguyên tắc thiết kế
+
+**Độ trung thực thị giác trước tiên.** Mọi lệnh trên ngưỡng phải được hiển thị đầy đủ — không dùng opacity hoặc ẩn bớt để "làm sạch" chart nếu điều đó sẽ sai cảm nhận mật độ giao dịch.
+
+**Session truth là anchor.** Tất cả overlay (whale bubble, advisory, CVD) đều bám vào `selected-session` của KLineChart. Khi người dùng đổi phiên, toàn bộ surface cập nhật đồng bộ.
+
+**Overlay mở rộng không phá surface.** Thêm overlay mới (ví dụ heatmap theo time bucket, Institutional Strength) không cần sửa lớp chart engine — chỉ cần mount vào đúng pane.
 
 ## Ví dụ sử dụng
 
 ```tsx
 <VNStockChart data={bars} symbol="VNM" timeframe="1d" locale="vi" theme="dark">
   <WhaleBubbleOverlay events={whaleEvents} />
+  <CVDPane data={cvdSeries} />
 </VNStockChart>
 ```
 
-## Vì sao không dùng demo chung chung
-
-Khi biểu đồ chỉ đẹp nhưng lệch ngữ cảnh phiên hoặc lệch bucket, người dùng sẽ đọc sai mật độ giao dịch. Điều đó tệ hơn một empty state.
+Bạn có thể xem chart thực tế tại trang **VNStockCharts** trên site này với dữ liệu live.
