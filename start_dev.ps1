@@ -10,12 +10,12 @@
     3. Đồng bộ nhóm mã thị trường (không seed dữ liệu demo)
     4. Chỉ seed demo khi truyền cờ -SeedDemo
 
-    Truy cập sau khi chạy:
-    - App:       http://localhost       (username: testuser   / password: Test@123456)
-      - Admin:     http://localhost/admin (username: admin      / password: admin123)
-      - API:       http://localhost:8000/api/
-      - Mailpit:   http://localhost:8025
-      - Backend log: docker compose logs -f backend
+        Truy cập sau khi chạy:
+        - App:       http://localhost       (username: testuser   / password: Test@123456)
+            - Admin:     http://localhost/admin (username: admin      / password: test@123456)
+            - API:       http://localhost:8000/api/
+            - Mailpit:   http://localhost:8025
+            - Backend log: docker compose logs -f backend
 
 .USAGE
     .\start_dev.ps1              # full build + up (không seed demo)

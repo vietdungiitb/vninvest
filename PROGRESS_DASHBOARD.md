@@ -1,3 +1,38 @@
+# ✅ AUDIT FILE LIST (2026-05-07-DEV-ADMIN-PASSWORD) — Dev admin password alignment
+
+Files changed:
+- start_dev.ps1 (MODIFIED - fix dev admin banner/password to test@123456)
+- module_tree_full.md (MODIFIED - regenerated after start_dev.ps1 change)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-07-DEV-ADMIN-PASSWORD)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-07-DEV-ADMIN-PASSWORD)
+
+Validation:
+- PASSED: `start_dev.ps1` banner now shows `admin / test@123456`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (890 modules)
+
+Status:
+- Dev bootstrap instructions now match the actual seed password.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-07-OPENCOR-SITE-IGNORE) — OpenCore Site package ignore hygiene
+
+Files changed:
+- packages/opencore-site/.gitignore (NEW - ignore .next, node_modules, and tsbuildinfo)
+- module_tree_full.md (MODIFIED - regenerated after package ignore update)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-07-OPENCOR-SITE-IGNORE)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-07-OPENCOR-SITE-IGNORE)
+
+Validation:
+- PASSED: `git check-ignore -v packages/opencore-site/.next/trace packages/opencore-site/node_modules/.bin/next packages/opencore-site/tsconfig.tsbuildinfo`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (890 modules)
+
+Status:
+- Build artifacts under packages/opencore-site are now ignored; only source/config files remain eligible for commit.
+- No runtime code behavior changed.
+
+---
+
 # ✅ AUDIT FILE LIST (2026-05-06-PAT-AUTH-FIX) — PAT Auth Login Endpoints — Dev Verified
 
 ## Dev Verification: 2026-05-06
@@ -18,6 +53,28 @@ Status: DEV VERIFIED — production sync pending user approval
 
 ---
 
+# ✅ AUDIT FILE LIST (2026-05-06-ABOUT-SITE) — OpenCore About Site / VNStockCharts demo stabilization
+
+Files changed:
+- packages/opencore-site/next.config.ts (MODIFIED)
+- packages/opencore-site/src/app/[locale]/layout.tsx (MODIFIED)
+- packages/opencore-site/src/app/[locale]/blog/page.tsx (MODIFIED)
+- packages/opencore-site/src/messages/en.json (MODIFIED)
+- packages/opencore-site/src/messages/vi.json (MODIFIED)
+- module_tree_full.md (MODIFIED)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation:
+- PASSED: `cd packages/opencore-site && npm run type-check`
+- PASSED: `cd packages/opencore-site && npm run build`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py`
+
+Status:
+- About site now builds successfully with VI/EN message catalogs populated.
+- Remaining follow-up is only the non-blocking webpack warning from the external VNStockCharts dist import.
+
+---
 # ✅ AUDIT FILE LIST (2026-05-04-SFI-DOCS) — SaaS Full Independence (Option B) — Documentation Pack
 
 Files changed (NEW):

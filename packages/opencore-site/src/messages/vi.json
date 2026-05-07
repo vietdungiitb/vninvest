@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "home": "Trang chủ",
+    "chart": "VNStockCharts",
+    "vnstock": "vnstock",
+    "pricing": "Bảng giá",
+    "blog": "Blog",
+    "legal": "Pháp lý",
+    "register": "Đăng ký",
+    "demo": "Xem demo"
+  },
+  "home": {
+    "eyebrow": "Hệ sinh thái công khai",
+    "badge": "Hệ sinh thái public",
+    "title": "Một mặt tiền duy nhất cho toàn bộ hệ sinh thái VNInvest",
+    "description": "Giới thiệu VNInvest, vnstock và VNStockCharts bằng một site công khai, đẹp, rõ, và đủ tin cậy để người mới bắt đầu ngay.",
+    "lead": "Giới thiệu VNInvest, vnstock và VNStockCharts bằng một site công khai, đẹp, rõ, và đủ tin cậy để người mới bắt đầu ngay.",
+    "primaryCta": "Dùng thử miễn phí",
+    "secondaryCta": "Xem bảng giá",
+    "productHeading": "Ba sản phẩm, một hệ sinh thái",
+    "featureHeading": "Tại sao site này tồn tại",
+    "featureTitle": "Trọng tâm hệ sinh thái",
+    "featureLead": "Không để người dùng tìm mãi mới biết hệ sinh thái đã có sẵn.",
+    "feature1": "Một đường vào công khai duy nhất cho VNInvest, vnstock và VNStockCharts.",
+    "feature2": "Trang đa ngôn ngữ với nội dung tiếng Việt và tiếng Anh.",
+    "feature3": "Sandbox Pyodide chạy trực tiếp trong trình duyệt để thử nhanh ý tưởng.",
+    "feature4": "Demo chart dùng chính engine VNStockCharts thật, không phải placeholder.",
+    "statsLabel": "Nền tảng công khai",
+    "statsValue": "VI / EN / Pyodide / VNStockCharts"
+  },
+  "products": {
+    "vinvestTitle": "VNInvest",
+    "vinvestText": "SaaS quản lý danh mục và robo-advisor cho thị trường Việt Nam.",
+    "vnstockTitle": "vnstock",
+    "vnstockText": "Python library truy xuất dữ liệu thị trường Việt Nam.",
+    "chartTitle": "VNStockCharts",
+    "chartText": "Bộ công cụ chart kỹ thuật tự phát triển, thay cho KLineCharts."
+  },
+  "chart": {
+    "badge": "Live demo",
+    "title": "VNStockCharts live demo",
+    "lead": "Render bằng chính engine VNStockCharts, không phải demo KLineCharts hay ảnh chụp màn hình.",
+    "symbolLabel": "Mã cổ phiếu",
+    "timeframeLabel": "Khung thời gian",
+    "refreshLabel": "Tự làm mới",
+    "sessionLabel": "Phiên hiện tại",
+    "volumeLabel": "Tổng khối lượng",
+    "whaleLabel": "Dấu cá mập",
+    "docsCta": "Xem tài liệu component",
+    "embedCta": "Lấy mã nhúng"
+  },
+  "playground": {
+    "badge": "Python sandbox",
+    "title": "Pyodide playground",
+    "lead": "Chạy Python ngay trên trình duyệt, không cần server execution.",
+    "run": "Chạy mã",
+    "reset": "Khôi phục mẫu",
+    "loading": "Đang tải Pyodide...",
+    "output": "Kết quả",
+    "example": "Ví dụ mẫu"
+  },
+  "pricing": {
+    "badge": "Bảng giá",
+    "title": "Chọn gói phù hợp với hành trình của bạn",
+    "lead": "Từ người tò mò đến đội giao dịch chuyên nghiệp, mỗi gói đều có chỗ đứng rõ ràng.",
+    "cta": "Đăng ký ngay",
+    "free": "Miễn phí",
+    "pro": "Pro",
+    "enterprise": "Enterprise"
+  },
+  "blog": {
+    "badge": "Blog",
+    "title": "Bài viết & hướng dẫn",
+    "lead": "Tài liệu ngắn gọn, thực dụng, có thể đọc ngay mà không cần hỏi lại.",
+    "readMore": "Đọc bài viết"
+  },
+  "legal": {
+    "badge": "Pháp lý",
+    "title": "Điều khoản và quyền riêng tư",
+    "lead": "Khung pháp lý công khai, ngắn gọn, rõ ràng.",
+    "terms": "Điều khoản sử dụng",
+    "privacy": "Chính sách quyền riêng tư"
+  },
+  "common": {
+    "siteName": "VNInvest",
+    "home": "Trang chủ",
+    "chart": "VNStockCharts",
+    "vnstock": "vnstock",
+    "pricing": "Bảng giá",
+    "blog": "Blog",
+    "legal": "Pháp lý",
+    "primaryCta": "Đăng ký",
+    "languageSwitchToVi": "Chuyển sang tiếng Việt",
+    "languageSwitchToEn": "Chuyển sang tiếng Anh",
+    "backHome": "Về trang chủ",
+    "learnMore": "Tìm hiểu thêm",
+    "open": "Mở",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép"
+  },
+  "seo": {
+    "siteName": "VNInvest",
+    "description": "About site của hệ sinh thái VNInvest, vnstock và VNStockCharts."
+  }
+}

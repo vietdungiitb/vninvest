@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "home": "Home",
+    "chart": "VNStockCharts",
+    "vnstock": "vnstock",
+    "pricing": "Pricing",
+    "blog": "Blog",
+    "legal": "Legal",
+    "register": "Register",
+    "demo": "View demo"
+  },
+  "home": {
+    "eyebrow": "Public ecosystem",
+    "badge": "Public ecosystem",
+    "title": "One front door for the full VNInvest ecosystem",
+    "description": "Present VNInvest, vnstock, and VNStockCharts in one public site that is clear, beautiful, and trustworthy enough for new users to start immediately.",
+    "lead": "Present VNInvest, vnstock, and VNStockCharts in one public site that is clear, beautiful, and trustworthy enough for new users to start immediately.",
+    "primaryCta": "Start free",
+    "secondaryCta": "See pricing",
+    "productHeading": "Three products, one ecosystem",
+    "featureHeading": "Why this site exists",
+    "featureTitle": "Ecosystem focus",
+    "featureLead": "Do not make people hunt for the ecosystem they already need.",
+    "feature1": "A single public path for VNInvest, vnstock, and VNStockCharts.",
+    "feature2": "Locale-aware pages with Vietnamese and English copy.",
+    "feature3": "A browser-based Pyodide sandbox for quick experiments.",
+    "feature4": "A custom chart demo that renders the real VNStockCharts engine.",
+    "statsLabel": "Public stack",
+    "statsValue": "VI / EN / Pyodide / VNStockCharts"
+  },
+  "products": {
+    "vinvestTitle": "VNInvest",
+    "vinvestText": "A portfolio tracker and robo-advisor SaaS for Vietnam.",
+    "vnstockTitle": "vnstock",
+    "vnstockText": "A Python library for Vietnam market data access.",
+    "chartTitle": "VNStockCharts",
+    "chartText": "A custom-built technical chart toolkit replacing KLineCharts."
+  },
+  "chart": {
+    "badge": "Live demo",
+    "title": "VNStockCharts live demo",
+    "lead": "Rendered by the VNStockCharts engine itself, not a KLineCharts placeholder or screenshot.",
+    "symbolLabel": "Symbol",
+    "timeframeLabel": "Timeframe",
+    "refreshLabel": "Auto refresh",
+    "sessionLabel": "Current session",
+    "volumeLabel": "Total volume",
+    "whaleLabel": "Whale markers",
+    "docsCta": "View component docs",
+    "embedCta": "Get embed code"
+  },
+  "playground": {
+    "badge": "Python sandbox",
+    "title": "Pyodide playground",
+    "lead": "Run Python directly in the browser, with no server-side execution.",
+    "run": "Run code",
+    "reset": "Reset sample",
+    "loading": "Loading Pyodide...",
+    "output": "Output",
+    "example": "Sample"
+  },
+  "pricing": {
+    "badge": "Pricing",
+    "title": "Choose the plan that matches your journey",
+    "lead": "From curiosity to professional workflows, every plan has a clear place.",
+    "cta": "Register now",
+    "free": "Free",
+    "pro": "Pro",
+    "enterprise": "Enterprise"
+  },
+  "blog": {
+    "badge": "Blog",
+    "title": "Guides and notes",
+    "lead": "Short, practical docs you can read without asking follow-up questions.",
+    "readMore": "Read article"
+  },
+  "legal": {
+    "badge": "Legal",
+    "title": "Terms and privacy",
+    "lead": "A public legal frame that is short and clear.",
+    "terms": "Terms of service",
+    "privacy": "Privacy policy"
+  },
+  "common": {
+    "siteName": "VNInvest",
+    "home": "Home",
+    "chart": "VNStockCharts",
+    "vnstock": "vnstock",
+    "pricing": "Pricing",
+    "blog": "Blog",
+    "legal": "Legal",
+    "primaryCta": "Register",
+    "languageSwitchToVi": "Switch to Vietnamese",
+    "languageSwitchToEn": "Switch to English",
+    "backHome": "Back home",
+    "learnMore": "Learn more",
+    "open": "Open",
+    "copy": "Copy",
+    "copied": "Copied"
+  },
+  "seo": {
+    "siteName": "VNInvest",
+    "description": "The public about site for the VNInvest, vnstock, and VNStockCharts ecosystem."
+  }
+}

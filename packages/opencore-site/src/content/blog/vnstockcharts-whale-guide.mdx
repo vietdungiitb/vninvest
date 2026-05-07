@@ -1,0 +1,21 @@
+# VNStockCharts và whale flow trên biểu đồ
+
+VNStockCharts là bộ công cụ chart tự phát triển để thay cho KLineCharts trong các workflow mà chúng tôi cần kiểm soát chặt hơn: whale bubbles, CVD, session truth và overlay logic.
+
+## Điểm khác biệt
+
+- Dữ liệu VN thật được hiển thị theo ngữ cảnh phiên giao dịch.
+- Whale markers và session summaries bám theo cùng một truth source.
+- Overlay có thể mở rộng mà không phá chart surface.
+
+## Ví dụ sử dụng
+
+```tsx
+<VNStockChart data={bars} symbol="VNM" timeframe="1d" locale="vi" theme="dark">
+  <WhaleBubbleOverlay events={whaleEvents} />
+</VNStockChart>
+```
+
+## Vì sao không dùng demo chung chung
+
+Khi biểu đồ chỉ đẹp nhưng lệch ngữ cảnh phiên hoặc lệch bucket, người dùng sẽ đọc sai mật độ giao dịch. Điều đó tệ hơn một empty state.

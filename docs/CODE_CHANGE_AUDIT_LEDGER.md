@@ -1,3 +1,71 @@
+# Entry 2026-05-07-DEV-ADMIN-PASSWORD - Dev admin password alignment
+
+Muc tieu:
+- Dong bo huong dan dev admin ve dung mat khau `admin / test@123456` trong script khoi dong local.
+- Giu cac file demo/test co admin123 khong bi anh huong.
+
+Danh sach tep thay doi:
+- start_dev.ps1 (MODIFIED - fix dev admin banner/password to test@123456)
+- module_tree_full.md (MODIFIED - regenerated after start_dev.ps1 change)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-07-DEV-ADMIN-PASSWORD)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-07-DEV-ADMIN-PASSWORD)
+
+Validation:
+- PASSED: `start_dev.ps1` banner now shows `admin / test@123456`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (890 modules)
+
+Residual risk:
+- Existing running dev sessions must rerun the bootstrap script to see the updated banner; the actual seed already uses `test@123456`.
+
+---
+
+# Entry 2026-05-07-OPENCOR-SITE-IGNORE - OpenCore Site package ignore hygiene
+
+Muc tieu:
+- Ignore build artifacts va local dependencies cho packages/opencore-site de git status chi con source/config can commit.
+- Dong bo module tree va ghi lai trang thai audit/progress.
+
+Danh sach tep thay doi:
+- packages/opencore-site/.gitignore (NEW - ignore .next, node_modules, and tsbuildinfo)
+- module_tree_full.md (MODIFIED - regenerated after package ignore update)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-07-OPENCOR-SITE-IGNORE)
+- PROGRESS_DASHBOARD.md (MODIFIED - add entry 2026-05-07-OPENCOR-SITE-IGNORE)
+
+Validation:
+- PASSED: `git check-ignore -v packages/opencore-site/.next/trace packages/opencore-site/node_modules/.bin/next packages/opencore-site/tsconfig.tsbuildinfo`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (890 modules)
+
+Residual risk:
+- Source/config files in packages/opencore-site are still untracked until the user stages them for commit; only generated artifacts are now suppressed.
+
+---
+
+# Entry 2026-05-06-ABOUT-SITE - OpenCore About Site + VNStockCharts demo stabilization
+
+Muc tieu:
+- Hoan tat build va i18n cho packages/opencore-site sau khi chuyen sang VNStockCharts demo.
+- Dong bo bo message VI/EN, module tree, va ghi lai trang thai audit/progress.
+
+Danh sach tep thay doi:
+- packages/opencore-site/next.config.ts (MODIFIED - bo typedRoutes de tranh Link type strictness)
+- packages/opencore-site/src/app/[locale]/layout.tsx (MODIFIED - load message JSON truc tiep theo locale)
+- packages/opencore-site/src/app/[locale]/blog/page.tsx (MODIFIED - doi blog link ve locale-aware string href)
+- packages/opencore-site/src/messages/en.json (MODIFIED - bo sung common/home keys)
+- packages/opencore-site/src/messages/vi.json (MODIFIED - bo sung common/home keys)
+- module_tree_full.md (MODIFIED - regenerated sau khi them packages/opencore-site)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-06-ABOUT-SITE)
+- PROGRESS_DASHBOARD.md (MODIFIED - add about-site progress entry)
+
+Validation:
+- PASSED: `cd packages/opencore-site && npm run type-check`
+- PASSED: `cd packages/opencore-site && npm run build`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (966 modules)
+- NOTE: Build completed with non-blocking webpack warnings from `react-stockcharts-master/dist/index.js` critical dependency extraction
+
+Residual risk:
+- External VNStockCharts dist bundle still emits webpack critical dependency warnings; build passes, but the bundle should be watched in later hardening.
+
+---
 # Entry 2026-05-04-SFI-docs - SaaS Full Independence (Option B) documentation bundle (12 docs)
 
 Muc tieu:

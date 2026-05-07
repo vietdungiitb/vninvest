@@ -1,0 +1,22 @@
+# vnstock quickstart cho nhà nghiên cứu dữ liệu
+
+`vnstock` là lớp công cụ Python để kéo dữ liệu thị trường Việt Nam vào notebook, script và workflow phân tích.
+
+## Cách dùng cơ bản
+
+```python
+from vnstock import *
+
+price = quote.history(symbol='VNM', start='2024-01-01', end='2024-03-01')
+print(price.head())
+```
+
+## Khi nào nên dùng
+
+- Khi muốn backtest nhanh.
+- Khi cần data source chuẩn cho nghiên cứu.
+- Khi muốn prototype một pipeline nội bộ mà không xây lại lớp truy cập dữ liệu từ đầu.
+
+## Lưu ý
+
+Dữ liệu thị trường luôn cần kiểm tra nguồn và timeframe. `vnstock` giúp bạn lấy nhanh, nhưng quyết định đầu tư vẫn cần đọc đúng ngữ cảnh.
