@@ -16,11 +16,11 @@ export function HeroSection() {
   const common = useTranslations('common');
 
   return (
-    <section className="container pb-10 pt-10 md:pb-16 md:pt-16">
-      <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:items-center">
+    <section className="container pb-12 pt-12 md:pb-20 md:pt-20">
+      <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
         <div className="space-y-6">
           <div className="badge">{t('eyebrow')}</div>
-          <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-white md:text-6xl">
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white md:text-5xl">
             <span className="gradient-text">{t('title')}</span>
           </h1>
           <p className="max-w-2xl text-base leading-8 text-slate-300 md:text-lg">{t('description')}</p>
