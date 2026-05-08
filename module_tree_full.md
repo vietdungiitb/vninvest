@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-08 10:06:35`
+Generated at: `2026-05-08 10:53:26`
 
 ## Summary
 
 - Total modules: 974
 - Python modules: 467
 - JS/TS modules: 507
-- Total classes: 716
+- Total classes: 718
 - Total functions: 2665
-- Total top-level variables: 4399
+- Total top-level variables: 4400
 
 ## Python Modules
 
@@ -3014,6 +3014,8 @@ Generated at: `2026-05-08 10:06:35`
 
 - Classes:
   - `CompatAdvisoryView` -> methods: `get`
+  - `CompatPublicLegalPagesView` -> methods: `get`
+  - `CompatTrackedSymbolsView` -> methods: `get`
   - `CompatWhaleAlertsView` -> methods: `get`
   - `CompatWhaleSummaryView` -> methods: `get`
 - Functions:
@@ -3818,7 +3820,7 @@ Generated at: `2026-05-08 10:06:35`
 - Functions:
   - `PortfolioProvider`, `bootstrap`, `usePortfolio`
 - Top-level variables:
-  - `PortfolioContext`, `activeRefreshToken`, `authFailed`, `cancelled`, `contextValue`, `createPortfolio`, `createSubAccount`, `ctx`, `deletePortfolio`, `deleteSubAccount`, `fetchPortfolios`, `hasInitialTokens`, `initialAccessToken`, `initialRefreshToken`, `login`, `logout`, `mePayload`, `next`, `nextRefresh`, `ok`, `refreshAccessToken`, `register`, `res`, `resendVerification`, `response`, `saveTokens`, `syncAuthState`, `updatePortfolio`, `updateSubAccount`, `updateUserConfig`
+  - `PortfolioContext`, `activeRefreshToken`, `authFailed`, `cancelled`, `contextValue`, `createPortfolio`, `createSubAccount`, `ctx`, `deletePortfolio`, `deleteSubAccount`, `fetchPortfolios`, `hasInitialTokens`, `initialAccessToken`, `initialRefreshToken`, `login`, `logout`, `mePayload`, `next`, `nextPortfolios`, `nextRefresh`, `ok`, `refreshAccessToken`, `register`, `res`, `resendVerification`, `response`, `saveTokens`, `syncAuthState`, `updatePortfolio`, `updateSubAccount`, `updateUserConfig`
 
 ### `frontend/src/context/RealtimeContext.jsx`
 

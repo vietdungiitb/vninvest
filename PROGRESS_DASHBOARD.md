@@ -1,3 +1,66 @@
+# ✅ AUDIT FILE LIST (2026-05-08-BOOTSTRAP-SHIM-FIX) — Public legal pages and tracked-symbol bootstrap shims
+
+Files changed:
+- packages/core/backend/src/vninvest_core/compat_portfolio.py (MODIFIED - add CompatPublicLegalPagesView and CompatTrackedSymbolsView shims)
+- module_tree_full.md (MODIFIED - regenerated after bootstrap shim fix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` clean on `packages/core/backend/src/vninvest_core/compat_portfolio.py`
+- PASSED: Django URL resolver on `'/api/public/legal-pages/'` -> `CompatPublicLegalPagesView`
+- PASSED: Django URL resolver on `'/api/stock-management/tracked-symbols/'` -> `CompatTrackedSymbolsView`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (974 modules)
+- PASSED: production host pulled the rebuilt enterprise/latest images, the live container resolved the shim endpoints, and the browser reload showed no 4xx/5xx responses or console errors
+
+Status:
+- Bootstrap proxy noise is cleared in production.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-PORTFOLIO-BOOTSTRAP-ROUTE-FIX) — Native portfolio bootstrap route wiring
+
+Files changed:
+- packages/core/backend/src/vninvest_core/compat_portfolio.py (MODIFIED - route /api/portfolio/portfolios/* to user_workspace native views)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - accept list envelopes from native portfolio API)
+- module_tree_full.md (MODIFIED - regenerated after portfolio route fix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` clean on changed frontend/backend files
+- PASSED: Django URL resolver on `'/api/portfolio/portfolios/'`, `'/api/portfolio/portfolios/1/'`, `'/api/portfolio/portfolios/1/transactions/'` resolved to native user_workspace views
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (974 modules)
+- PASSED: `git push origin dev` and `git push origin HEAD:enterprise` queued GHCR rebuilds
+- PASSED: production browser reload now returns clean responses with no console errors after the later bootstrap shim deploy
+
+Status:
+- Production verified after the later shim deploy.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-CORE-SERVICE-ACCOUNT-FIX) — Core tenant service-account list/create recovery
+
+Files changed:
+- frontend/src/api/client.js (MODIFIED - normalize tenant list responses, map core fields to legacy tenant shape, and send core write payloads with scopes)
+- packages/core/backend/src/identity_access/views.py (MODIFIED - use CoreCursorPagination for service accounts and PATs)
+- packages/core/backend/tests/test_identity_access.py (MODIFIED - regression coverage for list/create)
+- module_tree_full.md (MODIFIED - regenerated after service-account fix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test tests.test_identity_access --keepdb` (10 tests)
+- PASSED: `cd frontend && npm run build`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (974 modules)
+- REPRODUCED/FIXED: `GET /api/core/v1/partner/service-accounts/` 500 was caused by CursorPagination ordering on missing `created`; backend now orders by `created_at`, frontend maps core `service_account_id` / `scopes` / `pat_id` fields back to the legacy page contract, and write payloads now send `scopes` so the selection is persisted
+- PASSED: Live browser verification on https://vninvest.edusuccess.vn/tenant-admin/service-accounts showed the form and list, and a temporary service account was created then removed again
+
+Status:
+- Production verified; temporary test row cleaned up.
+
+---
+
 # ✅ AUDIT FILE LIST (2026-05-07-OPENCORE-UI-UPGRADE-DOCS) — OpenCore Site UI Upgrade documentation bundle
 
 Files changed:
