@@ -172,6 +172,24 @@ if not DEBUG and not CORS_ALLOWED_ORIGINS:
         "Set CORS_ALLOWED_ORIGINS env var (comma-separated origins)."
     )
 
+# CSRF origin checks must know the public host(s) in production, but local dev
+# should work out of the box on localhost without extra env wiring.
+_csrf_trusted_origins_default = (
+    'http://localhost,http://127.0.0.1,'
+    'http://localhost:80,http://127.0.0.1:80,'
+    'http://localhost:3000,http://127.0.0.1:3000,'
+    'http://localhost:3001,http://127.0.0.1:3001,'
+    'http://localhost:8080,http://127.0.0.1:8080'
+) if DEBUG else ''
+_csrf_trusted_origins_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', _csrf_trusted_origins_default)
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_trusted_origins_raw.split(',') if o.strip()]
+
+if not DEBUG and not CSRF_TRUSTED_ORIGINS:
+    raise ImproperlyConfigured(
+        "CSRF_TRUSTED_ORIGINS must be set in production. "
+        "Set CSRF_TRUSTED_ORIGINS env var (comma-separated origins)."
+    )
+
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
 
 # SM-P2.4: Django cache layer using Redis.

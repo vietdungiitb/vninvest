@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-08 14:48:46`
+Generated at: `2026-05-08 17:00:23`
 
 ## Summary
 
-- Total modules: 979
-- Python modules: 472
+- Total modules: 989
+- Python modules: 482
 - JS/TS modules: 507
-- Total classes: 722
-- Total functions: 2657
-- Total top-level variables: 4406
+- Total classes: 773
+- Total functions: 2660
+- Total top-level variables: 4410
 
 ## Python Modules
 
@@ -2437,6 +2437,14 @@ Generated at: `2026-05-08 14:48:46`
 - Top-level variables:
   - `default_app_config`
 
+### `packages/core/backend/src/advisory/admin.py`
+
+- Classes:
+  - `AdvisoryComponentInline`
+  - `AdvisoryRecordAdmin`
+  - `AdvisorySessionAdmin`
+  - `SystemAISettingsAdmin`
+
 ### `packages/core/backend/src/advisory/apps.py`
 
 - Classes:
@@ -2486,6 +2494,13 @@ Generated at: `2026-05-08 14:48:46`
 
 - Top-level variables:
   - `default_app_config`
+
+### `packages/core/backend/src/commercial/admin.py`
+
+- Classes:
+  - `InvoiceAdmin`
+  - `QuotaRecordAdmin`
+  - `SubscriptionAdmin`
 
 ### `packages/core/backend/src/commercial/apps.py`
 
@@ -2569,6 +2584,16 @@ Generated at: `2026-05-08 14:48:46`
 
 - Top-level variables:
   - `default_app_config`
+
+### `packages/core/backend/src/identity_access/admin.py`
+
+- Classes:
+  - `CorePATCredentialAdmin`
+  - `CorePATCredentialInline`
+  - `CoreServiceAccountAdmin`
+  - `CoreServiceAccountInline`
+  - `CoreTenantAdmin`
+  - `UserProfileAdmin`
 
 ### `packages/core/backend/src/identity_access/api_urls.py`
 
@@ -2684,6 +2709,13 @@ Generated at: `2026-05-08 14:48:46`
 - Top-level variables:
   - `default_app_config`
 
+### `packages/core/backend/src/market_data/admin.py`
+
+- Classes:
+  - `DailyPriceAdmin`
+  - `StockProfileAdmin`
+  - `VnstockRuntimeConfigAdmin`
+
 ### `packages/core/backend/src/market_data/apps.py`
 
 - Classes:
@@ -2733,6 +2765,12 @@ Generated at: `2026-05-08 14:48:46`
 
 - Top-level variables:
   - `default_app_config`
+
+### `packages/core/backend/src/market_serving/admin.py`
+
+- Classes:
+  - `SessionFactsAdmin`
+  - `SymbolSnapshotAdmin`
 
 ### `packages/core/backend/src/market_serving/api_urls.py`
 
@@ -2794,6 +2832,12 @@ Generated at: `2026-05-08 14:48:46`
 - Top-level variables:
   - `default_app_config`
 
+### `packages/core/backend/src/ops_audit/admin.py`
+
+- Classes:
+  - `AuditEventAdmin` -> methods: `has_add_permission`, `has_change_permission`
+  - `RequestTraceAdmin` -> methods: `has_add_permission`, `has_change_permission`
+
 ### `packages/core/backend/src/ops_audit/apps.py`
 
 - Classes:
@@ -2845,6 +2889,14 @@ Generated at: `2026-05-08 14:48:46`
 
 - Top-level variables:
   - `default_app_config`
+
+### `packages/core/backend/src/signal_intelligence/admin.py`
+
+- Classes:
+  - `OrderFlowEventAdmin`
+  - `UnifiedAlertAdmin`
+  - `WhaleAlertCanonicalAdmin`
+  - `WhaleAlertCanonicalInline`
 
 ### `packages/core/backend/src/signal_intelligence/admin_views.py`
 
@@ -2922,6 +2974,16 @@ Generated at: `2026-05-08 14:48:46`
 
 - Top-level variables:
   - `default_app_config`
+
+### `packages/core/backend/src/user_workspace/admin.py`
+
+- Classes:
+  - `PortfolioAdmin`
+  - `TransactionAdmin`
+  - `TransactionInline`
+  - `WatchlistAdmin`
+  - `WatchlistItemAdmin`
+  - `WatchlistItemInline`
 
 ### `packages/core/backend/src/user_workspace/apps.py`
 
@@ -3012,6 +3074,38 @@ Generated at: `2026-05-08 14:48:46`
 - Top-level variables:
   - `app`
 
+### `packages/core/backend/src/vninvest_core/compat_urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
+
+### `packages/core/backend/src/vninvest_core/compat_views.py`
+
+- Classes:
+  - `AdminOpsRuntimeKPIView` -> methods: `get`
+  - `AdminOpsStatsView` -> methods: `get`
+  - `AdminOpsStubActionView` -> methods: `get`, `post`, `put`
+  - `AdminOpsSystemAiSettingsView` -> methods: `get`, `put`
+  - `AdminOpsVnstockBenchmarkView` -> methods: `get`, `post`
+  - `AdminOpsVnstockConfigChangelogView` -> methods: `get`
+  - `AdminOpsVnstockConfigCurrentView` -> methods: `get`, `patch`
+  - `GenericEmptyListView` -> methods: `get`, `post`
+  - `GenericEmptyStaffView` -> methods: `get`, `post`, `put`
+  - `LegacyWatchlistGroupDetailView` -> methods: `_get`, `delete`, `get`, `patch`
+  - `LegacyWatchlistGroupListView` -> methods: `get`, `post`
+  - `LegacyWatchlistItemCreateView` -> methods: `post`
+  - `LegacyWatchlistItemDeleteView` -> methods: `delete`
+  - `PortfolioAnalyticsStubView` -> methods: `get`, `post`
+  - `PortfolioListAnalyticsStubView` -> methods: `get`, `post`
+  - `PortfolioUserConfigView` -> methods: `_get_profile`, `get`, `put`
+  - `PriceAlertDetailView` -> methods: `delete`, `patch`
+  - `PriceAlertsView` -> methods: `get`, `post`
+  - `StockManagementGroupsView` -> methods: `get`
+  - `StockManagementStubView` -> methods: `get`, `post`
+  - `TrackedSymbolsView` -> methods: `get`, `post`
+- Functions:
+  - `_empty_list`, `_empty_paginated`
+
 ### `packages/core/backend/src/vninvest_core/contracts/__init__.py`
 
 - Top-level variables:
@@ -3054,7 +3148,7 @@ Generated at: `2026-05-08 14:48:46`
 ### `packages/core/backend/src/vninvest_core/settings.py`
 
 - Top-level variables:
-  - `ADVISORY_TOKEN_BUDGET`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `BASE_DIR`, `CACHES`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYERS`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`, `DATABASES`, `DATABASE_ROUTERS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST_USER`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `INSTALLED_APPS`, `LANGUAGE_CODE`, `LEGACY_BACKEND_URL`, `LOGGING`, `MIDDLEWARE`, `OPENAI_API_KEY`, `OPENAI_DEFAULT_MODEL`, `REDIS_URL`, `REST_FRAMEWORK`, `ROOT_URLCONF`, `SECRET_KEY`, `SECURE_PROXY_SSL_HEADER`, `STATIC_ROOT`, `STATIC_URL`, `TEMPLATES`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `WSGI_APPLICATION`, `_allowed_hosts_raw`, `_cors_origins_default`, `_cors_origins_raw`, `_legacy_db_url`, `_redis_url`, `_secret_key_default`, `_sentry_dsn`
+  - `ADVISORY_TOKEN_BUDGET`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `BASE_DIR`, `CACHES`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYERS`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DATABASE_ROUTERS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST_USER`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `INSTALLED_APPS`, `LANGUAGE_CODE`, `LOGGING`, `MIDDLEWARE`, `OPENAI_API_KEY`, `OPENAI_DEFAULT_MODEL`, `REDIS_URL`, `REST_FRAMEWORK`, `ROOT_URLCONF`, `SECRET_KEY`, `SECURE_PROXY_SSL_HEADER`, `STATIC_ROOT`, `STATIC_URL`, `TEMPLATES`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `WSGI_APPLICATION`, `_allowed_hosts_raw`, `_cors_origins_default`, `_cors_origins_raw`, `_csrf_trusted_origins_default`, `_csrf_trusted_origins_raw`, `_legacy_db_url`, `_redis_url`, `_secret_key_default`, `_sentry_dsn`
 
 ### `packages/core/backend/src/vninvest_core/stub_heartbeat.py`
 
@@ -4189,7 +4283,7 @@ Generated at: `2026-05-08 14:48:46`
 ### `frontend/src/pages/modern/ModernDashboard.jsx`
 
 - Functions:
-  - `SidebarPanelFallback`, `buildFallbackSparkline`, `normalizeSymbol`, `scheduleAuxFetch`
+  - `SidebarPanelFallback`, `buildFallbackSparkline`, `normalizeSymbol`, `scheduleAuxFetch`, `toArr`
 - Top-level variables:
   - `AIAdvisorAlertPanel`, `ModernSidebar`, `analyticsResult`, `avgPositionSize`, `base`, `baseSymbolUniverse`, `bulkResp`, `bulkSymbols`, `changePct`, `clearDeferredAuxFetch`, `cp`, `current`, `deferredAuxIdleRef`, `deferredAuxTimerRef`, `delta`, `digestFetchInFlightRef`, `digestResp`, `fallbackResp`, `fetchData`, `fetchRequestTokenRef`, `heatmapData`, `held`, `holdingsMap`, `industry`, `liveHoldings`, `loadAuxiliaryDashboardData`, `monitoredSymbols`, `nextHoldings`, `nextTracked`, `nextWatchlistGroups`, `nominalSize`, `prev`, `quote`, `realtimeMarketBreadth`, `requestPortfolioDigest`, `requestToken`, `results`, `sparkline24`, `symbol`, `symbolSet`, `symbolUniverse`, `toggleSeverityFilterFromSummary`, `totalHeldValue`, `trackedInfo`, `trackedMap`, `trackedSymbolNames`, `unreadUnifiedCount`
 
@@ -4346,7 +4440,7 @@ Generated at: `2026-05-08 14:48:46`
 - Functions:
   - `PctCell`, `activeGroupSymbols`, `formatPrice`, `handleAddAllTrackedFromGroup`, `handleAddTracked`, `handleAddTrackedFromGroup`, `handleBulkClearTrackedThreshold`, `handleBulkSetTrackedThreshold`, `handleCancelTrackedThresholdEdit`, `handleCreatePriceAlert`, `handleDeletePriceAlert`, `handleDeleteTracked`, `handleRemoveAllTrackedFromGroup`, `handleSaveTrackedThreshold`, `handleSeed`, `handleStartTrackedThresholdEdit`, `handleSyncStockProfile`, `handleTogglePriceAlert`, `safeDate`, `safeNumber`, `safeString`, `scoreDate`, `scoreNumber`, `scoreThreshold`
 - Top-level variables:
-  - `MAX_WATCHLIST_RT_SYMBOLS`, `SIDEBAR_PAGE_SIZE`, `activeDirection`, `activeGroup`, `activeGroupItems`, `activeGroupTrackedCount`, `activeGroupTrackedItems`, `activeGroupUntrackedCount`, `activeKey`, `ad`, `ak`, `alertSymbols`, `allRealtimeSymbols`, `buf`, `clearSyncCooldownTimer`, `compare`, `cooldownMs`, `cooldownSeconds`, `currentPrice`, `downCount`, `dt`, `eventThresholdMillion`, `eventThresholdVnd`, `fetchPriceAlerts`, `fetchTracked`, `filteredActiveGroupItems`, `filteredByDataActiveGroupItems`, `filteredByDataTrackedSymbolsWithRealtime`, `filteredTrackedSymbolsWithRealtime`, `getGroupSortIndicator`, `getSparklinePrices`, `getTrackedSortIndicator`, `group`, `groupCurrentPage`, `groupStats`, `groupTotalPages`, `groupsWithRealtime`, `handleMarkPriceAlertTriggered`, `handleQuickCreatePriceAlert`, `handleSync`, `inCooldown`, `initial`, `isActive`, `isDown`, `isUp`, `justAddedSymbol`, `keyword`, `lastTriggeredAt`, `latestTriggeredPriceAlert`, `loadGroups`, `navigate`, `next`, `nextValue`, `normalized`, `normalizedPrev`, `normalizedSymbol`, `normalizedThreshold`, `now`, `openStockWorkspace`, `pagedActiveGroupItems`, `pagedGroups`, `pagedTrackedSymbolsWithRealtime`, `parsed`, `parsedThreshold`, `payload`, `prevDir`, `prevKey`, `price`, `priceAlertConditionLabels`, `priceAlertsWithRealtime`, `priceHistoryRef`, `realtimeLabels`, `res`, `retryAfter`, `rows`, `s`, `searchedActiveGroupItems`, `searchedTrackedSymbolsWithRealtime`, `shouldAutoClearMessage`, `si`, `sortedActiveGroupItems`, `sortedTrackedSymbolsWithRealtime`, `splitIndex`, `start`, `startSyncCooldown`, `strategyFilteredTracked`, `symbolsToAdd`, `syncCooldownIntervalRef`, `targetPrice`, `targets`, `thresholdInUseMillion`, `thresholdValue`, `toggleGroupSort`, `toggleTrackedSort`, `totalSidebarPages`, `tracked`, `trackedCurrentPage`, `trackedItem`, `trackedStats`, `trackedSymbolMap`, `trackedSymbolSet`, `trackedSymbolsWithRealtime`, `trackedTotalPages`, `trackedWithOverrideCount`, `trackedWithUserDefaultCount`, `triggeringAlertIdsRef`, `trimmed`, `typeLabels`, `upCount`, `updatedMap`, `updatedRows`, `useSymbolOverride`, `userThresholdMillion`
+  - `MAX_WATCHLIST_RT_SYMBOLS`, `SIDEBAR_PAGE_SIZE`, `activeDirection`, `activeGroup`, `activeGroupItems`, `activeGroupTrackedCount`, `activeGroupTrackedItems`, `activeGroupUntrackedCount`, `activeKey`, `ad`, `ak`, `alertSymbols`, `allRealtimeSymbols`, `buf`, `clearSyncCooldownTimer`, `compare`, `cooldownMs`, `cooldownSeconds`, `currentPrice`, `d`, `downCount`, `dt`, `eventThresholdMillion`, `eventThresholdVnd`, `fetchPriceAlerts`, `fetchTracked`, `filteredActiveGroupItems`, `filteredByDataActiveGroupItems`, `filteredByDataTrackedSymbolsWithRealtime`, `filteredTrackedSymbolsWithRealtime`, `getGroupSortIndicator`, `getSparklinePrices`, `getTrackedSortIndicator`, `group`, `groupCurrentPage`, `groupStats`, `groupTotalPages`, `groupsWithRealtime`, `handleMarkPriceAlertTriggered`, `handleQuickCreatePriceAlert`, `handleSync`, `inCooldown`, `initial`, `isActive`, `isDown`, `isUp`, `justAddedSymbol`, `keyword`, `lastTriggeredAt`, `latestTriggeredPriceAlert`, `loadGroups`, `navigate`, `next`, `nextValue`, `normalized`, `normalizedPrev`, `normalizedSymbol`, `normalizedThreshold`, `now`, `openStockWorkspace`, `pagedActiveGroupItems`, `pagedGroups`, `pagedTrackedSymbolsWithRealtime`, `parsed`, `parsedThreshold`, `payload`, `prevDir`, `prevKey`, `price`, `priceAlertConditionLabels`, `priceAlertsWithRealtime`, `priceHistoryRef`, `realtimeLabels`, `res`, `retryAfter`, `rows`, `s`, `searchedActiveGroupItems`, `searchedTrackedSymbolsWithRealtime`, `shouldAutoClearMessage`, `si`, `sortedActiveGroupItems`, `sortedTrackedSymbolsWithRealtime`, `splitIndex`, `start`, `startSyncCooldown`, `strategyFilteredTracked`, `symbolsToAdd`, `syncCooldownIntervalRef`, `targetPrice`, `targets`, `thresholdInUseMillion`, `thresholdValue`, `toggleGroupSort`, `toggleTrackedSort`, `totalSidebarPages`, `tracked`, `trackedCurrentPage`, `trackedItem`, `trackedStats`, `trackedSymbolMap`, `trackedSymbolSet`, `trackedSymbolsWithRealtime`, `trackedTotalPages`, `trackedWithOverrideCount`, `trackedWithUserDefaultCount`, `triggeringAlertIdsRef`, `trimmed`, `typeLabels`, `upCount`, `updatedMap`, `updatedRows`, `useSymbolOverride`, `userThresholdMillion`
 
 ### `frontend/src/pages/WatchlistShellHost.jsx`
 

@@ -1,3 +1,62 @@
+# ✅ AUDIT FILE LIST (2026-05-08-LOCALHOST-ADMIN-CSRF-ORIGINS) — Fix localhost admin login CSRF trust
+
+Files changed:
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - add env-driven `CSRF_TRUSTED_ORIGINS` with localhost dev defaults)
+- module_tree_full.md (MODIFIED - regenerated after settings update; top-level variable count changed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: Browser POST to `http://localhost/admin/login/?next=/admin/` with `admin` / `Admin@dev2026` now redirects to `/admin/` instead of CSRF 403
+- PASSED: `docker ps` shows `vninvest-dev-core-api` healthy after restart
+- PASSED: `& "c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` -> `module_tree_full.md` regenerated (989 modules)
+
+Status:
+- Localhost admin login now works end-to-end on the dev stack.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-ADMIN-LOGIN-CSRF-FIX) — Fix admin login CSRF behind proxy
+
+Files changed:
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - trust `X-Forwarded-Proto` and `X-Forwarded-Host` for secure CSRF/admin login behind proxy)
+- packages/core/backend/Dockerfile (MODIFIED - normalize `entrypoint.sh` CRLF during image build so Linux runtime can execute it reliably)
+- module_tree_full.md (MODIFIED - regenerated after settings/Dockerfile update)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `docker build --no-cache --pull -f packages/core/backend/Dockerfile -t ghcr.io/vietdungiitb/vninvest-core-api:latest packages/core/backend`
+- PASSED: `docker run --rm -e DJANGO_DEBUG=true -e DJANGO_ALLOWED_HOSTS=localhost -e CORS_ALLOWED_ORIGINS=http://localhost ghcr.io/vietdungiitb/vninvest-core-api:latest api` -> migrations + collectstatic + gunicorn started cleanly
+- PASSED: `curl -sSI https://vninvest.edusuccess.vn/admin/` -> `HTTP/2 302` to `/admin/login/?next=/admin/`
+- PASSED: Browser POST to admin login with dummy credentials -> normal invalid-credentials state, not CSRF 403
+- PASSED: `& "c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` -> `module_tree_full.md` regenerated (979 modules)
+
+Status:
+- Admin login is now healthy behind the reverse proxy; the previous CSRF 403 is gone.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-ADMIN-ROUTE-RESTORATION) — Restore /admin/ in core-api native runtime
+
+Files changed:
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - add admin/static/template prerequisites)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount `admin.site.urls`)
+- packages/core/backend/src/vninvest_core/wsgi.py (MODIFIED - wrap WSGI app with `StaticFilesHandler`)
+- packages/core/backend/tests/test_admin_route.py (ADDED - regression tests for `/admin/` redirect and login page)
+- module_tree_full.md (MODIFIED - regenerated after admin route restoration)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_admin_route --keepdb` -> 2 tests passed
+- PASSED: `& "c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (979 modules)
+
+Status:
+- `/admin/` is restored in core-api and the route regression slice is green.
+
+---
+
 # ✅ AUDIT FILE LIST (2026-05-08-COMPOSE-LEGACY-HOOK-REMOVAL) — Remove legacy env hooks from compose files
 
 Files changed:
