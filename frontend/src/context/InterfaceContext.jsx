@@ -4,9 +4,9 @@ const InterfaceContext = createContext();
 
 export const InterfaceProvider = ({ children }) => {
   const [uiMode, setUiMode] = useState(() => {
-    // Check localStorage for saved preference
+    // Check localStorage for saved preference; default to modern for production.
     const saved = localStorage.getItem('vninvest_ui_pref');
-    return saved === 'modern' ? 'modern' : 'legacy';
+    return saved === 'legacy' ? 'legacy' : 'modern';
   });
   const [modernLeftSidebarOpen, setModernLeftSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('vninvest_modern_left_sidebar_open');
