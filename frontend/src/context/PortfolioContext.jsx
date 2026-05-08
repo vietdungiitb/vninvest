@@ -186,9 +186,16 @@ export function PortfolioProvider({ children }) {
       setLoading(true);
       try {
         const res = await getPortfolios();
-        setPortfolios(res.data);
-        if (res.data.length > 0) {
-          setActivePortfolioId((prev) => prev || res.data[0].id);
+        const nextPortfolios = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.results)
+            ? res.data.results
+            : Array.isArray(res.data?.data)
+              ? res.data.data
+              : [];
+        setPortfolios(nextPortfolios);
+        if (nextPortfolios.length > 0) {
+          setActivePortfolioId((prev) => prev || nextPortfolios[0].id);
         }
       } catch (err) {
         if (isRequestCanceled(err)) {

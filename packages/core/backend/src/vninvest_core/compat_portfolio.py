@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from identity_access.authentication import CorePATAuthentication
+from user_workspace import views as workspace_views
 
 
 _PORTFOLIO_STORE = {}
@@ -99,9 +100,13 @@ class CompatAdvisoryView(APIView):
 
 
 # URL patterns (mounted at /api/ in vninvest_core/urls.py)
-# NOTE: portfolio/portfolios/ intentionally omitted — falls through to legacy_proxy_view
-# which forwards to backend:8000 where the real Portfolio ORM data lives.
 urlpatterns = [
+    path('portfolio/portfolios/', workspace_views.PortfolioListCreateView.as_view(), name='compat-portfolio-list'),
+    path('portfolio/portfolios', workspace_views.PortfolioListCreateView.as_view(), name='compat-portfolio-list-noslash'),
+    path('portfolio/portfolios/<int:portfolio_id>/', workspace_views.PortfolioDetailView.as_view(), name='compat-portfolio-detail'),
+    path('portfolio/portfolios/<int:portfolio_id>', workspace_views.PortfolioDetailView.as_view(), name='compat-portfolio-detail-noslash'),
+    path('portfolio/portfolios/<int:portfolio_id>/transactions/', workspace_views.TransactionListCreateView.as_view(), name='compat-portfolio-transactions'),
+    path('portfolio/portfolios/<int:portfolio_id>/transactions', workspace_views.TransactionListCreateView.as_view(), name='compat-portfolio-transactions-noslash'),
     path('whale-alerts/', CompatWhaleAlertsView.as_view(), name='compat-whale-alerts'),
     path('whale-summary/', CompatWhaleSummaryView.as_view(), name='compat-whale-summary'),
     path('advisory/<str:symbol>/', CompatAdvisoryView.as_view(), name='compat-advisory'),
