@@ -38,6 +38,7 @@ COPY --from=builder /install /usr/local
 
 # Copy application source
 COPY src/ /app/src/
+COPY manage.py /app/src/manage.py
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
