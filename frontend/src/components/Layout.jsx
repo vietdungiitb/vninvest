@@ -36,7 +36,7 @@ export default function Layout() {
       {uiMode !== 'modern' && <Sidebar />}
       {uiMode === 'modern' && (
         <div
-          className={`hidden shrink-0 overflow-hidden transition-[width] duration-300 xl:block ${
+          className={`shrink-0 overflow-hidden transition-[width] duration-300 ${
             modernLeftSidebarOpen ? 'w-[260px] border-r border-slate-800' : 'w-0 border-r-0'
           }`}
         >
