@@ -36,6 +36,9 @@ frontend/.env.*.local
 .env
 .env.local
 .env.*.local
+.env.production
+.env.backend.production
+.env.saas-prod
 
 # ── Node / React ─────────────────────────────────────────────────────────────
 frontend/node_modules/
