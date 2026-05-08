@@ -96,12 +96,11 @@ export default function App() {
                 <Route path="reset-password" element={<ResetPassword />} />
                 <Route path="/" element={<ProtectedLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
-                  <Route
-                    path="dashboard"
-                    element={(
-                      packageShellHostEnabled ? <DashboardShellHost /> : <Dashboard />
-                    )}
-                  />
+                  {/* /dashboard always uses ModernDashboard dispatcher — DashboardShellHost only at /dashboard/shell */}
+                  <Route path="dashboard" element={<Dashboard />} />
+                  {packageShellHostEnabled ? (
+                    <Route path="dashboard/shell" element={<DashboardShellHost />} />
+                  ) : null}
                   <Route path="upgrade" element={<Upgrade />} />
                   <Route path="stocks/:symbol" element={<StockDetail />} />
                   <Route
