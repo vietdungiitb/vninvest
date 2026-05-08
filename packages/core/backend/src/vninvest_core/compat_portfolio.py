@@ -81,6 +81,18 @@ class CompatWhaleSummaryView(APIView):
             qs = qs.filter(symbol=symbol.upper())
         return Response({'results': UnifiedAlertSerializer(qs[:50], many=True).data})
 
+class CompatPublicLegalPagesView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response({'results': []})
+
+class CompatTrackedSymbolsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response([])
+
 
 class CompatAdvisoryView(APIView):
     """GET /api/advisory/<symbol>/ → latest advisory from core advisory domain."""
@@ -110,5 +122,7 @@ urlpatterns = [
     path('whale-alerts/', CompatWhaleAlertsView.as_view(), name='compat-whale-alerts'),
     path('whale-summary/', CompatWhaleSummaryView.as_view(), name='compat-whale-summary'),
     path('advisory/<str:symbol>/', CompatAdvisoryView.as_view(), name='compat-advisory'),
+    path('public/legal-pages/', CompatPublicLegalPagesView.as_view(), name='compat-public-legal-pages'),
+    path('stock-management/tracked-symbols/', CompatTrackedSymbolsView.as_view(), name='compat-tracked-symbols'),
 ]
 
