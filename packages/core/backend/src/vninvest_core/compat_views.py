@@ -189,8 +189,19 @@ class StockManagementStubView(APIView):
 # Portfolio-compat stubs for complex analytics not yet migrated
 # ---------------------------------------------------------------------------
 
+class PortfolioListAnalyticsStubView(APIView):
+    """Stub for portfolio list endpoints (holdings, technicals) not yet migrated."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, **kwargs):
+        return _empty_list()
+
+    def post(self, request, **kwargs):
+        return Response({})
+
+
 class PortfolioAnalyticsStubView(APIView):
-    """Stub for portfolio analytics endpoints not yet migrated (holdings, summary, chart…)."""
+    """Stub for portfolio object analytics endpoints (summary, chart, equity-curve…) not yet migrated."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, **kwargs):

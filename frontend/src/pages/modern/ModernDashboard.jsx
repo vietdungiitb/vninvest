@@ -333,9 +333,9 @@ export default function ModernDashboard() {
       }
 
       if (results[0].status === 'fulfilled') setSummary(results[0].value.data);
-      if (results[1].status === 'fulfilled') setHoldings(results[1].value.data);
-      if (results[2].status === 'fulfilled') setTrackedSymbols(results[2].value.data || []);
-      if (results[3].status === 'fulfilled') setWatchlistGroups(results[3].value.data || []);
+      if (results[1].status === 'fulfilled') setHoldings(Array.isArray(results[1].value.data) ? results[1].value.data : (results[1].value.data?.results ?? []));
+      if (results[2].status === 'fulfilled') setTrackedSymbols(Array.isArray(results[2].value.data) ? results[2].value.data : []);
+      if (results[3].status === 'fulfilled') setWatchlistGroups(Array.isArray(results[3].value.data) ? results[3].value.data : []);
 
       const nextHoldings = results[1].status === 'fulfilled' ? (results[1].value.data || []) : [];
       const nextTracked = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];

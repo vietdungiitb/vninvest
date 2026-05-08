@@ -30,6 +30,7 @@ from .compat_views import (
     LegacyWatchlistItemCreateView,
     LegacyWatchlistItemDeleteView,
     PortfolioAnalyticsStubView,
+    PortfolioListAnalyticsStubView,
     PortfolioUserConfigView,
     PriceAlertDetailView,
     PriceAlertsView,
@@ -46,14 +47,14 @@ urlpatterns = [
     path('portfolio/portfolios/<int:portfolio_id>/', PortfolioDetailView.as_view(), name='compat-portfolio-detail'),
     path('portfolio/portfolios/<int:portfolio_id>/transactions/', TransactionListCreateView.as_view(), name='compat-portfolio-transactions'),
 
-    # Portfolio analytics — not yet migrated, return empty stubs
-    path('portfolio/portfolios/<int:portfolio_id>/holdings/', PortfolioAnalyticsStubView.as_view(), name='compat-portfolio-holdings'),
+    # Portfolio analytics — not yet migrated, return type-safe stubs
+    path('portfolio/portfolios/<int:portfolio_id>/holdings/', PortfolioListAnalyticsStubView.as_view(), name='compat-portfolio-holdings'),
     path('portfolio/portfolios/<int:portfolio_id>/summary/', PortfolioAnalyticsStubView.as_view(), name='compat-portfolio-summary'),
     path('portfolio/portfolios/<int:portfolio_id>/chart/', PortfolioAnalyticsStubView.as_view(), name='compat-portfolio-chart'),
     path('portfolio/portfolios/<int:portfolio_id>/equity-curve/', PortfolioAnalyticsStubView.as_view(), name='compat-portfolio-equity-curve'),
     path('portfolio/portfolios/<int:portfolio_id>/allocation/', PortfolioAnalyticsStubView.as_view(), name='compat-portfolio-allocation'),
     path('portfolio/portfolios/<int:portfolio_id>/analytics/', PortfolioAnalyticsStubView.as_view(), name='compat-portfolio-analytics'),
-    path('portfolio/portfolios/<int:portfolio_id>/technicals/', PortfolioAnalyticsStubView.as_view(), name='compat-portfolio-technicals'),
+    path('portfolio/portfolios/<int:portfolio_id>/technicals/', PortfolioListAnalyticsStubView.as_view(), name='compat-portfolio-technicals'),
     path('portfolio/portfolios/<int:portfolio_id>/sync/', PortfolioAnalyticsStubView.as_view(), name='compat-portfolio-sync'),
 
     # SubAccounts — not yet migrated
