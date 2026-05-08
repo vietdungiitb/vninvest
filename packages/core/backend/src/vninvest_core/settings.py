@@ -37,9 +37,12 @@ if not DEBUG:
     del _pat_pepper
 
 INSTALLED_APPS = [
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
     'django_celery_beat',
@@ -63,10 +66,32 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+]
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
 ]
 
 ROOT_URLCONF = 'vninvest_core.urls'
 WSGI_APPLICATION = 'vninvest_core.wsgi.application'
+
+# Trust the reverse proxy termination so Django sees the public HTTPS scheme
+# and host when performing CSRF origin checks and secure redirects.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
 
 DATABASES = {
     'default': {
@@ -92,10 +117,6 @@ if _legacy_db_url:
 # SM-P2.1: CoreRouter — routes core model writes to 'default'; blocks writes to legacy_readonly.
 DATABASE_ROUTERS = ['vninvest_core.db_router.CoreRouter']
 
-# SFI-B1.4: Legacy proxy target URL.
-# In dev: defaults to internal backend service. Must be set explicitly in production.
-LEGACY_BACKEND_URL = os.environ.get('LEGACY_BACKEND_URL', 'http://backend:8000')
-
 # SFI-B2.1: Email backend — use SMTP in production, console fallback for dev/test.
 EMAIL_BACKEND = os.environ.get(
     'EMAIL_BACKEND',
@@ -117,6 +138,9 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = False
 USE_TZ = True
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
