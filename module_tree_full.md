@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-07 08:44:38`
+Generated at: `2026-05-08 09:50:58`
 
 ## Summary
 
-- Total modules: 890
-- Python modules: 466
-- JS/TS modules: 424
-- Total classes: 714
-- Total functions: 2654
-- Total top-level variables: 4398
+- Total modules: 974
+- Python modules: 467
+- JS/TS modules: 507
+- Total classes: 716
+- Total functions: 2663
+- Total top-level variables: 4396
 
 ## Python Modules
 
@@ -2597,6 +2597,11 @@ Generated at: `2026-05-07 08:44:38`
 
 - No parseable top-level symbols found
 
+### `packages/core/backend/src/identity_access/management/commands/issue_vnstockchart_pat.py`
+
+- Classes:
+  - `Command` -> methods: `add_arguments`, `handle`
+
 ### `packages/core/backend/src/identity_access/management/commands/migrate_userprofiles_to_core.py`
 
 - Classes:
@@ -3095,6 +3100,7 @@ Generated at: `2026-05-07 08:44:38`
 ### `packages/core/backend/tests/test_identity_access.py`
 
 - Classes:
+  - `CorePartnerServiceAccountApiTests` -> methods: `setUp`, `test_service_account_list_uses_created_at_cursor_pagination_and_create_succeeds`
   - `CorePATCredentialModelTests` -> methods: `setUp`, `test_issue_pat_returns_credential_and_raw_secret`, `test_pat_token_prefix_is_12_chars`, `test_resolve_from_raw_secret`, `test_resolve_returns_none_for_invalid_secret`, `test_revoke_pat`
   - `CoreServiceAccountModelTests` -> methods: `setUp`, `test_create_service_account`, `test_service_account_belongs_to_tenant`
   - `CoreTenantModelTests` -> methods: `setUp`, `test_create_tenant`, `test_tenant_auto_uuid`
@@ -3224,9 +3230,9 @@ Generated at: `2026-05-07 08:44:38`
 ### `frontend/src/api/client.js`
 
 - Functions:
-  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
+  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
 - Top-level variables:
-  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `protocol`, `publicApiClient`, `query`, `queryString`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `response`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
+  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `response`, `rows`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
 ### `frontend/src/api/client.test.js`
 
@@ -3619,10 +3625,8 @@ Generated at: `2026-05-07 08:44:38`
 
 ### `frontend/src/components/Sidebar.jsx`
 
-- Functions:
-  - `canNavigateTo`
 - Top-level variables:
-  - `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `cancelled`, `capabilityMenus`, `hasCapabilityMenus`, `tenantSurfaceEnabled`, `visibleRoutes`
+  - `cancelled`
 
 ### `frontend/src/components/SidebarWatchlist.jsx`
 
@@ -4761,31 +4765,41 @@ Generated at: `2026-05-07 08:44:38`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/server/_rsc_src_messages_en_json.js`
+### `packages/opencore-site/.next/server/app/[locale]/blog/[slug]/page.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/server/_rsc_src_messages_vi_json.js`
+### `packages/opencore-site/.next/server/app/[locale]/blog/[slug]/page_client-reference-manifest.js`
 
 - No parseable top-level symbols found
 
 ### `packages/opencore-site/.next/server/app/[locale]/blog/page.js`
 
-- Functions:
-  - `__webpack_exec__`, `webpackAsyncContext`
-- Top-level variables:
-  - `__webpack_exports__`, `__webpack_require__`, `e`, `exports`, `ids`, `map`
+- No parseable top-level symbols found
 
 ### `packages/opencore-site/.next/server/app/[locale]/blog/page_client-reference-manifest.js`
 
 - No parseable top-level symbols found
 
+### `packages/opencore-site/.next/server/app/[locale]/chart/docs/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/[locale]/chart/docs/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/[locale]/chart/embed/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/[locale]/chart/embed/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
 ### `packages/opencore-site/.next/server/app/[locale]/chart/page.js`
 
-- Functions:
-  - `__webpack_exec__`, `webpackAsyncContext`, `webpackEmptyContext`
-- Top-level variables:
-  - `__webpack_exports__`, `__webpack_require__`, `e`, `exports`, `ids`, `map`
+- No parseable top-level symbols found
 
 ### `packages/opencore-site/.next/server/app/[locale]/chart/page_client-reference-manifest.js`
 
@@ -4793,10 +4807,7 @@ Generated at: `2026-05-07 08:44:38`
 
 ### `packages/opencore-site/.next/server/app/[locale]/legal/page.js`
 
-- Functions:
-  - `__webpack_exec__`, `webpackAsyncContext`
-- Top-level variables:
-  - `__webpack_exports__`, `__webpack_require__`, `e`, `exports`, `ids`, `map`
+- No parseable top-level symbols found
 
 ### `packages/opencore-site/.next/server/app/[locale]/legal/page_client-reference-manifest.js`
 
@@ -4804,10 +4815,7 @@ Generated at: `2026-05-07 08:44:38`
 
 ### `packages/opencore-site/.next/server/app/[locale]/page.js`
 
-- Functions:
-  - `__webpack_exec__`, `webpackAsyncContext`
-- Top-level variables:
-  - `__webpack_exports__`, `__webpack_require__`, `e`, `exports`, `ids`, `map`
+- No parseable top-level symbols found
 
 ### `packages/opencore-site/.next/server/app/[locale]/page_client-reference-manifest.js`
 
@@ -4815,10 +4823,7 @@ Generated at: `2026-05-07 08:44:38`
 
 ### `packages/opencore-site/.next/server/app/[locale]/pricing/page.js`
 
-- Functions:
-  - `__webpack_exec__`, `webpackAsyncContext`
-- Top-level variables:
-  - `__webpack_exports__`, `__webpack_require__`, `e`, `exports`, `ids`, `map`
+- No parseable top-level symbols found
 
 ### `packages/opencore-site/.next/server/app/[locale]/pricing/page_client-reference-manifest.js`
 
@@ -4826,12 +4831,110 @@ Generated at: `2026-05-07 08:44:38`
 
 ### `packages/opencore-site/.next/server/app/[locale]/vnstock/page.js`
 
-- Functions:
-  - `__webpack_exec__`, `webpackAsyncContext`
-- Top-level variables:
-  - `__webpack_exports__`, `__webpack_require__`, `e`, `exports`, `ids`, `map`
+- No parseable top-level symbols found
 
 ### `packages/opencore-site/.next/server/app/[locale]/vnstock/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/[locale]/vnstock/playground/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/[locale]/vnstock/playground/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/_not-found/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/_not-found/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/api/bars/[symbol]/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/api/bars/[symbol]/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/api/health/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/api/health/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/api/public/vnstock-data/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/api/public/vnstock-data/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/robots.txt/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/robots.txt/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/sitemap.xml/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/app/sitemap.xml/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/chunks/119.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/chunks/140.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/chunks/331.js`
+
+- Functions:
+  - `middleware`
+
+### `packages/opencore-site/.next/server/chunks/589.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/chunks/611.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/chunks/692.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/chunks/789.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/chunks/93.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/chunks/931.js`
 
 - No parseable top-level symbols found
 
@@ -4851,232 +4954,417 @@ Generated at: `2026-05-07 08:44:38`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/server/middleware.js`
-
-- No parseable top-level symbols found
-
 ### `packages/opencore-site/.next/server/next-font-manifest.js`
 
 - No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/pages/_app.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/pages/_document.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/server/pages/_error.js`
+
+- Functions:
+  - `middleware`
 
 ### `packages/opencore-site/.next/server/server-reference-manifest.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/server/vendor-chunks/@formatjs.js`
+### `packages/opencore-site/.next/server/src/middleware.js`
 
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/@swc.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-array.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-color.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-dispatch.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-force.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-format.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-interpolate.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-path.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-quadtree.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-scale-chromatic.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-scale.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-selection.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-shape.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-time-format.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-time.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/d3-timer.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/internmap.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/intl-messageformat.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/lodash.flattendeep.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/next-intl.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/next.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/object-assign.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/prop-types.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/react-is.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/tslib.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/vendor-chunks/use-intl.js`
-
-- No parseable top-level symbols found
+- Functions:
+  - `middleware`
 
 ### `packages/opencore-site/.next/server/webpack-runtime.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js`
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/blog/[slug]/page.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/app-pages-internals.js`
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/blog/[slug]/page_client-reference-manifest.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/app/[locale]/blog/page.js`
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/blog/page.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/app/[locale]/chart/page.js`
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/blog/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/docs/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/docs/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/embed/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/embed/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/legal/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/legal/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/pricing/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/pricing/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/vnstock/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/vnstock/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/vnstock/playground/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/vnstock/playground/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/_not-found/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/_not-found/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/api/bars/[symbol]/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/api/bars/[symbol]/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/api/health/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/api/health/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/api/public/vnstock-data/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/api/public/vnstock-data/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/page.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/page_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/robots.txt/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/robots.txt/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/sitemap.xml/route.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/app/sitemap.xml/route_client-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/119.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/140.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/331.js`
 
 - Functions:
-  - `webpackEmptyContext`
+  - `middleware`
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/589.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/611.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/692.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/789.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/93.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/chunks/931.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/edge-runtime-webpack.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/middleware-build-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/middleware-react-loadable-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/next-font-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/pages/_app.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/pages/_document.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/pages/_error.js`
+
+- Functions:
+  - `middleware`
+
+### `packages/opencore-site/.next/standalone/.next/server/server-reference-manifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/.next/server/src/middleware.js`
+
+- Functions:
+  - `middleware`
+
+### `packages/opencore-site/.next/standalone/.next/server/webpack-runtime.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/standalone/server.js`
+
 - Top-level variables:
-  - `e`
+  - `__dirname`, `currentPort`, `dir`, `hostname`, `keepAliveTimeout`, `nextConfig`, `require`
 
-### `packages/opencore-site/.next/static/chunks/app/[locale]/layout.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/legal/page.js`
+### `packages/opencore-site/.next/static/chunks/139.7a5a8e93a21948c1.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/app/[locale]/not-found.js`
+### `packages/opencore-site/.next/static/chunks/255-4f212684648fcab9.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/app/[locale]/page.js`
+### `packages/opencore-site/.next/static/chunks/280-79d7698a3ebf8cd6.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/app/[locale]/pricing/page.js`
+### `packages/opencore-site/.next/static/chunks/4bd1b696-c023c6e3521b1417.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/app/[locale]/vnstock/page.js`
+### `packages/opencore-site/.next/static/chunks/512-c8015cef61e87835.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/app/layout.js`
+### `packages/opencore-site/.next/static/chunks/646.f342b7cffc01feb0.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/main-app.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/blog/[slug]/page-125f80b761df6768.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/polyfills.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/blog/page-928c813941c4588f.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/chunks/webpack.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/chart/docs/page-125f80b761df6768.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/development/_buildManifest.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/chart/embed/page-125f80b761df6768.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/development/_ssgManifest.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/chart/page-bc51fce55b031529.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/webpack/app/layout.01d39fc0d7da7253.hot-update.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/layout-b973aec56e1ffb46.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/webpack/webpack.01d39fc0d7da7253.hot-update.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/legal/page-125f80b761df6768.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/webpack/webpack.3585c4b13253aa0b.hot-update.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/not-found-318f158d5f29695b.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/webpack/webpack.46a69a78b17b3dd3.hot-update.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/page-935136e877a79272.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/webpack/webpack.5f168ba914983cfd.hot-update.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/pricing/page-a6746d9352f3cd5d.js`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/static/webpack/webpack.cb9b8f0c5b4e6406.hot-update.js`
+### `packages/opencore-site/.next/static/chunks/app/[locale]/vnstock/page-928c813941c4588f.js`
 
 - No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/[locale]/vnstock/playground/page-27f1c7ade2c68249.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/_not-found/page-d2ce7adb7df5b95c.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/api/bars/[symbol]/route-11814a022068cac3.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/api/health/route-11814a022068cac3.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/api/public/vnstock-data/route-11814a022068cac3.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/layout-9835f04c13d213f4.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/page-11814a022068cac3.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/robots.txt/route-11814a022068cac3.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/app/sitemap.xml/route-11814a022068cac3.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/framework-050c1f32293f7182.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/main-981706e99aa11916.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/main-app-cfd387c45702604c.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/pages/_app-82835f42865034fa.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/pages/_error-013f4188946cdd04.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/polyfills-42372ed130431b0a.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/chunks/webpack-a20c9abace18027e.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/I5RTZmnflnvNYaQYeHHOx/_buildManifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/static/I5RTZmnflnvNYaQYeHHOx/_ssgManifest.js`
+
+- No parseable top-level symbols found
+
+### `packages/opencore-site/.next/types/app/[locale]/blog/[slug]/page.ts`
+
+- Functions:
+  - `checkFields`
 
 ### `packages/opencore-site/.next/types/app/[locale]/blog/page.ts`
 
 - Functions:
   - `checkFields`
 
-### `packages/opencore-site/.next/types/app/[locale]/chart/page.ts`
+### `packages/opencore-site/.next/types/app/[locale]/chart/docs/page.ts`
 
 - Functions:
   - `checkFields`
 
-### `packages/opencore-site/.next/types/app/[locale]/layout.ts`
+### `packages/opencore-site/.next/types/app/[locale]/chart/embed/page.ts`
+
+- Functions:
+  - `checkFields`
+
+### `packages/opencore-site/.next/types/app/[locale]/chart/page.ts`
 
 - Functions:
   - `checkFields`
@@ -5101,7 +5389,32 @@ Generated at: `2026-05-07 08:44:38`
 - Functions:
   - `checkFields`
 
+### `packages/opencore-site/.next/types/app/[locale]/vnstock/playground/page.ts`
+
+- Functions:
+  - `checkFields`
+
+### `packages/opencore-site/.next/types/app/api/bars/[symbol]/route.ts`
+
+- Functions:
+  - `checkFields`
+
+### `packages/opencore-site/.next/types/app/api/health/route.ts`
+
+- Functions:
+  - `checkFields`
+
+### `packages/opencore-site/.next/types/app/api/public/vnstock-data/route.ts`
+
+- Functions:
+  - `checkFields`
+
 ### `packages/opencore-site/.next/types/app/layout.ts`
+
+- Functions:
+  - `checkFields`
+
+### `packages/opencore-site/.next/types/app/page.ts`
 
 - Functions:
   - `checkFields`
@@ -5115,13 +5428,6 @@ Generated at: `2026-05-07 08:44:38`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/types/server.d.ts`
-
-- Functions:
-  - `unstable_rootParams`
-- Top-level variables:
-  - `AsyncLocalStorage`
-
 ### `packages/opencore-site/.next/types/validator.ts`
 
 - Top-level variables:
@@ -5134,14 +5440,14 @@ Generated at: `2026-05-07 08:44:38`
 ### `packages/opencore-site/next.config.ts`
 
 - Top-level variables:
-  - `csp`, `isProduction`, `nextConfig`, `withMDX`, `withNextIntl`
+  - `adminCsp`, `commonHeaders`, `csp`, `isProduction`, `nextConfig`, `withMDX`, `withNextIntl`
 
 ### `packages/opencore-site/src/app/[locale]/blog/[slug]/page.tsx`
 
 - Functions:
   - `generateMetadata`, `generateStaticParams`
 - Top-level variables:
-  - `Content`, `post`, `t`
+  - `post`, `source`, `t`
 
 ### `packages/opencore-site/src/app/[locale]/blog/page.tsx`
 
@@ -5218,12 +5524,26 @@ Generated at: `2026-05-07 08:44:38`
 - Top-level variables:
   - `t`
 
+### `packages/opencore-site/src/app/admin/route.ts`
+
+- Functions:
+  - `GET`
+- Top-level variables:
+  - `filePath`, `html`
+
 ### `packages/opencore-site/src/app/api/bars/[symbol]/route.ts`
 
 - Functions:
   - `GET`, `requestKey`
 - Top-level variables:
   - `RATE_LIMIT`, `WINDOW_MS`, `backendUrl`, `feed`, `ipKey`, `params`, `payload`, `requestSymbol`, `timeframe`, `upstream`
+
+### `packages/opencore-site/src/app/api/cms-auth/route.ts`
+
+- Functions:
+  - `GET`, `postMessageResponse`, `send`, `start`
+- Top-level variables:
+  - `CLIENT_ID`, `CLIENT_SECRET`, `accessToken`, `code`, `githubAuthUrl`, `githubUrl`, `html`, `message`, `msg`, `provider`, `tokenData`, `tokenRes`
 
 ### `packages/opencore-site/src/app/api/health/route.ts`
 
@@ -5280,7 +5600,7 @@ Generated at: `2026-05-07 08:44:38`
 - Functions:
   - `TopNav`, `localeHref`
 - Top-level variables:
-  - `REGISTER_URL`, `currentLocale`, `pathname`, `t`
+  - `REGISTER_URL`, `currentLocale`, `navLinks`, `pathname`, `t`
 
 ### `packages/opencore-site/src/components/sections/ChartDemo.tsx`
 
@@ -5289,12 +5609,19 @@ Generated at: `2026-05-07 08:44:38`
 - Top-level variables:
   - `bars`, `cancelled`, `from`, `locale`, `nextFeed`, `noopAdapter`, `t`, `timeframes`, `timerId`, `to`, `whaleEvents`
 
+### `packages/opencore-site/src/components/sections/DashboardPreview.tsx`
+
+- Functions:
+  - `DashboardPreview`, `priceToY`
+- Top-level variables:
+  - `CANDLES`, `SPARKFILL`, `SPARKLINE`, `TICKERS`, `height`, `top`
+
 ### `packages/opencore-site/src/components/sections/FeatureGrid.tsx`
 
 - Functions:
   - `FeatureGrid`
 - Top-level variables:
-  - `t`
+  - `ref`, `t`
 
 ### `packages/opencore-site/src/components/sections/HeroSection.tsx`
 
@@ -5315,14 +5642,28 @@ Generated at: `2026-05-07 08:44:38`
 - Functions:
   - `PricingTable`, `localeHref`
 - Top-level variables:
-  - `common`, `currentLocale`, `pathname`, `plans`, `t`
+  - `common`, `currentLocale`, `pathname`, `plans`, `ref`, `t`
 
 ### `packages/opencore-site/src/components/sections/ProductCards.tsx`
 
 - Functions:
   - `ProductCards`, `localeHref`
 - Top-level variables:
-  - `cards`, `currentLocale`, `pathname`, `products`, `t`
+  - `PRODUCT_CARDS`, `PRODUCT_ICONS`, `currentLocale`, `pathname`, `products`, `ref`, `t`
+
+### `packages/opencore-site/src/components/sections/StatsStrip.tsx`
+
+- Functions:
+  - `StatsStrip`
+- Top-level variables:
+  - `STATS`, `t`
+
+### `packages/opencore-site/src/hooks/useReveal.ts`
+
+- Functions:
+  - `useReveal`
+- Top-level variables:
+  - `el`, `obs`, `ref`
 
 ### `packages/opencore-site/src/i18n/request.ts`
 
@@ -5346,9 +5687,9 @@ Generated at: `2026-05-07 08:44:38`
 ### `packages/opencore-site/src/lib/blog.ts`
 
 - Functions:
-  - `getBlogPostBySlug`
+  - `getBlogPostBySlug`, `getBlogPostSource`, `loadBlogPosts`
 - Top-level variables:
-  - `blogPosts`
+  - `CONTENT_DIR`, `blogPosts`, `filePath`, `files`, `raw`, `slug`
 
 ### `packages/opencore-site/src/lib/chartFeed.ts`
 

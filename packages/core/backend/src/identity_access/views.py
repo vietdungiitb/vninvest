@@ -3,6 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from vninvest_core.pagination import CoreCursorPagination
+
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant, UserProfile
 from .serializers import (
     CorePATCredentialSerializer,
@@ -22,6 +24,7 @@ class TenantDetailView(generics.RetrieveUpdateAPIView):
 
 class ServiceAccountListView(generics.ListCreateAPIView):
     serializer_class = CoreServiceAccountSerializer
+    pagination_class = CoreCursorPagination
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -49,6 +52,7 @@ class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class PATListView(generics.ListAPIView):
     serializer_class = CorePATCredentialSerializer
+    pagination_class = CoreCursorPagination
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):

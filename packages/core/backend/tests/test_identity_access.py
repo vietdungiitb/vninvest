@@ -20,6 +20,8 @@ django.setup()
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from rest_framework import status
+from rest_framework.test import APIClient
 
 from identity_access.models import (
     CorePATCredential,
@@ -148,3 +150,42 @@ class CorePATCredentialModelTests(TestCase):
             scopes=[],
         )
         self.assertEqual(len(credential.token_prefix), 12)
+
+
+class CorePartnerServiceAccountApiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='apiowner', password='testpass123')
+        self.tenant = CoreTenant.objects.create(
+            owner_user=self.user,
+            tenant_code='api-tenant-1',
+            display_name='API Tenant',
+            plan='pro',
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_service_account_list_uses_created_at_cursor_pagination_and_create_succeeds(self):
+        existing = CoreServiceAccount.objects.create(
+            tenant=self.tenant,
+            name='Existing Bot',
+            scopes=['read:market'],
+        )
+
+        list_response = self.client.get('/api/core/v1/partner/service-accounts/')
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', list_response.data)
+        self.assertEqual(list_response.data['results'][0]['service_account_id'], existing.public_id)
+
+        create_response = self.client.post(
+            '/api/core/v1/partner/service-accounts/',
+            {
+                'name': 'New Bot',
+                'scopes': ['read:market'],
+            },
+            format='json',
+        )
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(create_response.data['name'], 'New Bot')
+        self.assertEqual(create_response.data['tenant_id'], self.tenant.public_id)

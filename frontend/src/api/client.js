@@ -53,6 +53,53 @@ function buildIdempotencyKey(prefix = 'request') {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function normalizeListResponse(response) {
+  if (!response || typeof response !== 'object') {
+    return response;
+  }
+
+  const payload = response.data;
+  if (Array.isArray(payload)) {
+    return {
+      ...response,
+      data: {
+        object: 'list',
+        data: payload,
+        has_more: false,
+        next_cursor: null,
+        prev_cursor: null,
+      },
+    };
+  }
+
+  if (payload && typeof payload === 'object') {
+    if (Array.isArray(payload.data)) {
+      return response;
+    }
+
+    const rows = Array.isArray(payload.results) ? payload.results : [];
+
+    return {
+      ...response,
+      data: {
+        ...payload,
+        data: rows,
+      },
+    };
+  }
+
+  return {
+    ...response,
+    data: {
+      object: 'list',
+      data: [],
+      has_more: false,
+      next_cursor: null,
+      prev_cursor: null,
+    },
+  };
+}
+
 function withDefaultAuditReason(payload = {}, defaultReason) {
   return {
     ...payload,
@@ -172,7 +219,7 @@ export const refreshAccessToken = async () => {
 };
 
 export const getTenantServiceAccounts = (params = {}) =>
-  apiClient.get('/core/v1/partner/service-accounts/', { params });
+  apiClient.get('/core/v1/partner/service-accounts/', { params }).then(normalizeListResponse);
 
 export const getTenantSummary = () =>
   apiClient.get('/core/v1/partner/tenant/');
@@ -185,7 +232,7 @@ export const createTenantServiceAccount = (payload) =>
   });
 
 export const getTenantPATs = (params = {}) =>
-  apiClient.get('/core/v1/partner/pats/', { params });
+  apiClient.get('/core/v1/partner/pats/', { params }).then(normalizeListResponse);
 
 export const getTenantUsageMeters = (params = {}) =>
   apiClient.get('/core/v1/partner/usage/meters/', { params });
