@@ -50,7 +50,7 @@ jobs:
         env:
           CI: "true"
           REACT_APP_API_BASE_URL: /api
-          REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
+          REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "0"
           REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
         run: npm run build
 
@@ -111,6 +111,6 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             REACT_APP_API_BASE_URL=/api
-            REACT_APP_ENABLE_PACKAGE_SHELL_HOST=1
+            REACT_APP_ENABLE_PACKAGE_SHELL_HOST=0
             REACT_APP_PACKAGE_SHELL_CORE_BASE_URL=/core/v1
             APP_RELEASE=${{ github.sha }}
