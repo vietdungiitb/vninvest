@@ -1,8 +1,10 @@
+from django.contrib import admin
 from django.urls import include, path
 
 from . import views_health
 
 urlpatterns = [
+    path('admin/', admin.site.urls),
     # SM-P5.2: Prometheus metrics endpoint
     path('', include('django_prometheus.urls')),
     path('core/v1/health', views_health.health, name='core_health'),
@@ -25,4 +27,7 @@ urlpatterns = [
     path('api/', include(('user_workspace.urls', 'user_workspace_api'), namespace='user_workspace_api')),
     path('api/', include(('identity_access.api_urls', 'identity_access_api'), namespace='identity_access_api')),
     path('api/', include(('market_data.urls', 'market_data_api'), namespace='market_data_api')),
+    # Compat layer: maps legacy frontend API paths to core views or graceful stubs.
+    # Must be LAST so native routes take precedence.
+    path('api/', include('vninvest_core.compat_urls')),
 ]
