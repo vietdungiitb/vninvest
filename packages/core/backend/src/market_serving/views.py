@@ -24,6 +24,7 @@ def _session_facts_cache_key(symbol: str, session_date) -> str:
 class SymbolSnapshotListView(generics.ListAPIView):
     serializer_class = SymbolSnapshotSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         qs = SymbolSnapshot.objects.all().order_by('-session_date', 'symbol')
@@ -50,7 +51,10 @@ class SymbolSnapshotDetailView(generics.RetrieveAPIView):
         obj = self.get_object()
         cache_key = _snapshot_cache_key(symbol, obj.session_date)
 
-        cached = cache.get(cache_key)
+        try:
+            cached = cache.get(cache_key)
+        except Exception:
+            cached = None
         if cached is not None:
             data = cached
             data['_source'] = 'cache-hit'
@@ -58,7 +62,10 @@ class SymbolSnapshotDetailView(generics.RetrieveAPIView):
 
         serializer = self.get_serializer(obj)
         data = serializer.data
-        cache.set(cache_key, dict(data), timeout=_SNAPSHOT_TTL)
+        try:
+            cache.set(cache_key, dict(data), timeout=_SNAPSHOT_TTL)
+        except Exception:
+            pass
         data = dict(data)
         data['_source'] = 'db-read'
         return Response(data)
@@ -67,6 +74,7 @@ class SymbolSnapshotDetailView(generics.RetrieveAPIView):
 class SessionFactsListView(generics.ListAPIView):
     serializer_class = SessionFactsSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         qs = SessionFacts.objects.all().order_by('-session_date', 'symbol')
@@ -93,7 +101,10 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
         obj = self.get_object()
         cache_key = _session_facts_cache_key(symbol, obj.session_date)
 
-        cached = cache.get(cache_key)
+        try:
+            cached = cache.get(cache_key)
+        except Exception:
+            cached = None
         if cached is not None:
             data = cached
             data['_source'] = 'cache-hit'
@@ -101,7 +112,10 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
 
         serializer = self.get_serializer(obj)
         data = dict(serializer.data)
-        cache.set(cache_key, data, timeout=_SESSION_FACTS_TTL)
+        try:
+            cache.set(cache_key, data, timeout=_SESSION_FACTS_TTL)
+        except Exception:
+            pass
         data['_source'] = 'db-read'
         return Response(data)
 

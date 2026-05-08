@@ -41,10 +41,6 @@ const coreHeaders = {
   'Authorization': `Bearer ${CORE_PAT}`,
 };
 
-const legacyHeaders = {
-  'Content-Type': 'application/json',
-};
-
 // Test symbols (VN30 subset)
 const SYMBOLS = ['VIC', 'VHM', 'VNM', 'HPG', 'TCB', 'VCB', 'BID', 'CTG', 'MBB', 'ACB'];
 
@@ -64,13 +60,13 @@ export default function () {
   totalRequests.add(1);
   p95Latency.add(healthRes.timings.duration);
 
-  // Test 2: Whale alerts list
+  // Test 2: Whale feed list
   const whaleRes = http.get(
-    `${BASE_URL}/api/whale-alerts/?limit=20`,
-    { headers: legacyHeaders, tags: { name: 'whale-alerts' } },
+    `${BASE_URL}/api/signals/whale-feed/?symbol=${symbol}`,
+    { headers: coreHeaders, tags: { name: 'whale-feed' } },
   );
   check(whaleRes, {
-    'whale-alerts 200': (r) => r.status === 200,
+    'whale-feed 200': (r) => r.status === 200,
   });
   errorRate.add(whaleRes.status >= 400);
   totalRequests.add(1);

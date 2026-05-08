@@ -70,8 +70,6 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       # No legacy DB — SaaS-only deployment
-      LEGACY_DATABASE_URL: ""
-      LEGACY_BACKEND_URL: ""
       REDIS_URL: redis://core-redis:6379/0
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
@@ -111,7 +109,6 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      LEGACY_DATABASE_URL: ""
       REDIS_URL: redis://core-redis:6379/0
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
       CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-2}
@@ -139,7 +136,6 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      LEGACY_DATABASE_URL: ""
       REDIS_URL: redis://core-redis:6379/0
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
     command: ["beat"]

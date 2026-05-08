@@ -1,0 +1,99 @@
+"""
+Native identity_access API route tests.
+
+ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
+"""
+import os
+import sys
+
+_src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'vninvest_core.settings')
+
+import django
+django.setup()
+
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.urls import resolve
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from identity_access.models import CoreServiceAccount, CoreTenant
+from identity_access.views import ServiceAccountListView
+from identity_access.views_auth import capabilities_view, login_view, profile_view, user_config_view
+
+
+class IdentityAccessApiRouteTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='identity-owner', password='Test@123456', email='identity@example.com')
+        self.tenant = CoreTenant.objects.create(
+            owner_user=self.user,
+            tenant_code='identity-tenant-1',
+            display_name='Identity Tenant',
+            plan='pro',
+        )
+        self.service_account = CoreServiceAccount.objects.create(
+            tenant=self.tenant,
+            name='Identity Bot',
+            scopes=['read:market', 'read:signals'],
+        )
+
+    def _login_and_authenticate(self):
+        login_response = self.client.post(
+            '/api/auth/login/',
+            {'username': self.user.username, 'password': 'Test@123456'},
+            format='json',
+        )
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertIn('token', login_response.data)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['token']}")
+        return login_response
+
+    def test_login_me_capabilities_and_userconfig_routes_are_native(self):
+        resolver_login = resolve('/api/auth/login/')
+        self.assertIs(resolver_login.func, login_view)
+
+        login_response = self._login_and_authenticate()
+        self.assertEqual(login_response.data['user']['username'], self.user.username)
+        self.assertEqual(login_response.data['tenant']['tenant_code'], self.tenant.tenant_code)
+
+        resolver_me = resolve('/api/auth/me/')
+        self.assertIs(resolver_me.func, profile_view)
+
+        me_response = self.client.get('/api/auth/me/')
+        self.assertEqual(me_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(me_response.data['username'], self.user.username)
+        self.assertIn('abilities', me_response.data)
+        self.assertIn('entitlements', me_response.data)
+
+        resolver_capabilities = resolve('/api/core/v1/access/capabilities/')
+        self.assertIs(resolver_capabilities.func, capabilities_view)
+
+        capabilities_response = self.client.get('/api/core/v1/access/capabilities/')
+        self.assertEqual(capabilities_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(capabilities_response.data['principal']['identity']['username'], self.user.username)
+        self.assertEqual(capabilities_response.data['build']['target'], 'saas')
+        self.assertIn('abilities', capabilities_response.data)
+
+        resolver_userconfig = resolve('/api/portfolio/userconfig/')
+        self.assertIs(resolver_userconfig.func, user_config_view)
+
+        userconfig_response = self.client.get('/api/portfolio/userconfig/')
+        self.assertEqual(userconfig_response.status_code, status.HTTP_200_OK)
+        self.assertIn('whale_alert_threshold', userconfig_response.data)
+
+    def test_partner_service_accounts_route_is_native(self):
+        resolver_service_accounts = resolve('/api/core/v1/partner/service-accounts/')
+        self.assertIs(resolver_service_accounts.func.view_class, ServiceAccountListView)
+
+        login_response = self._login_and_authenticate()
+        self.assertTrue(login_response.data['access'])
+
+        list_response = self.client.get('/api/core/v1/partner/service-accounts/')
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', list_response.data)
+        self.assertEqual(list_response.data['results'][0]['name'], self.service_account.name)

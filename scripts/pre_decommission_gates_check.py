@@ -32,12 +32,24 @@ def check_gate_a_data_parity(core_url, core_headers, legacy_url, **kwargs):
     results = {}
     threshold = 0.99
 
+    def _response_size(payload) -> int:
+        if isinstance(payload, list):
+            return len(payload)
+        if isinstance(payload, dict):
+            count = payload.get('count')
+            if isinstance(count, int):
+                return count
+            results_payload = payload.get('results')
+            if isinstance(results_payload, list):
+                return len(results_payload)
+        return 0
+
     # Portfolio count parity
     try:
         core_resp = requests.get(f"{core_url}/core/v1/workspace/portfolios/", headers=core_headers, timeout=10)
         legacy_resp = requests.get(f"{legacy_url}/api/portfolios/", timeout=10)
-        core_count = core_resp.json().get('count', 0) if core_resp.ok else 0
-        legacy_count = legacy_resp.json().get('count', 0) if legacy_resp.ok else 0
+        core_count = _response_size(core_resp.json()) if core_resp.ok else 0
+        legacy_count = _response_size(legacy_resp.json()) if legacy_resp.ok else 0
         parity = (min(core_count, legacy_count) / max(core_count, legacy_count, 1))
         results['portfolio_parity'] = {'core': core_count, 'legacy': legacy_count, 'parity': parity}
     except Exception as exc:
@@ -45,10 +57,10 @@ def check_gate_a_data_parity(core_url, core_headers, legacy_url, **kwargs):
 
     # Whale alerts count parity
     try:
-        core_resp = requests.get(f"{core_url}/core/v1/signals/alerts/", headers=core_headers, timeout=10)
+        core_resp = requests.get(f"{core_url}/api/signals/whale-feed/", headers=core_headers, timeout=10)
         legacy_resp = requests.get(f"{legacy_url}/api/whale-alerts/?limit=1", timeout=10)
-        core_count = core_resp.json().get('count', 0) if core_resp.ok else 0
-        legacy_count = legacy_resp.json().get('count', 0) if legacy_resp.ok else 0
+        core_count = _response_size(core_resp.json()) if core_resp.ok else 0
+        legacy_count = _response_size(legacy_resp.json()) if legacy_resp.ok else 0
         parity = (min(core_count, legacy_count) / max(core_count, legacy_count, 1))
         results['whale_alerts_parity'] = {'core': core_count, 'legacy': legacy_count, 'parity': parity}
     except Exception as exc:
@@ -71,10 +83,10 @@ def check_gate_b_api_coverage(core_url, core_headers, **kwargs):
     endpoints = [
         ('GET', '/core/v1/health'),
         ('GET', '/core/v1/market/snapshot/'),
-        ('GET', '/api/whale-alerts/'),
-        ('GET', '/api/whale-summary/'),
+        ('GET', '/api/signals/whale-feed/'),
+        ('GET', '/api/signals/unified-alert/'),
         ('GET', '/core/v1/workspace/portfolios/'),
-        ('GET', '/core/v1/signals/alerts/'),
+        ('GET', '/core/v1/signals/order-flow/VCB/'),
     ]
     results = []
     all_pass = True

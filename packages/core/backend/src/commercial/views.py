@@ -1,4 +1,6 @@
 from rest_framework import generics, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from identity_access.models import CoreTenant
 
@@ -31,3 +33,11 @@ class InvoiceListView(generics.ListAPIView):
     def get_queryset(self):
         tenant = CoreTenant.objects.get(owner_user=self.request.user)
         return Invoice.objects.filter(tenant=tenant).order_by('-created_at')
+
+
+class PublicLegalPagesView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        return Response({'results': []})

@@ -1,7 +1,6 @@
 from django.urls import include, path
 
 from . import views_health
-from .legacy_proxy import legacy_proxy_view
 
 urlpatterns = [
     # SM-P5.2: Prometheus metrics endpoint
@@ -18,16 +17,12 @@ urlpatterns = [
     path('core/v1/', include(('advisory.urls', 'advisory'), namespace='advisory')),
     path('core/v1/', include(('user_workspace.urls', 'user_workspace'), namespace='user_workspace')),
     path('core/v1/', include(('market_data.urls', 'market_data'), namespace='market_data')),
-    # Legacy compat routes (SM-P4.2)
-    path('api/', include(('identity_access.compat_urls', 'identity_access_compat'), namespace='identity_access_compat')),
-    path('api/', include(('vninvest_core.compat_portfolio', 'compat_portfolio'), namespace='compat_portfolio')),
-    # SFI-B3: Market & Realtime compat routes (native core-api, no proxy)
-    path('api/', include(('market_serving.compat_urls', 'market_serving_compat'), namespace='market_serving_compat')),
-    path('api/', include(('signal_intelligence.compat_urls', 'signal_intelligence_compat'), namespace='signal_intelligence_compat')),
-    path('api/', include(('market_data.compat_urls', 'market_data_compat'), namespace='market_data_compat')),
-    # SFI-B4: Portfolio & Workspace compat routes
-    path('api/', include(('user_workspace.compat_urls', 'user_workspace_compat'), namespace='user_workspace_compat')),
-    # SFI-B1.3: Transparent proxy — MUST be last. Forwards unhandled /api/* to legacy backend.
-    # Remove individual prefixes from legacy_proxy.PROXY_EXCLUDED_PREFIXES as domains migrate natively.
-    path('api/<path:remaining>', legacy_proxy_view, name='legacy_proxy'),
+    # Native public bootstrap routes owned by core-api domain apps.
+    path('api/', include(('commercial.public_urls', 'commercial_public'), namespace='commercial_public')),
+    path('api/', include(('market_data.public_urls', 'market_data_public'), namespace='market_data_public')),
+    path('api/', include(('market_serving.api_urls', 'market_serving_api'), namespace='market_serving_api')),
+    path('api/', include(('signal_intelligence.api_urls', 'signal_intelligence_api'), namespace='signal_intelligence_api')),
+    path('api/', include(('user_workspace.urls', 'user_workspace_api'), namespace='user_workspace_api')),
+    path('api/', include(('identity_access.api_urls', 'identity_access_api'), namespace='identity_access_api')),
+    path('api/', include(('market_data.urls', 'market_data_api'), namespace='market_data_api')),
 ]

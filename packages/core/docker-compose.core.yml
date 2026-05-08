@@ -31,7 +31,6 @@ services:
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/0
       CELERY_BROKER_URL: redis://core-redis:6379/0
-      LEGACY_DATABASE_URL: ""
       CORE_PAT_PEPPER: "dev-pat-pepper-replace-in-production"
       PYTHONPATH: /workspace/src
     command: >-
@@ -55,7 +54,6 @@ services:
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/0
       CELERY_BROKER_URL: redis://core-redis:6379/0
-      LEGACY_DATABASE_URL: ""
       PYTHONPATH: /workspace/src
     command: >
       sh -c "pip install -r requirements.txt -q &&
@@ -77,7 +75,6 @@ services:
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/0
       CELERY_BROKER_URL: redis://core-redis:6379/0
-      LEGACY_DATABASE_URL: ""
       PYTHONPATH: /workspace/src
     command: >
       sh -c "pip install -r requirements.txt -q &&

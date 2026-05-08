@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-08 10:53:26`
+Generated at: `2026-05-08 13:29:02`
 
 ## Summary
 
-- Total modules: 974
-- Python modules: 467
+- Total modules: 978
+- Python modules: 471
 - JS/TS modules: 507
-- Total classes: 718
-- Total functions: 2665
+- Total classes: 721
+- Total functions: 2657
 - Total top-level variables: 4400
 
 ## Python Modules
@@ -2508,6 +2508,11 @@ Generated at: `2026-05-08 10:53:26`
   - `QuotaRecord` -> methods: `__str__`
   - `Subscription` -> methods: `__str__`
 
+### `packages/core/backend/src/commercial/public_urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
+
 ### `packages/core/backend/src/commercial/serializers.py`
 
 - Classes:
@@ -2524,6 +2529,7 @@ Generated at: `2026-05-08 10:53:26`
 
 - Classes:
   - `InvoiceListView` -> methods: `get_queryset`
+  - `PublicLegalPagesView` -> methods: `get`
   - `QuotaListView` -> methods: `get_queryset`
   - `SubscriptionDetailView` -> methods: `get_object`
 
@@ -2564,6 +2570,11 @@ Generated at: `2026-05-08 10:53:26`
 - Top-level variables:
   - `default_app_config`
 
+### `packages/core/backend/src/identity_access/api_urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
+
 ### `packages/core/backend/src/identity_access/apps.py`
 
 - Classes:
@@ -2583,11 +2594,6 @@ Generated at: `2026-05-08 10:53:26`
   - `PartnerUsageQuotasView` -> methods: `get`
 - Functions:
   - `_get_tenant`
-
-### `packages/core/backend/src/identity_access/compat_urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
 
 ### `packages/core/backend/src/identity_access/management/__init__.py`
 
@@ -2683,11 +2689,6 @@ Generated at: `2026-05-08 10:53:26`
 - Classes:
   - `MarketDataConfig`
 
-### `packages/core/backend/src/market_data/compat_urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
-
 ### `packages/core/backend/src/market_data/migrations/0001_initial.py`
 
 - Classes:
@@ -2703,6 +2704,11 @@ Generated at: `2026-05-08 10:53:26`
   - `DailyPrice` -> methods: `__str__`
   - `StockProfile` -> methods: `__str__`
   - `VnstockRuntimeConfig` -> methods: `__str__`
+
+### `packages/core/backend/src/market_data/public_urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
 
 ### `packages/core/backend/src/market_data/serializers.py`
 
@@ -2721,21 +2727,22 @@ Generated at: `2026-05-08 10:53:26`
   - `DailyPriceListView` -> methods: `get`
   - `StockProfileDetailView` -> methods: `get`
   - `StockProfileListView` -> methods: `get`
+  - `TrackedSymbolsView` -> methods: `get`
 
 ### `packages/core/backend/src/market_serving/__init__.py`
 
 - Top-level variables:
   - `default_app_config`
 
+### `packages/core/backend/src/market_serving/api_urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
+
 ### `packages/core/backend/src/market_serving/apps.py`
 
 - Classes:
   - `MarketServingConfig`
-
-### `packages/core/backend/src/market_serving/compat_urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
 
 ### `packages/core/backend/src/market_serving/materializers.py`
 
@@ -2845,15 +2852,15 @@ Generated at: `2026-05-08 10:53:26`
   - `SignalAdminFlushView` -> methods: `post`
   - `SignalAdminStatsView` -> methods: `get`
 
+### `packages/core/backend/src/signal_intelligence/api_urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
+
 ### `packages/core/backend/src/signal_intelligence/apps.py`
 
 - Classes:
   - `SignalIntelligenceConfig`
-
-### `packages/core/backend/src/signal_intelligence/compat_urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
 
 ### `packages/core/backend/src/signal_intelligence/consumers.py`
 
@@ -2920,11 +2927,6 @@ Generated at: `2026-05-08 10:53:26`
 
 - Classes:
   - `UserWorkspaceConfig`
-
-### `packages/core/backend/src/user_workspace/compat_urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
 
 ### `packages/core/backend/src/user_workspace/migrations/0001_initial.py`
 
@@ -3010,19 +3012,6 @@ Generated at: `2026-05-08 10:53:26`
 - Top-level variables:
   - `app`
 
-### `packages/core/backend/src/vninvest_core/compat_portfolio.py`
-
-- Classes:
-  - `CompatAdvisoryView` -> methods: `get`
-  - `CompatPublicLegalPagesView` -> methods: `get`
-  - `CompatTrackedSymbolsView` -> methods: `get`
-  - `CompatWhaleAlertsView` -> methods: `get`
-  - `CompatWhaleSummaryView` -> methods: `get`
-- Functions:
-  - `_portfolio_list_for`, `_store_key`, `portfolio_collection_view`
-- Top-level variables:
-  - `_PORTFOLIO_STORE`, `urlpatterns`
-
 ### `packages/core/backend/src/vninvest_core/contracts/__init__.py`
 
 - Top-level variables:
@@ -3054,13 +3043,6 @@ Generated at: `2026-05-08 10:53:26`
   - `CoreRouter` -> methods: `allow_migrate`, `db_for_read`, `db_for_write`
 - Top-level variables:
   - `_CORE_APPS`
-
-### `packages/core/backend/src/vninvest_core/legacy_proxy.py`
-
-- Functions:
-  - `_build_upstream_url`, `_filter_request_headers`, `_filter_response_headers`, `_iter_content`, `legacy_proxy_view`
-- Top-level variables:
-  - `HOP_BY_HOP`, `PROXY_EXCLUDED_PREFIXES`, `_SYNC_CLIENT`, `logger`
 
 ### `packages/core/backend/src/vninvest_core/pagination.py`
 
@@ -3109,6 +3091,20 @@ Generated at: `2026-05-08 10:53:26`
 - Top-level variables:
   - `_src_dir`
 
+### `packages/core/backend/tests/test_identity_access_api_routes.py`
+
+- Classes:
+  - `IdentityAccessApiRouteTests` -> methods: `_login_and_authenticate`, `setUp`, `test_login_me_capabilities_and_userconfig_routes_are_native`, `test_partner_service_accounts_route_is_native`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_market_data_api_routes.py`
+
+- Classes:
+  - `MarketDataApiRouteTests` -> methods: `setUp`, `test_daily_price_route_is_native`, `test_stock_profile_routes_are_native`
+- Top-level variables:
+  - `_src_dir`
+
 ### `packages/core/backend/tests/test_market_serving.py`
 
 - Classes:
@@ -3117,11 +3113,25 @@ Generated at: `2026-05-08 10:53:26`
 - Top-level variables:
   - `_src_dir`
 
+### `packages/core/backend/tests/test_market_serving_api_routes.py`
+
+- Classes:
+  - `MarketServingApiRouteTests` -> methods: `setUp`, `test_session_facts_list_and_detail_routes_are_native`, `test_symbol_snapshot_list_and_detail_routes_are_native`
+- Top-level variables:
+  - `_src_dir`
+
 ### `packages/core/backend/tests/test_ops_audit.py`
 
 - Classes:
   - `AuditEventModelTests` -> methods: `test_create_audit_event`
   - `RequestTraceMiddlewareTests` -> methods: `setUp`, `test_generates_uuid_when_no_header`, `test_injects_x_request_id_from_header`, `test_response_always_has_x_request_id_header`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_public_bootstrap_routes.py`
+
+- Classes:
+  - `NativePublicBootstrapRouteTests` -> methods: `setUp`, `test_public_legal_pages_route_resolves_and_returns_results_envelope`, `test_tracked_symbols_route_resolves_and_returns_empty_list`
 - Top-level variables:
   - `_src_dir`
 
@@ -3140,6 +3150,20 @@ Generated at: `2026-05-08 10:53:26`
   - `TestCursorPaginationClasses` -> methods: `test_alert_cursor_pagination_ordering`, `test_audit_cursor_pagination_page_size`, `test_core_cursor_pagination_defaults`
   - `TestMaterializeSessionFactsNoLegacyUrl` -> methods: `test_no_legacy_url_returns_skipped`
   - `TestMaterializeSymbolSnapshotNoLegacyUrl` -> methods: `test_no_legacy_url_returns_skipped`
+
+### `packages/core/backend/tests/test_signal_intelligence_api_routes.py`
+
+- Classes:
+  - `SignalIntelligenceApiRouteTests` -> methods: `setUp`, `test_order_flow_route_is_native_and_returns_list`, `test_unified_alert_route_is_native_and_cursor_paginated`, `test_whale_feed_route_is_native_and_returns_list`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_user_workspace_api_routes.py`
+
+- Classes:
+  - `UserWorkspaceApiRouteTests` -> methods: `setUp`, `test_portfolio_routes_are_native_and_return_results_envelope`, `test_watchlist_routes_are_native_and_item_delete_works`
+- Top-level variables:
+  - `_src_dir`
 
 ### `packages/vip-app/local-backend/api_stub.py`
 

@@ -20,10 +20,9 @@ urlpatterns = [
     path('auth/password-reset/', views_auth.password_reset_request_view, name='api-auth-password-reset'),
     path('auth/password-reset/confirm/', views_auth.password_reset_confirm_view, name='api-auth-password-reset-confirm'),
     path('portfolio/userconfig/', views_auth.user_config_view, name='api-portfolio-userconfig'),
-    # NOTE: portfolio/portfolios/ intentionally omitted — falls through to legacy_proxy_view
     path('core/v1/health', views_health.health, name='api-core-health'),
     path('core/v1/capability-bootstrap', views_health.capability_bootstrap, name='api-core-capability-bootstrap'),
     path('core/v1/access/capabilities/', views_auth.capabilities_view, name='api-core-capabilities'),
-    # Partner / tenant-admin compat — frontend calls /api/core/v1/partner/*
-    path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner_compat'), namespace='identity_access_partner_compat')),
+    # Partner / tenant-admin native mount — frontend calls /api/core/v1/partner/*
+    path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner_api'), namespace='identity_access_partner_api')),
 ]

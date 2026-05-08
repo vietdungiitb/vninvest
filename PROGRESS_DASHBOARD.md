@@ -1,3 +1,217 @@
+# ✅ AUDIT FILE LIST (2026-05-08-COMPOSE-LEGACY-HOOK-REMOVAL) — Remove legacy env hooks from compose files
+
+Files changed:
+- docker-compose.ghcr.yml (MODIFIED - remove legacy backend/database env hooks from GHCR production stack)
+- docker-compose.saas-prod.yml (MODIFIED - remove legacy backend/database env hooks from SaaS production stack)
+- docker-compose.prod.yml (MODIFIED - remove legacy database env hook from production override)
+- docker-compose.dev.yml (MODIFIED - remove legacy backend/database env hooks and stale proxy comments)
+- packages/core/docker-compose.core.yml (MODIFIED - remove legacy database env hooks from core package stack)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+- docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md (MODIFIED - mark N5.3 complete)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.ghcr.yml config`, `docker compose -f docker-compose.saas-prod.yml config`, `docker compose -f docker-compose.prod.yml config`, `docker compose -f docker-compose.dev.yml config`, and `docker compose -f packages/core/docker-compose.core.yml config`
+- PASSED: `grep_search` over compose files found no remaining `LEGACY_BACKEND_URL` or `LEGACY_DATABASE_URL` matches
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate core-api core-worker core-beat backend` -> vninvest-dev core services recreated and healthy
+
+Status:
+- Legacy env hooks removed from compose files; compose runtime is aligned with native-only cutover.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-PROXY-FALLBACK-REMOVAL) — Delete catch-all /api proxy and legacy proxy module
+
+Files changed:
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - remove legacy_proxy import and final catch-all route)
+- packages/core/backend/src/vninvest_core/legacy_proxy.py (DELETED - final proxy fallback removed)
+- module_tree_full.md (MODIFIED - regenerated after proxy fallback removal)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_public_bootstrap_routes tests.test_identity_access_api_routes tests.test_user_workspace_api_routes tests.test_market_data_api_routes tests.test_market_serving_api_routes tests.test_signal_intelligence_api_routes --keepdb` -> 13 tests passed
+- PASSED: `& "c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (978 modules)
+
+Status:
+- Final proxy fallback removed; runtime URLConf is now native-only for the promoted domains.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-COMPAT-PORTFOLIO-REMOVAL) — Native signal tooling and portfolio bridge deletion
+
+Files changed:
+- scripts/pre_decommission_gates_check.py (MODIFIED - switch gate B to native signal endpoints and normalize list/count parity handling)
+- infra/load-tests/api-load.js (MODIFIED - switch whale traffic check to native `/api/signals/whale-feed/`)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - remove compat_portfolio include)
+- packages/core/backend/src/vninvest_core/compat_portfolio.py (DELETED - compat portfolio / whale / advisory bridge removed)
+- module_tree_full.md (MODIFIED - regenerated after compat_portfolio removal)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `& "c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe" -m py_compile scripts/pre_decommission_gates_check.py`
+- PASSED: `node --check infra/load-tests/api-load.js`
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_public_bootstrap_routes tests.test_identity_access_api_routes tests.test_user_workspace_api_routes tests.test_market_data_api_routes tests.test_market_serving_api_routes tests.test_signal_intelligence_api_routes --keepdb` -> 13 tests passed
+- PASSED: `& "c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (979 modules)
+
+Status:
+- Compat portfolio bridge removed; decommission tooling now uses native signal endpoints.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-MARKET-DATA-API-ROUTE-PROMOTION) — Native stock profile and daily price routes
+
+Files changed:
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount market_data.urls under /api/ and remove compat include)
+- packages/core/backend/src/market_data/compat_urls.py (DELETED - native route promotion completed for this family)
+- packages/core/backend/tests/test_market_data_api_routes.py (ADDED - resolver and response-shape regression tests)
+- module_tree_full.md (MODIFIED - regenerated after market-data API route promotion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_market_data_api_routes --keepdb` -> 2 tests passed
+- PASSED: `c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (980 modules)
+
+Status:
+- Native market-data API routes are promoted.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-IDENTITY-ACCESS-API-ROUTE-PROMOTION) — Native auth, bootstrap, and partner routes
+
+Files changed:
+- packages/core/backend/src/identity_access/api_urls.py (ADDED - native API route module for identity/auth/bootstrap and partner routes)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount identity_access.api_urls and remove compat include)
+- packages/core/backend/src/identity_access/compat_urls.py (DELETED - native route promotion completed for this family)
+- packages/core/backend/tests/test_identity_access_api_routes.py (ADDED - resolver and response-shape regression tests)
+- module_tree_full.md (MODIFIED - regenerated after identity-access API route promotion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_identity_access_api_routes --keepdb` -> 2 tests passed
+- PASSED: `c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (980 modules)
+
+Status:
+- Native identity-access API routes are promoted.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-USER-WORKSPACE-API-ROUTE-PROMOTION) — Native portfolio and watchlist routes
+
+Files changed:
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount user_workspace.urls under /api/ and remove compat include)
+- packages/core/backend/src/user_workspace/compat_urls.py (DELETED - native route promotion completed for this family)
+- packages/core/backend/tests/test_user_workspace_api_routes.py (ADDED - resolver and response-shape regression tests)
+- module_tree_full.md (MODIFIED - regenerated after user-workspace API route promotion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_user_workspace_api_routes --keepdb` -> 2 tests passed
+- PASSED: `c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (979 modules)
+
+Status:
+- Native user-workspace API routes are promoted.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-SIGNAL-INTELLIGENCE-API-ROUTE-PROMOTION) — Native signal alert, whale feed, and order flow routes
+
+Files changed:
+- packages/core/backend/src/signal_intelligence/api_urls.py (ADDED - native API route module for signal routes)
+- packages/core/backend/src/signal_intelligence/views.py (MODIFIED - disable incompatible default pagination on whale-feed and order-flow list views so native payload stays stable)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount signal_intelligence.api_urls and remove compat include)
+- packages/core/backend/src/signal_intelligence/compat_urls.py (DELETED - native route promotion completed for this family)
+- packages/core/backend/tests/test_signal_intelligence_api_routes.py (ADDED - resolver and response-shape regression tests)
+- module_tree_full.md (MODIFIED - regenerated after signal-intelligence API route promotion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` clean on `packages/core/backend/src/signal_intelligence/views.py`, `packages/core/backend/src/signal_intelligence/api_urls.py`, `packages/core/backend/src/vninvest_core/urls.py`, and `packages/core/backend/tests/test_signal_intelligence_api_routes.py`
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_signal_intelligence_api_routes --keepdb` -> 3 tests passed
+- PASSED: `c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (979 modules)
+
+Status:
+- Native signal-intelligence API routes are promoted.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-MARKET-SERVING-API-ROUTE-PROMOTION) — Native market snapshot and session facts routes
+
+Files changed:
+- packages/core/backend/src/market_serving/api_urls.py (ADDED - native API route module for market snapshot/session facts)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount market_serving.api_urls and remove compat include)
+- packages/core/backend/src/market_serving/compat_urls.py (DELETED - native route promotion completed for this family)
+- packages/core/backend/src/market_serving/views.py (MODIFIED - disable incompatible default pagination on list views and fail-soft cache access on detail views so native payload stays stable)
+- packages/core/backend/tests/test_market_serving_api_routes.py (ADDED - resolver and response-shape regression tests)
+- module_tree_full.md (MODIFIED - regenerated after market-serving API route promotion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` clean on `packages/core/backend/src/market_serving/views.py`, `packages/core/backend/src/market_serving/api_urls.py`, and `packages/core/backend/tests/test_market_serving_api_routes.py`
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_market_serving_api_routes --keepdb` -> 2 tests passed
+- PASSED: `c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (978 modules)
+
+Status:
+- Native market-serving API routes are promoted.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-NATIVE-PUBLIC-BOOTSTRAP-ROUTE-PROMOTION) — Native public legal pages and tracked-symbol routes
+
+Files changed:
+- packages/core/backend/src/commercial/views.py (MODIFIED - add PublicLegalPagesView)
+- packages/core/backend/src/commercial/public_urls.py (ADDED - native public legal pages route module)
+- packages/core/backend/src/market_data/views.py (MODIFIED - add TrackedSymbolsView)
+- packages/core/backend/src/market_data/public_urls.py (ADDED - native tracked-symbols route module)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount native public bootstrap routes before compat)
+- packages/core/backend/src/vninvest_core/compat_portfolio.py (MODIFIED - remove compat public legal pages and tracked-symbols routes)
+- packages/core/backend/tests/test_public_bootstrap_routes.py (ADDED - resolver and response-shape regression tests)
+- module_tree_full.md (MODIFIED - regenerated after native public bootstrap route promotion)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` clean on `packages/core/backend/src/commercial/views.py`, `packages/core/backend/src/commercial/public_urls.py`, `packages/core/backend/src/market_data/views.py`, `packages/core/backend/src/market_data/public_urls.py`, `packages/core/backend/src/vninvest_core/urls.py`, `packages/core/backend/src/vninvest_core/compat_portfolio.py`, and `packages/core/backend/tests/test_public_bootstrap_routes.py`
+- PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_public_bootstrap_routes --keepdb` -> 2 tests passed
+- PASSED: `c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (977 modules)
+
+Status:
+- Native route ownership promoted for public legal pages and tracked-symbol bootstrap.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-NATIVE-ONLY-DECOMMISSION-DOCS) — Final native-only cutover package
+
+Files changed:
+- docs/NATIVE_ONLY_DECOMMISSION_HANDOFF_MASTER_20260508.md (ADDED - final handoff master for native-only decommission)
+- docs/TECH_SPEC_NATIVE_ONLY_DECOMMISSION_20260508.md (ADDED - technical specification for route ownership and proxy removal)
+- docs/IMPLEMENTATION_PLAN_NATIVE_ONLY_DECOMMISSION_20260508.md (ADDED - execution phases and gates)
+- docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md (ADDED - slice-by-slice taskboard)
+- docs/NATIVE_ONLY_DECOMMISSION_TRACEABILITY_MATRIX_20260508.md (ADDED - requirement mapping)
+- docs/NATIVE_ONLY_DECOMMISSION_SELF_AUDIT_AND_TEST_PROTOCOL_20260508.md (ADDED - mandatory per-slice audit protocol)
+- docs/NATIVE_ONLY_DECOMMISSION_EXECUTION_EVIDENCE_TEMPLATE_20260508.md (ADDED - evidence packet template)
+- docs/NATIVE_ONLY_DECOMMISSION_CONFIG_OWNERSHIP_MATRIX_20260508.md (ADDED - config/file ownership matrix)
+- docs/NATIVE_ONLY_DECOMMISSION_CODE_QUALITY_CONSTITUTION_20260508.md (ADDED - quality constitution for the decommission program)
+- docs/RUN_CODE_REVIEW_NATIVE_ONLY_DECOMMISSION_20260508.md (ADDED - review checklist)
+- docs/RUN_INTEGRATION_TESTS_NATIVE_ONLY_DECOMMISSION_20260508.md (ADDED - integration test protocol)
+- docs/RUN_SPEC_AUDIT_NATIVE_ONLY_DECOMMISSION_20260508.md (ADDED - spec audit protocol)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- DOCS-ONLY: bundle written for team execution; no runtime validation required for the documentation slice itself
+
+Status:
+- Native-only decommission documentation package is ready.
+
+---
+
 # ✅ AUDIT FILE LIST (2026-05-08-BOOTSTRAP-SHIM-FIX) — Public legal pages and tracked-symbol bootstrap shims
 
 Files changed:

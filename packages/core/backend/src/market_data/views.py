@@ -78,3 +78,10 @@ class DailyPriceListView(APIView):
             'page': page,
             'page_size': self._PAGE_SIZE,
         })
+
+
+class TrackedSymbolsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response([])

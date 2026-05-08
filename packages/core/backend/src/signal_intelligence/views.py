@@ -31,6 +31,7 @@ class UnifiedAlertListView(generics.ListAPIView):
 class WhaleFeedAggregateView(generics.ListAPIView):
     serializer_class = WhaleAlertCanonicalSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         qs = WhaleAlertCanonical.objects.select_related('alert').order_by('-executed_at')
@@ -47,6 +48,7 @@ class OrderFlowEventListView(generics.ListAPIView):
     """List OrderFlowEvent records for a symbol (newest first)."""
     serializer_class = OrderFlowEventSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         symbol = self.kwargs.get('symbol', '').upper()
