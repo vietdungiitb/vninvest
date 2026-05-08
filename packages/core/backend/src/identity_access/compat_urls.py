@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from vninvest_core import views_health
 
@@ -24,4 +24,6 @@ urlpatterns = [
     path('core/v1/health', views_health.health, name='api-core-health'),
     path('core/v1/capability-bootstrap', views_health.capability_bootstrap, name='api-core-capability-bootstrap'),
     path('core/v1/access/capabilities/', views_auth.capabilities_view, name='api-core-capabilities'),
+    # Partner / tenant-admin compat — frontend calls /api/core/v1/partner/*
+    path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner_compat'), namespace='identity_access_partner_compat')),
 ]
