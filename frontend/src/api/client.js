@@ -134,6 +134,34 @@ function normalizeListResponse(response) {
   };
 }
 
+function normalizeTenantServiceAccountWritePayload(payload = {}) {
+  const scopes = Array.isArray(payload.scopes)
+    ? payload.scopes
+    : Array.isArray(payload.policy_ids)
+      ? payload.policy_ids
+      : [];
+
+  return {
+    ...payload,
+    scopes,
+    policy_ids: Array.isArray(payload.policy_ids) ? payload.policy_ids : scopes,
+  };
+}
+
+function normalizeTenantPatWritePayload(payload = {}) {
+  const scopes = Array.isArray(payload.scopes)
+    ? payload.scopes
+    : Array.isArray(payload.scope_codes)
+      ? payload.scope_codes
+      : [];
+
+  return {
+    ...payload,
+    scopes,
+    scope_codes: Array.isArray(payload.scope_codes) ? payload.scope_codes : scopes,
+  };
+}
+
 function withDefaultAuditReason(payload = {}, defaultReason) {
   return {
     ...payload,
@@ -259,7 +287,7 @@ export const getTenantSummary = () =>
   apiClient.get('/core/v1/partner/tenant/');
 
 export const createTenantServiceAccount = (payload) =>
-  apiClient.post('/core/v1/partner/service-accounts/', payload, {
+  apiClient.post('/core/v1/partner/service-accounts/', normalizeTenantServiceAccountWritePayload(payload), {
     headers: {
       'Idempotency-Key': buildIdempotencyKey('tenant-service-account'),
     },
@@ -290,7 +318,7 @@ export const getCoreOperatorAuditRequestDetail = (requestId) =>
   apiClient.get(`/core/v1/operator/audit/requests/${requestId}/`);
 
 export const issueTenantPAT = (payload) =>
-  apiClient.post('/core/v1/partner/pats/issue/', withDefaultAuditReason(payload, 'tenant_admin_issue_pat'), {
+  apiClient.post('/core/v1/partner/pats/issue/', normalizeTenantPatWritePayload(withDefaultAuditReason(payload, 'tenant_admin_issue_pat')), {
     headers: {
       'Idempotency-Key': buildIdempotencyKey('tenant-pat-issue'),
     },
