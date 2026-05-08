@@ -294,7 +294,10 @@ services:
       - vninvest_network
     mem_limit: ${OPENCORE_SITE_MEM_LIMIT:-512m}
     cpus: ${OPENCORE_SITE_CPUS:-0.5}
-
+    env_file: ./compose.dev.env
+    environment:
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
   frontend:
     container_name: vninvest-dev-frontend
     build:

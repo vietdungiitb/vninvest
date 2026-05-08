@@ -1,70 +1,33 @@
 # docker-compose.ghcr.yml
 # ─────────────────────────────────────────────────────────────────────────────
-# Production deployment file — pull pre-built images from GitHub Container
-# Registry (GHCR). NO source code required on the server.
+# SaaS Production — pull pre-built images from GitHub Container Registry (GHCR).
+# NO source code required on the server. Legacy backend removed.
 #
-# Usage on production server:
-#   # First-time setup or release deploy:
-#   APP_RELEASE=latest docker compose -f docker-compose.ghcr.yml pull
-#   APP_RELEASE=latest docker compose -f docker-compose.ghcr.yml up -d --no-build
+# Deploy trên server (sau khi CI build xong image):
+#   echo "GHCR_OWNER=vietdungiitb" >> .env.production
+#   docker compose -f docker-compose.ghcr.yml --env-file .env.production pull
+#   docker compose -f docker-compose.ghcr.yml --env-file .env.production up -d --no-build
 #
-#   # Rolling update (zero-downtime per service):
-#   APP_RELEASE=<sha> docker compose -f docker-compose.ghcr.yml pull core-api
-#   docker compose -f docker-compose.ghcr.yml up -d --no-deps --no-build core-api
+# Rolling update:
+#   docker compose -f docker-compose.ghcr.yml --env-file .env.production pull core-api frontend
+#   docker compose -f docker-compose.ghcr.yml --env-file .env.production up -d --no-deps --no-build core-api frontend
 #
-# Required environment variables (set in .env or export before running):
-#   APP_RELEASE            — Docker image tag (latest | <git-sha>)
-#   GHCR_OWNER             — GitHub username/org (e.g. vietdungiitb)
-#   POSTGRES_PASSWORD      — Legacy DB password
-#   CORE_DB_PASSWORD       — Core-API DB password
-#   CORE_DJANGO_SECRET_KEY — Django secret key for core-api
-#   CORE_ALLOWED_HOSTS     — Comma-separated allowed hosts for core-api
-#   CORE_CORS_ALLOWED_ORIGINS — CORS origins for core-api
-#   DJANGO_SECRET_KEY      — Django secret key for legacy backend
-#   DJANGO_ALLOWED_HOSTS   — Comma-separated allowed hosts for legacy backend
+# Required env vars (set trong .env.production trên server):
+#   APP_RELEASE              — image tag: latest (enterprise) | dev-latest (dev) | <sha>
+#   GHCR_OWNER               — GitHub username (vietdungiitb)
+#   CORE_DB_PASSWORD         — PostgreSQL 16 password for core-api
+#   CORE_DJANGO_SECRET_KEY   — Django secret key cho core-api
+#   CORE_ALLOWED_HOSTS       — vninvest.edusuccess.vn,localhost
+#   CORE_CORS_ALLOWED_ORIGINS — https://vninvest.edusuccess.vn
+#   CORE_PAT_PEPPER          — 32-char hex HMAC pepper
+#   GRAFANA_ADMIN_PASSWORD   — Grafana admin password
+#   DOMAIN                   — vninvest.edusuccess.vn
+#   LETSENCRYPT_EMAIL        — email for Let's Encrypt
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
 
-  # ── Infrastructure ──────────────────────────────────────────────────────────
-
-  db:
-    image: postgres:15-alpine
-    container_name: vninvest-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vninvest}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vninvest}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - vninvest_network
-    mem_limit: ${DB_MEM_LIMIT:-2g}
-    cpus: ${DB_CPUS:-1.5}
-
-  redis:
-    image: redis:7-alpine
-    container_name: vninvest-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - vninvest_network
-    mem_limit: ${REDIS_MEM_LIMIT:-1g}
-    cpus: ${REDIS_CPUS:-1.0}
-
+  # ── Core Database (PostgreSQL 16) ────────────────────────────────────────────
   core-db:
     image: postgres:16-alpine
     container_name: vninvest-core-db
@@ -85,11 +48,14 @@ services:
     mem_limit: ${CORE_DB_MEM_LIMIT:-1g}
     cpus: ${CORE_DB_CPUS:-1.0}
 
+  # ── Core Redis ───────────────────────────────────────────────────────────────
   core-redis:
     image: redis:7-alpine
     container_name: vninvest-core-redis
     restart: unless-stopped
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - core_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -100,8 +66,7 @@ services:
     mem_limit: ${CORE_REDIS_MEM_LIMIT:-512m}
     cpus: ${CORE_REDIS_CPUS:-0.5}
 
-  # ── Core API (SaaS) — pre-built from GHCR ───────────────────────────────────
-
+  # ── Core API — pulled from GHCR ──────────────────────────────────────────────
   core-api:
     image: ghcr.io/${GHCR_OWNER:-vietdungiitb}/vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-api
@@ -113,8 +78,12 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD}@core-db:5432/vninvest_core
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:-}
+      LEGACY_DATABASE_URL: ""
+      LEGACY_BACKEND_URL: ""
       REDIS_URL: redis://core-redis:6379/0
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
     command: ["api"]
     depends_on:
       core-db:
@@ -126,14 +95,15 @@ services:
       interval: 15s
       timeout: 5s
       retries: 8
-      start_period: 30s
+      start_period: 45s
     expose:
       - "8100"
     networks:
       - vninvest_network
     mem_limit: ${CORE_API_MEM_LIMIT:-512m}
-    cpus: ${CORE_API_CPUS:-0.75}
+    cpus: ${CORE_API_CPUS:-1.0}
 
+  # ── Core Celery Worker ───────────────────────────────────────────────────────
   core-worker:
     image: ghcr.io/${GHCR_OWNER:-vietdungiitb}/vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker
@@ -143,8 +113,10 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD}@core-db:5432/vninvest_core
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:-}
+      LEGACY_DATABASE_URL: ""
       REDIS_URL: redis://core-redis:6379/0
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER}
+      CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-2}
     command: ["worker"]
     depends_on:
       core-api:
@@ -154,6 +126,7 @@ services:
     mem_limit: ${CORE_WORKER_MEM_LIMIT:-256m}
     cpus: ${CORE_WORKER_CPUS:-0.5}
 
+  # ── Core Celery Beat ─────────────────────────────────────────────────────────
   core-beat:
     image: ghcr.io/${GHCR_OWNER:-vietdungiitb}/vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-beat
@@ -163,8 +136,9 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD}@core-db:5432/vninvest_core
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:-}
+      LEGACY_DATABASE_URL: ""
       REDIS_URL: redis://core-redis:6379/0
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER}
     command: ["beat"]
     depends_on:
       core-api:
@@ -174,118 +148,80 @@ services:
     mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}
     cpus: ${CORE_BEAT_CPUS:-0.25}
 
-  # ── Legacy Backend — pre-built from GHCR ────────────────────────────────────
-
-  backend:
-    image: ghcr.io/${GHCR_OWNER:-vietdungiitb}/vninvest-backend:${APP_RELEASE:-latest}
-    container_name: vninvest-backend
-    restart: unless-stopped
-    env_file:
-      - ./.env.backend.production
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vninvest}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS must be set}
-      APP_RELEASE: ${APP_RELEASE:-latest}
-      # PAT-only: pepper must match core-api for LegacyCorePATAuthentication to validate tokens.
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set in production}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8000/api/health/ >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 45s
-    expose:
-      - "8000"
-    networks:
-      - vninvest_network
-    mem_limit: ${BACKEND_MEM_LIMIT:-1500m}
-    cpus: ${BACKEND_CPUS:-1.5}
-
-  celery-worker:
-    image: ghcr.io/${GHCR_OWNER:-vietdungiitb}/vninvest-backend:${APP_RELEASE:-latest}
-    container_name: vninvest-celery-worker
-    restart: unless-stopped
-    env_file:
-      - ./.env.backend.production
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vninvest}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-      APP_RELEASE: ${APP_RELEASE:-latest}
-    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=4"]
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - vninvest_network
-    mem_limit: ${CELERY_MEM_LIMIT:-1g}
-    cpus: ${CELERY_CPUS:-1.0}
-
-  celery-beat:
-    image: ghcr.io/${GHCR_OWNER:-vietdungiitb}/vninvest-backend:${APP_RELEASE:-latest}
-    container_name: vninvest-celery-beat
-    restart: unless-stopped
-    env_file:
-      - ./.env.backend.production
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vninvest}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-      APP_RELEASE: ${APP_RELEASE:-latest}
-    command: ["celery", "-A", "config", "beat", "-l", "info"]
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - vninvest_network
-    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-256m}
-    cpus: ${CELERY_BEAT_CPUS:-0.25}
-
-  # ── Frontend — pre-built from GHCR ──────────────────────────────────────────
-
+  # ── Frontend — pulled from GHCR ──────────────────────────────────────────────
+  # ModernDashboard là default. packages/web shell active.
   frontend:
     image: ghcr.io/${GHCR_OWNER:-vietdungiitb}/vninvest-frontend:${APP_RELEASE:-latest}
     container_name: vninvest-frontend
     restart: unless-stopped
+    environment:
+      VIRTUAL_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@edusuccess.vn}
     depends_on:
-      backend:
-        condition: service_healthy
       core-api:
         condition: service_healthy
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
+    expose:
+      - "80"
     networks:
       - vninvest_network
-    mem_limit: ${FRONTEND_MEM_LIMIT:-256m}
+      - nginx-proxy_default
+    mem_limit: ${FRONTEND_MEM_LIMIT:-512m}
     cpus: ${FRONTEND_CPUS:-0.5}
 
+  # ── Prometheus ───────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vninvest-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    expose:
+      - "9090"
+    networks:
+      - vninvest_network
+    mem_limit: ${PROMETHEUS_MEM_LIMIT:-512m}
+    cpus: ${PROMETHEUS_CPUS:-0.5}
+
+  # ── Grafana ──────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vninvest-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-https://vninvest.edusuccess.vn/grafana}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    expose:
+      - "3000"
+    networks:
+      - vninvest_network
+    mem_limit: ${GRAFANA_MEM_LIMIT:-256m}
+    cpus: ${GRAFANA_CPUS:-0.25}
+
 volumes:
-  postgres_data:
   core_pgdata:
-  redis_data:
+  core_redis_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   vninvest_network:
     driver: bridge
+  nginx-proxy_default:
+    external: true
