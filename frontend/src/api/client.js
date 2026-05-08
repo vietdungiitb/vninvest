@@ -58,13 +58,53 @@ function normalizeListResponse(response) {
     return response;
   }
 
+  const requestUrl = String(response.config?.url || '');
   const payload = response.data;
+  const rawRows = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.results)
+        ? payload.results
+        : [];
+
+  const rows = rawRows.map((item) => {
+    if (requestUrl.includes('/core/v1/partner/service-accounts')) {
+      return {
+        ...item,
+        id: item.id || item.service_account_id || item.public_id || '',
+        service_account_id: item.service_account_id || item.id || item.public_id || '',
+        environment: item.environment || item.metadata?.environment || 'prod',
+        policy_ids: Array.isArray(item.policy_ids)
+          ? item.policy_ids
+          : Array.isArray(item.scopes)
+            ? item.scopes
+            : [],
+      };
+    }
+
+    if (requestUrl.includes('/core/v1/partner/pats')) {
+      return {
+        ...item,
+        id: item.id || item.pat_id || item.public_id || '',
+        pat_id: item.pat_id || item.id || item.public_id || '',
+        scope_codes: Array.isArray(item.scope_codes)
+          ? item.scope_codes
+          : Array.isArray(item.scopes)
+            ? item.scopes
+            : [],
+      };
+    }
+
+    return item;
+  });
+
   if (Array.isArray(payload)) {
     return {
       ...response,
       data: {
         object: 'list',
-        data: payload,
+        data: rows,
         has_more: false,
         next_cursor: null,
         prev_cursor: null,
@@ -73,12 +113,6 @@ function normalizeListResponse(response) {
   }
 
   if (payload && typeof payload === 'object') {
-    if (Array.isArray(payload.data)) {
-      return response;
-    }
-
-    const rows = Array.isArray(payload.results) ? payload.results : [];
-
     return {
       ...response,
       data: {
@@ -92,7 +126,7 @@ function normalizeListResponse(response) {
     ...response,
     data: {
       object: 'list',
-      data: [],
+      data: rows,
       has_more: false,
       next_cursor: null,
       prev_cursor: null,
