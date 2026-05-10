@@ -81,7 +81,11 @@ function AdminCoreShell() {
 }
 
 export default function App() {
-  const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
+  // Debug shell pages must stay disabled by default in production.
+  const debugPagesEnabled = process.env.REACT_APP_ENABLE_DEBUG_PAGES === '1';
+  const packageShellHostEnabled = (
+    process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1' && debugPagesEnabled
+  );
 
   return (
     <BrowserRouter future={{ v7_relativeSplatPath: true }}>
