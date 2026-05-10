@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-05-10-DNSE-SYNC-502-UNBLOCK) — Khử lỗi 502 connector unavailable
+
+Mục tiêu:
+- Khử lỗi runtime `Core API POST error 502 Bad Gateway` tại endpoint `/broker/dnse/sync-accounts/` với thông báo `vnbroker DNSE connector chưa khả dụng`.
+- Đồng bộ implementation với API thực tế của `vnbroker.connector.dnse.client.DNSEClient`.
+
+Files changed:
+- `packages/core/backend/src/user_workspace/vnbroker_dnse_compat.py` (NEW)
+- `packages/core/backend/src/user_workspace/dnse_adapter.py` (MODIFIED)
+- `packages/core/backend/src/user_workspace/tasks.py` (REWRITTEN)
+- `packages/core/backend/requirements.txt` (MODIFIED)
+- `module_tree_full.md` (REGENERATED)
+
+Validation:
+- PASSED: Endpoint `/core/v1/broker/dnse/sync-accounts/` không còn trả lỗi `vnbroker connector chưa khả dụng`.
+- PASSED: Với credential test giả, endpoint trả lỗi upstream DNSE thật (`API key not found in storage`) thay vì lỗi dependency thiếu connector.
+
 # ✅ AUDIT FILE LIST (2026-05-10-DNSE-LIGHTSPEED-PORTFOLIOS-SAAS-ROUTE) — Chuyển /portfolios sang page SaaS thật
 
 Muc tieu:

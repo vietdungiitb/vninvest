@@ -39,25 +39,16 @@ class DNSEVnbrokerUnavailableError(DNSEAdapterError):
     """vnbroker DNSE connector chưa được cài hoặc không import được."""
 
 
-def _get_vnbroker_dnse_token():
-    """
-    Lazy import vnbroker DNSE token exchange function.
-    Trả về callable hoặc raise DNSEVnbrokerUnavailableError — KHÔNG trả None.
-    """
+def _build_vnbroker_dnse_client(client_id: str, client_secret: str):
+    """Build DNSE session client from the installed vnbroker connector API."""
     try:
-        from vnbroker.brokers.dnse import get_access_token
-        return get_access_token
-    except ImportError:
-        pass
-    try:
-        from vnbroker.connector.dnse import get_access_token
-        return get_access_token
-    except ImportError:
-        pass
-    raise DNSEVnbrokerUnavailableError(
-        "vnbroker DNSE connector chưa khả dụng. "
-        "Cài đặt vnbroker >= phiên bản hỗ trợ LightSpeed API trước khi kích hoạt DNSE sync."
-    )
+        from .vnbroker_dnse_compat import build_dnse_client
+        return build_dnse_client(client_id=client_id, client_secret=client_secret)
+    except ImportError as exc:
+        raise DNSEVnbrokerUnavailableError(
+            "vnbroker DNSE connector chưa khả dụng. "
+            "Cài đặt vnbroker >= phiên bản hỗ trợ LightSpeed API trước khi kích hoạt DNSE sync."
+        ) from exc
 
 
 def bootstrap_dnse_session(credential: "DNSECredential") -> dict:
@@ -86,26 +77,19 @@ def bootstrap_dnse_session(credential: "DNSECredential") -> dict:
             "Giải mã credential thất bại — client_id hoặc client_secret trống sau khi giải mã."
         )
 
-    get_access_token = _get_vnbroker_dnse_token()
-
     try:
-        result = get_access_token(client_id=client_id, client_secret=client_secret)
+        client = _build_vnbroker_dnse_client(client_id=client_id, client_secret=client_secret)
     except DNSEVnbrokerUnavailableError:
         raise
     except Exception as exc:
         logger.warning("dnse_adapter: bootstrap_dnse_session thất bại — %s", type(exc).__name__)
         raise DNSEAdapterError(
-            "Không thể lấy access_token từ DNSE LightSpeed API. Kiểm tra Client ID/Secret và kết nối mạng."
+            "Không thể khởi tạo phiên DNSE LightSpeed API. Kiểm tra Client ID/Secret và kết nối mạng."
         ) from exc
-
-    access_token = result.get("access_token") if isinstance(result, dict) else result
-    if not access_token:
-        raise DNSEAdapterError(
-            "DNSE LightSpeed API không trả về access_token hợp lệ."
-        )
 
     return {
         "ok": True,
-        "access_token": access_token,
-        "expires_in": result.get("expires_in", 3600) if isinstance(result, dict) else 3600,
+        "session": client,
+        "access_token": "dnse-session",
+        "expires_in": 3600,
     }

@@ -1,3 +1,27 @@
+# Entry 2026-05-10-DNSE-SYNC-502-UNBLOCK — Khử lỗi 502 "vnbroker connector chưa khả dụng"
+
+**Mục tiêu:**
+- Gỡ chặn endpoint `POST /core/v1/broker/dnse/sync-accounts/` đang trả 502 với lỗi "vnbroker DNSE connector chưa khả dụng".
+- Đồng bộ lại backend với API thực tế của package `vnbroker` đã cài trong runtime (`vnbroker.connector.dnse.client.DNSEClient`).
+- Loại bỏ phần task DNSE bị duplicate/stub để chỉ còn 1 implementation chuẩn, không fake data.
+
+**Files changed:**
+- `packages/core/backend/src/user_workspace/vnbroker_dnse_compat.py` (NEW) — lớp tương thích map DNSEClient sang contract hiện tại (`fetch_sub_accounts`, `fetch_account_balance`, `fetch_order_history`).
+- `packages/core/backend/src/user_workspace/dnse_adapter.py` (MODIFIED) — bootstrap phiên DNSE bằng DNSEClient, không còn phụ thuộc `get_access_token` legacy function.
+- `packages/core/backend/src/user_workspace/tasks.py` (REWRITTEN) — loại bỏ duplicate + stub block; dùng compat layer gọi DNSE thật.
+- `packages/core/backend/requirements.txt` (MODIFIED) — thêm nguồn `vnbroker` cho core runtime.
+- `module_tree_full.md` (REGENERATED) — cập nhật cây module sau thay đổi backend.
+
+**Validation:**
+- PASSED: Import runtime `from user_workspace.vnbroker_dnse_compat import build_dnse_client` trả về `DNSEClient`.
+- PASSED: `POST /core/v1/broker/dnse/config/` cập nhật credential thành công.
+- PASSED: `POST /core/v1/broker/dnse/sync-accounts/` không còn trả lỗi "vnbroker connector chưa khả dụng".
+- INFO: Với credential test giả (`dummy-client/dummy-secret`), API trả lỗi upstream thật: `API key not found in storage`.
+
+**Residual risk:**
+- Nếu `vnbroker` thay đổi schema response/order status trong các phiên bản tới, cần cập nhật mapper trong `vnbroker_dnse_compat.py`.
+- Cần test lại bằng DNSE LightSpeed credential thật để xác nhận sync thành công end-to-end.
+
 # Entry 2026-05-10-DNSE-LIGHTSPEED-PORTFOLIOS-SAAS-ROUTE — Chuyển /portfolios sang page SaaS thật
 
 **Mục tiêu:** Loại bỏ nhánh render legacy DNSE username/password trong monolith frontend và buộc route `/portfolios` đi vào page SaaS thật từ `packages/web`.
