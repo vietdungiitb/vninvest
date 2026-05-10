@@ -71,20 +71,20 @@ class MarketObservabilityTests(APITestCase):
         self.assertIn('stale_over_threshold_total', payload['intraday_freshness'])
 
     @patch('portfolio.market_data_service.fetch_intraday_dataframe')
-    @patch('portfolio.market_data_service.is_vnstock_rate_limited')
+    @patch('portfolio.market_data_service.is_vnbroker_rate_limited')
     @patch('portfolio.market_data_service.read_stream_intraday_ticks')
     def test_whale_feed_timeout_records_fallback_and_timeout(
         self,
         mock_read_stream_intraday_ticks,
-        mock_is_vnstock_rate_limited,
+        mock_is_vnbroker_rate_limited,
         mock_fetch_intraday_dataframe,
     ):
         self.authenticate()
         mock_read_stream_intraday_ticks.return_value = []
-        mock_is_vnstock_rate_limited.return_value = False
+        mock_is_vnbroker_rate_limited.return_value = False
         mock_fetch_intraday_dataframe.side_effect = ExternalSystemException(
-            'vnstock timeout sau 8s',
-            code='vnstock_timeout',
+            'vnbroker timeout sau 8s',
+            code='vnbroker_timeout',
         )
 
         response = self.client.get('/api/realtime/whale-feed/VCB/')
@@ -95,7 +95,7 @@ class MarketObservabilityTests(APITestCase):
         self.assertGreaterEqual(snapshot['overall']['external_timeouts'], 1)
         self.assertGreaterEqual(snapshot['overall']['fallback_hits'], 1)
         self.assertEqual(snapshot['fallback_breakdown']['whale-feed']['timeout'], 1)
-        self.assertEqual(snapshot['external_timeout_breakdown']['whale-feed']['vnstock'], 1)
+        self.assertEqual(snapshot['external_timeout_breakdown']['whale-feed']['vnbroker'], 1)
 
     @patch('portfolio.market_views.market_data_service.get_whale_feed_aggregate')
     def test_whale_aggregate_read_does_not_pollute_whale_pipeline_freshness(self, mock_get_whale_feed_aggregate):

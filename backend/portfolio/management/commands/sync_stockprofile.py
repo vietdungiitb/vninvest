@@ -1,7 +1,7 @@
 """
 Management command: sync_stockprofile
 
-Tự động lấy toàn bộ mã chứng khoán, nhóm ngành, sàn giao dịch từ vnstock
+Tự động lấy toàn bộ mã chứng khoán, nhóm ngành, sàn giao dịch từ vnbroker
 và lưu vào bảng StockProfile.
 
 Cách dùng:
@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand
 from portfolio.services import sync_stock_profiles
 
 class Command(BaseCommand):
-    help = 'Đồng bộ toàn bộ mã chứng khoán, nhóm ngành, sàn giao dịch từ vnstock về StockProfile.'
+    help = 'Đồng bộ toàn bộ mã chứng khoán, nhóm ngành, sàn giao dịch từ vnbroker về StockProfile.'
 
     def add_arguments(self, parser):
         parser.add_argument(

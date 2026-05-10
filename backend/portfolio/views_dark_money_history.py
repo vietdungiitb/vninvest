@@ -1,7 +1,7 @@
 """
 Dark Money History API — W2+W4 Module
 Provides combined historical view of:
-  - OHLC price candles (via vnstock adapter)
+  - OHLC price candles (via vnbroker adapter)
   - Dark flow strength time series (from OrderFlowSignal DB)
   - Whale buy/sell signals (from IntradayTick)
   - Moving averages (MA20, MA50)
@@ -48,7 +48,7 @@ INTERVAL_ALIASES = {
     '15m': '15m',
 }
 INTRADAY_MAX_DAYS = {'1h': 7, '30m': 3, '15m': 2}
-VNSTOCK_INTERVAL_MAP = {'1D': '1D', '1W': '1W', '1h': '60', '30m': '30', '15m': '15'}
+vnbroker_INTERVAL_MAP = {'1D': '1D', '1W': '1W', '1h': '60', '30m': '30', '15m': '15'}
 TRUNC_FN_MAP = {'1D': TruncDate, '1W': TruncWeek, '1h': TruncHour, '30m': TruncMinute, '15m': TruncMinute}
 MA_WINDOWS = [20, 50]
 SMFI_LOOKBACK_SESSIONS = 20
@@ -277,7 +277,7 @@ def dark_money_history_api(request, symbol: str):
     GET /api/stock-management/stocks/<symbol>/dark-money-history/
 
     Combined W2+W4 endpoint providing:
-      - OHLC candles (from vnstock)
+      - OHLC candles (from vnbroker)
       - Dark flow strength time series (from OrderFlowSignal DB)
       - Whale buy/sell signals (from IntradayTick)
       - Moving averages (MA20, MA50)
@@ -312,12 +312,12 @@ def dark_money_history_api(request, symbol: str):
         period_days = min(_resolve_period_days(period), max_days)
     cutoff_date = date.today() - timedelta(days=period_days)
 
-    # ─── 1. Fetch OHLC candles from vnstock ───────────────────────────────
+    # ─── 1. Fetch OHLC candles from vnbroker ───────────────────────────────
     candles = []
     try:
-        from .adapters.vnstock_adapter import fetch_history_dataframe
+        from .adapters.vnbroker_adapter import fetch_history_dataframe
 
-        vnstock_interval = VNSTOCK_INTERVAL_MAP.get(interval, '1D')
+        vnbroker_interval = vnbroker_INTERVAL_MAP.get(interval, '1D')
         end_date = date.today().strftime('%Y-%m-%d')
         start_date = cutoff_date.strftime('%Y-%m-%d')
 
@@ -325,7 +325,7 @@ def dark_money_history_api(request, symbol: str):
             normalized_symbol,
             start=start_date,
             end=end_date,
-            interval=vnstock_interval,
+            interval=vnbroker_interval,
         )
 
         if raw_data is not None and hasattr(raw_data, 'iterrows'):
@@ -351,10 +351,10 @@ def dark_money_history_api(request, symbol: str):
 
                     candle = {
                         'time': row_time,
-                        'open': _normalize_chart_quote_price(row.get('open', 0), source=PriceSource.VNSTOCK_DAILY, symbol=normalized_symbol),
-                        'high': _normalize_chart_quote_price(row.get('high', 0), source=PriceSource.VNSTOCK_DAILY, symbol=normalized_symbol),
-                        'low': _normalize_chart_quote_price(row.get('low', 0), source=PriceSource.VNSTOCK_DAILY, symbol=normalized_symbol),
-                        'close': _normalize_chart_quote_price(row.get('close', 0), source=PriceSource.VNSTOCK_DAILY, symbol=normalized_symbol),
+                        'open': _normalize_chart_quote_price(row.get('open', 0), source=PriceSource.vnbroker_DAILY, symbol=normalized_symbol),
+                        'high': _normalize_chart_quote_price(row.get('high', 0), source=PriceSource.vnbroker_DAILY, symbol=normalized_symbol),
+                        'low': _normalize_chart_quote_price(row.get('low', 0), source=PriceSource.vnbroker_DAILY, symbol=normalized_symbol),
+                        'close': _normalize_chart_quote_price(row.get('close', 0), source=PriceSource.vnbroker_DAILY, symbol=normalized_symbol),
                         'volume': int(row.get('volume', 0)),
                     }
                     if candle['close'] > 0:

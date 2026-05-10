@@ -69,6 +69,25 @@ describe('useWhaleAnalyticsData', () => {
     expect(result.current.error).toBe(null);
   });
 
+  it('degrades quietly when the snapshot payload is empty', async () => {
+    getWhaleAnalyticsSnapshot.mockResolvedValue({ data: {} });
+
+    const { result } = renderHook(() => useWhaleAnalyticsData('HPG', 'session'));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.data).toEqual({
+      bubbles: null,
+      flow: null,
+      meta: null,
+    });
+    expect(result.current.error).toBe(null);
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    expect(normalizeWhaleAnalyticsSnapshot).not.toHaveBeenCalled();
+  });
+
   it('forwards includeBaseline when chart mode disables percentile work', async () => {
     const normalized = {
       bubbles: { symbol: 'HPG' },

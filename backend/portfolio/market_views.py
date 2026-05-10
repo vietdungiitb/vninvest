@@ -23,7 +23,7 @@ class BaseMarketDataView(APIView):
         if isinstance(exc, MarketDataValidationException):
             return Response({'detail': exc.message}, status=status.HTTP_400_BAD_REQUEST)
         if isinstance(exc, ExternalSystemException):
-            if exc.code in {'vnstock_missing', 'ticker_cache_miss'}:
+            if exc.code in {'vnbroker_missing', 'ticker_cache_miss'}:
                 configured_status = int(getattr(settings, 'TICKER_CACHE_MISS_STATUS_CODE', 503) or 503)
                 http_status = configured_status if configured_status in {200, 503} else status.HTTP_503_SERVICE_UNAVAILABLE
             else:

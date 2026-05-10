@@ -29,7 +29,7 @@ class ApiRouteAdminSyncGroupsTests(APITestCase):
             'success': True,
             'message': 'Đã đồng bộ mã chứng khoán từ thị trường.',
             'warning': None,
-            'source': 'vnstock',
+            'source': 'vnbroker',
             'total_symbols': 10,
             'created_symbols': 3,
             'updated_symbols': 7,

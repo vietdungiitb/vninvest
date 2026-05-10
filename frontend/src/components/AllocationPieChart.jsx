@@ -20,6 +20,22 @@ const COLORS = [
   '#f97316', '#a855f7',
 ];
 
+function normalizeAllocationRows(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (Array.isArray(payload?.items)) {
+    return payload.items;
+  }
+  if (Array.isArray(payload?.data)) {
+    return payload.data;
+  }
+  if (Array.isArray(payload?.results)) {
+    return payload.results;
+  }
+  return [];
+}
+
 function formatVND(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
@@ -74,11 +90,11 @@ export default function AllocationPieChart({ portfolioId }) {
     try {
       if (mode === 'sector') {
         const res = await getAllocationBySector(portfolioId);
-        setData(res.data.items ?? []);
+        setData(normalizeAllocationRows(res.data));
         setHhi(res.data.hhi_score ?? null);
       } else {
         const res = await getAllocation(portfolioId);
-        setData(res.data);
+        setData(normalizeAllocationRows(res.data));
         setHhi(null);
       }
     } catch (err) {

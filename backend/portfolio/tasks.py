@@ -47,7 +47,7 @@ from portfolio.services import (
     refresh_rollout_propagation_status,
     sync_watchlist_prices,
 )
-from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
+from portfolio.adapters.vnbroker_adapter import fetch_price_board_dataframe
 from portfolio.domain_constants import resolve_user_whale_threshold_vnd
 from portfolio.onboarding_trial_service import process_expired_onboarding_trials
 from portfolio.observability import (
@@ -75,7 +75,7 @@ from portfolio.tasks_whale_advisory import (
     ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX,
 )
 from portfolio.tasks_prefetch import (
-    offpeak_vnstock_ingest,
+    offpeak_vnbroker_ingest,
     build_realtime_symbol_universe_snapshot,
     schedule_realtime_prefetch_shards,
     prefetch_realtime_ticker_shard,
@@ -83,7 +83,7 @@ from portfolio.tasks_prefetch import (
     _collect_realtime_symbol_universe,
     _resolve_scheduler_plan,
     _prefetch_runtime_defaults,
-    _get_prefetch_runtime_settings,
+    _get_vnbroker_runtime_settings,
     _prefetch_time_policy_defaults,
     _coerce_prefetch_time_policy,
     _get_prefetch_time_policy,
@@ -99,13 +99,13 @@ from portfolio.tasks_prefetch import (
     _prefetch_retry_countdown,
     _prefetch_retry_countdown_with_policy,
     _mark_price_board_rate_limited,
-    _record_vnstock_timeout,
+    _record_vnbroker_timeout,
     TICKER_PREFETCH_META_CACHE_KEY,
-    VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
-    PREFETCH_RUNTIME_SETTINGS_CACHE_KEY,
+    VNBROKER_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
+    VNBROKER_RUNTIME_SETTINGS_CACHE_KEY,
     PREFETCH_TIME_POLICY_CACHE_KEY,
     PREFETCH_METRIC_CACHE_PREFIX,
-    VNSTOCK_TIMEOUT_COUNTER_KEY,
+    VNBROKER_TIMEOUT_COUNTER_KEY,
 )
 from portfolio.tasks_order_flow import (
     detect_and_store_order_flow,
@@ -144,6 +144,13 @@ from portfolio.tasks_sync import (
     sync_user_watch_assets,
     sync_all_watch_assets,
 )
+from portfolio.tasks_dnse import (
+    sync_dnse_accounts_task,
+    sync_all_dnse_balances_task,
+    sync_dnse_balances_task,
+    reconcile_all_dnse_transactions_task,
+    reconcile_dnse_transactions_task,
+)
 from portfolio.tasks_symbol_engagement import warmup_symbol_intraday  # noqa: F401
 from portfolio.tasks_maintenance import (
     run_stream_consumer_batch,
@@ -151,7 +158,7 @@ from portfolio.tasks_maintenance import (
     cleanup_old_signal_service_runs,
     trim_streams,
 )
-from portfolio.tasks_maintenance import run_vnstock_price_board_benchmark  # noqa: F401
+from portfolio.tasks_maintenance import run_vnbroker_price_board_benchmark  # noqa: F401
 from portfolio.tasks_advisory_helpers import (
     _advisory_event_merge_cache_key,
     _safe_float,

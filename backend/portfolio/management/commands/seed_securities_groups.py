@@ -1,7 +1,7 @@
 """
 Management command: seed_securities_groups
 
-Tự động lấy toàn bộ nhóm ngành ICB và nhóm vốn hóa từ vnstock,
+Tự động lấy toàn bộ nhóm ngành ICB và nhóm vốn hóa từ vnbroker,
 đồng bộ SecuritiesGroup + SecuritiesItem như taxonomy dùng chung toàn hệ thống.
 
 Cách dùng:
@@ -20,7 +20,7 @@ from portfolio.services import sync_market_groups_for_user, sync_market_groups_f
 
 
 class Command(BaseCommand):
-    help = 'Tạo SecuritiesGroup từ dữ liệu thị trường vnstock (ICB sectors + VN30/VN100/HNX30)'
+    help = 'Tạo SecuritiesGroup từ dữ liệu thị trường vnbroker (ICB sectors + VN30/VN100/HNX30)'
 
     def add_arguments(self, parser):
         parser.add_argument(

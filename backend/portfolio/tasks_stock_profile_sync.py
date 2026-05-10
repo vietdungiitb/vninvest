@@ -2,7 +2,7 @@
 portfolio/tasks_stock_profile_sync.py
 
 Task Celery định kỳ đồng bộ StockProfile.industry + company_name
-từ MarketSnapshot (private vnstock, nguồn KBS).
+từ MarketSnapshot (private vnbroker, nguồn KBS).
 
 Chạy mỗi ngày lúc 07:15 sáng (giờ VN) để chuẩn bị dữ liệu trước phiên giao dịch.
 Sau khi sync DB, ghi thêm vào Redis để heatmap view đọc nhanh (cache-first).
@@ -49,7 +49,7 @@ def sync_stock_profiles_from_snapshot(self, symbols: list[str] | None = None):
     Returns:
         dict: {"updated": N, "skipped": N, "errors": N}
     """
-    from portfolio.adapters.vnstock_adapter import fetch_heatmap_snapshot
+    from portfolio.adapters.vnbroker_adapter import fetch_heatmap_snapshot
     from portfolio.models import StockProfile, TrackedSymbol, WatchlistItem, Transaction
 
     # Thu thập danh sách mã cần sync

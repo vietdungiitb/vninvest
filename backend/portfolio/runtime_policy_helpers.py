@@ -83,10 +83,10 @@ def _default_prefetch_runtime_settings():
         'max_retries': _int_env('TICKER_PREFETCH_MAX_RETRIES', 6, 0),
         'retry_base_seconds': retry_base,
         'retry_max_seconds': max(_int_env('TICKER_PREFETCH_RETRY_MAX_SECONDS', 120, 1), retry_base),
-        'rate_limit_cooldown_seconds': _int_env('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', 20, 5),
-        'circuit_window_seconds': _int_env('VNSTOCK_CIRCUIT_WINDOW_SECONDS', 300, 30),
-        'circuit_breaker_timeout_threshold': _int_env('VNSTOCK_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD', 3, 1),
-        'circuit_breaker_cooldown_seconds': _int_env('VNSTOCK_CIRCUIT_BREAKER_COOLDOWN_SECONDS', 1800, 60),
+        'rate_limit_cooldown_seconds': _int_env('vnbroker_RATE_LIMIT_COOLDOWN_SECONDS', 20, 5),
+        'circuit_window_seconds': _int_env('vnbroker_CIRCUIT_WINDOW_SECONDS', 300, 30),
+        'circuit_breaker_timeout_threshold': _int_env('vnbroker_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD', 3, 1),
+        'circuit_breaker_cooldown_seconds': _int_env('vnbroker_CIRCUIT_BREAKER_COOLDOWN_SECONDS', 1800, 60),
         'offhours_cache_ttl_seconds': _int_env('TICKER_OFFHOURS_CACHE_TTL_SECONDS', 3600, 60),
         'session_close_retention_days': _int_env('TICKER_SESSION_CLOSE_RETENTION_DAYS', 7, 1),
         'include_group_symbols': os.getenv('TICKER_PREFETCH_INCLUDE_GROUP_SYMBOLS', 'False').lower() == 'true',
@@ -177,6 +177,10 @@ def _get_runtime_prefetch_settings():
         return _coerce_prefetch_runtime_settings(cached, fallback=default_settings)
     except ValueError:
         return default_settings
+
+
+# SM-P4 Alias: Giữ lại tên cũ để tránh lỗi ImportError trong quá trình migration.
+_get_prefetch_runtime_settings = _get_runtime_prefetch_settings
 
 
 def _set_runtime_prefetch_settings(raw_payload):

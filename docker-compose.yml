@@ -1,31 +1,47 @@
+# ============================================================
+# SaaS Production Compose — VNInvest
+# Loại bỏ hoàn toàn legacy containers (backend, celery_worker,
+# celery_beat, db, redis, mailpit). Core-api là backend duy nhất.
+#
+# Usage (Portainer / server):
+#   docker compose up -d
+#
+# Required env vars (set in .env.production hoặc Portainer env):
+#   CORE_DB_PASSWORD, CORE_DJANGO_SECRET_KEY, CORE_ALLOWED_HOSTS,
+#   CORE_CORS_ALLOWED_ORIGINS, CORE_PAT_PEPPER,
+#   GRAFANA_ADMIN_PASSWORD, APP_RELEASE, DOMAIN, LETSENCRYPT_EMAIL
+# ============================================================
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: vninvest-db
+
+  # ── Core database (PostgreSQL 16) ──────────────────────────
+  core-db:
+    image: postgres:16-alpine
+    container_name: vninvest-core-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vninvest}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: vninvest_core
+      POSTGRES_USER: vninvest
+      POSTGRES_PASSWORD: ${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - core_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vninvest}"]
+      test: ["CMD-SHELL", "pg_isready -U vninvest -d vninvest_core"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - vninvest_network
-    mem_limit: ${DB_MEM_LIMIT:-2g}
-    cpus: ${DB_CPUS:-1.5}
+    mem_limit: ${CORE_DB_MEM_LIMIT:-1g}
+    cpus: ${CORE_DB_CPUS:-1.0}
 
-  redis:
+  # ── Core Redis ─────────────────────────────────────────────
+  core-redis:
     image: redis:7-alpine
-    container_name: vninvest-redis
+    container_name: vninvest-core-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
     volumes:
-      - redis_data:/data
+      - core_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -33,160 +49,194 @@ services:
       retries: 5
     networks:
       - vninvest_network
-    mem_limit: ${REDIS_MEM_LIMIT:-1g}
-    cpus: ${REDIS_CPUS:-1.0}
+    mem_limit: ${CORE_REDIS_MEM_LIMIT:-512m}
+    cpus: ${CORE_REDIS_CPUS:-0.5}
 
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: vninvest-mailpit
-    restart: unless-stopped
-    ports:
-      - "${MAILPIT_SMTP_PORT:-1025}:1025"
-      - "${MAILPIT_UI_PORT:-8025}:8025"
-    networks:
-      - vninvest_network
-
-  backend:
+  # ── Core API (gunicorn) ────────────────────────────────────
+  core-api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: vninvest-backend
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env.production
-    volumes:
-      # Mount .env.production từ host vào container (Docker build không có access tới .env files)
-      - ./backend/.env.production:/app/.env.production:ro
-      - ./backend/.env:/app/.env:ro
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vninvest}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_HOST: ${POSTGRES_HOST:-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailpit:
-        condition: service_started
-    command: ["/bin/sh", "/app/entrypoint.sh"]
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8000/api/health/ >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 45s
-    expose:
-      - "8000"
-    networks:
-      - vninvest_network
-    mem_limit: ${BACKEND_MEM_LIMIT:-1500m}
-    cpus: ${BACKEND_CPUS:-1.5}
-
-  celery_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: vninvest-celery-worker
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env.production
-    volumes:
-      # Mount .env.production từ host vào container
-      - ./backend/.env.production:/app/.env.production:ro
-      - ./backend/.env:/app/.env:ro
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vninvest}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_HOST: ${POSTGRES_HOST:-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailpit:
-        condition: service_started
-    command: ["celery", "-A", "config", "worker", "-l", "info"]
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME | grep -q 'OK'"]
-      interval: 30s
-      timeout: 15s
-      retries: 5
-      start_period: 60s
-    networks:
-      - vninvest_network
-    mem_limit: ${CELERY_WORKER_MEM_LIMIT:-2g}
-    cpus: ${CELERY_WORKER_CPUS:-2.0}
-
-  celery_beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: vninvest-celery-beat
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env.production
-    volumes:
-      # Mount .env.production từ host vào container
-      - ./backend/.env.production:/app/.env.production:ro
-      - ./backend/.env:/app/.env:ro
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vninvest}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_HOST: ${POSTGRES_HOST:-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailpit:
-        condition: service_started
-    command: ["celery", "-A", "config", "beat", "-l", "info"]
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import pathlib, sys; cmd = pathlib.Path('/proc/1/cmdline').read_text(); sys.exit(0 if 'celery' in cmd and 'beat' in cmd else 1)\""]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    networks:
-      - vninvest_network
-    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-750m}
-    cpus: ${CELERY_BEAT_CPUS:-0.75}
-
-  frontend:
-    build:
-      context: ./frontend
+      context: ./packages/core/backend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_BASE_URL: /api
-    container_name: vninvest-frontend
+        APP_RELEASE: ${APP_RELEASE:-saas-prod}
+    image: vninvest-core-api:${APP_RELEASE:-saas-prod}
+    container_name: vninvest-core-api
     restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      CORE_API_PORT: "8100"
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      # No legacy DB — SaaS-only deployment
+      REDIS_URL: redis://core-redis:6379/0
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-60}
+    command: ["api"]
     depends_on:
-      backend:
+      core-db:
         condition: service_healthy
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
+      core-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8100/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    expose:
+      - "8100"
     networks:
       - vninvest_network
-    mem_limit: ${FRONTEND_MEM_LIMIT:-750m}
-    cpus: ${FRONTEND_CPUS:-0.75}
+    mem_limit: ${CORE_API_MEM_LIMIT:-512m}
+    cpus: ${CORE_API_CPUS:-1.0}
+
+  # ── Core Celery Worker ─────────────────────────────────────
+  core-worker:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-saas-prod}
+    image: vninvest-core-api:${APP_RELEASE:-saas-prod}
+    container_name: vninvest-core-worker
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-2}
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-256m}
+    cpus: ${CORE_WORKER_CPUS:-0.5}
+
+  # ── Core Celery Beat ───────────────────────────────────────
+  core-beat:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-saas-prod}
+    image: vninvest-core-api:${APP_RELEASE:-saas-prod}
+    container_name: vninvest-core-beat
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+    command: ["beat"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}
+    cpus: ${CORE_BEAT_CPUS:-0.25}
+
+  # ── Frontend (nginx + React + packages/web shell) ──────────
+  # Dùng Dockerfile.dev-package-shell: nhúng packages/web vào build.
+  # REACT_APP_ENABLE_PACKAGE_SHELL_HOST=1 bật ShellHost routes (DashboardShellHost, v.v.)
+  # ModernDashboard là default (InterfaceContext default = 'modern').
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.dev-package-shell
+      args:
+        REACT_APP_API_BASE_URL: /api
+        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
+        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+        APP_RELEASE: ${APP_RELEASE:-saas-prod}
+    image: vninvest-frontend:${APP_RELEASE:-saas-prod}
+    container_name: vninvest-frontend
+    restart: unless-stopped
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-saas-prod}
+      REACT_APP_API_BASE_URL: /api
+      REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
+      REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+      VIRTUAL_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@edusuccess.vn}
+    depends_on:
+      core-api:
+        condition: service_healthy
+    expose:
+      - "80"
+    networks:
+      - vninvest_network
+      - nginx-proxy_default
+    mem_limit: ${FRONTEND_MEM_LIMIT:-512m}
+    cpus: ${FRONTEND_CPUS:-0.5}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-saas-prod}
+
+  # ── Prometheus ─────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vninvest-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    expose:
+      - "9090"
+    networks:
+      - vninvest_network
+    mem_limit: ${PROMETHEUS_MEM_LIMIT:-512m}
+    cpus: ${PROMETHEUS_CPUS:-0.5}
+
+  # ── Grafana ────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vninvest-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-https://vninvest.edusuccess.vn/grafana}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    expose:
+      - "3000"
+    networks:
+      - vninvest_network
+    mem_limit: ${GRAFANA_MEM_LIMIT:-256m}
+    cpus: ${GRAFANA_CPUS:-0.25}
 
 volumes:
-  postgres_data:
-  redis_data:
+  core_pgdata:
+  core_redis_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   vninvest_network:
     driver: bridge
+  nginx-proxy_default:
+    external: true

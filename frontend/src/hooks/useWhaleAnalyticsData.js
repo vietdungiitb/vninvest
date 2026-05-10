@@ -4,6 +4,14 @@ import { resolveWhaleTimeframeWindow } from '../utils/whaleTimeAdapter';
 import { mergeWhaleAnalyticsSnapshots, normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter';
 import { isRequestCanceled } from '../utils/requestCancellation';
 
+function createEmptyAnalyticsData() {
+  return {
+    bubbles: null,
+    flow: null,
+    meta: null,
+  };
+}
+
 /**
  * useWhaleAnalyticsData Hook
  * 
@@ -13,11 +21,7 @@ import { isRequestCanceled } from '../utils/requestCancellation';
 export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, options = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [data, setData] = useState({
-    bubbles: null,
-    flow: null,
-    meta: null,
-  });
+  const [data, setData] = useState(createEmptyAnalyticsData());
   const requestIdRef = useRef(0);
   const includeBaseline = options?.includeBaseline ?? false;
   const selectedTradeDate = options?.selectedTradeDate ? String(options.selectedTradeDate).slice(0, 10) : null;
@@ -30,7 +34,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
 
   const fetchData = useCallback(async ({ silent = false } = {}) => {
     if (!symbol) {
-      setData({ bubbles: null, flow: null, meta: null });
+      setData(createEmptyAnalyticsData());
       return;
     }
 
@@ -63,7 +67,11 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
 
         if (!normalizedSnapshots.length) {
           const firstRejected = snapshotResults.find((result) => result.status === 'rejected');
-          throw firstRejected?.reason || new Error('Failed to fetch valid analytics snapshots');
+          if (firstRejected?.reason) {
+            throw firstRejected.reason;
+          }
+          setData(createEmptyAnalyticsData());
+          return;
         }
 
         setData(mergeWhaleAnalyticsSnapshots(normalizedSnapshots, timeframe, selectedTradeDate || normalizedTradeDate));
@@ -83,7 +91,11 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
       }
 
       if (!snapshot?.symbol) {
-        throw new Error(snapshot?.error || 'Failed to fetch valid analytics snapshot');
+        if (snapshot?.error) {
+          throw new Error(snapshot.error);
+        }
+        setData(createEmptyAnalyticsData());
+        return;
       }
 
       setData(normalizeWhaleAnalyticsSnapshot(snapshot, timeframe));

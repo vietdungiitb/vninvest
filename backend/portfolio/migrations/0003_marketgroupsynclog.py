@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('created_groups', models.PositiveIntegerField(default=0, verbose_name='Số nhóm tạo mới')),
                 ('updated_groups', models.PositiveIntegerField(default=0, verbose_name='Số nhóm cập nhật')),
                 ('added_symbols', models.PositiveIntegerField(default=0, verbose_name='Số mã thêm mới')),
-                ('source', models.CharField(default='vnstock', max_length=20, verbose_name='Nguồn dữ liệu')),
+                ('source', models.CharField(default='vnbroker', max_length=20, verbose_name='Nguồn dữ liệu')),
                 ('message', models.TextField(blank=True, default='', verbose_name='Thông báo kết quả')),
                 ('error', models.TextField(blank=True, default='', verbose_name='Lỗi chi tiết')),
                 ('started_at', models.DateTimeField(auto_now_add=True, verbose_name='Bắt đầu lúc')),

@@ -98,6 +98,10 @@ function buildOwnershipPayload() {
         owner: 'portfolio.global_signal_policy_helpers',
         status: 'canonical',
       },
+      jobs: {
+        owner: 'portfolio.tasks',
+        status: 'canonical',
+      },
     },
     compatibility: {
       raw_intraday_keep_days: {
@@ -420,6 +424,69 @@ describe('SignalControlCenter', () => {
 
     expect(window.confirm).toHaveBeenCalledTimes(1);
     expect(applyAdminSignalsUniverse).not.toHaveBeenCalled();
+  });
+
+  it('disables unsupported signal write actions when ownership is read-only', async () => {
+    const readOnlyOwnership = {
+      ...buildOwnershipPayload(),
+      domains: {
+        ...buildOwnershipPayload().domains,
+        services_config: {
+          owner: 'legacy-global-signal-policy',
+          status: 'read-preview',
+        },
+        universe_policy: {
+          owner: 'legacy-global-signal-policy',
+          status: 'read-preview',
+        },
+        retention_policy: {
+          owner: 'data-ops-runtime-policy',
+          status: 'read-preview',
+        },
+        jobs: {
+          owner: 'legacy-detector-runtime',
+          status: 'guarded-write',
+        },
+      },
+    };
+
+    getAdminSignalsSummary.mockResolvedValueOnce({
+      data: {
+        ...buildSummaryPayload(),
+        ownership: readOnlyOwnership,
+      },
+    });
+    getAdminSignalsConfig.mockResolvedValueOnce({
+      data: {
+        ...buildConfigPayload(),
+        ownership: readOnlyOwnership,
+      },
+    });
+
+    render(<SignalControlCenter />);
+
+    expect(await screen.findByText('Signal write đang bị khóa có chủ đích')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Áp dụng config' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Áp dụng universe' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Chạy whale' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Chạy dark flow' })).toBeDisabled();
+    expect(screen.getByText(/Áp dụng config đang bị khóa/)).toBeInTheDocument();
+    expect(screen.getByText(/Áp dụng universe đang bị khóa/)).toBeInTheDocument();
+    expect(screen.getByText(/Manual run và retry đang bị khóa/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Áp dụng config' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Áp dụng universe' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chạy whale' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tải lịch sử chạy' }));
+
+    const retryButton = await screen.findByRole('button', { name: 'Retry' });
+    expect(retryButton).toBeDisabled();
+    fireEvent.click(retryButton);
+
+    expect(updateAdminSignalsConfig).not.toHaveBeenCalled();
+    expect(applyAdminSignalsUniverse).not.toHaveBeenCalled();
+    expect(runAdminSignalJob).not.toHaveBeenCalled();
+    expect(retryAdminSignalJob).not.toHaveBeenCalled();
   });
 
   it('requests paginated jobs and recent events with shared page sizes', async () => {

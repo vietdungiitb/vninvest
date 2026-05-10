@@ -11,6 +11,8 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from vninvest_core.legacy_http_bridge import legacy_bridge_response
+
 from .models import DailyPrice, StockProfile
 from .serializers import DailyPriceSerializer, StockProfileSerializer
 
@@ -84,4 +86,21 @@ class TrackedSymbolsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        bridged_response = legacy_bridge_response(
+            request,
+            '/api/stock-management/tracked-symbols/',
+            unavailable_message='Legacy tracked-symbol bridge hiện không khả dụng.',
+        )
+        if bridged_response is not None:
+            return bridged_response
         return Response([])
+
+    def post(self, request):
+        bridged_response = legacy_bridge_response(
+            request,
+            '/api/stock-management/tracked-symbols/',
+            unavailable_message='Legacy tracked-symbol bridge hiện không khả dụng.',
+        )
+        if bridged_response is not None:
+            return bridged_response
+        return Response({'detail': 'Feature not yet available in SaaS.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)

@@ -17,6 +17,7 @@ import { useI18n } from '../../context/LangContext';
 import PaginationBar from '../shared/PaginationBar';
 
 const DEFAULT_PAGE_SIZE = 10;
+const WRITABLE_OWNERSHIP_STATUSES = new Set(['canonical', 'native-write', 'bridge-write', 'write-through', 'write-enabled', 'direct-writer']);
 
 function formatDateTimeValue(value) {
   if (!value) return '—';
@@ -33,6 +34,22 @@ function formatNumberValue(value) {
 function resolvePositiveInteger(value, fallback) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function isOwnershipWritable(status) {
+  if (status == null || status === '') {
+    return true;
+  }
+  return WRITABLE_OWNERSHIP_STATUSES.has(String(status).trim().toLowerCase());
+}
+
+function formatOwnershipConstraint(owner, status) {
+  const ownerLabel = String(owner || '').trim();
+  const statusLabel = String(status || '').trim();
+  if (ownerLabel && statusLabel) {
+    return `${ownerLabel} (${statusLabel})`;
+  }
+  return ownerLabel || statusLabel || 'không xác định';
 }
 
 function statusTone(status) {
@@ -184,6 +201,29 @@ export default function SignalControlCenter() {
   const ownershipSnapshot = configPreview?.ownership || summary?.ownership || null;
   const whaleGovernanceSnapshot = summary?.whale_governance || null;
   const rawIntradayKeepDays = retentionPreview?.raw_intraday?.keep_days ?? null;
+  const servicesConfigStatus = ownershipSnapshot?.domains?.services_config?.status;
+  const retentionPolicyStatus = ownershipSnapshot?.domains?.retention_policy?.status;
+  const universePolicyStatus = ownershipSnapshot?.domains?.universe_policy?.status;
+  const jobsStatus = ownershipSnapshot?.domains?.jobs?.status;
+  const canApplyConfig = isOwnershipWritable(servicesConfigStatus) && isOwnershipWritable(retentionPolicyStatus);
+  const canApplyUniverse = isOwnershipWritable(universePolicyStatus);
+  const canRunSignalJobs = isOwnershipWritable(jobsStatus);
+  const configWriteBlockedReason = !canApplyConfig
+    ? t('adminOps.signalCenterConfigWriteBlockedReason', {
+      defaultValue: `Áp dụng config đang bị khóa vì services/retention policy vẫn thuộc ${formatOwnershipConstraint(ownershipSnapshot?.domains?.services_config?.owner, servicesConfigStatus)} và ${formatOwnershipConstraint(ownershipSnapshot?.domains?.retention_policy?.owner, retentionPolicyStatus)}.`,
+    })
+    : '';
+  const universeWriteBlockedReason = !canApplyUniverse
+    ? t('adminOps.signalCenterUniverseWriteBlockedReason', {
+      defaultValue: `Áp dụng universe đang bị khóa vì universe policy vẫn thuộc ${formatOwnershipConstraint(ownershipSnapshot?.domains?.universe_policy?.owner, universePolicyStatus)}.`,
+    })
+    : '';
+  const jobsWriteBlockedReason = !canRunSignalJobs
+    ? t('adminOps.signalCenterJobsWriteBlockedReason', {
+      defaultValue: `Manual run và retry đang bị khóa vì detector task registry vẫn thuộc ${formatOwnershipConstraint(ownershipSnapshot?.domains?.jobs?.owner, jobsStatus)}.`,
+    })
+    : '';
+  const writeGuardWarnings = [configWriteBlockedReason, universeWriteBlockedReason, jobsWriteBlockedReason].filter(Boolean);
   const lifecycle = summary?.lifecycle || {};
   const sharedLifecyclePayload = summary ? {
     effective_owner_matrix: lifecycle.effective_owner_matrix || null,
@@ -594,6 +634,17 @@ export default function SignalControlCenter() {
         <div className="rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-200">{message}</div>
       ) : null}
 
+      {writeGuardWarnings.length ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <p className="font-semibold uppercase tracking-[0.16em] text-amber-200">{t('adminOps.signalCenterReadOnlyBannerTitle', { defaultValue: 'Signal write đang bị khóa có chủ đích' })}</p>
+          <ul className="mt-2 space-y-1 text-xs leading-6 text-amber-100">
+            {writeGuardWarnings.map((warning) => (
+              <li key={warning}>• {warning}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <ServiceSummaryCard
           title={t('adminOps.signalCenterWhaleTitle', { defaultValue: 'Whale Alerts Global Service' })}
@@ -776,7 +827,7 @@ export default function SignalControlCenter() {
             <button type="button" onClick={handlePreviewConfig} disabled={busyAction !== ''} className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50">
               {busyAction === 'preview-config' ? t('adminOps.signalCenterPreviewing', { defaultValue: 'Đang xem trước...' }) : t('adminOps.signalCenterPreviewConfig', { defaultValue: 'Xem trước config' })}
             </button>
-            <button type="button" onClick={handleApplyConfig} disabled={busyAction !== ''} className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">
+            <button type="button" onClick={handleApplyConfig} disabled={busyAction !== '' || !canApplyConfig} title={configWriteBlockedReason || undefined} className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">
               {busyAction === 'apply-config' ? t('adminOps.signalCenterApplying', { defaultValue: 'Đang áp dụng...' }) : t('adminOps.signalCenterApplyConfig', { defaultValue: 'Áp dụng config' })}
             </button>
           </div>
@@ -801,7 +852,7 @@ export default function SignalControlCenter() {
             <button type="button" onClick={handlePreviewUniverse} disabled={busyAction !== ''} className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50">
               {busyAction === 'preview-universe' ? t('adminOps.signalCenterPreviewing', { defaultValue: 'Đang xem trước...' }) : t('adminOps.signalCenterPreviewUniverse', { defaultValue: 'Xem trước universe' })}
             </button>
-            <button type="button" onClick={handleApplyUniverse} disabled={busyAction !== ''} className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">
+            <button type="button" onClick={handleApplyUniverse} disabled={busyAction !== '' || !canApplyUniverse} title={universeWriteBlockedReason || undefined} className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">
               {busyAction === 'apply-universe' ? t('adminOps.signalCenterApplying', { defaultValue: 'Đang áp dụng...' }) : t('adminOps.signalCenterApplyUniverse', { defaultValue: 'Áp dụng universe' })}
             </button>
           </div>
@@ -845,8 +896,8 @@ export default function SignalControlCenter() {
             <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterJobsTitle', { defaultValue: 'Manual runs và job registry' })}</h3>
             <div className="flex flex-wrap gap-2">
               <input value={jobSymbol} onChange={(event) => setJobSymbol(event.target.value)} placeholder={t('adminOps.signalCenterJobSymbolPlaceholder', { defaultValue: 'Mã tùy chọn, ví dụ FPT' })} className="rounded-full border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100" />
-              <button type="button" onClick={() => handleRunJob('whale')} disabled={busyAction !== ''} className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{t('adminOps.signalCenterRunWhale', { defaultValue: 'Chạy whale' })}</button>
-              <button type="button" onClick={() => handleRunJob('dark_flow')} disabled={busyAction !== ''} className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{t('adminOps.signalCenterRunDarkFlow', { defaultValue: 'Chạy dark flow' })}</button>
+              <button type="button" onClick={() => handleRunJob('whale')} disabled={busyAction !== '' || !canRunSignalJobs} title={jobsWriteBlockedReason || undefined} className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">{t('adminOps.signalCenterRunWhale', { defaultValue: 'Chạy whale' })}</button>
+              <button type="button" onClick={() => handleRunJob('dark_flow')} disabled={busyAction !== '' || !canRunSignalJobs} title={jobsWriteBlockedReason || undefined} className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">{t('adminOps.signalCenterRunDarkFlow', { defaultValue: 'Chạy dark flow' })}</button>
             </div>
           </div>
           {jobsLoaded ? (
@@ -881,7 +932,7 @@ export default function SignalControlCenter() {
                           <td className="px-2 py-3">{formatNumberValue(job.stored_items)}</td>
                           <td className="px-2 py-3">{formatDateTimeValue(job.created_at)}</td>
                           <td className="px-2 py-3">
-                            <button type="button" disabled={!canRetry || retryBusy} onClick={() => handleRetryRun(job.id)} className="rounded-full border border-slate-700 px-3 py-1 font-semibold text-slate-100 disabled:opacity-40">
+                            <button type="button" disabled={!canRetry || retryBusy || !canRunSignalJobs} title={jobsWriteBlockedReason || undefined} onClick={() => handleRetryRun(job.id)} className="rounded-full border border-slate-700 px-3 py-1 font-semibold text-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
                               {retryBusy ? t('adminOps.signalCenterRetrying', { defaultValue: 'Đang retry...' }) : t('adminOps.retry', { defaultValue: 'Retry' })}
                             </button>
                           </td>

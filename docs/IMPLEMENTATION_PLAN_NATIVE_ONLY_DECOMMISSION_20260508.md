@@ -19,6 +19,27 @@ Loai bo hybrid bridge de production chi con mot mo hinh:
 
 ## 2. Execution phases
 
+### Phase N0 - Live runtime stabilization
+
+Muc tieu:
+
+1. Gom tat ca blocker runtime thuc te sau native-only cutover vao mot slice handoff ro rang.
+2. Chuyen `stocks/:symbol`, `admin/core/overview`, `support`, `dashboard`, `transactions` va `whale-alerts` tu trang thai co crash/404 sang trang thai contract ro rang.
+3. Dung audit evidence live lam baseline truoc khi phan cong cho team code.
+
+Deliverables:
+
+1. Evidence note [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md).
+2. Taskboard phase N0 cho stock detail, admin-core overview, support va empty-state stabilization.
+3. Traceability mapping cho cac blocker runtime.
+
+Exit criteria:
+
+1. `stocks/VCB` khong con JS crash.
+2. `admin/core/overview` khong con 404 to advertised route.
+3. Support/dashboard/transactions/whale-alerts deu render duoc empty state hop le, khong crash.
+4. Audit ledger va progress dashboard da dong bo sau moi slice.
+
 ### Phase N1 - Route inventory lock
 
 Muc tieu:

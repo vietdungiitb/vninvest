@@ -3,7 +3,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 """
 
 from rest_framework import serializers
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule, RuntimeVnstockConfig
+from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule, RuntimeVnbrokerConfig, DNSECredential
 from .models import AICommandCenterAuditLog, AICommandCenterConfig
 from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, LegalPage
 from .models import ScreenerRule, CrawlJob, CrawlSchedule, CrawlRun, CrawlAuditLog, SignalServiceRun
@@ -226,11 +226,11 @@ class AICommandCenterConfigSerializer(serializers.ModelSerializer):
         return instance
 
 
-class RuntimeVnstockConfigSerializer(serializers.ModelSerializer):
+class RuntimeVnbrokerConfigSerializer(serializers.ModelSerializer):
     updated_by_username = serializers.CharField(source='updated_by.username', read_only=True)
 
     class Meta:
-        model = RuntimeVnstockConfig
+        model = RuntimeVnbrokerConfig
         fields = [
             'id',
             'max_concurrency',
@@ -303,7 +303,7 @@ class RuntimeVnstockConfigSerializer(serializers.ModelSerializer):
 
         timeout_config = attrs.get('timeout_config')
         if timeout_config is not None:
-            merged = RuntimeVnstockConfig.default_timeout_config()
+            merged = RuntimeVnbrokerConfig.default_timeout_config()
             merged.update(timeout_config)
             attrs['timeout_config'] = merged
         return attrs
@@ -761,7 +761,26 @@ class SignalServiceRunSerializer(serializers.ModelSerializer):
             'id', 'service_domain', 'service_domain_display', 'run_type', 'run_type_display',
             'status', 'status_display', 'params_json', 'task_id', 'progress_pct',
             'processed_items', 'stored_items', 'failed_items', 'log',
-            'created_by', 'created_by_username', 'started_at', 'finished_at',
             'created_at', 'updated_at',
         ]
         read_only_fields = fields
+
+
+class DNSECredentialSerializer(serializers.ModelSerializer):
+    username_configured = serializers.SerializerMethodField()
+    api_key_configured = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DNSECredential
+        fields = [
+            'id', 'user', 'is_active', 'last_synced_at', 
+            'created_at', 'updated_at',
+            'username_configured', 'api_key_configured'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'last_synced_at']
+
+    def get_username_configured(self, obj):
+        return bool(obj.username_ciphertext)
+
+    def get_api_key_configured(self, obj):
+        return bool(obj.api_key_ciphertext)

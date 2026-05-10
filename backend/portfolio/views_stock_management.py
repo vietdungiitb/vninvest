@@ -259,7 +259,7 @@ class TrackedSymbolListCreateView(APIView):
                 'symbol': ts.symbol,
                 'industry': static.get('industry', 'Khác'),
                 'company_name': static.get('company_name', ts.symbol),
-                'market_cap_bn': static.get('market_cap_bn'),  # tỷ VND từ vnstock sync
+                'market_cap_bn': static.get('market_cap_bn'),  # tỷ VND từ vnbroker sync
                 'source_group_id': grp.id if grp else None,
                 'source_group_name': grp.name if grp else None,
                 'whale_alert_threshold_million': (

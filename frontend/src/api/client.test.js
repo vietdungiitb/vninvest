@@ -1,4 +1,4 @@
-import { isAuthPublicEndpoint } from './client';
+import apiClient, { isAuthPublicEndpoint } from './client';
 
 describe('isAuthPublicEndpoint', () => {
   it('matches login endpoint to bypass global 401 redirect', () => {
@@ -18,5 +18,9 @@ describe('isAuthPublicEndpoint', () => {
     expect(isAuthPublicEndpoint('/stock-management/stocks/HPG/overview/')).toBe(false);
     expect(isAuthPublicEndpoint('/auth/me/')).toBe(false);
     expect(isAuthPublicEndpoint('')).toBe(false);
+  });
+
+  it('applies a bounded request timeout to the shared client', () => {
+    expect(apiClient.defaults.timeout).toBe(20000);
   });
 });

@@ -97,7 +97,7 @@ Sau khi triển khai tương lai theo pack này, hệ thống phải đồng th�
 ### 5.3 Xử lý các duplicate knob hiện có
 
 1. `runtime_policy_helpers.intraday_tick_keep_days` là canonical raw-staging retention; `global_signal_retention_policy.raw_intraday_keep_days` không được tiếp tục tồn tại như một writer độc lập trong end-state.
-2. `global_signal_universe_policy` là SSOT cho detection universe của whale và dark flow; `intraday_universe_group_ids` chỉ là ingest/warm-tier hint cho prefetch/runtime.
+2. `global_signal_universe_policy` là SSOT cho detection universe của whale và dark flow; `intraday_universe_group_ids` chỉ là ingest/warm-tier hint for prefetch/runtime.
 3. Whale detection thresholds và semantic policy thuộc whale mission-control; `global_signal_services_config.whale_service.default_threshold_vnd` chỉ được giữ như compatibility field tạm thời hoặc derived effective value, không phải writer vĩnh viễn.
 
 ### 5.4 Data lifecycle tiers
@@ -132,6 +132,7 @@ Sau khi triển khai tương lai theo pack này, hệ thống phải đồng th�
 5. Mọi text mới trên UI phải qua i18n tiếng Việt đầy đủ dấu.
 6. Legacy write surfaces phải hard-block ở backend; demote UI không đủ để chặn phantom writes.
 7. Forensic carve-out phải physical, không được tag-only trên raw.
+8. **Mandatory Docker Rebuild**: Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.
 
 ## 6. File anchors hiện tại
 
@@ -173,6 +174,7 @@ Sau khi triển khai tương lai theo pack này, hệ thống phải đồng th�
 2. Product Owner xác nhận scope và cho explicit consent bắt đầu coding,
 3. Tech Lead xác nhận writer boundary, retention boundary và selected-session truth đã khóa,
 4. taskboard có owner, required skill, test gate và evidence cho từng slice.
+5. **Mandatory Docker Rebuild**: Mọi thay đổi logic code bắt buộc phải build/update docker dev environment để đảm bảo code mới được cập nhật.
 
 ## 9. Câu chốt bắt buộc
 

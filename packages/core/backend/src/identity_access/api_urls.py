@@ -1,6 +1,7 @@
 from django.urls import include, path
 
 from vninvest_core import views_health
+from vninvest_core.utils.legacy_stubs import GenericEmptyListView, GenericEmptyStaffView
 
 from . import views_auth
 
@@ -25,4 +26,13 @@ urlpatterns = [
     path('core/v1/access/capabilities/', views_auth.capabilities_view, name='api-core-capabilities'),
     # Partner / tenant-admin native mount — frontend calls /api/core/v1/partner/*
     path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner_api'), namespace='identity_access_partner_api')),
-]
+
+    # =========================================================================
+    # Misc legacy stubs (migrated from compat_urls.py)
+    # =========================================================================
+    path('admin-sync/stockprofile/', GenericEmptyStaffView.as_view(), name='legacy-admin-sync-stockprofile'),
+    path('ai-options/', GenericEmptyListView.as_view(), name='legacy-ai-options'),
+    path('v1/admin/crawl/jobs/', GenericEmptyStaffView.as_view(), name='legacy-crawl-jobs'),
+    path('v1/admin/crawl/jobs/<str:pk>/run/', GenericEmptyStaffView.as_view(), name='legacy-crawl-jobs-run'),
+    path('health/realtime/', GenericEmptyStaffView.as_view(), name='legacy-health-realtime'),
+]

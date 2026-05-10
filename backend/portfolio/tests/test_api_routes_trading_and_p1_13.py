@@ -1,4 +1,4 @@
-﻿from unittest.mock import patch
+from unittest.mock import patch
 from decimal import Decimal
 from datetime import date, datetime
 
@@ -314,7 +314,7 @@ class ApiRouteTradingAndP113Tests(APITestCase):
         StockProfile.objects.update_or_create(
             symbol='VCB',
             defaults={
-                'company_name': 'NgÃ¢n hÃ ng TMCP Ngoáº¡i thÆ°Æ¡ng Viá»‡t Nam',
+                'company_name': 'Ngân hàng TMCP Ngoại thương Việt Nam',
                 'industry': 'Banking',
                 'exchange': 'HOSE',
                 'is_active': True,
@@ -552,7 +552,7 @@ class ApiRouteTradingAndP113Tests(APITestCase):
         StockProfile.objects.update_or_create(
             symbol='HPG',
             defaults={
-                'company_name': 'CTCP Táº­p Ä‘oÃ n HÃ²a PhÃ¡t',
+                'company_name': 'CTCP Tập đoàn Hòa Phát',
                 'industry': 'Steel',
                 'exchange': 'HOSE',
                 'is_active': True,
@@ -618,7 +618,7 @@ class ApiRouteTradingAndP113Tests(APITestCase):
         StockProfile.objects.update_or_create(
             symbol='MBB',
             defaults={
-                'company_name': 'NgÃ¢n hÃ ng TMCP QuÃ¢n Ä‘á»™i',
+                'company_name': 'Ngân hàng TMCP Quân đội',
                 'industry': 'Banking',
                 'exchange': 'HOSE',
                 'is_active': True,
@@ -651,7 +651,7 @@ class ApiRouteTradingAndP113Tests(APITestCase):
         self.assertTrue(type(foreign_tx).objects.filter(id=foreign_tx.id).exists())
 
     # -------------------------------------------------------------------------
-    # P1-13: E2E smoke tests â€” campaign board, investigation modal, window filter
+    # P1-13: E2E smoke tests — campaign board, investigation modal, window filter
     # -------------------------------------------------------------------------
 
     def test_p1_13_campaign_board_returns_valid_structure(self):
@@ -729,6 +729,6 @@ class ApiRouteTradingAndP113Tests(APITestCase):
             self.assertIn(response.status_code, (200, 403), msg=f'window={window} returned unexpected status {response.status_code}')
 
     def test_p1_13_search_symbol_investigation_rejects_unauthenticated(self):
-        """Symbol investigation endpoint requires auth â€” no regression on security gate."""
+        """Symbol investigation endpoint requires auth — no regression on security gate."""
         response = self.client.get('/api/realtime/symbol-investigation/VCB/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

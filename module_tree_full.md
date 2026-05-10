@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-08 17:00:23`
+Generated at: `2026-05-08 22:59:59`
 
 ## Summary
 
-- Total modules: 989
-- Python modules: 482
+- Total modules: 993
+- Python modules: 486
 - JS/TS modules: 507
-- Total classes: 773
-- Total functions: 2660
-- Total top-level variables: 4410
+- Total classes: 778
+- Total functions: 2671
+- Total top-level variables: 4431
 
 ## Python Modules
 
@@ -1772,7 +1772,7 @@ Generated at: `2026-05-08 17:00:23`
 ### `backend/portfolio/tests/test_services_vnstock_refactor.py`
 
 - Classes:
-  - `ServicesVnstockRefactorTests` -> methods: `test_fetch_exchange_lookup_uses_adapter_exchange_wrapper`, `test_fetch_market_sectors_and_groups_uses_adapter_listing_wrappers`
+  - `ServicesVnstockRefactorTests` -> methods: `test_fetch_exchange_lookup_uses_adapter_exchange_wrapper`, `test_fetch_market_sectors_and_groups_falls_back_when_upstream_is_empty`, `test_fetch_market_sectors_and_groups_uses_adapter_listing_wrappers`
 
 ### `backend/portfolio/tests/test_signal_admin_api.py`
 
@@ -2846,7 +2846,7 @@ Generated at: `2026-05-08 17:00:23`
 ### `packages/core/backend/src/ops_audit/middleware.py`
 
 - Classes:
-  - `RequestTraceMiddleware` -> methods: `__call__`, `__init__`
+  - `RequestTraceMiddleware` -> methods: `__call__`, `__init__`, `_record_access_event`
 
 ### `packages/core/backend/src/ops_audit/migrations/0001_initial.py`
 
@@ -3101,10 +3101,13 @@ Generated at: `2026-05-08 17:00:23`
   - `PriceAlertDetailView` -> methods: `delete`, `patch`
   - `PriceAlertsView` -> methods: `get`, `post`
   - `StockManagementGroupsView` -> methods: `get`
+  - `StockManagementSeedView` -> methods: `post`
   - `StockManagementStubView` -> methods: `get`, `post`
   - `TrackedSymbolsView` -> methods: `get`, `post`
 - Functions:
-  - `_empty_list`, `_empty_paginated`
+  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`
+- Top-level variables:
+  - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`
 
 ### `packages/core/backend/src/vninvest_core/contracts/__init__.py`
 
@@ -3125,6 +3128,19 @@ Generated at: `2026-05-08 17:00:23`
 
 - Top-level variables:
   - `NAMESPACE`, `__all__`
+
+### `packages/core/backend/src/vninvest_core/contracts/operator/urls.py`
+
+- Top-level variables:
+  - `app_name`, `urlpatterns`
+
+### `packages/core/backend/src/vninvest_core/contracts/operator/views.py`
+
+- Classes:
+  - `OperatorHealthView` -> methods: `get`
+  - `OperatorOverviewView` -> methods: `get`
+- Functions:
+  - `_build_operator_components`
 
 ### `packages/core/backend/src/vninvest_core/contracts/partner/__init__.py`
 
@@ -3221,11 +3237,18 @@ Generated at: `2026-05-08 17:00:23`
 - Top-level variables:
   - `_src_dir`
 
+### `packages/core/backend/tests/test_operator_contract_api.py`
+
+- Classes:
+  - `OperatorContractApiTests` -> methods: `setUp`, `test_operator_routes_resolve_and_return_supported_snapshots`
+- Top-level variables:
+  - `_src_dir`
+
 ### `packages/core/backend/tests/test_ops_audit.py`
 
 - Classes:
   - `AuditEventModelTests` -> methods: `test_create_audit_event`
-  - `RequestTraceMiddlewareTests` -> methods: `setUp`, `test_generates_uuid_when_no_header`, `test_injects_x_request_id_from_header`, `test_response_always_has_x_request_id_header`
+  - `RequestTraceMiddlewareTests` -> methods: `setUp`, `test_generates_uuid_when_no_header`, `test_injects_x_request_id_from_header`, `test_records_access_audit_event_for_regular_requests`, `test_response_always_has_x_request_id_header`, `test_skips_audit_log_self_requests`
 - Top-level variables:
   - `_src_dir`
 
@@ -3256,6 +3279,13 @@ Generated at: `2026-05-08 17:00:23`
 
 - Classes:
   - `SignalIntelligenceApiRouteTests` -> methods: `setUp`, `test_order_flow_route_is_native_and_returns_list`, `test_unified_alert_route_is_native_and_cursor_paginated`, `test_whale_feed_route_is_native_and_returns_list`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_stock_management_api_routes.py`
+
+- Classes:
+  - `StockManagementCompatApiRouteTests` -> methods: `setUp`, `test_seed_populates_groups_and_groups_view_returns_renderable_shape`
 - Top-level variables:
   - `_src_dir`
 
@@ -3357,9 +3387,9 @@ Generated at: `2026-05-08 17:00:23`
 ### `frontend/src/api/client.js`
 
 - Functions:
-  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `normalizeTenantPatWritePayload`, `normalizeTenantServiceAccountWritePayload`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
+  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminAuditLog`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `normalizeTenantPatWritePayload`, `normalizeTenantServiceAccountWritePayload`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
 - Top-level variables:
-  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `rawRows`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `requestUrl`, `response`, `rows`, `scopes`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
+  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `REQUEST_TIMEOUT_MS`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `rawRows`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `requestUrl`, `response`, `rows`, `scopes`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
 ### `frontend/src/api/client.test.js`
 
@@ -3500,7 +3530,7 @@ Generated at: `2026-05-08 17:00:23`
 ### `frontend/src/components/AllocationPieChart.jsx`
 
 - Functions:
-  - `CustomTooltip`, `formatVND`
+  - `CustomTooltip`, `formatVND`, `normalizeAllocationRows`
 - Top-level variables:
   - `COLORS`, `d`, `fetchAllocation`, `name`, `nameKey`, `res`
 
@@ -3570,7 +3600,7 @@ Generated at: `2026-05-08 17:00:23`
 ### `frontend/src/components/EquityVsBenchmarkChart.jsx`
 
 - Functions:
-  - `CustomTooltip`, `PctAxisTick`, `getPeriods`
+  - `CustomTooltip`, `PctAxisTick`, `getPeriods`, `normalizeCurvePoints`
 - Top-level variables:
   - `fetchCurve`, `periods`, `res`
 
@@ -3752,6 +3782,8 @@ Generated at: `2026-05-08 17:00:23`
 
 ### `frontend/src/components/Sidebar.jsx`
 
+- Functions:
+  - `normalizeTrackedSymbols`
 - Top-level variables:
   - `cancelled`
 
@@ -3760,7 +3792,7 @@ Generated at: `2026-05-08 17:00:23`
 - Functions:
   - `toSymbolList`
 - Top-level variables:
-  - `SidebarTickerRow`, `currentPrice`, `filteredSymbols`, `freshnessSeconds`, `industry`, `industryOptions`, `isDown`, `isUp`, `next`, `pct`, `quotesBySymbol`, `realtimeFeed`, `set`, `symbol`, `symbolIndustryMap`, `symbols`, `timer`
+  - `SidebarTickerRow`, `currentPrice`, `filteredSymbols`, `freshnessSeconds`, `industry`, `industryOptions`, `isDown`, `isUp`, `next`, `normalizedTrackedSymbols`, `pct`, `quotesBySymbol`, `realtimeFeed`, `safeItems`, `set`, `symbol`, `symbolIndustryMap`, `symbols`, `timer`
 
 ### `frontend/src/components/StatCard.jsx`
 
@@ -3999,9 +4031,9 @@ Generated at: `2026-05-08 17:00:23`
 ### `frontend/src/hooks/useRealtimeFeedCore.js`
 
 - Functions:
-  - `cleanup`, `computeNextBackoffMs`, `computeReconnectDelayMs`, `connect`, `decodeJwtPayload`, `getHttpStatus`, `getQuoteBySymbol`, `hydrateQuotes`, `isTokenExpiringSoon`, `isValidQuotePrice`, `mergeQuote`, `normalizeAlert`, `normalizeDarkFlowAlert`, `normalizeEventTimestamp`, `normalizePollSymbolCandidates`, `normalizeSymbol`, `nowIso`, `pickPollBatch`, `poll`, `readEventField`, `resolveRealtimePollIntervalMs`, `scheduleReconnect`, `sendAction`, `start`
+  - `cleanup`, `computeNextBackoffMs`, `computeReconnectDelayMs`, `connect`, `decodeJwtPayload`, `getHttpStatus`, `getQuoteBySymbol`, `hydrateQuotes`, `isTokenExpiringSoon`, `isValidQuotePrice`, `mergeQuote`, `normalizeAlert`, `normalizeDarkFlowAlert`, `normalizeEventTimestamp`, `normalizePollSymbolCandidates`, `normalizeSymbol`, `nowIso`, `pickPollBatch`, `poll`, `readEventField`, `resolveRealtimePollIntervalMs`, `scheduleReconnect`, `sendAction`, `shouldSuppressPollingError`, `start`
 - Top-level variables:
-  - `MAX_WS_SUB_SYMBOLS`, `POLL_BATCH_SIZE`, `STALE_RESYNC_RETRY_MS`, `WS_HEALTHY_MIN_POLL_INTERVAL_MS`, `WS_HEALTHY_POLL_BATCH_SIZE`, `WS_HEALTHY_RECOVERY_BATCH_SIZE`, `WS_HEALTHY_RECOVERY_MIN_CANDIDATES`, `WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS`, `ageSeconds`, `applyAlert`, `applyDarkFlowAlert`, `applyMarketDiscoveryEvent`, `applyTickerUpdate`, `applyTickerUpdateThrottled`, `base`, `base64`, `batch`, `bootstrapBatchSize`, `cache`, `cancelled`, `candidateResult`, `circuitOpenUntilRef`, `consecutiveFailuresRef`, `currentAccessToken`, `decoded`, `dedupKey`, `dedupWindowMs`, `delayMs`, `destroyed`, `effectiveIntervalMs`, `eventAgeSeconds`, `eventId`, `eventTimestamp`, `existing`, `expSeconds`, `fallbackRatioPct`, `filtered`, `flushTickerUpdates`, `fresh`, `freshToken`, `freshnessSeconds`, `hasOverThreshold`, `hasOverThresholdCandidates`, `hasRecoveryCandidates`, `idx`, `inferredFreshness`, `initTimer`, `intervalId`, `isMissing`, `isOffhoursSessionClose`, `isStale`, `jitter`, `lastPollAtRef`, `lastProcessedEventIdsRef`, `latency`, `next`, `nextAgeSeconds`, `nextAlert`, `nextBackoffMs`, `nextCurrentPrice`, `nextEvent`, `nextKey`, `nextWs`, `normalized`, `normalizedAttempt`, `normalizedPayload`, `normalizedQuotes`, `normalizedSymbol`, `normalizedSymbols`, `normalizedTs`, `now`, `numeric`, `ok`, `openUntilTs`, `padded`, `parts`, `payload`, `pendingTickerUpdatesRef`, `pollBackoffMsRef`, `pollBackoffUntilRef`, `pollCandidates`, `pollCursorRef`, `pollIntervalRef`, `pollingTotal`, `quote`, `quotes`, `quotesBySymbolRef`, `realtimeStatusRef`, `reconnectAttemptRef`, `reconnectTimer`, `refreshedToken`, `remaining`, `res`, `shouldSkipDuplicateEvent`, `shouldTryAuthRefresh`, `side`, `size`, `sorted`, `staleCount`, `staleOrMissing`, `staleOverThreshold`, `staleRatioPct`, `start`, `startTimer`, `status`, `symbol`, `symbols`, `symbolsForWs`, `symbolsKey`, `symbolsRef`, `syms`, `targetIntervalMs`, `tickerRafIdRef`, `tickersMap`, `token`, `ts`, `uiRefreshP95Ms`, `update`, `updates`, `ws`, `wsHealthy`, `wsHealthyRef`
+  - `MAX_WS_SUB_SYMBOLS`, `POLL_BATCH_SIZE`, `STALE_RESYNC_RETRY_MS`, `WS_HEALTHY_MIN_POLL_INTERVAL_MS`, `WS_HEALTHY_POLL_BATCH_SIZE`, `WS_HEALTHY_RECOVERY_BATCH_SIZE`, `WS_HEALTHY_RECOVERY_MIN_CANDIDATES`, `WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS`, `ageSeconds`, `applyAlert`, `applyDarkFlowAlert`, `applyMarketDiscoveryEvent`, `applyTickerUpdate`, `applyTickerUpdateThrottled`, `base`, `base64`, `batch`, `bootstrapBatchSize`, `cache`, `cancelled`, `candidateResult`, `circuitOpenUntilRef`, `consecutiveFailuresRef`, `currentAccessToken`, `decoded`, `dedupKey`, `dedupWindowMs`, `delayMs`, `destroyed`, `effectiveIntervalMs`, `eventAgeSeconds`, `eventId`, `eventTimestamp`, `existing`, `expSeconds`, `fallbackRatioPct`, `filtered`, `flushTickerUpdates`, `fresh`, `freshToken`, `freshnessSeconds`, `hasOverThreshold`, `hasOverThresholdCandidates`, `hasRecoveryCandidates`, `idx`, `inferredFreshness`, `initTimer`, `intervalId`, `isMissing`, `isOffhoursSessionClose`, `isStale`, `jitter`, `lastPollAtRef`, `lastProcessedEventIdsRef`, `latency`, `message`, `next`, `nextAgeSeconds`, `nextAlert`, `nextBackoffMs`, `nextCurrentPrice`, `nextEvent`, `nextKey`, `nextWs`, `normalized`, `normalizedAttempt`, `normalizedPayload`, `normalizedQuotes`, `normalizedSymbol`, `normalizedSymbols`, `normalizedTs`, `now`, `numeric`, `ok`, `openUntilTs`, `padded`, `parts`, `payload`, `pendingTickerUpdatesRef`, `pollBackoffMsRef`, `pollBackoffUntilRef`, `pollCandidates`, `pollCursorRef`, `pollIntervalRef`, `pollingTotal`, `quote`, `quotes`, `quotesBySymbolRef`, `realtimeStatusRef`, `reconnectAttemptRef`, `reconnectTimer`, `refreshedToken`, `remaining`, `res`, `shouldSkipDuplicateEvent`, `shouldTryAuthRefresh`, `side`, `size`, `sorted`, `staleCount`, `staleOrMissing`, `staleOverThreshold`, `staleRatioPct`, `start`, `startTimer`, `status`, `symbol`, `symbols`, `symbolsForWs`, `symbolsKey`, `symbolsRef`, `syms`, `targetIntervalMs`, `tickerRafIdRef`, `tickersMap`, `token`, `ts`, `uiRefreshP95Ms`, `update`, `updates`, `ws`, `wsHealthy`, `wsHealthyRef`, `wsUrl`
 
 ### `frontend/src/hooks/useRealtimeFeedCore.test.js`
 
@@ -4037,7 +4069,7 @@ Generated at: `2026-05-08 17:00:23`
 ### `frontend/src/hooks/useWhaleAnalyticsData.js`
 
 - Functions:
-  - `handleVisibilityChange`, `handleWindowFocus`
+  - `createEmptyAnalyticsData`, `handleVisibilityChange`, `handleWindowFocus`
 - Top-level variables:
   - `fetchData`, `firstRejected`, `includeBaseline`, `intervalId`, `normalizedSnapshots`, `normalizedTradeDate`, `requestId`, `requestIdRef`, `requestedTradeDates`, `requestedTradeDatesKey`, `selectedTradeDate`, `snapshot`, `snapshotRes`, `snapshotResults`, `timeframeWindow`
 
@@ -4220,7 +4252,7 @@ Generated at: `2026-05-08 17:00:23`
 - Functions:
   - `AccessNotice`, `KeyValueRow`, `MiniMetric`, `Pill`, `PrefetchHealthBadge`, `RolloutStatusBadge`, `SignalBadge`, `StatCard`, `StatusBadge`, `SurfaceRedirectCard`, `SyncRow`, `fmtDateTime`, `fmtNumber`, `pageBtnClass`, `parseTime`, `pollTaskStatus`, `readProfile`, `setError`, `syncBtn`, `toneClasses`, `withTimeout`
 - Top-level variables:
-  - `activePrefetchPolicy`, `alerts`, `anomaly`, `backfillApplyPollTimerRef`, `canApplyBackfill`, `canOpenLegacyCrawlControl`, `canWriteVnstockConfig`, `cancelled`, `clearBackfillApplyPollTimer`, `clearSyncCooldownTimer`, `cloned`, `completion`, `cooldown`, `count`, `critical`, `current`, `currentCooldown`, `currentSymbol`, `d`, `dashboard`, `dataOpsSurfaceName`, `err`, `fallback`, `fieldErrors`, `governanceRulebook`, `governanceThresholds`, `groupsPayload`, `guard`, `handleApplyVnstockBenchmarkRecommendation`, `handlePrefetchSettingsInput`, `handlePrefetchSettingsSave`, `handlePrefetchTimePolicyInput`, `handlePrefetchTimePolicyReset`, `handlePrefetchTimePolicySave`, `handleSync`, `handleThresholdInput`, `handleThresholdSave`, `handleVnstockConfigInput`, `handleVnstockConfigReset`, `handleVnstockConfigSave`, `handleWarmNow`, `inCooldown`, `initial`, `intervalId`, `intervalMin`, `isoDateRegex`, `jitterMax`, `jitterMin`, `key`, `load`, `lunchBreak`, `market`, `marketOpen`, `maxHolidayDates`, `maxIntervalMin`, `multiplierMin`, `navigate`, `nextErrors`, `normalized`, `numericValues`, `offhours`, `parsed`, `payload`, `phaseLabel`, `policy`, `postClose`, `preClose`, `preOpen`, `prefetch`, `prefetchRulebook`, `prefetchTimePolicyRulebook`, `primary`, `profile`, `profileIntervals`, `profiles`, `propagation`, `res`, `resp`, `response`, `retryAfter`, `rowsProcessed`, `rowsTotal`, `runtime`, `scalarNums`, `selected`, `st`, `startSyncCooldown`, `statsRes`, `status`, `statusValue`, `surfacePermissions`, `symbolList`, `syncCooldownTimersRef`, `task`, `taskId`, `taskLabel`, `timeRegex`, `timerId`, `tone`, `toneMap`, `tones`, `vnstockSettings`, `vnstockSurfaceName`, `warning`, `workerRows`, `workerSummary`
+  - `actionTone`, `activePrefetchPolicy`, `alerts`, `anomaly`, `backfillApplyPollTimerRef`, `canApplyBackfill`, `canOpenLegacyCrawlControl`, `canWriteVnstockConfig`, `cancelled`, `clearBackfillApplyPollTimer`, `clearSyncCooldownTimer`, `cloned`, `completion`, `cooldown`, `count`, `critical`, `current`, `currentCooldown`, `currentSymbol`, `d`, `dashboard`, `dataOpsSurfaceName`, `err`, `fallback`, `fieldErrors`, `governanceRulebook`, `governanceThresholds`, `groupsPayload`, `guard`, `handleApplyVnstockBenchmarkRecommendation`, `handlePrefetchSettingsInput`, `handlePrefetchSettingsSave`, `handlePrefetchTimePolicyInput`, `handlePrefetchTimePolicyReset`, `handlePrefetchTimePolicySave`, `handleSync`, `handleThresholdInput`, `handleThresholdSave`, `handleVnstockConfigInput`, `handleVnstockConfigReset`, `handleVnstockConfigSave`, `handleWarmNow`, `inCooldown`, `initial`, `intervalId`, `intervalMin`, `isoDateRegex`, `jitterMax`, `jitterMin`, `key`, `load`, `lunchBreak`, `market`, `marketOpen`, `maxHolidayDates`, `maxIntervalMin`, `methodSuffix`, `multiplierMin`, `navigate`, `nextErrors`, `normalized`, `normalizedAction`, `numericValues`, `offhours`, `parsed`, `payload`, `phaseLabel`, `policy`, `postClose`, `preClose`, `preOpen`, `prefetch`, `prefetchRulebook`, `prefetchTimePolicyRulebook`, `primary`, `profile`, `profileIntervals`, `profiles`, `propagation`, `res`, `resourceSuffix`, `resp`, `response`, `retryAfter`, `rowsProcessed`, `rowsTotal`, `runtime`, `scalarNums`, `selected`, `st`, `startSyncCooldown`, `statsRes`, `status`, `statusSuffix`, `statusValue`, `surfacePermissions`, `symbolList`, `syncCooldownTimersRef`, `task`, `taskId`, `taskLabel`, `timeRegex`, `timerId`, `tone`, `toneMap`, `tones`, `vnstockSettings`, `vnstockSurfaceName`, `warning`, `workerRows`, `workerSummary`
 
 ### `frontend/src/pages/AdminOps.test.jsx`
 
@@ -4276,7 +4308,7 @@ Generated at: `2026-05-08 17:00:23`
 ### `frontend/src/pages/LegacyDashboard.jsx`
 
 - Functions:
-  - `DashboardPanelFallback`, `buildFallbackSparkline`, `handleSync`, `hydrateHeatmapSparkline`, `normalizeSymbol`, `scheduleHydration`
+  - `DashboardPanelFallback`, `buildFallbackSparkline`, `handleSync`, `hydrateHeatmapSparkline`, `normalizeSymbol`, `scheduleHydration`, `toArray`
 - Top-level variables:
   - `AllocationPieChart`, `CONCURRENCY`, `EquityVsBenchmarkChart`, `PortfolioAnalyticsPanel`, `PortfolioDigestPanel`, `avgPositionSize`, `base`, `batch`, `batchResults`, `cancelled`, `changePct`, `current`, `delayTimer`, `delta`, `existing`, `fetchData`, `fetched`, `handleSeverityBarFilter`, `heatmapData`, `held`, `holdingSymbols`, `holdingsMap`, `idleHandle`, `industry`, `industryRaw`, `liveHoldings`, `liveSummary`, `marketValue`, `monitoredQuotes`, `monitoredSymbols`, `next`, `nominalSize`, `payload`, `points`, `prev`, `quote`, `realizedPL`, `realtimeDeltaVsSnapshot`, `realtimeMarketBreadth`, `realtimeStalePositions`, `res`, `resp`, `results`, `settled`, `snapshotMarketValue`, `sparkline24`, `symbolsToHydrate`, `syncButtonLabel`, `total`, `totalHeldValue`, `trackedDisplaySize`, `trackedInfo`, `trackedSymbolMap`, `trackedSymbolNames`, `trades`, `unreadUnifiedCount`, `unrealizedPL`, `unrealizedPLPctValue`, `unrealizedPLValue`
 
@@ -4352,9 +4384,9 @@ Generated at: `2026-05-08 17:00:23`
 ### `frontend/src/pages/StockDetail.jsx`
 
 - Functions:
-  - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `KLineChartComponent`, `MetricRow`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_normalizeAdvisoryPromptConfig`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `formatChartAxis`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleToggleComponentInclude`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `loadPromptConfig`, `persistPromptConfig`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `run`, `runRefresh`, `showWorkspaceMessage`
+  - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `KLineChartComponent`, `MetricRow`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_normalizeAdvisoryPromptConfig`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `formatChartAxis`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleToggleComponentInclude`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `loadPromptConfig`, `persistPromptConfig`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `run`, `runRefresh`, `shouldSuppressTransportError`, `showWorkspaceMessage`
 - Top-level variables:
-  - `ADVISORY_INVALIDATION_EVENT`, `STALE_RESYNC_RETRY_MS`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryParams`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chartPerformance`, `chartWindowHint`, `close`, `conflictState`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `events`, `fallback`, `fallbackFromTs`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `flattenedSnapshotOrders`, `floorPrice`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `height`, `id`, `inFlightRef`, `incomingTrades`, `interval`, `intervalId`, `isTransientEmpty`, `isUpstreamUnavailable`, `key`, `lastClose`, `latest`, `latestDeltaVsBaseline`, `latestVol`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveVolume`, `map`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `min`, `next`, `nextComponents`, `nextDeletedComponents`, `nextSummaries`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `row`, `rows`, `selectedSessionMaterialization`, `selectedSessionReadPath`, `selectedTradeDate`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `snapshotOrders`, `sortedTrades`, `source`, `sourceGroupId`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickerData`, `timer`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `vol`, `warning`, `warningSuffix`, `whaleSignalsForChart`, `width`, `withinRange`, `x`, `y`, `years`
+  - `ADVISORY_INVALIDATION_EVENT`, `STALE_RESYNC_RETRY_MS`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryParams`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chartPerformance`, `chartWindowHint`, `close`, `conflictState`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `events`, `fallback`, `fallbackFromTs`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `flattenedSnapshotOrders`, `floorPrice`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `height`, `id`, `inFlightRef`, `incomingTrades`, `interval`, `intervalId`, `isTransientEmpty`, `isUpstreamUnavailable`, `key`, `lastClose`, `latest`, `latestDeltaVsBaseline`, `latestVol`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveVolume`, `map`, `marketGroups`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `message`, `min`, `next`, `nextComponents`, `nextDeletedComponents`, `nextSummaries`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `row`, `rows`, `selectedSessionMaterialization`, `selectedSessionReadPath`, `selectedTradeDate`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `snapshotOrders`, `sortedTrades`, `source`, `sourceGroupId`, `status`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickerData`, `timer`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `vol`, `warning`, `warningSuffix`, `watchlistMemberships`, `whaleSignalsForChart`, `width`, `withinRange`, `x`, `y`, `years`
 
 ### `frontend/src/pages/stockDetailAdvisoryUtils.js`
 

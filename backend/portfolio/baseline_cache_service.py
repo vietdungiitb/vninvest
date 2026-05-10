@@ -7,7 +7,7 @@ percentiles, và price range anchors — dùng để tính abnormality score cho
 whale events so với historical norm.
 
 Phase 1 skeleton: tất cả method đều compile và expose đúng interface.
-Actual data fetch từ IntradayTick/vnstock được wire vào Phase 1 Week 2.
+Actual data fetch từ IntradayTick/vnbroker được wire vào Phase 1 Week 2.
 """
 from __future__ import annotations
 

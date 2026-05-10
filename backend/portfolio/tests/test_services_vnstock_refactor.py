@@ -6,9 +6,9 @@ import pandas as pd
 from portfolio import services
 
 
-class ServicesVnstockRefactorTests(SimpleTestCase):
-    @patch('portfolio.adapters.vnstock_adapter.fetch_symbols_by_group_series')
-    @patch('portfolio.adapters.vnstock_adapter.fetch_symbols_by_industries_dataframe')
+class ServicesvnbrokerRefactorTests(SimpleTestCase):
+    @patch('portfolio.adapters.vnbroker_adapter.fetch_symbols_by_group_series')
+    @patch('portfolio.adapters.vnbroker_adapter.fetch_symbols_by_industries_dataframe')
     def test_fetch_market_sectors_and_groups_uses_adapter_listing_wrappers(
         self,
         mock_fetch_industries,
@@ -36,7 +36,30 @@ class ServicesVnstockRefactorTests(SimpleTestCase):
         self.assertEqual(len(result['cap_groups']), 3)
         mock_fetch_industries.assert_called_once_with(anchor_symbol='ACB')
 
-    @patch('portfolio.adapters.vnstock_adapter.fetch_symbols_by_exchange_dataframe')
+    @patch('portfolio.adapters.vnbroker_adapter.fetch_symbols_by_group_series')
+    @patch('portfolio.adapters.vnbroker_adapter.fetch_symbols_by_industries_dataframe')
+    def test_fetch_market_sectors_and_groups_falls_back_when_upstream_is_empty(
+        self,
+        mock_fetch_industries,
+        mock_fetch_group,
+    ):
+        mock_fetch_industries.return_value = pd.DataFrame(
+            columns=['symbol', 'industry_code', 'industry_name']
+        )
+        mock_fetch_group.side_effect = [
+            pd.Series(dtype=str),
+            pd.Series(dtype=str),
+            pd.Series(dtype=str),
+        ]
+
+        result = services.fetch_market_sectors_and_groups()
+
+        self.assertEqual(result['sectors'], [])
+        self.assertEqual(result['cap_groups'], [])
+        self.assertIsNotNone(result['error'])
+        self.assertIn('rỗng', result['error'])
+
+    @patch('portfolio.adapters.vnbroker_adapter.fetch_symbols_by_exchange_dataframe')
     def test_fetch_exchange_lookup_uses_adapter_exchange_wrapper(self, mock_fetch_exchange):
         mock_fetch_exchange.return_value = pd.DataFrame(
             [

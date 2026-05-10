@@ -129,6 +129,19 @@ function getHttpStatus(errorLike) {
   return errorLike?.response?.status ?? errorLike?.status ?? null;
 }
 
+function shouldSuppressPollingError(errorLike) {
+  const status = getHttpStatus(errorLike);
+  if ([404, 408, 429, 500, 502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  const message = String(errorLike?.message || '').toLowerCase();
+  return message.includes('network error')
+    || message.includes('err_empty_response')
+    || message.includes('err_connection_reset')
+    || message.includes('timeout');
+}
+
 function computeNextBackoffMs(currentBackoffMs) {
   if (!currentBackoffMs || currentBackoffMs <= 0) {
     return 5000;
@@ -674,7 +687,9 @@ export default function useRealtimeFeedCore({
             return;
           }
           setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
-          console.error('Polling error:', err);
+          if (!shouldSuppressPollingError(err)) {
+            console.error('Polling error:', err);
+          }
         }
       }
     };
@@ -774,9 +789,36 @@ export default function useRealtimeFeedCore({
         return;
       }
 
+      if (process.env.REACT_APP_DISABLE_REALTIME_WEBSOCKET === 'true') {
+        wsHealthyRef.current = false;
+        setRealtimeStatus('polling');
+        setConnectionState((prev) => ({
+          ...prev,
+          transport: 'polling',
+          circuitOpen: false,
+          circuitOpenUntil: null,
+          subscribedSymbols: [],
+        }));
+        return;
+      }
+
       setRealtimeStatus('connecting');
       setConnectionState((prev) => ({ ...prev, transport: 'connecting' }));
-      const nextWs = new WebSocket(getRealtimeWebSocketUrl(freshToken));
+      const wsUrl = getRealtimeWebSocketUrl(freshToken);
+      if (!wsUrl) {
+        wsHealthyRef.current = false;
+        setRealtimeStatus('polling');
+        setConnectionState((prev) => ({
+          ...prev,
+          transport: 'polling',
+          circuitOpen: false,
+          circuitOpenUntil: null,
+          subscribedSymbols: [],
+        }));
+        return;
+      }
+
+      const nextWs = new WebSocket(wsUrl);
       ws = nextWs;
 
       nextWs.onopen = () => {

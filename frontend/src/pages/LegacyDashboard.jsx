@@ -41,6 +41,16 @@ function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+function toArray(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (Array.isArray(value?.results)) {
+    return value.results;
+  }
+  return [];
+}
+
 export default function LegacyDashboard() {
   const { activePortfolioId, isAuthenticated } = usePortfolio();
   const { t, formatDateTime } = useI18n();
@@ -376,7 +386,7 @@ export default function LegacyDashboard() {
         getHoldings(activePortfolioId),
       ]);
       setSummary(sumRes.data);
-      setHoldings(holdRes.data);
+      setHoldings(toArray(holdRes.data));
       setHoldingsReady(true);
     } catch (err) {
       console.error('Lỗi tải dữ liệu:', err);
@@ -397,7 +407,7 @@ export default function LegacyDashboard() {
       return () => { cancelled = true; };
     }
     getTrackedSymbols()
-      .then((res) => { if (!cancelled) { setTrackedSymbols(res.data || []); setTrackedSymbolsReady(true); } })
+      .then((res) => { if (!cancelled) { setTrackedSymbols(toArray(res.data)); setTrackedSymbolsReady(true); } })
       .catch(() => { if (!cancelled) setTrackedSymbolsReady(true); });
     return () => { cancelled = true; };
   }, [isAuthenticated, activePortfolioId]);

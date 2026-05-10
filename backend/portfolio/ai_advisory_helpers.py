@@ -554,7 +554,7 @@ def _fetch_live_price_anchor(symbol: str) -> dict:
         return {}
 
     try:
-        from .adapters.vnstock_adapter import fetch_price_board_dataframe
+        from .adapters.vnbroker_adapter import fetch_price_board_dataframe
 
         price_board_df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
         if price_board_df is None or getattr(price_board_df, 'empty', True):
@@ -829,7 +829,7 @@ def _parse_prompt_config(raw_config: dict | None) -> dict:
 # ---------------------------------------------------------------------------
 
 def _build_fundamental_context_for_prompt(symbol: str, lookback_quarters: int = 1) -> str:
-    from .adapters.vnstock_adapter import fetch_fundamental_snapshot_dataframe
+    from .adapters.vnbroker_adapter import fetch_fundamental_snapshot_dataframe
 
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
@@ -877,7 +877,7 @@ def _build_fundamental_context_for_prompt(symbol: str, lookback_quarters: int = 
 
 
 def _build_ownership_context_for_prompt(symbol: str, lookback_days: int = 365) -> str:
-    from .adapters.vnstock_adapter import fetch_insider_deals_dataframe
+    from .adapters.vnbroker_adapter import fetch_insider_deals_dataframe
 
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
@@ -925,7 +925,7 @@ def _build_ownership_context_for_prompt(symbol: str, lookback_days: int = 365) -
 
 
 def _build_sector_context_for_prompt(symbol: str, lookback_sessions: int = 60) -> str:
-    from .adapters.vnstock_adapter import fetch_industry_benchmark_dataframe, fetch_industry_peers_dataframe
+    from .adapters.vnbroker_adapter import fetch_industry_benchmark_dataframe, fetch_industry_peers_dataframe
 
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:

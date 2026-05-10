@@ -6,9 +6,9 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.utils import timezone
 
 try:
-    from vnstock.core.utils.market_events import MARKET_EVENTS as VNSTOCK_MARKET_EVENTS
+    from vnbroker.core.utils.market_events import MARKET_EVENTS as VNBROKER_MARKET_EVENTS
 except Exception:  # pragma: no cover - optional runtime enrichment
-    VNSTOCK_MARKET_EVENTS = {}
+    VNBROKER_MARKET_EVENTS = {}
 
 
 def resolve_market_timezone_name(policy: dict | None = None, fallback: str = 'Asia/Ho_Chi_Minh') -> str:
@@ -78,7 +78,7 @@ def resolve_default_market_holiday_dates(market_code: str, *, years: list[int] |
     requested_years = years or [timezone.localdate().year]
     requested_years = list(dict.fromkeys(int(year) for year in requested_years))
     holidays = []
-    for raw_date, meta in VNSTOCK_MARKET_EVENTS.items():
+    for raw_date, meta in VNBROKER_MARKET_EVENTS.items():
         try:
             parsed = date.fromisoformat(str(raw_date))
         except ValueError:

@@ -337,9 +337,10 @@ export default function ModernDashboard() {
       if (results[2].status === 'fulfilled') setTrackedSymbols(Array.isArray(results[2].value.data) ? results[2].value.data : []);
       if (results[3].status === 'fulfilled') setWatchlistGroups(Array.isArray(results[3].value.data) ? results[3].value.data : []);
 
-      const nextHoldings = results[1].status === 'fulfilled' ? (results[1].value.data || []) : [];
-      const nextTracked = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];
-      const nextWatchlistGroups = results[3].status === 'fulfilled' ? (results[3].value.data || []) : [];
+      const toArr = (d) => (Array.isArray(d) ? d : (d?.results ?? []));
+      const nextHoldings = results[1].status === 'fulfilled' ? toArr(results[1].value.data) : [];
+      const nextTracked = results[2].status === 'fulfilled' ? toArr(results[2].value.data) : [];
+      const nextWatchlistGroups = results[3].status === 'fulfilled' ? toArr(results[3].value.data) : [];
 
       const scheduleAuxFetch = () => {
         loadAuxiliaryDashboardData({

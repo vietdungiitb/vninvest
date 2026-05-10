@@ -12,7 +12,7 @@ import os
 import secrets
 
 from .ai_options import ADVISORY_CAPABILITY, PROVIDER_CHOICES, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
-from .encryption_utils import decrypt_text, encrypt_text
+from .encryption_utils import decrypt_text, encrypt_text, hash_with_pepper
 
 # ============================================================================
 # OpenCore models - Import for Django to recognize them
@@ -174,7 +174,7 @@ class SubAccount(models.Model):
         help_text='1.0 = 100% (không vay), 0.5 = 50% margin',
     )
     created_at = models.DateTimeField(auto_now_add=True)
-
+    updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         verbose_name = 'Tiểu khoản'
         verbose_name_plural = 'Tiểu khoản'
@@ -292,7 +292,7 @@ class Transaction(models.Model):
 class DailyPrice(models.Model):
     """
     Lưu giá đóng cửa (End-of-Day) hàng ngày của từng mã chứng khoán.
-    Dữ liệu được kéo từ vnstock và lưu cache vào đây để tránh gọi API liên tục.
+    Dữ liệu được kéo từ vnbroker và lưu cache vào đây để tránh gọi API liên tục.
     """
     symbol = models.CharField(
         max_length=10,
@@ -572,7 +572,7 @@ class MarketGroupSyncLog(models.Model):
     created_groups = models.PositiveIntegerField(default=0, verbose_name='Số nhóm tạo mới')
     updated_groups = models.PositiveIntegerField(default=0, verbose_name='Số nhóm cập nhật')
     added_symbols = models.PositiveIntegerField(default=0, verbose_name='Số mã thêm mới')
-    source = models.CharField(max_length=20, default='vnstock', verbose_name='Nguồn dữ liệu')
+    source = models.CharField(max_length=20, default='vnbroker', verbose_name='Nguồn dữ liệu')
     message = models.TextField(blank=True, default='', verbose_name='Thông báo kết quả')
     error = models.TextField(blank=True, default='', verbose_name='Lỗi chi tiết')
     started_at = models.DateTimeField(auto_now_add=True, verbose_name='Bắt đầu lúc')
@@ -622,7 +622,7 @@ class StockProfileSyncLog(models.Model):
     total_symbols = models.PositiveIntegerField(default=0, verbose_name='Tổng số mã đầu vào')
     created_symbols = models.PositiveIntegerField(default=0, verbose_name='Số mã tạo mới')
     updated_symbols = models.PositiveIntegerField(default=0, verbose_name='Số mã cập nhật')
-    source = models.CharField(max_length=20, default='vnstock', verbose_name='Nguồn dữ liệu')
+    source = models.CharField(max_length=20, default='vnbroker', verbose_name='Nguồn dữ liệu')
     message = models.TextField(blank=True, default='', verbose_name='Thông báo kết quả')
     error = models.TextField(blank=True, default='', verbose_name='Lỗi chi tiết')
     started_at = models.DateTimeField(auto_now_add=True, verbose_name='Bắt đầu lúc')
@@ -636,43 +636,6 @@ class StockProfileSyncLog(models.Model):
     def __str__(self):
         return f'STOCKPROFILE | {self.mode} | {self.started_at:%Y-%m-%d %H:%M}'
 
-
-
-# ---------------------------------------------------------------------------
-# AccountSnapshot: Lưu NAV cuối ngày cho từng sub_account
-# ---------------------------------------------------------------------------
-class AccountSnapshot(models.Model):
-    """
-    Lưu snapshot NAV cuối ngày cho từng tiểu khoản (sub_account).
-    Dùng để vẽ biểu đồ hiệu suất, tính TWR, so sánh với VN-Index.
-    """
-    sub_account = models.ForeignKey(
-        'SubAccount',
-        on_delete=models.CASCADE,
-        related_name='snapshots',
-        verbose_name='Tiểu khoản',
-    )
-    date = models.DateField(db_index=True, verbose_name='Ngày')
-    net_equity = models.DecimalField(
-        max_digits=20,
-        decimal_places=2,
-        verbose_name='Giá trị tài sản ròng (NAV)',
-    )
-    daily_profit = models.DecimalField(
-        max_digits=20,
-        decimal_places=2,
-        verbose_name='Lãi/lỗ trong ngày',
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = 'Snapshot NAV'
-        verbose_name_plural = 'Snapshot NAV'
-        unique_together = [('sub_account', 'date')]
-        ordering = ['-date']
-
-    def __str__(self):
-        return f'{self.sub_account} | {self.date} | NAV: {self.net_equity:,.0f}'
 
 
 # ...existing code...
@@ -826,7 +789,7 @@ class UserConfig(models.Model):
         blank=True,
         verbose_name='AI prompt_config canonical',
     )
-    
+
     # PHASE 1 fields: Advisory auto-generation & cost control
     advisory_auto_generation_enabled = models.BooleanField(
         default=True,
@@ -858,7 +821,7 @@ class UserConfig(models.Model):
         verbose_name='Ngân sách token AI mỗi ngày',
         help_text='Giới hạn tokens dùng cho tạo/refresh khuyến nghị',
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -882,6 +845,12 @@ class UserConfig(models.Model):
 
     def get_ai_api_key(self) -> str:
         return decrypt_text(self.ai_api_key)
+
+
+
+# ---------------------------------------------------------------------------
+# (fields tiếp theo của UserConfig được định nghĩa ở đây — chúng bị lạc vị trí)
+# ---------------------------------------------------------------------------
 
 
 class AICommandCenterConfig(models.Model):
@@ -1402,8 +1371,8 @@ class CorePATCredential(models.Model):
         self.save(update_fields=['status', 'revoked_at', 'grace_until', 'metadata', 'updated_at'])
 
 
-class RuntimeVnstockConfig(models.Model):
-    """Singleton runtime config cho vnstock adapter, hỗ trợ cập nhật không cần restart."""
+class RuntimeVnbrokerConfig(models.Model):
+    """Singleton runtime config cho vnbroker adapter, hỗ trợ cập nhật không cần restart."""
 
     max_concurrency = models.PositiveIntegerField(
         default=12,
@@ -1449,18 +1418,18 @@ class RuntimeVnstockConfig(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name='vnstock_runtime_config_updates',
+        related_name='vnbroker_runtime_config_updates',
         verbose_name='Người cập nhật gần nhất',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Runtime Vnstock Config'
-        verbose_name_plural = 'Runtime Vnstock Config'
+        verbose_name = 'Runtime Vnbroker Config'
+        verbose_name_plural = 'Runtime Vnbroker Config'
 
     def __str__(self):
-        return f'RuntimeVnstockConfig#{self.pk or 1} ({self.price_board_source})'
+        return f'RuntimeVnbrokerConfig#{self.pk or 1} ({self.price_board_source})'
 
     @classmethod
     def default_timeout_config(cls):

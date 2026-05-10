@@ -6,7 +6,7 @@ def create_pilot_jobs(apps, schema_editor):
     pilot_jobs = [
         {
             "service_code": "stock_profile_sync",
-            "description": "Synchronize stock profiles from VNStock snapshot",
+            "description": "Synchronize stock profiles from vnbroker snapshot",
         },
         {
             "service_code": "whale_advisory_auto",

@@ -1,3 +1,606 @@
+# ✅ AUDIT FILE LIST (2026-05-09-DNSE-SAAS-CORE-MIGRATION) — Migrate DNSE Broker integration to SaaS Core and cleanup legacy backend
+
+Muc tieu:
+- Di chuyen toan bo DNSE logic (Models, Adapter, Tasks, Views) sang `user_workspace` trong SaaS Core.
+- Thuc thi chien luoc SaaS Full Independence (SFI).
+- Don dep legacy backend (`backend/portfolio`) de loai bo duplicate logic va polution.
+- Cap nhat frontend client de su dung endpoint native cua Core.
+
+Files changed:
+- `packages/core/backend/src/vninvest_core/utils/encryption.py` (NEW)
+- `packages/core/backend/src/user_workspace/models.py` (MODIFIED)
+- `packages/core/backend/src/user_workspace/dnse_adapter.py` (NEW)
+- `packages/core/backend/src/user_workspace/tasks.py` (NEW)
+- `packages/core/backend/src/user_workspace/views_dnse.py` (NEW)
+- `packages/core/backend/src/user_workspace/urls.py` (MODIFIED)
+- `packages/core/backend/src/user_workspace/serializers.py` (MODIFIED)
+- `backend/portfolio/models.py` (MODIFIED)
+- `backend/portfolio/urls.py` (MODIFIED)
+- `backend/portfolio/encryption_utils.py` (RESTORED)
+- `frontend/src/api/client.js` (MODIFIED)
+- `backend/portfolio/views_dnse.py` (DELETED)
+- `backend/portfolio/tasks_dnse.py` (DELETED)
+- `backend/portfolio/dnse_adapter.py` (DELETED)
+
+Validation:
+- PASSED: Model migration alignment with SFI constraints.
+- PASSED: Encryption utility isolation in Core.
+- PASSED: Legacy cleanup performed without breaking AI config dependency on encryption_utils.
+- PASSED: Frontend API path update to `/api/broker/dnse/` (Core-native).
+
+Status:
+- DNSE Broker integration hien da nam hoan toan trong SaaS Core.
+- Legacy backend da duoc lam sach cac phan lien quan den broker integration.
+- San sang cho rollout sang moi truong production (can script migrate du lieu DB).
+
+---
+
+# Entry 2026-05-09-DNSE-VNBROKER-POLICY-LOCK — Lock DNSE scope to vnbroker and keep public data multi-provider
+
+Muc tieu:
+- Chot quy tac du an: moi luong data phai di qua `vnbroker`.
+- DNSE chi duoc phep o broker-only path: account, balance, position, order, OTP, trading token, reconciliation.
+- Public data (price, intraday, company, listing, news, market snapshot) phai giu multi-provider trong `vnbroker`, khong duoc pin DNSE-only.
+- Dong bo lai bo tai lieu DNSE de code team khong re huong sang direct DNSE transport.
+
+Files changed:
+- `docs/DNSE_HANDOFF_MASTER_20260509.md` (MODIFIED)
+- `docs/DNSE_CONFIG_OWNERSHIP_MATRIX_20260509.md` (MODIFIED)
+- `docs/DNSE_INTEGRATION_ANALYSIS_20260509.md` (MODIFIED)
+- `docs/DNSE_IMPLEMENTATION_PLAN_20260509.md` (MODIFIED)
+- `docs/DNSE_TASKBOARD_AND_SLICES_20260509.md` (MODIFIED)
+- `docs/DNSE_TRACEABILITY_MATRIX_20260509.md` (MODIFIED)
+- `docs/DNSE_SELF_AUDIT_AND_TEST_PROTOCOL_20260509.md` (MODIFIED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+
+Validation:
+- PASSED: `read_file` cross-check against the updated DNSE docs shows `vnbroker` as the single library source and DNSE as broker-only.
+- PASSED: policy text explicitly keeps public market data multi-provider and forbids a direct DNSE transport/client outside `vnbroker`.
+- PASSED: doc-only slice; no runtime rebuild required.
+
+Status:
+- Quy tac du an da duoc khoa cung trong tai lieu, de doi code khong lam lech sang DNSE-only cho public data.
+
+# ✅ AUDIT FILE LIST (2026-05-09-DNSE-DOC-HANDOFF) — Rebaseline DNSE handoff docs for code-team execution
+
+Files changed:
+- `docs/DNSE_HANDOFF_MASTER_20260509.md` (MODIFIED)
+- `docs/DNSE_CONFIG_OWNERSHIP_MATRIX_20260509.md` (MODIFIED)
+- `docs/DNSE_INTEGRATION_ANALYSIS_20260509.md` (MODIFIED)
+- `docs/DNSE_IMPLEMENTATION_PLAN_20260509.md` (MODIFIED)
+- `docs/DNSE_TASKBOARD_AND_SLICES_20260509.md` (MODIFIED)
+- `docs/DNSE_TRACEABILITY_MATRIX_20260509.md` (MODIFIED)
+- `docs/DNSE_SELF_AUDIT_AND_TEST_PROTOCOL_20260509.md` (MODIFIED)
+
+Validation:
+- PASSED: `read_file` cross-check against current workspace anchors and doc references.
+- PASSED: old DNSE anchors removed from the handoff docs.
+- PASSED: doc-only slice; no runtime rebuild required.
+
+Status:
+- DNSE doc pack is ready for code-team handoff.
+
+# ✅ AUDIT FILE LIST (2026-05-09-VNBROKER-INFRA-MIGRATION) — Complete backend market data infrastructure migration from vnstock to vnbroker
+
+Files changed:
+- `backend/portfolio/market_data_service.py` (MODIFIED) - Global namespace refactoring to `vnbroker`.
+- `backend/portfolio/adapters/vnbroker_adapter.py` (RENAMED from `vnstock_adapter.py`) - Updated internal logic and rate-limiting.
+- `backend/portfolio/adapters/cache_adapter.py` (MODIFIED) - Updated cache keys and helper names.
+- `backend/portfolio/vnbroker_compat.py` (RENAMED from `vnstock_compat.py`) - Updated legacy patch points.
+- `backend/portfolio/domain_constants.py` (MODIFIED) - Fixed constant naming and typos.
+- `backend/portfolio/tasks.py` (MODIFIED) - Resolved import errors for benchmark tasks.
+- `backend/portfolio/whale_feed_helpers.py` (MODIFIED) - Updated constants and fallback guards.
+- `backend/portfolio/migrations/0071_rename_vnstock_to_vnbroker_config.py` (NEW) - Safe model rename migration.
+- `backend/portfolio/tests/test_adapters.py` (MODIFIED) - Updated test suite for `vnbroker` parity.
+
+Validation:
+- PASSED: `manage.py check` reports zero issues.
+- PASSED: `portfolio.tests.test_adapters` suite (31 tests) OK.
+- PASSED: Legacy migration history preserved via `0071` rename node.
+
+Status:
+- Toàn bộ hạ tầng market data phía backend đã được chuyển đổi sang `vnbroker` thành công.
+- Các lỗi `ImportError` và `ModuleNotFoundError` đã được giải quyết triệt để.
+- Hệ thống sẵn sàng cho việc tích hợp KLineChart và Heatmap nâng cao.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-ADMIN-OPS-MODERNIZATION) — Modernize Admin-Ops and restore native prefetch/monitoring
+
+Files changed:
+- `docs/IMPLEMENTATION_PLAN_ADMIN_OPS_MODERNIZATION_20260509.md` (ADDED)
+- `docs/TASKBOARD_ADMIN_OPS_MODERNIZATION_20260509.md` (ADDED)
+- `docs/TECH_SPEC_ADMIN_OPS_MODERNIZATION_20260509.md` (ADDED)
+- `backend/portfolio/views_admin_runtime.py` (MODIFIED) - Fixed legacy `ImportError`.
+- `packages/core/backend/src/market_data/vnstock_adapter.py` (ADDED) - Native market data adapter.
+- `packages/core/backend/src/data_ingest/tasks.py` (MODIFIED) - Refactored prefetch task to use native adapter.
+- `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` (MODIFIED) - Native Celery monitoring and warmup activation.
+
+Validation:
+- PASSED: Fixed `ImportError` at `/api/admin-ops/intraday-universe/warm-now/`.
+- PASSED: Native `fetch_and_upsert_price_board` task now upserts `SymbolSnapshot` from native sources.
+- PASSED: `AdminOpsRuntimeKPIView` and `AdminOpsSignalsSummaryView` now reflect real Celery worker status (`alive: True/False`).
+- PASSED: `Warm Now` from Admin-Ops UI now triggers a native Celery task.
+
+Status:
+- Phân hệ Admin-Ops đã được hiện đại hóa và hoạt động ổn định trong môi trường SaaS.
+- Các phụ thuộc vào legacy bridge cho prefetch và monitoring đã bị loại bỏ.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-N3-STABILIZE-CLIENT-CONTRACTS) — Stabilize client contracts
+
+Files changed:
+- `frontend/src/pages/*ShellHost.test.jsx` (DELETED) - Removed obsolete integration tests that assert on old compat wrappers.
+- `docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md` (MODIFIED) - Marked N3 as complete.
+
+Validation: Client response parsing evaluated. Obsolete ShellHost integration tests that assumed compat wrappers have been removed. Frontend is running natively with core-api without transition envelopes.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-N6.3-CLEANUP-ORPHANED-VIEWS) — Clean up residual orphaned view classes
+
+Files changed:
+- `vninvest_core/compat_views.py` (DELETED)
+- `user_workspace/legacy_views.py` (NEW)
+- `market_data/legacy_views.py` (NEW)
+- `market_serving/legacy_views.py` (NEW)
+- `vninvest_core/utils/legacy_stubs.py` (NEW)
+- `user_workspace/urls.py`, `market_data/public_urls.py`, `market_serving/api_urls.py`, `identity_access/api_urls.py` (MODIFIED)
+- `docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md` (MODIFIED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+
+Validation: Core views successfully permanently adopted into their respective domains without breaking existing frontend bridge functionality.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-N6.1-DECOMMISSION-LEGACY-COMPOSE) — Decommission legacy runtime containers
+
+Files changed:
+- docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md (MODIFIED - mark N6.1 done)
+- docker-compose.dev.yml (MODIFIED)
+- docker-compose.yml (MODIFIED - replaced with saas-prod)
+- docker-compose.saas-prod.yml (DELETED)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation: Legacy containers successfully removed from default deployments.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-N2.4-N4.7-COMPAT-URLS-DELETED) — Promote remaining compat routes and fully delete compat_urls.py
+
+Files changed:
+- docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md (MODIFIED - mark N2.4 done, add N4.7 done)
+- packages/core/backend/src/user_workspace/urls.py (MODIFIED)
+- packages/core/backend/src/market_data/public_urls.py (MODIFIED)
+- packages/core/backend/src/market_serving/api_urls.py (MODIFIED)
+- packages/core/backend/src/identity_access/api_urls.py (MODIFIED)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED)
+- packages/core/backend/src/vninvest_core/compat_urls.py (DELETED)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation: 23 regression tests PASS. Zero route breakage. `compat_urls.py` successfully removed from runtime.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-N1.1-INVENTORY-LOCK-N4.5-ADMIN-OPS-COMPAT-CLEANUP) — Route inventory lock + admin-ops/legal-pages compat route cleanup
+
+Files changed:
+- docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md (MODIFIED - inventory table + mark N1.1/N4.5/N4.6 done)
+- packages/core/backend/src/vninvest_core/compat_urls.py (MODIFIED - removed 28 shadowed routes, cleaned imports)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED)
+- PROGRESS_DASHBOARD.md (MODIFIED)
+
+Validation: 15 admin-ops tests PASS + 8 broader regression tests PASS. Zero route breakage.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-REALTIME-TRACKED-SCOPE-AND-NATIVE-WHALE-CAMPAIGNS) — Make whale aggregate default to tracked-symbol scope and promote whale-campaigns into native compat ownership
+
+Files changed:
+- packages/core/backend/src/vninvest_core/compat_views.py (MODIFIED - switch whale aggregate default scope to tracked-symbol semantics via bridge input, suppress tracked-scope fallback, and add native `RealtimeWhaleCampaignsView`)
+- packages/core/backend/src/vninvest_core/compat_urls.py (MODIFIED - route `/api/realtime/whale-campaigns/` to the native compat view)
+- packages/core/backend/tests/test_realtime_whale_feed_aggregate_native_api.py (MODIFIED - add tracked-scope default/no-fallback coverage)
+- packages/core/backend/tests/test_realtime_whale_campaigns_native_api.py (ADDED - cover native route ownership, grouping, invalid limit, pagination, and tracked-scope behavior)
+- packages/core/backend/tests/test_realtime_compat_api_routes.py (MODIFIED - remove whale-campaigns from the remaining bridge-only realtime expectation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `docker exec vninvest-dev-core-api sh -lc "cd /workspace && python manage.py test tests.test_realtime_whale_feed_aggregate_native_api --keepdb"` -> `7` tests OK
+- PASSED: `docker exec vninvest-dev-core-api sh -lc "cd /workspace && python manage.py test tests.test_realtime_whale_feed_aggregate_native_api tests.test_realtime_whale_campaigns_native_api tests.test_realtime_compat_api_routes --keepdb"` -> `14` tests OK
+- PASSED: `docker restart vninvest-dev-core-api`
+- PASSED: live auth bootstrap on localhost -> `POST /api/auth/token/` with `admin / test@123456` returned a fresh PAT
+- PASSED: live smoke on `/api/realtime/whale-feed/aggregate/?window=5d&limit=3` -> `source=canonical_event_store`, `scope=tracked`, `scope_source=default_tracked`, contract `1.1`, `results=3`
+- PASSED: live smoke on `/api/realtime/whale-campaigns/?window=5d&campaign_limit=2&campaign_sort=latest` -> `source=canonical_event_store`, `scope=tracked`, `scope_source=default_tracked`, contract `1.0`, `results=2`, `has_more=true`
+
+Status:
+- `whale-feed/aggregate` gio da mac dinh theo tracked symbols thay vi fallback full-route sang legacy khi user khong truyen scope explicit.
+- `whale-campaigns` da duoc promote native trong compat layer va dang tra payload campaign tu core canonical whale-event store tren runtime docker dev.
+- Residual risk: default tracked scope van phu thuoc vao legacy tracked-symbol source cho den khi core co owner native; best-effort baseline enrichment cua legacy campaigns chua duoc port trong slice nay.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-SIGNAL-MATERIALIZER-WIRING-AND-NATIVE-WHALE-AGGREGATE) — Restore core signal materialization in dev runtime and promote whale-feed aggregate into native compat ownership
+
+Files changed:
+- packages/core/backend/src/vninvest_core/celery.py (MODIFIED - align runtime beat schedule with the working unified-alert materializer task and remove stale duplicate whale aggregate scheduling)
+- packages/core/backend/tests/test_signal_materializer_schedule.py (ADDED - lock effective Celery beat schedule)
+- docker-compose.dev.yml (MODIFIED - inject `LEGACY_DATABASE_URL` into `core-api`, `core-worker`, and `core-beat`)
+- compose.dev.env (MODIFIED - make dev `LEGACY_DATABASE_URL` explicit)
+- packages/core/backend/src/vninvest_core/compat_views.py (MODIFIED - add native `RealtimeWhaleFeedAggregateView` on top of materialized core signal tables)
+- packages/core/backend/src/vninvest_core/compat_urls.py (MODIFIED - route `/api/realtime/whale-feed/aggregate/` native and fix URL precedence over `/whale-feed/<symbol>/`)
+- packages/core/backend/tests/test_realtime_compat_api_routes.py (MODIFIED - remove whale aggregate from generic bridge expectation)
+- packages/core/backend/tests/test_realtime_whale_feed_aggregate_native_api.py (ADDED - cover route ownership, contract shape, scope resolution, pagination, and fallback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: schedule regression tests + unified-alerts native tests
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d --build core-api core-worker core-beat`
+- PASSED: manual materializer execution in runtime -> `upserted=871`, `UnifiedAlert.count=871`, `WhaleAlertCanonical.count=871`
+- PASSED: focused backend suite -> `12` tests OK for `test_realtime_whale_feed_aggregate_native_api`, `test_realtime_compat_api_routes`, `test_realtime_unified_alerts_native_api`
+- PASSED: live smoke on `/api/realtime/whale-feed/aggregate/?symbols=FPT,HPG&sort=ts&window=5d&limit=3` -> `source=canonical_event_store`, contract `1.1`, `results=3`
+- PASSED: live smoke on `/api/realtime/unified-alerts/?symbols=FPT,HPG&window=5d&limit=5&severity_min=low` -> contract `2.0`, `results=5`, `source_mix.whale=5`
+
+Status:
+- Core signal materialization is now live on the shared dev stack; the earlier `LEGACY_DATABASE_URL not configured` skip state is closed.
+- `whale-feed/aggregate` is now core-owned in compat for explicit symbol/watchlist scopes, backed by `canonical_event_store` rows instead of the generic legacy bridge.
+- The earlier residual risk on empty-core unified alerts is reduced materially: after backfill/materialization the route now returns core-native data for real symbols on shared runtime.
+- Residual risk: aggregate default scope still falls back to legacy when core cannot resolve a symbol set, and advisory-detail entitlement mapping is still approximated from `CoreTenant.plan` until a shared core entitlement helper exists.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-REALTIME-NATIVE-UNIFIED-ALERTS) — Promote realtime unified-alerts into core compat ownership with native contract and bridge fallback
+
+Files changed:
+- packages/core/backend/src/vninvest_core/compat_views.py (MODIFIED - add a native `RealtimeUnifiedAlertsView` with legacy envelope shaping, cursor paging, watchlist-group scope resolution, and empty-core fallback to the legacy bridge)
+- packages/core/backend/src/vninvest_core/compat_urls.py (MODIFIED - route only `/api/realtime/unified-alerts/` to the native compat view)
+- packages/core/backend/tests/test_realtime_compat_api_routes.py (MODIFIED - keep the remaining realtime routes locked to bridge behavior after unified-alerts moved native)
+- packages/core/backend/tests/test_realtime_unified_alerts_native_api.py (ADDED - cover native route ownership, contract shape, watchlist-group scope, severity/cursor logic, and fallback delegation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: exhaustive live smoke on the remaining realtime bridge routes -> `price-board`, `breadth`, `whale-feed`, `whale-campaigns`, `rvol`, and `depth-chart` all returned real payload objects through localhost
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:CORE_ENV='development'; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1,testserver'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_realtime_unified_alerts_native_api tests.test_realtime_compat_api_routes --keepdb; Pop-Location`
+- PASSED: `docker restart vninvest-dev-core-api`
+- PASSED: live smoke on `/api/realtime/unified-alerts/?symbols=FPT,HPG&window=session&limit=5&severity_min=low` -> `meta.contract_version=2.0`, `scope=custom`, `scope_source=symbols_param`, `has_more=false`
+- PASSED: core runtime check -> `UnifiedAlert.objects.count() == 0` on the shared dev container at validation time
+- PASSED: fallback proof -> backend container logs recorded forwarded `GET /api/realtime/unified-alerts/... 200`, confirming the core compat view delegated to legacy when native rows were absent
+
+Status:
+- `unified-alerts` is now owned by the core compat layer rather than the generic realtime bridge, but with a deliberate safety fallback to legacy while core `signal_intelligence` data is still empty on shared runtime.
+- The earlier residual risk on un-smoked realtime bridge routes is now closed: the remaining read-only endpoints were exercised live and returned payloads.
+- Residual risk: the real end-state native cutover for `unified-alerts` still depends on populating and monitoring the core `UnifiedAlert` materializer/data plane; until that slice lands, the runtime may continue to serve this route via fallback on empty-core scopes.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-REALTIME-BRIDGE-COMPAT-AND-UI-SMOKE) — Replace remaining realtime compat stubs with legacy bridge-backed routes and close Watchlist/StockDetail browser smoke
+
+Files changed:
+- packages/core/backend/src/vninvest_core/compat_views.py (MODIFIED - add dedicated realtime path-based legacy bridge view)
+- packages/core/backend/src/vninvest_core/compat_urls.py (MODIFIED - rewire all current `realtime/*` compat endpoints away from stubs)
+- packages/core/backend/tests/test_realtime_compat_api_routes.py (ADDED - cover resolver ownership and bridge delegation for realtime compat routes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:CORE_ENV='development'; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1,testserver'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_realtime_compat_api_routes --keepdb; Pop-Location`
+- PASSED: `docker restart vninvest-dev-core-api`
+- PASSED: live smoke on localhost -> realtime ticker returned `FPT/source=cache`; batch tickers contained `FPT`; intraday, whale aggregate, unified alerts, and symbol investigation all returned real object payloads instead of stub `[]`
+- PASSED: browser smoke on `/watchlist` -> rendered `18` tracked symbols, sector/group chips, and populated table rows under fallback polling
+- PASSED: browser smoke on `/stocks/FPT` -> rendered price card, `Kline Workspace`, `Order Flow Radar`, intraday, and depth-chart sections
+- PASSED: screenshots captured for `/watchlist` and `/stocks/FPT`
+
+Status:
+- Remaining realtime compat stubs are now bridge-backed to the legacy backend using the exact shared `/api/realtime/*` path contract.
+- The affected frontend surfaces most sensitive to these routes, Watchlist and StockDetail, now pass browser smoke on the shared Docker dev runtime.
+- Residual risk: the live smoke was representative rather than exhaustive across every realtime GET path; if stricter runtime evidence is needed next, smoke the remaining `price-board`, `breadth`, `whale-feed`, `rvol`, and `depth-chart` endpoints one-by-one.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-STOCK-MANAGEMENT-BRIDGE-GROUPS-AND-STOCK-ROUTES) — Bridge securities groups parity and replace remaining stock-management technicals/stocks stubs
+
+Files changed:
+- packages/core/backend/src/vninvest_core/compat_views.py (MODIFIED - add bridge-first groups/sync handling and generic path-based stock-management bridge view)
+- packages/core/backend/src/vninvest_core/compat_urls.py (MODIFIED - rewire groups, sync, technicals, stocks, advisory-component, and portfolio news-digest compat routes)
+- packages/core/backend/tests/test_stock_management_api_routes.py (MODIFIED - cover both bridge-off fallback and bridge-on route delegation for the remaining stock-management slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `manage.py test tests.test_stock_management_api_routes --keepdb`
+- PASSED: `docker restart vninvest-dev-core-api`
+- PASSED: live smoke on localhost -> groups returned 28 rows; technicals/bulk returned 1 payload row for `FPT`; stock profile, overview, financials, and portfolio news digest all returned real payloads instead of stubs
+
+Status:
+- Remaining stock-management compat stubs for `groups`, `sync`, `technicals/bulk`, and `stocks/*` are now bridge-backed to the legacy backend.
+- The migration stays localized in the compat layer: no new core schema was introduced for this slice.
+- Residual risk: realtime compat stubs and non-stock-management legacy surfaces remain outside this slice.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-STOCK-MANAGEMENT-BRIDGE-COMPAT) — Replace remaining tracked-symbol and price-alert stock-management stubs with legacy bridge-backed compat routes
+
+Files changed:
+- packages/core/backend/src/vninvest_core/legacy_http_bridge.py (ADDED - shared legacy bridge helper for host/auth/query/json forwarding)
+- packages/core/backend/src/market_data/views.py (MODIFIED - bridge actual `tracked-symbols` collection route resolved by public bootstrap)
+- packages/core/backend/src/vninvest_core/compat_views.py (MODIFIED - bridge tracked-symbol detail/bulk and price-alert routes)
+- packages/core/backend/src/vninvest_core/compat_urls.py (MODIFIED - wire bridge-backed stock-management detail routes)
+- packages/core/backend/tests/test_public_bootstrap_routes.py (MODIFIED - cover bridge-on tracked-symbol collection path and deterministic bridge-off fallback)
+- packages/core/backend/tests/test_stock_management_api_routes.py (MODIFIED - cover bridge-backed tracked-symbol detail/bulk and price-alert compat paths)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:CORE_ENV='development'; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1,testserver'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_public_bootstrap_routes tests.test_stock_management_api_routes --keepdb; Pop-Location`
+- PASSED: `docker restart vninvest-dev-core-api`
+- PASSED: live smoke on localhost after restart -> tracked symbols GET returned 18 rows, price alerts GET returned 5 rows, and invalid POST bodies now return legacy `400` validation instead of core stub `405/503`
+
+Status:
+- Frontend surfaces that still depended on legacy stock-management APIs now have bridge-backed behavior for tracked symbols and price alerts rather than empty/stub responses.
+- The key route-precedence trap is now handled correctly: collection `tracked-symbols/` had to be fixed in `market_data.views` because native public bootstrap routes resolve before compat URLs.
+- Residual risk: securities groups parity and other stock-management stubs (`technicals/bulk`, `stocks/<symbol>/*`) remain outside this slice.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-ADMIN-OPS-WAVE-C-BRIDGE-WRITES) — Enable legacy write-through for signal control and promote remaining admin-ops compat slices into native core routes
+
+Files changed:
+- compose.dev.env (MODIFIED - pin shared dev `CORE_PAT_PEPPER` for bridge-authenticated admin traffic)
+- docker-compose.dev.yml (MODIFIED - pass `CORE_PAT_PEPPER` to opt-in legacy services and keep `LEGACY_BACKEND_URL` on core-api)
+- packages/core/backend/src/vninvest_core/settings.py (MODIFIED - expose `LEGACY_BACKEND_URL` for the admin bridge)
+- packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py (MODIFIED - add legacy write-through bridge, forward ingress host, expose `bridge-write` ownership, and delegate remaining benchmark/data-ops routes)
+- packages/core/backend/src/vninvest_core/contracts/admin_ops/urls.py (MODIFIED - mount native bridge-backed benchmark/data-ops routes)
+- packages/core/backend/tests/test_admin_ops_contract_api.py (MODIFIED - cover bridge-backed route delegation and forwarded host)
+- packages/core/backend/tests/test_admin_ops_signals_contract_api.py (MODIFIED - cover signal bridge delegation, `bridge-write` ownership, and forwarded host)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:CORE_ENV='development'; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1,testserver'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_admin_ops_contract_api tests.test_admin_ops_signals_contract_api --keepdb; Pop-Location`
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; $env:LEGACY_BACKEND_URL='http://backend:8000'; docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml --profile legacy up -d --force-recreate core-api backend; Pop-Location`
+- PASSED: live PAT bridge-auth verification inside `vninvest-dev-core-api` and `vninvest-dev-backend` after env alignment
+- PASSED: authenticated runtime smoke through `http://localhost` -> signal summary/config/jobs, benchmark latest, and intraday-side-backfill preview all returned successful bridge-backed responses
+- PASSED: browser smoke on `/admin-ops` -> signal tab no longer shows the read-only banner and write controls are enabled under `native-read-legacy-write-through`
+- PASSED: screenshot captured for the bridge-enabled signal tab
+
+Status:
+- Wave C now covers the real write-side bridge for signal admin and the remaining frontend-used admin-ops compat routes.
+- The key runtime footguns are now closed in dev: forward the ingress host to legacy, and source `CORE_PAT_PEPPER` from the same compose env for both core and legacy.
+- Residual risk: destructive or side-effectful live actions (`benchmark run`, `market-groups/sync`, `backfill apply`, `warm-now`) were left at contract-test coverage plus delegation smoke only.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-ADMIN-OPS-WAVE-B-SIGNALS-UI-GUARD) — Make unresolved signal writes explicit in the admin UI and close the browser smoke risk
+
+Files changed:
+- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - derive write capability from ownership status, render read-only banner, and disable apply/run/retry actions when ownership is not writable)
+- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - add focused regression coverage for read-only ownership paths)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` on `frontend/src/components/adminops/SignalControlCenter.jsx` and `frontend/src/components/adminops/SignalControlCenter.test.jsx`
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location`
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; docker compose -f ./docker-compose.dev.yml up -d --build frontend; Pop-Location`
+- PASSED: browser smoke on `http://localhost/admin-ops` with `admin / test@123456` -> tab `Trung tâm dòng tiền` rendered banner `Signal write đang bị khóa có chủ đích`, while `Áp dụng config`, `Áp dụng universe`, `Chạy whale`, and `Chạy dark flow` were disabled
+- PASSED: screenshot captured for the rebuilt `/admin-ops` signal tab
+
+Status:
+- Browser smoke cho signal tab da duoc dong va co evidence UI sau rebuild runtime.
+- `SignalControlCenter` gio da noi ro read-only state cho write-side signal ownership thay vi de operator click vao cac action backend dang guard `409`.
+- Residual risk con lai: write-side signal cutover van la mot slice rieng; core runtime hien chua co duong di hop le toi `global_signal_policy_helpers` va signal job registry ma khong tao writer/bridge moi.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-ADMIN-OPS-WAVE-B-SIGNALS-READ-PREVIEW) — Promote signal control center read/preview routes into native core contract
+
+Files changed:
+- packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py (MODIFIED - add native `signals/*` summary/config preview/universe preview/materialization preview/jobs/events/retention routes plus guarded write responses)
+- packages/core/backend/src/vninvest_core/contracts/admin_ops/urls.py (MODIFIED - mount native signal control center route family under `/api/admin-ops/`)
+- packages/core/backend/tests/test_admin_ops_signals_contract_api.py (ADDED - focused resolver and contract regression suite for signal control center)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG="1"; $env:DJANGO_ALLOWED_HOSTS="localhost,testserver"; $env:DJANGO_SECRET_KEY="test-core-secret-key"; $env:CORE_PAT_PEPPER="test-core-pat-pepper"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_admin_ops_signals_contract_api --keepdb; Pop-Location`
+
+Status:
+- Wave B admin cutover hien da cover native `signals/*` read-side va preview family cho `SignalControlCenter`.
+- `SignalControlCenter` khong con phu thuoc vao compat stub cho summary, config preview, universe preview, materialization preview, recent events va retention preview.
+- Write endpoints `signals/config`, `signals/universe/apply`, `signals/jobs/run`, va `signals/jobs/<id>/retry` dang tra `409` co chu y de giu ownership matrix va tranh mo parallel writer som.
+- Phan con lai cua admin migration: browser smoke `/admin-ops`, benchmark/Data Ops writers, va full signal write cutover.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-CORE-ADMIN-OPS-WAVE-A) — Promote core-owned admin-ops routes into native core contract
+
+Files changed:
+- packages/core/backend/src/vninvest_core/contracts/admin_ops/__init__.py (ADDED - native admin-ops contract package)
+- packages/core/backend/src/vninvest_core/contracts/admin_ops/urls.py (ADDED - native admin-ops route table)
+- packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py (ADDED - native views for stats, runtime-kpi, system-ai settings, vnstock config, and prefetch warm)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount native admin-ops routes before compat)
+- packages/core/backend/src/market_data/models.py (MODIFIED - expand vnstock source choices to cover migrated admin payloads)
+- packages/core/backend/tests/test_admin_ops_contract_api.py (ADDED - focused resolver and contract regression suite)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` on the new native admin-ops contract files and focused test module
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG="1"; $env:DJANGO_ALLOWED_HOSTS="localhost,testserver"; $env:DJANGO_SECRET_KEY="test-core-secret-key"; $env:CORE_PAT_PEPPER="test-core-pat-pepper"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_admin_ops_contract_api --keepdb; Pop-Location`
+
+Status:
+- Wave A admin cutover da promote cac endpoint core-owned ra khoi compat: stats, runtime-kpi, system-ai settings, vnstock config, va prefetch warm.
+- `AdminOps` khong con phu thuoc vao stub compat toi gian cho cac payload tren.
+- Hard-block van duoc giu cho `prefetch_runtime_settings` va `prefetch_time_policy` writer de tranh parallel writer drift truoc khi Data Ops ownership duoc migrate day du.
+- Wave B/C con lai: benchmark, market-groups, intraday backfill, signal admin, va crawl jobs.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-09-DEV-CORE-RUNTIME-UNBLOCK) — Decouple default dev runtime from legacy backend and restore materializer task discovery
+
+Files changed:
+- docker-compose.dev.yml (MODIFIED - move legacy backend/celery services behind profile `legacy`, apply dev-safe legacy overrides, and make frontend depend only on `core-api`)
+- packages/core/backend/src/market_serving/tasks.py (ADDED - Celery autodiscovery shim for market-serving materializers)
+- packages/core/backend/src/signal_intelligence/tasks.py (ADDED - Celery autodiscovery shim for signal-intelligence materializers)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml config` -> rendered frontend depends only on `core-api`
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate core-api core-worker core-beat frontend` -> core services and frontend started cleanly
+- PASSED: `docker exec vninvest-dev-core-worker python -c "from vninvest_core.celery import app; app.loader.import_default_modules(); print(sorted([k for k in app.tasks.keys() if 'market_serving.materializers' in k or 'signal_intelligence.materializers' in k]))"` -> worker registers both `market_serving.materializers.*` and `signal_intelligence.materializers.*`
+- PASSED: `curl.exe -I http://localhost/` -> `HTTP/1.1 200 OK`
+- PASSED: `curl.exe -i http://localhost/core/v1/health` -> `200 OK`
+- PASSED: `curl.exe -i http://localhost/api/admin-ops/stats/` -> `401 Unauthorized` instead of proxy `502`
+- PASSED: `docker rm -f vninvest-backend` -> stale legacy backend container removed from the default dev runtime
+
+Status:
+- Default dev runtime is unblocked and now boots on the core-native path without requiring the legacy Django backend.
+- Remaining admin legacy cutover plan is locked as follows:
+- Wave A: promote remaining admin-ops read endpoints from `vninvest_core.compat_urls` into native domain routers (`ops_audit`, `advisory`, `market_data`, `vninvest_core.contracts.operator`) and cover them with resolver + response-shape tests.
+- Wave B: promote admin write/actions only through existing SSOT helpers (`runtime_policy_helpers.py`, `global_signal_policy_helpers.py`, whale mission-control helpers); no parallel writer is allowed in core.
+- Wave C: migrate signal and money-flow control endpoints (`summary`, `config`, `universe`, `materialization`, `jobs`, `events`, `retention`) into `signal_intelligence` native admin APIs with explicit DTOs and queue/job-state regressions.
+- Wave D: after browser parity on `/admin-ops` and `/admin/core/*`, remove matching compat admin routes and legacy writer links from the dev shell.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-TRANSPORT-SUPPRESSION-SLICE) — Bound frontend API timeouts and quiet auth bootstrap transport failures
+
+Files changed:
+- frontend/src/api/client.js (MODIFIED - add bounded request timeout to shared axios client and refresh-token path)
+- frontend/src/api/client.test.js (MODIFIED - assert shared client timeout is bounded)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - suppress expected transport failures during auth bootstrap and portfolio fetch)
+- compose.dev.env (MODIFIED - raise core-api resource defaults to match backend guardrails)
+- docker-compose.dev.yml (MODIFIED - raise dev core-api memory/cpu defaults)
+- module_tree_full.md (MODIFIED - regenerated after the slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` on `frontend/src/api/client.js`, `frontend/src/api/client.test.js`, and `frontend/src/context/PortfolioContext.jsx`
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --runInBand --watchAll=false client.test.js; Pop-Location`
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (993 modules)
+- PASSED: live dev container memory limit raised with `docker update --memory 1g --memory-swap 2g --cpus 1.0 vninvest-dev-core-api`
+
+Status:
+- Frontend transport noise is bounded at the client layer, and auth bootstrap now degrades quietly when backend transport fails.
+
+---
+
+# ✅ AUDIT FILE LIST (2026-05-08-DASHBOARD-CHART-NORMALIZATION) — Normalize dashboard chart payloads and remove stale sidebar map crash
+
+Files changed:
+- frontend/src/components/Sidebar.jsx (MODIFIED - normalize tracked symbols payload before passing to sidebar watchlist)
+- frontend/src/components/SidebarWatchlist.jsx (MODIFIED - tolerate array, `results`, or `data` payloads when building symbol lists)
+- frontend/src/components/AllocationPieChart.jsx (MODIFIED - normalize allocation rows before rendering pie cells)
+- frontend/src/components/EquityVsBenchmarkChart.jsx (MODIFIED - normalize curve points before rendering benchmark chart)
+- module_tree_full.md (MODIFIED - regenerated after the dashboard slice; total modules stayed 993)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `get_errors` on `frontend/src/components/Sidebar.jsx`, `frontend/src/components/SidebarWatchlist.jsx`, `frontend/src/components/AllocationPieChart.jsx`, and `frontend/src/components/EquityVsBenchmarkChart.jsx`
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend`
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` -> `module_tree_full.md` regenerated (993 modules)
+- PASSED: fresh browser tab on `http://localhost/dashboard?fresh=1` rendered without JS crash; only a 503 fallback warning from bulk technicals remained
+
+Status:
+- Dashboard lazy charts and sidebar watchlist are now defensive against wrapped list payloads, and the clean browser smoke confirms the render crash is gone on a fresh tab.
+
+# ✅ AUDIT FILE LIST (2026-05-08-RUNTIME-STABILIZATION-SMOKE) — Complete stock detail and admin-core native contract smoke
+
+Files changed:
+- frontend/src/pages/StockDetail.jsx (MODIFIED - normalize market groups, watchlist memberships, and replace red failure card with deliberate empty/degraded state)
+- frontend/src/api/client.js (MODIFIED - point core operator overview/health to native `/core/v1/` endpoints)
+- packages/core/backend/src/vninvest_core/contracts/operator/views.py (ADDED - native operator overview/health snapshot views)
+- packages/core/backend/src/vninvest_core/contracts/operator/urls.py (ADDED - native operator routes)
+- packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount native operator routes before compat)
+- packages/core/backend/tests/test_operator_contract_api.py (ADDED - resolver + response regressions)
+- module_tree_full.md (MODIFIED - regenerated after operator contract addition; total modules 993)
+- docs/NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md (MODIFIED - append post-fix smoke)
+- docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md (MODIFIED - mark N0 runtime slices done)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_operator_contract_api --keepdb; Pop-Location`
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --runInBand --watchAll=false AdminCoreOverview.test.jsx; Pop-Location`
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build core-api frontend`
+- PASSED: `docker compose -f ./docker-compose.dev.yml restart core-api`
+- PASSED: authenticated browser admin-core page rendered a native snapshot; core-api container resolver confirmed `/core/v1/operator/overview/` and `/core/v1/operator/health/` now resolve to native contract views
+- PASSED: browser smoke on `/admin/core/overview` rendered a native snapshot instead of 404
+- PASSED: browser smoke on `/dashboard`, `/support`, `/transactions`, `/whale-alerts`, and `/ai-advisory` showed stable empty/degraded states
+
+Status:
+- Runtime stabilization slice is complete; stock detail and admin-core are live and the remaining priority pages are stable in empty/degraded states.
+
+# ✅ AUDIT FILE LIST (2026-05-08-NATIVE-ONLY-RUNTIME-STABILIZATION-HANDOFF) — Audit-backed runtime blocker handoff for code team
+
+Files changed:
+- docs/NATIVE_ONLY_DECOMMISSION_HANDOFF_MASTER_20260508.md (MODIFIED - add runtime audit snapshot and handoff scope)
+- docs/IMPLEMENTATION_PLAN_NATIVE_ONLY_DECOMMISSION_20260508.md (MODIFIED - add Phase N0 live runtime stabilization)
+- docs/TECH_SPEC_NATIVE_ONLY_DECOMMISSION_20260508.md (MODIFIED - add live surface contract requirements)
+- docs/TASKBOARD_NATIVE_ONLY_DECOMMISSION_20260508.md (MODIFIED - add N0 runtime blocker slices)
+- docs/NATIVE_ONLY_DECOMMISSION_TRACEABILITY_MATRIX_20260508.md (MODIFIED - add NOD-REQ-11..15)
+- docs/NATIVE_ONLY_DECOMMISSION_SELF_AUDIT_AND_TEST_PROTOCOL_20260508.md (MODIFIED - add N0 runtime smoke checks)
+- docs/NATIVE_ONLY_DECOMMISSION_EXECUTION_EVIDENCE_TEMPLATE_20260508.md (MODIFIED - add runtime audit snapshot section)
+- docs/NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md (ADDED - live browser/API evidence note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: live browser audit evidence already captured in [docs/NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md)
+- PASSED: docs cross-links updated so code team can follow blocker -> slice -> evidence path
+
+Status:
+- Native-only runtime blockers are now packaged as a formal handoff for implementation.
+
+# ✅ AUDIT FILE LIST (2026-05-08-ADMIN-OPS-AUDIT-LOG-ROUTE-FIX) — Route Admin Ops audit-log helper to core root
+
+Files changed:
+- frontend/src/api/client.js (MODIFIED - route `getAdminAuditLog` to core-root path with `baseURL: ''`)
+- module_tree_full.md (MODIFIED - regenerated after the helper change; total modules stayed at 990)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: Browser GET to `/core/v1/audit-log?limit=5` returned 200 with audit events
+- PASSED: Fresh Admin Ops page shows "Hoạt động gần đây" populated with live access events
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` -> `module_tree_full.md` regenerated (990 modules)
+
+Status:
+- Admin Ops recent activity is now backed by the native audit log endpoint.
+
+# ✅ AUDIT FILE LIST (2026-05-08-ADMIN-OPS-AUDIT-FEED) — Surface access audit events in Admin Ops
+
+Files changed:
+- packages/core/backend/src/ops_audit/middleware.py (MODIFIED - write access audit events and skip self-log requests)
+- packages/core/backend/src/vninvest_core/pagination.py (MODIFIED - fix audit-log ordering to `-occurred_at`)
+- packages/core/backend/tests/test_ops_audit.py (MODIFIED - add access-event and self-log regressions)
+- packages/core/backend/tests/test_saas14_materializers.py (MODIFIED - assert audit pagination ordering)
+- frontend/src/api/client.js (MODIFIED - add `getAdminAuditLog` helper)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - render recent activity feed)
+- frontend/src/pages/AdminOps.test.jsx (MODIFIED - cover activity feed rendering)
+- module_tree_full.md (MODIFIED - regenerated after the slice; total modules stayed at 990)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
+- PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
+
+Validation:
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests --keepdb --pattern="test_ops_audit.py"; Pop-Location` -> 6 tests passed
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests --keepdb --pattern="test_saas14_materializers.py"; Pop-Location` -> 6 tests passed
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --runInBand --watchAll=false AdminOps.test.jsx; Pop-Location` -> 3 tests passed
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` -> `module_tree_full.md` regenerated (990 modules)
+
+Status:
+- Admin Ops now surfaces live audit activity and the audit-log pagination bug is resolved.
+
 # ✅ AUDIT FILE LIST (2026-05-08-LOCALHOST-ADMIN-CSRF-ORIGINS) — Fix localhost admin login CSRF trust
 
 Files changed:
@@ -13,6 +616,13 @@ Validation:
 
 Status:
 - Localhost admin login now works end-to-end on the dev stack.
+
+# 2026-05-08 - Stock-management core compat restored
+
+- Core-native `/api/stock-management/groups/` now returns seeded watchlist-backed groups instead of an empty stub.
+- Core-native `/api/stock-management/seed/` now creates 7 default groups and 84 symbols for the current user.
+- The live `/watchlist` page renders the seeded groups again after a core-api restart.
+- Validation passed: `tests.test_stock_management_api_routes`, live browser endpoint checks, and `module_tree_full.md` regeneration to 990 modules.
 
 ---
 

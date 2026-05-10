@@ -18,6 +18,15 @@ Muc tieu cua go tai lieu nay la dua VNInvest ve trang thai **native-only**:
 
 Tai lieu nay ke thua trang thai sau cac slice da hoan tat: auth/tenant, portfolio/workspace, market/realtime va tenant admin da chay tren GHCR native images; phan con lai la cleanup de xoa nốt hybrid bridge.
 
+Tai lieu nay dong thoi la handoff cho runtime stabilization sau native-only cutover. Audit live ghi nhan:
+
+1. `dashboard` load duoc, nhung chi hien empty state.
+2. `stocks/VCB` crash JS do analytics snapshot stub va unguarded `slice`.
+3. `admin/core/overview` hit 404 o operator endpoints.
+4. `support` load shell nhung backend data fail.
+5. `transactions` va `whale-alerts` load shell, nhung can contract/empty-state cleanup.
+6. `admin-ops` da duoc xac nhan live va khong con la blocker sau khi audit-log helper duoc sua.
+
 ---
 
 ## 2. Current state
@@ -31,6 +40,30 @@ Production hien tai:
    - transparent proxy trong [packages/core/backend/src/vninvest_core/legacy_proxy.py](../packages/core/backend/src/vninvest_core/legacy_proxy.py#L1-L45)
    - compat route files cho auth, portfolio/workspace, market/realtime va market-data
 4. Nghia la production da native-first, nhung chua native-only.
+
+### 2.1 Live runtime audit snapshot
+
+| Surface | Observed runtime | Severity | Evidence |
+|---|---|---:|---|
+| `/dashboard` | Load duoc, chi hien empty state `Vui long chon hoac tao danh muc de bat dau.` | P2 | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/stocks/VCB` | Crash JS: `Failed to fetch valid analytics snapshot` + `Cannot read properties of undefined (reading 'slice')` | P0 | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/admin/core/overview` | Shell load duoc, nhung operator endpoints tra 404 | P0 | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/support` | Shell load duoc, nhung backend data fail | P1 | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/transactions` | Empty state `Chua co danh muc nao duoc chon` | P2 | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/whale-alerts` | Shell load duoc, chua crash | P2 | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/admin-ops` | Live recent-activity card da render duoc sau fix audit-log helper | DONE | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+
+### 2.2 Post-fix runtime smoke
+
+| Surface | Current smoke | Status | Evidence |
+|---|---|---:|---|
+| `/stocks/VCB` | Khong con page crash; render empty/degraded fallback khi workspace snapshot chua san sang | DONE | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/admin/core/overview` | Native `/core/v1/operator/overview/` va `/core/v1/operator/health/` tra 200; page render snapshot | DONE | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/dashboard` | Stable empty state `Vui lòng chọn hoặc tạo danh mục để bắt đầu.` | DONE | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/support` | Stable empty/error state, no JS crash | DONE | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/transactions` | Stable empty state `Danh mục chưa có tiểu khoản` | DONE | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/whale-alerts` | Stable shell / aggregate view with deliberate empty states | DONE | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
+| `/ai-advisory` | Stable empty advisory state, no page crash | DONE | [NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md](NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md) |
 
 ---
 
@@ -59,11 +92,12 @@ Sau khi hoan tat, phai dat:
 5. `docs/NATIVE_ONLY_DECOMMISSION_TRACEABILITY_MATRIX_20260508.md`
 6. `docs/NATIVE_ONLY_DECOMMISSION_SELF_AUDIT_AND_TEST_PROTOCOL_20260508.md`
 7. `docs/NATIVE_ONLY_DECOMMISSION_EXECUTION_EVIDENCE_TEMPLATE_20260508.md`
-8. `docs/NATIVE_ONLY_DECOMMISSION_CONFIG_OWNERSHIP_MATRIX_20260508.md`
-9. `docs/NATIVE_ONLY_DECOMMISSION_CODE_QUALITY_CONSTITUTION_20260508.md`
-10. `docs/RUN_CODE_REVIEW_NATIVE_ONLY_DECOMMISSION_20260508.md`
-11. `docs/RUN_INTEGRATION_TESTS_NATIVE_ONLY_DECOMMISSION_20260508.md`
-12. `docs/RUN_SPEC_AUDIT_NATIVE_ONLY_DECOMMISSION_20260508.md`
+8. `docs/NATIVE_ONLY_RUNTIME_AUDIT_EVIDENCE_20260508.md`
+9. `docs/NATIVE_ONLY_DECOMMISSION_CONFIG_OWNERSHIP_MATRIX_20260508.md`
+10. `docs/NATIVE_ONLY_DECOMMISSION_CODE_QUALITY_CONSTITUTION_20260508.md`
+11. `docs/RUN_CODE_REVIEW_NATIVE_ONLY_DECOMMISSION_20260508.md`
+12. `docs/RUN_INTEGRATION_TESTS_NATIVE_ONLY_DECOMMISSION_20260508.md`
+13. `docs/RUN_SPEC_AUDIT_NATIVE_ONLY_DECOMMISSION_20260508.md`
 
 ### Tai lieu ke thua
 1. `docs/SAAS_FULL_INDEPENDENCE_HANDOFF_MASTER_20260504.md` - baseline cu, doc de cache hybrid bridge

@@ -22,7 +22,7 @@ class TestDarkMoneyHistoryApi(TestCase):
 
     @patch('portfolio.views_dark_money_history._build_reference_price_by_trade_date')
     @patch('portfolio.services.WhaleSignalEngine.resolve_threshold_vnd')
-    @patch('portfolio.adapters.vnstock_adapter.fetch_history_dataframe')
+    @patch('portfolio.adapters.vnbroker_adapter.fetch_history_dataframe')
     def test_deduplicates_exact_intraday_ticks_before_whale_aggregation(
         self,
         mock_fetch_history_dataframe,

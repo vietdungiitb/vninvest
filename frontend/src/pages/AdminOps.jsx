@@ -6,11 +6,13 @@
  *  - Thống kê hệ thống: user/portfolio/symbol/watchlist counts
  *  - Trạng thái realtime: channel layer, redis health
  *  - Lần sync cuối: market groups, stock profiles
+ *  - Hoạt động gần đây: audit/access events
  *  - Shortcuts đồng bộ nhanh
  */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
+  getAdminAuditLog,
   getAdminOpsStats,
   getAdminPrefetchRuntimeSettings,
   getAdminPrefetchTimePolicy,
@@ -326,6 +328,7 @@ export default function AdminOps() {
   const [vnstockConfigState, setVnstockConfigState] = useState('idle');
   const [vnstockConfigMessage, setVnstockConfigMessage] = useState('');
   const [vnstockChangelog, setVnstockChangelog] = useState([]);
+  const [recentAuditEvents, setRecentAuditEvents] = useState([]);
   const syncCooldownTimersRef = useRef({});
   const prefetchTimePolicyRulebook = systemAiSettings?.prefetch_time_policy_rulebook || {};
   const [activePage, setActivePage] = useState('overview');
@@ -472,11 +475,12 @@ export default function AdminOps() {
     try {
       // stats la du lieu bat buoc cho trang; cac panel con lai fail-soft de tranh treo spinner.
       const statsRes = await withTimeout(getAdminOpsStats(), 15000, 'admin-ops-stats');
-      const [settingsRes, vnstockRes, vnstockChangelogRes, securitiesGroupsRes] = await Promise.allSettled([
+      const [settingsRes, vnstockRes, vnstockChangelogRes, securitiesGroupsRes, auditLogRes] = await Promise.allSettled([
         withTimeout(getAdminPrefetchTimePolicy(), 12000, 'admin-ops-settings'),
         withTimeout(getAdminVnstockConfigCurrent(), 12000, 'admin-ops-vnstock-current'),
         withTimeout(getAdminVnstockConfigChangelog(20, 0), 12000, 'admin-ops-vnstock-changelog'),
         withTimeout(getSecuritiesGroups(), 12000, 'admin-ops-securities-groups'),
+        withTimeout(getAdminAuditLog({ page_size: 5 }), 12000, 'admin-ops-audit-log'),
       ]);
       setStats(statsRes.data);
       const payload = settingsRes.status === 'fulfilled' ? (settingsRes.value.data?.settings || null) : null;
@@ -507,6 +511,11 @@ export default function AdminOps() {
       }
       if (vnstockChangelogRes.status === 'fulfilled') {
         setVnstockChangelog(Array.isArray(vnstockChangelogRes.value.data?.results) ? vnstockChangelogRes.value.data.results : []);
+      }
+      if (auditLogRes.status === 'fulfilled') {
+        setRecentAuditEvents(Array.isArray(auditLogRes.value.data?.results) ? auditLogRes.value.data.results : []);
+      } else {
+        setRecentAuditEvents([]);
       }
       if (payload?.governance_delta_thresholds) {
         setThresholdForm({
@@ -1333,6 +1342,44 @@ export default function AdminOps() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 px-5">
           <SyncRow label={t('adminOps.marketGroups')} log={stats.last_market_group_sync} t={t} />
           <SyncRow label={t('adminOps.stockProfiles')} log={stats.last_stock_profile_sync} t={t} />
+        </div>
+      </section>
+
+      {/* Hoạt động gần đây */}
+      <section>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('adminOps.recentActivityTitle', { defaultValue: 'Hoạt động gần đây' })}</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+          {recentAuditEvents.length ? (
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {recentAuditEvents.map((event) => {
+                const normalizedAction = String(event.action || 'access').toLowerCase();
+                const actionTone = normalizedAction === 'access' ? 'blue' : normalizedAction === 'auth' ? 'amber' : 'slate';
+                const resourceSuffix = event.resource_id ? ` / ${event.resource_id}` : '';
+                const methodSuffix = event.metadata?.method ? ` · ${event.metadata.method}` : '';
+                const statusSuffix = event.metadata?.status_code != null ? ` · ${event.metadata.status_code}` : '';
+                return (
+                  <div key={event.event_id || event.request_id || `${event.resource_type}-${event.resource_id}-${event.occurred_at}`} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                        {event.actor_label || t('adminOps.none', { defaultValue: 'Chưa có' })} · {normalizedAction.toUpperCase()}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 break-all">
+                        {event.resource_type}{resourceSuffix}{methodSuffix}{statusSuffix}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                        {event.request_id ? `Request ${event.request_id} · ` : ''}{fmtDateTime(event.occurred_at)}
+                      </p>
+                    </div>
+                    <Pill tone={actionTone}>{normalizedAction.toUpperCase()}</Pill>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+              {t('adminOps.recentActivityEmpty', { defaultValue: 'Chưa có sự kiện nào được ghi nhận.' })}
+            </div>
+          )}
         </div>
       </section>
 

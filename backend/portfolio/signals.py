@@ -2,14 +2,14 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .global_signal_policy_helpers import invalidate_global_signal_universe_cache
-from .models import PriceAlertRule, RuntimeVnstockConfig, SecuritiesItem, TrackedSymbol, Transaction, WatchlistItem
-from .vnstock_runtime_config import invalidate_vnstock_runtime_cache
+from .models import PriceAlertRule, RuntimeVnbrokerConfig, SecuritiesItem, TrackedSymbol, Transaction, WatchlistItem
+from .vnbroker_runtime_config import invalidate_vnbroker_runtime_cache
 
 
-@receiver(post_save, sender=RuntimeVnstockConfig)
-def invalidate_runtime_vnstock_cache_on_save(sender, instance, **kwargs):
+@receiver(post_save, sender=RuntimeVnbrokerConfig)
+def invalidate_runtime_vnbroker_cache_on_save(sender, instance, **kwargs):
     del sender, instance, kwargs
-    invalidate_vnstock_runtime_cache()
+    invalidate_vnbroker_runtime_cache()
 
 
 @receiver(post_save, sender=Transaction)

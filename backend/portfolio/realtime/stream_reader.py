@@ -3,7 +3,7 @@ StreamReader — helper để API views đọc dữ liệu theo 3-tier fallback:
 
   Tier 1: Redis Stream (XREVRANGE) — real-time, ms latency
   Tier 2: Redis Cache (Django cache) — TTL cache từ trước
-  Tier 3: vnstock direct call — chậm nhất, nguồn gốc
+  Tier 3: vnbroker direct call — chậm nhất, nguồn gốc
 
 Cách dùng trong view:
     from portfolio.realtime.stream_reader import StreamReader
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class StreamReader:
-    """3-tier fallback reader: Stream → Cache → vnstock."""
+    """3-tier fallback reader: Stream → Cache → vnbroker."""
 
     def __init__(self) -> None:
         self._producer = None

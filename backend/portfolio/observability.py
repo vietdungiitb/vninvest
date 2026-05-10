@@ -528,7 +528,7 @@ def record_market_fallback(endpoint: str, source: str) -> None:
         source_map[source_key] = int(source_map.get(source_key, 0)) + 1
 
 
-def record_market_external_timeout(endpoint: str, provider: str = 'vnstock') -> None:
+def record_market_external_timeout(endpoint: str, provider: str = 'vnbroker') -> None:
     if not _metrics_enabled():
         return
 

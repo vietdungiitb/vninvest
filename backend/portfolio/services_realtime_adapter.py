@@ -8,7 +8,7 @@ import logging
 from decimal import Decimal
 from django.utils import timezone
 
-from .adapters.vnstock_adapter import (
+from .adapters.vnbroker_adapter import (
     fetch_price_board_dataframe as _adapter_fetch_price_board,
     fetch_intraday_dataframe as _adapter_fetch_intraday,
     fetch_financial_ratio_dataframe as _adapter_fetch_financial_ratio,
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, source: str | None = None):
     """
-    Wrapper around vnstock adapter to fetch price board data with consistent error handling.
+    Wrapper around vnbroker adapter to fetch price board data with consistent error handling.
     Emits metrics: realtime_upstream_calls_total (suffix: price_board), realtime_upstream_errors_total
     
     Args:
@@ -45,12 +45,12 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
     except Exception as exc:
         increment_realtime_metric('realtime_upstream_errors_total', suffix='price_board')
         logger.warning('fetch_price_board_dataframe error for %s: %s', anchor_symbol, exc)
-        raise ExternalSystemException(str(exc), code='vnstock_error')
+        raise ExternalSystemException(str(exc), code='vnbroker_error')
 
 
 def fetch_intraday_dataframe(symbol: str, page_size: int = 25):
     """
-    Wrapper around vnstock adapter to fetch intraday tick data.
+    Wrapper around vnbroker adapter to fetch intraday tick data.
     Emits metrics: realtime_upstream_calls_total (suffix: intraday), realtime_upstream_errors_total
     
     Args:
@@ -72,12 +72,12 @@ def fetch_intraday_dataframe(symbol: str, page_size: int = 25):
     except Exception as exc:
         increment_realtime_metric('realtime_upstream_errors_total', suffix='intraday')
         logger.warning('fetch_intraday_dataframe error for %s: %s', symbol, exc)
-        raise ExternalSystemException(str(exc), code='vnstock_error')
+        raise ExternalSystemException(str(exc), code='vnbroker_error')
 
 
 def fetch_financial_ratio_dataframe(symbol: str, *, period: str = 'year', lang: str = 'vi', dropna: bool = True, source: str | None = None):
     """
-    Wrapper around vnstock adapter to fetch financial ratio data.
+    Wrapper around vnbroker adapter to fetch financial ratio data.
     Emits metrics: realtime_upstream_calls_total (suffix: financial_ratio), realtime_upstream_errors_total
     
     Args:
@@ -108,7 +108,7 @@ def fetch_financial_ratio_dataframe(symbol: str, *, period: str = 'year', lang: 
     except Exception as exc:
         increment_realtime_metric('realtime_upstream_errors_total', suffix='financial_ratio')
         logger.warning('fetch_financial_ratio_dataframe error for %s: %s', symbol, exc)
-        raise ExternalSystemException(str(exc), code='vnstock_error')
+        raise ExternalSystemException(str(exc), code='vnbroker_error')
 
 
 

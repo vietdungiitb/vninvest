@@ -173,7 +173,8 @@ export default function WatchlistPage() {
     setLoading(true);
     try {
       const res = await getSecuritiesGroups();
-      setGroups(res.data);
+      const d = res.data;
+      setGroups(Array.isArray(d) ? d : (d?.results ?? []));
     } catch (err) {
       console.error('loadGroups:', err);
     } finally {
@@ -186,7 +187,8 @@ export default function WatchlistPage() {
     setTrackedLoading(true);
     try {
       const res = await getTrackedSymbols();
-      setTrackedSymbols(res.data);
+      const d = res.data;
+      setTrackedSymbols(Array.isArray(d) ? d : (d?.results ?? []));
     } catch (err) {
       console.error('fetchTracked:', err);
     } finally {

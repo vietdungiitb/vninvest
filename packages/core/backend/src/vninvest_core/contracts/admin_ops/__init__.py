@@ -1,0 +1,1 @@
+"""Native admin-ops contract for core-owned operator surfaces."""

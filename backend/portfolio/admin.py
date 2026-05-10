@@ -22,6 +22,7 @@ from .models import (
     AccountSnapshot,
     AICommandCenterAuditLog,
     DailyPrice,
+    DNSECredential,
     GlobalScreenerRule,
     IntradayTick,
     MarketGroupSyncLog,
@@ -38,7 +39,7 @@ from .models import (
     SubAccount,
     SystemAISettings,
     SystemAISettingsAuditLog,
-    RuntimeVnstockConfig,
+    RuntimeVnbrokerConfig,
     SystemEmailAccount,
     TrackedSymbol,
     Transaction,
@@ -361,10 +362,10 @@ def _build_mock_depth_levels(overview: dict) -> dict:
 
 
 def _fetch_live_workspace_data(symbol):
-    """Lấy ticker live + depth thật từ vnstock (chạy trong thread riêng, timeout 8s)."""
+    """Lấy ticker live + depth thật từ vnbroker (chạy trong thread riêng, timeout 8s)."""
     result = {'ticker': None, 'depth': None}
     try:
-        from .adapters.vnstock_adapter import fetch_price_board_dataframe
+        from .adapters.vnbroker_adapter import fetch_price_board_dataframe
 
         df = fetch_price_board_dataframe([symbol], anchor_symbol=symbol)
         if df is not None and not df.empty:
@@ -450,7 +451,7 @@ def _admin_stock_profile_workspace_view(request, symbol):
     technical = _compute_stock_workspace_technical(price_rows_for_chart, overview)
     closes = [float(row['close_price']) for row in price_rows_for_chart if row.get('close_price') is not None]
 
-    # --- Live vnstock data trong thread riêng (timeout 8s) ---
+    # --- Live vnbroker data trong thread riêng (timeout 8s) ---
     live_result = {'ticker': None, 'depth': None}
     live_thread = threading.Thread(
         target=lambda: live_result.update(_fetch_live_workspace_data(normalized_symbol)),
@@ -522,7 +523,7 @@ def _admin_stock_profile_workspace_view(request, symbol):
         'volume': _format_number(overview.get('volume')),
         'last_date': live_ticker['last_date'] if live_ticker else (overview.get('last_date') or '—'),
         'change_class': 'tone-neutral',
-        'data_source': 'vnstock live' if live_ticker else 'database',
+        'data_source': 'vnbroker live' if live_ticker else 'database',
     }
     if overview.get('change_value'):
         try:
@@ -854,6 +855,7 @@ def _vninvest_get_app_list(request, app_label=None):
                 'OnboardingPlanPolicy',
                 'PlanAssignmentLog',
                 'SystemEmailAccount',
+                'DNSECredential',
             ],
         ),
         (
@@ -917,6 +919,41 @@ def _vninvest_get_app_list(request, app_label=None):
 admin.site.each_context = _vninvest_each_context
 admin.site.get_app_list = _vninvest_get_app_list
 admin.site.get_urls = _vninvest_admin_get_urls
+
+
+# ---------------------------------------------------------------------------
+# DNSECredential Admin
+# ---------------------------------------------------------------------------
+@admin.register(DNSECredential)
+class DNSECredentialAdmin(admin.ModelAdmin):
+    """
+    Quản trị thông tin xác thực DNSE.
+    Không bao giờ hiển thị plain-text password hay API secret trong admin UI.
+    """
+    list_display = [
+        'id', 'user', 'is_active', 'username_configured_display',
+        'api_key_configured_display', 'last_synced_at', 'updated_at',
+    ]
+    list_filter = ['is_active']
+    search_fields = ['user__username']
+    readonly_fields = [
+        'id', 'username_hash', 'username_configured_display', 'api_key_configured_display',
+        'last_synced_at', 'created_at', 'updated_at',
+    ]
+    # Ẩn toàn bộ ciphertext khỏi form — không bao giờ hiển thị dữ liệu mã hóa trực tiếp
+    exclude = [
+        'username_ciphertext', 'password_ciphertext',
+        'api_key_ciphertext', 'api_secret_ciphertext',
+    ]
+    ordering = ['-updated_at']
+
+    @admin.display(description='Username đã cấu hình?', boolean=True)
+    def username_configured_display(self, obj):
+        return bool(obj.username_ciphertext)
+
+    @admin.display(description='API Key đã cấu hình?', boolean=True)
+    def api_key_configured_display(self, obj):
+        return bool(obj.api_key_ciphertext)
 
 
 class TransactionInline(admin.TabularInline):
@@ -1468,8 +1505,8 @@ class AICommandCenterAuditLogAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(RuntimeVnstockConfig)
-class RuntimeVnstockConfigAdmin(admin.ModelAdmin):
+@admin.register(RuntimeVnbrokerConfig)
+class RuntimeVnbrokerConfigAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'max_concurrency',

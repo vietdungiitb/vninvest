@@ -1,8 +1,8 @@
 """
-services.py — Lớp trung gian giữa vnstock và database.
+services.py — Lớp trung gian giữa vnbroker và database.
 
 Chứa các hàm:
-  - fetch_and_save_daily_prices(): Kéo giá EOD từ vnstock, lưu vào DailyPrice.
+  - fetch_and_save_daily_prices(): Kéo giá EOD từ vnbroker, lưu vào DailyPrice.
   - sync_portfolio_prices(): Lấy toàn bộ mã CK trong một Portfolio rồi sync.
   - get_latest_price(): Trả về giá đóng cửa mới nhất của một mã từ DB.
   - get_price_changes(): Trả về giá + % thay đổi so với phiên trước cho danh sách mã.
@@ -46,21 +46,21 @@ logger = logging.getLogger(__name__)
 
 # ==================== CANONICAL PRICE UNIT STANDARDS ====================
 
-_VNSTOCK_PRICE_UNIT_VND = 'VND'
-_VNSTOCK_PRICE_UNIT_THOUSAND = 'THOUSAND_VND'
+_vnbroker_PRICE_UNIT_VND = 'VND'
+_vnbroker_PRICE_UNIT_THOUSAND = 'THOUSAND_VND'
 
 # CRITICAL: System canonical unit for all quote (stock) prices
 # All prices stored in DailyPrice and served via API MUST be THOUSAND_VND
 # This is the source of truth and must never change
 # Conversion: if source is VND (KBS), divide by 1000; if already THOUSAND_VND (VCI), passthrough
-_SYSTEM_PRICE_UNIT = _VNSTOCK_PRICE_UNIT_THOUSAND
+_SYSTEM_PRICE_UNIT = _vnbroker_PRICE_UNIT_THOUSAND
 
 # Money values (transaction amounts, whale thresholds) use VND canonical
-_SYSTEM_MONEY_UNIT = _VNSTOCK_PRICE_UNIT_VND
+_SYSTEM_MONEY_UNIT = _vnbroker_PRICE_UNIT_VND
 
 # ==================== PRICE UNIT RESOLUTION FUNCTIONS ====================
 
-def _resolve_vnstock_price_unit(dataframe) -> str | None:
+def _resolve_vnbroker_price_unit(dataframe) -> str | None:
     """Detect source price unit from adapter dataframe attributes.
     
     Adapter now sets 'price_unit_canonical' = 'THOUSAND_VND' after normalization.
@@ -72,12 +72,12 @@ def _resolve_vnstock_price_unit(dataframe) -> str | None:
     
     # Check for NEW canonical seal from adapter
     canonical_unit = str(attrs.get('price_unit_canonical') or '').strip().upper()
-    if canonical_unit == _VNSTOCK_PRICE_UNIT_THOUSAND:
+    if canonical_unit == _vnbroker_PRICE_UNIT_THOUSAND:
         return canonical_unit
     
     # Fallback to old detection (for compatibility during migration)
     unit = str(attrs.get('price_unit') or '').strip().upper()
-    if unit in {_VNSTOCK_PRICE_UNIT_VND, _VNSTOCK_PRICE_UNIT_THOUSAND}:
+    if unit in {_vnbroker_PRICE_UNIT_VND, _vnbroker_PRICE_UNIT_THOUSAND}:
         return unit
     return None
 
@@ -88,9 +88,9 @@ def _resolve_price_scale_to_system_unit(price_unit: str | None) -> Decimal:
     Now that adapter guarantees THOUSAND_VND output, scale should be 1.0.
     This function exists for backward compatibility during migration.
     """
-    if price_unit == _VNSTOCK_PRICE_UNIT_VND and _SYSTEM_PRICE_UNIT == _VNSTOCK_PRICE_UNIT_THOUSAND:
+    if price_unit == _vnbroker_PRICE_UNIT_VND and _SYSTEM_PRICE_UNIT == _vnbroker_PRICE_UNIT_THOUSAND:
         return Decimal('0.001')
-    if price_unit == _VNSTOCK_PRICE_UNIT_THOUSAND and _SYSTEM_PRICE_UNIT == _VNSTOCK_PRICE_UNIT_THOUSAND:
+    if price_unit == _vnbroker_PRICE_UNIT_THOUSAND and _SYSTEM_PRICE_UNIT == _vnbroker_PRICE_UNIT_THOUSAND:
         # Already canonical - no conversion needed
         return Decimal('1')
     # Default: assume passthrough
@@ -107,9 +107,9 @@ def _infer_price_unit_from_first_close(first_close: Decimal | None) -> str | Non
         return None
     if first_close > Decimal('1000'):
         # Likely VND (full price like 26,600,000)
-        return _VNSTOCK_PRICE_UNIT_VND
+        return _vnbroker_PRICE_UNIT_VND
     # Likely THOUSAND_VND (like 26,600)
-    return _VNSTOCK_PRICE_UNIT_THOUSAND
+    return _vnbroker_PRICE_UNIT_THOUSAND
 
 
 def _apply_price_scale(value, scale: Decimal) -> Decimal | None:
@@ -1360,9 +1360,9 @@ def check_whale_config_dependencies(*, rollout_mode: str = 'now') -> dict:
     realtime_enabled = bool(getattr(settings, 'REALTIME_ENABLED', False))
 
     try:
-        import vnstock  # noqa: F401
+        import vnbroker  # noqa: F401
 
-        checks['data_provider'] = {'ok': True, 'detail': 'vnstock import ok'}
+        checks['data_provider'] = {'ok': True, 'detail': 'vnbroker import ok'}
     except Exception as exc:
         checks['data_provider'] = {'ok': False, 'detail': str(exc)}
 
@@ -1460,13 +1460,13 @@ def build_whale_config_runtime_preview(
 
 
 # ---------------------------------------------------------------------------
-# Hàm nội bộ: ánh xạ DataFrame của vnstock sang dict chuẩn hoá
+# Hàm nội bộ: ánh xạ DataFrame của vnbroker sang dict chuẩn hoá
 # ---------------------------------------------------------------------------
 
 def _normalise_ohlcv(row, price_scale: Decimal = Decimal('1')) -> dict | None:
     """
-    Chuyển một row DataFrame (vnstock3) thành dict chuẩn.
-    vnstock3 trả về các cột: time, open, high, low, close, volume
+    Chuyển một row DataFrame (vnbroker3) thành dict chuẩn.
+    vnbroker3 trả về các cột: time, open, high, low, close, volume
     Trả về None nếu dữ liệu không hợp lệ.
     """
     try:
@@ -1508,7 +1508,7 @@ def fetch_and_save_daily_prices(
     end_date: date | None = None,
 ) -> dict:
     """
-    Kéo giá lịch sử (OHLCV) của `symbol` từ vnstock3 và lưu vào DailyPrice.
+    Kéo giá lịch sử (OHLCV) của `symbol` từ vnbroker3 và lưu vào DailyPrice.
     
     CANONICAL UNIT GUARANTEE:
     - Adapter now normalizes all prices to THOUSAND_VND before returning dataframe
@@ -1532,9 +1532,9 @@ def fetch_and_save_daily_prices(
     symbol = symbol.upper().strip()
     result = {'symbol': symbol, 'created': 0, 'updated': 0, 'errors': 0}
 
-    # --- Gọi vnstock qua adapter chuẩn để dùng runtime config/fallback thống nhất ---
+    # --- Gọi vnbroker qua adapter chuẩn để dùng runtime config/fallback thống nhất ---
     try:
-        from .adapters.vnstock_adapter import fetch_history_dataframe
+        from .adapters.vnbroker_adapter import fetch_history_dataframe
 
         df = fetch_history_dataframe(
             symbol,
@@ -1543,16 +1543,16 @@ def fetch_and_save_daily_prices(
             interval='1D',
         )
     except (Exception, SystemExit) as exc:
-        logger.error('vnstock lỗi khi lấy dữ liệu %s: %s', symbol, exc)
+        logger.error('vnbroker lỗi khi lấy dữ liệu %s: %s', symbol, exc)
         result['errors'] += 1
         return result
 
     if df is None or df.empty:
-        logger.warning('vnstock3 không trả về dữ liệu cho %s (%s → %s)', symbol, start_date, end_date)
+        logger.warning('vnbroker3 không trả về dữ liệu cho %s (%s → %s)', symbol, start_date, end_date)
         return result
 
     # NEW: Check for adapter's canonical unit seal
-    detected_unit = _resolve_vnstock_price_unit(df)
+    detected_unit = _resolve_vnbroker_price_unit(df)
     
     # If adapter didn't seal it (legacy fallback), try heuristic
     first_close = _to_decimal(df.iloc[0].get('close')) if not df.empty else None
@@ -1566,7 +1566,7 @@ def fetch_and_save_daily_prices(
 
     if price_scale != Decimal('1'):
         logger.info(
-            'Normalizing vnstock prices for %s: detected_unit=%s, scale=%s (target=%s)',
+            'Normalizing vnbroker prices for %s: detected_unit=%s, scale=%s (target=%s)',
             symbol,
             detected_unit or 'UNKNOWN',
             price_scale,
@@ -1583,7 +1583,7 @@ def fetch_and_save_daily_prices(
     with db_transaction.atomic():
         for _, row in df.iterrows():
             try:
-                # vnstock3 dùng cột 'time' kiểu Timestamp
+                # vnbroker3 dùng cột 'time' kiểu Timestamp
                 price_date = row['time'].date() if hasattr(row['time'], 'date') else date.fromisoformat(str(row['time']))
             except Exception:
                 result['errors'] += 1
@@ -1818,7 +1818,7 @@ _MANUAL_MARKET_GROUPS = [
 
 def fetch_market_sectors_and_groups() -> dict:
     """
-    Tự động lấy toàn bộ nhóm ngành và nhóm vốn hóa từ vnstock (VCI source).
+    Tự động lấy toàn bộ nhóm ngành và nhóm vốn hóa từ vnbroker (VCI source).
 
     Trả về dict:
         {
@@ -1833,7 +1833,7 @@ def fetch_market_sectors_and_groups() -> dict:
             print(sector['name'], len(sector['symbols']))
     """
     try:
-        from .adapters.vnstock_adapter import (
+        from .adapters.vnbroker_adapter import (
             fetch_symbols_by_group_series,
             fetch_symbols_by_industries_dataframe,
         )
@@ -1872,6 +1872,13 @@ def fetch_market_sectors_and_groups() -> dict:
             except (Exception, SystemExit) as exc:
                 logger.warning('symbols_by_group(%s) lỗi: %s', group_code, exc)
 
+        if not sectors and not cap_groups:
+            return {
+                'sectors': [],
+                'cap_groups': [],
+                'error': 'vnbroker trả về danh sách nhóm thị trường rỗng',
+            }
+
         return {'sectors': sectors, 'cap_groups': cap_groups, 'error': None}
 
     except (Exception, SystemExit) as exc:
@@ -1898,7 +1905,7 @@ def build_market_group_payload(mode: str = 'all') -> dict:
         return {
             'groups': get_manual_market_group_payload(),
             'source': 'manual',
-            'warning': f'vnstock lỗi: {data["error"]}. Dùng danh sách mặc định.',
+            'warning': f'vnbroker lỗi: {data["error"]}. Dùng danh sách mặc định.',
             'mode': normalized_mode,
         }
 
@@ -1928,7 +1935,7 @@ def build_market_group_payload(mode: str = 'all') -> dict:
 
     return {
         'groups': groups,
-        'source': 'vnstock',
+        'source': 'vnbroker',
         'warning': None,
         'mode': normalized_mode,
     }
@@ -2118,8 +2125,8 @@ def sync_market_groups_for_users(
 
 
 def _fetch_exchange_lookup(timeout: int = 20) -> dict:
-    """Lấy company_name và exchange cho toàn bộ mã từ vnstock symbols_by_exchange().
-    Chạy trong thread daemon với timeout để tránh crash Django do vnstock gọi sys.exit().
+    """Lấy company_name và exchange cho toàn bộ mã từ vnbroker symbols_by_exchange().
+    Chạy trong thread daemon với timeout để tránh crash Django do vnbroker gọi sys.exit().
     Trả về dict: symbol → {'company_name': str, 'exchange': str}
     """
     import threading
@@ -2129,7 +2136,7 @@ def _fetch_exchange_lookup(timeout: int = 20) -> dict:
 
     def _worker():
         try:
-            from .adapters.vnstock_adapter import fetch_symbols_by_exchange_dataframe
+            from .adapters.vnbroker_adapter import fetch_symbols_by_exchange_dataframe
 
             df = fetch_symbols_by_exchange_dataframe(anchor_symbol='ACB')
             result.update({
@@ -2139,7 +2146,7 @@ def _fetch_exchange_lookup(timeout: int = 20) -> dict:
                 }
                 for _, row in df.iterrows()
             })
-        except BaseException as exc:  # bắt cả SystemExit từ vnstock
+        except BaseException as exc:  # bắt cả SystemExit từ vnbroker
             exc_holder.append(exc)
 
     t = threading.Thread(target=_worker, daemon=True)
@@ -2157,7 +2164,7 @@ def _fetch_exchange_lookup(timeout: int = 20) -> dict:
 def build_stock_profile_payload(mode: str = 'all') -> dict:
     resolved_payload = build_market_group_payload(mode)
 
-    # Lấy company_name + exchange từ vnstock listing (một lần duy nhất)
+    # Lấy company_name + exchange từ vnbroker listing (một lần duy nhất)
     exchange_lookup = _fetch_exchange_lookup()
 
     symbol_map = {}
@@ -2194,7 +2201,7 @@ def build_stock_profile_payload(mode: str = 'all') -> dict:
 
     warning = resolved_payload['warning']
     if not exchange_lookup:
-        note = 'Không lấy được company_name/exchange từ vnstock.'
+        note = 'Không lấy được company_name/exchange từ vnbroker.'
         warning = f'{warning} {note}'.strip() if warning else note
 
     return {

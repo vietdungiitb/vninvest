@@ -5,6 +5,19 @@ import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import SidebarWatchlist from './SidebarWatchlist';
 
+function normalizeTrackedSymbols(data) {
+  if (Array.isArray(data)) {
+    return data;
+  }
+  if (Array.isArray(data?.results)) {
+    return data.results;
+  }
+  if (Array.isArray(data?.data)) {
+    return data.data;
+  }
+  return [];
+}
+
 export default function Sidebar() {
   const { t } = useI18n();
   const {
@@ -22,7 +35,7 @@ export default function Sidebar() {
     getTrackedSymbols()
       .then((res) => {
         if (!cancelled) {
-          setTrackedSymbols(res.data || []);
+          setTrackedSymbols(normalizeTrackedSymbols(res.data));
         }
       })
       .catch(() => {

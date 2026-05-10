@@ -114,6 +114,10 @@ if _legacy_db_url:
         'CONN_MAX_AGE': int(os.environ.get('LEGACY_DB_CONN_MAX_AGE', '30')),
     }
 
+# Transitional admin bridge: core-api can delegate selected operator writes
+# to the legacy backend so existing SSOT helpers stay authoritative.
+LEGACY_BACKEND_URL = os.environ.get('LEGACY_BACKEND_URL', '').strip().rstrip('/')
+
 # SM-P2.1: CoreRouter — routes core model writes to 'default'; blocks writes to legacy_readonly.
 DATABASE_ROUTERS = ['vninvest_core.db_router.CoreRouter']
 

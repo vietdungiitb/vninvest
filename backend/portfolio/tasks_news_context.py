@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def _fetch_google_news_rss(symbol: str, max_items: int = 8) -> list:
     """
-    Fetch tin tức nhẹ qua Google News RSS — không phụ thuộc vnstock.
+    Fetch tin tức nhẹ qua Google News RSS — không phụ thuộc vnbroker.
     Trả về list dict với keys: title, source, date.
     """
     import email.utils
@@ -58,7 +58,7 @@ def _fetch_news_context_for_advisory(symbol: str, max_items: int = 4) -> str:
     """
     Lấy tin tức gần đây cho mã cổ phiếu. Ưu tiên theo thứ tự:
       1. Redis cache (được điền bởi stock_news_api khi user xem trang chi tiết)
-      2. Google News RSS (HTTP thuần, không phụ thuộc vnstock/VCI)
+      2. Google News RSS (HTTP thuần, không phụ thuộc vnbroker/VCI)
     Trả về chuỗi rỗng nếu không có dữ liệu hoặc lỗi.
     """
     try:
@@ -81,13 +81,13 @@ def _fetch_news_context_for_advisory(symbol: str, max_items: int = 4) -> str:
                 if str(row.get('title') or '').strip()
             ]
 
-        # Ưu tiên 2: vnstock dùng source từ runtime config (KBS/VCI/TCBS/SSI theo cài đặt hệ thống)
+        # Ưu tiên 2: vnbroker dùng source từ vnbroker-config (KBS/VCI/TCBS/SSI theo cài đặt hệ thống)
         if not items:
             try:
-                from portfolio.adapters.vnstock_adapter import _build_stock_client, _run_with_timeout
-                from portfolio.vnstock_runtime_config import get_vnstock_runtime_settings
+                from portfolio.adapters.vnbroker_adapter import _build_stock_client, _run_with_timeout
+                from portfolio.vnbroker_runtime_config import get_vnbroker_runtime_settings
 
-                runtime = get_vnstock_runtime_settings()
+                runtime = get_vnbroker_runtime_settings()
                 sources_to_try = runtime.get('fallback_sources') or [runtime.get('price_board_source', 'KBS')]
 
                 import pandas as _pd
@@ -116,11 +116,11 @@ def _fetch_news_context_for_advisory(symbol: str, max_items: int = 4) -> str:
                                 items = parsed
                                 break
                     except Exception as exc:
-                        logger.debug('_fetch_news_context_for_advisory: vnstock %s failed for %s: %s', source, symbol, exc)
+                        logger.debug('_fetch_news_context_for_advisory: vnbroker %s failed for %s: %s', source, symbol, exc)
             except Exception as exc:
-                logger.debug('_fetch_news_context_for_advisory: vnstock unavailable for %s: %s', symbol, exc)
+                logger.debug('_fetch_news_context_for_advisory: vnbroker unavailable for %s: %s', symbol, exc)
 
-        # Ưu tiên 3: Google News RSS (fallback cuối, không phụ thuộc vnstock)
+        # Ưu tiên 3: Google News RSS (fallback cuối, không phụ thuộc vnbroker)
         if not items:
             items = _fetch_google_news_rss(symbol, max_items=max_items * 2)
 

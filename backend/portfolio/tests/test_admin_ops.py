@@ -25,7 +25,7 @@ from rest_framework.test import APITestCase
 
 from portfolio.models import (
     Portfolio,
-    RuntimeVnstockConfig,
+    RuntimeVnbrokerConfig,
     TrackedSymbol,
     WatchlistGroup,
     WatchlistItem,
@@ -43,12 +43,12 @@ URL = '/api/admin-ops/stats/'
 WARM_URL = '/api/admin-ops/prefetch/warm/'
 OFFPEAK_INGEST_URL = '/api/admin-ops/prefetch/offpeak-ingest/'
 OFFPEAK_INGEST_HISTORY_URL = '/api/admin-ops/prefetch/offpeak-ingest/history/'
-VNSTOCK_CURRENT_URL = '/api/admin-ops/vnstock-config/current/'
-VNSTOCK_UPDATE_URL = '/api/admin-ops/vnstock-config/update-config/'
-VNSTOCK_RESET_URL = '/api/admin-ops/vnstock-config/reset-to-defaults/'
-VNSTOCK_CHANGELOG_URL = '/api/admin-ops/vnstock-config/changelog/'
-VNSTOCK_BENCHMARK_LATEST_URL = '/api/admin-ops/vnstock-config/benchmark-price-board/latest/'
-VNSTOCK_BENCHMARK_RUN_URL = '/api/admin-ops/vnstock-config/benchmark-price-board/run/'
+vnbroker_CURRENT_URL = '/api/admin-ops/vnbroker-config/current/'
+vnbroker_UPDATE_URL = '/api/admin-ops/vnbroker-config/update-config/'
+vnbroker_RESET_URL = '/api/admin-ops/vnbroker-config/reset-to-defaults/'
+vnbroker_CHANGELOG_URL = '/api/admin-ops/vnbroker-config/changelog/'
+vnbroker_BENCHMARK_LATEST_URL = '/api/admin-ops/vnbroker-config/benchmark-price-board/latest/'
+vnbroker_BENCHMARK_RUN_URL = '/api/admin-ops/vnbroker-config/benchmark-price-board/run/'
 INTRADAY_BACKFILL_APPLY_URL = '/api/admin-ops/intraday-side-backfill/apply/'
 INTRADAY_BACKFILL_STATUS_URL = '/api/admin-ops/intraday-side-backfill/status/{task_id}/'
 
@@ -159,9 +159,9 @@ class AdminOpsStatsDataTests(APITestCase):
     def test_surface_permissions_default_to_write_locked_for_staff(self):
         data = self._get_stats()
         permissions = data['surface_permissions']
-        self.assertIn('vnstock_config_write', permissions)
+        self.assertIn('vnbroker_config_write', permissions)
         self.assertIn('intraday_side_backfill_apply', permissions)
-        self.assertFalse(permissions['vnstock_config_write'])
+        self.assertFalse(permissions['vnbroker_config_write'])
         self.assertFalse(permissions['intraday_side_backfill_apply'])
 
     @patch('config.health.build_prefetch_health_snapshot')
@@ -276,7 +276,7 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertEqual(resp.data['result']['scheduler']['status'], 'parse_zero_cached')
 
     @patch('config.health.build_prefetch_health_snapshot')
-    @patch('portfolio.tasks.offpeak_vnstock_ingest.apply_async')
+    @patch('portfolio.tasks.offpeak_vnbroker_ingest.apply_async')
     def test_staff_can_queue_async_offpeak_ingest(self, mock_apply_async, mock_prefetch_snapshot):
         class _Task:
             id = 'offpeak-task-123'
@@ -293,7 +293,7 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertEqual(resp.data['kwargs']['max_symbols'], 120)
 
     @patch('config.health.build_prefetch_health_snapshot')
-    @patch('portfolio.tasks.offpeak_vnstock_ingest.run')
+    @patch('portfolio.tasks.offpeak_vnbroker_ingest.run')
     def test_sync_offpeak_ingest_returns_payload(self, mock_offpeak_run, mock_prefetch_snapshot):
         mock_offpeak_run.return_value = {
             'status': 'ok',
@@ -485,11 +485,11 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertEqual(dashboard['propagation']['signal'], 'green')
 
 
-class AdminOpsVnstockRuntimeConfigTests(APITestCase):
+class AdminOpsvnbrokerRuntimeConfigTests(APITestCase):
     def setUp(self):
-        self.locked_staff = User.objects.create_user(username='vnstock_locked_staff', password='Test@123456', is_staff=True)
-        self.writer_staff = User.objects.create_user(username='vnstock_staff', password='Test@123456', is_staff=True)
-        self.user = User.objects.create_user(username='vnstock_user', password='Test@123456')
+        self.locked_staff = User.objects.create_user(username='vnbroker_locked_staff', password='Test@123456', is_staff=True)
+        self.writer_staff = User.objects.create_user(username='vnbroker_staff', password='Test@123456', is_staff=True)
+        self.user = User.objects.create_user(username='vnbroker_user', password='Test@123456')
 
         for account in (self.locked_staff, self.writer_staff, self.user):
             cfg, _ = UserConfig.objects.get_or_create(user=account)
@@ -497,7 +497,7 @@ class AdminOpsVnstockRuntimeConfigTests(APITestCase):
                 cfg.email_verified = True
                 cfg.save(update_fields=['email_verified', 'updated_at'])
 
-        _grant_portfolio_permission(self.writer_staff, 'change_runtimevnstockconfig')
+        _grant_portfolio_permission(self.writer_staff, 'change_RuntimeVnbrokerConfig')
 
     def _login(self, username, password='Test@123456'):
         resp = self.client.post('/api/auth/token/', {'username': username, 'password': password}, format='json')
@@ -505,23 +505,23 @@ class AdminOpsVnstockRuntimeConfigTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
 
     def test_non_staff_forbidden(self):
-        self._login('vnstock_user')
-        resp = self.client.get(VNSTOCK_CURRENT_URL)
+        self._login('vnbroker_user')
+        resp = self.client.get(vnbroker_CURRENT_URL)
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_staff_without_write_permission_cannot_update_or_reset(self):
-        self._login('vnstock_locked_staff')
+        self._login('vnbroker_locked_staff')
 
-        update_resp = self.client.patch(VNSTOCK_UPDATE_URL, {'max_concurrency': 9}, format='json')
+        update_resp = self.client.patch(vnbroker_UPDATE_URL, {'max_concurrency': 9}, format='json')
         self.assertEqual(update_resp.status_code, status.HTTP_403_FORBIDDEN)
 
-        reset_resp = self.client.post(VNSTOCK_RESET_URL, {}, format='json')
+        reset_resp = self.client.post(vnbroker_RESET_URL, {}, format='json')
         self.assertEqual(reset_resp.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_staff_can_get_update_and_read_changelog(self):
-        self._login('vnstock_staff')
+        self._login('vnbroker_staff')
 
-        current_resp = self.client.get(VNSTOCK_CURRENT_URL)
+        current_resp = self.client.get(vnbroker_CURRENT_URL)
         self.assertEqual(current_resp.status_code, status.HTTP_200_OK)
         self.assertTrue(current_resp.data['ok'])
 
@@ -540,27 +540,27 @@ class AdminOpsVnstockRuntimeConfigTests(APITestCase):
                 'general': 9,
             },
         }
-        update_resp = self.client.patch(VNSTOCK_UPDATE_URL, update_payload, format='json')
+        update_resp = self.client.patch(vnbroker_UPDATE_URL, update_payload, format='json')
         self.assertEqual(update_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(update_resp.data['settings']['max_concurrency'], 9)
         self.assertEqual(update_resp.data['settings']['retry_attempts'], 2)
 
-        changelog_resp = self.client.get(VNSTOCK_CHANGELOG_URL)
+        changelog_resp = self.client.get(vnbroker_CHANGELOG_URL)
         self.assertEqual(changelog_resp.status_code, status.HTTP_200_OK)
         self.assertTrue(changelog_resp.data['ok'])
         self.assertGreaterEqual(changelog_resp.data['count'], 1)
 
     def test_staff_can_reset_defaults(self):
-        self._login('vnstock_staff')
-        RuntimeVnstockConfig.get_or_create_singleton()
+        self._login('vnbroker_staff')
+        RuntimeVnbrokerConfig.get_or_create_singleton()
 
-        self.client.patch(VNSTOCK_UPDATE_URL, {'max_concurrency': 7}, format='json')
-        reset_resp = self.client.post(VNSTOCK_RESET_URL, {}, format='json')
+        self.client.patch(vnbroker_UPDATE_URL, {'max_concurrency': 7}, format='json')
+        reset_resp = self.client.post(vnbroker_RESET_URL, {}, format='json')
         self.assertEqual(reset_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(reset_resp.data['settings']['max_concurrency'], 12)
 
 
-class AdminOpsVnstockBenchmarkTests(APITestCase):
+class AdminOpsvnbrokerBenchmarkTests(APITestCase):
     def setUp(self):
         self.staff = User.objects.create_user(username='vn_bench_staff', password='Test@123456', is_staff=True)
         self.user = User.objects.create_user(username='vn_bench_user', password='Test@123456')
@@ -578,11 +578,11 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
 
     def test_non_staff_cannot_run_benchmark(self):
         self._login('vn_bench_user')
-        resp = self.client.post(VNSTOCK_BENCHMARK_RUN_URL, {}, format='json')
+        resp = self.client.post(vnbroker_BENCHMARK_RUN_URL, {}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch('portfolio.views_admin_vnstock_benchmark.set_latest_price_board_benchmark_report')
-    @patch('portfolio.tasks_maintenance.run_vnstock_price_board_benchmark.apply_async')
+    @patch('portfolio.views_admin_vnbroker_benchmark.set_latest_price_board_benchmark_report')
+    @patch('portfolio.tasks_maintenance.run_vnbroker_price_board_benchmark.apply_async')
     @patch('config.celery.app.control.inspect')
     def test_staff_can_run_benchmark(self, mock_inspect, mock_apply_async, mock_set_latest):
         self._login('vn_bench_staff')
@@ -596,7 +596,7 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
         inspect_obj.reserved.return_value = {'worker@local': []}
         mock_apply_async.return_value = _Task()
 
-        resp = self.client.post(VNSTOCK_BENCHMARK_RUN_URL, {'symbol': 'VNM'}, format='json')
+        resp = self.client.post(vnbroker_BENCHMARK_RUN_URL, {'symbol': 'VNM'}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(resp.data['ok'])
         self.assertEqual(resp.data['status'], 'started')
@@ -604,7 +604,7 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
         self.assertEqual(resp.data['task_id'], 'bench-task-123')
         self.assertTrue(mock_set_latest.called)
 
-    @patch('portfolio.views_admin_vnstock_benchmark.get_latest_price_board_benchmark_report')
+    @patch('portfolio.views_admin_vnbroker_benchmark.get_latest_price_board_benchmark_report')
     def test_staff_can_get_latest_benchmark_report(self, mock_latest):
         self._login('vn_bench_staff')
         mock_latest.return_value = {
@@ -613,18 +613,18 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
             'recommendation': {'primary_provider': 'KBS', 'fallback_provider': 'VCI'},
         }
 
-        resp = self.client.get(VNSTOCK_BENCHMARK_LATEST_URL)
+        resp = self.client.get(vnbroker_BENCHMARK_LATEST_URL)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertTrue(resp.data['ok'])
         self.assertTrue(resp.data['has_report'])
         self.assertEqual(resp.data['report']['symbol'], 'VNM')
 
-    @patch('portfolio.views_admin_vnstock_benchmark.get_latest_price_board_benchmark_report')
+    @patch('portfolio.views_admin_vnbroker_benchmark.get_latest_price_board_benchmark_report')
     def test_latest_benchmark_fail_soft_when_loader_errors(self, mock_latest):
         self._login('vn_bench_staff')
         mock_latest.side_effect = RuntimeError('cache backend unavailable')
 
-        resp = self.client.get(VNSTOCK_BENCHMARK_LATEST_URL)
+        resp = self.client.get(vnbroker_BENCHMARK_LATEST_URL)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertFalse(resp.data['ok'])
         self.assertFalse(resp.data['has_report'])

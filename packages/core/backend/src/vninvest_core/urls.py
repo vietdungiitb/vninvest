@@ -1,7 +1,18 @@
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 from . import views_health
+from .legacy_proxy import legacy_proxy_view
+
+from user_workspace.legacy_views import (
+    SecuritiesGroupDetailView,
+    SecuritiesGroupListCreateView,
+    SecuritiesSyncView,
+    TrackedSymbolListCreateView,
+    BulkTechnicalBySymbolsView,
+    PriceAlertRuleListCreateView,
+    SecuritiesSeedView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -15,6 +26,7 @@ urlpatterns = [
     path('core/v1/', include(('signal_intelligence.urls', 'signal_intelligence'), namespace='signal_intelligence')),
     path('core/v1/', include(('commercial.urls', 'commercial'), namespace='commercial')),
     path('core/v1/', include(('ops_audit.urls', 'ops_audit'), namespace='ops_audit')),
+    path('core/v1/operator/', include(('vninvest_core.contracts.operator.urls', 'operator'), namespace='operator')),
     # SM-P4 new domain endpoints
     path('core/v1/', include(('advisory.urls', 'advisory'), namespace='advisory')),
     path('core/v1/', include(('user_workspace.urls', 'user_workspace'), namespace='user_workspace')),
@@ -27,7 +39,18 @@ urlpatterns = [
     path('api/', include(('user_workspace.urls', 'user_workspace_api'), namespace='user_workspace_api')),
     path('api/', include(('identity_access.api_urls', 'identity_access_api'), namespace='identity_access_api')),
     path('api/', include(('market_data.urls', 'market_data_api'), namespace='market_data_api')),
-    # Compat layer: maps legacy frontend API paths to core views or graceful stubs.
-    # Must be LAST so native routes take precedence.
-    path('api/', include('vninvest_core.compat_urls')),
+    path('api/admin-ops/', include(('vninvest_core.contracts.admin_ops.urls', 'admin_ops'), namespace='admin_ops')),
+
+    # Stock Management — Native Compat (High priority)
+    path('api/stock-management/groups/', SecuritiesGroupListCreateView.as_view(), name='legacy-stock-management-group-list'),
+    path('api/stock-management/groups/<int:group_id>/', SecuritiesGroupDetailView.as_view(), name='legacy-stock-management-group-detail'),
+    path('api/stock-management/tracked-symbols/', TrackedSymbolListCreateView.as_view(), name='legacy-stock-management-tracked-symbols'),
+    path('api/stock-management/technicals/bulk/', BulkTechnicalBySymbolsView.as_view(), name='legacy-stock-management-technicals-bulk'),
+    path('api/stock-management/price-alerts/', PriceAlertRuleListCreateView.as_view(), name='legacy-stock-management-price-alerts'),
+    path('api/stock-management/seed/', SecuritiesSeedView.as_view(), name='legacy-stock-management-seed'),
+    path('api/stock-management/sync/', SecuritiesSyncView.as_view(), name='legacy-stock-management-sync'),
+
+    # SFI-B1: Catch-all proxy for unmigrated legacy endpoints.
+    path('api/v1/admin/crawl/', legacy_proxy_view, {'path': 'v1/admin/crawl/'}), # Explicit for crawl
+    re_path(r'^api/(?P<path>.*)$', legacy_proxy_view),
 ]

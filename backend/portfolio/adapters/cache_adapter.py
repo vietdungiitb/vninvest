@@ -28,19 +28,19 @@ def is_rate_limited_error(exc_or_message) -> bool:
     )
 
 
-def vnstock_rate_limit_cache_key(channel: str = 'intraday') -> str:
+def vnbroker_rate_limit_cache_key(channel: str = 'intraday') -> str:
     normalized_channel = str(channel or 'default').strip().lower() or 'default'
-    return f'vnstock:rate-limit:{normalized_channel}'
+    return f'vnbroker:rate-limit:{normalized_channel}'
 
 
-def is_vnstock_rate_limited(channel: str = 'intraday') -> bool:
-    return bool(get_cache(vnstock_rate_limit_cache_key(channel)))
+def is_vnbroker_rate_limited(channel: str = 'intraday') -> bool:
+    return bool(get_cache(vnbroker_rate_limit_cache_key(channel)))
 
 
-def mark_vnstock_rate_limited(channel: str = 'intraday', exc_or_message=None) -> None:
-    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '20')), 5)
+def mark_vnbroker_rate_limited(channel: str = 'intraday', exc_or_message=None) -> None:
+    cooldown_seconds = max(int(os.getenv('VNBROKER_RATE_LIMIT_COOLDOWN_SECONDS', '20')), 5)
     set_cache(
-        vnstock_rate_limit_cache_key(channel),
+        vnbroker_rate_limit_cache_key(channel),
         {
             'triggered_at': timezone.now().isoformat(),
             'reason': str(exc_or_message or '')[:200],

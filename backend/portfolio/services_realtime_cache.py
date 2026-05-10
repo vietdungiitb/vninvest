@@ -11,8 +11,8 @@ from portfolio.services_realtime_metrics import increment_realtime_metric
 logger = logging.getLogger(__name__)
 
 # Rate-limit state cache keys
-VNSTOCK_RATE_LIMIT_CACHE_PREFIX = 'vnstock:rate-limit'
-VNSTOCK_TIMEOUT_COUNTER_KEY = 'vnstock:timeout-counter:price_board'
+vnbroker_RATE_LIMIT_CACHE_PREFIX = 'vnbroker:rate-limit'
+vnbroker_TIMEOUT_COUNTER_KEY = 'vnbroker:timeout-counter:price_board'
 
 
 def _cache_get(cache_key: str):
@@ -57,9 +57,9 @@ def _cache_set(cache_key: str, value, timeout: int = 60):
         logger.debug('cache.set error for %s: %s', cache_key, exc)
 
 
-def _is_vnstock_rate_limited(endpoint: str) -> bool:
+def _is_vnbroker_rate_limited(endpoint: str) -> bool:
     """
-    Check if vnstock endpoint is currently rate-limited (cooldown active).
+    Check if vnbroker endpoint is currently rate-limited (cooldown active).
     
     Args:
         endpoint: Endpoint name like 'price_board', 'intraday'
@@ -67,18 +67,18 @@ def _is_vnstock_rate_limited(endpoint: str) -> bool:
     Returns:
         True if rate-limited cooldown is active, False otherwise
     """
-    cache_key = f'{VNSTOCK_RATE_LIMIT_CACHE_PREFIX}:{endpoint}'
+    cache_key = f'{vnbroker_RATE_LIMIT_CACHE_PREFIX}:{endpoint}'
     try:
         state = cache.get(cache_key)
         return state is not None
     except Exception as exc:
-        logger.debug('_is_vnstock_rate_limited error for %s: %s', endpoint, exc)
+        logger.debug('_is_vnbroker_rate_limited error for %s: %s', endpoint, exc)
         return False
 
 
-def _mark_vnstock_rate_limited(endpoint: str, exc: Exception | None = None, cooldown_seconds: int = 20):
+def _mark_vnbroker_rate_limited(endpoint: str, exc: Exception | None = None, cooldown_seconds: int = 20):
     """
-    Mark vnstock endpoint as rate-limited and set cooldown window.
+    Mark vnbroker endpoint as rate-limited and set cooldown window.
     Emits metrics: realtime_rate_limit_events_total (with endpoint suffix)
     
     Args:
@@ -86,7 +86,7 @@ def _mark_vnstock_rate_limited(endpoint: str, exc: Exception | None = None, cool
         exc: Exception object (for logging)
         cooldown_seconds: Cooldown duration in seconds (default 20)
     """
-    cache_key = f'{VNSTOCK_RATE_LIMIT_CACHE_PREFIX}:{endpoint}'
+    cache_key = f'{vnbroker_RATE_LIMIT_CACHE_PREFIX}:{endpoint}'
     try:
         cache.set(
             cache_key,
@@ -97,20 +97,20 @@ def _mark_vnstock_rate_limited(endpoint: str, exc: Exception | None = None, cool
             timeout=max(cooldown_seconds, 5),
         )
         increment_realtime_metric('realtime_rate_limit_events_total', suffix=endpoint)
-        logger.warning('vnstock %s rate-limited for %ds', endpoint, cooldown_seconds)
+        logger.warning('vnbroker %s rate-limited for %ds', endpoint, cooldown_seconds)
     except Exception as set_exc:
-        logger.debug('_mark_vnstock_rate_limited error for %s: %s', endpoint, set_exc)
+        logger.debug('_mark_vnbroker_rate_limited error for %s: %s', endpoint, set_exc)
 
 
-def _clear_vnstock_rate_limit(endpoint: str):
+def _clear_vnbroker_rate_limit(endpoint: str):
     """
-    Clear rate-limit state for a vnstock endpoint.
+    Clear rate-limit state for a vnbroker endpoint.
     
     Args:
         endpoint: Endpoint name like 'price_board', 'intraday'
     """
-    cache_key = f'{VNSTOCK_RATE_LIMIT_CACHE_PREFIX}:{endpoint}'
+    cache_key = f'{vnbroker_RATE_LIMIT_CACHE_PREFIX}:{endpoint}'
     try:
         cache.delete(cache_key)
     except Exception as exc:
-        logger.debug('_clear_vnstock_rate_limit error for %s: %s', endpoint, exc)
+        logger.debug('_clear_vnbroker_rate_limit error for %s: %s', endpoint, exc)

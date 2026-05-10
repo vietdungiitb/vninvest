@@ -102,7 +102,7 @@ class AdminStockProfileSyncTests(TestCase):
         self.assertContains(item_response, workspace_url)
         self.assertContains(price_response, workspace_url)
 
-    @patch('portfolio.adapters.vnstock_adapter.fetch_price_board_dataframe')
+    @patch('portfolio.adapters.vnbroker_adapter.fetch_price_board_dataframe')
     def test_fetch_live_workspace_data_uses_adapter_price_board(self, mock_fetch_price_board):
         mock_fetch_price_board.return_value = pd.DataFrame(
             [[118.4, 119.2, 120.0, 117.3, 121.0, 116.0, 1500000, 119.0, 20000, 119.5, 18000]],

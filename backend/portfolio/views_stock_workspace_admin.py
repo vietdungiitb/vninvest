@@ -142,7 +142,7 @@ class StockWorkspaceOverviewView(APIView):
                     payload['average_price'] = round(sum(prices) / len(prices), 2)
 
         except ExternalSystemException as exc:
-            legacy_views.logger.warning('StockWorkspaceOverviewView vnstock overlay lỗi %s: %s', normalized_symbol, exc)
+            legacy_views.logger.warning('StockWorkspaceOverviewView vnbroker overlay lỗi %s: %s', normalized_symbol, exc)
         except Exception as exc:
             legacy_views.logger.debug('StockWorkspaceOverviewView overlay parse lỗi %s: %s', normalized_symbol, exc)
 
@@ -262,8 +262,8 @@ class AdminOpsStatsView(APIView):
         channel_layer_type = getattr(settings, 'REALTIME_CHANNEL_LAYER', 'redis')
         realtime_enabled = getattr(settings, 'REALTIME_ENABLED', False)
         surface_permissions = {
-            'vnstock_config_write': bool(
-                request.user.is_superuser or request.user.has_perm('portfolio.change_runtimevnstockconfig')
+            'vnbroker_config_write': bool(
+                request.user.is_superuser or request.user.has_perm('portfolio.change_RuntimeVnbrokerConfig')
             ),
             'intraday_side_backfill_apply': bool(
                 request.user.is_superuser or request.user.has_perm('portfolio.change_intradaytick')

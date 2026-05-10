@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from portfolio.adapters import vnstock_adapter
+from portfolio.adapters import vnbroker_adapter
 
 
 class _FakeFinance:
@@ -53,18 +53,18 @@ class _FakeStockClient:
     company = _FakeCompany()
 
 
-class VnstockAdapterStandardizedMethodsTests(SimpleTestCase):
+class vnbrokerAdapterStandardizedMethodsTests(SimpleTestCase):
     def _run_inline(self, fn, timeout=0):
         return fn()
 
-    @patch.object(vnstock_adapter, '_resolve_financial_ratio_sources', return_value=['AUTO'])
-    @patch.object(vnstock_adapter, '_build_stock_client', return_value=_FakeStockClient())
-    @patch.object(vnstock_adapter, '_run_with_timeout')
-    @patch.object(vnstock_adapter, '_get_runtime_settings', return_value={})
+    @patch.object(vnbroker_adapter, '_resolve_financial_ratio_sources', return_value=['AUTO'])
+    @patch.object(vnbroker_adapter, '_build_stock_client', return_value=_FakeStockClient())
+    @patch.object(vnbroker_adapter, '_run_with_timeout')
+    @patch.object(vnbroker_adapter, '_get_runtime_settings', return_value={})
     def test_fundamental_snapshot_returns_canonical_schema(self, _runtime_cfg_mock, run_with_timeout_mock, *_):
         run_with_timeout_mock.side_effect = self._run_inline
 
-        frame = vnstock_adapter.fetch_fundamental_snapshot_dataframe(
+        frame = vnbroker_adapter.fetch_fundamental_snapshot_dataframe(
             'vcb',
             metrics=['roe', 'eps'],
             period='annual',
@@ -80,14 +80,14 @@ class VnstockAdapterStandardizedMethodsTests(SimpleTestCase):
         self.assertEqual(frame.iloc[0]['metric'], 'roe')
         self.assertEqual(frame.iloc[0]['source_used'], 'AUTO')
 
-    @patch.object(vnstock_adapter, '_resolve_financial_ratio_sources', return_value=['AUTO'])
-    @patch.object(vnstock_adapter, '_build_stock_client', return_value=_FakeStockClient())
-    @patch.object(vnstock_adapter, '_run_with_timeout')
-    @patch.object(vnstock_adapter, '_get_runtime_settings', return_value={})
+    @patch.object(vnbroker_adapter, '_resolve_financial_ratio_sources', return_value=['AUTO'])
+    @patch.object(vnbroker_adapter, '_build_stock_client', return_value=_FakeStockClient())
+    @patch.object(vnbroker_adapter, '_run_with_timeout')
+    @patch.object(vnbroker_adapter, '_get_runtime_settings', return_value={})
     def test_insider_deals_returns_canonical_schema(self, _runtime_cfg_mock, run_with_timeout_mock, *_):
         run_with_timeout_mock.side_effect = self._run_inline
 
-        frame = vnstock_adapter.fetch_insider_deals_dataframe(
+        frame = vnbroker_adapter.fetch_insider_deals_dataframe(
             'vcb',
             page=1,
             page_size=20,
@@ -117,16 +117,16 @@ class VnstockAdapterStandardizedMethodsTests(SimpleTestCase):
         self.assertEqual(frame.iloc[0]['action'], 'BUY')
         self.assertEqual(frame.iloc[0]['source_used'], 'AUTO')
 
-    @patch.object(vnstock_adapter, '_resolve_financial_ratio_sources', return_value=['AUTO'])
-    @patch.object(vnstock_adapter, '_build_stock_client', return_value=_FakeStockClient())
-    @patch.object(vnstock_adapter, '_run_with_timeout')
-    @patch.object(vnstock_adapter, '_get_runtime_settings', return_value={})
+    @patch.object(vnbroker_adapter, '_resolve_financial_ratio_sources', return_value=['AUTO'])
+    @patch.object(vnbroker_adapter, '_build_stock_client', return_value=_FakeStockClient())
+    @patch.object(vnbroker_adapter, '_run_with_timeout')
+    @patch.object(vnbroker_adapter, '_get_runtime_settings', return_value={})
     def test_industry_methods_attach_source_columns(self, _runtime_cfg_mock, run_with_timeout_mock, *_):
         run_with_timeout_mock.side_effect = self._run_inline
 
-        peers = vnstock_adapter.fetch_industry_peers_dataframe('VCB', source='AUTO')
-        benchmark = vnstock_adapter.fetch_industry_benchmark_dataframe('VCB', metrics=['roe'], source='AUTO')
-        rank = vnstock_adapter.fetch_industry_rank_dataframe('VCB', metric='roe', source='AUTO')
+        peers = vnbroker_adapter.fetch_industry_peers_dataframe('VCB', source='AUTO')
+        benchmark = vnbroker_adapter.fetch_industry_benchmark_dataframe('VCB', metrics=['roe'], source='AUTO')
+        rank = vnbroker_adapter.fetch_industry_rank_dataframe('VCB', metric='roe', source='AUTO')
 
         for frame in [peers, benchmark, rank]:
             self.assertIn('source', frame.columns)

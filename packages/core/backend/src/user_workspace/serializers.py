@@ -3,7 +3,7 @@ User Workspace domain serializers.
 """
 from rest_framework import serializers
 
-from .models import Portfolio, Transaction, Watchlist, WatchlistItem
+from .models import Portfolio, Transaction, Watchlist, WatchlistItem, SubAccount, DNSECredential
 
 
 class WatchlistItemSerializer(serializers.ModelSerializer):
@@ -25,7 +25,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = [
             'id', 'symbol', 'transaction_type', 'date',
-            'price', 'quantity', 'fee', 'note', 'created_at',
+            'price', 'quantity', 'fee', 'tax', 'external_id', 'note', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -35,3 +35,21 @@ class PortfolioSerializer(serializers.ModelSerializer):
         model = Portfolio
         fields = ['id', 'name', 'description', 'is_default', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+
+class SubAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubAccount
+        fields = [
+            'id', 'broker', 'account_number', 'name', 'display_name',
+            'type', 'is_active', 'external_id', 'broker_source',
+            'sync_status', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class DNSECredentialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DNSECredential
+        fields = ['id', 'is_active', 'last_sync_at', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'last_sync_at', 'created_at', 'updated_at']

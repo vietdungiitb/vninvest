@@ -101,7 +101,7 @@ Sau khi hoàn thành toàn bộ chương trình, hệ thống phải đồng th�
 2. **`packages/web/src/`** là frontend duy nhất trong production end-state. Không giữ `frontend/` như alternate entry point sau Phase 4.
 3. **Immutable Docker images**: mọi service production phải build từ Dockerfile, không mount source code vào container production.
 4. **Separate databases**: `vninvest` DB cho legacy (readonly sau Phase 2), `vninvest_core` DB cho SaaS core. Không chia sẻ schema.
-5. **Single Redis namespace per layer**: core sử dụng Redis db=3 broker + db=4 cache + db=5 streams. Không overlap với legacy db=0/1/2.
+5. **Single Redis namespace per layer**: core sử dụng Redis db=3 broker + db=4 cache + db=5 streams. Không overlap with legacy db=0/1/2.
 
 ### 5.2 Migration strategy
 
@@ -209,6 +209,7 @@ Internet Traffic
 5. **Shadow run nghiêm túc**: Celery task migration phải shadow ít nhất 3 ngày trade, không rút ngắn.
 6. **Pre-decommission gates là hard stop**: mọi thành viên team đều phải sign off trên 7 gates trước Phase 6.
 7. **Không tự ý mở rộng scope**: nếu phát hiện vấn đề ngoài scope slice hiện tại, ghi issue và tiếp tục slice đang làm, không tự ý fix thêm.
+8. **Mandatory Docker Rebuild**: Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.
 
 ---
 

@@ -14,9 +14,9 @@ from datetime import date, datetime, time, timedelta
 from django.core.cache import cache
 from django.utils import timezone
 
-from .adapters.vnstock_adapter import fetch_intraday_dataframe
+from .adapters.vnbroker_adapter import fetch_intraday_dataframe
 from .domain_constants import (
-    WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT,
+    WHALE_AGGREGATE_VNBROKER_MAX_SYMBOLS_DEFAULT,
     WHALE_CONFIG_VERSION,
     classify_whale_size_class,
     resolve_user_whale_threshold_vnd,
@@ -57,19 +57,19 @@ def _is_rate_limited_error(exc: Exception) -> bool:
     )
 
 
-def _vnstock_rate_limit_cache_key(channel: str = 'intraday') -> str:
+def _vnbroker_rate_limit_cache_key(channel: str = 'intraday') -> str:
     normalized_channel = str(channel or 'default').strip().lower() or 'default'
-    return f'vnstock:rate-limit:{normalized_channel}'
+    return f'vnbroker:rate-limit:{normalized_channel}'
 
 
-def _is_vnstock_rate_limited(channel: str = 'intraday') -> bool:
-    return bool(_cache_get(_vnstock_rate_limit_cache_key(channel)))
+def _is_vnbroker_rate_limited(channel: str = 'intraday') -> bool:
+    return bool(_cache_get(_vnbroker_rate_limit_cache_key(channel)))
 
 
-def _mark_vnstock_rate_limited(channel: str = 'intraday', exc: Exception | None = None) -> None:
-    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '20')), 5)
+def _mark_vnbroker_rate_limited(channel: str = 'intraday', exc: Exception | None = None) -> None:
+    cooldown_seconds = max(int(os.getenv('VNBROKER_RATE_LIMIT_COOLDOWN_SECONDS', '20')), 5)
     _cache_set(
-        _vnstock_rate_limit_cache_key(channel),
+        _vnbroker_rate_limit_cache_key(channel),
         {
             'triggered_at': timezone.now().isoformat(),
             'reason': str(exc or '')[:200],
@@ -79,11 +79,11 @@ def _mark_vnstock_rate_limited(channel: str = 'intraday', exc: Exception | None 
 
 
 # ---------------------------------------------------------------------------
-# Aggregate / vnstock fallback guards
+# Aggregate / vnbroker fallback guards
 # ---------------------------------------------------------------------------
 
-def _allow_vnstock_aggregate_fallback(symbols: list[str]) -> bool:
-    max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT))), 0)
+def _allow_vnbroker_aggregate_fallback(symbols: list[str]) -> bool:
+    max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNBROKER_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNBROKER_MAX_SYMBOLS_DEFAULT))), 0)
     if max_symbols == 0:
         return False
     return len(symbols) <= max_symbols
@@ -528,7 +528,7 @@ def _normalize_aggregate_event_records(records: list[dict], *, sort: str, cursor
 
 
 # ---------------------------------------------------------------------------
-# Stream / vnstock aggregate record builders
+# Stream / vnbroker aggregate record builders
 # ---------------------------------------------------------------------------
 
 def _build_stream_aggregate_records(symbols: list[str], threshold_vnd: float) -> list[dict]:
@@ -578,33 +578,33 @@ def _build_stream_aggregate_records(symbols: list[str], threshold_vnd: float) ->
     return records
 
 
-def _build_vnstock_aggregate_records(symbols: list[str], threshold_vnd: float) -> list[dict]:
+def _build_vnbroker_aggregate_records(symbols: list[str], threshold_vnd: float) -> list[dict]:
     records = []
     synthetic_id = 1
-    if not _allow_vnstock_aggregate_fallback(symbols):
-        logger.info('Skip vnstock aggregate fallback for %s symbols to reduce rate-limit pressure.', len(symbols))
+    if not _allow_vnbroker_aggregate_fallback(symbols):
+        logger.info('Skip vnbroker aggregate fallback for %s symbols to reduce rate-limit pressure.', len(symbols))
         return []
-    if _is_vnstock_rate_limited('intraday'):
+    if _is_vnbroker_rate_limited('intraday'):
         return []
     for symbol in symbols:
         try:
             df = fetch_intraday_dataframe(symbol=symbol, page_size=150)
         except ExternalSystemException as exc:
-            if exc.code == 'vnstock_rate_limited':
-                _mark_vnstock_rate_limited('intraday', exc)
-                logger.info('Aggregate whale vnstock rate-limited for %s; activate cooldown.', symbol)
+            if exc.code == 'vnbroker_rate_limited':
+                _mark_vnbroker_rate_limited('intraday', exc)
+                logger.info('Aggregate whale vnbroker rate-limited for %s; activate cooldown.', symbol)
                 break
-            if exc.code == 'vnstock_missing':
-                logger.debug('Aggregate whale vnstock import failed: %s', exc)
+            if exc.code == 'vnbroker_missing':
+                logger.debug('Aggregate whale vnbroker import failed: %s', exc)
                 break
-            logger.debug('Aggregate whale vnstock fallback failed for %s: %s', symbol, exc)
+            logger.debug('Aggregate whale vnbroker fallback failed for %s: %s', symbol, exc)
             continue
         except Exception as exc:
             if _is_rate_limited_error(exc):
-                _mark_vnstock_rate_limited('intraday', exc)
-                logger.info('Aggregate whale vnstock generic rate-limit for %s; activate cooldown.', symbol)
+                _mark_vnbroker_rate_limited('intraday', exc)
+                logger.info('Aggregate whale vnbroker generic rate-limit for %s; activate cooldown.', symbol)
                 break
-            logger.debug('Aggregate whale vnstock unexpected fallback failure for %s: %s', symbol, exc)
+            logger.debug('Aggregate whale vnbroker unexpected fallback failure for %s: %s', symbol, exc)
             continue
 
         if df is None or df.empty:
@@ -633,14 +633,14 @@ def _build_vnstock_aggregate_records(symbols: list[str], threshold_vnd: float) -
             side = row.get('side') or row.get('match_type') or row.get('matchType') or 'UNKNOWN'
             records.append({
                 'id': synthetic_id,
-                'event_id': f'vnstock:{symbol}:{synthetic_id}',
+                'event_id': f'vnbroker:{symbol}:{synthetic_id}',
                 'symbol': symbol,
                 'side': side,
                 'matched_value': matched_value,
                 'volume': int(volume),
                 'ts': ts_value,
                 'size_class': _classify_signal_size(matched_value),
-                'source': 'vnstock',
+                'source': 'vnbroker',
             })
             synthetic_id += 1
     return records

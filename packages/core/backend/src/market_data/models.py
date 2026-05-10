@@ -99,7 +99,9 @@ class VnstockRuntimeConfig(models.Model):
 
     class SourceChoices(models.TextChoices):
         VCI = 'VCI', 'VCI (default)'
+        KBS = 'KBS', 'KBS'
         TCBS = 'TCBS', 'TCBS'
+        SSI = 'SSI', 'SSI'
         MSI = 'MSI', 'MSI'
 
     name = models.CharField(max_length=64, unique=True, verbose_name='Tên cấu hình')

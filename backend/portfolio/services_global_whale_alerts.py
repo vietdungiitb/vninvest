@@ -167,7 +167,7 @@ def _normalize_candidate_frame(rows: list[dict]) -> pd.DataFrame:
 
 
 def _build_stream_frame(symbol: str):
-    from portfolio.adapters.vnstock_adapter import read_stream_intraday_ticks
+    from portfolio.adapters.vnbroker_adapter import read_stream_intraday_ticks
     from portfolio.market_data_service import market_data_service
 
     stream_ticks = read_stream_intraday_ticks(symbol, count=500)
@@ -227,8 +227,8 @@ def _build_intraday_db_frame(symbol: str):
     return _normalize_candidate_frame(rows)
 
 
-def _build_vnstock_frame(symbol: str):
-    from portfolio.adapters.vnstock_adapter import fetch_intraday_dataframe
+def _build_vnbroker_frame(symbol: str):
+    from portfolio.adapters.vnbroker_adapter import fetch_intraday_dataframe
     from portfolio.market_data_service import market_data_service
 
     frame = fetch_intraday_dataframe(symbol, 500)
@@ -272,7 +272,7 @@ def _build_whale_payloads_for_symbol(symbol: str, *, threshold_vnd: float) -> tu
     candidate_frames = [
         ('redis_stream', _build_stream_frame(symbol)),
         ('intraday_tick_db', _build_intraday_db_frame(symbol)),
-        ('vnstock', _build_vnstock_frame(symbol)),
+        ('vnbroker', _build_vnbroker_frame(symbol)),
     ]
 
     for source, frame in candidate_frames:

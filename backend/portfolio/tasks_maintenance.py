@@ -412,13 +412,13 @@ def cleanup_old_signal_service_runs(self) -> dict:
     return {'status': 'ok', 'deleted': total_deleted, 'cutoff': cutoff.isoformat(), 'keep_days': keep_days}
 
 
-@shared_task(bind=True, name='portfolio.tasks.run_vnstock_price_board_benchmark', autoretry_for=(), retry_kwargs={"max_retries": 0})
-def run_vnstock_price_board_benchmark(self, payload: dict | None = None) -> dict:
+@shared_task(bind=True, name='portfolio.tasks.run_vnbroker_price_board_benchmark', autoretry_for=(), retry_kwargs={"max_retries": 0})
+def run_vnbroker_price_board_benchmark(self, payload: dict | None = None) -> dict:
     """Chạy benchmark provider price board và lưu kết quả vào cache.
 
     Được dispatch bất đồng bộ từ view để tránh gateway timeout.
     """
-    from portfolio.vnstock_provider_benchmark import (
+    from portfolio.vnbroker_provider_benchmark import (
         BENCHMARK_CACHE_KEY,
         BENCHMARK_CACHE_TTL_SECONDS,
         run_price_board_provider_benchmark,
@@ -428,13 +428,13 @@ def run_vnstock_price_board_benchmark(self, payload: dict | None = None) -> dict
     try:
         report = run_price_board_provider_benchmark(payload or {})
         logger.info(
-            'run_vnstock_price_board_benchmark completed: providers=%s results=%d',
+            'run_vnbroker_price_board_benchmark completed: providers=%s results=%d',
             report.get('providers'),
             len(report.get('results', [])),
         )
         return {'status': 'ok', 'finished_at': report.get('finished_at')}
     except Exception as exc:  # noqa: BLE001
-        logger.warning('run_vnstock_price_board_benchmark failed: %s', exc)
+        logger.warning('run_vnbroker_price_board_benchmark failed: %s', exc)
         try:
             cache.set(
                 BENCHMARK_CACHE_KEY,

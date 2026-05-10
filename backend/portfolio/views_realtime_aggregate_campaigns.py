@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class WhaleFeedAggregateView(APIView):
     """
     GET /api/realtime/whale-feed/aggregate/
-    Aggregate whale events với pipeline ưu tiên Redis stream -> IntradayTick DB -> vnstock.
+    Aggregate whale events với pipeline ưu tiên Redis stream -> IntradayTick DB -> vnbroker.
     """
 
     permission_classes = [IsAuthenticated]
@@ -38,7 +38,7 @@ class WhaleFeedAggregateView(APIView):
         except MarketDataValidationException as exc:
             return Response({'detail': exc.message}, status=status.HTTP_400_BAD_REQUEST)
         except ExternalSystemException as exc:
-            http_status = status.HTTP_503_SERVICE_UNAVAILABLE if exc.code == 'vnstock_missing' else status.HTTP_502_BAD_GATEWAY
+            http_status = status.HTTP_503_SERVICE_UNAVAILABLE if exc.code == 'vnbroker_missing' else status.HTTP_502_BAD_GATEWAY
             return Response({'detail': exc.message, **exc.payload}, status=http_status)
         except Exception:
             logger.exception('WhaleFeedAggregateView unexpected error')
@@ -62,7 +62,7 @@ class WhaleCampaignsView(APIView):
         except MarketDataValidationException as exc:
             return Response({'detail': exc.message}, status=status.HTTP_400_BAD_REQUEST)
         except ExternalSystemException as exc:
-            http_status = status.HTTP_503_SERVICE_UNAVAILABLE if exc.code == 'vnstock_missing' else status.HTTP_502_BAD_GATEWAY
+            http_status = status.HTTP_503_SERVICE_UNAVAILABLE if exc.code == 'vnbroker_missing' else status.HTTP_502_BAD_GATEWAY
             return Response({'detail': exc.message, **exc.payload}, status=http_status)
         except Exception:
             logger.exception('WhaleCampaignsView unexpected error')

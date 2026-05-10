@@ -30,7 +30,7 @@ VALID_MONEY_UNITS = ["VND"]
 
 class PriceSource(Enum):
     """Source identifier for price data traceability."""
-    VNSTOCK_DAILY = "vnstock_daily"           # EOD historical prices from vnstock
+    VNBROKER_DAILY = "vnbroker_daily"           # EOD historical prices from vnbroker
     REALTIME_SNAPSHOT = "realtime_snapshot"   # Realtime market snapshot quote
     INTRADAY_TICK = "intraday_tick"          # Per-minute or per-tick intraday price
     USER_MANUAL = "user_manual"              # User-entered manual price
@@ -122,8 +122,8 @@ def normalize_quote_price_to_canonical(
         ValueError: If source_unit invalid or value negative
     
     Examples:
-        >>> normalize_quote_price_to_canonical(26_600_000, "VND", source=PriceSource.VNSTOCK_DAILY, symbol="MBB")
-        QuotePrice(value=26600.0, unit='THOUSAND_VND', source=<PriceSource.VNSTOCK_DAILY>, symbol='MBB')
+        >>> normalize_quote_price_to_canonical(26_600_000, "VND", source=PriceSource.VNBROKER_DAILY, symbol="MBB")
+        QuotePrice(value=26600.0, unit='THOUSAND_VND', source=<PriceSource.VNBROKER_DAILY>, symbol='MBB')
         
         >>> normalize_quote_price_to_canonical(26_600, "THOUSAND_VND", symbol="MBB")
         QuotePrice(value=26600.0, unit='THOUSAND_VND', symbol='MBB')

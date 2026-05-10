@@ -7,11 +7,11 @@ from portfolio import services
 
 
 class PriceUnitNormalizationTests(SimpleTestCase):
-    def test_resolve_vnstock_price_unit_from_dataframe_attrs(self):
+    def test_resolve_vnbroker_price_unit_from_dataframe_attrs(self):
         df = pd.DataFrame([{'close': 30343.8}])
         df.attrs['price_unit'] = 'VND'
 
-        unit = services._resolve_vnstock_price_unit(df)
+        unit = services._resolve_vnbroker_price_unit(df)
 
         self.assertEqual(unit, 'VND')
 

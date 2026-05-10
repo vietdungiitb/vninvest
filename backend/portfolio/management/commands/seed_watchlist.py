@@ -1,7 +1,7 @@
 """
 Management command: seed_watchlist
 
-Tự động lấy toàn bộ nhóm ngành ICB và nhóm vốn hóa từ vnstock,
+Tự động lấy toàn bộ nhóm ngành ICB và nhóm vốn hóa từ vnbroker,
 sau đó tạo WatchlistGroup + WatchlistItem cho một user chỉ định.
 
 Cách dùng:
@@ -20,7 +20,7 @@ from portfolio.services import fetch_market_sectors_and_groups
 
 
 class Command(BaseCommand):
-    help = 'Tạo Watchlist groups từ dữ liệu thị trường vnstock (ICB sectors + VN30/VN100/HNX30)'
+    help = 'Tạo Watchlist groups từ dữ liệu thị trường vnbroker (ICB sectors + VN30/VN100/HNX30)'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -58,12 +58,12 @@ class Command(BaseCommand):
             self._seed_manual(user)
             return
 
-        self.stdout.write(f'Đang lấy dữ liệu thị trường từ vnstock (source=VCI)...')
+        self.stdout.write(f'Đang lấy dữ liệu thị trường từ vnbroker (source=VCI)...')
         data = fetch_market_sectors_and_groups()
 
         if data['error']:
             self.stdout.write(self.style.WARNING(
-                f'vnstock lỗi: {data["error"]}\nChuyển sang chế độ manual...'
+                f'vnbroker lỗi: {data["error"]}\nChuyển sang chế độ manual...'
             ))
             self._seed_manual(user)
             return
@@ -143,7 +143,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('Tất cả nhóm đã tồn tại, không có thay đổi.'))
 
     def _seed_manual(self, user):
-        """Fallback: danh sách ngành cứng khi vnstock lỗi."""
+        """Fallback: danh sách ngành cứng khi vnbroker lỗi."""
         MANUAL_GROUPS = [
             {'name': 'Ngân hàng',         'group_type': 'SECTOR',     'color': '#3b82f6', 'order': 1,
              'description': 'Nhóm ngân hàng',

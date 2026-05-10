@@ -36,7 +36,7 @@ Những thứ sau không được tính là bằng chứng chất lượng:
 1. Chỉ chứng minh `npm run build` pass mà không có screenshot hoặc payload proof cho selected-session sync.
 2. Chỉ viết test presence như “component render thành công” nhưng không assert bubble đổi theo phiên click.
 3. Chỉ test heatmap có màu mà không assert đúng mode `Net/Buy/Sell` và đúng bucket.
-4. Chỉ ghi “không sửa modern dashboard” mà không có diff proof cho 3 immutable source files.
+4. Chỉ ghi “không sửa modern dashboard” mà không có diff proof for 3 immutable source files.
 5. Chỉ kiểm icon cá mập xuất hiện, nhưng không kiểm nó thay đổi theo zoom/pan/view window.
 6. Chỉ assert CVD line có dữ liệu mà không xác nhận `CVD raw` và `CVD normalized` giữ đúng semantics riêng.
 
@@ -93,7 +93,7 @@ Where to inspect:
 - Backend payload fields `cvd_raw`, `cvd_normalized`.
 
 How to verify:
-- So payload thật với line values và tooltip values trên cùng bucket.
+- So payload thật with line values và tooltip values trên cùng bucket.
 
 ### Scenario F3c - Heatmap đẹp nhưng sai nghĩa nghiệp vụ
 
@@ -178,6 +178,7 @@ How to verify:
 4. Không đánh dấu slice complete nếu chưa có evidence template và ledger/progress sync.
 5. Nếu contract backend chưa rõ, dừng ở plan/adapter contract thay vì hard-code workaround trong UI.
 6. Không thêm heatmap hoặc marker layer trực tiếp vào chart khi chưa khóa `Flow View Model`.
+7. Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.
 
 ## 6. The Human Gate
 

@@ -4,7 +4,15 @@ import { useRealtimeFeedFromManager } from '../context/RealtimeContext';
 import { useI18n } from '../context/LangContext';
 
 function toSymbolList(items = []) {
-  return [...new Set(items.map((item) => String(item?.symbol || '').trim().toUpperCase()).filter(Boolean))];
+  const safeItems = Array.isArray(items)
+    ? items
+    : Array.isArray(items?.results)
+      ? items.results
+      : Array.isArray(items?.data)
+        ? items.data
+        : [];
+
+  return [...new Set(safeItems.map((item) => String(item?.symbol || '').trim().toUpperCase()).filter(Boolean))];
 }
 
 const SidebarTickerRow = memo(function SidebarTickerRow({ symbol, quote, t }) {
@@ -60,17 +68,29 @@ const SidebarTickerRow = memo(function SidebarTickerRow({ symbol, quote, t }) {
 export default function SidebarWatchlist({ trackedSymbols = [] }) {
   const { t } = useI18n();
   const [industryFilter, setIndustryFilter] = useState('all');
-  const symbols = useMemo(() => toSymbolList(trackedSymbols), [trackedSymbols]);
+  const normalizedTrackedSymbols = useMemo(() => {
+    if (Array.isArray(trackedSymbols)) {
+      return trackedSymbols;
+    }
+    if (Array.isArray(trackedSymbols?.results)) {
+      return trackedSymbols.results;
+    }
+    if (Array.isArray(trackedSymbols?.data)) {
+      return trackedSymbols.data;
+    }
+    return [];
+  }, [trackedSymbols]);
+  const symbols = useMemo(() => toSymbolList(normalizedTrackedSymbols), [normalizedTrackedSymbols]);
   const symbolIndustryMap = useMemo(() => {
     const next = new Map();
-    (trackedSymbols || []).forEach((item) => {
+    normalizedTrackedSymbols.forEach((item) => {
       const symbol = String(item?.symbol || '').trim().toUpperCase();
       if (!symbol) return;
       const industry = String(item?.industry || 'Khác').trim() || 'Khác';
       next.set(symbol, industry);
     });
     return next;
-  }, [trackedSymbols]);
+  }, [normalizedTrackedSymbols]);
 
   const industryOptions = useMemo(() => {
     const set = new Set();

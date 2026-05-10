@@ -127,7 +127,7 @@ Không được sửa trực tiếp các file sau:
 3. Không gộp nhiều slice độc lập vào một patch lớn.
 4. Mọi text UI mới phải qua i18n tiếng Việt có đầy đủ dấu.
 5. Không được đánh dấu xong nếu chưa có evidence pack, ledger sync và progress sync.
-6. Với mọi slice chạm UI/runtime, phải refresh dev stack trước khi giao auditor.
+6. Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.
 
 ## 8. Chỉ dẫn cho auditor nội bộ
 

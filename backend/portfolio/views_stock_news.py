@@ -15,8 +15,8 @@ from .models import PortfolioNewsDigest, UserConfig
 def stock_news_api(request, symbol: str):
     """
     GET /api/stock-management/stocks/<symbol>/news/
-    Sprint34 Layer 1: Trả về danh sách tin tức gần đây theo mã từ vnstock.
-    Cache Redis 30 phút. Graceful degradation khi vnstock không khả dụng.
+    Sprint34 Layer 1: Trả về danh sách tin tức gần đây theo mã từ vnbroker.
+    Cache Redis 30 phút. Graceful degradation khi vnbroker không khả dụng.
         Hỗ trợ manual refresh:
             - GET .../news/?force=1
             - POST .../news/
@@ -37,7 +37,7 @@ def stock_news_api(request, symbol: str):
             return Response(cached)
 
     rss_sources_raw = str(
-        getattr(settings, 'VNSTOCK_RSS_NEWS_SOURCES', os.getenv('VNSTOCK_RSS_NEWS_SOURCES', 'rss_cafef,rss_vneconomy'))
+        getattr(settings, 'vnbroker_RSS_NEWS_SOURCES', os.getenv('vnbroker_RSS_NEWS_SOURCES', 'rss_cafef,rss_vneconomy'))
         or 'rss_cafef,rss_vneconomy'
     )
     rss_sources = [src.strip() for src in rss_sources_raw.split(',') if src.strip()]
@@ -58,7 +58,7 @@ def stock_news_api(request, symbol: str):
 
     def _fetch_news_with_fallback(limit: int = 20):
         import pandas as _pd
-        from vnstock.api.news import News
+        from vnbroker.api.news import News
 
         collected = []
         seen = set()

@@ -88,7 +88,7 @@ from .quota_service import build_quota_exceeded_payload, consume_quota
 from .opencore_dpi import check_feature_access
 from .opencore_analytics import track_api_call
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
-from .adapters.vnstock_adapter import (
+from .adapters.vnbroker_adapter import (
     fetch_financial_ratio_dataframe,
     fetch_history_dataframe,
     fetch_intraday_dataframe,
@@ -227,17 +227,17 @@ from .views_admin_runtime import (
     admin_system_ai_audit_logs_api,
     admin_system_ai_settings_api,
     admin_system_ai_test_connection_api,
-    admin_vnstock_runtime_config_changelog_api,
-    admin_vnstock_runtime_config_current_api,
-    admin_vnstock_runtime_config_reset_api,
-    admin_vnstock_runtime_config_update_api,
-    offpeak_vnstock_ingest_api,
-    offpeak_vnstock_ingest_history_api,
+    admin_vnbroker_runtime_config_changelog_api,
+    admin_vnbroker_runtime_config_current_api,
+    admin_vnbroker_runtime_config_reset_api,
+    admin_vnbroker_runtime_config_update_api,
+    offpeak_vnbroker_ingest_api,
+    offpeak_vnbroker_ingest_history_api,
     warm_ticker_prefetch_api,
 )
-from .views_admin_vnstock_benchmark import (
-    admin_vnstock_price_board_benchmark_latest_api,
-    admin_vnstock_price_board_benchmark_run_api,
+from .views_admin_vnbroker_benchmark import (
+    admin_vnbroker_price_board_benchmark_latest_api,
+    admin_vnbroker_price_board_benchmark_run_api,
 )
 from .views_signal_admin import (
     signal_admin_config_api,
@@ -281,7 +281,7 @@ from .whale_feed_helpers import (
     _build_aggregate_event_payload,
     _build_aggregate_event_payload_from_record,
     _build_stream_aggregate_records,
-    _build_vnstock_aggregate_records,
+    _build_vnbroker_aggregate_records,
     _build_whale_order_payload,
     _cache_get,
     _cache_set,
@@ -292,8 +292,8 @@ from .whale_feed_helpers import (
     _get_user_whale_threshold_vnd,
     _is_event_timestamp_in_window,
     _is_tick_row_in_window,
-    _is_vnstock_rate_limited,
-    _mark_vnstock_rate_limited,
+    _is_vnbroker_rate_limited,
+    _mark_vnbroker_rate_limited,
     _normalize_aggregate_event_records,
     _parse_aggregate_window,
     _parse_cursor_datetime,

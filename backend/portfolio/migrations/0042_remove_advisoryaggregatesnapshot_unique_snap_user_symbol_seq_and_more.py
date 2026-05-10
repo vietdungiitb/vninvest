@@ -51,7 +51,7 @@ class Migration(migrations.Migration):
             field=models.TextField(blank=True, db_index=True, null=True, unique=True, verbose_name='Event ID (deterministic)'),
         ),
         migrations.AlterField(
-            model_name='runtimevnstockconfig',
+            model_name='RuntimeVnbrokerConfig',
             name='price_board_source',
             field=models.CharField(default='KBS', max_length=16, verbose_name='Provider chính cho price board'),
         ),

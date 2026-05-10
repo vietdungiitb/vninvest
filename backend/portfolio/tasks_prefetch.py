@@ -13,7 +13,7 @@ from django.core.cache import cache
 from django.db.models import Count
 from django.utils import timezone
 
-from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
+from portfolio.adapters.vnbroker_adapter import fetch_price_board_dataframe
 from portfolio.market_calendar import (
     normalize_market_holiday_dates,
     previous_trading_day,
@@ -41,11 +41,11 @@ except Exception:  # pragma: no cover - tests use pandas, this is a runtime safe
     pd = None
 
 TICKER_PREFETCH_META_CACHE_KEY = 'ticker:prefetch:meta'
-VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY = 'vnstock:rate-limit:price_board'
-PREFETCH_RUNTIME_SETTINGS_CACHE_KEY = 'admin_ops:prefetch_runtime_settings'
+VNBROKER_PRICE_BOARD_RATE_LIMIT_CACHE_KEY = 'vnbroker:rate-limit:price_board'
+VNBROKER_RUNTIME_SETTINGS_CACHE_KEY = 'admin_ops:vnbroker_runtime_settings'
 PREFETCH_TIME_POLICY_CACHE_KEY = 'admin_ops:prefetch_time_policy'
 PREFETCH_METRIC_CACHE_PREFIX = 'ticker:prefetch:metric'
-VNSTOCK_TIMEOUT_COUNTER_KEY = 'vnstock:timeout-counter:price_board'
+VNBROKER_TIMEOUT_COUNTER_KEY = 'vnbroker:timeout-counter:price_board'
 PREFETCH_ENQUEUE_LOCK_KEY = 'ticker:prefetch:enqueue:lock'
 REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY = 'realtime:universe:snapshot'
 REALTIME_UNIVERSE_TIER_CACHE_PREFIX = 'realtime:universe'
@@ -94,7 +94,7 @@ def _tier_enabled(topology: dict, tier: str) -> bool:
 
 
 def _resolve_prefetch_topology(runtime_settings: dict | None = None) -> dict:
-    runtime_settings = runtime_settings or _get_prefetch_runtime_settings()
+    runtime_settings = runtime_settings or _get_vnbroker_runtime_settings()
 
     def _override_int(env_name: str, default_value: int, key_name: str | None = None, min_value: int = 0) -> int:
         value = _int_env(env_name, default_value)
@@ -330,7 +330,7 @@ def _resolve_scheduler_plan(snapshot: dict, topology: dict) -> tuple[dict, dict]
 
 @shared_task(bind=True, name='portfolio.tasks.build_realtime_symbol_universe_snapshot')
 def build_realtime_symbol_universe_snapshot(self) -> dict:
-    runtime_settings = _get_prefetch_runtime_settings()
+    runtime_settings = _get_vnbroker_runtime_settings()
     topology = _resolve_prefetch_topology(runtime_settings=runtime_settings)
     lock_key = 'lock:realtime_universe:snapshot'
     lock_ttl = max(int(topology.get('universe_refresh_seconds', 60)), 10)
@@ -456,7 +456,7 @@ def _publish_scheduler_prefetch_meta(
 
 @shared_task(bind=True, name='portfolio.tasks.schedule_realtime_prefetch_shards')
 def schedule_realtime_prefetch_shards(self) -> dict:
-    runtime_settings = _get_prefetch_runtime_settings()
+    runtime_settings = _get_vnbroker_runtime_settings()
     topology = _resolve_prefetch_topology(runtime_settings=runtime_settings)
     lock_key = 'lock:realtime_prefetch_scheduler'
     if not _acquire_lock(lock_key, timeout_seconds=10):
@@ -601,7 +601,7 @@ def _cache_ticker_rows_from_dataframe(
                 {
                     'tier': tier,
                     'shard_id': int(shard_id),
-                    'upstream_source': 'vnstock',
+                    'upstream_source': 'vnbroker',
                     'fetched_at': now_iso,
                     'last_success_at': now_iso,
                     'failure_count': 0,
@@ -653,7 +653,7 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
         }
 
     try:
-        runtime_settings = _get_prefetch_runtime_settings()
+        runtime_settings = _get_vnbroker_runtime_settings()
         topology = _resolve_prefetch_topology(runtime_settings=runtime_settings)
         time_policy = _get_prefetch_time_policy()
         _, policy_meta = _resolve_effective_prefetch_settings(runtime_settings=runtime_settings, policy=time_policy)
@@ -727,10 +727,10 @@ def _prefetch_runtime_defaults() -> dict:
         'max_retries': max(_int_env('TICKER_PREFETCH_MAX_RETRIES', 6), 0),
         'retry_base_seconds': max(_int_env('TICKER_PREFETCH_RETRY_BASE_SECONDS', 8), 1),
         'retry_max_seconds': max(_int_env('TICKER_PREFETCH_RETRY_MAX_SECONDS', 120), 1),
-        'rate_limit_cooldown_seconds': max(_int_env('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', 20), 5),
-        'circuit_window_seconds': max(_int_env('VNSTOCK_CIRCUIT_WINDOW_SECONDS', 300), 30),
-        'circuit_breaker_timeout_threshold': max(_int_env('VNSTOCK_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD', 3), 1),
-        'circuit_breaker_cooldown_seconds': max(_int_env('VNSTOCK_CIRCUIT_BREAKER_COOLDOWN_SECONDS', 1800), 60),
+        'rate_limit_cooldown_seconds': max(_int_env('VNBROKER_RATE_LIMIT_COOLDOWN_SECONDS', 20), 5),
+        'circuit_window_seconds': max(_int_env('VNBROKER_CIRCUIT_WINDOW_SECONDS', 300), 30),
+        'circuit_breaker_timeout_threshold': max(_int_env('VNBROKER_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD', 3), 1),
+        'circuit_breaker_cooldown_seconds': max(_int_env('VNBROKER_CIRCUIT_BREAKER_COOLDOWN_SECONDS', 1800), 60),
         'offhours_cache_ttl_seconds': max(_int_env('TICKER_OFFHOURS_CACHE_TTL_SECONDS', 3600), 60),
         'session_close_retention_days': max(_int_env('TICKER_SESSION_CLOSE_RETENTION_DAYS', 7), 1),
         'include_group_symbols': os.getenv('TICKER_PREFETCH_INCLUDE_GROUP_SYMBOLS', 'False').lower() == 'true',
@@ -738,9 +738,9 @@ def _prefetch_runtime_defaults() -> dict:
     }
 
 
-def _get_prefetch_runtime_settings() -> dict:
+def _get_vnbroker_runtime_settings() -> dict:
     defaults = _prefetch_runtime_defaults()
-    raw = cache.get(PREFETCH_RUNTIME_SETTINGS_CACHE_KEY)
+    raw = cache.get(VNBROKER_RUNTIME_SETTINGS_CACHE_KEY)
     if not isinstance(raw, dict):
         return defaults
 
@@ -968,7 +968,7 @@ def _resolve_prefetch_time_profile(now_dt=None, policy=None) -> tuple[str, str]:
 
 
 def _resolve_effective_prefetch_settings(runtime_settings=None, policy=None, now_dt=None) -> tuple[dict, dict]:
-    base_runtime = dict(runtime_settings or _get_prefetch_runtime_settings())
+    base_runtime = dict(runtime_settings or _get_vnbroker_runtime_settings())
     normalized_policy = _coerce_prefetch_time_policy(policy, fallback=_prefetch_time_policy_defaults())
     profile_name, reason = _resolve_prefetch_time_profile(now_dt=now_dt, policy=normalized_policy)
     profile_payload = normalized_policy.get('profiles', {}).get(profile_name, {})
@@ -994,7 +994,7 @@ def _resolve_effective_prefetch_settings(runtime_settings=None, policy=None, now
 
 
 def _resolve_ticker_cache_ttl_seconds(*, profile: str, runtime_settings: dict | None = None) -> int:
-    runtime_payload = runtime_settings or _get_prefetch_runtime_settings()
+    runtime_payload = runtime_settings or _get_vnbroker_runtime_settings()
     offhours_ttl = max(int(runtime_payload.get('offhours_cache_ttl_seconds', 3600) or 3600), 60)
     if profile in {'offhours', 'post_close'}:
         return offhours_ttl
@@ -1027,7 +1027,7 @@ def _upsert_session_close_snapshot(
     source: str = 'prefetch',
     session_date=None,
 ) -> None:
-    runtime_payload = runtime_settings or _get_prefetch_runtime_settings()
+    runtime_payload = runtime_settings or _get_vnbroker_runtime_settings()
     if not bool(runtime_payload.get('session_close_capture_enabled', True)):
         return
     if current_price is None:
@@ -1061,7 +1061,7 @@ def _upsert_session_close_snapshot(
 
 
 def _cleanup_session_close_retention(runtime_settings: dict | None = None, policy=None, now_dt=None) -> None:
-    runtime_payload = runtime_settings or _get_prefetch_runtime_settings()
+    runtime_payload = runtime_settings or _get_vnbroker_runtime_settings()
     retention_days = max(int(runtime_payload.get('session_close_retention_days', 7) or 7), 1)
     normalized_policy = _coerce_prefetch_time_policy(policy, fallback=_prefetch_time_policy_defaults())
     cutoff_date = resolve_market_local_date(normalized_policy, now_dt=now_dt) - timedelta(days=retention_days)
@@ -1073,7 +1073,7 @@ def _distinct_symbols(queryset) -> list[str]:
 
 
 def _collect_prefetch_symbols(runtime_settings: dict | None = None) -> tuple[list[str], dict]:
-    runtime_settings = runtime_settings or _get_prefetch_runtime_settings()
+    runtime_settings = runtime_settings or _get_vnbroker_runtime_settings()
     include_group_symbols = bool(runtime_settings.get('include_group_symbols', False))
     symbol_limit = max(int(runtime_settings.get('symbol_limit', 240)), 0)
     raw_selected_group_ids = runtime_settings.get('intraday_universe_group_ids', [])
@@ -1272,14 +1272,14 @@ def _extract_row_volume(row):
 
 
 def _prefetch_retry_countdown(retries: int) -> int:
-    runtime_settings = _get_prefetch_runtime_settings()
+    runtime_settings = _get_vnbroker_runtime_settings()
     base = max(int(runtime_settings.get('retry_base_seconds', 8)), 1)
     max_seconds = max(int(runtime_settings.get('retry_max_seconds', 120)), base)
     return min(max_seconds, base * (2 ** max(retries, 0)))
 
 
 def _prefetch_retry_countdown_with_policy(retries: int, runtime_settings: dict | None = None, policy_guard: dict | None = None) -> tuple[int, float]:
-    settings_payload = runtime_settings or _get_prefetch_runtime_settings()
+    settings_payload = runtime_settings or _get_vnbroker_runtime_settings()
     base = max(int(settings_payload.get('retry_base_seconds', 8)), 1)
     max_seconds = max(int(settings_payload.get('retry_max_seconds', 120)), base)
     base_countdown = min(max_seconds, base * (2 ** max(retries, 0)))
@@ -1295,11 +1295,11 @@ def _prefetch_retry_countdown_with_policy(retries: int, runtime_settings: dict |
 
 
 def _mark_price_board_rate_limited(exc: Exception) -> None:
-    runtime_settings = _get_prefetch_runtime_settings()
+    runtime_settings = _get_vnbroker_runtime_settings()
     cooldown_seconds = max(int(runtime_settings.get('rate_limit_cooldown_seconds', 20)), 5)
     try:
         cache.set(
-            VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
+            VNBROKER_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
             {
                 'triggered_at': timezone.now().isoformat(),
                 'reason': str(exc or '')[:200],
@@ -1310,42 +1310,42 @@ def _mark_price_board_rate_limited(exc: Exception) -> None:
         pass
 
 
-def _record_vnstock_timeout(exc: Exception) -> bool:
+def _record_vnbroker_timeout(exc: Exception) -> bool:
     if not isinstance(exc, (TimeoutError, ConnectionError, OSError)):
         return False
     try:
-        runtime_settings = _get_prefetch_runtime_settings()
+        runtime_settings = _get_vnbroker_runtime_settings()
         _counter_window = int(runtime_settings.get('circuit_window_seconds', 300))
         _threshold = int(runtime_settings.get('circuit_breaker_timeout_threshold', 3))
         _circuit_cooldown = int(runtime_settings.get('circuit_breaker_cooldown_seconds', 1800))
 
-        current = cache.get(VNSTOCK_TIMEOUT_COUNTER_KEY) or 0
+        current = cache.get(VNBROKER_TIMEOUT_COUNTER_KEY) or 0
         new_count = current + 1
-        cache.set(VNSTOCK_TIMEOUT_COUNTER_KEY, new_count, timeout=_counter_window)
+        cache.set(VNBROKER_TIMEOUT_COUNTER_KEY, new_count, timeout=_counter_window)
 
         if new_count >= _threshold:
             logger.warning(
-                'vnstock circuit breaker triggered after %d consecutive timeouts - pausing %ds',
+                'vnbroker circuit breaker triggered after %d consecutive timeouts - pausing %ds',
                 new_count,
                 _circuit_cooldown,
             )
             cache.set(
-                VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
+                VNBROKER_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
                 {
                     'triggered_at': timezone.now().isoformat(),
                     'reason': f'circuit_breaker_timeout_threshold_exceeded count={new_count}',
                 },
                 timeout=_circuit_cooldown,
             )
-            cache.delete(VNSTOCK_TIMEOUT_COUNTER_KEY)
+            cache.delete(VNBROKER_TIMEOUT_COUNTER_KEY)
             return True
     except Exception:
         pass
     return False
 
 
-@shared_task(bind=True, name='portfolio.tasks.offpeak_vnstock_ingest')
-def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | None = None, trigger: str = 'manual') -> dict:
+@shared_task(bind=True, name='portfolio.tasks.offpeak_vnbroker_ingest')
+def offpeak_vnbroker_ingest(self, days: int | None = None, max_symbols: int | None = None, trigger: str = 'manual') -> dict:
     """
     Off-peak ingest pipeline:
     1) Pull OHLCV into DailyPrice (DB)
@@ -1355,9 +1355,9 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
 
     from portfolio.services import fetch_and_save_daily_prices
 
-    resolved_days = max(int(days or os.getenv('OFFPEAK_VNSTOCK_INGEST_DAYS', '5')), 1)
-    resolved_max_symbols = max(int(max_symbols or os.getenv('OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS', '300')), 1)
-    runtime_settings = _get_prefetch_runtime_settings()
+    resolved_days = max(int(days or os.getenv('OFFPEAK_vnbroker_INGEST_DAYS', '5')), 1)
+    resolved_max_symbols = max(int(max_symbols or os.getenv('OFFPEAK_vnbroker_INGEST_MAX_SYMBOLS', '300')), 1)
+    runtime_settings = _get_vnbroker_runtime_settings()
     time_policy = _get_prefetch_time_policy()
     symbols, source_counts = _collect_prefetch_symbols(runtime_settings=runtime_settings)
     symbols = symbols[:resolved_max_symbols]
@@ -1416,7 +1416,7 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
             
             symbols_ingested += 1
         except Exception as exc:
-            logger.warning('offpeak_vnstock_ingest failed for %s: %s', normalized_symbol, exc)
+            logger.warning('offpeak_vnbroker_ingest failed for %s: %s', normalized_symbol, exc)
             db_errors += 1
             failed_symbols.append(normalized_symbol)
             continue

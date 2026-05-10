@@ -21,7 +21,7 @@ from portfolio.services import fetch_and_save_daily_prices, sync_portfolio_price
 
 
 class Command(BaseCommand):
-    help = 'Đồng bộ giá đóng cửa (EOD) từ vnstock vào database.'
+    help = 'Đồng bộ giá đóng cửa (EOD) từ vnbroker vào database.'
 
     def add_arguments(self, parser):
         parser.add_argument(

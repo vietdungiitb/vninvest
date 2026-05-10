@@ -1,5 +1,5 @@
 """
-TickProducer — đẩy tick data thô từ vnstock vào Redis Streams.
+TickProducer — đẩy tick data thô từ vnbroker vào Redis Streams.
 
 Stream key:   vninvest:ticks:{SYMBOL}   (db=1, maxlen=STREAM_MAX_LEN)
 Snapshot key: vninvest:snapshot:{SYMBOL} (HSET, TTL=STREAM_SNAPSHOT_TTL giây)

@@ -40,56 +40,23 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
             state=IngestRun.StateChoices.RUNNING,
         ) if job else None
 
-        # Delegate to materializer for now (legacy sync path).
-        from market_serving.materializers import _fetch_from_legacy, _get_legacy_db_url
+        from market_data.vnstock_adapter import warm_up_symbols
+        from market_data.models import StockProfile
 
-        legacy_url = _get_legacy_db_url()
-        if not legacy_url:
+        # SM-P2.3 Native: Fetch price board from vnstock adapter.
+        # We take the top 50 symbols from StockProfile if no specific job/universe is defined.
+        symbols = list(StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE).values_list('symbol', flat=True)[:50])
+
+        if not symbols:
             if run:
                 run.state = IngestRun.StateChoices.SKIPPED
-                run.error_message = 'LEGACY_DATABASE_URL not configured'
+                run.error_message = 'No active symbols found in StockProfile'
                 run.finished_at = now()
                 run.save(update_fields=['state', 'error_message', 'finished_at'])
-            return {'status': 'skipped', 'reason': 'no_legacy_db_url'}
+            return {'status': 'skipped', 'reason': 'no_symbols'}
 
-        rows = _fetch_from_legacy(
-            """
-            SELECT
-                tsc.symbol,
-                tsc.close_price,
-                COALESCE(tsc.volume, 0),
-                COALESCE(tsc.change_pct, 0),
-                COALESCE(tsc.change_value, 0),
-                tsc.session_date,
-                tsc.captured_at
-            FROM portfolio_tickersessionclose tsc
-            WHERE tsc.session_date = (
-                SELECT MAX(inner_tsc.session_date)
-                FROM portfolio_tickersessionclose inner_tsc
-            )
-            ORDER BY tsc.symbol
-            LIMIT 1000
-            """,
-        )
-
-        count = 0
-        for row in rows:
-            symbol, close_price, volume, change_pct, change_value, session_date, captured_at = row
-            SymbolSnapshot.objects.update_or_create(
-                symbol=symbol,
-                session_date=session_date,
-                defaults={
-                    'price': close_price,
-                    'price_change': change_value,
-                    'price_change_pct': change_pct,
-                    'volume': volume,
-                    'fetched_at': captured_at or now(),
-                    'stale': False,
-                    'source': 'data_ingest',
-                    'market_status': 'closed',
-                },
-            )
-            count += 1
+        result = warm_up_symbols(symbols)
+        count = result.get('warmed_up_count', 0)
 
         if run:
             run.state = IngestRun.StateChoices.SUCCESS
@@ -97,8 +64,9 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
             run.finished_at = now()
             run.save(update_fields=['state', 'rows_upserted', 'finished_at'])
 
-        logger.info("fetch_and_upsert_price_board: upserted %d rows.", count)
-        return {'status': 'ok', 'upserted': count}
+        logger.info("fetch_and_upsert_price_board (native): upserted %d rows using %s.", count, result.get('source'))
+        return {'status': 'ok', 'upserted': count, 'source': result.get('source')}
+
 
     except Exception as exc:
         logger.error("fetch_and_upsert_price_board failed: %s", exc)
@@ -108,3 +76,30 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
             run.finished_at = now()
             run.save(update_fields=['state', 'error_message', 'finished_at'])
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=2)
+def sync_market_groups(self):
+    """
+    Native: Đồng bộ danh sách symbol niêm yết từ vnstock.
+    Cập nhật hoặc tạo mới StockProfile.
+    """
+    from market_data.vnstock_adapter import fetch_listing_symbols
+    from market_data.models import StockProfile
+    
+    symbols_data = fetch_listing_symbols()
+    upserted = 0
+    
+    for item in symbols_data:
+        StockProfile.objects.update_or_create(
+            symbol=item['symbol'],
+            defaults={
+                'exchange': item.get('exchange', 'HOSE'),
+                'company_name': item.get('company_name', ''),
+                'industry': item.get('industry', ''),
+                'status': StockProfile.StatusChoices.ACTIVE,
+            }
+        )
+        upserted += 1
+        
+    return {'status': 'ok', 'upserted': upserted}

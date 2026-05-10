@@ -36,13 +36,16 @@ function NavGroup({ label, items, icon }) {
         {label}
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-[200] mt-1 min-w-[220px] rounded-lg border border-slate-800 bg-slate-950/98 p-2 shadow-2xl">
+        <div 
+          className="absolute left-0 top-full z-[200] mt-1 min-w-[220px] flex flex-col gap-1 rounded-lg border border-slate-700 p-2 shadow-2xl"
+          style={{ backgroundColor: '#0f172a' }}
+        >
           {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               onClick={() => setOpen(false)}
-              className={({ isActive }) => groupLinkClass(isActive)}
+              className={({ isActive }) => `w-full justify-start ${groupLinkClass(isActive)}`}
             >
               {item.label}
             </NavLink>
@@ -88,7 +91,6 @@ export default function TopNav() {
   const systemItems = [
     { to: '/support', label: t('layout.nav.support') },
     { to: '/screener', label: t('layout.nav.screener') },
-    { to: '/settings', label: t('layout.nav.settings') },
     { to: '/settings/ai', label: t('layout.nav.aiCommandCenter') },
     { to: '/admin-ops', label: t('layout.nav.adminOps') },
   ].filter((item) => item.to !== '/admin-ops' || canReadAdminOps);

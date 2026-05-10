@@ -19,11 +19,11 @@ from django.utils import timezone
 from .adapters.cache_adapter import (
     get_cache,
     is_rate_limited_error,
-    is_vnstock_rate_limited,
-    mark_vnstock_rate_limited,
+    is_vnbroker_rate_limited,
+    mark_vnbroker_rate_limited,
     set_cache,
 )
-from .adapters.vnstock_adapter import (
+from .adapters.vnbroker_adapter import (
     fetch_financial_ratio_dataframe,
     fetch_history_dataframe,
     fetch_intraday_dataframe,
@@ -34,7 +34,7 @@ from .adapters.vnstock_adapter import (
 )
 from .baseline_service import BaselineService
 from .domain_constants import (
-    WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT,
+    WHALE_AGGREGATE_VNBROKER_MAX_SYMBOLS_DEFAULT,
     WHALE_CONFIG_VERSION,
     classify_whale_size_class,
     resolve_user_whale_threshold_vnd,
@@ -678,9 +678,9 @@ class MarketDataService:
                 return stale_payload
             return None
 
-        if is_vnstock_rate_limited('intraday'):
-            record_market_fallback('intraday-matched', 'vnstock_backoff')
-            fallback = _fallback_payload('vnstock_backoff', rate_limited=True)
+        if is_vnbroker_rate_limited('intraday'):
+            record_market_fallback('intraday-matched', 'vnbroker_backoff')
+            fallback = _fallback_payload('vnbroker_backoff', rate_limited=True)
             if fallback is not None:
                 return self._decorate_intraday_response_contract(fallback, normalized_symbol)
             return self._decorate_intraday_response_contract(self._build_intraday_backoff_response(normalized_symbol), normalized_symbol)
@@ -706,14 +706,14 @@ class MarketDataService:
         try:
             df = fetch_intraday_dataframe(normalized_symbol, resolved_page_size)
         except ExternalSystemException as exc:
-            if exc.code == 'vnstock_rate_limited':
-                mark_vnstock_rate_limited('intraday', exc)
-                record_market_fallback('intraday-matched', 'vnstock_backoff')
-                fallback = _fallback_payload('vnstock_backoff', rate_limited=True)
+            if exc.code == 'vnbroker_rate_limited':
+                mark_vnbroker_rate_limited('intraday', exc)
+                record_market_fallback('intraday-matched', 'vnbroker_backoff')
+                fallback = _fallback_payload('vnbroker_backoff', rate_limited=True)
                 if fallback is not None:
                     return self._decorate_intraday_response_contract(fallback, normalized_symbol)
                 return self._decorate_intraday_response_contract(self._build_intraday_backoff_response(normalized_symbol), normalized_symbol)
-            if exc.code == 'vnstock_timeout':
+            if exc.code == 'vnbroker_timeout':
                 record_market_external_timeout('intraday-matched')
                 fallback = _fallback_payload('timeout')
                 if fallback is not None:
@@ -726,17 +726,17 @@ class MarketDataService:
                     'fetched_at': timezone.now().isoformat(),
                     'source_event_at': None,
                 }, normalized_symbol)
-            if exc.code == 'vnstock_missing':
+            if exc.code == 'vnbroker_missing':
                 raise exc
-            record_market_fallback('intraday-matched', 'vnstock_unavailable')
-            fallback = _fallback_payload('vnstock_unavailable')
+            record_market_fallback('intraday-matched', 'vnbroker_unavailable')
+            fallback = _fallback_payload('vnbroker_unavailable')
             if fallback is not None:
                 return self._decorate_intraday_response_contract(fallback, normalized_symbol)
             return self._decorate_intraday_response_contract({
                 'symbol': normalized_symbol,
                 'trades': [],
                 'total': 0,
-                'source': 'vnstock_unavailable',
+                'source': 'vnbroker_unavailable',
                 'fetched_at': timezone.now().isoformat(),
                 'source_event_at': None,
             }, normalized_symbol)
@@ -774,7 +774,7 @@ class MarketDataService:
             'symbol': normalized_symbol,
             'trades': trades,
             'total': len(trades),
-            'source': 'vnstock',
+            'source': 'vnbroker',
             'stale': False,
             'fetched_at': fetched_at,
             'source_event_at': source_event_at or fetched_at,
@@ -790,30 +790,30 @@ class MarketDataService:
         if cached is not None:
             return cached
 
-        if is_vnstock_rate_limited('price_board'):
-            record_market_fallback('price-board', 'vnstock_backoff')
+        if is_vnbroker_rate_limited('price_board'):
+            record_market_fallback('price-board', 'vnbroker_backoff')
             return {
                 'symbol': normalized_symbol,
                 'depth': [],
                 'match': {},
-                'source': 'vnstock_backoff',
+                'source': 'vnbroker_backoff',
                 'rate_limited': True,
             }
 
         try:
             df = fetch_price_depth_dataframe(normalized_symbol)
         except ExternalSystemException as exc:
-            if exc.code == 'vnstock_rate_limited':
-                mark_vnstock_rate_limited('price_board', exc)
-                record_market_fallback('price-board', 'vnstock_backoff')
+            if exc.code == 'vnbroker_rate_limited':
+                mark_vnbroker_rate_limited('price_board', exc)
+                record_market_fallback('price-board', 'vnbroker_backoff')
                 return {
                     'symbol': normalized_symbol,
                     'depth': [],
                     'match': {},
-                    'source': 'vnstock_backoff',
+                    'source': 'vnbroker_backoff',
                     'rate_limited': True,
                 }
-            if exc.code == 'vnstock_timeout':
+            if exc.code == 'vnbroker_timeout':
                 record_market_external_timeout('price-board')
                 return {
                     'symbol': normalized_symbol,
@@ -822,14 +822,14 @@ class MarketDataService:
                     'source': 'timeout',
                     'fetched_at': timezone.now().isoformat(),
                 }
-            if exc.code == 'vnstock_missing':
+            if exc.code == 'vnbroker_missing':
                 raise exc
-            record_market_fallback('price-board', 'vnstock_unavailable')
+            record_market_fallback('price-board', 'vnbroker_unavailable')
             return {
                 'symbol': normalized_symbol,
                 'depth': [],
                 'match': {},
-                'source': 'vnstock_unavailable',
+                'source': 'vnbroker_unavailable',
                 'fetched_at': timezone.now().isoformat(),
             }
         except Exception as exc:
@@ -1018,11 +1018,11 @@ class MarketDataService:
         if cached is not None:
             return cached
 
-        if is_vnstock_rate_limited('intraday'):
+        if is_vnbroker_rate_limited('intraday'):
             return {
                 'symbol': normalized_symbol,
                 'buckets': [],
-                'source': 'vnstock_backoff',
+                'source': 'vnbroker_backoff',
                 'rate_limited': True,
                 'baseline_mode': 'same_bucket_20_sessions',
                 'baseline_sessions': 0,
@@ -1031,7 +1031,7 @@ class MarketDataService:
             }
 
         provider_error = None
-        current_source = 'vnstock'
+        current_source = 'vnbroker'
         source_event_at = None
         current_bucket_map = defaultdict(float)
 
@@ -1039,12 +1039,12 @@ class MarketDataService:
             df = fetch_intraday_dataframe(normalized_symbol, 500)
             source_event_at = self._resolve_intraday_dataframe_source_event_at(df)
         except ExternalSystemException as exc:
-            if exc.code == 'vnstock_rate_limited':
-                mark_vnstock_rate_limited('intraday', exc)
+            if exc.code == 'vnbroker_rate_limited':
+                mark_vnbroker_rate_limited('intraday', exc)
                 return {
                     'symbol': normalized_symbol,
                     'buckets': [],
-                    'source': 'vnstock_backoff',
+                    'source': 'vnbroker_backoff',
                     'rate_limited': True,
                     'baseline_mode': 'same_bucket_20_sessions',
                     'baseline_sessions': 0,
@@ -1094,7 +1094,7 @@ class MarketDataService:
 
         if not current_bucket_map:
             if provider_error is not None:
-                if provider_error.code == 'vnstock_missing':
+                if provider_error.code == 'vnbroker_missing':
                     raise provider_error
                 raise ExternalSystemException(
                     f'Không lấy được dữ liệu: {provider_error.message}',
@@ -1253,18 +1253,18 @@ class MarketDataService:
                 df = db_df
                 data_source = 'intraday_tick_db'
             else:
-                if is_vnstock_rate_limited('intraday'):
+                if is_vnbroker_rate_limited('intraday'):
                     df = None
-                    data_source = 'vnstock_backoff'
+                    data_source = 'vnbroker_backoff'
                 else:
                     try:
                         df = fetch_intraday_dataframe(normalized_symbol, 500)
-                        data_source = 'vnstock'
+                        data_source = 'vnbroker'
                     except ExternalSystemException as exc:
-                        if exc.code == 'vnstock_rate_limited':
-                            mark_vnstock_rate_limited('intraday', exc)
-                            data_source = 'vnstock_backoff'
-                        elif exc.code == 'vnstock_timeout':
+                        if exc.code == 'vnbroker_rate_limited':
+                            mark_vnbroker_rate_limited('intraday', exc)
+                            data_source = 'vnbroker_backoff'
+                        elif exc.code == 'vnbroker_timeout':
                             data_source = 'timeout'
                         else:
                             data_source = 'unavailable'
@@ -1580,19 +1580,19 @@ class MarketDataService:
 
         if not page_rows:
             try:
-                vnstock_records = self._build_vnstock_aggregate_records(symbols, min_threshold_vnd)
+                vnbroker_records = self._build_vnbroker_aggregate_records(symbols, min_threshold_vnd)
             except ExternalSystemException:
-                vnstock_records = []
-            if vnstock_records:
-                vnstock_records = [
-                    record for record in vnstock_records
+                vnbroker_records = []
+            if vnbroker_records:
+                vnbroker_records = [
+                    record for record in vnbroker_records
                     if (
                         float(record.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(record.get('symbol'))
                         and self._is_event_timestamp_in_window(record.get('ts'), window, now=request_now)
                     )
                 ]
             normalized_records, ok = self._normalize_aggregate_event_records(
-                vnstock_records,
+                vnbroker_records,
                 sort=sort,
                 cursor_payload=cursor_payload,
             )
@@ -1600,12 +1600,12 @@ class MarketDataService:
                 raise MarketDataValidationException('cursor không hợp lệ.')
             self._record_source_observability(
                 'whale-feed-aggregate',
-                'vnstock' if normalized_records else 'intraday_tick_db',
+                'vnbroker' if normalized_records else 'intraday_tick_db',
                 primary_source='redis_stream',
             )
             return self._build_aggregate_record_response(
                 normalized_records=normalized_records,
-                source='vnstock' if normalized_records else 'intraday_tick_db',
+                source='vnbroker' if normalized_records else 'intraday_tick_db',
                 threshold_vnd=threshold_vnd,
                 threshold_resolver=_resolve_threshold_for_symbol,
                 entitlements=entitlements,
@@ -1966,7 +1966,7 @@ class MarketDataService:
         try:
             df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
         except ExternalSystemException as exc:
-            if exc.code == 'vnstock_missing':
+            if exc.code == 'vnbroker_missing':
                 raise exc
             raise ExternalSystemException(
                 f'Không lấy được dữ liệu: {exc.message}',
@@ -2057,12 +2057,12 @@ class MarketDataService:
                 source=None,
             )
         except ExternalSystemException as exc:
-            if exc.code == 'vnstock_missing':
+            if exc.code == 'vnbroker_missing':
                 raise exc
             return {
                 'symbol': normalized_symbol,
                 'years': [],
-                'source': 'vnstock_unavailable',
+                'source': 'vnbroker_unavailable',
                 'fetched_at': timezone.now().isoformat(),
             }
         except Exception as exc:
@@ -2121,7 +2121,7 @@ class MarketDataService:
         result = {
             'symbol': normalized_symbol,
             'years': years,
-            'source': str(getattr(df, 'attrs', {}).get('financial_ratio_source') or 'vnstock').strip().lower(),
+            'source': str(getattr(df, 'attrs', {}).get('financial_ratio_source') or 'vnbroker').strip().lower(),
             'fetched_at': timezone.now().isoformat(),
         }
         set_cache(cache_key, result, timeout=21600)
@@ -2338,7 +2338,7 @@ class MarketDataService:
                         continue
                 technical_rows = [{'close_price': point['close'], 'volume': point['volume']} for point in series]
         except ExternalSystemException as exc:
-            logger.warning('StockWorkspaceChart refactor vnstock lỗi %s: %s', normalized_symbol, exc)
+            logger.warning('StockWorkspaceChart refactor vnbroker liveỗi %s: %s', normalized_symbol, exc)
 
         is_intraday_frame = timeframe in self._INTRADAY_LOOKBACK_DAYS_CAP
 
@@ -2405,7 +2405,7 @@ class MarketDataService:
             'symbol': normalized_symbol,
             'trades': [],
             'total': 0,
-            'source': 'vnstock_backoff',
+            'source': 'vnbroker_backoff',
             'rate_limited': True,
             'fetched_at': timezone.now().isoformat(),
             'source_event_at': None,
@@ -2641,7 +2641,7 @@ class MarketDataService:
             'threshold': threshold_vnd,
             'threshold_source': str(threshold_source or 'user_default'),
             'source': data_source,
-            'rate_limited': data_source in ('unavailable', 'timeout', 'vnstock_backoff'),
+            'rate_limited': data_source in ('unavailable', 'timeout', 'vnbroker_backoff'),
             'whale_orders': [],
             'summary': {
                 'buy_value': 0,
@@ -3189,8 +3189,8 @@ class MarketDataService:
             return True
         return start_dt <= row_dt <= resolved_now
 
-    def _allow_vnstock_aggregate_fallback(self, symbols: list[str]) -> bool:
-        max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT))), 0)
+    def _allow_vnbroker_aggregate_fallback(self, symbols: list[str]) -> bool:
+        max_symbols = max(int(os.getenv('WHALE_AGGREGATE_vnbroker_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNBROKER_MAX_SYMBOLS_DEFAULT))), 0)
         if max_symbols == 0:
             return False
         return len(symbols) <= max_symbols
@@ -3568,36 +3568,36 @@ class MarketDataService:
             })
         return records
 
-    def _build_vnstock_aggregate_records(self, symbols: list[str], threshold_vnd: float) -> list[dict]:
+    def _build_vnbroker_aggregate_records(self, symbols: list[str], threshold_vnd: float) -> list[dict]:
         records = []
         synthetic_id = 1
-        if not self._allow_vnstock_aggregate_fallback(symbols):
-            logger.info('Skip vnstock aggregate fallback for %s symbols to reduce rate-limit pressure.', len(symbols))
+        if not self._allow_vnbroker_aggregate_fallback(symbols):
+            logger.info('Skip vnbroker aggregate fallback for %s symbols to reduce rate-limit pressure.', len(symbols))
             return []
-        if is_vnstock_rate_limited('intraday'):
+        if is_vnbroker_rate_limited('intraday'):
             return []
 
         for symbol in symbols:
             try:
                 df = fetch_intraday_dataframe(symbol, 150)
             except ExternalSystemException as exc:
-                if exc.code == 'vnstock_rate_limited' or is_rate_limited_error(exc):
-                    mark_vnstock_rate_limited('intraday', exc)
-                    record_market_fallback('whale-feed-aggregate', 'vnstock_backoff')
-                    logger.info('Aggregate whale vnstock rate-limited for %s; activate cooldown.', symbol)
+                if exc.code == 'vnbroker_rate_limited' or is_rate_limited_error(exc):
+                    mark_vnbroker_rate_limited('intraday', exc)
+                    record_market_fallback('whale-feed-aggregate', 'vnbroker_backoff')
+                    logger.info('Aggregate whale vnbroker rate-limited for %s; activate cooldown.', symbol)
                     break
-                if exc.code == 'vnstock_timeout':
+                if exc.code == 'vnbroker_timeout':
                     record_market_external_timeout('whale-feed-aggregate')
                     record_market_fallback('whale-feed-aggregate', 'timeout')
-                logger.debug('Aggregate whale vnstock fallback failed for %s: %s', symbol, exc)
+                logger.debug('Aggregate whale vnbroker fallback failed for %s: %s', symbol, exc)
                 continue
             except Exception as exc:
                 if is_rate_limited_error(exc):
-                    mark_vnstock_rate_limited('intraday', exc)
-                    record_market_fallback('whale-feed-aggregate', 'vnstock_backoff')
-                    logger.info('Aggregate whale vnstock generic rate-limited for %s; activate cooldown.', symbol)
+                    mark_vnbroker_rate_limited('intraday', exc)
+                    record_market_fallback('whale-feed-aggregate', 'vnbroker_backoff')
+                    logger.info('Aggregate whale vnbroker generic rate-limited for %s; activate cooldown.', symbol)
                     break
-                logger.debug('Aggregate whale vnstock unexpected fallback failed for %s: %s', symbol, exc)
+                logger.debug('Aggregate whale vnbroker unexpected fallback failed for %s: %s', symbol, exc)
                 continue
 
             if df is None or df.empty:
@@ -3635,14 +3635,14 @@ class MarketDataService:
                 side = row.get('side') or row.get('match_type') or row.get('matchType') or 'UNKNOWN'
                 records.append({
                     'id': synthetic_id,
-                    'event_id': f'vnstock:{symbol}:{synthetic_id}',
+                    'event_id': f'vnbroker:{symbol}:{synthetic_id}',
                     'symbol': symbol,
                     'side': side,
                     'matched_value': matched_value,
                     'volume': int(volume),
                     'ts': ts_value,
                     'size_class': self._classify_signal_size(matched_value),
-                    'source': 'vnstock',
+                    'source': 'vnbroker',
                 })
                 synthetic_id += 1
         return records
@@ -3887,7 +3887,7 @@ class MarketDataService:
         """DEPRECATED: Heuristic price scale detection.
         
         REASON DEPRECATED:
-        - Adapter (vnstock_adapter.py) now guarantees all prices in canonical THOUSAND_VND
+        - Adapter (vnbroker_adapter.py) now guarantees all prices in canonical THOUSAND_VND
         - No heuristic detection needed anymore
         - This function is kept for backward compatibility but always returns 1.0 (no scaling)
         
@@ -3933,7 +3933,7 @@ class MarketDataService:
             canonical_quote = normalize_quote_price_to_canonical(
                 value=numeric,
                 source_unit=source_unit,
-                source=PriceSource.VNSTOCK_DAILY,
+                source=PriceSource.vnbroker_DAILY,
                 symbol=symbol,
             )
             return round(canonical_quote.value, 2)

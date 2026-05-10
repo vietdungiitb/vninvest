@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AdminOps from './AdminOps';
 import {
+  getAdminAuditLog,
   getAdminOpsStats,
   getAdminPrefetchTimePolicy,
   getAdminVnstockConfigChangelog,
@@ -13,6 +14,7 @@ import {
 import { useI18n } from '../context/LangContext';
 
 jest.mock('../api/client', () => ({
+  getAdminAuditLog: jest.fn(),
   getAdminOpsStats: jest.fn(),
   getAdminPrefetchTimePolicy: jest.fn(),
   getAdminVnstockConfigChangelog: jest.fn(),
@@ -63,6 +65,7 @@ describe('AdminOps legacy writer link-out', () => {
     getAdminVnstockConfigCurrent.mockResolvedValue({ data: { settings: {} } });
     getAdminVnstockConfigChangelog.mockResolvedValue({ data: { results: [] } });
     getSecuritiesGroups.mockResolvedValue({ data: [] });
+    getAdminAuditLog.mockResolvedValue({ data: { results: [] } });
   });
 
   afterEach(() => {
@@ -97,5 +100,36 @@ describe('AdminOps legacy writer link-out', () => {
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'Mở surface chuyên trách' })).toHaveAttribute('href', '/admin/core/crawl-control');
     });
+  });
+
+  it('renders recent activity feed when audit events are available', async () => {
+    getAdminOpsStats.mockResolvedValue({ data: buildStatsPayload({ vnstock_config_write: false, intraday_side_backfill_apply: false }) });
+    getAdminAuditLog.mockResolvedValue({
+      data: {
+        results: [
+          {
+            event_id: 'evt-1',
+            actor_label: 'admin',
+            action: 'access',
+            resource_type: 'HttpRequest',
+            resource_id: '/core/v1/admin-ops/stats/',
+            request_id: 'req-1',
+            occurred_at: '2026-05-08T10:00:00Z',
+            metadata: { method: 'GET', status_code: 200 },
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin-ops']}>
+        <AdminOps />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Hoạt động gần đây')).toBeInTheDocument();
+    expect(await screen.findByText(/admin\s+·\s+access/i)).toBeInTheDocument();
+    expect(await screen.findByText(/HttpRequest/i)).toBeInTheDocument();
+    expect(await screen.findByText(/\/core\/v1\/admin-ops\/stats\//i)).toBeInTheDocument();
   });
 });

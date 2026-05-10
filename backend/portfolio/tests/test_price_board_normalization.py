@@ -1,6 +1,6 @@
 import pandas as pd
 from django.test import SimpleTestCase
-from portfolio.adapters import vnstock_adapter
+from portfolio.adapters import vnbroker_adapter
 
 class PriceBoardNormalizationTests(SimpleTestCase):
     def test_kbs_flat_to_multiindex_mapping(self):
@@ -18,7 +18,7 @@ class PriceBoardNormalizationTests(SimpleTestCase):
             }
         ])
         
-        normalized = vnstock_adapter._normalize_price_board_dataframe(flat_df)
+        normalized = vnbroker_adapter._normalize_price_board_dataframe(flat_df)
         
         self.assertIsInstance(normalized.columns, pd.MultiIndex)
         self.assertEqual(normalized[('match', 'match_price')].iloc[0], 25000.0)
@@ -38,7 +38,7 @@ class PriceBoardNormalizationTests(SimpleTestCase):
             ])
         )
         
-        normalized = vnstock_adapter._normalize_price_board_dataframe(mi_df)
+        normalized = vnbroker_adapter._normalize_price_board_dataframe(mi_df)
         
         self.assertEqual(normalized[('match', 'match_price')].iloc[0], 25000.0)
         self.assertEqual(normalized[('bid_ask', 'bid_1_volume')].iloc[0], 1000.0)
@@ -55,7 +55,7 @@ class PriceBoardNormalizationTests(SimpleTestCase):
             }
         ])
         
-        normalized = vnstock_adapter._normalize_price_board_dataframe(flat_df)
+        normalized = vnbroker_adapter._normalize_price_board_dataframe(flat_df)
         
         import numpy as np
         self.assertTrue(np.isnan(normalized[('bid_ask', 'bid_2_price')].iloc[0]))

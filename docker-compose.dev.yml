@@ -51,6 +51,7 @@ services:
     networks:
       - vninvest_network
 
+
   core-api:
     container_name: vninvest-dev-core-api
     image: python:3.13-slim
@@ -65,10 +66,12 @@ services:
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       PYTHONPATH: /workspace/src
+      LEGACY_BACKEND_URL: http://backend:8000
+      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
     command: >
-      sh -c "pip install -r requirements.txt -q &&
+      sh -c "apt-get update -y && apt-get install -y git &&
+      pip install -r requirements.txt -q &&
       python manage.py migrate --noinput &&
       python -m gunicorn vninvest_core.wsgi:application
       --bind 0.0.0.0:8100
@@ -90,8 +93,8 @@ services:
       start_period: 30s
     networks:
       - vninvest_network
-    mem_limit: ${CORE_API_MEM_LIMIT:-384m}
-    cpus: ${CORE_API_CPUS:-0.5}
+    mem_limit: ${CORE_API_MEM_LIMIT:-1g}
+    cpus: ${CORE_API_CPUS:-1.0}
 
   core-worker:
     container_name: vninvest-dev-core-worker
@@ -110,7 +113,8 @@ services:
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
     command: >
-      sh -c "pip install -r requirements.txt -q &&
+      sh -c "apt-get update -y && apt-get install -y git &&
+      pip install -r requirements.txt -q &&
       python -m celery -A vninvest_core worker
       --loglevel=INFO
       --concurrency=2
@@ -143,7 +147,8 @@ services:
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
     command: >
-      sh -c "pip install -r requirements.txt -q &&
+      sh -c "apt-get update -y && apt-get install -y git &&
+      pip install -r requirements.txt -q &&
       python -m celery -A vninvest_core beat
       --loglevel=INFO
       --scheduler django_celery_beat.schedulers:DatabaseScheduler"
@@ -155,6 +160,31 @@ services:
       - vninvest_network
     mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}
     cpus: ${CORE_BEAT_CPUS:-0.25}
+
+  # SFI-B1: Legacy backend hidden behind core-api proxy.
+  # No ports exposed to the host. Single entry point is now core-api.
+  backend:
+    container_name: vninvest-dev-backend-legacy
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_DEBUG: "true"
+      DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/1
+    command: >
+      sh -c "apt-get update -y && apt-get install -y git &&
+      pip install -r requirements.txt -q &&
+      python manage.py migrate --noinput &&
+      python manage.py runserver 0.0.0.0:8000"
+    restart: unless-stopped
+    networks:
+      - vninvest_network
+    mem_limit: 512m
+    cpus: 0.5
 
   opencore-site:
     container_name: vninvest-dev-opencore-site
@@ -182,7 +212,7 @@ services:
         REACT_APP_AI_ADVISORY_PATH: /ai-advisory
         REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "0"
         REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
-    depends_on:
+    depends_on: !override
       # SFI-B1.6: frontend depends only on core-api (single entry point); backend is internal.
       core-api:
         condition: service_healthy

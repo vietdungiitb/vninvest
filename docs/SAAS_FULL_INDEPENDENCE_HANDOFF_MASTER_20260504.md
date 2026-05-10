@@ -105,7 +105,7 @@ Phase B8: backend container bị tắt, legacy code bị xóa.
 2. **Mỗi slice = 1 commit** với message format: `feat(SFI-Bx.y): <mô tả>`
 3. **Sau mỗi slice**: chạy focused validation → cập nhật taskboard → cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md`
 4. **Không đánh dấu Done** nếu chưa có execution evidence theo template
-5. **Sau edit thực chất**: rebuild/restart service bị ảnh hưởng
+5. **Mandatory Docker Rebuild**: Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.
 
 ### 5.2 Phase gate — không được bỏ qua
 - **B1 phải PASS** trước khi bắt đầu B2+

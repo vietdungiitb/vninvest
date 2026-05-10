@@ -18,7 +18,7 @@ def collect_symbols_for_user(user_id: int | None = None) -> list[str]:
 
 
 def collect_intraday_frame(symbol: str) -> pd.DataFrame:
-    """Lấy dữ liệu khớp lệnh thực từ vnstock intraday theo runtime provider config.
+    """Lấy dữ liệu khớp lệnh thực từ vnbroker intraday theo runtime provider config.
     
     PRICE UNIT GUARANTEE:
     - Adapter (fetch_intraday_dataframe) now returns prices in canonical THOUSAND_VND
@@ -26,7 +26,7 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
     - All prices are already normalized to THOUSAND_VND by adapter
     """
     try:
-        from portfolio.adapters.vnstock_adapter import fetch_intraday_dataframe
+        from portfolio.adapters.vnbroker_adapter import fetch_intraday_dataframe
         df = fetch_intraday_dataframe(symbol=symbol, page_size=100)
         if df is not None and not df.empty:
             price_info = get_price_changes([symbol]).get(symbol.upper(), {})
@@ -118,7 +118,7 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
     except (Exception, SystemExit) as exc:
         import logging as _log
         _log.getLogger(__name__).warning(
-            "collect_intraday_frame(%s) vnstock failed after runtime provider fallback: %s",
+            "collect_intraday_frame(%s) vnbroker failed after runtime provider fallback: %s",
             symbol, exc,
         )
 

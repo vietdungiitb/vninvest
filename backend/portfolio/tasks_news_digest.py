@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def _generate_news_digest_for_user(user) -> dict:
     """
     Tạo bản tóm tắt tin tức danh mục cho một user.
-    Đọc watchlist, fetch news từ cache/vnstock, gọi AI, lưu DB.
+    Đọc watchlist, fetch news từ cache/vnbroker, gọi AI, lưu DB.
     Trả về dict status.
     """
     from django.utils import timezone as _tz

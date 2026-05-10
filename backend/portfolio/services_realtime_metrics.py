@@ -10,7 +10,7 @@ Metrics tracked:
 - cache_sets_total: successful cache.set() operations
 - cache_errors_total: exceptions during cache ops
 - realtime_rate_limit_events_total: #times endpoint marked as rate-limited
-- realtime_upstream_calls_total: #calls to vnstock endpoints (suffix: endpoint name)
+- realtime_upstream_calls_total: #calls to vnbroker endpoints (suffix: endpoint name)
 - realtime_upstream_errors_total: #errors from upstream calls (suffix: endpoint name)
 """
 import logging

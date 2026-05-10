@@ -53,6 +53,19 @@ import {
 
 const ADVISORY_INVALIDATION_EVENT = 'vninvest:advisory_updated';
 
+function shouldSuppressTransportError(errorLike) {
+  const status = errorLike?.response?.status ?? errorLike?.status ?? null;
+  if ([404, 408, 429, 500, 502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  const message = String(errorLike?.message || '').toLowerCase();
+  return message.includes('network error')
+    || message.includes('err_empty_response')
+    || message.includes('err_connection_reset')
+    || message.includes('timeout');
+}
+
 // Giá hiển thị theo chuẩn bảng giá: en-US, 2 chữ số thập phân, không kèm đơn vị trong từng ô.
 
 function formatChartAxis(value) {
@@ -576,7 +589,7 @@ function BreadthMiniPanel({ symbol }) {
       <div className="text-label pb-3 border-b border-slate-800">{t('stockDetail.breadthLabel')}</div>
       <div className="mt-4 space-y-3">
         {groups.map((group) => {
-          const peers = group.peers || [];
+          const peers = Array.isArray(group.peers) ? group.peers : [];
           const upCount = peers.filter((p) => p.status === 'up').length;
           const downCount = peers.filter((p) => p.status === 'down').length;
           const flatCount = peers.filter((p) => p.status === 'flat').length;
@@ -1539,7 +1552,9 @@ export default function StockDetail() {
       if (isRequestCanceled(err)) {
         return;
       }
-      console.error('getStockOrderFlow:', err);
+      if (!shouldSuppressTransportError(err)) {
+        console.error('getStockOrderFlow:', err);
+      }
       setOrderFlowData(null);
     } finally {
       if (!silent) setOrderFlowLoading(false);
@@ -1627,7 +1642,9 @@ export default function StockDetail() {
         }
       } catch (err) {
         if (!cancelled) {
-          console.error('getStockPriceChart:', err);
+          if (!shouldSuppressTransportError(err)) {
+            console.error('getStockPriceChart:', err);
+          }
           setChartData([]);
           setTechnical(null);
         }
@@ -2350,9 +2367,15 @@ export default function StockDetail() {
   if (error || !overview) {
     return (
       <div className="mx-auto max-w-4xl p-6">
-        <div className="rounded-[28px] border border-rose-900/70 bg-rose-950/30 p-8 text-center">
-          <p className="text-sm font-semibold text-rose-300">{t('stockDetail.workspaceOpenFailed')}</p>
-          <p className="mt-2 text-sm text-slate-400">{error || t('stockDetail.workspaceNotFound', { symbol: normalizedSymbol })}</p>
+        <div className="rounded-[28px] border border-slate-800 bg-slate-950/80 p-8 text-center shadow-[0_18px_60px_rgba(2,6,23,0.35)]">
+          <p className="text-sm font-semibold text-slate-100">
+            {t('stockDetail.workspaceOpenFailed', { defaultValue: 'Chưa có dữ liệu workspace cho mã này.' })}
+          </p>
+          <p className="mt-2 text-sm text-slate-400">
+            {error
+              ? t('stockDetail.workspaceUnavailable', { defaultValue: 'Dữ liệu chưa sẵn sàng hoặc bị gián đoạn tạm thời. Hãy thử lại sau.' })
+              : t('stockDetail.workspaceNotFound', { symbol: normalizedSymbol })}
+          </p>
           <Link to="/watchlist" className="mt-4 inline-flex rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-200 transition-colors hover:border-slate-500 hover:text-white">
             {t('stockDetail.backToRadar')}
           </Link>
@@ -2360,6 +2383,9 @@ export default function StockDetail() {
       </div>
     );
   }
+
+  const marketGroups = Array.isArray(overview.market_groups) ? overview.market_groups.slice(0, 2) : [];
+  const watchlistMemberships = Array.isArray(overview.watchlist_memberships) ? overview.watchlist_memberships : [];
 
   return (
     <div className="app-page-shell space-y-4">
@@ -2436,7 +2462,7 @@ export default function StockDetail() {
               <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${overview.is_tracked ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300' : 'border-slate-700 bg-slate-900/70 text-slate-400'}`}>
                 {overview.is_tracked ? t('stockDetail.trackingRealtime') : t('stockDetail.notTrackingRealtime')}
               </span>
-              {overview.market_groups.slice(0, 2).map((groupName) => (
+              {marketGroups.map((groupName) => (
                 <span key={groupName} className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300">
                   {groupName}
                 </span>
@@ -2541,10 +2567,10 @@ export default function StockDetail() {
                 </p>
               </div>
               <div className="rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1">
-                <p className="text-label">{t('stockDetail.groupList', { count: overview.watchlist_memberships.length })}</p>
-                {overview.watchlist_memberships.length > 0 ? (
-                  <p className="mt-0.5 text-amber-300 truncate" title={overview.watchlist_memberships.map((item) => item.group_name).join(', ')}>
-                    {overview.watchlist_memberships.map((item) => item.group_name).join(', ')}
+                <p className="text-label">{t('stockDetail.groupList', { count: watchlistMemberships.length })}</p>
+                {watchlistMemberships.length > 0 ? (
+                  <p className="mt-0.5 text-amber-300 truncate" title={watchlistMemberships.map((item) => item.group_name).join(', ')}>
+                    {watchlistMemberships.map((item) => item.group_name).join(', ')}
                   </p>
                 ) : (
                   <p className="mt-0.5 text-slate-500">{t('stockDetail.noneYet')}</p>

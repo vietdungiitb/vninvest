@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='RuntimeVnstockConfig',
+            name='RuntimeVnbrokerConfig',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('max_concurrency', models.PositiveIntegerField(default=12, validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(50)], verbose_name='Giới hạn concurrent requests')),
@@ -28,11 +28,11 @@ class Migration(migrations.Migration):
                 ('changelog', models.JSONField(blank=True, default=list, verbose_name='Lịch sử thay đổi')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='vnstock_runtime_config_updates', to=settings.AUTH_USER_MODEL, verbose_name='Người cập nhật gần nhất')),
+                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='vnbroker_runtime_config_updates', to=settings.AUTH_USER_MODEL, verbose_name='Người cập nhật gần nhất')),
             ],
             options={
-                'verbose_name': 'Runtime Vnstock Config',
-                'verbose_name_plural': 'Runtime Vnstock Config',
+                'verbose_name': 'Runtime vnbroker Config',
+                'verbose_name_plural': 'Runtime vnbroker Config',
             },
         ),
     ]

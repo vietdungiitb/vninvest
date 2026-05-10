@@ -53,6 +53,15 @@
 - Current hybrid surface: `vninvest_core.legacy_proxy_view`
 - Target state: deleted
 
+### 2.7 Live surface contracts that are now blocking runtime
+
+- `stocks/:symbol` must never crash when whale analytics snapshot is empty or malformed. The hook may surface an error state, but the page must still render shell content and a user-facing explanation.
+- `admin/core/overview` must not present a 404 to the browser for an advertised surface. If the backend contract is not ready, the UI must degrade to an explicit unavailable state and the route owner must be promoted or mounted.
+- `support` must distinguish empty data from transport failure. The user can see a no-ticket state, but not a generic technical failure as the only response.
+- `dashboard` and `transactions` must always render deterministic empty/onboarding states when no portfolio is selected.
+- `whale-alerts` may run in shell mode, but selected-session truth must remain stable and must not depend on a silent `{}` analytics payload.
+- `admin-ops` is not part of the blocker set anymore; it is the positive control for a live native runtime surface.
+
 ---
 
 ## 3. File-level technical changes required

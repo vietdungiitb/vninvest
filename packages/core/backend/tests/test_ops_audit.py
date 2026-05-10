@@ -65,6 +65,40 @@ class RequestTraceMiddlewareTests(TestCase):
             response = middleware(request)
             self.assertIn('X-Request-ID', response, f'Missing X-Request-ID for path {path}')
 
+    def test_records_access_audit_event_for_regular_requests(self):
+        start_count = AuditEvent.objects.count()
+        request = self.factory.get('/core/v1/health')
+
+        def get_response(req):
+            from django.http import HttpResponse
+            return HttpResponse('ok')
+
+        middleware = RequestTraceMiddleware(get_response)
+        response = middleware(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(AuditEvent.objects.count(), start_count + 1)
+        event = AuditEvent.objects.order_by('-occurred_at').first()
+        self.assertIsNotNone(event)
+        self.assertEqual(event.action, 'access')
+        self.assertEqual(event.resource_type, 'HttpRequest')
+        self.assertEqual(event.resource_id, '/core/v1/health')
+        self.assertEqual(event.metadata.get('method'), 'GET')
+
+    def test_skips_audit_log_self_requests(self):
+        start_count = AuditEvent.objects.count()
+        request = self.factory.get('/core/v1/audit-log')
+
+        def get_response(req):
+            from django.http import HttpResponse
+            return HttpResponse('ok')
+
+        middleware = RequestTraceMiddleware(get_response)
+        response = middleware(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(AuditEvent.objects.count(), start_count)
+
 
 class AuditEventModelTests(TestCase):
     def test_create_audit_event(self):

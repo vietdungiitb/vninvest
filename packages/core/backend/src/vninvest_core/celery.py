@@ -20,11 +20,10 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/5'),
     },
     'materialize-unified-alerts': {
-        'task': 'signal_intelligence.materializers.materialize_unified_alerts',
-        'schedule': 300.0,
-    },
-    'materialize-whale-feed-aggregate': {
-        'task': 'signal_intelligence.materializers.materialize_whale_feed_aggregate',
+        # UnifiedAlert and WhaleAlertCanonical are currently materialized together
+        # from the market_serving owner task. Keep Celery's runtime schedule aligned
+        # with settings.CELERY_BEAT_SCHEDULE so dev/prod do not diverge.
+        'task': 'market_serving.materializers.materialize_unified_alerts',
         'schedule': 300.0,
     },
 }

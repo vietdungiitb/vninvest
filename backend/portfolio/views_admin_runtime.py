@@ -2227,19 +2227,19 @@ def admin_system_ai_audit_logs_api(request):
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
-def admin_vnstock_runtime_config_current_api(request):
-    """GET /api/admin-ops/vnstock-config/current/"""
-    from .models import RuntimeVnstockConfig
-    from .serializers import RuntimeVnstockConfigSerializer
-    from .vnstock_runtime_config import coerce_vnstock_runtime_settings, default_vnstock_runtime_settings
+def admin_vnbroker_runtime_config_current_api(request):
+    """GET /api/admin-ops/vnbroker-config/current/"""
+    from .models import RuntimeVnbrokerConfig
+    from .serializers import RuntimeVnbrokerConfigSerializer
+    from .vnbroker_runtime_config import coerce_vnbroker_runtime_settings, default_vnbroker_runtime_settings
 
-    config = RuntimeVnstockConfig.get_or_create_singleton()
-    defaults = default_vnstock_runtime_settings()
-    normalized = coerce_vnstock_runtime_settings(config.to_runtime_dict(), fallback=defaults)
+    config = RuntimeVnbrokerConfig.get_or_create_singleton()
+    defaults = default_vnbroker_runtime_settings()
+    normalized = coerce_vnbroker_runtime_settings(config.to_runtime_dict(), fallback=defaults)
     for key, value in normalized.items():
         setattr(config, key, value)
 
-    serializer = RuntimeVnstockConfigSerializer(config)
+    serializer = RuntimeVnbrokerConfigSerializer(config)
     return Response(
         {
             'ok': True,
@@ -2259,19 +2259,19 @@ def admin_vnstock_runtime_config_current_api(request):
 
 @api_view(['PATCH'])
 @permission_classes([IsAdminUser])
-def admin_vnstock_runtime_config_update_api(request):
-    """PATCH /api/admin-ops/vnstock-config/update-config/"""
-    from .models import RuntimeVnstockConfig
-    from .serializers import RuntimeVnstockConfigSerializer
-    from .vnstock_runtime_config import invalidate_vnstock_runtime_cache
+def admin_vnbroker_runtime_config_update_api(request):
+    """PATCH /api/admin-ops/vnbroker-config/update-config/"""
+    from .models import RuntimeVnbrokerConfig
+    from .serializers import RuntimeVnbrokerConfigSerializer
+    from .vnbroker_runtime_config import invalidate_vnbroker_runtime_cache
 
-    if not _has_surface_write_permission(request, 'change_runtimevnstockconfig'):
-        return _forbidden_surface_response('Runtime Vnstock Config')
+    if not _has_surface_write_permission(request, 'change_runtimevnbrokerconfig'):
+        return _forbidden_surface_response('Runtime Vnbroker Config')
 
-    config = RuntimeVnstockConfig.get_or_create_singleton()
+    config = RuntimeVnbrokerConfig.get_or_create_singleton()
     before = config.to_runtime_dict()
 
-    serializer = RuntimeVnstockConfigSerializer(config, data=request.data or {}, partial=True)
+    serializer = RuntimeVnbrokerConfigSerializer(config, data=request.data or {}, partial=True)
     if not serializer.is_valid():
         return Response(
             {
@@ -2295,12 +2295,12 @@ def admin_vnstock_runtime_config_update_api(request):
         updated_config.append_changelog(actor=request.user, changes=changes, reason='update_config')
         updated_config.save(update_fields=['changelog', 'updated_at'])
 
-    invalidate_vnstock_runtime_cache()
+    invalidate_vnbroker_runtime_cache()
     return Response(
         {
             'ok': True,
-            'message': 'Đã cập nhật Runtime Vnstock Config.',
-            'settings': RuntimeVnstockConfigSerializer(updated_config).data,
+            'message': 'Đã cập nhật Runtime Vnbroker Config.',
+            'settings': RuntimeVnbrokerConfigSerializer(updated_config).data,
         },
         status=status.HTTP_200_OK,
     )
@@ -2308,17 +2308,17 @@ def admin_vnstock_runtime_config_update_api(request):
 
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
-def admin_vnstock_runtime_config_reset_api(request):
-    """POST /api/admin-ops/vnstock-config/reset-to-defaults/"""
-    from .models import RuntimeVnstockConfig
-    from .serializers import RuntimeVnstockConfigSerializer
-    from .vnstock_runtime_config import default_vnstock_runtime_settings, invalidate_vnstock_runtime_cache
+def admin_vnbroker_runtime_config_reset_api(request):
+    """POST /api/admin-ops/vnbroker-config/reset-to-defaults/"""
+    from .models import RuntimeVnbrokerConfig
+    from .serializers import RuntimeVnbrokerConfigSerializer
+    from .vnbroker_runtime_config import default_vnbroker_runtime_settings, invalidate_vnbroker_runtime_cache
 
-    if not _has_surface_write_permission(request, 'change_runtimevnstockconfig'):
-        return _forbidden_surface_response('Runtime Vnstock Config')
+    if not _has_surface_write_permission(request, 'change_runtimevnbrokerconfig'):
+        return _forbidden_surface_response('Runtime Vnbroker Config')
 
-    defaults = default_vnstock_runtime_settings()
-    config = RuntimeVnstockConfig.get_or_create_singleton()
+    defaults = default_vnbroker_runtime_settings()
+    config = RuntimeVnbrokerConfig.get_or_create_singleton()
 
     for key, value in defaults.items():
         setattr(config, key, value)
@@ -2328,13 +2328,13 @@ def admin_vnstock_runtime_config_reset_api(request):
 
     config.append_changelog(actor=request.user, changes={'reset': True}, reason='reset_to_defaults')
     config.save(update_fields=['changelog', 'updated_at'])
-    invalidate_vnstock_runtime_cache()
+    invalidate_vnbroker_runtime_cache()
 
     return Response(
         {
             'ok': True,
-            'message': 'Đã reset Runtime Vnstock Config về mặc định.',
-            'settings': RuntimeVnstockConfigSerializer(config).data,
+            'message': 'Đã reset Runtime Vnbroker Config về mặc định.',
+            'settings': RuntimeVnbrokerConfigSerializer(config).data,
         },
         status=status.HTTP_200_OK,
     )
@@ -2342,14 +2342,14 @@ def admin_vnstock_runtime_config_reset_api(request):
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
-def admin_vnstock_runtime_config_changelog_api(request):
-    """GET /api/admin-ops/vnstock-config/changelog/"""
-    from .models import RuntimeVnstockConfig
+def admin_vnbroker_runtime_config_changelog_api(request):
+    """GET /api/admin-ops/vnbroker-config/changelog/"""
+    from .models import RuntimeVnbrokerConfig
 
     limit = max(1, min(int(request.query_params.get('limit', 30)), 200))
     offset = max(0, int(request.query_params.get('offset', 0)))
 
-    config = RuntimeVnstockConfig.get_or_create_singleton()
+    config = RuntimeVnbrokerConfig.get_or_create_singleton()
     items = list(config.changelog or [])
     total = len(items)
     rows = items[offset: offset + limit]
@@ -2428,7 +2428,7 @@ def warm_ticker_prefetch_api(request):
 
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
-def offpeak_vnstock_ingest_api(request):
+def offpeak_vnbroker_ingest_api(request):
     """
     POST /api/admin-ops/prefetch/offpeak-ingest/
     Trigger ingest du lieu off-peak vao DB + refresh ticker cache Redis.
@@ -2439,7 +2439,7 @@ def offpeak_vnstock_ingest_api(request):
       - max_symbols (optional, int >= 1)
     """
     from config.health import build_prefetch_health_snapshot
-    from portfolio.tasks import offpeak_vnstock_ingest
+    from portfolio.tasks import offpeak_vnbroker_ingest
 
     mode = str(request.query_params.get('mode') or request.data.get('mode') or 'async').strip().lower()
     try:
@@ -2459,7 +2459,7 @@ def offpeak_vnstock_ingest_api(request):
     task_kwargs = {key: value for key, value in task_kwargs.items() if value is not None}
 
     if mode == 'sync':
-        result = offpeak_vnstock_ingest.run(**task_kwargs)
+        result = offpeak_vnbroker_ingest.run(**task_kwargs)
         ok = str(result.get('status') or '').lower() in {'ok', 'partial'}
         return Response(
             {
@@ -2472,7 +2472,7 @@ def offpeak_vnstock_ingest_api(request):
             status=status.HTTP_200_OK,
         )
 
-    task = offpeak_vnstock_ingest.apply_async(kwargs=task_kwargs)
+    task = offpeak_vnbroker_ingest.apply_async(kwargs=task_kwargs)
     return Response(
         {
             'queued': True,
@@ -2487,7 +2487,7 @@ def offpeak_vnstock_ingest_api(request):
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
-def offpeak_vnstock_ingest_history_api(request):
+def offpeak_vnbroker_ingest_history_api(request):
     """
     GET /api/admin-ops/prefetch/offpeak-ingest/history/
     Tra ve latest run va history gan day cua offpeak ingest task.
@@ -2693,11 +2693,11 @@ def admin_intraday_universe_warm_now_api(request):
     các group được chọn trong intraday_universe_group_ids (runtime settings).
     """
     from django.utils import timezone
-    from portfolio.runtime_policy_helpers import _get_prefetch_runtime_settings
+    from portfolio.runtime_policy_helpers import _get_runtime_prefetch_settings
     from portfolio.models import SecuritiesItem
     from portfolio.tasks_symbol_engagement import warmup_symbol_intraday
 
-    runtime = _get_prefetch_runtime_settings()
+    runtime = _get_runtime_prefetch_settings()
     raw_group_ids = runtime.get('intraday_universe_group_ids', [])
     group_ids = []
     for raw in raw_group_ids:

@@ -18,6 +18,11 @@
 | NOD-REQ-08 | Production compose khong con env legacy bridge | P0 | N5 |
 | NOD-REQ-09 | Smoke test production khong con 5xx/console error do hybrid | P0 | N6 |
 | NOD-REQ-10 | Audit trail phai dong bo voi taskboard va evidence | P1 | ALL |
+| NOD-REQ-11 | Stock detail khong duoc crash khi whale analytics snapshot rong / malformed | P0 | N0 |
+| NOD-REQ-12 | Whale analytics route phai co contract on dinh, khong duoc tra silent `{}` cho frontend | P0 | N0 |
+| NOD-REQ-13 | Admin-core overview/health khong duoc surface 404 cho browser | P0 | N0 |
+| NOD-REQ-14 | Support phai phan biet empty data va transport failure | P1 | N0 |
+| NOD-REQ-15 | Dashboard/transactions/whale-alerts phai render empty/onboarding state on dinh | P1 | N0 |
 
 ---
 
@@ -35,3 +40,8 @@
 | NOD-REQ-08 | N5.3 | Compose file review + runtime env check |
 | NOD-REQ-09 | N6.2 | Production browser reload |
 | NOD-REQ-10 | ALL | Ledger + dashboard updated after each slice |
+| NOD-REQ-11 | N0.1 | Browser stock detail smoke, no JS exception |
+| NOD-REQ-12 | N0.1, N0.2 | API payload snapshot for whale analytics contract |
+| NOD-REQ-13 | N0.2 | Route proof + operator overview smoke |
+| NOD-REQ-14 | N0.3 | Support page snapshot + no console errors |
+| NOD-REQ-15 | N0.3, N0.4 | Dashboard/transactions/whale-alerts smoke |

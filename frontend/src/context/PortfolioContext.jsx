@@ -27,6 +27,19 @@ import { isRequestCanceled } from '../utils/requestCancellation';
 
 const PortfolioContext = createContext(null);
 
+function shouldSuppressAuthBootstrapError(errorLike) {
+  const status = Number(errorLike?.response?.status || 0);
+  if ([502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  const message = String(errorLike?.message || '').toLowerCase();
+  return message.includes('network error')
+    || message.includes('timeout')
+    || message.includes('err_connection_reset')
+    || message.includes('err_empty_response');
+}
+
 export function PortfolioProvider({ children }) {
   const [portfolios, setPortfolios] = useState([]);
   const [activePortfolioId, setActivePortfolioId] = useState(null);
@@ -93,6 +106,8 @@ export function PortfolioProvider({ children }) {
       }
     } else if (capabilityResult.reason?.response?.status === 401) {
       authFailed = true;
+    } else if (shouldSuppressAuthBootstrapError(capabilityResult.reason)) {
+      setCapabilitySnapshot(null);
     } else {
       console.error('Sync capability snapshot failed:', capabilityResult.reason);
       setCapabilitySnapshot(null);
@@ -115,8 +130,10 @@ export function PortfolioProvider({ children }) {
     } else {
       if (meResult.reason?.response?.status === 401) {
         authFailed = true;
-      } else {
+      } else if (!shouldSuppressAuthBootstrapError(meResult.reason)) {
         console.error('Sync /auth/me failed:', meResult.reason);
+      } else {
+        setUserIdentity((prev) => prev);
       }
     }
 
@@ -125,8 +142,10 @@ export function PortfolioProvider({ children }) {
     } else {
       if (userConfigResult.reason?.response?.status === 401) {
         authFailed = true;
-      } else {
+      } else if (!shouldSuppressAuthBootstrapError(userConfigResult.reason)) {
         console.error('Sync user config failed:', userConfigResult.reason);
+      } else {
+        setUserConfig(null);
       }
     }
 
@@ -205,7 +224,9 @@ export function PortfolioProvider({ children }) {
           logout();
           return;
         }
-        console.error('Fetch portfolios failed:', err);
+        if (!shouldSuppressAuthBootstrapError(err)) {
+          console.error('Fetch portfolios failed:', err);
+        }
       } finally {
         setLoading(false);
       }

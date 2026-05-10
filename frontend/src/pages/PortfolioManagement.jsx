@@ -6,6 +6,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { getSubAccounts } from '../api/client';
 import { useI18n } from '../context/LangContext';
+import DNSEConnectionPanel from '../components/DNSEConnectionPanel';
 
 // ── constants ────────────────────────────────────────────────────────────────
 const CONFIRM_KEYWORD = 'XAC NHAN XOA';
@@ -549,6 +550,9 @@ export default function PortfolioManagement() {
           <button type="button" onClick={() => setGlobalError('')} className="text-red-400 hover:text-red-200 ml-4">✕</button>
         </div>
       )}
+
+      {/* DNSE Broker Connection */}
+      <DNSEConnectionPanel />
 
       {/* Portfolio cards */}
       <div className="space-y-3">

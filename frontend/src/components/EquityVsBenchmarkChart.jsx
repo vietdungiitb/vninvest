@@ -21,6 +21,22 @@ function getPeriods(t) {
   ];
 }
 
+function normalizeCurvePoints(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (Array.isArray(payload?.points)) {
+    return payload.points;
+  }
+  if (Array.isArray(payload?.data)) {
+    return payload.data;
+  }
+  if (Array.isArray(payload?.results)) {
+    return payload.results;
+  }
+  return [];
+}
+
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
@@ -56,7 +72,7 @@ export default function EquityVsBenchmarkChart({ portfolioId }) {
     setLoading(true);
     try {
       const res = await getEquityCurve(portfolioId, activePeriod);
-      setData(res.data.points || []);
+      setData(normalizeCurvePoints(res.data));
       setHasBenchmark(res.data.has_benchmark || false);
     } catch (_) {
       setData([]);

@@ -6,6 +6,7 @@
 import axios from 'axios';
 
 const apiBaseURL = process.env.REACT_APP_API_BASE_URL || '/api';
+const REQUEST_TIMEOUT_MS = 20000;
 
 function normalizeChartTimeframe(timeframe) {
   const value = String(timeframe || '1H').trim();
@@ -28,6 +29,7 @@ function normalizeChartTimeframe(timeframe) {
 const apiClient = axios.create({
   baseURL: apiBaseURL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: REQUEST_TIMEOUT_MS,
 });
 
 function getCoreRequestId(headers = {}) {
@@ -191,6 +193,8 @@ async function requestTokenRefresh() {
   if (!refreshRequestPromise) {
     refreshRequestPromise = axios.post(`${apiBaseURL}/auth/token/refresh/`, {
       refresh: refreshToken,
+    }, {
+      timeout: REQUEST_TIMEOUT_MS,
     })
       .then(({ data }) => {
         localStorage.setItem('access_token', data.access);
@@ -660,6 +664,9 @@ export const getStockFinancials = (symbol) =>
 
 export const getRealtimeWebSocketUrl = (token) => {
   const normalizedToken = token || localStorage.getItem('access_token') || '';
+  if (process.env.REACT_APP_DISABLE_REALTIME_WEBSOCKET === 'true') {
+    return null;
+  }
   const customBase = process.env.REACT_APP_WS_BASE_URL;
 
   if (customBase) {
@@ -732,8 +739,9 @@ export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management
 // --- Admin Ops (is_staff only) ---
 export const getAdminOpsStats = () => apiClient.get('/admin-ops/stats/');
 export const getAdminRuntimeKPI = () => apiClient.get('/admin-ops/runtime-kpi/');
-export const getCoreOperatorOverview = () => apiClient.get('/core/v1/operator/overview/');
-export const getCoreOperatorHealth = () => apiClient.get('/core/v1/operator/health/');
+export const getAdminAuditLog = (params = {}) => apiClient.get('/core/v1/audit-log', { params, baseURL: '' });
+export const getCoreOperatorOverview = () => apiClient.get('/core/v1/operator/overview/', { baseURL: '' });
+export const getCoreOperatorHealth = () => apiClient.get('/core/v1/operator/health/', { baseURL: '' });
 export const getCoreOperatorTenants = (params = {}) => apiClient.get('/core/v1/operator/tenants/', { params });
 export const getCoreOperatorTenantDetail = (tenantId) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/`);
 export const getCoreOperatorTenantServiceAccounts = (tenantId, params = {}) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/service-accounts/`, { params });
@@ -746,15 +754,15 @@ export const updateAdminPrefetchRuntimeSettings = (payload) =>
 export const getAdminPrefetchTimePolicy = () => apiClient.get('/admin-ops/system-ai-settings/');
 export const updateAdminPrefetchTimePolicy = (payload) =>
   apiClient.put('/admin-ops/system-ai-settings/', { prefetch_time_policy: payload });
-export const getAdminVnstockConfigCurrent = () => apiClient.get('/admin-ops/vnstock-config/current/');
-export const updateAdminVnstockConfig = (payload) => apiClient.patch('/admin-ops/vnstock-config/update-config/', payload);
-export const resetAdminVnstockConfig = () => apiClient.post('/admin-ops/vnstock-config/reset-to-defaults/');
+export const getAdminVnstockConfigCurrent = () => apiClient.get('/admin-ops/vnbroker-config/current/');
+export const updateAdminVnstockConfig = (payload) => apiClient.patch('/admin-ops/vnbroker-config/update-config/', payload);
+export const resetAdminVnstockConfig = () => apiClient.post('/admin-ops/vnbroker-config/reset-to-defaults/');
 export const getAdminVnstockConfigChangelog = (limit = 20, offset = 0) =>
-  apiClient.get(`/admin-ops/vnstock-config/changelog/?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
+  apiClient.get(`/admin-ops/vnbroker-config/changelog/?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
 export const getAdminVnstockBenchmarkLatest = () =>
-  apiClient.get('/admin-ops/vnstock-config/benchmark-price-board/latest/');
+  apiClient.get('/admin-ops/vnbroker-config/benchmark-price-board/latest/');
 export const runAdminVnstockBenchmark = (payload) =>
-  apiClient.post('/admin-ops/vnstock-config/benchmark-price-board/run/', payload || {});
+  apiClient.post('/admin-ops/vnbroker-config/benchmark-price-board/run/', payload || {});
 export const warmTickerPrefetch = (mode = 'async') =>
   apiClient.post(`/admin-ops/prefetch/warm/?mode=${encodeURIComponent(mode)}`);
 export const syncMarketGroups = (mode = 'all', clear = false) =>
@@ -794,6 +802,13 @@ export const createAdminGlobalScreenerRule = (payload) => apiClient.post('/portf
 export const updateAdminGlobalScreenerRule = (id, payload) => apiClient.put(`/portfolio/admin/screener/rules/${id}/`, payload);
 export const deleteAdminGlobalScreenerRule = (id) => apiClient.delete(`/portfolio/admin/screener/rules/${id}/`);
 export const runAdminGlobalScreenerManual = () => apiClient.post('/portfolio/admin/screener/run-manual/');
+
+// --- Broker Integration (DNSE) ---
+export const getDNSEConfig = () => apiClient.get('/broker/dnse/config/');
+export const updateDNSEConfig = (data) => apiClient.post('/broker/dnse/config/', data);
+export const syncDNSEAccounts = () => apiClient.post('/broker/dnse/sync-accounts/');
+export const getDNSETokenStatus = () => apiClient.get('/broker/dnse/token-status/');
+export const placeDNSEOrder = (data) => apiClient.post('/broker/dnse/place-order/', data);
 
 // --- Crawling Control API ---
 export const getAdminCrawlJobs = () => apiClient.get('/v1/admin/crawl/jobs/');

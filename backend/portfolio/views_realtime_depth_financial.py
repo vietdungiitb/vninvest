@@ -36,7 +36,7 @@ class DepthChartView(APIView):
         try:
             df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
         except ExternalSystemException as exc:
-            logger.warning('DepthChartView lỗi vnstock %s: %s', normalized_symbol, exc)
+            logger.warning('DepthChartView lỗi vnbroker %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
 
         if df is None or df.empty:
@@ -148,14 +148,14 @@ class FinancialMetricsView(APIView):
                 source=None,
             )
         except ExternalSystemException as exc:
-            logger.warning('FinancialMetricsView lỗi vnstock %s: %s', normalized_symbol, exc)
-            if exc.code == 'vnstock_missing':
+            logger.warning('FinancialMetricsView lỗi vnbroker %s: %s', normalized_symbol, exc)
+            if exc.code == 'vnbroker_missing':
                 return Response({'detail': str(exc.message)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             return Response(
                 {
                     'symbol': normalized_symbol,
                     'years': [],
-                    'source': 'vnstock_unavailable',
+                    'source': 'vnbroker_unavailable',
                     'fetched_at': timezone.now().isoformat(),
                 }
             )
@@ -222,7 +222,7 @@ class FinancialMetricsView(APIView):
         result = {
             'symbol': normalized_symbol,
             'years': years,
-            'source': str(getattr(df, 'attrs', {}).get('financial_ratio_source') or 'vnstock').strip().lower(),
+            'source': str(getattr(df, 'attrs', {}).get('financial_ratio_source') or 'vnbroker').strip().lower(),
             'fetched_at': timezone.now().isoformat(),
         }
         _cache_set(cache_key, result, timeout=21600)

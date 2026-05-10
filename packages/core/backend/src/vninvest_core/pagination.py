@@ -14,5 +14,5 @@ class AlertCursorPagination(CoreCursorPagination):
 
 
 class AuditCursorPagination(CoreCursorPagination):
-    ordering = '-created_at'
+    ordering = '-occurred_at'
     page_size = 100

@@ -85,7 +85,7 @@ def _build_whale_event_id(signal: WhaleSignal, normalized_side: str) -> str:
 def _derive_source_layer(source: str) -> str:
     """Map source string -> semantic source_layer token."""
     s = str(source or "").lower()
-    if "vnstock" in s or ":api" in s:
+    if "vnbroker" in s or ":api" in s:
         return "api"
     if "db" in s or "intraday_tick" in s:
         return "db"

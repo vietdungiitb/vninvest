@@ -71,4 +71,4 @@ class TestCursorPaginationClasses(TestCase):
     def test_audit_cursor_pagination_page_size(self):
         p = AuditCursorPagination()
         self.assertEqual(p.page_size, 100)
-        self.assertEqual(p.ordering, "-created_at")
+        self.assertEqual(p.ordering, "-occurred_at")

@@ -79,7 +79,7 @@ def run_warmup_cache():
         
         try:
             from .tasks_prefetch import _cache_ticker_rows_from_dataframe
-            from .adapters.vnstock_adapter import fetch_price_board_dataframe
+            from .adapters.vnbroker_adapter import fetch_price_board_dataframe
             df = fetch_price_board_dataframe(hot_symbols, anchor_symbol=hot_symbols[0])
             if df is not None and not df.empty:
                 cached_count = _cache_ticker_rows_from_dataframe(
