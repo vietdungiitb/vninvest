@@ -690,7 +690,14 @@ export const getTrackedSymbols = () => {
   if (!hasAuthTokens()) {
     return Promise.resolve({ data: [] });
   }
-  return apiClient.get('/stock-management/tracked-symbols/');
+  return apiClient.get('/stock-management/tracked-symbols/').catch((error) => {
+    const status = error?.response?.status;
+    if (status === 503 || status === 502 || status === 504) {
+      console.warn('getTrackedSymbols fallback empty due to service unavailability:', status);
+      return { data: [] };
+    }
+    throw error;
+  });
 };
 export const addTrackedSymbol = (symbol, sourceGroupId = null, whaleAlertThresholdMillion = null) =>
   apiClient.post('/stock-management/tracked-symbols/', {

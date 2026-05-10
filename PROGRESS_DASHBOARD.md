@@ -1,3 +1,24 @@
+# ✅ AUDIT FILE LIST (2026-05-10-TRACKED-SYMBOLS-GRACEFUL-FALLBACK) — Giảm nhiễu bootstrap do tracked-symbols 5xx
+
+Mục tiêu:
+- Chuyển `tracked-symbols` sang fallback rỗng khi upstream/bridge chưa sẵn sàng để không làm treo `/portfolios`.
+- Giữ DNSE panel và dashboard bootstrap được ngay cả khi danh sách theo dõi tạm thời không truy xuất được.
+
+Files changed:
+- `frontend/src/api/client.js` (MODIFIED)
+- `packages/core/backend/src/market_data/legacy_views.py` (MODIFIED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+
+Validation:
+- PASSED: `get_errors` trên 2 file code mới sửa.
+- PASSED: frontend rebuild thành công sau patch.
+- PARTIAL: core-api vừa recreate và vẫn đang `health: starting`, nên live browser xác nhận cuối cùng sẽ làm sau khi container lên `healthy`.
+
+Status:
+- Page `/portfolios` đã có đường fallback kỹ thuật cho tracked symbols.
+- Cần chờ core-api bootstrap xong để xác nhận runtime 200 ổn định.
+
 # ✅ AUDIT FILE LIST (2026-05-10-DNSE-TRADING-OTP-TOKEN-PLACE-ORDER-FLOW) — Hoàn thiện luồng giao dịch DNSE trong Portfolios SaaS
 
 Mục tiêu:

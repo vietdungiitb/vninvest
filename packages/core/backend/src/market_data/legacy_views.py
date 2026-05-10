@@ -302,7 +302,7 @@ class TrackedSymbolsView(APIView):
             '/api/stock-management/tracked-symbols/',
             unavailable_message='Legacy tracked-symbol bridge hiện không khả dụng.',
         )
-        if bridged_response is not None:
+        if bridged_response is not None and bridged_response.status_code < 500:
             return bridged_response
         return _empty_list()
 

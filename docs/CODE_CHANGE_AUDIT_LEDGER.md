@@ -1,3 +1,22 @@
+# Entry 2026-05-10-TRACKED-SYMBOLS-GRACEFUL-FALLBACK — Giảm nhiễu bootstrap do endpoint tracked-symbols trả 5xx
+
+**Mục tiêu:**
+- Ngăn `/api/stock-management/tracked-symbols/` làm vỡ bootstrap của `/portfolios` khi upstream bridge/legacy backend chưa sẵn sàng.
+- Giữ page danh mục hoạt động với fallback rỗng thay vì chặn toàn bộ UI bằng console 5xx.
+
+**Files changed:**
+- `frontend/src/api/client.js` (MODIFIED) — `getTrackedSymbols()` trả `{ data: [] }` khi gặp 502/503/504.
+- `packages/core/backend/src/market_data/legacy_views.py` (MODIFIED) — `TrackedSymbolsView.get()` fallback sang `_empty_list()` khi bridge trả 5xx.
+- `module_tree_full.md` (REGENERATED) — không thay đổi cấu trúc, chỉ ghi nhận trạng thái runtime đã kiểm tra.
+
+**Validation:**
+- PASSED: `get_errors` trên 2 file thay đổi không phát sinh lỗi.
+- PASSED: frontend rebuild thành công sau patch client fallback.
+- PASS PARTIAL: browser bootstrap còn thấy 502 khi core-api đang ở trạng thái `health: starting` sau recreate, nhưng page đã có fallback rỗng cho tracked symbols khi service sẵn sàng.
+
+**Residual risk:**
+- `core-api` hiện bootstrap chậm sau `--force-recreate`; cần chờ container đạt `healthy` để xác nhận 200/[] trong runtime hoàn chỉnh.
+
 # Entry 2026-05-10-DNSE-TRADING-OTP-TOKEN-PLACE-ORDER-FLOW — Hoàn thiện luồng giao dịch DNSE từ UI danh mục
 
 **Mục tiêu:**
