@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-10 18:30:34`
+Generated at: `2026-05-10 19:31:28`
 
 ## Summary
 
 - Total modules: 1015
 - Python modules: 515
 - JS/TS modules: 500
-- Total classes: 838
-- Total functions: 2792
-- Total top-level variables: 4479
+- Total classes: 841
+- Total functions: 2795
+- Total top-level variables: 4508
 
 ## Python Modules
 
@@ -3162,12 +3162,13 @@ Generated at: `2026-05-10 18:30:34`
 - Classes:
   - `PortfolioDetailView` -> methods: `delete`, `get`, `patch`
   - `PortfolioListCreateView` -> methods: `get`, `post`
+  - `TransactionDetailView` -> methods: `delete`, `patch`
   - `TransactionListCreateView` -> methods: `get`, `post`
   - `WatchlistItemDeleteView` -> methods: `delete`
   - `WatchlistItemListCreateView` -> methods: `get`, `post`
   - `WatchlistListCreateView` -> methods: `get`, `post`
 - Functions:
-  - `_get_portfolio_or_404`, `_get_watchlist_or_404`
+  - `_get_portfolio_or_404`, `_get_transaction_or_404`, `_get_watchlist_or_404`
 
 ### `packages/core/backend/src/user_workspace/views_dnse.py`
 
@@ -3322,6 +3323,8 @@ Generated at: `2026-05-10 18:30:34`
   - `AlertCursorPagination`
   - `AuditCursorPagination`
   - `CoreCursorPagination`
+  - `OrderFlowCursorPagination`
+  - `SnapshotCursorPagination`
 
 ### `packages/core/backend/src/vninvest_core/settings.py`
 
@@ -3617,7 +3620,7 @@ Generated at: `2026-05-10 18:30:34`
 - Functions:
   - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminAuditLog`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDNSEConfig`, `getDNSETokenStatus`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `normalizeTenantPatWritePayload`, `normalizeTenantServiceAccountWritePayload`, `placeDNSEOrder`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncDNSEAccounts`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updateDNSEConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
 - Top-level variables:
-  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `REQUEST_TIMEOUT_MS`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `rawRows`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `requestUrl`, `response`, `rows`, `scopes`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
+  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `REQUEST_TIMEOUT_MS`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `rawRows`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `requestUrl`, `response`, `rows`, `scopes`, `status`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
 ### `frontend/src/api/client.test.js`
 
@@ -5047,9 +5050,9 @@ Generated at: `2026-05-10 18:30:34`
 ### `packages/mobile/src/services/portfolioApi.ts`
 
 - Functions:
-  - `getAllocation`, `getHoldings`, `getPortfolios`, `getSummary`
+  - `getAllocation`, `getHoldings`, `getPortfolios`, `getSummary`, `loadPortfolioTransactions`
 - Top-level variables:
-  - `response`
+  - `avgCost`, `buildHoldingsFromTransactions`, `bySymbol`, `current`, `fee`, `holdings`, `marketValue`, `parsed`, `price`, `quantity`, `response`, `sellQty`, `side`, `symbol`, `toNumber`, `total`, `totalMarketValue`, `transactions`, `value`
 
 ### `packages/mobile/src/services/realtime.ts`
 
@@ -5068,14 +5071,14 @@ Generated at: `2026-05-10 18:30:34`
 - Functions:
   - `createTransaction`, `deleteTransaction`, `getSubAccounts`, `getTransactions`, `searchStocks`, `updateTransaction`, `validateStockSymbol`
 - Top-level variables:
-  - `data`, `response`
+  - `mapToMobileTransaction`, `portfolios`, `response`, `rows`, `search`, `transactions`
 
 ### `packages/mobile/src/services/watchlistApi.ts`
 
 - Functions:
-  - `addTrackedSymbol`, `deleteTrackedSymbol`, `getAggregateWhaleFeed`, `getTrackedSymbols`, `getWatchlistGroups`, `getWhaleAdvisories`, `refreshWhaleAdvisory`
+  - `addTrackedSymbol`, `deleteTrackedSymbol`, `ensureDefaultWatchlist`, `getAggregateWhaleFeed`, `getTrackedSymbols`, `getWatchlistGroups`, `getWhaleAdvisories`, `loadTrackedFromWatchlist`, `refreshWhaleAdvisory`
 - Top-level variables:
-  - `coreResponse`, `response`
+  - `coreResponse`, `createdResponse`, `listResponse`, `preferred`, `response`, `row`, `rows`, `tracked`, `trackedSymbolIndex`, `watchlist`, `watchlists`
 
 ### `packages/mobile/src/store/authStore.ts`
 
@@ -6101,9 +6104,9 @@ Generated at: `2026-05-10 18:30:34`
 - Classes:
   - `CoreAdapterHttpError`
 - Functions:
-  - `appendQuery`, `createCoreAdvisorySessionClient`, `createCoreWhaleAnalyticsSnapshotClient`, `getAiAdvisorySessionWithFallback`, `readJsonBody`, `requestJson`, `resolveCoreBaseUrl`, `resolveFetchImpl`, `resolvePortfolioApiBaseUrl`, `resolveStockWorkspaceBaseUrl`
+  - `appendQuery`, `createCoreAdvisorySessionClient`, `createCoreWhaleAnalyticsSnapshotClient`, `getAiAdvisorySessionWithFallback`, `readJsonBody`, `requestJson`, `resolveCoreBaseUrl`, `resolveFetchImpl`, `resolvePortfolioApiBaseUrl`
 - Top-level variables:
-  - `baseRequestOptions`, `canFallbackToV1`, `contentType`, `coreAdapter`, `coreBase`, `fallbackPayload`, `normalizedSymbol`, `params`, `payload`, `primaryRequestOptions`, `queryString`, `request`, `response`
+  - `contentType`, `coreAdapter`, `coreBase`, `normalizedRequestOptions`, `normalizedSymbol`, `params`, `payload`, `queryString`, `request`, `response`
 
 ### `packages/web/src/adapters/core/index.js`
 

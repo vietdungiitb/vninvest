@@ -1,3 +1,33 @@
+# 2026-05-10 — SAAS-15 Gate C: Client migration source cleanup — COMPLETED ✅
+
+- `packages/mobile` services đã migrate khỏi legacy paths sang core-native endpoints (`/core/v1/workspace/*`, `/core/v1/market-data/*`).
+- `packages/web` advisory adapter đã bỏ base `\/api\/stock-management` và chuyển sang `/core/v1/advisory/latest/<symbol>/`.
+- Core backend đã bổ sung endpoint `PATCH/DELETE /core/v1/workspace/transactions/<transaction_id>/` để giữ flow edit/xóa transaction cho mobile.
+- Gate C SAAS-15 cập nhật từ 🟡 → ✅ trong evidence.
+- Decommission blocker còn lại: Gate F production readiness (rollback drill + backup verification).
+
+# 2026-05-10 — Gate B SAAS-15 fix: LEGACY_DATABASE_URL missing in core-worker/core-beat — COMPLETED ✅
+
+- Root cause: `docker-compose.dev.yml` thiếu `LEGACY_DATABASE_URL` trong environment của `core-worker` và `core-beat` (chỉ có trong `core-api`).
+- Fix: Thêm `LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest` vào cả 2 services.
+- Validation: Worker log sau restart cho thấy `status: ok` từ tất cả 3 materializer tasks — không còn `skipped: no_legacy_db_url`.
+- Gate B SAAS-15: 🔴 BLOCKED → ✅ GREEN.
+- Blocker SAAS-15 còn lại duy nhất: Gate C (portfolio/transaction management chưa có equivalent trong packages/core).
+
+# 2026-05-10 — SAAS-14 Cursor Pagination Rollout — COMPLETED ✅
+
+- Đã apply `CoreCursorPagination` / subclasses cho 6 list views còn thiếu: `WhaleFeedAggregateView`, `OrderFlowEventListView`, `SymbolSnapshotListView`, `SessionFactsListView`, `QuotaListView`, `InvoiceListView`.
+- Thêm 2 subclass mới: `OrderFlowCursorPagination` và `SnapshotCursorPagination` vào `vninvest_core/pagination.py`.
+- Coverage cursor pagination: ~60% → **100%** cho tất cả list generics trong domain apps.
+- Validation live: 6/6 PASS trong `manage.py shell` assertion bên trong container `core-api`.
+- SAAS Architecture checklist item #7 (Cursor pagination) nâng từ ~60% lên 100%.
+
+# 2026-05-10 — Tracked-symbols bootstrap fallback correction
+
+- Đã sửa đúng view `packages/core/backend/src/market_data/views.py` để `GET /api/stock-management/tracked-symbols/` không còn đẩy 5xx khi legacy bridge/upstream chưa sẵn sàng.
+- Đã regenerate `module_tree_full.md` sau thay đổi code và recreate `core-api` container bằng `docker compose -f docker-compose.dev.yml up -d --build --force-recreate core-api`.
+- Trạng thái live hiện tại: browser reload `/portfolios` đã nhận `tracked-symbols = 200 []`; page bootstrap không còn bị endpoint này làm vỡ.
+
 # ✅ AUDIT FILE LIST (2026-05-10-TRACKED-SYMBOLS-GRACEFUL-FALLBACK) — Giảm nhiễu bootstrap do tracked-symbols 5xx
 
 Mục tiêu:

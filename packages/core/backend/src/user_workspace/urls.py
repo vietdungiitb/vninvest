@@ -24,6 +24,7 @@ urlpatterns = [
     path('workspace/portfolios/', views.PortfolioListCreateView.as_view(), name='portfolio-list'),
     path('workspace/portfolios/<int:portfolio_id>/', views.PortfolioDetailView.as_view(), name='portfolio-detail'),
     path('workspace/portfolios/<int:portfolio_id>/transactions/', views.TransactionListCreateView.as_view(), name='transaction-list'),
+    path('workspace/transactions/<int:transaction_id>/', views.TransactionDetailView.as_view(), name='transaction-detail'),
     path('workspace/watchlists/', views.WatchlistListCreateView.as_view(), name='watchlist-list'),
     path('workspace/watchlists/<int:watchlist_id>/items/', views.WatchlistItemListCreateView.as_view(), name='watchlist-items'),
     path('workspace/watchlists/<int:watchlist_id>/items/<str:symbol>/', views.WatchlistItemDeleteView.as_view(), name='watchlist-item-delete'),
@@ -37,6 +38,7 @@ urlpatterns = [
     path('portfolio/portfolios/', views.PortfolioListCreateView.as_view(), name='legacy-portfolio-list'),
     path('portfolio/portfolios/<int:portfolio_id>/', views.PortfolioDetailView.as_view(), name='legacy-portfolio-detail'),
     path('portfolio/portfolios/<int:portfolio_id>/transactions/', views.TransactionListCreateView.as_view(), name='legacy-portfolio-transactions'),
+    path('portfolio/transactions/<int:transaction_id>/', views.TransactionDetailView.as_view(), name='legacy-transaction-detail-native'),
 
     # Portfolio analytics — stubs (not yet migrated)
     path('portfolio/portfolios/<int:portfolio_id>/holdings/', PortfolioListAnalyticsStubView.as_view(), name='legacy-portfolio-holdings'),
@@ -52,7 +54,6 @@ urlpatterns = [
     path('portfolio/subaccounts/', GenericEmptyListView.as_view(), name='legacy-subaccount-list'),
     path('portfolio/subaccounts/<int:pk>/', GenericEmptyListView.as_view(), name='legacy-subaccount-detail'),
     path('portfolio/subaccounts/<int:pk>/transactions/', GenericEmptyListView.as_view(), name='legacy-subaccount-transactions'),
-    path('portfolio/transactions/<int:pk>/', PortfolioAnalyticsStubView.as_view(), name='legacy-transaction-detail'),
 
     # Watchlist — real data, legacy response shape
     path('portfolio/watchlist/groups/', LegacyWatchlistGroupListView.as_view(), name='legacy-watchlist-group-list'),

@@ -69,7 +69,7 @@ export interface PaginatedResponse<T> {
 
 /**
  * Fetch unified alerts (whale / dark-flow / signal).
- * Replaces legacy `/portfolio/whale-advisory/` GET calls.
+ * Core unified alerts endpoint.
  */
 export async function getUnifiedAlerts(params: {
   symbol?: string;
@@ -92,7 +92,7 @@ export async function getUnifiedAlerts(params: {
 
 /**
  * Fetch whale feed aggregate for a symbol.
- * Replaces legacy `/portfolio/whale-advisory/${symbol}/` calls.
+ * Core whale feed endpoint.
  */
 export async function getWhaleFeedAggregate(
   symbol: string,

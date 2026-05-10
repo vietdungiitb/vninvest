@@ -168,7 +168,7 @@ assert(explicitAdminAbilities[0].subject === "admin.operator.read", "Explicit ad
 
 const advisoryRequests = [];
 const advisoryClient = createCoreAdvisorySessionClient({
-  env: { VNINVEST_STOCK_WORKSPACE_BASE_URL: "http://backend.local/api/stock-management" },
+  env: { VNINVEST_CORE_BASE_URL: "http://backend.local/core/v1" },
   fetchImpl: async (url) => {
     advisoryRequests.push(url);
 
@@ -221,35 +221,15 @@ const advisorySessionPayload = await advisoryClient.getAiAdvisorySession({
 
 assert(advisorySessionPayload.aggregate.decision.action === "accumulate", "Core advisory session client must return advisory session JSON");
 assert(
-  advisoryRequests[0] === "http://backend.local/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1&trade_date=2026-04-15",
+  advisoryRequests[0] === "http://backend.local/core/v1/advisory/latest/BCM/?date=2026-04-15",
   "Core advisory session client must build the stock advisory session endpoint correctly",
 );
 
 const fallbackAdvisoryRequests = [];
 const fallbackAdvisoryClient = createCoreAdvisorySessionClient({
-  env: { VNINVEST_STOCK_WORKSPACE_BASE_URL: "http://backend.local/api/stock-management" },
+  env: { VNINVEST_CORE_BASE_URL: "http://backend.local/core/v1" },
   fetchImpl: async (url) => {
     fallbackAdvisoryRequests.push(url);
-
-    if (fallbackAdvisoryRequests.length === 1) {
-      return {
-        ok: false,
-        status: 403,
-        statusText: "Forbidden",
-        headers: {
-          get(headerName) {
-            return String(headerName || "").toLowerCase() === "content-type" ? "application/json" : null;
-          },
-        },
-        async json() {
-          return {
-            ok: false,
-            reason: "holistic_disabled",
-            message: "Holistic Advisory V1 dang tat theo rollout gate.",
-          };
-        },
-      };
-    }
 
     return {
       ok: true,
@@ -259,7 +239,7 @@ const fallbackAdvisoryClient = createCoreAdvisorySessionClient({
         return {
           ok: true,
           symbol: "BCM",
-          contract_version: "v1",
+          contract_version: "core_v1",
           selected_trade_date: "2026-04-15",
         };
       },
@@ -274,14 +254,12 @@ const fallbackAdvisoryPayload = await fallbackAdvisoryClient.getAiAdvisorySessio
   tradeDate: "2026-04-15",
 });
 
-assert(fallbackAdvisoryRequests.length === 2, "Core advisory client must retry once when the holistic rollout gate denies v2");
+assert(fallbackAdvisoryRequests.length === 1, "Core advisory client should issue a single request against the core advisory endpoint");
 assert(
-  fallbackAdvisoryRequests[1] === "http://backend.local/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v1&trade_date=2026-04-15",
-  "Core advisory client must retry with v1 when the holistic rollout gate denies v2",
+  fallbackAdvisoryRequests[0] === "http://backend.local/core/v1/advisory/latest/BCM/?date=2026-04-15",
+  "Core advisory client must build advisory latest endpoint on core base URL",
 );
-assert(fallbackAdvisoryPayload.contract_version === "v1", "Fallback advisory payload must expose the v1 contract version");
-assert(fallbackAdvisoryPayload.requested_contract_version === "v2", "Fallback advisory payload must retain the originally requested contract");
-assert(fallbackAdvisoryPayload.contract_fallback_reason === "holistic_disabled", "Fallback advisory payload must expose the rollout gate reason");
+assert(fallbackAdvisoryPayload.contract_version === "core_v1", "Advisory payload should expose the core contract version");
 
 const whaleSnapshotRequests = [];
 const whaleSnapshotClient = createCoreWhaleAnalyticsSnapshotClient({

@@ -39,6 +39,17 @@ def _get_watchlist_or_404(user, watchlist_id):
     return watchlist
 
 
+def _get_transaction_or_404(user, transaction_id):
+    try:
+        transaction = Transaction.objects.select_related('portfolio').get(
+            pk=transaction_id,
+            portfolio__user=user,
+        )
+    except Transaction.DoesNotExist:
+        raise NotFound(f'Transaction {transaction_id} not found.')
+    return transaction
+
+
 class PortfolioListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -90,6 +101,22 @@ class TransactionListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         txn = serializer.save(portfolio=portfolio)
         return Response(TransactionSerializer(txn).data, status=status.HTTP_201_CREATED)
+
+
+class TransactionDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, transaction_id):
+        transaction = _get_transaction_or_404(request.user, transaction_id)
+        serializer = TransactionSerializer(transaction, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, transaction_id):
+        transaction = _get_transaction_or_404(request.user, transaction_id)
+        transaction.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class WatchlistListCreateView(APIView):

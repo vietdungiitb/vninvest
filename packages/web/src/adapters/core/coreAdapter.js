@@ -4,10 +4,6 @@ function resolveCoreBaseUrl(env = {}) {
   return env.REACT_APP_CORE_BASE_URL || env.VNINVEST_CORE_BASE_URL || "/core/v1";
 }
 
-function resolveStockWorkspaceBaseUrl(env = {}) {
-  return env.REACT_APP_STOCK_WORKSPACE_BASE_URL || env.VNINVEST_STOCK_WORKSPACE_BASE_URL || "/api/stock-management";
-}
-
 function resolvePortfolioApiBaseUrl(env = {}) {
   return env.REACT_APP_API_BASE_URL || env.VNINVEST_API_BASE_URL || "/api";
 }
@@ -111,13 +107,12 @@ export const coreAdapter = {
   },
   getAiAdvisorySessionEndpoint(env = {}, options = {}) {
     const normalizedSymbol = String(options.symbol || "").trim().toUpperCase();
+    const coreBase = resolveCoreBaseUrl(env);
 
     return appendQuery(
-      `${resolveStockWorkspaceBaseUrl(env)}/stocks/${encodeURIComponent(normalizedSymbol)}/ai-advisory-session/`,
+      `${coreBase}/advisory/latest/${encodeURIComponent(normalizedSymbol)}/`,
       {
-        contract: options.contract,
-        include_benchmarks: options.includeBenchmarks ? 1 : undefined,
-        trade_date: options.tradeDate,
+        date: options.tradeDate,
       },
     );
   },
@@ -142,53 +137,15 @@ export function createCoreAdvisorySessionClient(options = {}) {
   const request = resolveFetchImpl(fetchImpl);
 
   async function getAiAdvisorySessionWithFallback(requestOptions = {}) {
-    const baseRequestOptions = {
+    const normalizedRequestOptions = {
       tradeDate: requestOptions.tradeDate,
       symbol: String(requestOptions.symbol || "").trim().toUpperCase(),
     };
-    const primaryRequestOptions = {
-      ...baseRequestOptions,
-      contract: requestOptions.contract || "v2",
-      includeBenchmarks: requestOptions.includeBenchmarks !== false,
-    };
 
-    try {
-      return await requestJson(
-        request,
-        coreAdapter.getAiAdvisorySessionEndpoint(env, primaryRequestOptions),
-      );
-    } catch (error) {
-      const canFallbackToV1 =
-        primaryRequestOptions.contract === "v2"
-        && primaryRequestOptions.includeBenchmarks
-        && error instanceof CoreAdapterHttpError
-        && error.status === 403
-        && error.payload?.reason === "holistic_disabled";
-
-      if (!canFallbackToV1) {
-        throw error;
-      }
-
-      const fallbackPayload = await requestJson(
-        request,
-        coreAdapter.getAiAdvisorySessionEndpoint(env, {
-          ...baseRequestOptions,
-          contract: "v1",
-          includeBenchmarks: false,
-        }),
-      );
-
-      if (fallbackPayload && typeof fallbackPayload === "object") {
-        return {
-          ...fallbackPayload,
-          requested_contract_version: primaryRequestOptions.contract,
-          fallback_contract_version: "v1",
-          contract_fallback_reason: error.payload?.reason || "holistic_disabled",
-        };
-      }
-
-      return fallbackPayload;
-    }
+    return requestJson(
+      request,
+      coreAdapter.getAiAdvisorySessionEndpoint(env, normalizedRequestOptions),
+    );
   }
 
   return {

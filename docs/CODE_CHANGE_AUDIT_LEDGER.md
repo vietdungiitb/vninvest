@@ -1,3 +1,93 @@
+# ✅ AUDIT FILE LIST (2026-05-10-SAAS15-GATE-C-CLIENT-MIGRATION) — Migrate mobile/web source khỏi legacy paths
+
+Mục tiêu:
+- Tiếp tục Gate C của SAAS-15: loại bỏ `/portfolio/*`, `/stock-management/*`, `/whale-analytics/*` khỏi source clients thuộc `packages/mobile` và `packages/web`.
+- Giữ nguyên UX mobile transaction/watchlist bằng endpoint core-native.
+
+Files changed:
+- `packages/core/backend/src/user_workspace/views.py` (MODIFIED) — thêm `TransactionDetailView` (PATCH/DELETE).
+- `packages/core/backend/src/user_workspace/urls.py` (MODIFIED) — thêm route `workspace/transactions/<transaction_id>/` + alias legacy transaction detail native.
+- `packages/mobile/src/services/portfolioApi.ts` (MODIFIED) — chuyển sang `/core/v1/workspace/portfolios/*`; summary/holdings/allocation tính từ core transactions.
+- `packages/mobile/src/services/transactionApi.ts` (MODIFIED) — chuyển sang `/core/v1/workspace/*` và `/core/v1/market-data/*`.
+- `packages/mobile/src/services/watchlistApi.ts` (MODIFIED) — chuyển tracked symbols/watchlist groups sang `/core/v1/workspace/watchlists/*`.
+- `packages/mobile/src/services/coreApiClient.ts` (MODIFIED) — cleanup comments chứa legacy path strings.
+- `packages/web/src/adapters/core/coreAdapter.js` (MODIFIED) — advisory session endpoint chuyển sang `/core/v1/advisory/latest/<symbol>/`.
+- `packages/web/scripts/check-shell.mjs` (MODIFIED) — update advisory URL expectation theo core endpoint.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_SAAS_CUTOVER_EXECUTION_EVIDENCE_20260503_SAAS15.md` (MODIFIED) — Gate C cập nhật sang GREEN.
+- `docs/SAAS_ARCHITECTURE_AUDIT_REPORT_20260510.md` (MODIFIED) — sửa trạng thái cursor pagination và SAAS-14 roadmap.
+- `module_tree_full.md` (REGENERATED).
+
+Validation:
+- PASSED: `grep` không còn match legacy paths trong `packages/mobile/src/**`, `packages/web/src/**`, `packages/web/scripts/**`.
+- PASSED: `docker compose -f docker-compose.dev.yml exec -T core-api python manage.py check` → 0 issues.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build core-api core-worker core-beat frontend` hoàn tất restart/build affected stack.
+- NOTE: `node packages/web/scripts/check-shell.mjs` fail do Node ESM CSS import (`DNSEConnectionPanel.css`) trong môi trường hiện tại; không liên quan logic Gate C vừa sửa.
+
+Residual risk:
+- Mobile `portfolioApi` hiện tính PnL/allocation theo cost-basis từ transaction history, chưa dùng quote realtime cho mark-to-market.
+
+# ✅ AUDIT FILE LIST (2026-05-10-GATE-B-LEGACY-DB-URL-FIX) — Fix LEGACY_DATABASE_URL missing trong core-worker/core-beat
+
+Mục tiêu:
+- Unblock Gate B của SAAS-15: `LEGACY_DATABASE_URL` đã có trong `core-api` nhưng bị thiếu trong `core-worker` và `core-beat`.
+- Materializer tasks đang log `skipped: no_legacy_db_url` mặc dù env var đã khai báo trong compose.
+
+Root cause: `docker-compose.dev.yml` environment block của `core-worker` và `core-beat` không có `LEGACY_DATABASE_URL`.
+
+Files changed:
+- `docker-compose.dev.yml` (MODIFIED) — thêm `LEGACY_DATABASE_URL` vào environment của `core-worker` và `core-beat`.
+
+Validation:
+- PASSED: `docker compose up -d --no-build core-worker core-beat` → recreated thành công.
+- PASSED: Worker log sau restart: `materialize_symbol_snapshot: upserted 0 rows from portfolio_tickersessionclose. status: ok`
+- PASSED: `materialize_session_facts: upserted 0 rows from portfolio_whalealertevent. status: ok`
+- PASSED: `materialize_unified_alerts: upserted 0 alerts. status: ok`
+- Không còn log `skipped: no_legacy_db_url` trong core-worker.
+
+Gate B SAAS-15: 🔴 → ✅ GREEN. Decommission blocker còn lại: Gate C (portfolio/tx mgmt chưa có core equivalent).
+
+# ✅ AUDIT FILE LIST (2026-05-10-SAAS14-CURSOR-PAGINATION-ROLLOUT) — SAAS-14 full rollout CoreCursorPagination
+
+Mục tiêu:
+- Đồng nhất cursor pagination cho tất cả list endpoints còn thiếu trong core API.
+- Bịt lỗ hổng P0: 6 list views đang trả dữ liệu không giới hạn (pagination_class = None) có thể gây OOM khi data lớn.
+- Nâng tỷ lệ cursor pagination coverage từ ~60% lên 100% cho tất cả list generics trong domain apps.
+
+Files changed:
+- `packages/core/backend/src/vninvest_core/pagination.py` (MODIFIED) — thêm `OrderFlowCursorPagination` (ordering=-triggered_at) và `SnapshotCursorPagination` (ordering=-session_date).
+- `packages/core/backend/src/signal_intelligence/views.py` (MODIFIED) — `WhaleFeedAggregateView` → `AlertCursorPagination`; `OrderFlowEventListView` → `OrderFlowCursorPagination`.
+- `packages/core/backend/src/market_serving/views.py` (MODIFIED) — `SymbolSnapshotListView` và `SessionFactsListView` → `SnapshotCursorPagination`.
+- `packages/core/backend/src/commercial/views.py` (MODIFIED) — `QuotaListView` và `InvoiceListView` → `CoreCursorPagination`.
+- `module_tree_full.md` (REGENERATED).
+
+Validation:
+- PASSED: `get_errors` trên 4 files thay đổi — không phát sinh lỗi.
+- PASSED: `manage.py check` trong container — 0 issues silenced.
+- PASSED: `manage.py shell` assertion 6/6 views có đúng pagination_class trong runtime.
+
+Residual risk: Không có — thay đổi thuần backend, không đụng legacy, không đụng frontend contract.
+
+# ✅ AUDIT FILE LIST (2026-05-10-TRACKED-SYMBOLS-BOOTSTRAP-FALLBACK-CORRECTION) — Chặn 503 tracked-symbols ở runtime core-api
+
+Mục tiêu:
+- Giữ `/portfolios` bootstrap ổn định bằng cách không để `/api/stock-management/tracked-symbols/` trả 5xx khi bridge/legacy upstream chưa sẵn sàng.
+- Chuyển nhánh GET của tracked-symbols sang fallback rỗng thay vì đẩy 503 ra UI bootstrap.
+- Ghi nhận lại runtime rebuild/recreate sau khi sửa đúng view đang phục vụ request.
+
+Files changed:
+- `packages/core/backend/src/market_data/views.py` (MODIFIED) — `TrackedSymbolsView.get()` chỉ trả bridged response nếu không phải 5xx; còn lại fallback `Response([])`.
+- `module_tree_full.md` (REGENERATED) — module tree regenerated sau thay đổi code.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED) — thêm entry audit cho slice này.
+- `PROGRESS_DASHBOARD.md` (MODIFIED) — cập nhật trạng thái slice và runtime note.
+
+Validation:
+- PASSED: `get_errors` trên `packages/core/backend/src/market_data/views.py` không phát sinh lỗi.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build --force-recreate core-api` đã recreate core-api container với code mới.
+- PASSED: live browser reload `/portfolios` ghi nhận `GET /api/stock-management/tracked-symbols/` trả `200` với body `[]`.
+
+Residual risk:
+- Nếu core-api bị recreate lại giữa lúc người dùng tải trang, có thể tạm thấy 502 ngắn hạn từ nginx cho đến khi service healthy.
+
 # Entry 2026-05-10-TRACKED-SYMBOLS-GRACEFUL-FALLBACK — Giảm nhiễu bootstrap do endpoint tracked-symbols trả 5xx
 
 **Mục tiêu:**

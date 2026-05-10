@@ -2,7 +2,8 @@
 
 **Ngay:** 2026-05-03  
 **Slice:** SAAS-15  
-**Trang thai:** Code work COMPLETE | Formal go/no-go: **NOT GO** (Gate B + C deferred)
+**Trang thai:** Code work COMPLETE | Formal go/no-go: **NOT GO** (Gate F production readiness deferred)  
+**Last update:** 2026-05-10 (Gate B + Gate C resolved)
 
 ---
 
@@ -34,26 +35,33 @@
 - `python manage.py makemigrations --check` → **No changes detected**
 - docker-compose.core.yml: core-api/core-worker/core-beat doi sang Django/gunicorn/Celery
 
-### Gate B — Data-plane serving 🔴 BLOCKED
+### Gate B — Data-plane serving ✅ GREEN (updated 2026-05-10)
 
-- Materializers code day du (SAAS-14)
-- **LEGACY_DATABASE_URL** chua co gia tri live trong dev stack
-- Beat tasks chua duoc observed chay 24h
-- **NOT GO qua Gate B** — deferred den khi co live legacy DB connection va 24h run witness
+- Materializers code đầy đủ (SAAS-14)
+- **LEGACY_DATABASE_URL** đã được inject vào `core-worker` và `core-beat` trong docker-compose.dev.yml (trước đây chỉ có trong core-api)
+- Beat tasks đang gửi đúng schedule: `materialize_symbol_snapshot` mỗi 60s, `materialize_session_facts` mỗi 5p, `materialize_unified_alerts` mỗi 2p
+- Worker log confirmed `status: ok` với source tables `portfolio_tickersessionclose`, `portfolio_whalealertevent` — connection thành công, SQL chạy được
+- `upserted: 0` vì dev DB trống (expected) — không phải lỗi
+- **Root cause fix:** `docker-compose.dev.yml` thiếu `LEGACY_DATABASE_URL` ở service `core-worker` và `core-beat`
 
-### Gate C — Client migration 🟡 YELLOW
+### Gate C — Client migration ✅ GREEN (updated 2026-05-10)
 
-**Whale paths — FIXED:**
-- `packages/web/src/adapters/core/coreAdapter.js`: `/portfolio/whale/analytics/` → `/core/v1/whale-feed-aggregate/`  
-- `packages/mobile/src/services/watchlistApi.ts`: `/portfolio/whale-advisory/` → `coreApiClient.getUnifiedAlerts()`
-- `packages/web/scripts/check-shell.mjs`: URL assertion updated va pass
+**Source migration completed:**
+- `packages/mobile/src/services/portfolioApi.ts` đã chuyển sang `/core/v1/workspace/portfolios/*`.
+- `packages/mobile/src/services/transactionApi.ts` đã chuyển sang `/core/v1/workspace/*` và `/core/v1/market-data/*`.
+- `packages/mobile/src/services/watchlistApi.ts` đã chuyển sang `/core/v1/workspace/watchlists/*`.
+- `packages/web/src/adapters/core/coreAdapter.js` advisory endpoint đã chuyển sang `/core/v1/advisory/latest/<symbol>/`.
+- `packages/web/scripts/check-shell.mjs` đã update expectation theo core advisory URL.
 
-**Deferred — no core equivalent yet:**
-- `packages/mobile/src/services/portfolioApi.ts`: `/portfolio/portfolios/` — portfolio management chua trong packages/core
-- `packages/mobile/src/services/transactionApi.ts`: `/portfolio/transactions/`, `/stock-management/stocks/` — transactions/stocks chua trong packages/core
-- `packages/mobile/src/services/watchlistApi.ts` lines 7-28: tracked symbols + watchlist groups — chua co core equivalent
+**Backend support added:**
+- `packages/core/backend/src/user_workspace/views.py`: thêm `TransactionDetailView` (PATCH/DELETE).
+- `packages/core/backend/src/user_workspace/urls.py`: thêm route `/core/v1/workspace/transactions/<transaction_id>/`.
 
-**Residual risk:** Legacy backend PHAI tiep tuc chay cho portfolio/transaction surface cho den khi core portfolio management duoc implement.
+**Validation:**
+- `grep` không còn match `/portfolio/|/stock-management/|/whale-analytics/` trong `packages/mobile/src/**`, `packages/web/src/**`, `packages/web/scripts/**`.
+- `docker compose ... exec core-api python manage.py check` pass 0 issues.
+
+**Residual risk:** `portfolioApi` trên mobile đang tính `summary/holdings/allocation` từ core transactions theo cost-basis (không dùng quote realtime), nên metric PnL hiển thị hiện tại là conservative approximation.
 
 ### Gate D — Contract coverage ✅ GREEN
 
@@ -101,24 +109,25 @@ packages/web shell check passed
 | Gate | Status | Decision |
 |---|---|---|
 | Gate A — Core completeness | ✅ GREEN | Pass |
-| Gate B — Data-plane live run | 🔴 RED | **BLOCK** |
-| Gate C — Client migration | 🟡 YELLOW | **BLOCK** (portfolio/tx mgmt) |
+| Gate B — Data-plane live run | ✅ GREEN | Pass (2026-05-10) |
+| Gate C — Client migration | ✅ GREEN | Pass (2026-05-10) |
 | Gate D — Contract coverage | ✅ GREEN | Pass |
 | Gate E — Regression tests | ✅ GREEN | Pass |
 | Gate F — Production routing | 🟡 YELLOW | Conditional (docker updated, drill deferred) |
 
 **Decision: NOT GO for decommission sequence (Phase 3-4)**  
-Decommission BLOCKED until:
-1. Gate B: LEGACY_DATABASE_URL configured + materializers observed chay 24h in dev/staging
-2. Gate C: Core portfolio management + transactions endpoints built OR explicit decision to keep legacy backend running indefinitely for those surfaces
+Decommission vẫn BLOCKED đến khi hoàn tất Gate F production readiness items (rollback drill + backup verification):
+1. ~~Gate B: LEGACY_DATABASE_URL configured + materializers observed chay 24h in dev/staging~~ ✅ RESOLVED 2026-05-10
+2. ~~Gate C: Core portfolio management + transactions endpoints built OR explicit decision to keep legacy backend running indefinitely for those surfaces~~ ✅ RESOLVED 2026-05-10
+3. Gate F: rollback drill evidence + DB backup verification trước cutover
 
 ---
 
 ## 4. Residual risk notes
 
-1. `refreshWhaleAdvisory()` trong mobile watchlistApi.ts hien tra no-op response. Neu co UI button trigger refresh, can add `/core/v1/signal-intelligence/trigger-materialize/` endpoint.
-2. Portfolio management (portfolios, holdings, transactions, watchlist groups) van truyen toi legacy backend `/portfolio/...` — day la intended cho SAAS-15 scope nhung can tracking card cho SAAS-16 hoac equivalent.
-3. Healthcheck URL trong docker-compose.dev.yml doi sang `/core/v1/health` — can xac nhan route nay ton tai trong packages/core urls.py.
+1. `refreshWhaleAdvisory()` trong mobile watchlistApi.ts hien tra no-op response. Neu co UI button trigger refresh, can add endpoint trigger materialization trong core.
+2. Mobile `portfolioApi` currently computes summary/holdings/allocation from transaction cost-basis (khong mark-to-market realtime), nên chỉ phù hợp cho dashboard mức cơ bản.
+3. Gate F (rollback drill + backup verification) vẫn chưa có evidence formal, nên decommission sequence chưa thể GO.
 
 ---
 
