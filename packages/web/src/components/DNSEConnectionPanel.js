@@ -12,6 +12,7 @@
  */
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import "./DNSEConnectionPanel.css";
 
 const e = createElement;
 

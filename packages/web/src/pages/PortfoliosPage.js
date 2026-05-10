@@ -7,6 +7,7 @@ import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import DNSEConnectionPanel from "../components/DNSEConnectionPanel.js";
+import "./PortfoliosPage.css";
 
 const DEFAULT_ENV = {};
 const e = createElement;
@@ -21,8 +22,7 @@ function usePortfolios({ env = DEFAULT_ENV } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      const res = await adapter.getPortfolios();
+      const res = await coreApiAdapter.getPortfolios();
       if (!mountedRef.current) return;
       setPortfolios(res?.results ?? res ?? []);
     } catch (err) {
@@ -31,7 +31,7 @@ function usePortfolios({ env = DEFAULT_ENV } = {}) {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [env]);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -56,8 +56,7 @@ export function PortfoliosPage({ env = DEFAULT_ENV, className = "" }) {
     setCreating(true);
     setCreateError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      await adapter.createPortfolio({ name, currency: newCurrency });
+      await coreApiAdapter.createPortfolio({ name, currency: newCurrency });
       setNewName("");
       await reload();
     } catch (err) {
@@ -71,8 +70,7 @@ export function PortfoliosPage({ env = DEFAULT_ENV, className = "" }) {
     if (!window.confirm("Xoa danh muc nay?")) return;
     try {
       const adapter = coreApiAdapter({ env });
-      await adapter.deletePortfolio(id);
-      await reload();
+      await coreApiAeload();
     } catch (err) {
       window.alert(err?.message || "Khong the xoa danh muc.");
     }
