@@ -1,5 +1,23 @@
 # ✅ AUDIT FILE LIST (2026-05-10-PHASE3-SHADOW-RUN-IMPLEMENTATION) — Phase 3 infrastructure for parity verification
 
+# ✅ AUDIT FILE LIST (2026-05-10-PROD-DEBUG-PAGES-DISABLED) — Tắt toàn bộ shell/debug pages trên production
+
+Mục tiêu:
+- Tắt toàn bộ route/page debug dạng shell host trong frontend production.
+- Ngăn hiển thị các trang có wording debug như `Trung tâm vận hành admin shell` khi chạy production.
+
+Files changed:
+- `frontend/src/App.jsx` (MODIFIED) — thêm cờ `REACT_APP_ENABLE_DEBUG_PAGES`; chỉ bật `packageShellHostEnabled` khi **đồng thời** có `REACT_APP_ENABLE_PACKAGE_SHELL_HOST=1` và `REACT_APP_ENABLE_DEBUG_PAGES=1`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED) — thêm audit entry cho tác vụ tắt debug pages.
+- `module_tree_full.md` (REGENERATED) — cập nhật module tree sau thay đổi code.
+
+Validation:
+- Route shell/debug (`/dashboard/shell`, `/ai-advisory/shell`, `/whale-alerts/shell`) bị vô hiệu hóa mặc định.
+- `admin-ops`, `transactions`, `support`, `watchlist`, `settings`, `settings/ai` chuyển về legacy pages khi debug flag không bật.
+
+Residual risk:
+- Nếu muốn dùng shell pages cho staging nội bộ, cần bật tường minh `REACT_APP_ENABLE_DEBUG_PAGES=1` lúc build frontend.
+
 Mục tiêu:
 - Implement Phase 3 Shadow Run infrastructure: parity logging models, middleware, Celery tasks, views, API endpoints.
 - Chuẩn bị cho 3-day trading window (2026-05-13 to 2026-05-15) để verify parity >= 99% giữa legacy backend và core-api.

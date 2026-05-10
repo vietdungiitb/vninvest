@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-10 20:35:22`
+Generated at: `2026-05-10 21:57:35`
 
 ## Summary
 
-- Total modules: 1022
-- Python modules: 522
+- Total modules: 1024
+- Python modules: 524
 - JS/TS modules: 500
 - Total classes: 853
-- Total functions: 2806
-- Total top-level variables: 4512
+- Total functions: 2818
+- Total top-level variables: 4514
 
 ## Python Modules
 
@@ -1050,6 +1050,13 @@ Generated at: `2026-05-10 20:35:22`
 
 - Functions:
   - `_get_mapped_task`, `run_crawl_job`
+- Top-level variables:
+  - `logger`
+
+### `backend/portfolio/tasks_dnse.py`
+
+- Functions:
+  - `reconcile_all_dnse_transactions_task`, `reconcile_dnse_transactions_task`, `sync_all_dnse_balances_task`, `sync_dnse_accounts_task`, `sync_dnse_balances_task`
 - Top-level variables:
   - `logger`
 
@@ -3621,6 +3628,11 @@ Generated at: `2026-05-10 20:35:22`
 - Functions:
   - `_single_request`, `main`, `percentile`
 
+### `scripts/PHASE3_DEPLOYMENT_CONFIG_PATCHER_20260510.py`
+
+- Functions:
+  - `backup_file`, `main`, `patch_celery_config`, `patch_django_settings`, `patch_docker_compose`, `patch_urls`, `validate_syntax`
+
 ### `scripts/pre_decommission_gates_check.py`
 
 - Functions:
@@ -3689,7 +3701,7 @@ Generated at: `2026-05-10 20:35:22`
 - Functions:
   - `AdminCoreShell`, `LoginPage`, `ProtectedLayout`
 - Top-level variables:
-  - `hasStoredTokens`, `location`, `navigate`, `packageShellHostEnabled`
+  - `debugPagesEnabled`, `hasStoredTokens`, `location`, `navigate`, `packageShellHostEnabled`
 
 ### `frontend/src/components/adminops/GlobalScreenerAdminPanel.jsx`
 
