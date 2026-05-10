@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-10 19:31:28`
+Generated at: `2026-05-10 20:35:22`
 
 ## Summary
 
-- Total modules: 1015
-- Python modules: 515
+- Total modules: 1022
+- Python modules: 522
 - JS/TS modules: 500
-- Total classes: 841
-- Total functions: 2795
-- Total top-level variables: 4508
+- Total classes: 853
+- Total functions: 2806
+- Total top-level variables: 4512
 
 ## Python Modules
 
@@ -2923,7 +2923,21 @@ Generated at: `2026-05-10 19:31:28`
 - Classes:
   - `RequestTraceMiddleware` -> methods: `__call__`, `__init__`, `_record_access_event`
 
+### `packages/core/backend/src/ops_audit/middleware_shadow_run.py`
+
+- Classes:
+  - `ShadowRunDualReadMiddleware` -> methods: `__call__`, `__init__`, `_extract_response_body`, `_extract_safe_headers`, `_queue_parity_check`, `_should_monitor`
+- Functions:
+  - `_compare_structure_recursive`, `compare_json_structure`, `compute_payload_hash`
+- Top-level variables:
+  - `logger`
+
 ### `packages/core/backend/src/ops_audit/migrations/0001_initial.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/ops_audit/migrations/0002_phase3_parity_models.py`
 
 - Classes:
   - `Migration`
@@ -2938,10 +2952,24 @@ Generated at: `2026-05-10 19:31:28`
   - `AuditEvent` -> methods: `__str__`
   - `RequestTrace` -> methods: `__str__`
 
+### `packages/core/backend/src/ops_audit/models_parity.py`
+
+- Classes:
+  - `ParityLog` -> methods: `__str__`
+  - `ParityPhaseCheckpoint` -> methods: `__str__`
+  - `ParityReport` -> methods: `__str__`
+
 ### `packages/core/backend/src/ops_audit/serializers.py`
 
 - Classes:
   - `AuditEventSerializer`
+
+### `packages/core/backend/src/ops_audit/serializers_parity.py`
+
+- Classes:
+  - `ParityLogSerializer`
+  - `ParityPhaseCheckpointSerializer`
+  - `ParityReportSerializer`
 
 ### `packages/core/backend/src/ops_audit/tasks.py`
 
@@ -2955,10 +2983,23 @@ Generated at: `2026-05-10 19:31:28`
 - Top-level variables:
   - `urlpatterns`
 
+### `packages/core/backend/src/ops_audit/urls_parity.py`
+
+- Top-level variables:
+  - `app_name`, `urlpatterns`
+
 ### `packages/core/backend/src/ops_audit/views.py`
 
 - Classes:
   - `AuditLogListView` -> methods: `get_queryset`, `get_serializer_class`
+
+### `packages/core/backend/src/ops_audit/views_parity.py`
+
+- Classes:
+  - `ParityLogListView` -> methods: `get_queryset`
+  - `ParityPhaseCheckpointSignOffView` -> methods: `sign_off`
+  - `ParityReportListView` -> methods: `get_queryset`
+  - `ParityStatusView` -> methods: `get`
 
 ### `packages/core/backend/src/signal_intelligence/__init__.py`
 
@@ -3039,6 +3080,13 @@ Generated at: `2026-05-10 19:31:28`
   - `run_signal_detection_job`
 - Top-level variables:
   - `__all__`
+
+### `packages/core/backend/src/signal_intelligence/tasks_parity.py`
+
+- Functions:
+  - `_compare_json_structure`, `_compare_responses`, `_compare_structure_recursive`, `_compute_payload_hash`, `_extract_row_count`, `_make_core_shadow_request`, `shadow_run_daily_parity_report`, `shadow_run_parity_check_task`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/signal_intelligence/urls.py`
 
