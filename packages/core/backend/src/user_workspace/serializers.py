@@ -49,7 +49,16 @@ class SubAccountSerializer(serializers.ModelSerializer):
 
 
 class DNSECredentialSerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer — không expose client_id/secret ciphertext.
+    Write path qua views_dnse.dnse_config_api (set_client_id/set_client_secret).
+    """
+    is_configured = serializers.SerializerMethodField()
+
     class Meta:
         model = DNSECredential
-        fields = ['id', 'is_active', 'last_sync_at', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'last_sync_at', 'created_at', 'updated_at']
+        fields = ['id', 'is_configured', 'is_active', 'last_sync_at', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'is_configured', 'last_sync_at', 'created_at', 'updated_at']
+
+    def get_is_configured(self, obj) -> bool:
+        return obj.has_credentials()

@@ -1,3 +1,89 @@
+# Entry 2026-05-10-DNSE-LIGHTSPEED-API-FIX — Sửa toàn bộ code DNSE sai auth flow và kiến trúc SaaS
+
+**Mục tiêu:** Loại bỏ hoàn toàn code sai (retail username/password, stub fallbacks) và triển khai đúng DNSE LightSpeed API OAuth2 flow chuẩn theo tài liệu đã phê duyệt.
+
+**Root cause:** Dev team nhầm lẫn giữa DNSE retail login (EntradeX web/app, cần OTP) và DNSE LightSpeed API (developer OAuth2: client_id + client_secret). Hậu quả: stub data giả mạo được ghi vào DB, frontend gọi sai adapter.
+
+**Files changed:**
+- `packages/core/backend/src/user_workspace/models.py` (MODIFIED) — DNSECredential: thay `username_cipher`, `password_cipher`, `api_key_cipher`, `api_secret_cipher` → `client_id_cipher`, `client_secret_cipher`; thêm `has_credentials()`
+- `packages/core/backend/src/user_workspace/dnse_adapter.py` (REWRITTEN) — Xóa username/password flow; implement LightSpeed OAuth2 (`POST /v2/authentication/token`); 3 exception types; không còn stub fallback
+- `packages/core/backend/src/user_workspace/tasks.py` (REWRITTEN) — Xóa 3 blocks fake data (tài khoản 043C123456, NAV 55M, HPG BUY fake); dùng `access_token` từ `bootstrap_dnse_session()`; raise lỗi rõ ràng khi vnbroker unavailable
+- `packages/core/backend/src/user_workspace/views_dnse.py` (FIXED) — POST nhận `client_id`+`client_secret` (không nhận username/password); `dnse_place_order_api` trả 501; `dnse_token_status_api` trả `auth_method: LightSpeed_OAuth2`
+- `packages/core/backend/src/user_workspace/serializers.py` (FIXED) — `DNSECredentialSerializer` expose `is_configured` (bool), không expose ciphertext
+- `packages/core/backend/src/user_workspace/migrations/0003_dnse_lightspeed_credential_v2.py` (NEW) — Migration tạo mới `DNSECredential` model với đúng fields
+- `packages/web/src/adapters/coreApiAdapter.js` (MODIFIED) — Thêm 4 DNSE methods: `getDNSEConfig`, `updateDNSEConfig`, `syncDNSEAccounts`, `getDNSETokenStatus`; không có `placeDNSEOrder` (501)
+- `frontend/src/api/client.js` (MODIFIED) — Xóa 5 DNSE exports sai (`getDNSEConfig`, `updateDNSEConfig`, `syncDNSEAccounts`, `getDNSETokenStatus`, `placeDNSEOrder`); thay bằng comment chỉ đường đúng
+- `packages/web/src/components/DNSEConnectionPanel.js` (NEW) — Panel kết nối DNSE LightSpeed; dùng `coreApiAdapter`; không JSX; i18n tiếng Việt đầy đủ dấu
+
+**Auth flow đúng:**
+```
+POST https://openapi.dnse.com.vn/v2/authentication/token
+Body: { "client_id": "...", "client_secret": "..." }
+Response: { "access_token": "...", "expires_in": 3600 }
+```
+
+**Violations đã fix:**
+- V-01 CRITICAL: Stub data ghi vào DB (3 Celery tasks) — FIXED
+- V-02 CRITICAL: Auth flow sai (username/password thay vì client_id/secret) — FIXED
+- V-03: `dnse_place_order_api` trả stub 200 — FIXED (501 NOT_IMPLEMENTED)
+- V-04: `dnse_token_status_api` trả `next_step: OTP_REQUIRED` (retail flow) — FIXED
+- V-05 (S-01): DNSE API calls trong `frontend/src/api/client.js` thay vì `coreApiAdapter.js` — FIXED
+
+**Validation:**
+- Migration generated: `0003_dnse_lightspeed_credential_v2.py` — `makemigrations` chạy thành công trong core-api container
+- Không còn `username_cipher`, `password_cipher` trong models.py
+- `dnse_adapter.py`: không có `stub`, không có `username`, không có `password` trong logic path
+- `tasks.py`: không có hardcoded account number, không có fake NAV, không có fake trade
+- `views_dnse.py`: POST chỉ nhận `client_id` + `client_secret`; place-order → 501
+- `coreApiAdapter.js`: 4 DNSE methods, tất cả qua `/core/v1/broker/dnse/*`
+- `frontend/src/api/client.js`: DNSE exports đã xóa
+
+**Residual risk:**
+- `backend/portfolio/models.py` vẫn còn class `DNSECredential` (legacy) — cần decommission sau 7 pre-decommission gates
+- Docker rebuild cần thiết để runtime nhận code mới (chạy bước tiếp theo)
+- vnbroker chưa confirm API path chính xác (`vnbroker.brokers.dnse.get_access_token`) — adapter có fallback discovery với 2 import paths
+
+---
+
+# Entry 2026-05-10-DASHBOARD-UI-UX-MODERNIZATION — Overhaul ModernDashboard UI for layout symmetry, alert deduplication, and premium aesthetics
+
+Muc tieu:
+- Chuan hoa layout grid 3 cot bang nhau (33.3%) de dam bao vertical alignment tuyet doi.
+- Khac phuc tinh trang lech layout khi an Sidebar trai (Modern Workstation) bang cach constrain content trong max-width 1800px va can giua.
+- Dong nhat max-width 1800px va horizontal padding (px-6) xuyen suot TopNav, SmartStatsHeader va Workspace Content de dam bao thang hang doc tuyet doi.
+- Thuc hien deduplication logic cho Sticky Alert Bar (chi hien thi duy nhat symbol moi alert pinned).
+- Toi uu khong gian vertical cho Sticky Alert Bar bang cach loai bo Header/Hint du thua theo yeu cau cua nguoi dung.
+- Loai bo cac thanh phan du thua: Nut UserConfig o TopNav va Portfolio Selector o Header.
+- Toi uu label Heatmap: tu dong an label o o nho va chi hien symbol o o trung binh de tranh chong cheo.
+- Thay the emoji Shark (🦈) bang premium SVG Icon trong he thong Whale Intelligence.
+- Đánh bóng UI Header va AI Advisor (Empty state premium).
+
+Files changed:
+- `frontend/src/index.css` (MODIFIED) - Chuan hoa `.page-body-grid` sang `repeat(3, 1fr)` va fix asymmetrical breakpoint (1439px).
+- `frontend/src/components/StickyAlertBar.jsx` (MODIFIED) - Loai bo header title/hint, giam padding vertical, va dong bo gap-6.
+- `frontend/src/components/TopNav.jsx` (MODIFIED) - Loai bo UserConfig button, constrain content width 1800px + px-6 padding.
+- `frontend/src/components/modern/SmartStatsHeader.jsx` (MODIFIED) - Loai bo Portfolio Selector, constrain content width 1800px + px-6 padding.
+- `frontend/src/pages/modern/ModernDashboard.jsx` (MODIFIED) - Constrain workspace content width 1800px + px-6 padding + gap-6 grid spacing.
+- `frontend/src/components/PortfolioHeatmap.jsx` (MODIFIED) - Nang cap `buildLeafLabel` voi ratio-based threshold.
+- `frontend/src/components/shared/SharkIcon.jsx` (NEW) - Premium SVG Shark icon component.
+- `frontend/src/components/UnifiedAlertCenter.jsx` (MODIFIED) - Integration SharkIcon cho Whale alerts.
+- `frontend/src/components/modern/AIAdvisorAlertPanel.jsx` (MODIFIED) - Nang cap empty states cho Alerts va News.
+- `frontend/package.json` (MODIFIED) - Them `lucide-react` de fix build error.
+
+Validation:
+- PASSED: Layout grid 3 cot can doi tuyet doi, khong con bi lech khi toggle sidebar.
+- PASSED: Vertical alignment thang hang giua Header va Body nho dong nhat padding px-6.
+- PASSED: Max-width 1800px giup giao dien tap trung va can bang hon tren ultra-wide monitors.
+- PASSED: Sticky Alert Bar gap-6 dong bo hoan hao voi grid columns ben duoi.
+- PASSED: Docker build `frontend` thanh cong voi code moi.
+
+Status:
+- Giao dien ModernDashboard da dat do chin ve visual symmetry, symmetry-aware layout va premium aesthetics.
+- Da giai quyet triet de cac phan hoi ve tinh trang lech/mat can doi cua giao dien.
+- San sang cho cac dot upgrade tiep theo ve Data Lifecycle.
+
+---
+
 # Entry 2026-05-09-DNSE-SAAS-CORE-MIGRATION — Migrate DNSE Broker integration to SaaS Core and cleanup legacy backend
 
 Muc tieu:

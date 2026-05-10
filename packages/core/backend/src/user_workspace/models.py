@@ -195,8 +195,15 @@ class SubAccount(models.Model):
 
 class DNSECredential(models.Model):
     """
-    SFI-DNSE: Lưu trữ thông tin xác thực DNSE của người dùng.
-    Dữ liệu được mã hóa trước khi lưu xuống DB.
+    SFI-DNSE: Lưu trữ thông tin xác thực DNSE LightSpeed API của người dùng.
+
+    Auth flow chuẩn: POST /v2/authentication/token với client_id + client_secret
+    → nhận access_token (Bearer), cache ngắn hạn trong Redis.
+
+    TUYỆT ĐỐI không lưu username/password tài khoản cá nhân DNSE —
+    đó là retail login flow, không phải LightSpeed API integration.
+
+    Dữ liệu được mã hóa Fernet trước khi lưu xuống DB.
     """
     user = models.OneToOneField(
         User,
@@ -204,11 +211,9 @@ class DNSECredential(models.Model):
         related_name='dnse_credential',
         verbose_name='Người dùng',
     )
-    # Ciphertext fields
-    username_cipher = models.TextField(blank=True, default='', verbose_name='Username (Encrypted)')
-    password_cipher = models.TextField(blank=True, default='', verbose_name='Password (Encrypted)')
-    api_key_cipher = models.TextField(blank=True, default='', verbose_name='API Key (Encrypted)')
-    api_secret_cipher = models.TextField(blank=True, default='', verbose_name='API Secret (Encrypted)')
+    # LightSpeed API credentials — lấy từ trang quản lý EntradeX/LightSpeed
+    client_id_cipher = models.TextField(blank=True, default='', verbose_name='Client ID (Encrypted)')
+    client_secret_cipher = models.TextField(blank=True, default='', verbose_name='Client Secret (Encrypted)')
 
     is_active = models.BooleanField(default=True, verbose_name='Đang hoạt động')
     last_sync_at = models.DateTimeField(null=True, blank=True, verbose_name='Đồng bộ cuối')
@@ -216,44 +221,31 @@ class DNSECredential(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'DNSE Credential'
-        verbose_name_plural = 'DNSE Credentials'
+        verbose_name = 'DNSE LightSpeed Credential'
+        verbose_name_plural = 'DNSE LightSpeed Credentials'
 
     def __str__(self):
-        return f"DNSE Credential for {self.user.username}"
+        return f"DNSE LightSpeed Credential for {self.user.username}"
 
-    # Helper methods for encryption
-    def set_username(self, raw_val):
+    def set_client_id(self, raw_val: str) -> None:
         from vninvest_core.utils.encryption import encrypt_string
-        self.username_cipher = encrypt_string(raw_val)
+        self.client_id_cipher = encrypt_string(raw_val)
 
-    def get_username(self):
+    def get_client_id(self) -> str:
         from vninvest_core.utils.encryption import decrypt_string
-        return decrypt_string(self.username_cipher)
+        return decrypt_string(self.client_id_cipher)
 
-    def set_password(self, raw_val):
+    def set_client_secret(self, raw_val: str) -> None:
         from vninvest_core.utils.encryption import encrypt_string
-        self.password_cipher = encrypt_string(raw_val)
+        self.client_secret_cipher = encrypt_string(raw_val)
 
-    def get_password(self):
+    def get_client_secret(self) -> str:
         from vninvest_core.utils.encryption import decrypt_string
-        return decrypt_string(self.password_cipher)
+        return decrypt_string(self.client_secret_cipher)
 
-    def set_api_key(self, raw_val):
-        from vninvest_core.utils.encryption import encrypt_string
-        self.api_key_cipher = encrypt_string(raw_val)
-
-    def get_api_key(self):
-        from vninvest_core.utils.encryption import decrypt_string
-        return decrypt_string(self.api_key_cipher)
-
-    def set_api_secret(self, raw_val):
-        from vninvest_core.utils.encryption import encrypt_string
-        self.api_secret_cipher = encrypt_string(raw_val)
-
-    def get_api_secret(self):
-        from vninvest_core.utils.encryption import decrypt_string
-        return decrypt_string(self.api_secret_cipher)
+    def has_credentials(self) -> bool:
+        """Kiểm tra đã cấu hình đủ client_id và client_secret chưa."""
+        return bool(self.client_id_cipher and self.client_secret_cipher)
 
 
 class AccountSnapshot(models.Model):

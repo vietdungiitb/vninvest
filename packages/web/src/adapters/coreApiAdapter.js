@@ -431,4 +431,44 @@ export const coreApiAdapter = {
       `/signals/order-flow/${encodeURIComponent(symbol.toUpperCase())}/${query ? `?${query}` : ""}`
     );
   },
+  // ─── DNSE LightSpeed API Broker Integration ───────────────────────────────
+  // Tất cả calls DNSE phải đi qua adapter này — KHÔNG dùng legacy client.js.
+  // Auth: client_id + client_secret (LightSpeed OAuth2), không phải username/password.
+
+  /**
+   * Lấy trạng thái cấu hình DNSE LightSpeed của user hiện tại.
+   * @returns {Promise<{ is_configured: boolean, data?: object }>}
+   */
+  getDNSEConfig() {
+    return coreGet("/broker/dnse/config/");
+  },
+
+  /**
+   * Cập nhật DNSE LightSpeed credential (client_id + client_secret).
+   * Lấy từ trang quản lý EntradeX → LightSpeed API → Client Management.
+   * @param {{ client_id: string, client_secret: string, is_active?: boolean }} data
+   * @returns {Promise<{ ok: boolean }>}
+   */
+  updateDNSEConfig(data) {
+    if (!data.client_id || !data.client_secret) {
+      throw new Error("client_id và client_secret là bắt buộc cho DNSE LightSpeed API.");
+    }
+    return corePost("/broker/dnse/config/", data);
+  },
+
+  /**
+   * Kích hoạt đồng bộ tiểu khoản từ DNSE LightSpeed API.
+   * @returns {Promise<{ ok: boolean, synced_count: number, accounts: object[] }>}
+   */
+  syncDNSEAccounts() {
+    return corePost("/broker/dnse/sync-accounts/");
+  },
+
+  /**
+   * Lấy trạng thái kết nối DNSE LightSpeed API.
+   * @returns {Promise<{ ok: boolean, is_configured: boolean, is_active: boolean }>}
+   */
+  getDNSETokenStatus() {
+    return coreGet("/broker/dnse/token-status/");
+  },
 };

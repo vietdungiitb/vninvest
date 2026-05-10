@@ -6,6 +6,7 @@
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import DNSEConnectionPanel from "../components/DNSEConnectionPanel.js";
 
 const DEFAULT_ENV = {};
 const e = createElement;
@@ -79,6 +80,9 @@ export function PortfoliosPage({ env = DEFAULT_ENV, className = "" }) {
 
   return e("div", { className: "core-portfolios-page " + className },
     e("header", { className: "core-page-header" }, e("h1", null, "Danh muc dau tu")),
+    e("section", { className: "core-dnse-panel-wrap" },
+      e(DNSEConnectionPanel, null)
+    ),
     e("form", { className: "core-create-form", onSubmit: handleCreate },
       e("h2", null, "Tao danh muc moi"),
       e("label", null, "Ten:",

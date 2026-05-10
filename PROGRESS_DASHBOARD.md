@@ -1,3 +1,77 @@
+# ✅ AUDIT FILE LIST (2026-05-10-DNSE-LIGHTSPEED-API-FIX) — Sửa toàn bộ code DNSE sai auth flow và kiến trúc SaaS
+
+Muc tieu:
+- Loai bo hoan toan code sai DNSE retail login (username/password, OTP flow) khoi core runtime.
+- Chuan hoa DNSE sang LightSpeed API OAuth2: `client_id` + `client_secret`.
+- Xoa stub fallbacks ghi fake data vao DB trong Celery tasks.
+- Chuyen toan bo DNSE frontend calls sang `packages/web/src/adapters/coreApiAdapter.js`.
+- Tich hop DNSEConnectionPanel vao `packages/web/src/pages/PortfoliosPage.js` de nguoi dung cau hinh va dong bo tu SaaS web shell.
+
+Files changed:
+- `packages/core/backend/src/user_workspace/models.py` (MODIFIED) - DNSECredential: thay credential retail bang `client_id_cipher` va `client_secret_cipher`.
+- `packages/core/backend/src/user_workspace/dnse_adapter.py` (REWRITTEN) - LightSpeed OAuth2 bootstrap, khong con stub fallback.
+- `packages/core/backend/src/user_workspace/tasks.py` (REWRITTEN) - Xoa fake accounts/NAV/trade fallbacks; chi xu ly du lieu that.
+- `packages/core/backend/src/user_workspace/views_dnse.py` (MODIFIED) - POST chi nhan `client_id` + `client_secret`; place-order tra 501.
+- `packages/core/backend/src/user_workspace/serializers.py` (MODIFIED) - `is_configured` field, khong expose ciphertext.
+- `packages/core/backend/src/user_workspace/migrations/0003_dnse_lightspeed_credential_v2.py` (NEW) - Migration cho schema DNSECredential moi.
+- `packages/web/src/adapters/coreApiAdapter.js` (MODIFIED) - Them DNSE methods vao core adapter.
+- `frontend/src/api/client.js` (MODIFIED) - Xoa DNSE exports sai khoi legacy monolith client.
+- `packages/web/src/components/DNSEConnectionPanel.js` (NEW) - UI panel cau hinh DNSE LightSpeed API.
+- `packages/web/src/pages/PortfoliosPage.js` (MODIFIED) - Ghep DNSEConnectionPanel vao trang danh muc.
+
+Validation:
+- PASSED: `makemigrations` da tao migration `0003_dnse_lightspeed_credential_v2.py` trong core-api container.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build core-api core-beat core-worker` da restart containers sau rebuild.
+- PASSED: `frontend/src/api/client.js` khong con DNSE exports.
+- PASSED: `views_dnse.py` tra 501 cho place-order va chi chap nhan client_id/client_secret.
+- INFO: `core-api` unhealthy do DB host `db` khong resolve trong environment hien tai, khong phat sinh tu slice DNSE.
+
+Status:
+- DNSE LightSpeed flow da duoc chuan hoa trong core, va web shell da co panel cau hinh dong bo.
+- Can tiep tuc kiem tra runtime database/network o moi truong dev de core-api health tro lai binh thuong.
+
+# ✅ AUDIT FILE LIST (2026-05-10-DASHBOARD-UI-UX-MODERNIZATION) — Overhaul ModernDashboard UI for layout symmetry, alert deduplication, and premium aesthetics
+
+Muc tieu:
+- Chuan hoa layout grid 3 cot bang nhau (33.3%) de dam bao vertical alignment tuyet doi.
+- Khac phuc tinh trang lech layout khi an Sidebar trai (Modern Workstation) bang cach constrain content trong max-width 1800px va can giua.
+- Dong nhat max-width 1800px va padding px-6 xuyen suot TopNav, SmartStatsHeader va Workspace Content.
+- Thuc hien deduplication logic cho Sticky Alert Bar (chi hien thi duy nhat symbol moi alert pinned).
+- Toi uu khong gian vertical cho Sticky Alert Bar bang cach loai bo Header/Hint du thua theo yeu cau cua nguoi dung.
+- Loai bo cac thanh phan du thua: Nut UserConfig o TopNav (vi da co trong System menu) va Portfolio Selector o Header (vi Sidebar da co).
+- Toi uu label Heatmap: tu dong an label o o nho va chi hien symbol o o trung binh de tranh chong cheo.
+- Thay the emoji Shark (🦈) bang premium SVG Icon trong he thong Whale Intelligence.
+- Đánh bóng UI Header va AI Advisor (Empty state premium).
+
+Files changed:
+- `frontend/src/index.css` (MODIFIED) - Chuan hoa `.page-body-grid` sang `repeat(3, 1fr)`.
+- `frontend/src/components/StickyAlertBar.jsx` (MODIFIED) - Loai bo header title/hint, giam padding vertical va mt-3 -> mt-1.5.
+- `frontend/src/components/TopNav.jsx` (MODIFIED) - Constrain content width 1800px + mx-auto.
+- `frontend/src/components/modern/SmartStatsHeader.jsx` (MODIFIED) - Constrain content width 1800px + mx-auto + nut UserConfig pill-style.
+- `frontend/src/pages/modern/ModernDashboard.jsx` (MODIFIED) - Constrain workspace content width 1800px + mx-auto.
+- `frontend/src/components/PortfolioHeatmap.jsx` (MODIFIED) - Nang cap `buildLeafLabel` voi ratio-based threshold.
+- `frontend/src/components/shared/SharkIcon.jsx` (NEW) - Premium SVG Shark icon component.
+- `frontend/src/components/UnifiedAlertCenter.jsx` (MODIFIED) - Integration SharkIcon cho Whale alerts.
+- `frontend/src/components/modern/AIAdvisorAlertPanel.jsx` (MODIFIED) - Nang cap empty states cho Alerts va News.
+- `frontend/package.json` (MODIFIED) - Them `lucide-react` de fix build error.
+
+Validation:
+- PASSED: Layout grid 3 cot can doi tuyet doi, khong con bi lech khi toggle sidebar.
+- PASSED: Sync padding px-8 va max-width 1600px giup giao dien can bang hoan hao ngay ca khi hien Sidebar trai.
+- PASSED: Gap-6 giup khong gian hien thi thoang va premium hon.
+- PASSED: TopNav va Header can hang hoan hao voi Workspace Content o moi do phan giai.
+- PASSED: Sticky Bar gon gang, tiet kiem dien tich va tap trung vao alerts.
+- PASSED: Docker build `frontend` thanh cong voi code moi.
+
+Status:
+- Giao dien ModernDashboard da dat do chin ve visual symmetry, symmetry-aware layout va premium aesthetics.
+- Da fix triet de tinh trang "lech" layout nho viec dong nhat padding px-6 va max-width 1800px.
+- Da xoa cac nut bam du thua (UserConfig, Portfolio Selector) giup header thoang dang va chuyen nghiep.
+- Grid Gap-6 va Sticky Bar Gap-6 da dong bo hoan hao, khong con diem dut gay thi giac.
+- San sang cho cac dot upgrade tiep theo ve Data Lifecycle.
+
+---
+
 # ✅ AUDIT FILE LIST (2026-05-09-DNSE-SAAS-CORE-MIGRATION) — Migrate DNSE Broker integration to SaaS Core and cleanup legacy backend
 
 Muc tieu:

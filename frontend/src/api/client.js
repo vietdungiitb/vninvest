@@ -804,11 +804,9 @@ export const deleteAdminGlobalScreenerRule = (id) => apiClient.delete(`/portfoli
 export const runAdminGlobalScreenerManual = () => apiClient.post('/portfolio/admin/screener/run-manual/');
 
 // --- Broker Integration (DNSE) ---
-export const getDNSEConfig = () => apiClient.get('/broker/dnse/config/');
-export const updateDNSEConfig = (data) => apiClient.post('/broker/dnse/config/', data);
-export const syncDNSEAccounts = () => apiClient.post('/broker/dnse/sync-accounts/');
-export const getDNSETokenStatus = () => apiClient.get('/broker/dnse/token-status/');
-export const placeDNSEOrder = (data) => apiClient.post('/broker/dnse/place-order/', data);
+// DNSE LightSpeed API — dùng coreApiAdapter.js, KHÔNG dùng apiClient (legacy).
+// import { coreApiAdapter } from 'packages/web/src/adapters/coreApiAdapter';
+// coreApiAdapter.getDNSEConfig(), coreApiAdapter.updateDNSEConfig(), coreApiAdapter.syncDNSEAccounts()
 
 // --- Crawling Control API ---
 export const getAdminCrawlJobs = () => apiClient.get('/v1/admin/crawl/jobs/');
