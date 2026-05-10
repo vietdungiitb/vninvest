@@ -1,29 +1,12 @@
 import React from 'react';
-import { ShellPortfoliosPage } from '@vninvest/web';
-import { usePortfolio } from '../context/PortfolioContext';
-import {
-  createPackageShellBootstrapLoader,
-  packageShellHostEnv,
-  packageShellHostFetch,
-} from './packageShellHostRuntime';
+import { PortfoliosPage } from '@vninvest/web';
+import { packageShellHostEnv } from './packageShellHostRuntime';
 
 export default function PortfoliosShellHost() {
-  const { ability, authStateReady, userIdentity, userPlan } = usePortfolio();
-  const bootstrapLoader = createPackageShellBootstrapLoader({
-    userIdentity,
-    userPlan,
-    ability,
-  });
-
   return (
     <div className="min-h-full bg-slate-950 px-4 py-4 xl:px-5">
       <div className="mx-auto max-w-[1600px]">
-        <ShellPortfoliosPage
-          autoLoad={authStateReady}
-          bootstrapLoader={bootstrapLoader}
-          env={packageShellHostEnv}
-          fetchImpl={packageShellHostFetch}
-        />
+        <PortfoliosPage env={packageShellHostEnv} />
       </div>
     </div>
   );

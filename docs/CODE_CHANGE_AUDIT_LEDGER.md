@@ -1,21 +1,18 @@
-# Entry 2026-05-10-DNSE-LIGHTSPEED-DEV-BUILD-BRIDGE — Giữ compatibility cho frontend build nhưng route DNSE vẫn qua coreApiAdapter
+# Entry 2026-05-10-DNSE-LIGHTSPEED-PORTFOLIOS-SAAS-ROUTE — Chuyển /portfolios sang page SaaS thật
 
-**Mục tiêu:** Làm cho dev compose build/run hoàn chỉnh mà không khôi phục retail DNSE flow cũ.
-
-**Vấn đề phát sinh:** Frontend build vẫn còn một call site import named DNSE exports từ `frontend/src/api/client.js`, trong khi slice trước đã xóa các export này để chuyển sang `coreApiAdapter.js`.
+**Mục tiêu:** Loại bỏ nhánh render legacy DNSE username/password trong monolith frontend và buộc route `/portfolios` đi vào page SaaS thật từ `packages/web`.
 
 **Files changed:**
-- `frontend/src/api/client.js` (MODIFIED) — Thêm compatibility exports `getDNSEConfig`, `updateDNSEConfig`, `syncDNSEAccounts`, `getDNSETokenStatus`, `placeDNSEOrder`; các wrapper này gọi `coreApiAdapter`.
-- `packages/web/package.json` (MODIFIED) — Expose subpath export `./adapters/core-api-adapter` trỏ về `src/adapters/coreApiAdapter.js`.
+- `frontend/src/App.jsx` (MODIFIED) — Route `/portfolios` luôn mount `PortfoliosShellHost`; không còn fallback `PortfolioManagement`.
+- `frontend/src/pages/PortfoliosShellHost.jsx` (MODIFIED) — Đổi wrapper từ `ShellPortfoliosPage` diagnostic sang `PortfoliosPage` SaaS thật từ `@vninvest/web`.
 
 **Validation:**
-- PASSED: `docker compose -f docker-compose.dev.yml up -d --build --remove-orphans` build frontend thành công.
-- PASSED: `docker compose -f docker-compose.dev.yml ps` cho thấy `core-api`, `db`, `redis`, `frontend` đều healthy/running.
-- PASSED: `Invoke-WebRequest http://127.0.0.1:80` trả `200`.
-- PASSED: `core-api` health check nội bộ qua container network vẫn hoạt động.
+- PASSED: `npm run build` trong `frontend/` compile thành công sau khi đổi route.
+- PASSED: `get_errors` trên `App.jsx` và `PortfoliosShellHost.jsx` không còn lỗi.
+- PASSED: `/portfolios` ở runtime sẽ đi qua page SaaS page registry (`PortfoliosPage`) thay vì legacy `PortfolioManagement`.
 
 **Residual risk:**
-- `placeDNSEOrder` chỉ là compatibility bridge và vẫn trả lỗi “not implemented”; đây là chủ đích để không giả vờ support đặt lệnh.
+- Cần đăng nhập mới thấy page, nên browser snapshot hiện tại đang dừng ở `/login`; đó là do auth chứ không phải do legacy DNSE form còn được mount.
 
 # Entry 2026-05-10-DNSE-LIGHTSPEED-API-FIX — Sửa toàn bộ code DNSE sai auth flow và kiến trúc SaaS
 

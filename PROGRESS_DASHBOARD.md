@@ -1,19 +1,18 @@
-# ✅ AUDIT FILE LIST (2026-05-10-DNSE-LIGHTSPEED-DEV-BUILD-BRIDGE) — Giữ compatibility cho frontend build nhưng route DNSE vẫn qua coreApiAdapter
+# ✅ AUDIT FILE LIST (2026-05-10-DNSE-LIGHTSPEED-PORTFOLIOS-SAAS-ROUTE) — Chuyển /portfolios sang page SaaS thật
 
 Muc tieu:
-- Giu frontend build/compose dev running thanh cong trong khi da chuyen DNSE flow sang core adapter.
-- Bo sung bridge compatibility toi thieu cho cac import DNSE co san trong monolith frontend.
-- Khong khôi phuc retail flow cu va khong cho place order gia vo san sàng.
+- Loai bo nhánh render legacy DNSE username/password trong monolith frontend.
+- Buộc route `/portfolios` mount `PortfoliosPage` của `packages/web` thay vì `PortfolioManagement`.
+- Giu UI danh mục theo đúng kiến trúc SaaS: coreApiAdapter + page registry của packages/web.
 
 Files changed:
-- `frontend/src/api/client.js` (MODIFIED) - Compatibility exports DNSE moi wrapper sang `coreApiAdapter`.
-- `packages/web/package.json` (MODIFIED) - Expose `./adapters/core-api-adapter` cho frontend bridge.
+- `frontend/src/App.jsx` (MODIFIED) - Route `/portfolios` luôn mount `PortfoliosShellHost`.
+- `frontend/src/pages/PortfoliosShellHost.jsx` (MODIFIED) - Render `PortfoliosPage` SaaS thật thay vì `ShellPortfoliosPage` diagnostic.
 
 Validation:
-- PASSED: `docker compose -f docker-compose.dev.yml up -d --build --remove-orphans` build frontend thanh cong.
-- PASSED: `docker compose -f docker-compose.dev.yml ps` cho thay `core-api`, `db`, `redis`, `frontend` healthy/running.
-- PASSED: `Invoke-WebRequest http://127.0.0.1:80` tra ve `200`.
-- PASSED: `core-api` health cho endpoint noi bo duoc xac nhan qua network container.
+- PASSED: `npm run build` trong `frontend/` compile thành công sau khi đổi route.
+- PASSED: `get_errors` trên `App.jsx` và `PortfoliosShellHost.jsx` không báo lỗi.
+- INFO: Browser snapshot hiện tại đang ở `/login` do chưa có auth session; route `/portfolios` sau login sẽ đi vào page SaaS thật.
 
 # ✅ AUDIT FILE LIST (2026-05-10-DNSE-LIGHTSPEED-API-FIX) — Sửa toàn bộ code DNSE sai auth flow và kiến trúc SaaS
 
