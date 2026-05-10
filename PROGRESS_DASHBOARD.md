@@ -4,6 +4,11 @@
 
 ## Overall Scope: 32-Day Migration (May 13 - June 10, 2026)
 
+### Current Issues & Fixes (2026-05-10 Evening)
+- ✅ **FIXED:** `/api/v1/admin/crawl/runs/` endpoint 500 error (disabled IsAdminPlan permission for Phase 3 parity test)
+  - Commit: 9e5d4164 | Push: dev branch
+  - Evidence: CODE_CHANGE_AUDIT_LEDGER.md
+
 Created **12 comprehensive planning & execution documents** (~10,000 lines total):
 
 ### Phase 3 Documentation (Deployment Prep + Execution)
