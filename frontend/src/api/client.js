@@ -4,6 +4,7 @@
  * BaseURL từ REACT_APP_API_BASE_URL hoặc proxy /api -> backend:8000
  */
 import axios from 'axios';
+import { coreApiAdapter } from '@vninvest/web/adapters/core-api-adapter';
 
 const apiBaseURL = process.env.REACT_APP_API_BASE_URL || '/api';
 const REQUEST_TIMEOUT_MS = 20000;
@@ -804,9 +805,13 @@ export const deleteAdminGlobalScreenerRule = (id) => apiClient.delete(`/portfoli
 export const runAdminGlobalScreenerManual = () => apiClient.post('/portfolio/admin/screener/run-manual/');
 
 // --- Broker Integration (DNSE) ---
-// DNSE LightSpeed API — dùng coreApiAdapter.js, KHÔNG dùng apiClient (legacy).
-// import { coreApiAdapter } from 'packages/web/src/adapters/coreApiAdapter';
-// coreApiAdapter.getDNSEConfig(), coreApiAdapter.updateDNSEConfig(), coreApiAdapter.syncDNSEAccounts()
+// DNSE LightSpeed API — backward-compatible bridge sang coreApiAdapter.
+// Lưu ý: các call thực tế vẫn đi qua coreApiAdapter, không dùng retail flow cũ.
+export const getDNSEConfig = () => coreApiAdapter.getDNSEConfig();
+export const updateDNSEConfig = (data) => coreApiAdapter.updateDNSEConfig(data);
+export const syncDNSEAccounts = () => coreApiAdapter.syncDNSEAccounts();
+export const getDNSETokenStatus = () => coreApiAdapter.getDNSETokenStatus();
+export const placeDNSEOrder = (data) => coreApiAdapter.placeDNSEOrder ? coreApiAdapter.placeDNSEOrder(data) : Promise.reject(new Error('DNSE place order is not implemented.'));
 
 // --- Crawling Control API ---
 export const getAdminCrawlJobs = () => apiClient.get('/v1/admin/crawl/jobs/');

@@ -19,6 +19,7 @@
     "./auth-runtime": "./src/context/authRuntime.js",
     "./auth-react": "./src/context/authReact.js",
     "./adapters/core": "./src/adapters/core/index.js",
+    "./adapters/core-api-adapter": "./src/adapters/coreApiAdapter.js",
     "./adapters/vip-app": "./src/adapters/vip-app/index.js"
   },
   "peerDependencies": {

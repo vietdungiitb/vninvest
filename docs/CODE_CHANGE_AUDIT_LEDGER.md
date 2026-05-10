@@ -1,3 +1,22 @@
+# Entry 2026-05-10-DNSE-LIGHTSPEED-DEV-BUILD-BRIDGE — Giữ compatibility cho frontend build nhưng route DNSE vẫn qua coreApiAdapter
+
+**Mục tiêu:** Làm cho dev compose build/run hoàn chỉnh mà không khôi phục retail DNSE flow cũ.
+
+**Vấn đề phát sinh:** Frontend build vẫn còn một call site import named DNSE exports từ `frontend/src/api/client.js`, trong khi slice trước đã xóa các export này để chuyển sang `coreApiAdapter.js`.
+
+**Files changed:**
+- `frontend/src/api/client.js` (MODIFIED) — Thêm compatibility exports `getDNSEConfig`, `updateDNSEConfig`, `syncDNSEAccounts`, `getDNSETokenStatus`, `placeDNSEOrder`; các wrapper này gọi `coreApiAdapter`.
+- `packages/web/package.json` (MODIFIED) — Expose subpath export `./adapters/core-api-adapter` trỏ về `src/adapters/coreApiAdapter.js`.
+
+**Validation:**
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build --remove-orphans` build frontend thành công.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` cho thấy `core-api`, `db`, `redis`, `frontend` đều healthy/running.
+- PASSED: `Invoke-WebRequest http://127.0.0.1:80` trả `200`.
+- PASSED: `core-api` health check nội bộ qua container network vẫn hoạt động.
+
+**Residual risk:**
+- `placeDNSEOrder` chỉ là compatibility bridge và vẫn trả lỗi “not implemented”; đây là chủ đích để không giả vờ support đặt lệnh.
+
 # Entry 2026-05-10-DNSE-LIGHTSPEED-API-FIX — Sửa toàn bộ code DNSE sai auth flow và kiến trúc SaaS
 
 **Mục tiêu:** Loại bỏ hoàn toàn code sai (retail username/password, stub fallbacks) và triển khai đúng DNSE LightSpeed API OAuth2 flow chuẩn theo tài liệu đã phê duyệt.

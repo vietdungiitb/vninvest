@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-05-10-DNSE-LIGHTSPEED-DEV-BUILD-BRIDGE) — Giữ compatibility cho frontend build nhưng route DNSE vẫn qua coreApiAdapter
+
+Muc tieu:
+- Giu frontend build/compose dev running thanh cong trong khi da chuyen DNSE flow sang core adapter.
+- Bo sung bridge compatibility toi thieu cho cac import DNSE co san trong monolith frontend.
+- Khong khôi phuc retail flow cu va khong cho place order gia vo san sàng.
+
+Files changed:
+- `frontend/src/api/client.js` (MODIFIED) - Compatibility exports DNSE moi wrapper sang `coreApiAdapter`.
+- `packages/web/package.json` (MODIFIED) - Expose `./adapters/core-api-adapter` cho frontend bridge.
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build --remove-orphans` build frontend thanh cong.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` cho thay `core-api`, `db`, `redis`, `frontend` healthy/running.
+- PASSED: `Invoke-WebRequest http://127.0.0.1:80` tra ve `200`.
+- PASSED: `core-api` health cho endpoint noi bo duoc xac nhan qua network container.
+
 # ✅ AUDIT FILE LIST (2026-05-10-DNSE-LIGHTSPEED-API-FIX) — Sửa toàn bộ code DNSE sai auth flow và kiến trúc SaaS
 
 Muc tieu:
