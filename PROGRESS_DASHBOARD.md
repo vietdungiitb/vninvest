@@ -14,6 +14,7 @@ Files changed:
 Validation:
 - PASSED: Endpoint `/core/v1/broker/dnse/sync-accounts/` không còn trả lỗi `vnbroker connector chưa khả dụng`.
 - PASSED: Với credential test giả, endpoint trả lỗi upstream DNSE thật (`API key not found in storage`) thay vì lỗi dependency thiếu connector.
+- PASSED: Với credential DNSE đã kết nối trên phiên `admin`, endpoint trả `ok=true`, `synced_count=1` và ghi sub-account `0003724720`.
 
 # ✅ AUDIT FILE LIST (2026-05-10-DNSE-LIGHTSPEED-PORTFOLIOS-SAAS-ROUTE) — Chuyển /portfolios sang page SaaS thật
 

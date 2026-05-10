@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-10 18:07:13`
+Generated at: `2026-05-10 18:14:50`
 
 ## Summary
 
-- Total modules: 1016
-- Python modules: 516
+- Total modules: 1015
+- Python modules: 515
 - JS/TS modules: 500
 - Total classes: 838
-- Total functions: 2784
-- Total top-level variables: 4471
+- Total functions: 2785
+- Total top-level variables: 4470
 
 ## Python Modules
 
@@ -2458,11 +2458,6 @@ Generated at: `2026-05-10 18:07:13`
 - Functions:
   - `main`
 
-### `packages/core/backend/scripts/create_test_user.py`
-
-- Top-level variables:
-  - `pat_secret`
-
 ### `packages/core/backend/src/advisory/__init__.py`
 
 - Top-level variables:
@@ -3182,7 +3177,7 @@ Generated at: `2026-05-10 18:07:13`
 ### `packages/core/backend/src/user_workspace/vnbroker_dnse_compat.py`
 
 - Functions:
-  - `_coerce_list`, `_to_float`, `build_dnse_client`, `fetch_account_balance`, `fetch_order_history`, `fetch_sub_accounts`
+  - `_coerce_list`, `_dataframe_to_records`, `_to_float`, `build_dnse_client`, `fetch_account_balance`, `fetch_order_history`, `fetch_sub_accounts`
 
 ### `packages/core/backend/src/vninvest_core/__init__.py`
 

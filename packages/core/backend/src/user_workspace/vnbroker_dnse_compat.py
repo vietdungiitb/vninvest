@@ -3,7 +3,23 @@ from __future__ import annotations
 from typing import Any
 
 
+def _dataframe_to_records(payload: Any) -> list[dict]:
+    # vnbroker often returns pandas DataFrame for account/order endpoints.
+    if hasattr(payload, "to_dict") and callable(payload.to_dict):
+        try:
+            rows = payload.to_dict("records")
+            if isinstance(rows, list):
+                return [item for item in rows if isinstance(item, dict)]
+        except Exception:
+            return []
+    return []
+
+
 def _coerce_list(payload: Any) -> list[dict]:
+    df_rows = _dataframe_to_records(payload)
+    if df_rows:
+        return df_rows
+
     if isinstance(payload, list):
         return [item for item in payload if isinstance(item, dict)]
     if not isinstance(payload, dict):
@@ -45,14 +61,23 @@ def fetch_sub_accounts(client) -> list[dict]:
             or item.get("accountNo")
             or item.get("account_no")
             or item.get("id")
+            or item.get("id")
         )
         if not account_number:
             continue
 
+        account_type = item.get("account_type") or item.get("accountType")
+        if account_type is None:
+            # DNSE DataFrame shape: dealAccount/derivativeAccount flags.
+            if item.get("derivativeAccount"):
+                account_type = "6"
+            else:
+                account_type = "1"
+
         normalized.append(
             {
                 "account_number": str(account_number),
-                "account_type": str(item.get("account_type") or item.get("accountType") or "1"),
+                "account_type": str(account_type or "1"),
                 "account_name": item.get("account_name")
                 or item.get("accountName")
                 or f"DNSE {account_number}",

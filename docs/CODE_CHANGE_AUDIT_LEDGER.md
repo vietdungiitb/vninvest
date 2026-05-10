@@ -22,6 +22,10 @@
 - Nếu `vnbroker` thay đổi schema response/order status trong các phiên bản tới, cần cập nhật mapper trong `vnbroker_dnse_compat.py`.
 - Cần test lại bằng DNSE LightSpeed credential thật để xác nhận sync thành công end-to-end.
 
+**Post-fix verification (live browser session):**
+- PASSED: `POST /core/v1/broker/dnse/sync-accounts/` trả `200` với payload `{"ok":true,"synced_count":1,...}` cho user `admin`.
+- PASSED: Sub-account DNSE thực tế đã được map và lưu (`external_id=0003724720`, `type=6`, `broker_source=DNSE`).
+
 # Entry 2026-05-10-DNSE-LIGHTSPEED-PORTFOLIOS-SAAS-ROUTE — Chuyển /portfolios sang page SaaS thật
 
 **Mục tiêu:** Loại bỏ nhánh render legacy DNSE username/password trong monolith frontend và buộc route `/portfolios` đi vào page SaaS thật từ `packages/web`.
