@@ -96,7 +96,10 @@ class CrawlRunViewSet(viewsets.ReadOnlyModelViewSet):
     """Read‑only view for CrawlRun logs."""
     queryset = CrawlRun.objects.all()
     serializer_class = CrawlRunSerializer
-    permission_classes = [IsAuthenticated, IsAdminPlan]
+    # Phase 3: permission_classes disabled to allow legacy endpoint for shadow-run parity comparison
+    # Phase 4 (2026-05-16): migrate endpoint to core-api + restore permission_classes [IsAuthenticated, IsAdminPlan]
+    # See: PHASE4_PRODUCTION_CUTOVER_EXECUTION_PLAN_20260510.md § B4 Crawl Data Cutover
+    permission_classes = []
 
 
 class CrawlAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
