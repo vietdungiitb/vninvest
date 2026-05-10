@@ -1,3 +1,27 @@
+# Entry 2026-05-10-DNSE-EXTEND-BALANCE-TRANSACTION-FLOWS — Mở rộng flow DNSE sau sync tiểu khoản
+
+**Mục tiêu:**
+- Hoàn thiện giai đoạn sau `sync-accounts` bằng cách expose thêm API đồng bộ số dư và đối soát giao dịch trong core backend.
+- Nối `packages/web` adapter + UI để người dùng thao tác trực tiếp 3 luồng DNSE (tiểu khoản, số dư, giao dịch) từ trang danh mục.
+- Hiển thị danh sách tiểu khoản vừa sync trong panel để kiểm tra nhanh ngay trên UI.
+
+**Files changed:**
+- `packages/core/backend/src/user_workspace/views_dnse.py` (MODIFIED) — thêm `dnse_sync_balances_api`, `dnse_reconcile_transactions_api`.
+- `packages/core/backend/src/user_workspace/urls.py` (MODIFIED) — thêm routes `/broker/dnse/sync-balances/` và `/broker/dnse/reconcile-transactions/`.
+- `packages/web/src/adapters/coreApiAdapter.js` (MODIFIED) — thêm methods `syncDNSEBalances`, `reconcileDNSETransactions`.
+- `packages/web/src/components/DNSEConnectionPanel.js` (MODIFIED) — thêm 2 nút action mới, render kết quả và bảng tiểu khoản đã liên kết.
+- `packages/web/src/components/DNSEConnectionPanel.css` (MODIFIED) — style cho action row và bảng account.
+- `module_tree_full.md` (REGENERATED).
+
+**Validation:**
+- PASSED: `get_errors` cho toàn bộ file thay đổi không phát sinh lỗi.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` build lại stack thành công; `core-api` healthy, `frontend` started.
+- PASSED: `docker compose -f ./docker-compose.dev.yml exec -T core-api python manage.py check` trả `System check identified no issues (0 silenced)`.
+
+**Residual risk:**
+- Chưa chạy test tích hợp có auth token thật để xác nhận 2 endpoint mới trong browser session hiện tại.
+- Kết quả đối soát giao dịch phụ thuộc dữ liệu thật từ DNSE theo từng thời điểm thị trường.
+
 # Entry 2026-05-10-DNSE-SYNC-502-UNBLOCK — Khử lỗi 502 "vnbroker connector chưa khả dụng"
 
 **Mục tiêu:**

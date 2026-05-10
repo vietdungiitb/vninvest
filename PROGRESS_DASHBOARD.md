@@ -1,3 +1,29 @@
+# ✅ AUDIT FILE LIST (2026-05-10-DNSE-EXTEND-BALANCE-TRANSACTION-FLOWS) — Hoàn thiện flow DNSE sau sync tiểu khoản
+
+Mục tiêu:
+- Mở rộng Core API DNSE để hỗ trợ đồng bộ số dư và đối soát giao dịch qua endpoint chính thức.
+- Nối đủ adapter + UI trong `packages/web` để thao tác 3 luồng DNSE ngay trên trang danh mục.
+- Hiển thị danh sách tiểu khoản sau sync để audit trực quan tại runtime.
+
+Files changed:
+- `packages/core/backend/src/user_workspace/views_dnse.py` (MODIFIED)
+- `packages/core/backend/src/user_workspace/urls.py` (MODIFIED)
+- `packages/web/src/adapters/coreApiAdapter.js` (MODIFIED)
+- `packages/web/src/components/DNSEConnectionPanel.js` (MODIFIED)
+- `packages/web/src/components/DNSEConnectionPanel.css` (MODIFIED)
+- `module_tree_full.md` (REGENERATED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+
+Validation:
+- PASSED: `get_errors` không phát hiện lỗi trong các file thay đổi.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` hoàn tất build/restart.
+- PASSED: `docker compose -f ./docker-compose.dev.yml exec -T core-api python manage.py check` sạch lỗi.
+
+Status:
+- Đã hoàn tất wiring backend/frontend cho `sync-balances` và `reconcile-transactions`.
+- DNSEConnectionPanel hiện hỗ trợ thao tác đầy đủ và hiển thị danh sách tiểu khoản đã liên kết sau khi sync.
+
 # ✅ AUDIT FILE LIST (2026-05-10-DNSE-SYNC-502-UNBLOCK) — Khử lỗi 502 connector unavailable
 
 Mục tiêu:

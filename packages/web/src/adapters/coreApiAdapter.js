@@ -476,6 +476,23 @@ export const coreApiAdapter = {
   },
 
   /**
+   * Đồng bộ số dư/NAV cho các tiểu khoản DNSE đã liên kết.
+   * @returns {Promise<{ ok: boolean, synced_count: number, date?: string }>}
+   */
+  syncDNSEBalances() {
+    return corePost("/broker/dnse/sync-balances/");
+  },
+
+  /**
+   * Đối soát giao dịch DNSE trong khoảng ngày gần đây.
+   * @param {{ days_back?: number }} [params]
+   * @returns {Promise<{ ok: boolean, synced_count: number }>}
+   */
+  reconcileDNSETransactions(params = {}) {
+    return corePost("/broker/dnse/reconcile-transactions/", params);
+  },
+
+  /**
    * Lấy trạng thái kết nối DNSE LightSpeed API.
    * @returns {Promise<{ ok: boolean, is_configured: boolean, is_active: boolean }>}
    */

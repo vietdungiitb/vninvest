@@ -13,7 +13,11 @@ from django.utils import timezone
 
 from .models import DNSECredential, SubAccount
 from .serializers import SubAccountSerializer
-from .tasks import sync_dnse_accounts_task
+from .tasks import (
+    reconcile_dnse_transactions_task,
+    sync_dnse_accounts_task,
+    sync_dnse_balances_task,
+)
 
 
 @api_view(['GET', 'POST'])
@@ -98,6 +102,60 @@ def dnse_sync_accounts_api(request):
     return Response({
         "ok": False,
         "error": result.get("error", "Đồng bộ thất bại."),
+    }, status=status.HTTP_502_BAD_GATEWAY)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def dnse_sync_balances_api(request):
+    """
+    Kích hoạt tác vụ đồng bộ số dư/NAV từ DNSE cho các tiểu khoản đã liên kết.
+    """
+    user = request.user
+    credential = DNSECredential.objects.filter(user=user, is_active=True).first()
+    if not credential or not credential.has_credentials():
+        return Response({
+            "ok": False,
+            "error": "DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    result = sync_dnse_balances_task(user.id)
+    if result.get("ok"):
+        return Response(result)
+
+    return Response({
+        "ok": False,
+        "error": result.get("error", "Đồng bộ số dư thất bại."),
+    }, status=status.HTTP_502_BAD_GATEWAY)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def dnse_reconcile_transactions_api(request):
+    """
+    Kích hoạt đối soát giao dịch DNSE cho các tiểu khoản đã liên kết.
+    """
+    user = request.user
+    credential = DNSECredential.objects.filter(user=user, is_active=True).first()
+    if not credential or not credential.has_credentials():
+        return Response({
+            "ok": False,
+            "error": "DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    raw_days_back = request.data.get("days_back", 7)
+    try:
+        days_back = max(1, min(int(raw_days_back), 365))
+    except (TypeError, ValueError):
+        days_back = 7
+
+    result = reconcile_dnse_transactions_task(user.id, days_back=days_back)
+    if result.get("ok"):
+        return Response(result)
+
+    return Response({
+        "ok": False,
+        "error": result.get("error", "Đối soát giao dịch thất bại."),
     }, status=status.HTTP_502_BAD_GATEWAY)
 
 

@@ -161,6 +161,55 @@
   border-color: #1e40af;
 }
 
+.dnse-panel__sync-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dnse-panel__accounts {
+  margin-top: 0.75rem;
+  border: 1px solid #334155;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.dnse-panel__accounts-title {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  color: #cbd5e1;
+  background: #0f172a;
+  border-bottom: 1px solid #334155;
+}
+
+.dnse-panel__accounts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.dnse-panel__accounts-table th,
+.dnse-panel__accounts-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.dnse-panel__accounts-table th {
+  color: #94a3b8;
+  font-weight: 600;
+  background: #020617;
+}
+
+.dnse-panel__accounts-table td {
+  color: #e2e8f0;
+}
+
+.dnse-panel__accounts-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 /* Messages */
 .dnse-panel__error {
   color: #fca5a5;
@@ -205,5 +254,9 @@
 
   .dnse-panel__btn {
     width: 100%;
+  }
+
+  .dnse-panel__sync-actions {
+    flex-direction: column;
   }
 }

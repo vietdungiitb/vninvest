@@ -89,6 +89,8 @@ urlpatterns = [
     # Broker Integration (DNSE) — Native Core Implementation
     path('broker/dnse/config/', views_dnse.dnse_config_api, name='dnse-broker-config'),
     path('broker/dnse/sync-accounts/', views_dnse.dnse_sync_accounts_api, name='dnse-broker-sync-accounts'),
+    path('broker/dnse/sync-balances/', views_dnse.dnse_sync_balances_api, name='dnse-broker-sync-balances'),
+    path('broker/dnse/reconcile-transactions/', views_dnse.dnse_reconcile_transactions_api, name='dnse-broker-reconcile-transactions'),
     path('broker/dnse/place-order/', views_dnse.dnse_place_order_api, name='dnse-broker-place-order'),
     path('broker/dnse/token-status/', views_dnse.dnse_token_status_api, name='dnse-broker-token-status'),
 ]

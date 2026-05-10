@@ -20,7 +20,7 @@ function useDNSEStatus() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const mountedRef = useRef(true);
+  const mountedRef = useRef(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -61,9 +61,14 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
   const [clientSecret, setClientSecret] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncingBalances, setSyncingBalances] = useState(false);
+  const [syncingTransactions, setSyncingTransactions] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
+  const [balanceResult, setBalanceResult] = useState(null);
+  const [txResult, setTxResult] = useState(null);
+  const [syncedAccounts, setSyncedAccounts] = useState([]);
 
   const handleSave = useCallback(async (evt) => {
     evt.preventDefault();
@@ -97,6 +102,7 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
     try {
       const res = await coreApiAdapter.syncDNSEAccounts();
       setSyncResult({ ok: true, count: res?.synced_count ?? 0 });
+      setSyncedAccounts(Array.isArray(res?.accounts) ? res.accounts : []);
       if (typeof onConnected === "function") {
         onConnected(res?.accounts ?? []);
       }
@@ -107,6 +113,32 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       setSyncing(false);
     }
   }, [onConnected, reload]);
+
+  const handleSyncBalances = useCallback(async () => {
+    setSyncingBalances(true);
+    setBalanceResult(null);
+    try {
+      const res = await coreApiAdapter.syncDNSEBalances();
+      setBalanceResult({ ok: true, count: res?.synced_count ?? 0, date: res?.date || null });
+    } catch (err) {
+      setBalanceResult({ ok: false, error: err?.message || "Đồng bộ số dư thất bại." });
+    } finally {
+      setSyncingBalances(false);
+    }
+  }, []);
+
+  const handleReconcileTransactions = useCallback(async () => {
+    setSyncingTransactions(true);
+    setTxResult(null);
+    try {
+      const res = await coreApiAdapter.reconcileDNSETransactions({ days_back: 30 });
+      setTxResult({ ok: true, count: res?.synced_count ?? 0 });
+    } catch (err) {
+      setTxResult({ ok: false, error: err?.message || "Đối soát giao dịch thất bại." });
+    } finally {
+      setSyncingTransactions(false);
+    }
+  }, []);
 
   if (loading) {
     return e("div", { className: `dnse-panel ${className}` }, "Đang tải trạng thái DNSE...");
@@ -194,21 +226,78 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       ? e(
           "div",
           { className: "dnse-panel__sync" },
-          e(
-            "button",
-            {
-              type: "button",
-              disabled: syncing,
-              onClick: handleSync,
-              className: "dnse-panel__btn dnse-panel__btn--secondary",
-            },
-            syncing ? "Đang đồng bộ..." : "Đồng bộ tiểu khoản"
+          e("div", { className: "dnse-panel__sync-actions" },
+            e(
+              "button",
+              {
+                type: "button",
+                disabled: syncing,
+                onClick: handleSync,
+                className: "dnse-panel__btn dnse-panel__btn--secondary",
+              },
+              syncing ? "Đang đồng bộ..." : "Đồng bộ tiểu khoản"
+            ),
+            e(
+              "button",
+              {
+                type: "button",
+                disabled: syncingBalances,
+                onClick: handleSyncBalances,
+                className: "dnse-panel__btn dnse-panel__btn--secondary",
+              },
+              syncingBalances ? "Đang đồng bộ số dư..." : "Đồng bộ số dư"
+            ),
+            e(
+              "button",
+              {
+                type: "button",
+                disabled: syncingTransactions,
+                onClick: handleReconcileTransactions,
+                className: "dnse-panel__btn dnse-panel__btn--secondary",
+              },
+              syncingTransactions ? "Đang đối soát..." : "Đối soát giao dịch"
+            )
           ),
           syncResult?.ok === true
             ? e("p", { className: "dnse-panel__success" }, `Đồng bộ thành công: ${syncResult.count} tiểu khoản.`)
             : null,
           syncResult?.ok === false
             ? e("p", { className: "dnse-panel__error" }, syncResult.error)
+            : null,
+          balanceResult?.ok === true
+            ? e("p", { className: "dnse-panel__info" }, `Đồng bộ số dư thành công: ${balanceResult.count} tiểu khoản${balanceResult.date ? ` (ngày ${balanceResult.date})` : ""}.`)
+            : null,
+          balanceResult?.ok === false
+            ? e("p", { className: "dnse-panel__error" }, balanceResult.error)
+            : null,
+          txResult?.ok === true
+            ? e("p", { className: "dnse-panel__info" }, `Đối soát giao dịch thành công: ${txResult.count} giao dịch.`)
+            : null,
+          txResult?.ok === false
+            ? e("p", { className: "dnse-panel__error" }, txResult.error)
+            : null,
+          syncedAccounts.length > 0
+            ? e("div", { className: "dnse-panel__accounts" },
+              e("p", { className: "dnse-panel__accounts-title" }, "Tiểu khoản đã liên kết"),
+              e("table", { className: "dnse-panel__accounts-table" },
+                e("thead", null,
+                  e("tr", null,
+                    e("th", null, "Số tài khoản"),
+                    e("th", null, "Loại"),
+                    e("th", null, "Tên hiển thị")
+                  )
+                ),
+                e("tbody", null,
+                  syncedAccounts.map((account) =>
+                    e("tr", { key: account.id || account.external_id || account.account_number },
+                      e("td", null, account.external_id || account.account_number || "—"),
+                      e("td", null, account.type || "—"),
+                      e("td", null, account.display_name || account.name || "—")
+                    )
+                  )
+                )
+              )
+            )
             : null
         )
       : null,
