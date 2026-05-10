@@ -31,6 +31,13 @@ function generateRequestId() {
   });
 }
 
+function getAuthorizationHeader() {
+  if (typeof window === "undefined") return {};
+  const token = window.localStorage?.getItem("access_token");
+  if (!token) return {};
+  return { "Authorization": `Bearer ${token}` };
+}
+
 async function coreGet(path, options = {}) {
   const base = resolveCoreApiBase();
   const requestId = generateRequestId();
@@ -40,6 +47,7 @@ async function coreGet(path, options = {}) {
     headers: {
       "Content-Type": "application/json",
       "X-Request-ID": requestId,
+      ...getAuthorizationHeader(),
       ...(options.headers || {}),
     },
     credentials: "include",
@@ -64,6 +72,7 @@ async function corePost(path, body = undefined) {
     headers: {
       "Content-Type": "application/json",
       "X-Request-ID": requestId,
+      ...getAuthorizationHeader(),
     },
     credentials: "include",
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -89,6 +98,7 @@ async function corePatch(path, body = undefined) {
     headers: {
       "Content-Type": "application/json",
       "X-Request-ID": requestId,
+      ...getAuthorizationHeader(),
     },
     credentials: "include",
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -112,6 +122,7 @@ async function coreDelete(path) {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthorizationHeader(),
       "X-Request-ID": requestId,
     },
     credentials: "include",
