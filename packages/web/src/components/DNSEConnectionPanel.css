@@ -210,6 +210,20 @@
   border-bottom: none;
 }
 
+.dnse-panel__order {
+  margin-top: 0.75rem;
+  border: 1px solid #334155;
+  border-radius: 0.375rem;
+  padding-bottom: 0.75rem;
+}
+
+.dnse-panel__order-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
 /* Messages */
 .dnse-panel__error {
   color: #fca5a5;
@@ -258,5 +272,9 @@
 
   .dnse-panel__sync-actions {
     flex-direction: column;
+  }
+
+  .dnse-panel__order-grid {
+    grid-template-columns: 1fr;
   }
 }

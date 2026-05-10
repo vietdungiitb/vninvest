@@ -1,3 +1,28 @@
+# ✅ AUDIT FILE LIST (2026-05-10-DNSE-TRADING-OTP-TOKEN-PLACE-ORDER-FLOW) — Hoàn thiện luồng giao dịch DNSE trong Portfolios SaaS
+
+Mục tiêu:
+- Hoàn thiện end-to-end flow DNSE trading ở mức API/UI cho 3 bước bắt buộc: gửi OTP email, tạo trading token, đặt lệnh.
+- Đảm bảo mọi request đi qua `packages/web/src/adapters/coreApiAdapter.js` theo chuẩn SaaS core adapter.
+
+Files changed:
+- `packages/core/backend/src/user_workspace/views_dnse.py` (MODIFIED)
+- `packages/core/backend/src/user_workspace/urls.py` (MODIFIED)
+- `packages/web/src/adapters/coreApiAdapter.js` (MODIFIED)
+- `packages/web/src/components/DNSEConnectionPanel.js` (MODIFIED)
+- `packages/web/src/components/DNSEConnectionPanel.css` (MODIFIED)
+- `module_tree_full.md` (REGENERATED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+
+Validation:
+- PASSED: `get_errors` không báo lỗi trên toàn bộ file sửa.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` hoàn tất build/restart.
+- PASSED: frontend build thành công trong pipeline docker (`Compiled successfully`).
+
+Status:
+- Đã xong wiring backend/frontend cho luồng trading DNSE (OTP/token/order) ở mức kỹ thuật.
+- Chờ thao tác credential/OTP thật để chốt bằng chứng nghiệp vụ live đặt lệnh.
+
 # ✅ AUDIT FILE LIST (2026-05-10-DNSE-EXTEND-BALANCE-TRANSACTION-FLOWS) — Hoàn thiện flow DNSE sau sync tiểu khoản
 
 Mục tiêu:

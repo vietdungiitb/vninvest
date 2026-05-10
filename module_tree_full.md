@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-10 18:18:11`
+Generated at: `2026-05-10 18:30:34`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-10 18:18:11`
 - Python modules: 515
 - JS/TS modules: 500
 - Total classes: 838
-- Total functions: 2787
-- Total top-level variables: 4472
+- Total functions: 2792
+- Total top-level variables: 4479
 
 ## Python Modules
 
@@ -3172,7 +3172,7 @@ Generated at: `2026-05-10 18:18:11`
 ### `packages/core/backend/src/user_workspace/views_dnse.py`
 
 - Functions:
-  - `dnse_config_api`, `dnse_place_order_api`, `dnse_reconcile_transactions_api`, `dnse_sync_accounts_api`, `dnse_sync_balances_api`, `dnse_token_status_api`
+  - `_extract_trading_token`, `_get_active_dnse_client`, `_to_bool`, `dnse_config_api`, `dnse_create_trading_token_api`, `dnse_place_order_api`, `dnse_reconcile_transactions_api`, `dnse_send_email_otp_api`, `dnse_sync_accounts_api`, `dnse_sync_balances_api`, `dnse_token_status_api`
 
 ### `packages/core/backend/src/user_workspace/vnbroker_dnse_compat.py`
 
@@ -6153,7 +6153,7 @@ Generated at: `2026-05-10 18:18:11`
 - Functions:
   - `DNSEConnectionPanel`, `useDNSEStatus`
 - Top-level variables:
-  - `e`, `handleReconcileTransactions`, `handleSave`, `handleSync`, `handleSyncBalances`, `isConfigured`, `mountedRef`, `reload`, `res`
+  - `e`, `handleCreateTradingToken`, `handlePlaceOrder`, `handleReconcileTransactions`, `handleSave`, `handleSendOtp`, `handleSync`, `handleSyncBalances`, `isConfigured`, `mountedRef`, `normalizedSymbol`, `price`, `quantity`, `reload`, `res`, `token`
 
 ### `packages/web/src/components/ShellPageTemplate.js`
 

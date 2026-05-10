@@ -11,6 +11,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 
+from .dnse_adapter import (
+    DNSEAdapterError,
+    DNSECredentialMissingError,
+    bootstrap_dnse_session,
+)
 from .models import DNSECredential, SubAccount
 from .serializers import SubAccountSerializer
 from .tasks import (
@@ -18,6 +23,39 @@ from .tasks import (
     sync_dnse_accounts_task,
     sync_dnse_balances_task,
 )
+
+
+def _to_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _extract_trading_token(result):
+    if isinstance(result, dict):
+        token = result.get("trading_token") or result.get("token")
+        if token:
+            return str(token)
+        data = result.get("data")
+        if isinstance(data, dict):
+            token = data.get("trading_token") or data.get("token")
+            if token:
+                return str(token)
+    return ""
+
+
+def _get_active_dnse_client(user):
+    credential = DNSECredential.objects.filter(user=user, is_active=True).first()
+    if not credential or not credential.has_credentials():
+        raise DNSECredentialMissingError(
+            "DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước."
+        )
+
+    session = bootstrap_dnse_session(credential)
+    client = session.get("session")
+    if client is None:
+        raise DNSEAdapterError("Không thể khởi tạo phiên DNSE LightSpeed API.")
+    return client
 
 
 @api_view(['GET', 'POST'])
@@ -163,13 +201,120 @@ def dnse_reconcile_transactions_api(request):
 @permission_classes([IsAuthenticated])
 def dnse_place_order_api(request):
     """
-    Đặt lệnh giao dịch qua DNSE LightSpeed API.
-    Chưa triển khai — trả 501 để tránh giả vờ thành công.
+    Đặt lệnh giao dịch qua DNSE LightSpeed API bằng trading token đã xác thực OTP.
     """
-    return Response({
-        "ok": False,
-        "error": "Tính năng đặt lệnh DNSE chưa được triển khai. Liên hệ quản trị viên.",
-    }, status=status.HTTP_501_NOT_IMPLEMENTED)
+    user = request.user
+    market_type = str(request.data.get("market_type", "STOCK")).strip().upper() or "STOCK"
+    order_category = str(request.data.get("order_category", "NORMAL")).strip().upper() or "NORMAL"
+    trading_token = str(request.data.get("trading_token", "")).strip()
+    payload = request.data.get("payload")
+    dry_run = _to_bool(request.data.get("dry_run", False))
+
+    if not trading_token:
+        return Response({
+            "ok": False,
+            "error": "Thiếu trading_token. Vui lòng gửi OTP và tạo trading token trước khi đặt lệnh.",
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if not isinstance(payload, dict) or not payload:
+        return Response({
+            "ok": False,
+            "error": "Thiếu payload đặt lệnh hợp lệ.",
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        client = _get_active_dnse_client(user)
+        result = client.post_order(
+            market_type=market_type,
+            payload=payload,
+            trading_token=trading_token,
+            order_category=order_category,
+            dry_run=dry_run,
+            raw=False,
+        )
+        return Response({
+            "ok": True,
+            "result": result,
+        })
+    except DNSECredentialMissingError as exc:
+        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except DNSEAdapterError as exc:
+        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+    except Exception as exc:
+        return Response({
+            "ok": False,
+            "error": f"Đặt lệnh DNSE thất bại: {exc}",
+        }, status=status.HTTP_502_BAD_GATEWAY)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def dnse_send_email_otp_api(request):
+    """
+    Gửi OTP email cho flow giao dịch DNSE.
+    """
+    user = request.user
+    dry_run = _to_bool(request.data.get("dry_run", False))
+
+    try:
+        client = _get_active_dnse_client(user)
+        result = client.send_email_otp(dry_run=dry_run, raw=False)
+        return Response({
+            "ok": True,
+            "result": result,
+        })
+    except DNSECredentialMissingError as exc:
+        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except DNSEAdapterError as exc:
+        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+    except Exception as exc:
+        return Response({
+            "ok": False,
+            "error": f"Gửi OTP DNSE thất bại: {exc}",
+        }, status=status.HTTP_502_BAD_GATEWAY)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def dnse_create_trading_token_api(request):
+    """
+    Tạo trading token bằng OTP/passcode để đặt/sửa/hủy lệnh DNSE.
+    """
+    user = request.user
+    otp_type = str(request.data.get("otp_type", "EMAIL")).strip().upper() or "EMAIL"
+    passcode = str(request.data.get("passcode", "")).strip()
+    dry_run = _to_bool(request.data.get("dry_run", False))
+
+    if not passcode:
+        return Response({
+            "ok": False,
+            "error": "Thiếu passcode OTP từ DNSE.",
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        client = _get_active_dnse_client(user)
+        result = client.create_trading_token(
+            otp_type=otp_type,
+            passcode=passcode,
+            dry_run=dry_run,
+            raw=False,
+        )
+        trading_token = _extract_trading_token(result)
+        return Response({
+            "ok": True,
+            "otp_type": otp_type,
+            "trading_token": trading_token,
+            "result": result,
+        })
+    except DNSECredentialMissingError as exc:
+        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except DNSEAdapterError as exc:
+        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+    except Exception as exc:
+        return Response({
+            "ok": False,
+            "error": f"Tạo trading token DNSE thất bại: {exc}",
+        }, status=status.HTTP_502_BAD_GATEWAY)
 
 
 @api_view(['GET'])

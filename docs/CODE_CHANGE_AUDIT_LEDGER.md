@@ -1,3 +1,27 @@
+# Entry 2026-05-10-DNSE-TRADING-OTP-TOKEN-PLACE-ORDER-FLOW — Hoàn thiện luồng giao dịch DNSE từ UI danh mục
+
+**Mục tiêu:**
+- Mở endpoint Core DNSE cho 2 bước bắt buộc trước giao dịch: gửi OTP email và tạo trading token.
+- Nối adapter + UI để thực thi luồng đầy đủ `Gửi OTP -> Tạo trading token -> Đặt lệnh` ngay trong `DNSEConnectionPanel`.
+- Giữ toàn bộ call path qua `coreApiAdapter`, không đi tắt qua legacy client.
+
+**Files changed:**
+- `packages/core/backend/src/user_workspace/views_dnse.py` (MODIFIED) — thêm `dnse_send_email_otp_api`, `dnse_create_trading_token_api`; nâng `dnse_place_order_api` gọi `vnbroker` thực tế.
+- `packages/core/backend/src/user_workspace/urls.py` (MODIFIED) — thêm routes `/broker/dnse/send-email-otp/` và `/broker/dnse/create-trading-token/`.
+- `packages/web/src/adapters/coreApiAdapter.js` (MODIFIED) — thêm methods `sendDNSEEmailOtp`, `createDNSETradingToken`, `placeDNSEOrder`.
+- `packages/web/src/components/DNSEConnectionPanel.js` (MODIFIED) — bổ sung state/handlers/render cho passcode, trading token và form đặt lệnh thử nghiệm.
+- `packages/web/src/components/DNSEConnectionPanel.css` (MODIFIED) — style cho khối giao dịch DNSE (`dnse-panel__order`, `dnse-panel__order-grid`).
+- `module_tree_full.md` (REGENERATED).
+
+**Validation:**
+- PASSED: `get_errors` trên các file thay đổi không phát sinh lỗi.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` build/restart thành công; `core-api` healthy.
+- PASSED: frontend build trong container thành công (`Compiled successfully`).
+
+**Residual risk:**
+- Chưa có bằng chứng live E2E cho 3 thao tác OTP/token/place-order trong browser session hiện tại (phụ thuộc credential/passcode thật theo thời điểm).
+- Payload field-level cho `post_order` có thể cần tinh chỉnh thêm theo contract DNSE account thực tế từng thị trường/phân hệ lệnh.
+
 # Entry 2026-05-10-DNSE-EXTEND-BALANCE-TRANSACTION-FLOWS — Mở rộng flow DNSE sau sync tiểu khoản
 
 **Mục tiêu:**

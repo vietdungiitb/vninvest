@@ -69,6 +69,19 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
   const [balanceResult, setBalanceResult] = useState(null);
   const [txResult, setTxResult] = useState(null);
   const [syncedAccounts, setSyncedAccounts] = useState([]);
+  const [passcode, setPasscode] = useState("");
+  const [tradingToken, setTradingToken] = useState("");
+  const [orderAccountNo, setOrderAccountNo] = useState("");
+  const [orderSymbol, setOrderSymbol] = useState("");
+  const [orderSide, setOrderSide] = useState("BUY");
+  const [orderPrice, setOrderPrice] = useState("");
+  const [orderQuantity, setOrderQuantity] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [creatingToken, setCreatingToken] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [otpResult, setOtpResult] = useState(null);
+  const [tokenResult, setTokenResult] = useState(null);
+  const [orderResult, setOrderResult] = useState(null);
 
   const handleSave = useCallback(async (evt) => {
     evt.preventDefault();
@@ -139,6 +152,77 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       setSyncingTransactions(false);
     }
   }, []);
+
+  const handleSendOtp = useCallback(async () => {
+    setSendingOtp(true);
+    setOtpResult(null);
+    try {
+      const res = await coreApiAdapter.sendDNSEEmailOtp();
+      setOtpResult({ ok: true, message: res?.message || "Đã gửi OTP qua email DNSE." });
+    } catch (err) {
+      setOtpResult({ ok: false, error: err?.message || "Gửi OTP DNSE thất bại." });
+    } finally {
+      setSendingOtp(false);
+    }
+  }, []);
+
+  const handleCreateTradingToken = useCallback(async () => {
+    if (!passcode.trim()) {
+      setTokenResult({ ok: false, error: "Vui lòng nhập passcode OTP từ email DNSE." });
+      return;
+    }
+    setCreatingToken(true);
+    setTokenResult(null);
+    try {
+      const res = await coreApiAdapter.createDNSETradingToken({ otp_type: "EMAIL", passcode: passcode.trim() });
+      const token = res?.trading_token || res?.token || res?.result?.trading_token || res?.result?.token || "";
+      if (token) {
+        setTradingToken(String(token));
+      }
+      setTokenResult({ ok: true, hasToken: Boolean(token) });
+    } catch (err) {
+      setTokenResult({ ok: false, error: err?.message || "Tạo trading token thất bại." });
+    } finally {
+      setCreatingToken(false);
+    }
+  }, [passcode]);
+
+  const handlePlaceOrder = useCallback(async () => {
+    const normalizedSymbol = orderSymbol.trim().toUpperCase();
+    const price = Number(orderPrice);
+    const quantity = Number(orderQuantity);
+
+    if (!orderAccountNo.trim() || !normalizedSymbol || !tradingToken.trim()) {
+      setOrderResult({ ok: false, error: "Thiếu account number, symbol hoặc trading token." });
+      return;
+    }
+    if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
+      setOrderResult({ ok: false, error: "Giá và khối lượng phải lớn hơn 0." });
+      return;
+    }
+
+    setPlacingOrder(true);
+    setOrderResult(null);
+    try {
+      const res = await coreApiAdapter.placeDNSEOrder({
+        market_type: "STOCK",
+        order_category: "NORMAL",
+        trading_token: tradingToken.trim(),
+        payload: {
+          account_no: orderAccountNo.trim(),
+          symbol: normalizedSymbol,
+          side: orderSide,
+          price,
+          quantity,
+        },
+      });
+      setOrderResult({ ok: true, result: res?.result || res || null });
+    } catch (err) {
+      setOrderResult({ ok: false, error: err?.message || "Đặt lệnh DNSE thất bại." });
+    } finally {
+      setPlacingOrder(false);
+    }
+  }, [orderAccountNo, orderPrice, orderQuantity, orderSide, orderSymbol, tradingToken]);
 
   if (loading) {
     return e("div", { className: `dnse-panel ${className}` }, "Đang tải trạng thái DNSE...");
@@ -221,7 +305,7 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       )
     ),
 
-    // Đồng bộ tiểu khoản
+    // Đồng bộ dữ liệu + giao dịch thử nghiệm
     isConfigured
       ? e(
           "div",
@@ -298,7 +382,126 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                 )
               )
             )
-            : null
+            : null,
+
+          e("div", { className: "dnse-panel__order" },
+            e("p", { className: "dnse-panel__accounts-title" }, "Giao dịch DNSE (thử nghiệm)"),
+            e("div", { className: "dnse-panel__order-grid" },
+              e("div", { className: "dnse-panel__field" },
+                e("label", { htmlFor: "dnse-passcode" }, "Passcode OTP"),
+                e("input", {
+                  id: "dnse-passcode",
+                  type: "text",
+                  value: passcode,
+                  onChange: (ev) => setPasscode(ev.target.value),
+                  placeholder: "Nhập OTP từ email DNSE",
+                  disabled: sendingOtp || creatingToken,
+                })
+              ),
+              e("div", { className: "dnse-panel__field" },
+                e("label", { htmlFor: "dnse-trading-token" }, "Trading token"),
+                e("input", {
+                  id: "dnse-trading-token",
+                  type: "text",
+                  value: tradingToken,
+                  onChange: (ev) => setTradingToken(ev.target.value),
+                  placeholder: "Token tạo sau khi xác thực OTP",
+                })
+              )
+            ),
+            e("div", { className: "dnse-panel__sync-actions" },
+              e("button", {
+                type: "button",
+                disabled: sendingOtp,
+                onClick: handleSendOtp,
+                className: "dnse-panel__btn dnse-panel__btn--secondary",
+              }, sendingOtp ? "Đang gửi OTP..." : "Gửi OTP email"),
+              e("button", {
+                type: "button",
+                disabled: creatingToken,
+                onClick: handleCreateTradingToken,
+                className: "dnse-panel__btn dnse-panel__btn--secondary",
+              }, creatingToken ? "Đang tạo token..." : "Tạo trading token")
+            ),
+            otpResult?.ok === true ? e("p", { className: "dnse-panel__info" }, otpResult.message) : null,
+            otpResult?.ok === false ? e("p", { className: "dnse-panel__error" }, otpResult.error) : null,
+            tokenResult?.ok === true
+              ? e("p", { className: "dnse-panel__success" }, tokenResult.hasToken ? "Đã tạo trading token thành công." : "Đã gọi tạo token, nhưng chưa nhận token từ phản hồi.")
+              : null,
+            tokenResult?.ok === false ? e("p", { className: "dnse-panel__error" }, tokenResult.error) : null,
+
+            e("div", { className: "dnse-panel__order-grid" },
+              e("div", { className: "dnse-panel__field" },
+                e("label", { htmlFor: "dnse-order-account" }, "Số tài khoản"),
+                e("input", {
+                  id: "dnse-order-account",
+                  type: "text",
+                  value: orderAccountNo,
+                  onChange: (ev) => setOrderAccountNo(ev.target.value),
+                  placeholder: "Ví dụ: 0003724720",
+                  disabled: placingOrder,
+                })
+              ),
+              e("div", { className: "dnse-panel__field" },
+                e("label", { htmlFor: "dnse-order-symbol" }, "Mã cổ phiếu"),
+                e("input", {
+                  id: "dnse-order-symbol",
+                  type: "text",
+                  value: orderSymbol,
+                  onChange: (ev) => setOrderSymbol(ev.target.value),
+                  placeholder: "Ví dụ: FPT",
+                  disabled: placingOrder,
+                })
+              ),
+              e("div", { className: "dnse-panel__field" },
+                e("label", { htmlFor: "dnse-order-side" }, "Chiều lệnh"),
+                e("input", {
+                  id: "dnse-order-side",
+                  type: "text",
+                  value: orderSide,
+                  onChange: (ev) => setOrderSide(ev.target.value.trim().toUpperCase() || "BUY"),
+                  placeholder: "BUY hoặc SELL",
+                  disabled: placingOrder,
+                })
+              ),
+              e("div", { className: "dnse-panel__field" },
+                e("label", { htmlFor: "dnse-order-price" }, "Giá"),
+                e("input", {
+                  id: "dnse-order-price",
+                  type: "number",
+                  min: "0",
+                  step: "0.01",
+                  value: orderPrice,
+                  onChange: (ev) => setOrderPrice(ev.target.value),
+                  placeholder: "Ví dụ: 121.5",
+                  disabled: placingOrder,
+                })
+              ),
+              e("div", { className: "dnse-panel__field" },
+                e("label", { htmlFor: "dnse-order-quantity" }, "Khối lượng"),
+                e("input", {
+                  id: "dnse-order-quantity",
+                  type: "number",
+                  min: "1",
+                  step: "1",
+                  value: orderQuantity,
+                  onChange: (ev) => setOrderQuantity(ev.target.value),
+                  placeholder: "Ví dụ: 100",
+                  disabled: placingOrder,
+                })
+              )
+            ),
+            e("div", { className: "dnse-panel__sync-actions" },
+              e("button", {
+                type: "button",
+                disabled: placingOrder,
+                onClick: handlePlaceOrder,
+                className: "dnse-panel__btn dnse-panel__btn--primary",
+              }, placingOrder ? "Đang đặt lệnh..." : "Đặt lệnh thử nghiệm")
+            ),
+            orderResult?.ok === true ? e("p", { className: "dnse-panel__success" }, "Đặt lệnh DNSE thành công.") : null,
+            orderResult?.ok === false ? e("p", { className: "dnse-panel__error" }, orderResult.error) : null
+          )
         )
       : null,
 

@@ -493,6 +493,39 @@ export const coreApiAdapter = {
   },
 
   /**
+   * Gửi OTP email cho phiên giao dịch DNSE.
+   * @param {{ dry_run?: boolean }} [params]
+   */
+  sendDNSEEmailOtp(params = {}) {
+    return corePost("/broker/dnse/send-email-otp/", params);
+  },
+
+  /**
+   * Tạo trading token DNSE từ OTP/passcode.
+   * @param {{ otp_type?: string, passcode: string, dry_run?: boolean }} data
+   */
+  createDNSETradingToken(data) {
+    if (!data || !data.passcode) {
+      throw new Error("passcode là bắt buộc để tạo trading token DNSE.");
+    }
+    return corePost("/broker/dnse/create-trading-token/", data);
+  },
+
+  /**
+   * Đặt lệnh DNSE với trading token hợp lệ.
+   * @param {{ market_type?: string, order_category?: string, trading_token: string, payload: object, dry_run?: boolean }} data
+   */
+  placeDNSEOrder(data) {
+    if (!data || !data.trading_token) {
+      throw new Error("trading_token là bắt buộc để đặt lệnh DNSE.");
+    }
+    if (!data.payload || typeof data.payload !== "object") {
+      throw new Error("payload đặt lệnh DNSE không hợp lệ.");
+    }
+    return corePost("/broker/dnse/place-order/", data);
+  },
+
+  /**
    * Lấy trạng thái kết nối DNSE LightSpeed API.
    * @returns {Promise<{ ok: boolean, is_configured: boolean, is_active: boolean }>}
    */
