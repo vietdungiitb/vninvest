@@ -35,34 +35,43 @@ export default function StickyAlertBar({
   viewAllHref = '/whale-alerts',
 }) {
   const { t, formatTime } = useI18n();
-  const topAlerts = (Array.isArray(alerts) ? alerts : []).slice(0, 3);
+
+  const normalizeSymbol = (s) => String(s || '').trim().toUpperCase();
+  
+  // Deduplicate alerts by symbol to ensure variety in the top 3
+  const topAlerts = React.useMemo(() => {
+    const uniqueSymbols = new Set();
+    const result = [];
+    const sourceAlerts = Array.isArray(alerts) ? alerts : [];
+    
+    for (const alert of sourceAlerts) {
+      const symbol = normalizeSymbol(alert.symbol);
+      if (!uniqueSymbols.has(symbol)) {
+        uniqueSymbols.add(symbol);
+        result.push(alert);
+      }
+      if (result.length >= 3) break;
+    }
+    return result;
+  }, [alerts]);
 
   return (
     <section
       data-testid="sticky-alert-bar"
-      className={`sticky top-0 z-20 mb-4 rounded-2xl border border-slate-800/80 bg-slate-950/90 px-4 py-3 shadow-[0_18px_48px_rgba(15,23,42,0.42)] backdrop-blur ${className}`.trim()}
+      className={`sticky top-0 z-20 mb-6 rounded-2xl border border-slate-800/80 bg-slate-950/90 py-2 shadow-[0_18px_48px_rgba(15,23,42,0.42)] backdrop-blur ${className}`.trim()}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-            {t('dashboardRealtime.stickyAlertBarTitle', { defaultValue: 'Thanh cảnh báo ghim' })}
-          </h2>
-          <p className="mt-0.5 max-w-[64ch] text-[11px] text-slate-500">
-            {t('dashboardRealtime.stickyAlertBarHint', { defaultValue: 'Top 3 cảnh báo nóng nhất trong phiên hiện tại.' })}
-          </p>
-        </div>
-
-        <Link to={viewAllHref} className="text-xs text-cyan-400 transition-colors hover:text-cyan-300">
-          {t('dashboardRealtime.viewAll')}
+      <div className="flex items-center justify-end px-4">
+        <Link to={viewAllHref} className="text-[10px] font-bold uppercase tracking-wider text-cyan-500/80 transition-colors hover:text-cyan-400">
+          {t('dashboardRealtime.viewAll')} →
         </Link>
       </div>
 
       {topAlerts.length === 0 ? (
-        <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-900/70 px-3 py-3 text-sm text-slate-400">
+        <div className="mt-1.5 rounded-xl border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-400 text-center">
           {t('dashboardRealtime.stickyAlertBarEmpty', { defaultValue: 'Chưa có cảnh báo đủ mạnh để ghim.' })}
         </div>
       ) : (
-        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+        <div className="mt-1 grid grid-cols-1 gap-6 md:grid-cols-3">
           {topAlerts.map((alert, index) => {
             const severity = normalizeAlertSeverity(alert.severity, 'medium');
             const severityTone = alertSeveritySummaryTone(severity);

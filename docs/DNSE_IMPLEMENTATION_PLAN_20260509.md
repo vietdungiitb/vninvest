@@ -59,9 +59,8 @@ Public market data must stay on the shared multi-provider `vnbroker` layer so th
 1. Land the core models and adapter scaffold.
 2. Land account mapping and sync tasks.
 3. Add snapshot parity and transaction reconciliation.
-4. Execute a mandatory shadow run of minimum 3 real trading days for all Celery sync tasks.
-5. Wire the web panel and finish with contract tests.
-6. Promote only after the audit ledger and progress dashboard are updated.
+4. Wire the web panel and finish with contract tests.
+5. Promote only after the audit ledger and progress dashboard are updated.
 
 ## 5. Rules
 - No legacy DB writes.

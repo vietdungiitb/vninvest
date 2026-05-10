@@ -6,6 +6,8 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
+from vninvest_core.pagination import SnapshotCursorPagination
+
 from .models import SessionFacts, SymbolSnapshot
 from .serializers import SessionFactsSerializer, SymbolSnapshotSerializer
 
@@ -24,7 +26,7 @@ def _session_facts_cache_key(symbol: str, session_date) -> str:
 class SymbolSnapshotListView(generics.ListAPIView):
     serializer_class = SymbolSnapshotSerializer
     permission_classes = [permissions.IsAuthenticated]
-    pagination_class = None
+    pagination_class = SnapshotCursorPagination
 
     def get_queryset(self):
         qs = SymbolSnapshot.objects.all().order_by('-session_date', 'symbol')
@@ -74,7 +76,7 @@ class SymbolSnapshotDetailView(generics.RetrieveAPIView):
 class SessionFactsListView(generics.ListAPIView):
     serializer_class = SessionFactsSerializer
     permission_classes = [permissions.IsAuthenticated]
-    pagination_class = None
+    pagination_class = SnapshotCursorPagination
 
     def get_queryset(self):
         qs = SessionFacts.objects.all().order_by('-session_date', 'symbol')

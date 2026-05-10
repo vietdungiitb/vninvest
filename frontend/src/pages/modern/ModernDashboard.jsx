@@ -398,93 +398,95 @@ export default function ModernDashboard() {
       />
 
       {/* 2. Main Workspace Layout */}
-      <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4">
-        <StickyAlertBar alerts={filteredUnifiedAlerts} />
+      <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 py-4">
+        <div className="mx-auto w-full max-w-[1800px]">
+          <StickyAlertBar alerts={filteredUnifiedAlerts} />
 
-        <div className="page-body-grid page-body-grid--auto-height min-h-full items-start">
-          <div className="page-body-grid__main min-w-0">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:h-[526px]">
-              <div className="h-[526px] min-w-0 bg-slate-900/30 border border-slate-800/50 rounded-xl overflow-hidden p-1 lg:h-full">
-                <PortfolioHeatmap
-                  holdings={heatmapData}
-                  title="Theo dõi Dòng tiền"
-                  compact={true}
-                />
+          <div className="page-body-grid page-body-grid--auto-height min-h-full items-start gap-6">
+            <div className="page-body-grid__main min-w-0 space-y-6">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:h-[526px]">
+                <div className="h-[526px] min-w-0 bg-slate-900/30 border border-slate-800/50 rounded-xl overflow-hidden p-1 lg:h-full">
+                  <PortfolioHeatmap
+                    holdings={heatmapData}
+                    title="Theo dõi Dòng tiền"
+                    compact={true}
+                  />
+                </div>
+
+                <div className="h-[526px] min-w-0 overflow-hidden lg:h-full">
+                  <UnifiedAlertCenter
+                    alerts={filteredUnifiedAlerts}
+                    alertSummary={alertSummary}
+                    readAlertIds={readAlertIds}
+                    markAlertAsRead={markAlertAsRead}
+                    muteSymbolFor30m={muteSymbolFor30m}
+                    severityFilter={severityFilter}
+                    setSeverityFilter={setSeverityFilter}
+                    onSeverityFilterChange={toggleSeverityFilterFromSummary}
+                    criticalSoundEnabled={criticalSoundEnabled}
+                    toggleCriticalSound={toggleCriticalSound}
+                    currentUnifiedPage={currentUnifiedPage}
+                    hasPreviousUnifiedPage={hasPreviousUnifiedPage}
+                    backendUnifiedHasMore={backendUnifiedHasMore}
+                    loadingMoreUnified={loadingMoreUnified}
+                    goToFirstUnifiedPage={goToFirstUnifiedPage}
+                    goToPreviousUnifiedPage={goToPreviousUnifiedPage}
+                    goToNextUnifiedPage={goToNextUnifiedPage}
+                    goToLastUnifiedPage={goToLastUnifiedPage}
+                    hasLastUnifiedPage={hasLastUnifiedPage}
+                    pageSize={unifiedPageSize}
+                    setPageSize={setUnifiedPageSize}
+                    sourceFilter={sourceFilter}
+                    setSourceFilter={setSourceFilter}
+                    audienceFilter={audienceFilter}
+                    setAudienceFilter={setAudienceFilter}
+                    unreadCount={unreadUnifiedCount}
+                    showSummaryChips={true}
+                    minHeightClass="h-full"
+                    className="h-full overflow-hidden"
+                  />
+                </div>
               </div>
 
-              <div className="h-[526px] min-w-0 overflow-hidden lg:h-full">
-                <UnifiedAlertCenter
-                  alerts={filteredUnifiedAlerts}
-                  alertSummary={alertSummary}
-                  readAlertIds={readAlertIds}
-                  markAlertAsRead={markAlertAsRead}
-                  muteSymbolFor30m={muteSymbolFor30m}
-                  severityFilter={severityFilter}
-                  setSeverityFilter={setSeverityFilter}
-                  onSeverityFilterChange={toggleSeverityFilterFromSummary}
+              <div className="min-h-[420px] min-w-0 overflow-hidden">
+                <ModularPositionDeck
+                  holdings={heatmapData.filter((h) => h.is_holding)}
+                  symbolUniverse={symbolUniverse}
+                  loading={loading}
+                  quotesBySymbol={quotesBySymbol}
+                  technicals={technicals}
+                  alerts={alerts}
+                  analytics={analytics}
+                  digest={digest}
+                  onRequestDigest={requestPortfolioDigest}
+                />
+              </div>
+            </div>
+
+            <div className="page-body-grid__side h-full min-h-[460px] min-w-0 self-start space-y-6">
+              <Suspense fallback={<SidebarPanelFallback minHeightClass="min-h-[420px]" label="Đang tải bảng AI phụ trợ..." />}>
+                <AIAdvisorAlertPanel 
+                  holdings={holdings}
+                  watchlist={trackedSymbols}
+                  technicals={technicals}
+                  alerts={alerts}
+                  newsDigest={digest}
+                  onRequestDigest={requestPortfolioDigest}
                   criticalSoundEnabled={criticalSoundEnabled}
-                  toggleCriticalSound={toggleCriticalSound}
-                  currentUnifiedPage={currentUnifiedPage}
-                  hasPreviousUnifiedPage={hasPreviousUnifiedPage}
-                  backendUnifiedHasMore={backendUnifiedHasMore}
-                  loadingMoreUnified={loadingMoreUnified}
-                  goToFirstUnifiedPage={goToFirstUnifiedPage}
-                  goToPreviousUnifiedPage={goToPreviousUnifiedPage}
-                  goToNextUnifiedPage={goToNextUnifiedPage}
-                  goToLastUnifiedPage={goToLastUnifiedPage}
-                  hasLastUnifiedPage={hasLastUnifiedPage}
-                  pageSize={unifiedPageSize}
-                  setPageSize={setUnifiedPageSize}
-                  sourceFilter={sourceFilter}
-                  setSourceFilter={setSourceFilter}
-                  audienceFilter={audienceFilter}
-                  setAudienceFilter={setAudienceFilter}
-                  unreadCount={unreadUnifiedCount}
-                  showSummaryChips={true}
-                  minHeightClass="h-full"
-                  className="h-full overflow-hidden"
                 />
-              </div>
+              </Suspense>
+              <Suspense fallback={<SidebarPanelFallback minHeightClass="min-h-[460px]" label="Đang tải bảng phân tích phụ..." />}>
+                <ModernSidebar
+                  portfolioId={activePortfolioId}
+                  alerts={alerts}
+                  breadth={realtimeMarketBreadth}
+                  analytics={analytics}
+                  digest={digest}
+                  loading={loading}
+                  portfolioSymbols={monitoredSymbols}
+                />
+              </Suspense>
             </div>
-
-            <div className="mt-4 min-h-[420px] min-w-0 overflow-hidden">
-              <ModularPositionDeck
-                holdings={heatmapData.filter((h) => h.is_holding)}
-                symbolUniverse={symbolUniverse}
-                loading={loading}
-                quotesBySymbol={quotesBySymbol}
-                technicals={technicals}
-                alerts={alerts}
-                analytics={analytics}
-                digest={digest}
-                onRequestDigest={requestPortfolioDigest}
-              />
-            </div>
-          </div>
-
-          <div className="page-body-grid__side h-full min-h-[460px] min-w-0 self-start space-y-4">
-            <Suspense fallback={<SidebarPanelFallback minHeightClass="min-h-[420px]" label="Đang tải bảng AI phụ trợ..." />}>
-              <AIAdvisorAlertPanel 
-                holdings={holdings}
-                watchlist={trackedSymbols}
-                technicals={technicals}
-                alerts={alerts}
-                newsDigest={digest}
-                onRequestDigest={requestPortfolioDigest}
-                criticalSoundEnabled={criticalSoundEnabled}
-              />
-            </Suspense>
-            <Suspense fallback={<SidebarPanelFallback minHeightClass="min-h-[460px]" label="Đang tải bảng phân tích phụ..." />}>
-              <ModernSidebar
-                portfolioId={activePortfolioId}
-                alerts={alerts}
-                breadth={realtimeMarketBreadth}
-                analytics={analytics}
-                digest={digest}
-                loading={loading}
-                portfolioSymbols={monitoredSymbols}
-              />
-            </Suspense>
           </div>
         </div>
       </div>

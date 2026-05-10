@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from identity_access.models import CoreTenant
+from vninvest_core.pagination import CoreCursorPagination
 
 from .models import Invoice, QuotaRecord, Subscription
 from .serializers import InvoiceSerializer, QuotaRecordSerializer, SubscriptionSerializer
@@ -20,6 +21,7 @@ class SubscriptionDetailView(generics.RetrieveAPIView):
 class QuotaListView(generics.ListAPIView):
     serializer_class = QuotaRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = CoreCursorPagination
 
     def get_queryset(self):
         tenant = CoreTenant.objects.get(owner_user=self.request.user)
@@ -29,6 +31,7 @@ class QuotaListView(generics.ListAPIView):
 class InvoiceListView(generics.ListAPIView):
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = CoreCursorPagination
 
     def get_queryset(self):
         tenant = CoreTenant.objects.get(owner_user=self.request.user)

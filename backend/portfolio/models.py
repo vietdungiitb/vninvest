@@ -173,8 +173,29 @@ class SubAccount(models.Model):
         verbose_name='Tỷ lệ ký quỹ (Margin)',
         help_text='1.0 = 100% (không vay), 0.5 = 50% margin',
     )
+    broker_source = models.CharField(
+        max_length=20,
+        blank=True,
+        db_index=True,
+        verbose_name='Nguồn Broker',
+        help_text='Tên broker (VD: DNSE)',
+    )
+    external_id = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        verbose_name='Mã định danh bên ngoài (Broker)',
+        help_text='ID tiểu khoản từ hệ thống chứng khoán (VD: DNSE account number)',
+    )
+    sync_status = models.JSONField(
+        blank=True,
+        default=dict,
+        verbose_name='Trạng thái đồng bộ',
+        help_text='Lưu vết meta đồng bộ gần nhất',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         verbose_name = 'Tiểu khoản'
         verbose_name_plural = 'Tiểu khoản'
@@ -182,6 +203,128 @@ class SubAccount(models.Model):
 
     def __str__(self):
         return f'{self.name} ({self.get_type_display()}) - {self.portfolio.name}'
+
+
+class DNSECredential(models.Model):
+    """
+    Xác thực DNSE của người dùng (Legacy Monolith version).
+    """
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='dnse_credential',
+        null=True,
+        blank=True,
+        verbose_name='Người dùng',
+        help_text='Null nếu là cấu hình hệ thống (API Key chung)',
+    )
+    username_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        verbose_name='Username Hash',
+    )
+    username_ciphertext = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name='DNSE Username (Encrypted)',
+    )
+    password_ciphertext = models.CharField(
+        max_length=512,
+        blank=True,
+        verbose_name='DNSE Password (Encrypted)',
+    )
+    api_key_ciphertext = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name='DNSE API Key (Encrypted)',
+    )
+    api_secret_ciphertext = models.CharField(
+        max_length=512,
+        blank=True,
+        verbose_name='DNSE API Secret (Encrypted)',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Kích hoạt')
+    last_synced_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần đồng bộ cuối')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Xác thực DNSE'
+        verbose_name_plural = 'Xác thực DNSE'
+
+    def __str__(self):
+        return f'DNSE Credentials - {self.user.username if self.user else "System"}'
+
+    def set_username(self, raw_username: str):
+        self.username_hash = hash_with_pepper(raw_username)
+        self.username_ciphertext = encrypt_text(raw_username)
+
+    def set_password(self, raw_password: str):
+        self.password_ciphertext = encrypt_text(raw_password)
+
+    def get_username(self) -> str:
+        return decrypt_text(self.username_ciphertext)
+
+    def get_password(self) -> str:
+        return decrypt_text(self.password_ciphertext)
+
+
+class AccountSnapshot(models.Model):
+    """
+    Snapshot giá trị tài sản (NAV) của một tiểu khoản tại một thời điểm (Legacy version).
+    """
+    sub_account = models.ForeignKey(
+        SubAccount,
+        on_delete=models.CASCADE,
+        related_name='snapshots',
+        verbose_name='Tiểu khoản',
+    )
+    date = models.DateField(db_index=True, verbose_name='Ngày')
+    net_equity = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Giá trị tài sản ròng (NAV)',
+    )
+    cash_balance = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Số dư tiền',
+    )
+    stock_value = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Giá trị chứng khoán',
+    )
+    debt = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Nợ (Margin)',
+    )
+    daily_profit = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Lãi/lỗ trong ngày',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Snapshot NAV'
+        verbose_name_plural = 'Snapshot NAV'
+        unique_together = [('sub_account', 'date')]
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.sub_account.name} - {self.date} - {self.net_equity:,.0f}'
+
+    @property
+    def nav(self):
+        return self.net_equity
 
 
 class Portfolio(models.Model):

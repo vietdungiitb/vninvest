@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { normalizeAlertText, normalizeSeverity } from '../hooks/useUnifiedAlerts';
 import PaginationBar from './shared/PaginationBar';
+import SharkIcon from './shared/SharkIcon';
 import {
   alertCardTone,
   alertTypeBadgeTone,
@@ -181,9 +182,14 @@ export default function UnifiedAlertCenter({
                       to={alert.to || `/stocks/${alert.symbol}`}
                       className="block"
                     >
-                      <div className={`rounded-xl border px-3 py-2.5 shadow-[inset_0_1px_0_rgba(148,163,184,0.08)] transition-all duration-150 hover:-translate-y-[1px] hover:shadow-lg ${cardTone}`}>
+                        <div className={`rounded-xl border px-3 py-2.5 shadow-[inset_0_1px_0_rgba(148,163,184,0.08)] transition-all duration-150 hover:-translate-y-[1px] hover:shadow-lg ${cardTone}`}>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[14px] font-black tracking-wide text-white">{alert.symbol || 'N/A'}</span>
+                          <div className="flex items-center gap-2">
+                            {alert.source === 'whale' && (
+                              <SharkIcon className="w-4 h-4 text-cyan-400" />
+                            )}
+                            <span className="text-[14px] font-black tracking-wide text-white">{alert.symbol || 'N/A'}</span>
+                          </div>
                           <div className="flex items-center gap-2">
                             {isUnread && (
                               <span className="rounded-full border border-cyan-700/70 bg-cyan-950/35 px-2 py-0.5 text-[10px] font-bold uppercase text-cyan-200">

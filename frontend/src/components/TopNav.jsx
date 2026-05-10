@@ -30,7 +30,7 @@ function NavGroup({ label, items, icon }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`btn-pill inline-flex items-center gap-1 border-slate-700/90 bg-slate-900/72 py-1.5 text-sm text-slate-200 hover:border-slate-500 ${open ? 'border-slate-500' : ''}`}
+        className={`btn-pill inline-flex items-center gap-1 border-slate-700/90 bg-slate-900/72 py-1 text-[11px] text-slate-200 hover:border-slate-500 ${open ? 'border-slate-500' : ''}`}
       >
         <span className="text-[12px] text-slate-400">{icon}</span>
         {label}
@@ -105,8 +105,8 @@ export default function TopNav() {
   ].filter((item) => item.visible);
 
   return (
-    <header className="relative z-[70] h-[62px] shrink-0 overflow-visible border-b border-slate-700/80 bg-gradient-to-r from-slate-950/98 via-slate-900/96 to-slate-950/98 px-4 backdrop-blur-md">
-      <div className="flex h-full items-center justify-between gap-3">
+    <header className="relative z-[70] h-[62px] shrink-0 overflow-visible border-b border-slate-700/80 bg-gradient-to-r from-slate-950/98 via-slate-900/96 to-slate-950/98 px-6 backdrop-blur-md">
+      <div className="mx-auto flex h-full max-w-[1800px] items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
           {uiMode === 'modern' && (
             <button
@@ -154,12 +154,6 @@ export default function TopNav() {
             <p className="font-semibold text-slate-100">{userIdentity?.username || 'admin'}</p>
             <p className="text-[10px] text-slate-500">{userIdentity?.email || 'local.dev'}</p>
           </div>
-          <Link
-            to="/settings"
-            className="btn-pill border-slate-700/90 bg-slate-900 px-2.5 py-1 text-xs text-slate-200 hover:border-slate-600 hover:text-white"
-          >
-            {t('layout.nav.settings')}
-          </Link>
         </div>
       </div>
     </header>

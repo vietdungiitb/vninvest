@@ -489,7 +489,7 @@ export default function useRealtimeFeedCore({
           }
         } catch (error) {
           if (cancelled) return;
-            if (isRequestCanceled(err)) {
+            if (isRequestCanceled(error)) {
               return;
             }
           const status = getHttpStatus(error);

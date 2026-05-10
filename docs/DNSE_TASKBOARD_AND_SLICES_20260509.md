@@ -18,38 +18,37 @@
     - Add a focused credential bootstrap test.
 - **Evidence**: Unit test showing encrypted persistence and mocked adapter login/bootstrap.
 
-### Slice 2: Account Discovery and Mapping [DONE]
+### Slice 2: Account Discovery and Mapping
 - **Goal**: Populate `SubAccount` from DNSE and keep the mapping idempotent.
 - **Tasks**:
-- [x] Extend `SubAccount` with `external_id`, `broker_source`, and `sync_status`.
-- [x] Implement `sync_dnse_accounts_task` in `backend/portfolio/tasks_dnse.py`.
-- [x] Add a workspace API endpoint for account sync.
-- **Evidence**: Unit tests `test_dnse_slice2_sync` passed.
+    - Extend `SubAccount` with `external_id`, `broker_source`, and `sync_status`.
+    - Implement `sync_dnse_accounts_task` in `packages/core/backend/src/user_workspace/tasks.py`.
+    - Add a workspace API endpoint for account sync.
+- **Evidence**: API response snapshot showing DNSE account IDs mapped to core sub-account IDs.
 
-### Slice 3: Balance and NAV Synchronization [DONE]
+### Slice 3: Balance and NAV Synchronization
 - **Goal**: Materialize account balance snapshots in core.
 - **Tasks**:
-- [x] Ensure `AccountSnapshot` model exists with required fields and defaults.
-- [x] Implement `sync_dnse_balances_task` and deploy in shadow run mode.
-- [x] Schedule nightly snapshot generation (Celery beat).
-- **Evidence**: Unit tests `test_dnse_slice3_balances` passed.
+    - Add `AccountSnapshot` to `user_workspace` if missing.
+    - Implement `sync_dnse_balances_task`.
+    - Schedule nightly snapshot generation.
+- **Evidence**: Table or payload snapshot showing `AccountSnapshot` NAV matching DNSE `account_balance()`.
 
-### Slice 4: Transaction Reconciliation [DONE]
+### Slice 4: Transaction Reconciliation
 - **Goal**: Reconcile historical orders without duplicates.
 - **Tasks**:
-- [x] Implement `reconcile_dnse_transactions_task`.
-- [x] Derive idempotency from DNSE `orderId` or `dealId` via `external_id`.
-- [x] Map broker fee and tax fields into `Transaction`.
-- **Evidence**: Unit tests `test_dnse_slice4_reconcile` passed.
+    - Implement `reconcile_transactions_task`.
+    - Derive idempotency from DNSE `orderId` or `dealId`.
+    - Map broker fee and tax fields into `Transaction`.
+- **Evidence**: Running the sync twice adds zero new `Transaction` rows.
 
-### Slice 5: Secure Execution and Web Panel [IN PROGRESS]
+### Slice 5: Secure Execution and Web Panel
 - **Goal**: Add the DNSE connection panel and secure order flow.
 - **Tasks**:
-- [x] Add `DNSEConnectionPanel` under `frontend/src/components/`.
-- [x] Integrate it into `frontend/src/pages/PortfolioManagement.jsx`.
-- [x] Wire token status and place-order placeholders through `api/client.js`.
-- [ ] Implement secure order signing/OTP flow in `vnbroker`.
-- **Evidence**: UI panel visible in Portfolio Management, able to trigger account sync.
+    - Add `DNSEConnectionPanel` under `packages/web/src/components/`.
+    - Integrate it into `packages/web/src/pages/PortfoliosPage.js`.
+    - Wire order execution and token status through `coreApiAdapter.js` and the broker-only `vnbroker` DNSE path.
+- **Evidence**: Screenshot or screen recording of account link, status update, and a FILLED-only local transaction write.
 
 ## 2. Audit Evidence Obligations
 Each slice MUST include an entry in `docs/CODE_CHANGE_AUDIT_LEDGER.md` with:

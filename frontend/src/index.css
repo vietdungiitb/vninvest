@@ -237,8 +237,8 @@ textarea {
 
 .page-body-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 22%) minmax(420px, 48%) minmax(420px, 30%);
-  gap: var(--space-4);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem; /* Standardized gap-6 equivalent */
   min-height: calc(100vh - var(--layout-topnav-height) - 220px);
 }
 
@@ -320,7 +320,7 @@ textarea {
 
 @media (max-width: 1439px) {
   .page-body-grid {
-    grid-template-columns: 300px 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .page-body-grid__main {

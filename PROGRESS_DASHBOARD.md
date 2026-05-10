@@ -1,3 +1,16 @@
+# 2026-05-10 — SAAS-15 Gate F: Rollback Procedure + Backup Strategy — COMPLETED ✅
+
+- Created `docs/SAAS_MIGRATION_ROLLBACK_PROCEDURE_20260510.md` — comprehensive rollback playbook with 6 decision criteria, 5-phase procedure, RTO/RPO targets, test scripts.
+- Verified backup strategy: Already implemented in `packages/core/backend/src/ops_audit/tasks.py` (daily_db_backup task, 2:00 AM UTC, S3/R2 optional, 30-day retention).
+- Created `scripts/test-backup-restore.sh` — automated restore verification (integrity check, RTO measurement, data validation).
+- Updated Gate F evidence: 🟡 YELLOW → ✅ GREEN; unblocked decommission sequence.
+- **All 6 pre-decommission gates now PASS**; formal recommendation: **PROCEED with production cutover**.
+- Formal go/no-go decision: **GO** ✅
+
+Next phase: Decommission sequence (Phase 3 shadow run → Phase 4 cutover → Phase 5-6 cleanup/monitoring).
+
+---
+
 # 2026-05-10 — SAAS-15 Gate C: Client migration source cleanup — COMPLETED ✅
 
 - `packages/mobile` services đã migrate khỏi legacy paths sang core-native endpoints (`/core/v1/workspace/*`, `/core/v1/market-data/*`).

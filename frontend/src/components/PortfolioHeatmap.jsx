@@ -440,12 +440,19 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
     const sizeValue = Array.isArray(leaf.value) ? toNumber(leaf.value[0]) : toNumber(leaf.value);
     const ratio = sizeValue / maxLeafSize;
 
-    if (ratio < 0.3) {
+    // Extremely small tiles: hide label entirely for cleaner look
+    if (ratio < 0.08) {
+      return '';
+    }
+    // Small tiles: show symbol only
+    if (ratio < 0.22) {
       return leaf.name;
     }
-    if (ratio < 0.42) {
+    // Medium-small tiles: symbol + change percentage
+    if (ratio < 0.38) {
       return `${leaf.name}\n${cp > 0 ? '+' : ''}${cp.toFixed(2)}%`;
     }
+    // Large tiles: full details (Symbol, Change, Price)
     return `${leaf.name}\n${cp > 0 ? '+' : ''}${cp.toFixed(2)}%\n${price > 0 ? price.toFixed(2) : '\u2014'} VND`;
   }, [maxLeafSize]);
 

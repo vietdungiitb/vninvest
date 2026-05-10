@@ -16,3 +16,14 @@ class AlertCursorPagination(CoreCursorPagination):
 class AuditCursorPagination(CoreCursorPagination):
     ordering = '-occurred_at'
     page_size = 100
+
+
+class OrderFlowCursorPagination(CoreCursorPagination):
+    ordering = '-triggered_at'
+    page_size = 100
+
+
+class SnapshotCursorPagination(CoreCursorPagination):
+    """Pagination cho SymbolSnapshot / SessionFacts — ordered by session_date desc."""
+    ordering = '-session_date'
+    page_size = 100

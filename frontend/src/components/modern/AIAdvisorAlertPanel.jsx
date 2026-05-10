@@ -115,9 +115,16 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
           {activeTab === 'alerts' ? (
             <div className="space-y-3">
               {recommendations.length === 0 ? (
-                <div className="py-12 text-center">
-                  <span className="text-2xl mb-2 block">✨</span>
-                  <p className="text-xs text-slate-500 italic">Danh mục đang ở trạng thái cân bằng.</p>
+                <div className="flex flex-col items-center justify-center py-12 px-6 rounded-2xl bg-slate-950/20 border border-slate-800/30">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 border border-emerald-500/20">
+                    <span className="text-xl animate-pulse">✨</span>
+                  </div>
+                  <h4 className="text-[13px] font-bold text-slate-200 mb-1">
+                    {t('dashboard.aiPanelStableTitle', { defaultValue: 'Trạng thái cân bằng' })}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 text-center max-w-[200px] leading-relaxed">
+                    {t('dashboard.aiPanelStableDesc', { defaultValue: 'Hệ thống chưa phát hiện tín hiệu cần tối ưu trong danh mục hiện tại.' })}
+                  </p>
                 </div>
               ) : (
                 recommendations.map(rec => (
@@ -159,9 +166,16 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
           ) : (
             <div className="space-y-4">
               {newsItems.length === 0 ? (
-                <div className="py-12 text-center">
-                  <span className="text-2xl mb-2 block">📰</span>
-                  <p className="text-xs text-slate-500 italic">Chưa có bản tin AI mới nhất.</p>
+                <div className="flex flex-col items-center justify-center py-12 px-6 rounded-2xl bg-slate-950/20 border border-slate-800/30">
+                  <div className="w-12 h-12 rounded-full bg-sky-500/10 flex items-center justify-center mb-4 border border-sky-500/20">
+                    <span className="text-xl animate-pulse">📰</span>
+                  </div>
+                  <h4 className="text-[13px] font-bold text-slate-200 mb-1">
+                    {t('dashboard.aiNewsQuietTitle', { defaultValue: 'Bản tin trống' })}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 text-center max-w-[200px] leading-relaxed">
+                    {t('dashboard.aiNewsQuietDesc', { defaultValue: 'Hiện chưa có tin tức tiêu điểm nào ảnh hưởng trực tiếp tới danh mục.' })}
+                  </p>
                 </div>
               ) : (
                 newsItems.slice(0, 5).map((item, idx) => (
