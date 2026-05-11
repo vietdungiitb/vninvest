@@ -1,5 +1,22 @@
 # 2026-05-11 10:23 — SaaS Services Recovery R5.1 — Admin-Ops/Realtime 5xx Stabilization ✅
 
+# 2026-05-11 11:20 — Whale Shell Symbol Drift Fix ✅
+
+Status: Fixed symbol reset when changing timestamp/trade_date in whale shell.
+
+What was fixed:
+- Updated [packages/web/src/pages/signals/ShellWhaleAlertsPage.js](packages/web/src/pages/signals/ShellWhaleAlertsPage.js) to stop symbol drift on trade_date-only URL updates.
+- Removed env-based whale symbol fallback from runtime resolution path in shell page.
+- Symbol now syncs from URL/props only when explicitly provided; trade_date updates no longer override current symbol.
+
+Validation:
+- Rebuilt/restarted runtime with `docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build frontend backend`.
+- Frontend image rebuilt and container restarted.
+- Diagnostics check on updated file: no errors.
+
+Residual risk:
+- Need authenticated browser UAT to confirm exact user-click path end-to-end in whale shell session.
+
 **Status**: Fixed intermittent 500/502/503 errors on admin-ops + realtime path during soak window.
 
 What was fixed:

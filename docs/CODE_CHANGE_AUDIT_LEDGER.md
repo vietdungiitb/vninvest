@@ -1,5 +1,28 @@
 # � AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R5-SOAK-WINDOW-REALTIME-INGEST) — Active monitoring with market data sync
 
+# AUDIT FILE LIST (2026-05-11-WHALE-SHELL-SYMBOL-DRIFT-FIX)
+
+Muc tieu:
+- Chan tinh trang symbol bi "troi" khi doi timestamp/trade_date tren whale shell.
+- Dam bao khong fallback sang env symbol ngoai luong (gay nham sang BTC).
+
+Root cause:
+- [packages/web/src/pages/signals/ShellWhaleAlertsPage.js](packages/web/src/pages/signals/ShellWhaleAlertsPage.js) dong bo lai symbol moi lan `whaleSearch` thay doi.
+- Khi URL chi doi `trade_date` (khong co `symbol`), logic fallback co the dat lai symbol theo env default.
+
+Files changed:
+- [packages/web/src/pages/signals/ShellWhaleAlertsPage.js](packages/web/src/pages/signals/ShellWhaleAlertsPage.js) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Rebuild runtime: `docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build frontend backend`.
+- Frontend build completed and container `vninvest-dev-frontend` restarted successfully.
+- Static code validation: no diagnostics on updated shell file.
+
+Residual risk:
+- Can chay UAT tren route da dang nhap de xac nhan full luong click timestamp trong browser session that.
+
 Mục tiêu:
 - Chạy soak window tối thiểu 24h, khuyến nghị 72h, với realtime market data ingest.
 - Monitor tất cả SLO thresholds (API availability >= 99.5%, prefetch task completion >= 98%, ticker cache freshness 3s).

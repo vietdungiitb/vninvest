@@ -30,6 +30,7 @@ import {
 } from "../coreShellPageHelpers.js";
 
 const SIGNAL_ROUTE_IDS = ["ai-advisory", "whale-alerts"];
+const DEFAULT_WHALE_SYMBOL = "HPG";
 
 function normalizeWhaleSymbol(value) {
   return String(value || "").trim().toUpperCase();
@@ -81,14 +82,23 @@ function resolveWhaleTradeDateFromSearch(whaleSearch) {
   }
 }
 
-function resolveWhaleSymbol(env = {}, whaleSymbol, whaleSearch) {
-  return normalizeWhaleSymbol(
+function resolveWhaleSymbolState(whaleSymbol, whaleSearch) {
+  const explicitSymbol = normalizeWhaleSymbol(
     whaleSymbol
-      || resolveWhaleSymbolFromSearch(whaleSearch)
-      || env.VNINVEST_WHALE_ALERTS_SYMBOL
-      || env.REACT_APP_WHALE_ALERTS_SYMBOL
-      || "HPG",
+      || resolveWhaleSymbolFromSearch(whaleSearch),
   );
+
+  if (explicitSymbol) {
+    return {
+      symbol: explicitSymbol,
+      isExplicit: true,
+    };
+  }
+
+  return {
+    symbol: DEFAULT_WHALE_SYMBOL,
+    isExplicit: false,
+  };
 }
 
 function resolveWhaleTradeDate(env = {}, whaleTradeDate, whaleSearch) {
@@ -221,7 +231,8 @@ export function ShellWhaleAlertsPage({
 
   whaleEnvRef.current = env;
   whaleFetchRef.current = fetchImpl;
-  const resolvedWhaleSymbol = resolveWhaleSymbol(env, whaleSymbol, whaleSearch);
+  const resolvedWhaleSymbolState = resolveWhaleSymbolState(whaleSymbol, whaleSearch);
+  const resolvedWhaleSymbol = resolvedWhaleSymbolState.symbol;
   const resolvedWhaleTradeDate = resolveWhaleTradeDate(env, whaleTradeDate, whaleSearch);
   const [activeWhaleSymbol, setActiveWhaleSymbol] = useState(() => resolvedWhaleSymbol);
   const [activeWhaleTradeDate, setActiveWhaleTradeDate] = useState(() => resolvedWhaleTradeDate);
@@ -266,11 +277,16 @@ export function ShellWhaleAlertsPage({
   );
 
   useEffect(() => {
-    setActiveWhaleSymbol(resolvedWhaleSymbol);
-    setActiveWhaleTradeDate(resolvedWhaleTradeDate);
-    setWhaleSymbolDraft(resolvedWhaleSymbol);
-    setWhaleTradeDateDraft(resolvedWhaleTradeDate);
-  }, [resolvedWhaleSymbol, resolvedWhaleTradeDate]);
+    // Only synchronize symbol from URL/props when it is explicitly provided.
+    // This avoids resetting symbol on trade_date-only URL updates.
+    if (resolvedWhaleSymbolState.isExplicit) {
+      setActiveWhaleSymbol((previous) => (previous === resolvedWhaleSymbol ? previous : resolvedWhaleSymbol));
+      setWhaleSymbolDraft((previous) => (previous === resolvedWhaleSymbol ? previous : resolvedWhaleSymbol));
+    }
+
+    setActiveWhaleTradeDate((previous) => (previous === resolvedWhaleTradeDate ? previous : resolvedWhaleTradeDate));
+    setWhaleTradeDateDraft((previous) => (previous === resolvedWhaleTradeDate ? previous : resolvedWhaleTradeDate));
+  }, [resolvedWhaleSymbol, resolvedWhaleTradeDate, resolvedWhaleSymbolState.isExplicit]);
 
   useEffect(() => {
     if (!autoLoad || !activeWhaleSymbol) {
