@@ -2413,7 +2413,7 @@ def warm_ticker_prefetch_api(request):
             status=status.HTTP_200_OK,
         )
 
-    task = schedule_realtime_prefetch_shards.apply_async(countdown=0)
+    task = schedule_realtime_prefetch_shards.apply_async(countdown=0, queue='manual_on_demand')
     return Response(
         {
             'queued': True,
@@ -2472,7 +2472,7 @@ def offpeak_vnbroker_ingest_api(request):
             status=status.HTTP_200_OK,
         )
 
-    task = offpeak_vnbroker_ingest.apply_async(kwargs=task_kwargs)
+    task = offpeak_vnbroker_ingest.apply_async(kwargs=task_kwargs, queue='manual_on_demand')
     return Response(
         {
             'queued': True,
@@ -2631,7 +2631,8 @@ def admin_intraday_side_backfill_apply_api(request):
             'end_date': end_date,
             'threshold': threshold,
             'batch_size': batch_size,
-        }
+        },
+        queue='manual_on_demand',
     )
     task_id = str(task.id)
     set_intraday_side_backfill_task_status(
@@ -2736,6 +2737,7 @@ def admin_intraday_universe_warm_now_api(request):
         warmup_symbol_intraday.apply_async(
             args=[symbol.upper()],
             kwargs={'reason': 'admin_warm_now'},
+            queue='manual_on_demand',
         )
         dispatched.append(symbol.upper())
 

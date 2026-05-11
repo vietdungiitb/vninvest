@@ -1,3 +1,157 @@
+# AUDIT FILE LIST (2026-05-11-P3-MANUAL-QUEUE-REMAINING-SURFACES)
+
+Muc tieu:
+- Dua signal admin run/retry va stock news AI summary sang `manual_on_demand` queue.
+- Giu nguyen HTTP contract cho cac API nay trong khi tach heavy work ra khoi lane realtime/default.
+
+Files changed:
+- [backend/portfolio/tasks_news_digest.py](backend/portfolio/tasks_news_digest.py) (MODIFIED)
+- [backend/portfolio/views_stock_news.py](backend/portfolio/views_stock_news.py) (MODIFIED)
+- [backend/portfolio/views_signal_admin.py](backend/portfolio/views_signal_admin.py) (MODIFIED)
+- [backend/portfolio/serializers.py](backend/portfolio/serializers.py) (MODIFIED)
+- [backend/portfolio/tests/test_manual_queue_policy_surfaces.py](backend/portfolio/tests/test_manual_queue_policy_surfaces.py) (NEW)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_manual_queue_policy_surfaces --keepdb -v 2; Pop-Location`.
+- PASSED: `get_errors` reported no syntax errors for the touched backend files.
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py; Pop-Location` regenerated `module_tree_full.md`.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend backend-worker backend-worker-manual backend-prefetch-worker backend-beat` refreshed the legacy backend runtime slice.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml restart backend-worker backend-prefetch-worker backend-beat` reloaded the existing worker processes with the edited task modules.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps backend-worker backend-prefetch-worker backend-beat backend-worker-manual backend` shows all five backend services Up.
+- PASSED: dev compose now includes a dedicated `backend-worker-manual` consumer for `manual_on_demand`.
+
+Residual risk:
+- `stock_ai_advisory_summary_regenerate_api` remains an adjacent inline summary surface if you want the same queue policy applied there in a later slice.
+
+# AUDIT FILE LIST (2026-05-11-P3-MANUAL-QUEUE-EXPANSION)
+
+Muc tieu:
+- Dong bo cac manual-trigger surface con lai ve cung `manual_on_demand` queue.
+- Giu nguyen contract HTTP/hien thi, chi doi lane dispatch cho cac task manual/admin.
+
+Files changed:
+- [backend/portfolio/services_symbol_engagement.py](backend/portfolio/services_symbol_engagement.py) (MODIFIED)
+- [backend/portfolio/views_admin_runtime.py](backend/portfolio/views_admin_runtime.py) (MODIFIED)
+- [backend/portfolio/views_admin_vnbroker_benchmark.py](backend/portfolio/views_admin_vnbroker_benchmark.py) (MODIFIED)
+- [backend/portfolio/views_screener_admin.py](backend/portfolio/views_screener_admin.py) (MODIFIED)
+- [backend/portfolio/views_signal_admin.py](backend/portfolio/views_signal_admin.py) (MODIFIED)
+- [backend/portfolio/tests/test_symbol_engagement.py](backend/portfolio/tests/test_symbol_engagement.py) (MODIFIED)
+- [backend/portfolio/tests/test_admin_ops.py](backend/portfolio/tests/test_admin_ops.py) (MODIFIED)
+- [backend/portfolio/tests/test_admin_screener_admin.py](backend/portfolio/tests/test_admin_screener_admin.py) (MODIFIED)
+- [backend/portfolio/tests/test_signal_admin_api.py](backend/portfolio/tests/test_signal_admin_api.py) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: direct code probes confirmed `manual_on_demand` dispatch for symbol engagement warm-up, admin prefetch warm, offpeak ingest, admin intraday backfill, admin intraday warm-now, benchmark run, global screener manual run, and signal materialization run.
+- PASSED: `manage.py test portfolio.tests.test_symbol_engagement.TestSymbolEngagement.test_activate_symbol_engagement_guard portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_money_flow_materialization_preview_and_run_return_confirmation_metadata -v 2`.
+- PASSED: `get_errors` reported no syntax errors for the touched backend files.
+- PASSED: backend container was restarted after the edit and returned to `Up` state.
+
+Residual risk:
+- `views_signal_admin` manual whale/dark_flow run/retry paths and inline news-summary flows remain separate surfaces for a later slice if you want full policy coverage.
+
+# AUDIT FILE LIST (2026-05-11-P3-AI-ADVISORY-MANUAL-QUEUE-GUARD)
+
+Muc tieu:
+- Rut manual refresh AI advisory sang `manual_on_demand` queue de khong chen vao lane realtime/heavy.
+- Giữ entitlement, quota va cooldown cua advisory session, dong thoi khong lam thay doi read path.
+
+Files changed:
+- [backend/portfolio/views_ai_advisory_management.py](backend/portfolio/views_ai_advisory_management.py) (MODIFIED)
+- [backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py](backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: direct code probe of `_submit_advisory_generation_with_fallback()` confirmed `source=user_refresh` dispatches to `manual_on_demand`.
+- PASSED: `get_errors` reported no syntax errors for [backend/portfolio/views_ai_advisory_management.py](backend/portfolio/views_ai_advisory_management.py) and [backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py](backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py).
+- PASSED: backend container was restarted after the edit and returned to `Up` state.
+
+Residual risk:
+- This slice only changes the manual advisory refresh dispatch path; other manual-trigger surfaces can be aligned later if required.
+
+# AUDIT FILE LIST (2026-05-11-P2-VNBROKER-PROVIDER-QUALITY-SCORING)
+
+Muc tieu:
+- Dua provider scoring ve chung mot helper cache-backed, co formula ro rang va hysteresis de chon best-source.
+- Cho benchmark price-board ghi snapshot quality vao Redis TTL 1h va cho adapter resolver uu tien provider diem cao hon khi khong co explicit source.
+
+Files changed:
+- [backend/portfolio/vnbroker_provider_quality.py](backend/portfolio/vnbroker_provider_quality.py) (NEW)
+- [backend/portfolio/vnbroker_provider_benchmark.py](backend/portfolio/vnbroker_provider_benchmark.py) (MODIFIED)
+- [backend/portfolio/adapters/vnbroker_adapter.py](backend/portfolio/adapters/vnbroker_adapter.py) (MODIFIED)
+- [backend/portfolio/tests/test_vnbroker_provider_quality.py](backend/portfolio/tests/test_vnbroker_provider_quality.py) (NEW)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='*'; $env:REDIS_URL='redis://127.0.0.1:6379/1'; & 'c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe' manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb -v 2; Pop-Location`
+- PASSED: `get_errors` on the four changed backend files returned no syntax errors.
+
+Residual risk:
+- Quality snapshots are benchmark-seeded for this slice; live runtime observation hooks can be added later if we want always-hot cache updates without waiting for benchmark runs.
+
+# AUDIT FILE LIST (2026-05-11-SAAS-BACKGROUND-SERVICES-MULTI-PROVIDER-CLARIFICATION-CLOSURE)
+
+Muc tieu:
+- Dong bang lai cac clarifications con mo trong decision addendum thanh cac quyet dinh implementation co the trich dan truc tiep.
+- Ghi ro cac quay dau P0-P5 da co source of truth, khong con la intent mo.
+
+Files changed:
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Reviewed the addendum against the audit summary and added a closure table covering P0 drift checker, P1 concurrency, P2 provider scoring, user-scope sizing, stale-spike trigger, Redis topology, WebSocket fanout, and offhours/result-backend policy.
+- Updated the repo progress log so the resolved clarifications are visible to follow-on slices.
+
+Residual risk:
+- This is a decision-document update only; the next implementation slice still needs code-level rollout against the agreed anchors.
+
+# AUDIT FILE LIST (2026-05-11-PROMETHEUS-LEGACY-BACKEND-SCRAPE-CLEANUP)
+
+Muc tieu:
+- Loai bo scrape target `backend:8000` khoi Prometheus shared config de dung log 404 /metrics o legacy backend.
+- Giu scrape target `core-api:8100` va cac target ha tang khac nguyen trang.
+
+Files changed:
+- [infra/prometheus/prometheus.yml](infra/prometheus/prometheus.yml) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Restarted Prometheus with `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml restart prometheus`.
+- Queried runtime targets inside the Prometheus container and confirmed `backend:8000` no longer appears.
+- Queried runtime targets inside the Prometheus container and confirmed `core-api:8100` is still present.
+
+Residual risk:
+- Old backend log lines may remain in historical output, but the active scrape target that generated them is gone.
+
+# AUDIT FILE LIST (2026-05-11-LEGACY-BACKEND-ALLOWED-HOSTS-DEV-FIX)
+
+Muc tieu:
+- Cho legacy backend dev service chap nhan host `backend` trong compose, de /metrics khong con bi `DisallowedHost`.
+- Giu dev stack dong bo voi service name the host request dung trong compose network.
+
+Files changed:
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Recreated legacy backend service with `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate backend`.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml ps` shows the backend container back up after the recreate.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail=200 backend | Select-String -Pattern 'DisallowedHost'` returned no matches after the env update.
+
+Residual risk:
+- Legacy backend still spends time on apt/pip install during container startup; the smoke check should be re-read once the server has finished booting.
+
 # AUDIT FILE LIST (2026-05-11-CORE-WORKER-TOPOLOGY-SPLIT-EXPANSION)
 
 Muc tieu:

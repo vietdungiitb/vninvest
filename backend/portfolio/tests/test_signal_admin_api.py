@@ -622,6 +622,7 @@ class SignalAdminApiTests(TestCase):
         self.assertEqual(run_response.data['task_id'], 'materialization-task-1')
         self.assertTrue(run_response.data['confirmation_metadata']['confirmed'])
         mock_apply_async.assert_called_once()
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
 
     def test_recent_events_support_page_and_page_size_across_merged_domains(self):
         self._auth_staff()

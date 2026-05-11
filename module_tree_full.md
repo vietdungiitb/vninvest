@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-11 18:05:00`
+Generated at: `2026-05-11 21:15:23`
 
 ## Summary
 
-- Total modules: 1030
-- Python modules: 530
+- Total modules: 1033
+- Python modules: 533
 - JS/TS modules: 500
-- Total classes: 858
-- Total functions: 2820
-- Total top-level variables: 4520
+- Total classes: 861
+- Total functions: 2837
+- Total top-level variables: 4526
 
 ## Python Modules
 
@@ -116,7 +116,7 @@ Generated at: `2026-05-11 18:05:00`
 ### `backend/portfolio/adapters/vnbroker_adapter.py`
 
 - Functions:
-  - `_attach_common_source_columns`, `_bootstrap_log_suppress_enabled`, `_build_stock_client`, `_client_cache_enabled`, `_client_cache_maxsize`, `_client_cache_ttl_seconds`, `_coerce_fundamental_snapshot_df`, `_coerce_insider_deals_df`, `_coerce_price_board_numeric_columns`, `_empty_schema_df`, `_ensure_quote_prices_canonical_thousand_vnd`, `_evict_vnbroker_cache_locked`, `_get_cached_stock_client`, `_get_gate`, `_get_runtime_settings`, `_get_vnbroker_provider`, `_import_vnbroker`, `_invalidate_stock_client_cache`, `_is_missing_data_key_error`, `_log_upstream_payload_warning`, `_normalize_intraday_dataframe`, `_normalize_period`, `_normalize_price_board_column`, `_normalize_price_board_dataframe`, `_normalize_source`, `_normalize_symbol`, `_now_epoch`, `_price_board_dataframe_is_parseable`, `_provider_cache_enabled`, `_provider_cache_ttl_seconds`, `_read_bool_env`, `_resolve_financial_ratio_sources`, `_resolve_float_env`, `_resolve_history_sources`, `_resolve_int_env`, `_resolve_intraday_sources`, `_resolve_listing_sources`, `_resolve_price_board_sources`, `_resolve_runtime_sources`, `_resolve_timeout`, `_run_with_timeout`, `_series_from_col`, `_to_dataframe`, `fetch_financial_ratio_dataframe`, `fetch_fundamental_snapshot_dataframe`, `fetch_heatmap_snapshot`, `fetch_history_dataframe`, `fetch_industry_benchmark_dataframe`, `fetch_industry_peers_dataframe`, `fetch_industry_rank_dataframe`, `fetch_insider_deals_dataframe`, `fetch_intraday_dataframe`, `fetch_listing_symbols_dataframe`, `fetch_price_board_dataframe`, `fetch_price_depth_dataframe`, `fetch_symbols_by_exchange_dataframe`, `fetch_symbols_by_group_series`, `fetch_symbols_by_industries_dataframe`, `read_stream_intraday_ticks`
+  - `_apply_provider_quality_order`, `_attach_common_source_columns`, `_bootstrap_log_suppress_enabled`, `_build_stock_client`, `_client_cache_enabled`, `_client_cache_maxsize`, `_client_cache_ttl_seconds`, `_coerce_fundamental_snapshot_df`, `_coerce_insider_deals_df`, `_coerce_price_board_numeric_columns`, `_empty_schema_df`, `_ensure_quote_prices_canonical_thousand_vnd`, `_evict_vnbroker_cache_locked`, `_get_cached_stock_client`, `_get_gate`, `_get_runtime_settings`, `_get_vnbroker_provider`, `_import_vnbroker`, `_invalidate_stock_client_cache`, `_is_missing_data_key_error`, `_log_upstream_payload_warning`, `_normalize_intraday_dataframe`, `_normalize_period`, `_normalize_price_board_column`, `_normalize_price_board_dataframe`, `_normalize_source`, `_normalize_symbol`, `_now_epoch`, `_price_board_dataframe_is_parseable`, `_provider_cache_enabled`, `_provider_cache_ttl_seconds`, `_read_bool_env`, `_resolve_financial_ratio_sources`, `_resolve_float_env`, `_resolve_history_sources`, `_resolve_int_env`, `_resolve_intraday_sources`, `_resolve_listing_sources`, `_resolve_price_board_sources`, `_resolve_runtime_sources`, `_resolve_timeout`, `_run_with_timeout`, `_series_from_col`, `_to_dataframe`, `fetch_financial_ratio_dataframe`, `fetch_fundamental_snapshot_dataframe`, `fetch_heatmap_snapshot`, `fetch_history_dataframe`, `fetch_industry_benchmark_dataframe`, `fetch_industry_peers_dataframe`, `fetch_industry_rank_dataframe`, `fetch_insider_deals_dataframe`, `fetch_intraday_dataframe`, `fetch_listing_symbols_dataframe`, `fetch_price_board_dataframe`, `fetch_price_depth_dataframe`, `fetch_symbols_by_exchange_dataframe`, `fetch_symbols_by_group_series`, `fetch_symbols_by_industries_dataframe`, `read_stream_intraday_ticks`
 - Top-level variables:
   - `_FUNDAMENTAL_SNAPSHOT_SCHEMA`, `_INSIDER_DEALS_SCHEMA`, `_KBS_FLAT_MAPPING`, `_PRICE_BOARD_FIELDS_BY_SECTION`, `_VNBROKER_CACHE_LOCK`, `_VNBROKER_GATE_BY_LIMIT`, `_VNBROKER_GATE_LOCK`, `_VNBROKER_PROVIDER_CACHE`, `_VNBROKER_STOCK_CLIENT_CACHE`, `logger`
 
@@ -1091,7 +1091,7 @@ Generated at: `2026-05-11 18:05:00`
 ### `backend/portfolio/tasks_news_digest.py`
 
 - Functions:
-  - `_generate_news_digest_for_user`, `generate_all_portfolio_news_digests_task`
+  - `_generate_news_digest_for_user`, `generate_all_portfolio_news_digests_task`, `generate_stock_news_ai_summary_task`
 - Top-level variables:
   - `logger`
 
@@ -1624,6 +1624,12 @@ Generated at: `2026-05-11 18:05:00`
 - Classes:
   - `LegacyPrefetchPurgeGateTests` -> methods: `test_no_legacy_prefetch_symbols_in_runtime_paths`
 
+### `backend/portfolio/tests/test_manual_queue_policy_surfaces.py`
+
+- Classes:
+  - `ManualQueuePolicySignalAdminTests` -> methods: `setUp`, `test_signal_admin_job_retry_queues_manual_on_demand_for_dark_flow`, `test_signal_admin_jobs_run_queues_manual_on_demand_for_whale`
+  - `ManualQueuePolicyStockNewsTests` -> methods: `setUp`, `test_stock_news_ai_summary_queues_manual_on_demand`
+
 ### `backend/portfolio/tests/test_market_data_service.py`
 
 - Classes:
@@ -1865,6 +1871,11 @@ Generated at: `2026-05-11 18:05:00`
   - `PrefetchTimePolicyResolverTests` -> methods: `test_effective_settings_follow_active_profile`, `test_resolve_profile_holiday_offhours`, `test_resolve_profile_pre_open`, `test_resolve_profile_weekend_offhours`
   - `RealtimeUniverseAndShardSchedulerTests` -> methods: `setUp`, `test_collect_realtime_symbol_universe_assigns_tier_and_stable_shard`, `test_collect_realtime_symbol_universe_includes_admin_selected_groups`, `test_resolve_scheduler_plan_degrades_cold_before_warm`, `test_resolve_scheduler_plan_emergency_override_relaxes_cadence`
   - `SessionCloseCalendarTests` -> methods: `setUp`, `test_cleanup_retention_uses_market_local_date`, `test_resolve_session_close_date_rolls_back_holiday_and_weekend`
+
+### `backend/portfolio/tests/test_vnbroker_provider_quality.py`
+
+- Classes:
+  - `VnbrokerProviderQualityTests` -> methods: `setUp`, `test_build_runtime_recommendation_uses_quality_ranked_provider`, `test_calculate_provider_quality_score_uses_weighted_formula`, `test_price_board_sources_preserve_explicit_source`, `test_price_board_sources_use_quality_order_when_no_explicit_source`, `test_resolve_provider_order_keeps_selected_provider_within_hysteresis`, `test_resolve_provider_order_prefers_highest_scored_provider`
 
 ### `backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py`
 
@@ -2255,9 +2266,16 @@ Generated at: `2026-05-11 18:05:00`
 - Classes:
   - `_Counter` -> methods: `merge`
 - Functions:
-  - `_benchmark_single_provider_concurrency`, `_normalize_concurrency_levels`, `_normalize_providers`, `_normalize_runs`, `_pick_best_result`, `_run_worker_once`, `_utc_now_iso`, `build_runtime_recommendation`, `get_latest_price_board_benchmark_report`, `run_price_board_provider_benchmark`, `set_latest_price_board_benchmark_report`
+  - `_benchmark_single_provider_concurrency`, `_build_quality_metrics_from_benchmark`, `_normalize_concurrency_levels`, `_normalize_providers`, `_normalize_runs`, `_pick_best_result`, `_run_worker_once`, `_utc_now_iso`, `build_runtime_recommendation`, `get_latest_price_board_benchmark_report`, `run_price_board_provider_benchmark`, `set_latest_price_board_benchmark_report`
 - Top-level variables:
   - `BENCHMARK_CACHE_KEY`, `BENCHMARK_CACHE_TTL_SECONDS`, `DEFAULT_CONCURRENCY_LEVELS`, `DEFAULT_PROVIDERS`
+
+### `backend/portfolio/vnbroker_provider_quality.py`
+
+- Functions:
+  - `_clamp_percent`, `_normalize_channel`, `_normalize_component_weights`, `_normalize_provider`, `_score_snapshot_sort_key`, `_selection_cache_key`, `_snapshot_cache_key`, `build_provider_quality_snapshot`, `cache_provider_quality_selection`, `cache_provider_quality_snapshot`, `calculate_provider_quality_score`, `get_provider_quality_selection`, `get_provider_quality_snapshot`, `resolve_provider_order`
+- Top-level variables:
+  - `PROVIDER_QUALITY_CACHE_PREFIX`, `PROVIDER_QUALITY_CACHE_TTL_SECONDS`, `PROVIDER_QUALITY_HYSTERESIS_DELTA`, `PROVIDER_QUALITY_SELECTION_CACHE_PREFIX`, `PROVIDER_QUALITY_SELECTION_TTL_SECONDS`, `QUALITY_COMPONENT_WEIGHTS`
 
 ### `backend/portfolio/vnbroker_runtime_config.py`
 

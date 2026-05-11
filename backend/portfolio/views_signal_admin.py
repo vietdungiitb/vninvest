@@ -1024,9 +1024,15 @@ def signal_admin_jobs_run_api(request):
     )
 
     if service_domain == SignalServiceRun.ServiceDomain.WHALE:
-        task = detect_and_store_global_whale_alerts.apply_async(kwargs={'symbol': symbol, 'run_id': run.id})
+        task = detect_and_store_global_whale_alerts.apply_async(
+            kwargs={'symbol': symbol, 'run_id': run.id},
+            queue='manual_on_demand',
+        )
     else:
-        task = detect_and_store_order_flow.apply_async(kwargs={'symbol': symbol, 'run_id': run.id})
+        task = detect_and_store_order_flow.apply_async(
+            kwargs={'symbol': symbol, 'run_id': run.id},
+            queue='manual_on_demand',
+        )
 
     run.task_id = str(getattr(task, 'id', '') or '')
     run.save(update_fields=['task_id', 'updated_at'])
@@ -1064,9 +1070,15 @@ def signal_admin_job_retry_api(request, run_id: int):
     symbol = (retry_run.params_json or {}).get('symbol')
 
     if retry_run.service_domain == SignalServiceRun.ServiceDomain.WHALE:
-        task = detect_and_store_global_whale_alerts.apply_async(kwargs={'symbol': symbol, 'run_id': retry_run.id})
+        task = detect_and_store_global_whale_alerts.apply_async(
+            kwargs={'symbol': symbol, 'run_id': retry_run.id},
+            queue='manual_on_demand',
+        )
     else:
-        task = detect_and_store_order_flow.apply_async(kwargs={'symbol': symbol, 'run_id': retry_run.id})
+        task = detect_and_store_order_flow.apply_async(
+            kwargs={'symbol': symbol, 'run_id': retry_run.id},
+            queue='manual_on_demand',
+        )
 
     retry_run.task_id = str(getattr(task, 'id', '') or '')
     retry_run.save(update_fields=['task_id', 'updated_at'])
@@ -1262,7 +1274,8 @@ def signal_admin_money_flow_materialization_run_api(request):
             'end_date': request_payload['end_date'],
             'threshold': request_payload['threshold'],
             'batch_size': request_payload['batch_size'],
-        }
+        },
+        queue='manual_on_demand',
     )
 
     confirmation_metadata = dict(preview_contract.get('confirmation_metadata') or {})

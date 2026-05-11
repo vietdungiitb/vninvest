@@ -1733,6 +1733,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertFalse(response.data['queued'])
         self.assertEqual(response.data['symbol'], 'BCM')
         self.assertIn('queue', response.data['message'].lower())
+        self.assertEqual(_mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
 
     @patch('portfolio.market_data_service.set_cache')
     @patch('portfolio.market_data_service.get_cache', return_value=None)

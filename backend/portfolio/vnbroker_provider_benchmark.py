@@ -11,6 +11,11 @@ from django.core.cache import cache
 
 from portfolio.adapters.cache_adapter import is_rate_limited_error
 from portfolio.adapters.vnbroker_adapter import _build_stock_client
+from portfolio.vnbroker_provider_quality import (
+    build_provider_quality_snapshot,
+    cache_provider_quality_snapshot,
+    resolve_provider_order,
+)
 
 BENCHMARK_CACHE_KEY = 'admin_ops:vnbroker:price_board:benchmark:latest'
 BENCHMARK_CACHE_TTL_SECONDS = 60 * 60 * 24
@@ -181,7 +186,48 @@ def _pick_best_result(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
     )[0]
 
 
-def build_runtime_recommendation(results: list[dict[str, Any]]) -> dict[str, Any]:
+def _build_quality_metrics_from_benchmark(result: dict[str, Any], timeout_seconds: int) -> dict[str, float]:
+    total_requests = max(int(result.get('total_requests') or 0), 0)
+    timeout_seconds = max(int(timeout_seconds or 1), 1)
+
+    try:
+        p95_latency_seconds = float(result.get('p95_latency_seconds') or timeout_seconds)
+    except (TypeError, ValueError):
+        p95_latency_seconds = float(timeout_seconds)
+
+    try:
+        success_pct = float(result.get('success_pct') or 0.0)
+    except (TypeError, ValueError):
+        success_pct = 0.0
+
+    try:
+        rate_limited_pct = float(result.get('rate_limited_pct') or 0.0)
+    except (TypeError, ValueError):
+        rate_limited_pct = 0.0
+
+    try:
+        transport_errors = float(result.get('transport_errors') or 0.0)
+    except (TypeError, ValueError):
+        transport_errors = 0.0
+
+    freshness_pct = max(0.0, min(100.0, 100.0 - ((p95_latency_seconds / timeout_seconds) * 100.0)))
+    completeness_pct = max(0.0, min(100.0, success_pct))
+    success_rate_pct = max(0.0, min(100.0, 100.0 - rate_limited_pct))
+    parse_quality_pct = (
+        max(0.0, min(100.0, 100.0 - ((transport_errors / total_requests) * 100.0)))
+        if total_requests
+        else 0.0
+    )
+
+    return {
+        'freshness_pct': round(freshness_pct, 2),
+        'completeness_pct': round(completeness_pct, 2),
+        'success_rate_pct': round(success_rate_pct, 2),
+        'parse_quality_pct': round(parse_quality_pct, 2),
+    }
+
+
+def build_runtime_recommendation(results: list[dict[str, Any]], timeout_seconds: int | None = None) -> dict[str, Any]:
     by_provider: dict[str, list[dict[str, Any]]] = {}
     for item in results:
         provider = str(item.get('provider') or '').upper()
@@ -193,15 +239,25 @@ def build_runtime_recommendation(results: list[dict[str, Any]]) -> dict[str, Any
     }
     provider_best = {k: v for k, v in provider_best.items() if v is not None}
 
-    ranked = sorted(
-        provider_best.values(),
-        key=lambda item: (
-            float(item.get('rate_limited_pct', 100.0)),
-            -float(item.get('requests_per_minute', 0.0)),
-        ),
-    )
+    benchmark_timeout_seconds = max(int(timeout_seconds or 8), 1)
+    quality_snapshots: dict[str, dict[str, Any]] = {}
+    for provider, entry in provider_best.items():
+        quality_metrics = _build_quality_metrics_from_benchmark(entry, benchmark_timeout_seconds)
+        snapshot = build_provider_quality_snapshot(
+            provider=provider,
+            channel='price_board',
+            metrics=quality_metrics,
+            source='benchmark',
+        )
+        cache_provider_quality_snapshot(snapshot)
+        quality_snapshots[provider] = snapshot
 
-    if not ranked:
+    ranked_providers = resolve_provider_order('price_board', list(provider_best.keys()))
+
+    if not ranked_providers:
+        ranked_providers = list(provider_best.keys())
+
+    if not ranked_providers:
         return {
             'primary_provider': 'KBS',
             'fallback_provider': 'VCI',
@@ -209,12 +265,14 @@ def build_runtime_recommendation(results: list[dict[str, Any]]) -> dict[str, Any
             'reason': 'no_data',
         }
 
-    best = ranked[0]
-    fallback = ranked[1] if len(ranked) > 1 else None
+    best = provider_best[ranked_providers[0]]
+    fallback = provider_best[ranked_providers[1]] if len(ranked_providers) > 1 else None
 
     suggested_start = int(best.get('concurrency') or 8)
     # Keep start concurrency in a conservative range for production rollout.
     suggested_start = max(4, min(suggested_start, 16))
+
+    ordered_fallbacks = [provider for provider in ranked_providers[1:]]
 
     return {
         'primary_provider': str(best.get('provider') or 'KBS').upper(),
@@ -223,15 +281,23 @@ def build_runtime_recommendation(results: list[dict[str, Any]]) -> dict[str, Any
         'best_observed_concurrency': int(best.get('concurrency') or suggested_start),
         'best_requests_per_minute': float(best.get('requests_per_minute') or 0.0),
         'best_rate_limited_pct': float(best.get('rate_limited_pct') or 0.0),
+        'quality_scores': {
+            provider: quality_snapshots.get(provider, {}).get('score')
+            for provider in ranked_providers
+            if provider in quality_snapshots
+        },
+        'quality_snapshots': quality_snapshots,
         'runtime_patch': {
             'price_board_source': str(best.get('provider') or 'KBS').upper(),
-            'fallback_sources': [str((fallback or {}).get('provider') or 'VCI').upper()],
+            'fallback_sources': ordered_fallbacks or [str((fallback or {}).get('provider') or 'VCI').upper()],
         },
         'env_patch': {
             'VNBROKER_TRADING_AUTO_PRIMARY': str(best.get('provider') or 'KBS').lower(),
             'VNBROKER_KBS_ADAPTIVE_START_CONCURRENCY': str(suggested_start),
+            'VNBROKER_PRICE_BOARD_SOURCE': str(best.get('provider') or 'KBS').upper(),
+            'VNBROKER_PRICE_BOARD_FALLBACK_SOURCES': ','.join(ordered_fallbacks) if ordered_fallbacks else str((fallback or {}).get('provider') or 'VCI').upper(),
         },
-        'reason': 'best_rate_limit_then_throughput',
+        'reason': 'best_quality_score',
     }
 
 
@@ -278,7 +344,7 @@ def run_price_board_provider_benchmark(payload: dict[str, Any] | None = None) ->
                 )
             )
 
-    recommendation = build_runtime_recommendation(results)
+    recommendation = build_runtime_recommendation(results, timeout_seconds=timeout_seconds)
 
     report = {
         'status': 'completed',

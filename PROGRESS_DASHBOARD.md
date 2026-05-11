@@ -1,3 +1,123 @@
+# 2026-05-11 — P3 Manual Queue Remaining Surfaces ✅
+
+Status: Signal admin run/retry va stock news AI summary da route sang `manual_on_demand`, giu nguyen response contract trong khi tach heavy work ra khoi lane realtime/default.
+
+What was changed:
+- Updated [backend/portfolio/views_signal_admin.py](backend/portfolio/views_signal_admin.py) so signal admin jobs run/retry dispatch with `manual_on_demand`.
+- Added [backend/portfolio/tasks_news_digest.py](backend/portfolio/tasks_news_digest.py) wrapper for stock news AI summary and updated [backend/portfolio/views_stock_news.py](backend/portfolio/views_stock_news.py) to execute it via `manual_on_demand`.
+- Fixed [backend/portfolio/serializers.py](backend/portfolio/serializers.py) so `SignalServiceRunSerializer` can serialize `created_by_username` in the signal admin response payload.
+- Added [backend/portfolio/tests/test_manual_queue_policy_surfaces.py](backend/portfolio/tests/test_manual_queue_policy_surfaces.py) for direct-auth queue assertions.
+- Added [docker-compose.dev.yml](docker-compose.dev.yml) `backend-worker-manual` so the new legacy manual queue is actually consumed in dev.
+- Regenerated [module_tree_full.md](module_tree_full.md).
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_manual_queue_policy_surfaces --keepdb -v 2`.
+- PASSED: `get_errors` reported no syntax errors for the touched backend files.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md`.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend backend-worker backend-worker-manual backend-prefetch-worker backend-beat` refreshed the backend runtime slice.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml restart backend-worker backend-prefetch-worker backend-beat` reloaded the existing worker processes.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps backend-worker backend-prefetch-worker backend-beat backend-worker-manual backend` shows the backend services Up.
+- PASSED: dev compose now includes a dedicated `backend-worker-manual` service for `manual_on_demand`.
+
+Residual risk:
+- `stock_ai_advisory_summary_regenerate_api` is still an adjacent manual summary surface if you want the same queue pattern extended there later.
+
+# 2026-05-11 — P3 Manual Queue Expansion ✅
+
+Status: Remaining manual/admin dispatch surfaces now route to `manual_on_demand`, keeping the queue policy consistent across user warm-up, admin maintenance, benchmark, screener, and signal materialization actions.
+
+What was changed:
+- Updated [backend/portfolio/services_symbol_engagement.py](backend/portfolio/services_symbol_engagement.py) so symbol warm-up activations go to `manual_on_demand`.
+- Updated [backend/portfolio/views_admin_runtime.py](backend/portfolio/views_admin_runtime.py) for manual prefetch warm, offpeak ingest, intraday backfill, and intraday warm-now dispatch.
+- Updated [backend/portfolio/views_admin_vnbroker_benchmark.py](backend/portfolio/views_admin_vnbroker_benchmark.py) and [backend/portfolio/views_screener_admin.py](backend/portfolio/views_screener_admin.py) for manual admin jobs.
+- Updated [backend/portfolio/views_signal_admin.py](backend/portfolio/views_signal_admin.py) for money-flow materialization run dispatch.
+- Added queue assertions to the matching backend tests.
+
+Validation:
+- PASSED: direct code probes confirmed the updated manual dispatch paths use `manual_on_demand`.
+- PASSED: focused Django tests for symbol engagement warm-up and signal-admin materialization passed.
+- PASSED: `get_errors` reported no syntax errors for the touched backend files.
+- PASSED: backend service restarted and returned `Up`.
+
+Residual risk:
+- A few manual trigger surfaces that do not currently have a Celery boundary, such as inline news-summary flows and some signal admin run/retry paths, remain for a follow-up slice.
+
+# 2026-05-11 20:35 — P3 AI Advisory Manual Queue Guard ✅
+
+Status: Manual advisory refresh now routes to `manual_on_demand`, preserving entitlement/quota/cooldown on the user-facing advisory session while isolating the manual workload from realtime lanes.
+
+What was changed:
+- Updated [backend/portfolio/views_ai_advisory_management.py](backend/portfolio/views_ai_advisory_management.py) so `_submit_advisory_generation_with_fallback()` sends `WhaleAdvisory.SourceChoices.USER_REFRESH` jobs to the `manual_on_demand` queue.
+- Extended [backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py](backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py) to assert the manual advisory refresh queue choice.
+
+Validation:
+- PASSED: direct code probe confirmed manual refresh dispatch now uses `manual_on_demand`.
+- PASSED: `get_errors` returned no syntax issues for the touched backend files.
+- PASSED: backend service restarted and came back `Up`.
+
+Residual risk:
+- Only the advisory manual-refresh lane is isolated here; if other manual-trigger entry points are found later, they should be aligned to the same queue policy.
+
+# 2026-05-11 20:26 — P2 Provider Quality Scoring ✅
+
+Status: Provider selection now has a cache-backed quality score helper with weighted formula and hysteresis, and price-board source ordering can use the cached score when no explicit source is forced.
+
+What was changed:
+- Added [backend/portfolio/vnbroker_provider_quality.py](backend/portfolio/vnbroker_provider_quality.py) for score calculation, snapshot caching, selection caching, and provider ordering.
+- Updated [backend/portfolio/vnbroker_provider_benchmark.py](backend/portfolio/vnbroker_provider_benchmark.py) to persist benchmark-derived quality snapshots and produce quality-ranked recommendations.
+- Updated [backend/portfolio/adapters/vnbroker_adapter.py](backend/portfolio/adapters/vnbroker_adapter.py) to consult quality order for price board, intraday, history, and listing when there is no explicit source override.
+- Added [backend/portfolio/tests/test_vnbroker_provider_quality.py](backend/portfolio/tests/test_vnbroker_provider_quality.py) to cover score math, hysteresis, benchmark ranking, and adapter ordering.
+
+Validation:
+- Passed `portfolio.tests.test_vnbroker_provider_quality` with 6 tests green.
+- `get_errors` returned no syntax errors for the changed backend files.
+
+Residual risk:
+- This slice seeds scores from benchmark results; live observation hooks are still optional follow-up work if we want continuously refreshed quality cache.
+
+# 2026-05-11 19:15 — Multi-Provider Clarification Closure ✅
+
+Status: The remaining audit clarifications for the SaaS Background Services Multi-Provider addendum are now closed with explicit implementation anchors.
+
+What was updated:
+- Added a closure table to [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) covering P0 drift checker, P1 concurrency, P2 scoring, 10K sizing, stale spike, Redis topology, WebSocket fanout, and offhours/result-backend policy.
+
+Validation:
+- The updated addendum now states each clarification as a binding implementation decision, not an open question.
+
+Residual risk:
+- Implementation still needs the next coding slices to realize these decisions in runtime code and compose topology.
+
+# 2026-05-11 19:00 — Prometheus Legacy Backend Scrape Cleanup ✅
+
+Status: Prometheus no longer scrapes `backend:8000`, so the legacy backend /metrics 404 noise is removed while core-api metrics stay enabled.
+
+What was changed:
+- Removed the legacy backend scrape job from [infra/prometheus/prometheus.yml](infra/prometheus/prometheus.yml).
+
+Validation:
+- Restarted Prometheus with `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml restart prometheus`.
+- Queried Prometheus runtime targets inside the container and confirmed `backend:8000` is absent.
+- Queried Prometheus runtime targets inside the container and confirmed `core-api:8100` is still present.
+
+Residual risk:
+- Historical backend logs still contain older 404 entries until log rotation or manual cleanup, but no new scrape target is driving them.
+
+# 2026-05-11 18:42 — Legacy Backend ALLOWED_HOSTS Dev Fix ✅
+
+Status: Legacy backend dev service now accepts the compose host `backend`, removing the `DisallowedHost` error on `/metrics/`.
+
+What was changed:
+- Added `DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend` to the `backend` service in `docker-compose.dev.yml`.
+
+Validation:
+- Recreated the backend service with `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate backend`.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml ps` shows the backend container back up.
+- Log filter for `DisallowedHost` after the recreate returned no matches.
+
+Residual risk:
+- The backend container still takes time to finish apt/pip startup steps; recheck the smoke test once the service has emitted its normal runserver logs.
+
 # 2026-05-11 18:05 — Core Worker Topology Expansion (Dev/Prod/Core) ✅
 
 Status: Core worker topology now covers the full 5-queue domain split across dev, prod, and the core package compose.

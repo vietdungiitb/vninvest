@@ -36,7 +36,8 @@ def activate_symbol_engagement(user_id: int, symbol: str, source: str, context: 
             'symbol': symbol,
             'reason': source,
         },
-        countdown=1
+        countdown=1,
+        queue='manual_on_demand',
     )
 
 def is_intraday_fresh(symbol: str) -> bool:
