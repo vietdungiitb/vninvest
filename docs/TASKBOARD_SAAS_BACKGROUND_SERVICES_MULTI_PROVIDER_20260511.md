@@ -31,7 +31,7 @@ DoD: Queue matrix được duyệt
 Owner: DevOps + Backend  
 DoD: Worker topology mới chạy ổn định
 
-- [ ] `SBMP-P1.3` Route critical tasks sang queue mục tiêu
+- [x] `SBMP-P1.3` Route critical tasks sang queue mục tiêu
 Owner: Backend  
 DoD: 100% critical tasks không chạy trên queue default
 

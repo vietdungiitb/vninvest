@@ -31,6 +31,8 @@ QUEUE_DOMAIN_MATRIX = {
         'queue': 'analytics_heavy',
         'task_routes': (
             'market_serving.materializers.materialize_unified_alerts',
+            'signal_intelligence.materializers.materialize_unified_alerts',
+            'signal_intelligence.materializers.materialize_whale_feed_aggregate',
         ),
         'periodic_tasks': (
             'materialize-unified-alerts-2m',
@@ -59,6 +61,7 @@ QUEUE_DOMAIN_MATRIX = {
         'queue': 'manual_on_demand',
         'task_routes': (
             'manual_*',
+            'signal_intelligence.tasks.run_signal_detection_job',
         ),
         'periodic_tasks': (
             'manual_refresh_task',

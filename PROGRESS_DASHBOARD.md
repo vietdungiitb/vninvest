@@ -1,3 +1,20 @@
+# 2026-05-11 — P1.3 Critical Task Route Coverage ✅
+
+Status: signal detection admin trigger now lands on `manual_on_demand`, and the heavy signal materializers land on `analytics_heavy` instead of default.
+
+What was changed:
+- Extended `vninvest_core.queue_policy` to route `signal_intelligence.tasks.run_signal_detection_job` to `manual_on_demand`.
+- Extended the same SSOT to route `signal_intelligence.materializers.materialize_unified_alerts` and `signal_intelligence.materializers.materialize_whale_feed_aggregate` to `analytics_heavy`.
+- Added a focused route-coverage assertion in `packages/core/backend/tests/test_signal_materializer_schedule.py`.
+
+Validation:
+- `manage.py test tests.test_signal_materializer_schedule --keepdb` passed.
+- Runtime probe inside `core-api` confirmed the three signal routes resolve to the intended queues.
+- `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml restart core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` refreshed the impacted core runtime.
+
+Residual risk:
+- P1.4 fallback consumer policy remains open.
+
 # 2026-05-11 — P1.2 Worker Topology Status Sync ✅
 
 Status: queue-specific workers are already split across dev/prod/core compose; this slice synchronized the docs and taskboard to that reality.
@@ -12,7 +29,7 @@ Validation:
 - `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps frontend` shows the localhost frontend service Up on port 80.
 
 Residual risk:
-- P1.3 route coverage remains open.
+- P1.4 fallback consumer policy remains open.
 
 # 2026-05-11 — P1.1 Queue Policy SSOT ✅
 

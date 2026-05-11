@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-11 22:47:56`
+Generated at: `2026-05-11 23:12:05`
 
 ## Summary
 
@@ -3633,7 +3633,7 @@ Generated at: `2026-05-11 22:47:56`
 ### `packages/core/backend/tests/test_signal_materializer_schedule.py`
 
 - Classes:
-  - `SignalMaterializerScheduleTests` -> methods: `test_runtime_and_settings_schedule_use_market_serving_materializer`, `test_runtime_schedule_does_not_double_schedule_whale_feed_materialization`
+  - `SignalMaterializerScheduleTests` -> methods: `test_runtime_and_settings_schedule_use_market_serving_materializer`, `test_runtime_schedule_does_not_double_schedule_whale_feed_materialization`, `test_signal_intelligence_critical_tasks_route_to_target_queues`
 
 ### `packages/core/backend/tests/test_stock_management_api_routes.py`
 

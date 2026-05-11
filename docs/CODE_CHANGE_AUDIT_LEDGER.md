@@ -1,3 +1,25 @@
+# AUDIT FILE LIST (2026-05-11-P1.3-CRITICAL-TASK-ROUTE-COVERAGE)
+
+Muc tieu:
+- Dua signal detection admin trigger sang `manual_on_demand`.
+- Dua signal-intelligence materializers nang sang `analytics_heavy` de khong rot ve default queue.
+
+Files changed:
+- [packages/core/backend/src/vninvest_core/queue_policy.py](packages/core/backend/src/vninvest_core/queue_policy.py) (MODIFIED)
+- [packages/core/backend/tests/test_signal_materializer_schedule.py](packages/core/backend/tests/test_signal_materializer_schedule.py) (MODIFIED)
+- [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `manage.py test tests.test_signal_materializer_schedule --keepdb`.
+- PASSED: runtime probe inside `core-api` confirmed `signal_intelligence.tasks.run_signal_detection_job -> manual_on_demand` and both signal materializers -> `analytics_heavy`.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml restart core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` refreshed the impacted core runtime.
+
+Residual risk:
+- P1.4 fallback consumer policy remains open.
+
 # AUDIT FILE LIST (2026-05-11-P1.2-WORKER-TOPOLOGY-STATUS-SYNC)
 
 Muc tieu:
@@ -15,7 +37,7 @@ Validation:
 - `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps frontend` shows the localhost frontend service Up on port 80.
 
 Residual risk:
-- P1.3 route coverage remains open.
+- P1.4 fallback consumer policy remains open.
 
 # AUDIT FILE LIST (2026-05-11-P1.1-QUEUE-POLICY-SSOT)
 
