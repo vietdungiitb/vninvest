@@ -23,7 +23,7 @@ DoD: Dashboard có dữ liệu cho 24h gần nhất
 
 ## P1 — Queue Isolation
 
-- [ ] `SBMP-P1.1` Define queue map theo domains
+- [x] `SBMP-P1.1` Define queue map theo domains
 Owner: Platform  
 DoD: Queue matrix được duyệt
 

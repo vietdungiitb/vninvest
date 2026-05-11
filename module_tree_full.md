@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-11 22:05:29`
+Generated at: `2026-05-11 22:47:56`
 
 ## Summary
 
-- Total modules: 1035
-- Python modules: 535
+- Total modules: 1036
+- Python modules: 536
 - JS/TS modules: 500
 - Total classes: 861
-- Total functions: 2844
-- Total top-level variables: 4528
+- Total functions: 2847
+- Total top-level variables: 4533
 
 ## Python Modules
 
@@ -3435,6 +3435,13 @@ Generated at: `2026-05-11 22:05:29`
   - `OrderFlowCursorPagination`
   - `SnapshotCursorPagination`
 
+### `packages/core/backend/src/vninvest_core/queue_policy.py`
+
+- Functions:
+  - `build_celery_task_queues`, `build_scheduler_queue_map`, `build_task_routes`
+- Top-level variables:
+  - `CELERY_TASK_QUEUES`, `QUEUE_DOMAIN_MATRIX`, `QUEUE_NAMES`, `SCHEDULER_QUEUE_MAP`, `TASK_ROUTES`
+
 ### `packages/core/backend/src/vninvest_core/settings.py`
 
 - Top-level variables:
@@ -3613,7 +3620,7 @@ Generated at: `2026-05-11 22:05:29`
 ### `packages/core/backend/tests/test_scheduler_management_commands.py`
 
 - Classes:
-  - `CheckSchedulerQueueDriftTestCase` -> methods: `setUp`, `test_drift_detected_with_warn_only`, `test_drift_detected_without_warn_only_exits`, `test_ignores_unknown_tasks`, `test_multiple_drifts_detected`, `test_no_drift_detected`
+  - `CheckSchedulerQueueDriftTestCase` -> methods: `setUp`, `test_drift_detected_with_warn_only`, `test_drift_detected_without_warn_only_exits`, `test_ignores_unknown_tasks`, `test_multiple_drifts_detected`, `test_no_drift_detected`, `test_queue_policy_ssot_is_shared_by_commands`
   - `SyncSchedulerQueuesTestCase` -> methods: `setUp`, `test_sync_ignores_unknown_tasks`, `test_sync_multiple_tasks`, `test_sync_single_task`, `test_sync_with_correct_queue_no_update`
 
 ### `packages/core/backend/tests/test_signal_intelligence_api_routes.py`

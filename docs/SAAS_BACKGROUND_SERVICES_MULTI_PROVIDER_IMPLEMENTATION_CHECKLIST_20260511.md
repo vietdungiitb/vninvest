@@ -23,7 +23,7 @@ class Command(BaseCommand):
     EXPECTED_QUEUES = {
         # Format: task_name: expected_queue
         'materialize-symbol-snapshot-60s': 'realtime_prefetch',
-        'materialize-session-facts-2m': 'realtime_prefetch',
+        'materialize-session-facts-5m': 'realtime_prefetch',
         'materialize-unified-alerts-2m': 'realtime_prefetch',
         'materialize-symbol-snapshot-30s': 'realtime_prefetch',
         'materialize-bucket-facts-5m': 'realtime_prefetch',

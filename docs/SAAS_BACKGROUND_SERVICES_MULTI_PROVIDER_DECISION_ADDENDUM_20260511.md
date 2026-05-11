@@ -22,7 +22,7 @@ def handle(self, *args, **options):
     # Expected queue map (hardcoded or JSON policy)
     EXPECTED_QUEUES = {
         'materialize-symbol-snapshot-60s': 'realtime_prefetch',
-        'materialize-session-facts-2m': 'realtime_prefetch',
+        'materialize-session-facts-5m': 'realtime_prefetch',
         'materialize-unified-alerts-2m': 'realtime_prefetch',
         'detect_and_store_global_whale_alerts': 'analytics_heavy',
         'detect_order_flow': 'analytics_heavy',

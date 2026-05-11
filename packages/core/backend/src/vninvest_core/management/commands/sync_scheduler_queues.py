@@ -2,23 +2,13 @@
 from django.core.management.base import BaseCommand
 from django_celery_beat.models import PeriodicTask
 
+from vninvest_core.queue_policy import SCHEDULER_QUEUE_MAP
+
 
 class Command(BaseCommand):
     help = 'Sync scheduler queue fields to expected values'
 
-    QUEUE_MAP = {
-        'materialize-symbol-snapshot-60s': 'realtime_prefetch',
-        'materialize-session-facts-2m': 'realtime_prefetch',
-        'materialize-unified-alerts-2m': 'realtime_prefetch',
-        'materialize-symbol-snapshot-30s': 'realtime_prefetch',
-        'materialize-bucket-facts-5m': 'realtime_prefetch',
-        'detect_and_store_global_whale_alerts': 'analytics_heavy',
-        'detect_order_flow': 'analytics_heavy',
-        'run_stream_consumer_batch': 'realtime_stream',
-        'enrich_history_bars': 'enrichment_offhours',
-        'enrich_fundamentals': 'enrichment_offhours',
-        'manual_refresh_task': 'manual_on_demand',
-    }
+    QUEUE_MAP = SCHEDULER_QUEUE_MAP
 
     def handle(self, *args, **options):
         updated = 0

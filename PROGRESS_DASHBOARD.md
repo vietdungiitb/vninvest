@@ -1,3 +1,21 @@
+# 2026-05-11 — P1.1 Queue Policy SSOT ✅
+
+Status: queue routing and scheduler expectations now come from `vninvest_core.queue_policy`, and the canonical session-facts schedule name is `materialize-session-facts-5m`.
+
+What was changed:
+- Added `packages/core/backend/src/vninvest_core/queue_policy.py` as the domain-based SSOT for queue names, route patterns, and scheduler queue expectations.
+- Updated `packages/core/backend/src/vninvest_core/celery.py`, `packages/core/backend/src/vninvest_core/settings.py`, `packages/core/backend/src/vninvest_core/management/commands/check_scheduler_queue_drift.py`, and `packages/core/backend/src/vninvest_core/management/commands/sync_scheduler_queues.py` to consume the shared policy.
+- Updated `packages/core/backend/tests/test_signal_materializer_schedule.py` and `packages/core/backend/tests/test_scheduler_management_commands.py` to validate the shared policy and the `5m` canonical schedule.
+- Aligned the implementation checklist and decision addendum docs to the same canonical schedule name.
+
+Validation:
+- PASSED: `manage.py test tests.test_signal_materializer_schedule tests.test_scheduler_management_commands --keepdb`.
+- PASSED: `get_errors` reported no syntax errors for the touched core files.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml restart core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` refreshed the impacted core runtime.
+
+Residual risk:
+- `core-beat` was mid-restart when the last runtime probe was captured, so a follow-up health check may still be useful if you want the runtime fully settled.
+
 # 2026-05-11 — P0.3 Core Queue Metrics Dashboard ✅
 
 Status: `AdminOpsRuntimeKPIView` now exposes live scheduler queue lag/freshness metrics instead of hardcoded zero placeholders.

@@ -1,3 +1,32 @@
+# AUDIT FILE LIST (2026-05-11-P1.1-QUEUE-POLICY-SSOT)
+
+Muc tieu:
+- Gom queue map domain-based SSOT vao `vninvest_core.queue_policy`.
+- Loai bo queue string duplication giua settings, celery, drift commands, va scheduler tests.
+
+Files changed:
+- [packages/core/backend/src/vninvest_core/queue_policy.py](packages/core/backend/src/vninvest_core/queue_policy.py) (NEW)
+- [packages/core/backend/src/vninvest_core/celery.py](packages/core/backend/src/vninvest_core/celery.py) (MODIFIED)
+- [packages/core/backend/src/vninvest_core/settings.py](packages/core/backend/src/vninvest_core/settings.py) (MODIFIED)
+- [packages/core/backend/src/vninvest_core/management/commands/check_scheduler_queue_drift.py](packages/core/backend/src/vninvest_core/management/commands/check_scheduler_queue_drift.py) (MODIFIED)
+- [packages/core/backend/src/vninvest_core/management/commands/sync_scheduler_queues.py](packages/core/backend/src/vninvest_core/management/commands/sync_scheduler_queues.py) (MODIFIED)
+- [packages/core/backend/tests/test_signal_materializer_schedule.py](packages/core/backend/tests/test_signal_materializer_schedule.py) (MODIFIED)
+- [packages/core/backend/tests/test_scheduler_management_commands.py](packages/core/backend/tests/test_scheduler_management_commands.py) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) (MODIFIED)
+- [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `manage.py test tests.test_signal_materializer_schedule tests.test_scheduler_management_commands --keepdb`.
+- PASSED: `get_errors` reported no syntax errors for the touched core files.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml restart core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` refreshed the impacted core runtime.
+
+Residual risk:
+- `core-beat` was restarting when this ledger entry was written; if you need a fresh health probe, recheck after the restart settles.
+
 # AUDIT FILE LIST (2026-05-11-P0.3-QUEUE-METRICS-DASHBOARD)
 
 Muc tieu:

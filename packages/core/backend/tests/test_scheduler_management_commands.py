@@ -5,6 +5,10 @@ from django.core.management import call_command
 from django.test import TestCase
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
+from vninvest_core.management.commands.check_scheduler_queue_drift import Command as CheckSchedulerQueueDriftCommand
+from vninvest_core.management.commands.sync_scheduler_queues import Command as SyncSchedulerQueuesCommand
+from vninvest_core.queue_policy import SCHEDULER_QUEUE_MAP
+
 
 class CheckSchedulerQueueDriftTestCase(TestCase):
     """Test cases for check_scheduler_queue_drift management command."""
@@ -35,6 +39,10 @@ class CheckSchedulerQueueDriftTestCase(TestCase):
 
         output = self.out.getvalue()
         self.assertIn('No queue drift detected', output)
+
+    def test_queue_policy_ssot_is_shared_by_commands(self):
+        self.assertEqual(CheckSchedulerQueueDriftCommand.EXPECTED_QUEUES, SCHEDULER_QUEUE_MAP)
+        self.assertEqual(SyncSchedulerQueuesCommand.QUEUE_MAP, SCHEDULER_QUEUE_MAP)
 
     def test_drift_detected_with_warn_only(self):
         """Test drift detection with --warn-only flag."""
@@ -84,7 +92,7 @@ class CheckSchedulerQueueDriftTestCase(TestCase):
             interval=self.interval,
         )
         PeriodicTask.objects.create(
-            name='materialize-session-facts-2m',
+            name='materialize-session-facts-5m',
             task='test.task',
             queue='wrong_queue',
             interval=self.interval,
