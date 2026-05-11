@@ -1,3 +1,21 @@
+# 2026-05-11 18:05 — Core Worker Topology Expansion (Dev/Prod/Core) ✅
+
+Status: Core worker topology now covers the full 5-queue domain split across dev, prod, and the core package compose.
+
+What was changed:
+- `packages/core/backend/entrypoint.sh` now accepts `CELERY_QUEUES` and `CELERY_CONCURRENCY` per worker service and was normalized to LF line endings for Linux shell compatibility.
+- `docker-compose.dev.yml` adds `core-worker-realtime-stream`, `core-worker-enrichment`, and `core-worker-manual`.
+- `docker-compose.prod.yml` and `packages/core/docker-compose.core.yml` now mirror the queue-specific worker topology.
+
+Validation:
+- `sh -n` passed on the normalized entrypoint script in Alpine.
+- `docker compose -f docker-compose.dev.yml config --services` shows the new worker services.
+- `docker compose -f docker-compose.prod.yml config` and `docker compose -f packages/core/docker-compose.core.yml config` passed with dummy env values.
+- `module_tree_full.md` regenerated.
+
+Residual risk:
+- The live dev `core-api` container still loops on the private `vnbroker` dependency because the current PAT is rejected by GitHub; the topology slice itself is parsed and validated.
+
 # 2026-05-11 16:57 — vnbroker HTTPS Auth Format Fix ✅
 
 Status: Private repo clone now uses the token in the password slot instead of prompting for an interactive password.
