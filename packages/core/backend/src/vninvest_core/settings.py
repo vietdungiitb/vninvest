@@ -166,7 +166,11 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = False
 # SM-P1.4: CORS_ALLOWED_ORIGINS must be explicit in production.
 # In dev (DEBUG=True) with no env var, allow localhost origins for convenience.
-_cors_origins_default = 'http://localhost:3000,http://127.0.0.1:3000' if DEBUG else ''
+_cors_origins_default = (
+    'http://localhost:3000,http://127.0.0.1:3000,'
+    'http://localhost:80,http://127.0.0.1:80,'
+    'http://localhost,http://127.0.0.1'
+) if DEBUG else ''
 _cors_origins_raw = os.environ.get('CORS_ALLOWED_ORIGINS', _cors_origins_default)
 CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins_raw.split(',') if o.strip()]
 
@@ -213,10 +217,11 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = TIME_ZONE
 
-# SM-P2.2: Beat schedule for materializer tasks.
+# SM-P2.2: Beat schedule for materializer tasks + realtime data collection.
 from celery.schedules import crontab  # noqa: E402
 
 CELERY_BEAT_SCHEDULE = {
+    # === Materializer tasks (market_serving) ===
     'materialize-symbol-snapshot-60s': {
         'task': 'market_serving.materializers.materialize_symbol_snapshot',
         'schedule': 60.0,  # every 60 seconds
@@ -229,6 +234,8 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'market_serving.materializers.materialize_unified_alerts',
         'schedule': 120.0,  # every 2 minutes
     },
+    
+    # === Ops/Admin tasks ===
     # SM-P5.5: Daily DB backup at 02:00 AM Hanoi time
     'daily-db-backup-2am': {
         'task': 'ops_audit.tasks.daily_db_backup',
