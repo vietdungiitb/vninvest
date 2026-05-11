@@ -54,6 +54,7 @@ REALTIME_SHARD_LAST_ENQUEUE_PREFIX = 'realtime:shard:last_enqueue'
 OFFPEAK_INGEST_LATEST_META_CACHE_KEY = 'ticker:offpeak:ingest:latest'
 OFFPEAK_INGEST_HISTORY_CACHE_KEY = 'ticker:offpeak:ingest:history'
 OFFPEAK_INGEST_HISTORY_MAX_ITEMS = 20
+REALTIME_PREFETCH_QUEUE = 'realtime_prefetch'
 
 
 def _read_bool_env(name: str, default: bool) -> bool:
@@ -328,7 +329,7 @@ def _resolve_scheduler_plan(snapshot: dict, topology: dict) -> tuple[dict, dict]
     return plan, metrics
 
 
-@shared_task(bind=True, name='portfolio.tasks.build_realtime_symbol_universe_snapshot')
+@shared_task(bind=True, name='portfolio.tasks.build_realtime_symbol_universe_snapshot', queue=REALTIME_PREFETCH_QUEUE)
 def build_realtime_symbol_universe_snapshot(self) -> dict:
     runtime_settings = _get_vnbroker_runtime_settings()
     topology = _resolve_prefetch_topology(runtime_settings=runtime_settings)
@@ -454,7 +455,7 @@ def _publish_scheduler_prefetch_meta(
     _store_prefetch_meta(payload, timeout=timeout_seconds)
 
 
-@shared_task(bind=True, name='portfolio.tasks.schedule_realtime_prefetch_shards')
+@shared_task(bind=True, name='portfolio.tasks.schedule_realtime_prefetch_shards', queue=REALTIME_PREFETCH_QUEUE)
 def schedule_realtime_prefetch_shards(self) -> dict:
     runtime_settings = _get_vnbroker_runtime_settings()
     topology = _resolve_prefetch_topology(runtime_settings=runtime_settings)
@@ -510,7 +511,10 @@ def schedule_realtime_prefetch_shards(self) -> dict:
                     skipped_due_to_interval += 1
                     continue
 
-                prefetch_realtime_ticker_shard.apply_async(kwargs={'tier': tier, 'shard_id': int(shard_id)})
+                prefetch_realtime_ticker_shard.apply_async(
+                    kwargs={'tier': tier, 'shard_id': int(shard_id)},
+                    queue=REALTIME_PREFETCH_QUEUE,
+                )
                 cache.set(last_key, now_epoch, timeout=max(interval_seconds * 5, 30))
                 enqueued.append({'tier': tier, 'shard_id': int(shard_id), 'symbols': len(shard_symbols)})
 
@@ -631,7 +635,7 @@ def _i(val):
         return None
 
 
-@shared_task(bind=True, name='portfolio.tasks.prefetch_realtime_ticker_shard')
+@shared_task(bind=True, name='portfolio.tasks.prefetch_realtime_ticker_shard', queue=REALTIME_PREFETCH_QUEUE)
 def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
     normalized_tier = str(tier or '').strip().lower()
     if normalized_tier not in {'hot', 'warm', 'cold'}:

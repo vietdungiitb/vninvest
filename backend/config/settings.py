@@ -408,10 +408,12 @@ _TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS = _env_int("TICKER_PREFETCH_SCHEDULE
 CELERY_BEAT_SCHEDULE["build-realtime-symbol-universe-snapshot"] = {
     "task": "portfolio.tasks.build_realtime_symbol_universe_snapshot",
     "schedule": timedelta(seconds=max(TICKER_UNIVERSE_REFRESH_SECONDS, 10)),
+    "options": {"queue": "realtime_prefetch"},
 }
 CELERY_BEAT_SCHEDULE["schedule-realtime-prefetch-shards"] = {
     "task": "portfolio.tasks.schedule_realtime_prefetch_shards",
     "schedule": timedelta(seconds=max(_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS, 1)),
+    "options": {"queue": "realtime_prefetch"},
 }
 
 if OFFPEAK_VNSTOCK_INGEST_ENABLED:
