@@ -1,3 +1,46 @@
+# AUDIT FILE LIST (2026-05-11-VNBROKER-HTTPS-AUTH-FORMAT-FIX)
+
+Muc tieu:
+- Sua format HTTPS clone de `vnbroker` dung token o vi tri password, khong con bi Git hoi interactive password.
+- Giu flow bootstrap/dev compose khong can nhap credential thu cong trong luc pip clone repo private.
+
+Files changed:
+- [backend/requirements.txt](backend/requirements.txt) (MODIFIED)
+- [packages/core/backend/requirements.txt](packages/core/backend/requirements.txt) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- `docker compose -f docker-compose.dev.yml up --build core-api core-worker core-worker-realtime-prefetch core-worker-analytics core-beat` now reaches GitHub auth instead of prompting for a password.
+- The clone step no longer fails with the previous interactive password prompt.
+
+Residual risk:
+- Dev startup still requires a GitHub PAT with valid access to `vietdungiitb/vnbroker`; an invalid or under-scoped token will still fail the clone.
+
+# AUDIT FILE LIST (2026-05-11-CORE-WORKER-TOPOLOGY-SPLIT)
+
+Muc tieu:
+- Tach core dev worker topology theo queue de materializer hot path chay tren worker rieng.
+- Dua queue routing cua materializer ve source of truth trong `packages/core/backend/src/vninvest_core/settings.py`.
+
+Files changed:
+- [packages/core/backend/src/vninvest_core/celery.py](packages/core/backend/src/vninvest_core/celery.py) (MODIFIED)
+- [packages/core/backend/src/vninvest_core/settings.py](packages/core/backend/src/vninvest_core/settings.py) (MODIFIED)
+- [packages/core/backend/tests/test_signal_materializer_schedule.py](packages/core/backend/tests/test_signal_materializer_schedule.py) (MODIFIED)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- `docker compose -f docker-compose.dev.yml config --services` includes `core-worker-realtime-prefetch` and `core-worker-analytics`.
+- `python manage.py test tests.test_signal_materializer_schedule` passed with `DJANGO_DEBUG=true` and `DJANGO_ALLOWED_HOSTS=*`.
+- Direct Python assertion via `vninvest_core.celery` confirmed `app.conf.task_routes` and `settings.CELERY_BEAT_SCHEDULE` queue options match.
+- `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1030 modules).
+
+Residual risk:
+- Production/core-package compose still uses the older single-worker topology and needs a follow-up mirror slice.
+
 # AUDIT FILE LIST (2026-05-11-VNBROKER-ONE-TIME-SECRET-BOOTSTRAP)
 
 Muc tieu:

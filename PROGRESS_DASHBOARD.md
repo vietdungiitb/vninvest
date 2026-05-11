@@ -1,3 +1,36 @@
+# 2026-05-11 16:57 — vnbroker HTTPS Auth Format Fix ✅
+
+Status: Private repo clone now uses the token in the password slot instead of prompting for an interactive password.
+
+What was changed:
+- `backend/requirements.txt` and `packages/core/backend/requirements.txt` now use `git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/...` for the private `vnbroker` dependency.
+
+Validation:
+- Dev compose startup progressed past the old interactive password prompt and reached GitHub auth.
+- Remaining failure is now limited to PAT validity/scope, not URL formatting.
+
+Residual risk:
+- A valid GitHub PAT with access to `vietdungiitb/vnbroker` is still required for the dev stack to start core-api fully.
+
+# 2026-05-11 16:48 — Core Worker Topology Split (Dev) ✅
+
+Status: Core materializer routing now runs on dedicated dev worker queues.
+
+What was changed:
+- `packages/core/backend/src/vninvest_core/settings.py` now owns `CELERY_TASK_ROUTES` and per-schedule queue options for materializer jobs.
+- `docker-compose.dev.yml` narrows `core-worker` to the default `celery` queue and adds `core-worker-realtime-prefetch` and `core-worker-analytics`.
+- `packages/core/backend/tests/test_signal_materializer_schedule.py` now checks runtime/settings queue parity.
+- `packages/core/backend/src/vninvest_core/celery.py` no longer duplicates beat schedule config.
+
+Validation:
+- `docker compose -f docker-compose.dev.yml config --services` lists the new workers.
+- `python manage.py test tests.test_signal_materializer_schedule` passed.
+- `vninvest_core.celery` snippet confirmed queue routing and beat schedule queue options.
+- `module_tree_full.md` regenerated.
+
+Residual risk:
+- Prod/core compose and any future `realtime_stream`/`enrichment_offhours`/`manual_on_demand` split still need a follow-up slice.
+
 # 2026-05-11 17:45 — One-Time VNBROKER Token Bootstrap ✅
 
 Status: Dev bootstrap now persists the private vnbroker PAT into ignored backend/.env.dev and dev entrypoints import it automatically.
