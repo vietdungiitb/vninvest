@@ -1,22 +1,28 @@
-# 2026-05-11 09:41 — SaaS Services Recovery R5 Soak & Hardening — IN PROGRESS 🟡
+# 2026-05-11 10:00 — SaaS Services Recovery R5 Soak & Hardening — READY FOR 24H SOAK 🟡
 
-**Status**: R5.1 soak window started, monitoring protocol active
+**Status**: R5.1 soak window ready (T=0 at 09:41 UTC, health verified post-fix at 10:00 UTC)
 
-**IMPORTANT DATA INGEST FINDING**:
-- ✅ Materializer tasks running on schedule (beat dispatch working)
-- ✅ Worker consuming jobs successfully
-- ⚠️ **Realtime data ingest NOT active** — dev environment running zero-load soak
-- This is **expected and valid** for R5.1 runtime stability gate
-- Production migration will require separate data-loaded soak
+**Data Ingest Investigation COMPLETED**:
+- ✅ Root cause identified: Realtime prefetch task lives in legacy backend, core-worker cannot execute it
+- ⚠️ **Dashboard empty = expected for zero-load soak** (no live broker data flowing)
+- ✅ 3 solution options documented (legacy worker, port to core, or continue zero-load)
+- ✅ Decision: Continue R5.1 zero-load soak (runtime stability focus, not data focus)
 
 T=0 Baseline (2026-05-11 09:41:27 UTC):
 - Core API health: 200 ✅
 - Legacy API health: 200 ✅
 - Queue depth: 0 ✅
 - All services running: 9/9 ✅
-- Schema validation: portfolio_tickersessionclose table EXISTS ✅
+- Schema validation: portfolio_tickersessionclose EXISTS ✅
 
-Soak Type: **Non-Production Load** (runtime resilience at zero traffic)
+T+30min Verification (2026-05-11 10:00 UTC):
+- Core health: 200 (re-verified) ✅
+- API health: 200 (re-verified) ✅
+- Worker connected to broker ✅
+- Beat dispatching materializer tasks ✅
+- No task registration errors ✅
+
+**Soak Type**: **Non-Production Load** (runtime resilience test, zero realtime traffic)
 
 SLO Baseline (per TECH_SPEC):
 - API Availability target: >= 99.5%
@@ -35,8 +41,9 @@ Next Checkpoint: T+24h SLO validation + gate decision
 - PASS → Proceed to R5.2 extended soak or R6 sign-off
 - FAIL → Investigate, tune, repeat soak
 
-Monitoring protocol: `docs/R5_MONITORING_PROTOCOL_20260511.md`
-Data ingest status: `docs/evidence/SSR-R5-DATA-INGEST-STATUS-AND-SOAK-SCOPE-CLARIFICATION-20260511.md`
+Key Documents:
+- Monitoring protocol: `docs/R5_MONITORING_PROTOCOL_20260511.md`
+Data ingest status: `docs/evidence/SSR-R5-DATA-INGEST-SOLUTION-OPTIONS-AND-PATH-FORWARD-20260511.md`
 
 # 2026-05-11 — SaaS Services Recovery R4 SaaS-Only Runtime Gate — COMPLETED ✅
 
