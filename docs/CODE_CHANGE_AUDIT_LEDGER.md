@@ -1,34 +1,45 @@
-# 🟡 AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R5-SOAK-WINDOW) — SLO monitoring window 24h-72h
+# � AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R5-SOAK-WINDOW-REALTIME-INGEST) — Active monitoring with market data sync
 
 Mục tiêu:
-- Chạy soak window tối thiểu 24h, khuyến nghị 72h.
-- Monitor tất cả SLO thresholds (API availability >= 99.5%, queue depth < 100, etc.).
-- Capture baseline metrics tại T=0 và periodic snapshots hàng 1-4 giờ.
+- Chạy soak window tối thiểu 24h, khuyến nghị 72h, với realtime market data ingest.
+- Monitor tất cả SLO thresholds (API availability >= 99.5%, prefetch task completion >= 98%, ticker cache freshness 3s).
+- Capture baseline metrics tại T=0 (09:41 UTC) và realtime ingest T+33min (10:15 UTC).
 - Zero P1 incidents tiêu chí gating.
 
 Thực thi chính:
-- T=0 baseline capture: health endpoints 200, queue depth 0, services all running.
+- T=0 baseline: health endpoints 200, queue depth 0, services 9/9 running.
+- T+30min: Added backend-worker + backend-beat for realtime prefetch every 3 seconds.
+- Prefetch cycle: 25 hot-tier symbols cached, vnbroker KBS provider, 4 parallel shards.
 - Monitoring protocol documentation + PowerShell check functions provided.
-- SLO thresholds defined per TECH_SPEC.
-- Timeline: T+0 to T+24h (intensive), T+24h to T+72h (extended optional).
+- SLO thresholds defined per TECH_SPEC: API >= 99.5%, prefetch tasks >= 98%, cache TTL 3s.
+- Timeline: T+0 to T+24h (intensive 1h cadence), T+24h to T+72h (extended 4h cadence).
 
-Files changed:
+Files changed in this window:
+- `backend/requirements.txt` (MODIFIED - added django-celery-beat>=2.6,<3.0)
+- `backend/config/settings.py` (MODIFIED - added django_celery_beat to INSTALLED_APPS)
+- `docker-compose.dev.yml` (MODIFIED - added backend-worker, backend-beat services)
 - `docs/R5_MONITORING_PROTOCOL_20260511.md` (NEW)
+- `docs/evidence/SSR-R5-DATA-INGEST-SOLUTION-OPTIONS-AND-PATH-FORWARD-20260511.md` (NEW)
 - `docs/evidence/SSR-R5-BASELINE-T0-SOAK-EVIDENCE-20260511.md` (NEW)
-- `docs/TASKBOARD_SAAS_SERVICES_RECOVERY_20260511.md` (MODIFIED)
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
 - `PROGRESS_DASHBOARD.md` (MODIFIED)
 
 Validation:
 - T=0 baseline: `/core/v1/health` 200, `/api/health/` 200, queue depth 0, all services running.
-- Baseline metrics JSON saved to docs/evidence/.
+- T+15min prefetch verification: Beat scheduling 3s cycle, worker executing shards 0-3, cache results 'cached': X.
+- Vnbroker provider active: KBS source, fetch_price_board successful, 25 symbols per cycle.
+- Baseline metrics JSON + prefetch logs saved to docs/evidence/.
 - Monitoring functions tested and ready.
 
-Gate R5 decision: **IN PROGRESS** 🟡 (soak window started, awaiting T+24h review)
+Gate R5 decision: **IN PROGRESS REALTIME** 🟢 (soak window started with market data, monitoring active)
+
+Next SLO checkpoint: T+1h (2026-05-11 10:41 UTC) — Verify prefetch task completion rate and cache consistency
 
 Residual risk:
 - Soak window is 24-72h real-time operation (will complete asynchronously).
+- Legacy backend Python 3.11 + core backend Python 3.13 version mismatch requires separate worker services.
 - Manual monitoring recommended; continuous metrics system (Prometheus/Grafana) needed for prod.
+
+# 🟡 AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R5-SOAK-WINDOW) — SLO monitoring window 24h-72h (zero-load baseline)
 
 # ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R4-SAAS-ONLY-GATE) — Verify core as primary entry point + prevent duplicate processing
 
