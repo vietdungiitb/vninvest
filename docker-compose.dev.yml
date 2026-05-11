@@ -210,6 +210,117 @@ services:
     mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
     cpus: ${CORE_WORKER_CPUS:-0.25}
 
+  core-worker-realtime-stream:
+    container_name: vninvest-dev-core-worker-realtime-stream
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./packages/core/backend:/workspace
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      PYTHONPATH: /workspace/src
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
+    command: >
+      sh -c "apt-get update -y && apt-get install -y git &&
+      pip install -r requirements.txt -q &&
+      python -m celery -A vninvest_core worker
+      --loglevel=INFO
+      --concurrency=4
+      --queues=realtime_stream
+      --without-heartbeat
+      --without-gossip
+      --without-mingle"
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-enrichment:
+    container_name: vninvest-dev-core-worker-enrichment
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./packages/core/backend:/workspace
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      PYTHONPATH: /workspace/src
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
+    command: >
+      sh -c "apt-get update -y && apt-get install -y git &&
+      pip install -r requirements.txt -q &&
+      python -m celery -A vninvest_core worker
+      --loglevel=INFO
+      --concurrency=6
+      --queues=enrichment_offhours
+      --without-heartbeat
+      --without-gossip
+      --without-mingle"
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-manual:
+    container_name: vninvest-dev-core-worker-manual
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./packages/core/backend:/workspace
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      PYTHONPATH: /workspace/src
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
+    command: >
+      sh -c "apt-get update -y && apt-get install -y git &&
+      pip install -r requirements.txt -q &&
+      python -m celery -A vninvest_core worker
+      --loglevel=INFO
+      --concurrency=3
+      --queues=manual_on_demand
+      --without-heartbeat
+      --without-gossip
+      --without-mingle"
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
   core-beat:
     container_name: vninvest-dev-core-beat
     image: python:3.13-slim
