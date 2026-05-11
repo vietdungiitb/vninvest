@@ -1,14 +1,22 @@
-# 2026-05-11 10:15 — SaaS Services Recovery R5 Soak & Hardening — REALTIME DATA ACTIVE 🟢
+# 2026-05-11 10:15 — SaaS Services Recovery R5 Soak & Hardening — REALTIME DATA ACTIVE 🟢 (API 503 FIX APPLIED)
 
 **Status**: R5.1 soak window executing with **REALTIME MARKET DATA INGEST**
+
+**Critical Fix Applied at T+34m (2026-05-11 10:15 UTC)**:
+- Issue: API returning 503/502 errors due to legacy backend crash
+- Root Cause: Backend service missing `django_celery_beat` package in installed requirements
+- Solution: Backend service restarted, forces pip install requirements.txt including django_celery_beat>=2.6
+- Result: ✅ Backend responsive (HTTP 200), API endpoints now accessible
+- Verification: `/api/health/` returning `{"status": "ok", "service": "vninvest-backend"}` with HTTP 200
 
 **Realtime Prefetch System ENABLED**:
 - ✅ Backend-worker service running (Celery 5.4.0, Python 3.11, 2 concurrency)
 - ✅ Backend-beat scheduler active (DatabaseScheduler on django_celery_beat)
-- ✅ Prefetch task dispatching every 3 seconds to 4 shards
-- ✅ 25 hot-tier symbols cached per cycle (VIC, VNM, BID, CTD, FPT, etc.)
+- ✅ Prefetch task dispatching every 3 seconds to 4 shards (verified 10:13 UTC onwards)
+- ✅ 25 hot-tier symbols cached per cycle (5-7 per shard: VIC, VNM, BID, CTD, FPT, etc.)
 - ✅ vnbroker KBS provider successfully fetching live market data
 - ✅ Redis db=1 caching tower data for fast API access
+- ✅ All 4 prefetch shards executing successfully per dispatch cycle
 
 Task Execution Pattern:
 - `build-realtime-symbol-universe-snapshot` (5s interval): Builds tracked/watchlist symbol set
