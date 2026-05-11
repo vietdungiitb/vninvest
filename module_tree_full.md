@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-11 23:12:05`
+Generated at: `2026-05-11 23:45:37`
 
 ## Summary
 
@@ -10,7 +10,7 @@ Generated at: `2026-05-11 23:12:05`
 - Python modules: 536
 - JS/TS modules: 500
 - Total classes: 861
-- Total functions: 2847
+- Total functions: 2848
 - Total top-level variables: 4533
 
 ## Python Modules
@@ -1877,7 +1877,7 @@ Generated at: `2026-05-11 23:12:05`
 ### `backend/portfolio/tests/test_vnbroker_provider_quality.py`
 
 - Classes:
-  - `VnbrokerProviderQualityTests` -> methods: `setUp`, `test_build_runtime_recommendation_uses_quality_ranked_provider`, `test_calculate_provider_quality_score_uses_weighted_formula`, `test_price_board_sources_preserve_explicit_source`, `test_price_board_sources_use_quality_order_when_no_explicit_source`, `test_resolve_provider_order_keeps_selected_provider_within_hysteresis`, `test_resolve_provider_order_prefers_highest_scored_provider`
+  - `VnbrokerProviderQualityTests` -> methods: `setUp`, `test_build_runtime_recommendation_uses_quality_ranked_provider`, `test_calculate_provider_quality_score_uses_weighted_formula`, `test_price_board_sources_preserve_explicit_source`, `test_price_board_sources_use_quality_order_when_no_explicit_source`, `test_resolve_provider_order_keeps_market_phase_selections_isolated`, `test_resolve_provider_order_keeps_selected_provider_within_hysteresis`, `test_resolve_provider_order_prefers_highest_scored_provider`, `test_resolve_provider_order_uses_current_market_phase_when_not_provided`
 
 ### `backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py`
 
@@ -2275,7 +2275,7 @@ Generated at: `2026-05-11 23:12:05`
 ### `backend/portfolio/vnbroker_provider_quality.py`
 
 - Functions:
-  - `_clamp_percent`, `_normalize_channel`, `_normalize_component_weights`, `_normalize_provider`, `_score_snapshot_sort_key`, `_selection_cache_key`, `_snapshot_cache_key`, `build_provider_quality_snapshot`, `cache_provider_quality_selection`, `cache_provider_quality_snapshot`, `calculate_provider_quality_score`, `get_provider_quality_selection`, `get_provider_quality_snapshot`, `resolve_provider_order`
+  - `_clamp_percent`, `_normalize_channel`, `_normalize_component_weights`, `_normalize_market_phase`, `_normalize_provider`, `_score_snapshot_sort_key`, `_selection_cache_key`, `_snapshot_cache_key`, `build_provider_quality_snapshot`, `cache_provider_quality_selection`, `cache_provider_quality_snapshot`, `calculate_provider_quality_score`, `get_provider_quality_selection`, `get_provider_quality_snapshot`, `resolve_provider_order`
 - Top-level variables:
   - `PROVIDER_QUALITY_CACHE_PREFIX`, `PROVIDER_QUALITY_CACHE_TTL_SECONDS`, `PROVIDER_QUALITY_HYSTERESIS_DELTA`, `PROVIDER_QUALITY_SELECTION_CACHE_PREFIX`, `PROVIDER_QUALITY_SELECTION_TTL_SECONDS`, `QUALITY_COMPONENT_WEIGHTS`
 

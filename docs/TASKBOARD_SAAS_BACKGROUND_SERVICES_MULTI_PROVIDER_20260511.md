@@ -47,7 +47,7 @@ DoD: Không còn blackhole queue khi một worker domain down
 Owner: Data Platform  
 DoD: Có score per provider/channel trong metrics
 
-- [ ] `SBMP-P2.2` Implement best-source resolver theo market phase
+- [x] `SBMP-P2.2` Implement best-source resolver theo market phase
 Owner: Backend  
 DoD: Routing policy chạy được qua runtime config
 

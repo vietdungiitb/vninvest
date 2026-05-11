@@ -94,11 +94,81 @@ class VnbrokerProviderQualityTests(SimpleTestCase):
                 source='benchmark',
             )
         )
-        cache_provider_quality_selection('price_board', 'KBS')
+        cache_provider_quality_selection('price_board', 'KBS', market_phase='market_open')
+
+        ordered = resolve_provider_order('price_board', ['KBS', 'VCI'], market_phase='market_open')
+
+        self.assertEqual(ordered[0], 'KBS')
+
+    @patch('portfolio.vnbroker_provider_quality.resolve_market_phase', return_value={'profile': 'market_open'})
+    def test_resolve_provider_order_uses_current_market_phase_when_not_provided(self, _mock_phase):
+        cache_provider_quality_snapshot(
+            build_provider_quality_snapshot(
+                provider='KBS',
+                channel='price_board',
+                metrics={
+                    'freshness_pct': 92,
+                    'completeness_pct': 90,
+                    'success_rate_pct': 90,
+                    'parse_quality_pct': 90,
+                },
+                source='benchmark',
+            )
+        )
+        cache_provider_quality_snapshot(
+            build_provider_quality_snapshot(
+                provider='VCI',
+                channel='price_board',
+                metrics={
+                    'freshness_pct': 94,
+                    'completeness_pct': 88,
+                    'success_rate_pct': 90,
+                    'parse_quality_pct': 90,
+                },
+                source='benchmark',
+            )
+        )
+        cache_provider_quality_selection('price_board', 'KBS', market_phase='market_open')
 
         ordered = resolve_provider_order('price_board', ['KBS', 'VCI'])
 
         self.assertEqual(ordered[0], 'KBS')
+
+    def test_resolve_provider_order_keeps_market_phase_selections_isolated(self):
+        cache_provider_quality_snapshot(
+            build_provider_quality_snapshot(
+                provider='KBS',
+                channel='price_board',
+                metrics={
+                    'freshness_pct': 92,
+                    'completeness_pct': 90,
+                    'success_rate_pct': 90,
+                    'parse_quality_pct': 90,
+                },
+                source='benchmark',
+            )
+        )
+        cache_provider_quality_snapshot(
+            build_provider_quality_snapshot(
+                provider='VCI',
+                channel='price_board',
+                metrics={
+                    'freshness_pct': 94,
+                    'completeness_pct': 88,
+                    'success_rate_pct': 90,
+                    'parse_quality_pct': 90,
+                },
+                source='benchmark',
+            )
+        )
+        cache_provider_quality_selection('price_board', 'KBS', market_phase='market_open')
+        cache_provider_quality_selection('price_board', 'VCI', market_phase='offhours')
+
+        open_order = resolve_provider_order('price_board', ['KBS', 'VCI'], market_phase='market_open')
+        offhours_order = resolve_provider_order('price_board', ['KBS', 'VCI'], market_phase='offhours')
+
+        self.assertEqual(open_order[0], 'KBS')
+        self.assertEqual(offhours_order[0], 'VCI')
 
     @patch('portfolio.vnbroker_provider_benchmark.cache_provider_quality_snapshot')
     @patch('portfolio.vnbroker_provider_benchmark.resolve_provider_order', return_value=['VCI', 'KBS'])

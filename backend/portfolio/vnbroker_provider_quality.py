@@ -6,6 +6,8 @@ from typing import Any
 
 from django.core.cache import cache
 
+from portfolio.market_calendar import resolve_market_phase
+
 
 PROVIDER_QUALITY_CACHE_PREFIX = 'vnbroker:provider_quality'
 PROVIDER_QUALITY_SELECTION_CACHE_PREFIX = 'vnbroker:provider_quality:selected'
@@ -28,6 +30,19 @@ def _normalize_provider(provider: str | None) -> str:
 def _normalize_channel(channel: str | None) -> str:
     normalized = str(channel or '').strip().lower()
     return normalized or 'default'
+
+
+def _normalize_market_phase(market_phase: str | None) -> str:
+    normalized = str(market_phase or '').strip().lower()
+    if normalized:
+        return normalized
+
+    try:
+        resolved_phase = resolve_market_phase()
+    except Exception:
+        return 'default'
+
+    return str((resolved_phase or {}).get('profile') or '').strip().lower() or 'default'
 
 
 def _clamp_percent(raw_value: Any) -> float:
@@ -110,8 +125,8 @@ def _snapshot_cache_key(channel: str, provider: str) -> str:
     return f'{PROVIDER_QUALITY_CACHE_PREFIX}:{_normalize_channel(channel)}:{_normalize_provider(provider)}'
 
 
-def _selection_cache_key(channel: str) -> str:
-    return f'{PROVIDER_QUALITY_SELECTION_CACHE_PREFIX}:{_normalize_channel(channel)}'
+def _selection_cache_key(channel: str, market_phase: str | None = None) -> str:
+    return f'{PROVIDER_QUALITY_SELECTION_CACHE_PREFIX}:{_normalize_channel(channel)}:{_normalize_market_phase(market_phase)}'
 
 
 def cache_provider_quality_snapshot(snapshot: dict[str, Any], ttl_seconds: int = PROVIDER_QUALITY_CACHE_TTL_SECONDS) -> None:
@@ -146,20 +161,22 @@ def cache_provider_quality_selection(
     channel: str,
     provider: str,
     ttl_seconds: int = PROVIDER_QUALITY_SELECTION_TTL_SECONDS,
+    *,
+    market_phase: str | None = None,
 ) -> None:
     provider_name = _normalize_provider(provider)
     if not provider_name:
         return
     timeout = max(int(ttl_seconds or PROVIDER_QUALITY_SELECTION_TTL_SECONDS), 30)
     try:
-        cache.set(_selection_cache_key(channel), provider_name, timeout=timeout)
+        cache.set(_selection_cache_key(channel, market_phase=market_phase), provider_name, timeout=timeout)
     except Exception:
         return
 
 
-def get_provider_quality_selection(channel: str) -> str | None:
+def get_provider_quality_selection(channel: str, market_phase: str | None = None) -> str | None:
     try:
-        cached = cache.get(_selection_cache_key(channel))
+        cached = cache.get(_selection_cache_key(channel, market_phase=market_phase))
     except Exception:
         return None
     provider_name = _normalize_provider(cached)
@@ -189,7 +206,10 @@ def resolve_provider_order(
     candidates: list[str] | tuple[str, ...],
     *,
     hysteresis_delta: float | None = None,
+    market_phase: str | None = None,
 ) -> list[str]:
+    resolved_market_phase = _normalize_market_phase(market_phase)
+
     normalized_candidates: list[str] = []
     for candidate in candidates or []:
         provider = _normalize_provider(candidate)
@@ -215,7 +235,7 @@ def resolve_provider_order(
     chosen_provider = ranked[0][1]
     chosen_snapshot = ranked[0][2]
 
-    selected_provider = get_provider_quality_selection(channel)
+    selected_provider = get_provider_quality_selection(channel, market_phase=resolved_market_phase)
     if selected_provider and selected_provider in snapshots and selected_provider != chosen_provider:
         selected_snapshot = snapshots[selected_provider]
         try:
@@ -240,5 +260,5 @@ def resolve_provider_order(
         if provider not in ordered:
             ordered.append(provider)
 
-    cache_provider_quality_selection(channel, chosen_provider)
+    cache_provider_quality_selection(channel, chosen_provider, market_phase=resolved_market_phase)
     return ordered

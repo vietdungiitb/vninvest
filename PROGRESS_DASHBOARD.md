@@ -1,3 +1,19 @@
+# 2026-05-11 — P2.2 Market-Phase Resolver ✅
+
+Status: provider selection is now phase-aware; the cached selected provider is scoped by channel + market phase, so market_open/offhours decisions do not bleed across each other.
+
+What was changed:
+- Updated `backend/portfolio/vnbroker_provider_quality.py` to scope selection cache keys by market phase and default to the current phase when none is supplied.
+- Added phase-aware regression coverage in `backend/portfolio/tests/test_vnbroker_provider_quality.py`.
+- Marked `SBMP-P2.2` done and advanced the implementation checklist next-slice pointer to P2.3.
+
+Validation:
+- `manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb` passed with 8 tests green.
+- The existing provider routing path in `backend/portfolio/adapters/vnbroker_adapter.py` now inherits the phase-aware resolver behavior without explicit call-site churn.
+
+Residual risk:
+- P2.3 runtime config schema v2 remains open.
+
 # 2026-05-11 — P2.1 Provider Quality Scoring Traceability Sync ✅
 
 Status: provider-quality scoring already exists in backend/portfolio; this slice synced the SBMP P2.1 taskboard/checklist to that live implementation and advanced the next slice to P2.2.

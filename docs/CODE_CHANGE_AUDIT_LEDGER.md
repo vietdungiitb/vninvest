@@ -1,3 +1,25 @@
+# AUDIT FILE LIST (2026-05-11-P2.2-MARKET-PHASE-RESOLVER)
+
+Muc tieu:
+- Lam provider order phase-aware bang cach scope selection cache theo channel + market phase.
+- Giu hysteresis hien co nhung khong cho phase selection bleed qua nhau.
+
+Files changed:
+- [backend/portfolio/vnbroker_provider_quality.py](backend/portfolio/vnbroker_provider_quality.py) (MODIFIED)
+- [backend/portfolio/tests/test_vnbroker_provider_quality.py](backend/portfolio/tests/test_vnbroker_provider_quality.py) (MODIFIED)
+- [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb`.
+- PASSED: provider-quality tests now cover current market-phase resolution and phase-scoped selection isolation.
+
+Residual risk:
+- P2.3 runtime config schema v2 remains open.
+
 # AUDIT FILE LIST (2026-05-11-P2.1-PROVIDER-QUALITY-TRACEABILITY-SYNC)
 
 Muc tieu:

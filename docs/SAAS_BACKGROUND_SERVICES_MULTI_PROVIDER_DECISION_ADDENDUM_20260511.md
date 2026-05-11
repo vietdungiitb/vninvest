@@ -150,7 +150,7 @@ The audit findings below are now binding implementation decisions, not open ques
 |---|---|---|
 | P0 drift checker implementation | Closed | Management command `check_scheduler_queue_drift`, companion `sync_scheduler_queues`, shared queue map, backend-beat healthcheck, and CI/pre-deploy gate |
 | P1 worker topology concurrency | Closed | `CELERY_QUEUES` + `CELERY_CONCURRENCY` are declared per service and mirrored across dev/prod/core compose; `core-worker` is the low-concurrency fallback consumer for `celery`, `realtime_prefetch`, `realtime_stream`, `analytics_heavy`, and `manual_on_demand` |
-| P2 provider scoring algorithm | Closed | Weighted normalized score over a 15-minute rolling window with hysteresis |
+| P2 provider scoring algorithm | Closed | Weighted normalized score over a 15-minute rolling window with hysteresis; selection cache is scoped by channel + market phase |
 | “10,000 users” ambiguity | Closed | Sizing basis is 10,000 registered accounts and 2,000 concurrent peak; SLOs apply to concurrent peak |
 | Event-driven stale spike definition | Closed | `stale_ratio > 5%` for 3 consecutive cycles OR `cache_miss_rate > 2%` |
 | Redis topology | Closed | Three logical roles: Celery broker, realtime cache, WebSocket/channel layer; cluster is optional |
