@@ -42,6 +42,98 @@ ADVISORY_AUTO_GENERATION_JOB_LOCK_KEY = 'advisory:auto-generation:job-lock'
 ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX = 'advisory:event-merge'
 
 
+def build_stock_ai_advisory_summary_payload(
+    *,
+    user_id: int,
+    symbol: str,
+    component_ids: list[int] | None = None,
+    synthesis_preference: str = 'balanced',
+    prompt_config: dict | None = None,
+) -> dict:
+    from django.contrib.auth.models import User
+
+    from portfolio import ai_advisory_helpers as advisory_helpers
+    from portfolio.models import AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
+    from portfolio import views as legacy_views
+
+    normalized_symbol = _normalize_symbol(symbol)
+    user = User.objects.select_related('user_config').get(pk=user_id)
+
+    qs = AIAdvisoryComponentRecord.objects.filter(
+        user=user,
+        symbol=normalized_symbol,
+        is_deleted=False,
+        include_in_summary=True,
+    )
+    if isinstance(component_ids, list) and component_ids:
+        qs = qs.filter(id__in=component_ids)
+
+    components = list(qs.order_by('-created_at'))
+    if not components:
+        raise ValueError('Khong co component active de tong hop.')
+
+    latest = AIAdvisoryExecutiveSummary.objects.filter(user=user, symbol=normalized_symbol).order_by('-summary_version').first()
+    summary_payload = legacy_views._sprint17_compute_summary_from_components(components)
+
+    news_context_str = advisory_helpers._fetch_news_context_for_advisory(
+        symbol=normalized_symbol,
+        user=user,
+        max_headlines=4,
+    )
+
+    ai_synthesis_text = advisory_helpers._sprint17_generate_executive_synthesis_with_ai(
+        user=user,
+        symbol=normalized_symbol,
+        components=components,
+        summary_payload=summary_payload,
+        synthesis_preference=synthesis_preference,
+        news_context=news_context_str,
+        prompt_config=prompt_config,
+    )
+    if ai_synthesis_text:
+        summary_payload['synthesis_text'] = ai_synthesis_text
+
+    summary_payload = legacy_views._sprint17_enforce_summary_narrative_policy(summary_payload, components)
+    summary = AIAdvisoryExecutiveSummary.objects.create(
+        user=user,
+        symbol=normalized_symbol,
+        summary_version=(latest.summary_version + 1) if latest else 1,
+        **summary_payload,
+    )
+
+    return {
+        'ok': True,
+        'executive_summary': legacy_views.AIAdvisoryExecutiveSummarySerializer(summary).data,
+        'prompt_config_version': (prompt_config or {}).get('version', 2) if isinstance(prompt_config, dict) else 2,
+    }
+
+
+@shared_task(
+    bind=True,
+    name='portfolio.tasks.generate_stock_ai_advisory_summary_task',
+    queue='manual_on_demand',
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_kwargs={'max_retries': 1},
+)
+def generate_stock_ai_advisory_summary_task(
+    self,
+    *,
+    user_id: int,
+    symbol: str,
+    component_ids: list[int] | None = None,
+    synthesis_preference: str = 'balanced',
+    prompt_config: dict | None = None,
+) -> dict:
+    return build_stock_ai_advisory_summary_payload(
+        user_id=user_id,
+        symbol=symbol,
+        component_ids=component_ids,
+        synthesis_preference=synthesis_preference,
+        prompt_config=prompt_config,
+    )
+
+
 def _resolve_flush_advisory_sources(*, sources: list[str], source_scores: dict, dark_flow_strength) -> tuple[str, str]:
     normalized_sources = [str(item).strip().lower() for item in (sources or []) if str(item).strip()]
 

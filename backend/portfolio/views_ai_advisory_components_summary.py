@@ -599,41 +599,51 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
     if quota_response is not None:
         return quota_response
 
-    latest = legacy_views.AIAdvisoryExecutiveSummary.objects.filter(user=request.user, symbol=normalized_symbol).order_by('-summary_version').first()
-    summary_payload = legacy_views._sprint17_compute_summary_from_components(components)
-    
-    # NEW (Sprint 35): Fetch AI news summary context if available
-    news_context_str = advisory_helpers._fetch_news_context_for_advisory(
-        symbol=normalized_symbol,
-        user=request.user,
-        max_headlines=4,
+    from celery.exceptions import TimeoutError as CeleryTimeoutError
+    from portfolio.tasks_whale_advisory import (
+        build_stock_ai_advisory_summary_payload,
+        generate_stock_ai_advisory_summary_task,
     )
-    
-    ai_synthesis_text = advisory_helpers._sprint17_generate_executive_synthesis_with_ai(
-        user=request.user,
-        symbol=normalized_symbol,
-        components=components,
-        summary_payload=summary_payload,
-        synthesis_preference=synthesis_preference,
-        news_context=news_context_str,  # NEW (Sprint 35): Include news context
-        prompt_config=prompt_config,    # NEW: canonical runtime config from client
-    )
-    if ai_synthesis_text:
-        summary_payload['synthesis_text'] = ai_synthesis_text
-    summary_payload = legacy_views._sprint17_enforce_summary_narrative_policy(summary_payload, components)
-    summary = legacy_views.AIAdvisoryExecutiveSummary.objects.create(
-        user=request.user,
-        symbol=normalized_symbol,
-        summary_version=(latest.summary_version + 1) if latest else 1,
-        **summary_payload,
-    )
+
+    task_timeout_seconds = max(int(getattr(settings, 'AI_ADVISORY_SUMMARY_REGEN_TASK_TIMEOUT_SECONDS', 180)), 30)
+    task_kwargs = {
+        'user_id': request.user.id,
+        'symbol': normalized_symbol,
+        'component_ids': [component.id for component in components],
+        'synthesis_preference': synthesis_preference,
+        'prompt_config': prompt_config,
+    }
+
+    response_data = None
+    if legacy_views._is_celery_worker_available():
+        try:
+            async_result = generate_stock_ai_advisory_summary_task.apply_async(
+                kwargs=task_kwargs,
+                queue='manual_on_demand',
+            )
+        except Exception as exc:
+            legacy_views.logger.warning(
+                'stock_ai_advisory_summary_regenerate_api queue submit failed for %s: %s',
+                normalized_symbol,
+                exc,
+            )
+        else:
+            try:
+                response_data = async_result.get(timeout=task_timeout_seconds)
+            except CeleryTimeoutError:
+                return _tracked_response(
+                    {
+                        'ok': False,
+                        'message': 'AI tạo tóm tắt cổ phiếu phản hồi quá chậm. Vui lòng thử lại sau ít phút.',
+                    },
+                    status.HTTP_504_GATEWAY_TIMEOUT,
+                )
+
+    if response_data is None:
+        response_data = build_stock_ai_advisory_summary_payload(**task_kwargs)
+
     legacy_views._cache_set(lock_key, timezone.now().isoformat(), timeout=cooldown)
 
-    response_data = {
-        'ok': True,
-        'executive_summary': legacy_views.AIAdvisoryExecutiveSummarySerializer(summary).data,
-        'prompt_config_version': (raw_prompt_config or {}).get('version', 2) if isinstance(raw_prompt_config, dict) else 2,
-    }
     return _tracked_response(response_data, status.HTTP_201_CREATED)
 
 

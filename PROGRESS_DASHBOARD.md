@@ -1,3 +1,19 @@
+# 2026-05-11 — P3 Advisory Summary Remaining Surface ✅
+
+Status: stock_ai_advisory_summary_regenerate_api now routes through `manual_on_demand` while preserving the 201 summary response and DB creation path.
+
+What was changed:
+- Added [backend/portfolio/tasks_whale_advisory.py](backend/portfolio/tasks_whale_advisory.py) wrapper `generate_stock_ai_advisory_summary_task` with a shared payload builder.
+- Updated [backend/portfolio/views_ai_advisory_components_summary.py](backend/portfolio/views_ai_advisory_components_summary.py) to submit the advisory summary regeneration work to `manual_on_demand` and fall back inline only when the worker probe is unavailable.
+- Updated [backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py](backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py) so the regenerate success tests exercise the queue path and still validate version, synthesis preference, and usage tracking.
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_ai_advisory_summary_regenerate_creates_version portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_ai_advisory_summary_regenerate_passes_synthesis_preference portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_ai_advisory_summary_regenerate_usage_tracking_calls_track_api_call --keepdb -v 2`.
+- PASSED: `get_errors` reported no syntax errors for the touched backend files.
+
+Residual risk:
+- The view still falls back inline when the worker probe is not available, so the queue policy is strongest when the manual worker is running in dev/prod.
+
 # 2026-05-11 — P3 Manual Queue Remaining Surfaces ✅
 
 Status: Signal admin run/retry va stock news AI summary da route sang `manual_on_demand`, giu nguyen response contract trong khi tach heavy work ra khoi lane realtime/default.

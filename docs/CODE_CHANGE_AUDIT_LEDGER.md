@@ -1,3 +1,23 @@
+# AUDIT FILE LIST (2026-05-11-P3-ADVISORY-SUMMARY-MANUAL-QUEUE)
+
+Muc tieu:
+- Dua stock_ai_advisory_summary_regenerate_api sang `manual_on_demand` queue.
+- Giữ nguyen response 201 va summary DB creation, chi doi lane dispatch va them inline fallback khi worker khong san sang.
+
+Files changed:
+- [backend/portfolio/tasks_whale_advisory.py](backend/portfolio/tasks_whale_advisory.py) (MODIFIED)
+- [backend/portfolio/views_ai_advisory_components_summary.py](backend/portfolio/views_ai_advisory_components_summary.py) (MODIFIED)
+- [backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py](backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_ai_advisory_summary_regenerate_creates_version portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_ai_advisory_summary_regenerate_passes_synthesis_preference portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_ai_advisory_summary_regenerate_usage_tracking_calls_track_api_call --keepdb -v 2`.
+- PASSED: `get_errors` reported no syntax errors for the touched backend files.
+
+Residual risk:
+- The helper currently falls back inline when the Celery worker probe is unavailable; if you want strict queue-only execution, that fallback can be tightened in a later slice.
+
 # AUDIT FILE LIST (2026-05-11-P3-MANUAL-QUEUE-REMAINING-SURFACES)
 
 Muc tieu:

@@ -18,6 +18,18 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 
+def _mock_stock_ai_advisory_summary_task_apply_async(mock_apply_async):
+    from portfolio.tasks_whale_advisory import build_stock_ai_advisory_summary_payload
+
+    def _apply_async(*args, **kwargs):
+        task_kwargs = dict(kwargs.get('kwargs') or {})
+        return MagicMock(
+            get=MagicMock(return_value=build_stock_ai_advisory_summary_payload(**task_kwargs)),
+        )
+
+    mock_apply_async.side_effect = _apply_async
+
+
 class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
     def setUp(self):
         from . import test_api_routes as legacy_routes
@@ -1427,7 +1439,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
     @patch('portfolio.views._cache_get', return_value=None)
     def test_stock_ai_advisory_summary_regenerate_creates_version(self, _mock_cache_get):
-        self.authenticate()
+        self.authenticate_direct()
         first = AIAdvisoryComponentRecord.objects.create(
             user=self.user,
             symbol='BCM',
@@ -1453,22 +1465,26 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
             include_in_summary=True,
         )
 
-        response = self.client.post(
-            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
-            {'component_ids': [first.id, second.id]},
-            format='json',
-        )
+        with patch('portfolio.views._is_celery_worker_available', return_value=True), \
+             patch('portfolio.tasks_whale_advisory.generate_stock_ai_advisory_summary_task.apply_async') as mock_apply_async, \
+             patch('portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai', return_value='- Dong 1\n- Dong 2\n- Dong 3'):
+            _mock_stock_ai_advisory_summary_task_apply_async(mock_apply_async)
+            response = self.client.post(
+                '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+                {'component_ids': [first.id, second.id]},
+                format='json',
+            )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data['ok'])
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
         summary = AIAdvisoryExecutiveSummary.objects.filter(user=self.user, symbol='BCM').latest('created_at')
         self.assertEqual(summary.summary_version, 1)
         self.assertEqual(set(summary.used_component_ids), {first.id, second.id})
 
     @patch('portfolio.views._cache_get', return_value=None)
-    @patch('portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai', return_value='- Dong 1\n- Dong 2\n- Dong 3')
-    def test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis(self, _mock_ai_synthesis, _mock_cache_get):
-        self.authenticate()
+    def test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis(self, _mock_cache_get):
+        self.authenticate_direct()
         first = AIAdvisoryComponentRecord.objects.create(
             user=self.user,
             symbol='BCM',
@@ -1482,11 +1498,15 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
             include_in_summary=True,
         )
 
-        response = self.client.post(
-            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
-            {'component_ids': [first.id]},
-            format='json',
-        )
+        with patch('portfolio.views._is_celery_worker_available', return_value=True), \
+             patch('portfolio.tasks_whale_advisory.generate_stock_ai_advisory_summary_task.apply_async') as mock_apply_async, \
+             patch('portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai', return_value='- Dong 1\n- Dong 2\n- Dong 3'):
+            _mock_stock_ai_advisory_summary_task_apply_async(mock_apply_async)
+            response = self.client.post(
+                '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+                {'component_ids': [first.id]},
+                format='json',
+            )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         summary = AIAdvisoryExecutiveSummary.objects.filter(user=self.user, symbol='BCM').latest('created_at')
@@ -1494,11 +1514,11 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertIn('- Dong 2', summary.synthesis_text)
         self.assertIn('Evidence bullets:', summary.synthesis_text)
         self.assertIn('Invalidating conditions:', summary.synthesis_text)
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
 
     @patch('portfolio.views._cache_get', return_value=None)
-    @patch('portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai', return_value='- Chi tiet')
-    def test_stock_ai_advisory_summary_regenerate_passes_synthesis_preference(self, mock_ai_synthesis, _mock_cache_get):
-        self.authenticate()
+    def test_stock_ai_advisory_summary_regenerate_passes_synthesis_preference(self, _mock_cache_get):
+        self.authenticate_direct()
         component = AIAdvisoryComponentRecord.objects.create(
             user=self.user,
             symbol='BCM',
@@ -1512,18 +1532,22 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
             include_in_summary=True,
         )
 
-        response = self.client.post(
-            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
-            {
-                'component_ids': [component.id],
-                'synthesis_preference': 'risk_management',
-            },
-            format='json',
-        )
+        with patch('portfolio.views._is_celery_worker_available', return_value=True), \
+             patch('portfolio.tasks_whale_advisory.generate_stock_ai_advisory_summary_task.apply_async') as mock_apply_async, \
+             patch('portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai', return_value='- Chi tiet'):
+            _mock_stock_ai_advisory_summary_task_apply_async(mock_apply_async)
+            response = self.client.post(
+                '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+                {
+                    'component_ids': [component.id],
+                    'synthesis_preference': 'risk_management',
+                },
+                format='json',
+            )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(mock_ai_synthesis.called)
-        self.assertEqual(mock_ai_synthesis.call_args.kwargs.get('synthesis_preference'), 'risk_management')
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
+        self.assertEqual(mock_apply_async.call_args.kwargs['kwargs'].get('synthesis_preference'), 'risk_management')
 
     @patch('portfolio.views._cache_get', return_value='2026-04-04T10:00:00+07:00')
     def test_stock_ai_advisory_summary_regenerate_returns_429_when_cooldown_active(self, _mock_cache_get):
@@ -1602,7 +1626,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
     @patch('portfolio.views._cache_get', return_value=None)
     def test_stock_ai_advisory_summary_regenerate_usage_tracking_calls_track_api_call(self, _mock_cache_get):
         self._attach_dpi_license('pro', {'sentiment_score': True})
-        self.authenticate()
+        self.authenticate_direct()
         component = AIAdvisoryComponentRecord.objects.create(
             user=self.user,
             symbol='BCM',
@@ -1616,17 +1640,22 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
             include_in_summary=True,
         )
 
-        with patch('portfolio.views.track_api_call') as mock_track_api_call:
-            response = self.client.post(
-                '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
-                {'component_ids': [component.id]},
-                format='json',
-            )
+        with patch('portfolio.views._is_celery_worker_available', return_value=True), \
+             patch('portfolio.tasks_whale_advisory.generate_stock_ai_advisory_summary_task.apply_async') as mock_apply_async, \
+             patch('portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai', return_value='- Tracking'):
+            _mock_stock_ai_advisory_summary_task_apply_async(mock_apply_async)
+            with patch('portfolio.views.track_api_call') as mock_track_api_call:
+                response = self.client.post(
+                    '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+                    {'component_ids': [component.id]},
+                    format='json',
+                )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(mock_track_api_call.called)
         self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
         self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_201_CREATED)
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
 
     def test_stock_ai_advisory_summary_delete_removes_selected_summary(self):
         self._attach_dpi_license('pro', {'sentiment_score': True})
