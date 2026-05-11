@@ -1,3 +1,37 @@
+# ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R4-SAAS-ONLY-GATE) — Verify core as primary entry point + prevent duplicate processing
+
+Mục tiêu:
+- Đóng gate R4 bằng evidence core-api là single entry point duy nhất.
+- Xác nhận legacy backend ở readonly mode, không xử lý job song song.
+- Tất cả domain smoke tests pass (endpoint accessibility).
+
+Thực thi chính:
+- Kiểm tra frontend nginx upstream = core-api:8100, tất cả `/api/*` via proxy.
+- Test core-api health endpoint (200).
+- Xác nhận core-worker broker isolation (redis://redis:6379/3).
+- Xác nhận legacy backend không có task processing (log check).
+- Chạy parity/cutover smoke test suite.
+
+Files changed:
+- `docs/evidence/SSR-R4-SAAS-ONLY-RUNTIME-GATE-EVIDENCE-20260511.md` (NEW)
+- `docs/TASKBOARD_SAAS_SERVICES_RECOVERY_20260511.md` (MODIFIED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+
+Validation:
+- PASSED: frontend nginx routing tất cả `/api/*` qua core-api:8100.
+- PASSED: core-api health endpoint trả 200.
+- PASSED: core-worker chỉ kết nối redis://redis:6379/3 (core broker duy nhất).
+- PASSED: legacy backend log không có Celery/task activity.
+- PASSED: domain smoke tests (ticker 401, alerts 401 = auth-protected, no 5xx).
+- PASSED: queue depth = 0 (ổn định, không backlog).
+
+Gate R4 decision: **GO** ✅ (all criteria pass)
+
+Residual risk:
+- Legacy backend vẫn running (sẽ decommission trong Phase 6).
+- R5 soak 24-72h chưa làm.
+
 # ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R3-BACKGROUND-SERVICES) — Verify worker/beat/queue flow + normalize backend secret env
 
 Mục tiêu:

@@ -1,3 +1,26 @@
+# 2026-05-11 — SaaS Services Recovery R4 SaaS-Only Runtime Gate — COMPLETED ✅
+
+**Status:** R4.1/R4.2/R4.3 completed with cutover verification
+
+Kết quả thực thi:
+1. Frontend nginx routing đã chuyển 100% `/api/*` traffic qua core-api:8100, không legacy.
+2. Core-api là duy nhất entry point (verified via health endpoint + direct access).
+3. Core-worker chỉ kết nối core Redis broker (redis://redis:6379/3), không legacy broker.
+4. Legacy backend chạy ở readonly mode (log check xác nhận không có task processing).
+5. Parity/cutover smoke tests pass: ticker 401, alerts 401 (auth-protected, no 5xx).
+6. Queue depth stable tại 0.
+
+Checkpoint cập nhật taskboard:
+1. Hoàn tất `SSR-R4.1`.
+2. Hoàn tất `SSR-R4.2`.
+3. Hoàn tất `SSR-R4.3`.
+
+Gate decision: **GO** ✅ — Core-api fully operational as SaaS primary runtime.
+
+Tồn đọng còn lại:
+1. R5 soak 24h/72h verification.
+2. R6 sign-off cuối cùng.
+
 # 2026-05-11 — SaaS Services Recovery R3 Background Services Gate — COMPLETED ✅
 
 **Status:** R3.1/R3.2/R3.3/R3.4 completed with runtime evidence

@@ -83,15 +83,15 @@ DoD: ticker, whale/unified alerts, workspace endpoints pass
 
 ## R4 — SaaS-Only Runtime Gate
 
-- [ ] `SSR-R4.1` Xác nhận runtime entry point chính qua core  
+- [x] `SSR-R4.1` Xác nhận runtime entry point chính qua core  
 Owner: Tech Lead  
 DoD: traffic path được chứng minh bằng test và config
 
-- [ ] `SSR-R4.2` Ngăn duplicate processing từ legacy background services  
+- [x] `SSR-R4.2` Ngăn duplicate processing từ legacy background services  
 Owner: Backend Lead  
 DoD: không có job trùng cho workload chính
 
-- [ ] `SSR-R4.3` Chạy parity/cutover checklist  
+- [x] `SSR-R4.3` Chạy parity/cutover checklist  
 Owner: QA + Tech Lead  
 DoD: checklist pass, có sign-off
 
