@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-11 21:45:11`
+Generated at: `2026-05-11 22:05:29`
 
 ## Summary
 
-- Total modules: 1033
-- Python modules: 533
+- Total modules: 1035
+- Python modules: 535
 - JS/TS modules: 500
 - Total classes: 861
-- Total functions: 2840
-- Total top-level variables: 4526
+- Total functions: 2844
+- Total top-level variables: 4528
 
 ## Python Modules
 
@@ -3414,6 +3414,17 @@ Generated at: `2026-05-11 21:45:11`
 
 - Classes:
   - `Command` -> methods: `handle`
+
+### `packages/core/backend/src/vninvest_core/monitoring/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/vninvest_core/monitoring/queue_metrics.py`
+
+- Functions:
+  - `_estimated_calls_per_minute`, `_freshness_state`, `_normalize_queue_name`, `build_scheduler_queue_metrics_snapshot`
+- Top-level variables:
+  - `FRESHNESS_FRESH_THRESHOLD_SECONDS`, `FRESHNESS_WARM_THRESHOLD_SECONDS`
 
 ### `packages/core/backend/src/vninvest_core/pagination.py`
 

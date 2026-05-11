@@ -1,3 +1,23 @@
+# 2026-05-11 — P0.3 Core Queue Metrics Dashboard ✅
+
+Status: `AdminOpsRuntimeKPIView` now exposes live scheduler queue lag/freshness metrics instead of hardcoded zero placeholders.
+
+What was changed:
+- Added `packages/core/backend/src/vninvest_core/monitoring/queue_metrics.py` for scheduler lag, freshness, run-count, and queue-drift aggregation from `django_celery_beat`.
+- Updated `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` so `/api/admin-ops/runtime-kpi/` returns the live scheduler snapshot in `prefetch_scheduler_metrics`.
+- Extended `packages/core/backend/tests/test_admin_ops_contract_api.py` to assert queue lag/freshness data in the runtime KPI payload.
+- Regenerated `module_tree_full.md`.
+
+Validation:
+- PASSED: `manage.py test tests.test_admin_ops_contract_api.AdminOpsContractApiTests.test_runtime_kpi_aggregates_request_trace_snapshot --keepdb`.
+- PASSED: `get_errors` reported no syntax errors for the touched core files.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1035 modules).
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` refreshed the impacted core runtime.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` shows the worker services Up and `core-api` healthy.
+
+Residual risk:
+- `core-beat` was still in `health: starting` at the last probe; it may just need a little more time to settle.
+
 # 2026-05-11 — P3 Advisory Summary Remaining Surface ✅
 
 Status: stock_ai_advisory_summary_regenerate_api now routes through `manual_on_demand` while preserving the 201 summary response and DB creation path.

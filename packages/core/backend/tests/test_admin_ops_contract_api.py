@@ -5,6 +5,7 @@ ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 """
 import os
 import sys
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -21,6 +22,8 @@ import httpx
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import resolve
+from django.utils import timezone
+from django_celery_beat.models import IntervalSchedule, PeriodicTask
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -117,7 +120,23 @@ class AdminOpsContractApiTests(TestCase):
         self.assertIn('surface_permissions', response.data)
         self.assertTrue(response.data['surface_permissions']['vnstock_config_write'])
 
+    @override_settings(
+        CELERY_BEAT_SCHEDULE={
+            'materialize-symbol-snapshot-60s': {
+                'task': 'market_serving.materializers.materialize_symbol_snapshot',
+                'schedule': 60.0,
+                'options': {'queue': 'realtime_prefetch'},
+            },
+            'materialize-session-facts-5m': {
+                'task': 'market_serving.materializers.materialize_session_facts',
+                'schedule': 300.0,
+                'options': {'queue': 'realtime_prefetch'},
+            },
+        }
+    )
     def test_runtime_kpi_aggregates_request_trace_snapshot(self):
+        interval_60, _ = IntervalSchedule.objects.get_or_create(every=60, period='seconds')
+        interval_300, _ = IntervalSchedule.objects.get_or_create(every=300, period='seconds')
         RequestTrace.objects.create(
             request_id='trace-001',
             method='GET',
@@ -134,6 +153,24 @@ class AdminOpsContractApiTests(TestCase):
             actor_user_id=self.user.id,
             duration_ms=125,
         )
+        PeriodicTask.objects.create(
+            name='materialize-symbol-snapshot-60s',
+            task='market_serving.materializers.materialize_symbol_snapshot',
+            queue='realtime_prefetch',
+            interval=interval_60,
+            enabled=True,
+            last_run_at=timezone.now() - timedelta(seconds=60),
+            total_run_count=5,
+        )
+        PeriodicTask.objects.create(
+            name='materialize-session-facts-5m',
+            task='market_serving.materializers.materialize_session_facts',
+            queue='realtime_prefetch',
+            interval=interval_300,
+            enabled=True,
+            last_run_at=timezone.now() - timedelta(seconds=900),
+            total_run_count=2,
+        )
 
         response = self.client.get('/api/admin-ops/runtime-kpi/')
 
@@ -143,6 +180,18 @@ class AdminOpsContractApiTests(TestCase):
         self.assertEqual(response.data['market_observability']['overall']['http_5xx_ratio_pct'], 50.0)
         endpoint_snapshot = response.data['market_observability']['endpoints']['/core/v1/health']
         self.assertEqual(endpoint_snapshot['latency_ms']['p95'], 25.0)
+        scheduler_metrics = response.data['prefetch_scheduler_metrics']
+        self.assertEqual(scheduler_metrics['runs_total'], 7)
+        self.assertEqual(scheduler_metrics['enqueued_total'], 2)
+        self.assertAlmostEqual(scheduler_metrics['estimated_upstream_calls_per_minute_total'], 1.2)
+        self.assertEqual(scheduler_metrics['queue_drift_count'], 0)
+        self.assertEqual(scheduler_metrics['freshness']['fresh'], 1)
+        self.assertEqual(scheduler_metrics['freshness']['stale'], 1)
+        self.assertEqual([task['task_name'] for task in scheduler_metrics['tasks']], [
+            'materialize-session-facts-5m',
+            'materialize-symbol-snapshot-60s',
+        ])
+        self.assertGreaterEqual(scheduler_metrics['queue_lag_seconds']['max'], 900)
 
     def test_system_ai_settings_updates_governance_thresholds_and_blocks_prefetch_writers(self):
         response = self.client.get('/api/admin-ops/system-ai-settings/')

@@ -24,6 +24,7 @@ from market_serving.models import SessionFacts, SymbolSnapshot
 from ops_audit.models import AuditEvent, RequestTrace
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from user_workspace.models import Portfolio, Transaction, WatchlistItem
+from vninvest_core.monitoring.queue_metrics import build_scheduler_queue_metrics_snapshot
 
 
 logger = logging.getLogger(__name__)
@@ -1653,11 +1654,7 @@ class AdminOpsRuntimeKPIView(APIView):
                 'generated_at': _now_iso(),
                 'market_observability': _build_market_observability_snapshot(),
                 'prefetch_health': _build_prefetch_health_snapshot(),
-                'prefetch_scheduler_metrics': {
-                    'runs_total': 0,
-                    'enqueued_total': 0,
-                    'estimated_upstream_calls_per_minute_total': 0,
-                },
+                'prefetch_scheduler_metrics': build_scheduler_queue_metrics_snapshot(),
                 'celery': {
                     'alive': _is_celery_alive(),
                     'active_queues': _get_celery_active_queues(),

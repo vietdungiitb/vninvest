@@ -166,6 +166,8 @@ app.conf.task_routes = {
 
 ## P0.3: Baseline Metrics Dashboard
 
+Status: implemented in the core admin-ops runtime KPI dashboard via live scheduler queue lag/freshness snapshot.
+
 ### 1.3.1 Prometheus Metrics (if available)
 
 Add to Celery tasks:

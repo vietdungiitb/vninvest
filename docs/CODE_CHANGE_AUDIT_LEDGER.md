@@ -1,3 +1,29 @@
+# AUDIT FILE LIST (2026-05-11-P0.3-QUEUE-METRICS-DASHBOARD)
+
+Muc tieu:
+- Thay placeholder prefetch_scheduler_metrics trong AdminOpsRuntimeKPIView bang snapshot queue lag + freshness thuc.
+- Giu payload runtime-kpi hien co de dashboard co du lieu 24h gan nhat ma khong can API moi.
+
+Files changed:
+- [packages/core/backend/src/vninvest_core/monitoring/__init__.py](packages/core/backend/src/vninvest_core/monitoring/__init__.py) (NEW)
+- [packages/core/backend/src/vninvest_core/monitoring/queue_metrics.py](packages/core/backend/src/vninvest_core/monitoring/queue_metrics.py) (NEW)
+- [packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py](packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py) (MODIFIED)
+- [packages/core/backend/tests/test_admin_ops_contract_api.py](packages/core/backend/tests/test_admin_ops_contract_api.py) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `manage.py test tests.test_admin_ops_contract_api.AdminOpsContractApiTests.test_runtime_kpi_aggregates_request_trace_snapshot --keepdb`.
+- PASSED: `get_errors` reported no syntax errors for the touched core files.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1035 modules).
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` refreshed the impacted core runtime.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` shows the core worker services Up and `core-api` healthy; `core-beat` was still in `health: starting` at the last probe.
+
+Residual risk:
+- `core-beat` had not yet flipped healthy at the final ps probe, although the container was running and the refreshed code was loaded.
+
 # AUDIT FILE LIST (2026-05-11-P3-ADVISORY-SUMMARY-MANUAL-QUEUE)
 
 Muc tieu:

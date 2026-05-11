@@ -7,15 +7,15 @@
 
 ## P0 — Baseline and Guardrails
 
-- [ ] `SBMP-P0.1` Audit queue drift code vs DB scheduler
+- [x] `SBMP-P0.1` Audit queue drift code vs DB scheduler
 Owner: Platform Lead  
 DoD: Có drift report và danh sách tasks lệch queue
 
-- [ ] `SBMP-P0.2` Add startup sync for periodic task queue fields
+- [x] `SBMP-P0.2` Add startup sync for periodic task queue fields
 Owner: Backend Lead  
 DoD: Deploy mới tự đồng bộ queue không cần thao tác tay
 
-- [ ] `SBMP-P0.3` Baseline dashboards cho queue lag + freshness
+- [x] `SBMP-P0.3` Baseline dashboards cho queue lag + freshness
 Owner: DevOps  
 DoD: Dashboard có dữ liệu cho 24h gần nhất
 
