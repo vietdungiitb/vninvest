@@ -221,19 +221,34 @@ CELERY_TIMEZONE = TIME_ZONE
 # SM-P2.2: Beat schedule for materializer tasks + realtime data collection.
 from celery.schedules import crontab  # noqa: E402
 
+CELERY_TASK_ROUTES = {
+    'market_serving.materializers.materialize_symbol_snapshot': {
+        'queue': 'realtime_prefetch',
+    },
+    'market_serving.materializers.materialize_session_facts': {
+        'queue': 'realtime_prefetch',
+    },
+    'market_serving.materializers.materialize_unified_alerts': {
+        'queue': 'analytics_heavy',
+    },
+}
+
 CELERY_BEAT_SCHEDULE = {
     # === Materializer tasks (market_serving) ===
     'materialize-symbol-snapshot-60s': {
         'task': 'market_serving.materializers.materialize_symbol_snapshot',
         'schedule': 60.0,  # every 60 seconds
+        'options': {'queue': 'realtime_prefetch'},
     },
     'materialize-session-facts-5m': {
         'task': 'market_serving.materializers.materialize_session_facts',
         'schedule': 300.0,  # every 5 minutes
+        'options': {'queue': 'realtime_prefetch'},
     },
     'materialize-unified-alerts-2m': {
         'task': 'market_serving.materializers.materialize_unified_alerts',
         'schedule': 120.0,  # every 2 minutes
+        'options': {'queue': 'analytics_heavy'},
     },
     
     # === Ops/Admin tasks ===
