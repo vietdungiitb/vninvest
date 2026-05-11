@@ -1,3 +1,19 @@
+# 2026-05-11 — P1.2 Worker Topology Status Sync ✅
+
+Status: queue-specific workers are already split across dev/prod/core compose; this slice synchronized the docs and taskboard to that reality.
+
+What was changed:
+- Marked `SBMP-P1.2` done in the taskboard.
+- Updated the implementation checklist next-slice pointer to P1.3.
+- Cleared the stale topology residual risk note in the audit ledger.
+
+Validation:
+- `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` shows the queue-specific core workers Up.
+- `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps frontend` shows the localhost frontend service Up on port 80.
+
+Residual risk:
+- P1.3 route coverage remains open.
+
 # 2026-05-11 — P1.1 Queue Policy SSOT ✅
 
 Status: queue routing and scheduler expectations now come from `vninvest_core.queue_policy`, and the canonical session-facts schedule name is `materialize-session-facts-5m`.

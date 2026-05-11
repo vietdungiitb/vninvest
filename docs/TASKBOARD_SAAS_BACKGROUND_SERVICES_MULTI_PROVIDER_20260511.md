@@ -27,7 +27,7 @@ DoD: Dashboard có dữ liệu cho 24h gần nhất
 Owner: Platform  
 DoD: Queue matrix được duyệt
 
-- [ ] `SBMP-P1.2` Split workers theo queue domains
+- [x] `SBMP-P1.2` Split workers theo queue domains
 Owner: DevOps + Backend  
 DoD: Worker topology mới chạy ổn định
 

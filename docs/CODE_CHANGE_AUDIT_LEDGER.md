@@ -1,3 +1,22 @@
+# AUDIT FILE LIST (2026-05-11-P1.2-WORKER-TOPOLOGY-STATUS-SYNC)
+
+Muc tieu:
+- Dong bo taskboard/checklist voi worker topology split da co san trong dev/prod/core compose.
+- Xoa ghi chu cu no that production/core-package con single-worker topology.
+
+Files changed:
+- [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps core-api core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-worker-enrichment core-worker-analytics core-worker-manual core-beat` shows the queue-specific core workers Up.
+- `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps frontend` shows the localhost frontend service Up on port 80.
+
+Residual risk:
+- P1.3 route coverage remains open.
+
 # AUDIT FILE LIST (2026-05-11-P1.1-QUEUE-POLICY-SSOT)
 
 Muc tieu:
@@ -293,7 +312,7 @@ Validation:
 - `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1030 modules).
 
 Residual risk:
-- Production/core-package compose still uses the older single-worker topology and needs a follow-up mirror slice.
+- No topology gap remains in dev/prod/core compose; the next open work is route coverage (P1.3) and fallback policy (P1.4).
 
 # AUDIT FILE LIST (2026-05-11-VNBROKER-ONE-TIME-SECRET-BOOTSTRAP)
 

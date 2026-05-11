@@ -251,7 +251,7 @@ docker exec vninvest-dev-core-beat python manage.py check_scheduler_queue_drift 
 
 After P0.1-P0.3:
 - Proceed to P1.1: Define queue map (already in P0)
-- Proceed to P1.2: Worker topology split (detailed below in Phase 1)
+- Proceed to P1.3: Route critical tasks sang queue mục tiêu (P1.1 and P1.2 already aligned)
 
 ---
 
