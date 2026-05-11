@@ -310,7 +310,19 @@ def _redis_url_with_db(redis_url: str, db_index: int, fallback: str) -> str:
 
 # Django cache — dùng Redis db=2 (riêng, không đụng Celery db=0)
 # Nếu Redis không chạy thì tự động fallback sang LocMemCache
-_CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", "redis://localhost:6379/2")
+# Ưu tiên: CACHE_REDIS_URL → derive từ REDIS_URL (thay db suffix → /2) → localhost fallback
+def _derive_cache_redis_url() -> str:
+    explicit = os.getenv("CACHE_REDIS_URL", "").strip()
+    if explicit:
+        return explicit
+    base = os.getenv("REDIS_URL", "").strip()
+    if base:
+        # Thay db index cuối cùng thành 2 (e.g. redis://redis:6379/1 → redis://redis:6379/2)
+        import re as _re
+        return _re.sub(r"/\d+$", "/2", base)
+    return "redis://localhost:6379/2"
+
+_CACHE_REDIS_URL = _derive_cache_redis_url()
 try:
     import redis as _redis_probe
     _redis_probe.from_url(_CACHE_REDIS_URL).ping()
