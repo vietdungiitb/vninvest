@@ -1,3 +1,117 @@
+# 2026-05-11 17:45 — One-Time VNBROKER Token Bootstrap ✅
+
+Status: Dev bootstrap now persists the private vnbroker PAT into ignored backend/.env.dev and dev entrypoints import it automatically.
+
+What was changed:
+- `scripts/dev-setup.ps1` now prompts once for `VNBROKER_GITHUB_TOKEN` when missing and writes it into `backend/.env.dev`.
+- `start_dev.ps1` imports `VNBROKER_GITHUB_TOKEN` from `backend/.env.dev` before build/up.
+- `scripts/ops/dev_compose.ps1` imports the same local token file before calling `docker compose`.
+- `backend/.env.example` now documents the local-only token placeholder.
+
+Validation:
+- Parse-only validation passed for the modified PowerShell scripts.
+
+Residual risk:
+- First bootstrap still requires one manual token entry; after that, compose runs reuse the ignored local file.
+
+# 2026-05-11 17:15 — vnbroker Private Dependency Config Fix ✅
+
+Status: Da loai bo token GitHub hardcoded khoi requirements va chuyen sang env-driven config.
+
+What was changed:
+- `backend/requirements.txt` va `packages/core/backend/requirements.txt` khong con chua token hardcoded; dung `${VNBROKER_GITHUB_TOKEN}` thay the.
+- `backend/Dockerfile` va `packages/core/backend/Dockerfile` bat buoc co `VNBROKER_GITHUB_TOKEN` khi build.
+- `docker-compose.dev.yml`, `docker-compose.prod.yml`, va `packages/core/docker-compose.core.yml` truyen token vao container/build args cho cac service can install vnbroker.
+- `compose.prod.env.example` va `compose.dev.env` co ghi chu cau hinh cho local setup.
+
+Validation:
+- Python config sanity check passed across patched files.
+- `docker compose -f docker-compose.dev.yml --env-file compose.dev.env config` passed with a dummy token value injected for interpolation.
+- `docker compose -f docker-compose.prod.yml --env-file compose.prod.env.example config` passed with dummy token and Grafana admin password values injected for interpolation.
+- `docker compose -f packages/core/docker-compose.core.yml config` passed with a dummy token value injected for interpolation.
+
+Residual risk:
+- Nguoi dung can cung cap PAT that su co quyen doc repo private `vietdungiitb/vnbroker`; khong co secret nay thi build/install se fail nhanh.
+
+# 2026-05-11 16:45 — Scheduler Queue Drift Commands ✅
+
+Status: Da implement va test thanh cong 2 management commands cho queue drift.
+
+What was delivered:
+- `check_scheduler_queue_drift` de phat hien drift giua code expectation va `django_celery_beat.PeriodicTask.queue`.
+- `sync_scheduler_queues` de dong bo cac queue ve expected values.
+- `VninvestCoreConfig` + `INSTALLED_APPS` explicit registration de Django discover command reliably.
+- Test suite `tests.test_scheduler_management_commands` bao phu drift/no-drift/sync/unknown-task cases.
+
+Validation:
+- Local venv: `python manage.py test tests.test_scheduler_management_commands --keepdb -v 2` -> `9` tests OK.
+
+Residual risk:
+- Docker dev core-api van restart loop khi `pip install -r requirements.txt` do `vnbroker` private GitHub dependency khong co auth hop le trong build path.
+
+# 2026-05-11 16:05 — SaaS Background Services Multi-Provider Audit Closure ✅
+
+Status: Hoan tat audit closure va tai lieu lam ro ky thuat cho proposal packet.
+
+What was delivered:
+- Bo sung [Decision Addendum v1.1](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) voi 8 technical clarifications va compressed timeline 5-7 weeks.
+- Bo sung [Implementation Checklist P0](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) voi command-level huong dan khoi dong implementation.
+- Chot ket luan GO WITH CONDITIONS cho implementation path.
+
+Validation:
+- Noi dung addendum/checklist doi chieu voi 8 file trong proposal packet va findings audit.
+
+Residual risk:
+- Checklist moi o muc huong dan; chua thay the cho code implementation that su trong backend/core runtime.
+
+# 2026-05-11 15:30 — SaaS Background Services Multi-Provider Proposal Pack ✅
+
+Status: Hoan tat bo tai lieu de xuat kien truc background services da provider cho quy mo SaaS 10.000 users.
+
+What was delivered:
+- Tao bo tai lieu day du theo format du an:
+  - Handoff master
+  - Business case
+  - Tech spec
+  - Implementation plan
+  - Taskboard
+  - Traceability matrix
+  - Self-audit and test protocol
+  - Execution evidence template
+- Noi dung de xuat bam sat hien trang he thong:
+  - prefetch topology va queue routing
+  - runtime policy SSOT cache-backed
+  - vnbroker adapter fallback/timeout/rate-limit
+  - admin-ops contract cho runtime governance
+
+Validation:
+- Cross-check voi cac anchor files backend/tasks/adapters/contracts da khao sat.
+- Slice nay khong thay doi runtime code.
+
+Residual risk:
+- Chua chay load/soak vi day la pha de xuat kien truc.
+- Can phe duyet triad de bat dau implementation phases P0-P5.
+
+# 2026-05-11 14:55 — Dashboard Market Desync Fix (Realtime Prefetch Queue Isolation) ✅
+
+Status: Da khoanh vung va fix duong cap nhat gia realtime cho /dashboard theo huong chong queue starvation.
+
+What was fixed:
+- Tach realtime prefetch sang queue rieng `realtime_prefetch`:
+  - `portfolio.tasks.build_realtime_symbol_universe_snapshot`
+  - `portfolio.tasks.schedule_realtime_prefetch_shards`
+  - `portfolio.tasks.prefetch_realtime_ticker_shard`
+- Cap nhat Celery beat options de gui 2 task scheduler/snapshot vao queue `realtime_prefetch`.
+- Them service `backend-prefetch-worker` (dev compose) va bo sung fallback cho `backend-worker` nghe them queue `realtime_prefetch`.
+
+Validation:
+- Rebuild/restart stack da chay: `docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build frontend backend backend-worker backend-prefetch-worker backend-beat`.
+- Queue depth: `realtime_prefetch` = 0.
+- Cache warm/probe: du lieu ticker cho nhom dashboard (MBB/FPT/VCB/SSI/VNM) tra source `prefetch` thay vi `cache_miss_batch`.
+
+Residual risk:
+- Startup worker trong moi truong dev van cham sau restart do apt/pip runtime install; can theo doi them trong 1 chu ky market de xac nhan on dinh dai hon.
+
 # 2026-05-11 10:23 — SaaS Services Recovery R5.1 — Admin-Ops/Realtime 5xx Stabilization ✅
 
 # 2026-05-11 11:20 — Whale Shell Symbol Drift Fix ✅

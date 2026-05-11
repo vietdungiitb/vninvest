@@ -89,6 +89,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-api
     restart: unless-stopped
@@ -132,6 +133,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker
     restart: unless-stopped
@@ -156,6 +158,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-beat
     restart: unless-stopped
@@ -180,6 +183,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
     container_name: vninvest-backend
     restart: unless-stopped
     env_file:

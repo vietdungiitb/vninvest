@@ -28,6 +28,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "false"
       DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/0
       CELERY_BROKER_URL: redis://core-redis:6379/0
@@ -51,6 +52,7 @@ services:
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/0
       CELERY_BROKER_URL: redis://core-redis:6379/0
@@ -72,6 +74,7 @@ services:
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/0
       CELERY_BROKER_URL: redis://core-redis:6379/0
