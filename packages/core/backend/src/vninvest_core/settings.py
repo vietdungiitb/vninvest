@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django_celery_beat',
     # SFI-B7: WebSocket support
     'channels',
+    'vninvest_core.apps.VninvestCoreConfig',  # Project-level app for management commands
     'identity_access',
     'market_serving',
     'signal_intelligence',
