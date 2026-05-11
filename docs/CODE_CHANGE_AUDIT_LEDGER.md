@@ -1,3 +1,29 @@
+# AUDIT FILE LIST (2026-05-11-CORE-WORKER-TOPOLOGY-SPLIT-EXPANSION)
+
+Muc tieu:
+- Mo rong core worker topology den day du 5 queue domain trong dev/prod/core compose.
+- Cho production core entrypoint nhan `CELERY_QUEUES` va `CELERY_CONCURRENCY` theo service.
+- Chuan hoa `packages/core/backend/entrypoint.sh` sang LF de shell parse tren Linux container.
+
+Files changed:
+- [packages/core/backend/entrypoint.sh](packages/core/backend/entrypoint.sh) (MODIFIED)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [docker-compose.prod.yml](docker-compose.prod.yml) (MODIFIED)
+- [packages/core/docker-compose.core.yml](packages/core/docker-compose.core.yml) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- `docker run --rm -v 'c:\Mujoco Projects\vninvest\packages\core\backend:/app' -w /app alpine:3.20 sh -n entrypoint.sh` passed after LF normalization.
+- `docker compose -f docker-compose.dev.yml config --services` includes `core-worker-realtime-stream`, `core-worker-enrichment`, and `core-worker-manual`.
+- `docker compose -f docker-compose.prod.yml config` passed with dummy env values.
+- `docker compose -f packages/core/docker-compose.core.yml config` passed with dummy env values.
+- `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1030 modules).
+
+Residual risk:
+- Dev `core-api` still restarts because the current `VNBROKER_GITHUB_TOKEN` is rejected by GitHub for the private `vnbroker` clone; this is external to the topology change.
+
 # AUDIT FILE LIST (2026-05-11-VNBROKER-HTTPS-AUTH-FORMAT-FIX)
 
 Muc tieu:
