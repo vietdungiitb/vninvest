@@ -1,3 +1,19 @@
+# 2026-05-11 — P2.1 Provider Quality Scoring Traceability Sync ✅
+
+Status: provider-quality scoring already exists in backend/portfolio; this slice synced the SBMP P2.1 taskboard/checklist to that live implementation and advanced the next slice to P2.2.
+
+What was changed:
+- Marked `SBMP-P2.1` done in the taskboard.
+- Advanced the implementation checklist next-slice pointer to P2.2.
+- Recorded the traceability sync in the audit ledger.
+
+Validation:
+- `manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb` passed with 6 tests green.
+- Existing runtime path already consults `resolve_provider_order` from [backend/portfolio/adapters/vnbroker_adapter.py](backend/portfolio/adapters/vnbroker_adapter.py).
+
+Residual risk:
+- Live observation hooks for continuously refreshing provider quality scores remain an optional follow-up.
+
 # 2026-05-11 — P1.4 Hot Queue Fallback Consumer ✅
 
 Status: `core-worker` now acts as the low-concurrency fallback consumer for all hot queues, so a downed domain worker no longer creates a blackhole.

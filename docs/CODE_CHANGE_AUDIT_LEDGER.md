@@ -1,3 +1,22 @@
+# AUDIT FILE LIST (2026-05-11-P2.1-PROVIDER-QUALITY-TRACEABILITY-SYNC)
+
+Muc tieu:
+- Dong bo taskboard/checklist P2.1 voi implementation provider quality scoring da co san trong backend/portfolio.
+- Giu traceability SBMP khop voi code route order hien tai.
+
+Files changed:
+- [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb`.
+- PASSED: provider-quality helper is already wired into `backend/portfolio/adapters/vnbroker_adapter.py` and `backend/portfolio/vnbroker_provider_benchmark.py`.
+
+Residual risk:
+- Live observation hooks for continuously refreshing provider quality scores remain an optional follow-up.
+
 # AUDIT FILE LIST (2026-05-11-P1.4-HOT-QUEUE-FALLBACK-CONSUMER)
 
 Muc tieu:

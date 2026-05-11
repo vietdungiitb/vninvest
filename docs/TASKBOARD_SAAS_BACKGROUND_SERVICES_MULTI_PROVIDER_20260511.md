@@ -43,7 +43,7 @@ DoD: Không còn blackhole queue khi một worker domain down
 
 ## P2 — Multi-Provider Hardening
 
-- [ ] `SBMP-P2.1` Implement provider quality scoring
+- [x] `SBMP-P2.1` Implement provider quality scoring
 Owner: Data Platform  
 DoD: Có score per provider/channel trong metrics
 
