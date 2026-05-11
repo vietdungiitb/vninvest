@@ -128,6 +128,24 @@ def _build_stock_management_group_payload(watchlist, index: int):
     }
 
 
+def _legacy_bridge_or_none_on_unavailable(request, legacy_path: str, *, unavailable_message: str):
+    bridged_response = legacy_bridge_response(
+        request,
+        legacy_path,
+        unavailable_message=unavailable_message,
+    )
+    if bridged_response is None:
+        return None
+    response_payload = getattr(bridged_response, 'data', None)
+    if (
+        bridged_response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        and isinstance(response_payload, dict)
+        and response_payload.get('status') == 'bridge_unavailable'
+    ):
+        return None
+    return bridged_response
+
+
 # ---------------------------------------------------------------------------
 # Stock-management stubs (not yet migrated to core)
 # ---------------------------------------------------------------------------
@@ -138,7 +156,7 @@ class StockManagementGroupsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        bridged_response = legacy_bridge_response(
+        bridged_response = _legacy_bridge_or_none_on_unavailable(
             request,
             request.path,
             unavailable_message='Legacy securities-group bridge hiện không khả dụng.',
@@ -165,7 +183,7 @@ class StockManagementSeedView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        bridged_response = legacy_bridge_response(
+        bridged_response = _legacy_bridge_or_none_on_unavailable(
             request,
             request.path,
             unavailable_message='Legacy securities-seed bridge hiện không khả dụng.',
@@ -363,7 +381,7 @@ class PriceAlertsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        bridged_response = legacy_bridge_response(
+        bridged_response = _legacy_bridge_or_none_on_unavailable(
             request,
             '/api/stock-management/price-alerts/',
             unavailable_message='Legacy price-alert bridge hiện không khả dụng.',

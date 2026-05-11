@@ -112,6 +112,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'channels',
+    'django_celery_beat',
     # Local
     'portfolio',
     'support',
