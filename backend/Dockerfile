@@ -1,6 +1,7 @@
 FROM python:3.11-slim
 
 ARG APP_RELEASE=dev
+ARG VNBROKER_GITHUB_TOKEN
 
 LABEL org.opencontainers.image.version=${APP_RELEASE} \
       org.opencontainers.image.revision=${APP_RELEASE}
@@ -20,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
+    : "${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}" && \
     pip install --no-cache-dir -r /app/requirements.txt
 
 COPY . /app

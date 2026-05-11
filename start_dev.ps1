@@ -43,6 +43,55 @@ function Write-Step($msg) {
     Write-Host "===> $msg" -ForegroundColor Cyan
 }
 
+function Get-EnvValueFromFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    if (-not (Test-Path $Path)) {
+        return $null
+    }
+
+    $escapedKey = [regex]::Escape($Key)
+    foreach ($line in Get-Content $Path) {
+        if ($line -match "^\s*${escapedKey}=(.*)$") {
+            return $Matches[1].Trim()
+        }
+    }
+
+    return $null
+}
+
+function Ensure-VnbrokerGitHubToken {
+    $token = $env:VNBROKER_GITHUB_TOKEN
+    if ([string]::IsNullOrWhiteSpace($token)) {
+        $token = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($token)) {
+        Write-Step "Bootstrap VNBROKER token"
+        if (Test-Path $setupScript) {
+            & $setupScript
+            if ($LASTEXITCODE -ne 0) {
+                throw "scripts/dev-setup.ps1 failed while bootstrapping VNBROKER_GITHUB_TOKEN."
+            }
+        } else {
+            throw "Missing scripts/dev-setup.ps1 to bootstrap VNBROKER_GITHUB_TOKEN."
+        }
+
+        $token = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($token)) {
+        throw "VNBROKER_GITHUB_TOKEN is still missing after bootstrap."
+    }
+
+    $env:VNBROKER_GITHUB_TOKEN = $token
+}
+
 function Invoke-Compose {
     docker compose --env-file $ComposeEnvFile -p $ProjectName @ComposeFiles @args
 }
@@ -123,6 +172,8 @@ if (-not (Test-Path $devEnvPath)) {
 } else {
     Write-Host "  backend/.env.dev da co. (Dung -Force de gen lai: .\scripts\dev-setup.ps1 -Force)" -ForegroundColor DarkGray
 }
+
+Ensure-VnbrokerGitHubToken
 
 # ── Kiểm tra Docker ──────────────────────────────────────────────────────────
 Write-Step "Kiểm tra Docker"
