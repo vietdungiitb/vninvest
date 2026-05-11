@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from copy import deepcopy
 from datetime import timedelta
+import logging
 from typing import Any
 
 from django.conf import settings
@@ -23,6 +24,9 @@ from market_serving.models import SessionFacts, SymbolSnapshot
 from ops_audit.models import AuditEvent, RequestTrace
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from user_workspace.models import Portfolio, Transaction, WatchlistItem
+
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_GOVERNANCE_DELTA_THRESHOLDS = {

@@ -39,6 +39,33 @@ Residual risk:
 - Legacy backend Python 3.11 + core backend Python 3.13 version mismatch requires separate worker services.
 - Manual monitoring recommended; continuous metrics system (Prometheus/Grafana) needed for prod.
 
+# ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R5.1-ADMINOPS-REALTIME-5XX-STABILIZATION)
+
+Mục tiêu:
+- Khử lỗi 500 tại `/api/admin-ops/signals/config/` và ổn định chuỗi lỗi 502/503 trên admin-ops + realtime trong R5.1 soak window.
+
+Root cause:
+- Core bridge fallback dùng `logger.warning(...)` nhưng file chưa khai báo `logger`.
+- Khi legacy bridge bị `ConnectError`, flow fallback ném `NameError` và tạo 500 thay vì degrade an toàn.
+
+Files changed:
+- `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` (MODIFIED - thêm `import logging` + `logger = logging.getLogger(__name__)`)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+- `module_tree_full.md` (REGENERATED)
+
+Validation:
+- `docker compose -f docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat backend backend-worker backend-beat` hoàn tất.
+- `/api/health/` trả HTTP 200.
+- Probe các endpoint lỗi cũ trả HTTP 401 (auth-guard expected), không còn 500/502/503 ở gateway probe:
+  - `/api/admin-ops/signals/config/`
+  - `/api/admin-ops/vnbroker-config/current/`
+  - `/api/admin-ops/vnbroker-config/changelog/?limit=20&offset=0`
+  - `/api/realtime/tickers/?symbols=...`
+- Core-api log sau fix không còn signature `NameError: name 'logger' is not defined`.
+
+Residual risk:
+- Legacy bridge vẫn phụ thuộc availability của `backend-legacy`; khi service này restart có thể tạo spike tạm thời nếu không có graceful retry ở upstream caller.
+
 # 🟡 AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R5-SOAK-WINDOW) — SLO monitoring window 24h-72h (zero-load baseline)
 
 # ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R4-SAAS-ONLY-GATE) — Verify core as primary entry point + prevent duplicate processing

@@ -1,3 +1,24 @@
+# 2026-05-11 10:23 — SaaS Services Recovery R5.1 — Admin-Ops/Realtime 5xx Stabilization ✅
+
+**Status**: Fixed intermittent 500/502/503 errors on admin-ops + realtime path during soak window.
+
+What was fixed:
+- ✅ `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` patched with missing logger initialization.
+- ✅ Eliminated `NameError: name 'logger' is not defined` in legacy bridge fallback (`/api/admin-ops/signals/config/`).
+- ✅ Rebuilt/restarted affected runtime services via `docker compose -f docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat backend backend-worker backend-beat`.
+
+Validation evidence:
+- Gateway health: `/api/health/` = HTTP 200.
+- External probes for previously failing routes now return auth-guard response (HTTP 401), no longer 500/502/503 when unauthenticated:
+  - `/api/admin-ops/signals/config/`
+  - `/api/admin-ops/vnbroker-config/current/`
+  - `/api/admin-ops/vnbroker-config/changelog/?limit=20&offset=0`
+  - `/api/realtime/tickers/?symbols=...`
+- Core-api logs after fix: no recurrence of `NameError`, `Internal Server Error: /api/admin-ops/signals/config`, `Bad Gateway`, or `Service Unavailable` signatures in post-fix window.
+
+Operational note:
+- `backend-legacy` container vẫn có thể restart ngắn lúc startup/reloader, nhưng đường API đã ổn định lại sau deploy fix + stack refresh.
+
 # 2026-05-11 10:15 — SaaS Services Recovery R5 Soak & Hardening — REALTIME DATA ACTIVE 🟢 (API 503 FIX APPLIED)
 
 **Status**: R5.1 soak window executing with **REALTIME MARKET DATA INGEST**
