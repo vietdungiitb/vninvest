@@ -1,3 +1,28 @@
+# AUDIT FILE LIST (2026-05-11-P1.4-HOT-QUEUE-FALLBACK-CONSUMER)
+
+Muc tieu:
+- Chuyen `core-worker` thanh fallback consumer cho cac hot queues de khong co blackhole khi worker domain down.
+- Giu `enrichment_offhours` tach rieng, khong dua vao fallback consumer.
+
+Files changed:
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [docker-compose.prod.yml](docker-compose.prod.yml) (MODIFIED)
+- [packages/core/docker-compose.core.yml](packages/core/docker-compose.core.yml) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) (MODIFIED)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (MODIFIED)
+- [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml config`.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d --no-deps --force-recreate core-worker` recreated the fallback consumer.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml exec -T core-worker sh -lc 'echo "$CELERY_QUEUES"'` returns `celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand`.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps core-worker` shows the recreated service Up.
+
+Residual risk:
+- P2.1 provider quality scoring remains open.
+
 # AUDIT FILE LIST (2026-05-11-P1.3-CRITICAL-TASK-ROUTE-COVERAGE)
 
 Muc tieu:

@@ -57,7 +57,7 @@ services:
       REDIS_URL: redis://core-redis:6379/0
       CELERY_BROKER_URL: redis://core-redis:6379/0
       PYTHONPATH: /workspace/src
-      CELERY_QUEUES: celery
+      CELERY_QUEUES: celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand
       CELERY_CONCURRENCY: "2"
     command: >
       sh -c "pip install -r requirements.txt -q &&

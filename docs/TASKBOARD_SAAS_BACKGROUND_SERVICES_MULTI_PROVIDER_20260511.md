@@ -35,7 +35,7 @@ DoD: Worker topology mới chạy ổn định
 Owner: Backend  
 DoD: 100% critical tasks không chạy trên queue default
 
-- [ ] `SBMP-P1.4` Add fallback consumer policy cho high-priority queues
+- [x] `SBMP-P1.4` Add fallback consumer policy cho high-priority queues
 Owner: Backend  
 DoD: Không còn blackhole queue khi một worker domain down
 

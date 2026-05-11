@@ -143,6 +143,7 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/0
+      CELERY_QUEUES: celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand
     command: ["worker"]
     depends_on:
       core-api:

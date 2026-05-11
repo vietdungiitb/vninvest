@@ -1,3 +1,21 @@
+# 2026-05-11 — P1.4 Hot Queue Fallback Consumer ✅
+
+Status: `core-worker` now acts as the low-concurrency fallback consumer for all hot queues, so a downed domain worker no longer creates a blackhole.
+
+What was changed:
+- Updated `docker-compose.dev.yml`, `docker-compose.prod.yml`, and `packages/core/docker-compose.core.yml` so `core-worker` consumes `celery`, `realtime_prefetch`, `realtime_stream`, `analytics_heavy`, and `manual_on_demand`.
+- Documented the fallback consumer policy in the decision addendum and worker configuration checklist.
+- Marked `SBMP-P1.4` done and advanced the implementation checklist next-slice pointer to P2.1.
+
+Validation:
+- `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml config` passed.
+- `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d --no-deps --force-recreate core-worker` recreated the worker with the new queue list.
+- Runtime probe inside `core-worker` returned `CELERY_QUEUES=celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand`.
+- `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps core-worker` shows the recreated service Up.
+
+Residual risk:
+- P2.1 provider quality scoring remains open.
+
 # 2026-05-11 — P1.3 Critical Task Route Coverage ✅
 
 Status: signal detection admin trigger now lands on `manual_on_demand`, and the heavy signal materializers land on `analytics_heavy` instead of default.
