@@ -1,3 +1,33 @@
+# 2026-05-11 09:41 — SaaS Services Recovery R5 Soak & Hardening — IN PROGRESS 🟡
+
+**Status**: R5.1 soak window started, monitoring protocol active
+
+T=0 Baseline (2026-05-11 09:41:27 UTC):
+- Core API health: 200 ✅
+- Legacy API health: 200 ✅
+- Queue depth: 0 ✅
+- All services running: 9/9 ✅
+
+SLO Baseline (per TECH_SPEC):
+- API Availability target: >= 99.5%
+- Queue Depth target: < 100 messages
+- Worker Uptime target: >= 99%
+- Task Failure Rate target: < 1%
+- Max Restart Count: <= 2 per 24h
+
+Monitoring Timeline:
+- T+0 to T+6h: intensive checks (1h cadence)
+- T+6h to T+24h: regular checks (4h cadence)
+- T+24h: daily summary + gate R5.1 review
+- **Soak ends**: 2026-05-12 09:41 UTC (minimum)
+
+Next Checkpoint: T+24h SLO validation + gate decision
+- PASS → Proceed to R5.2 extended soak or R6 sign-off
+- FAIL → Investigate, tune, repeat soak
+
+Monitoring protocol: `docs/R5_MONITORING_PROTOCOL_20260511.md`
+Baseline evidence: `docs/evidence/SSR-R5-BASELINE-T0-SOAK-EVIDENCE-20260511.md`
+
 # 2026-05-11 — SaaS Services Recovery R4 SaaS-Only Runtime Gate — COMPLETED ✅
 
 **Status:** R4.1/R4.2/R4.3 completed with cutover verification

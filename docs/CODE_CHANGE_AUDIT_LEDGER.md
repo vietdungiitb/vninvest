@@ -1,3 +1,35 @@
+# 🟡 AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R5-SOAK-WINDOW) — SLO monitoring window 24h-72h
+
+Mục tiêu:
+- Chạy soak window tối thiểu 24h, khuyến nghị 72h.
+- Monitor tất cả SLO thresholds (API availability >= 99.5%, queue depth < 100, etc.).
+- Capture baseline metrics tại T=0 và periodic snapshots hàng 1-4 giờ.
+- Zero P1 incidents tiêu chí gating.
+
+Thực thi chính:
+- T=0 baseline capture: health endpoints 200, queue depth 0, services all running.
+- Monitoring protocol documentation + PowerShell check functions provided.
+- SLO thresholds defined per TECH_SPEC.
+- Timeline: T+0 to T+24h (intensive), T+24h to T+72h (extended optional).
+
+Files changed:
+- `docs/R5_MONITORING_PROTOCOL_20260511.md` (NEW)
+- `docs/evidence/SSR-R5-BASELINE-T0-SOAK-EVIDENCE-20260511.md` (NEW)
+- `docs/TASKBOARD_SAAS_SERVICES_RECOVERY_20260511.md` (MODIFIED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+
+Validation:
+- T=0 baseline: `/core/v1/health` 200, `/api/health/` 200, queue depth 0, all services running.
+- Baseline metrics JSON saved to docs/evidence/.
+- Monitoring functions tested and ready.
+
+Gate R5 decision: **IN PROGRESS** 🟡 (soak window started, awaiting T+24h review)
+
+Residual risk:
+- Soak window is 24-72h real-time operation (will complete asynchronously).
+- Manual monitoring recommended; continuous metrics system (Prometheus/Grafana) needed for prod.
+
 # ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R4-SAAS-ONLY-GATE) — Verify core as primary entry point + prevent duplicate processing
 
 Mục tiêu:

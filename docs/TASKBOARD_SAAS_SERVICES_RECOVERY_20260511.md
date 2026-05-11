@@ -99,9 +99,10 @@ DoD: checklist pass, có sign-off
 
 ## R5 — Soak & Hardening
 
-- [ ] `SSR-R5.1` Chạy soak 24h  
+- [~] `SSR-R5.1` Chạy soak 24h  
 Owner: DevOps + QA  
-DoD: không incident P1
+DoD: không incident P1  
+**Status**: IN PROGRESS (T=0 baseline captured at 2026-05-11 09:41:27 UTC, monitoring started)
 
 - [ ] `SSR-R5.2` Chạy soak 72h (khuyến nghị)  
 Owner: DevOps + QA  
