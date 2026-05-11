@@ -117,7 +117,6 @@ Validation:
 
 Residual risk:
 - The backend container still takes time to finish apt/pip startup steps; recheck the smoke test once the service has emitted its normal runserver logs.
-
 # 2026-05-11 18:05 — Core Worker Topology Expansion (Dev/Prod/Core) ✅
 
 Status: Core worker topology now covers the full 5-queue domain split across dev, prod, and the core package compose.

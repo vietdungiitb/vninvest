@@ -151,7 +151,6 @@ Validation:
 
 Residual risk:
 - Legacy backend still spends time on apt/pip install during container startup; the smoke check should be re-read once the server has finished booting.
-
 # AUDIT FILE LIST (2026-05-11-CORE-WORKER-TOPOLOGY-SPLIT-EXPANSION)
 
 Muc tieu:
