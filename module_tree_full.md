@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-10 21:57:35`
+Generated at: `2026-05-11 09:34:41`
 
 ## Summary
 
@@ -10,7 +10,7 @@ Generated at: `2026-05-10 21:57:35`
 - Python modules: 524
 - JS/TS modules: 500
 - Total classes: 853
-- Total functions: 2818
+- Total functions: 2819
 - Total top-level variables: 4514
 
 ## Python Modules
@@ -2773,7 +2773,7 @@ Generated at: `2026-05-10 21:57:35`
   - `TrackedSymbolDetailView` -> methods: `delete`, `patch`
   - `TrackedSymbolsView` -> methods: `get`, `post`
 - Functions:
-  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`
+  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`, `_legacy_bridge_or_none_on_unavailable`
 - Top-level variables:
   - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`
 

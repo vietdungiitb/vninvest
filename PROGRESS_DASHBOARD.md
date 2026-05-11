@@ -1,3 +1,60 @@
+# 2026-05-11 — SaaS Services Recovery R3 Background Services Gate — COMPLETED ✅
+
+**Status:** R3.1/R3.2/R3.3/R3.4 completed with runtime evidence
+
+Kết quả thực thi:
+1. Beat dispatch flow đã được xác nhận qua log `Scheduler: Sending due task` theo cadence đúng.
+2. Worker consume-complete flow ổn định với nhiều chu kỳ `received` -> `succeeded` liên tiếp.
+3. Queue depth Redis (`db=3`, queue `celery`) tại thời điểm kiểm tra là `0`.
+4. Domain smoke endpoints quan trọng (`ticker`, `unified-alerts`, `watchlist groups`) không xuất hiện 5xx; phản hồi `401` đúng contract auth-protected.
+5. `docker-compose.dev.yml` đã được chuẩn hóa thêm `DJANGO_SECRET_KEY` cho service `backend`, và service đã reload để nhận cấu hình mới.
+
+Checkpoint cập nhật taskboard:
+1. Hoàn tất `SSR-R3.1`.
+2. Hoàn tất `SSR-R3.2`.
+3. Hoàn tất `SSR-R3.3`.
+4. Hoàn tất `SSR-R3.4`.
+
+Tồn đọng còn lại:
+1. R4 SaaS-only runtime gate.
+2. R5 soak 24h/72h.
+3. R6 sign-off và bàn giao cuối.
+
+# 2026-05-11 — SaaS Services Recovery Runtime + Schema Hotfix — COMPLETED ✅
+
+**Status:** R0/R1/R2 checkpoint completed with live runtime validation
+
+Kết quả thực thi:
+1. Stack dev SaaS đã lên đầy đủ; `db`, `redis`, `core-api` ở trạng thái healthy; các services còn lại đều Up.
+2. Đã xử lý blocker schema `portfolio_runtimevnbrokerconfig` thiếu bảng dù migration state bị đánh dấu applied.
+3. Đã đồng bộ lại migration ledger và xác nhận model runtime config hoạt động bình thường.
+4. Health endpoints `/core/v1/health` và `/api/health/` đều trả 200 sau fix.
+
+Checkpoint cập nhật taskboard:
+1. Hoàn tất `SSR-R0.2`.
+2. Hoàn tất `SSR-R1.1`, `SSR-R1.2`.
+3. Hoàn tất `SSR-R2.1`, `SSR-R2.2`, `SSR-R2.3`, `SSR-R2.4`.
+4. Bổ sung và hoàn tất `SSR-R2.5` (schema blocker RuntimeVnbrokerConfig).
+
+Tồn đọng còn lại:
+1. R3 (queue/scheduler verification sâu), R4 (SaaS-only runtime gate), R5 (soak), R6 (final sign-off) chưa hoàn tất.
+
+# 2026-05-11 — SaaS Services Recovery Handoff Package — COMPLETED ✅
+
+**Status:** FULL DOCUMENTATION PACKAGE READY FOR TEAM EXECUTION
+
+Đã tạo trọn bộ 13 tài liệu bàn giao để đội code triển khai recovery services theo kiến trúc SaaS mới:
+1. Handoff master, implementation plan, tech spec, taskboard.
+2. Traceability matrix, self-audit protocol, execution evidence template.
+3. Config ownership matrix, code quality constitution.
+4. Run protocols: code review, integration tests, spec audit.
+5. Operations runbook cho recovery và incident handling.
+
+Kết quả:
+1. Bộ tài liệu đã đạt cấu trúc chuẩn triad + governance + audit tương thích pattern hiện hành của repo.
+2. Có thể giao ngay cho Backend Lead, DevOps, QA chạy theo slices R0-R6.
+3. Đã cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` theo quy định bắt buộc.
+
 # 2026-05-10 — SAAS Migration Phases 3-6: Complete Execution Roadmap — COMPLETED ✅
 
 **Status:** FULL DECOMMISSION SEQUENCE DOCUMENTED & READY FOR EXECUTION

@@ -1,3 +1,93 @@
+# ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R3-BACKGROUND-SERVICES) — Verify worker/beat/queue flow + normalize backend secret env
+
+Mục tiêu:
+- Đóng gate R3 trong chương trình SaaS Services Recovery bằng evidence runtime thực tế.
+- Chuẩn hóa `DJANGO_SECRET_KEY` cho service `backend` trong dev compose để tránh fallback key path.
+
+Thực thi chính:
+- Xác minh beat dispatch cadence qua log `Scheduler: Sending due task`.
+- Xác minh worker consume/complete flow qua chuỗi `received` -> `succeeded` lặp lại.
+- Xác minh queue depth Redis broker db3 (`LLEN celery = 0`).
+- Smoke test domain endpoints quan trọng (ticker/unified-alerts/watchlist groups) đảm bảo không có 5xx.
+- Bổ sung env `DJANGO_SECRET_KEY` vào `backend` trong compose dev và reload service.
+
+Files changed:
+- `docs/evidence/SSR-R3-BACKGROUND-SERVICES-RECOVERY-EVIDENCE-20260511.md` (NEW)
+- `docs/TASKBOARD_SAAS_SERVICES_RECOVERY_20260511.md` (MODIFIED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+- `docker-compose.dev.yml` (MODIFIED)
+- `module_tree_full.md` (REGENERATED)
+
+Validation:
+- PASSED: beat dispatch xuất hiện đều theo cadence (`materialize-symbol-snapshot-60s`, `materialize-unified-alerts-2m`).
+- PASSED: worker log có nhiều chuỗi task `received` -> `succeeded` liên tục.
+- PASSED: queue depth tại thời điểm đo `LLEN celery = 0`.
+- PASSED: endpoint smoke trả `401` (auth-protected), không phát hiện 5xx.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d backend` đã apply env update cho backend.
+
+Residual risk:
+- R4/R5/R6 vẫn còn mở: SaaS-only gate, soak 24h/72h, sign-off cuối.
+
+# ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-RUNTIME-SCHEMA-HOTFIX) — Khôi phục runtime + sửa lệch migration schema
+
+Mục tiêu:
+- Thực thi recovery kỹ thuật theo tài liệu SSR để đưa stack dev về trạng thái healthy.
+- Sửa blocker runtime `relation "portfolio_runtimevnbrokerconfig" does not exist` gây lỗi trong legacy/core bridge path.
+
+Thực thi chính:
+- Xác nhận trạng thái stack hiện tại và logs runtime (`docker compose ps`, `docker logs`).
+- Truy vết migration/schema mismatch của app `portfolio`.
+- Khôi phục migration state theo hướng an toàn:
+  1. fake rollback về `0037_h2_whaleadvisory_aggregate_snapshot_fk`
+  2. apply thật `0038_runtimevnstockconfig` để tạo lại bảng thiếu
+  3. fake-forward lên `0076_transaction_reconciliation_fields`
+- Validate hậu-fix: bảng tồn tại, singleton model query thành công, health endpoints 200.
+
+Files changed:
+- `docs/evidence/SSR-R2-RUNTIME-AND-SCHEMA-RECOVERY-EVIDENCE-20260511.md` (NEW)
+- `docs/TASKBOARD_SAAS_SERVICES_RECOVERY_20260511.md` (MODIFIED)
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` (MODIFIED)
+- `PROGRESS_DASHBOARD.md` (MODIFIED)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml ps` cho thấy `db`, `redis`, `core-api` healthy và toàn bộ services chính đang Up.
+- PASSED: `\dt portfolio_runtimevnbrokerconfig` xác nhận bảng đã tồn tại.
+- PASSED: `RuntimeVnbrokerConfig.get_or_create_singleton()` trả kết quả thành công (`1 KBS`).
+- PASSED: `GET /core/v1/health` và `GET /api/health/` trả `200`.
+
+Residual risk:
+- Chưa hoàn tất các pha R3-R6 (queue-depth observability sâu, SaaS-only cutover gate, soak 24-72h).
+- Cảnh báo `DJANGO_SECRET_KEY` ephemeral trong dev container cần chuẩn hóa env trước production-like run.
+
+# ✅ AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-HANDOFF-PACK) — Tạo bộ tài liệu bàn giao đầy đủ cho đội code
+
+Mục tiêu:
+- Tạo trọn bộ tài liệu handoff để đội code triển khai kế hoạch khôi phục toàn bộ services theo kiến trúc SaaS mới.
+- Chuẩn hóa execution package theo pattern triad + governance + audit protocols đang dùng trong repo.
+
+Files created (13 new files):
+- `docs/SAAS_SERVICES_RECOVERY_HANDOFF_MASTER_20260511.md` (NEW)
+- `docs/IMPLEMENTATION_PLAN_SAAS_SERVICES_RECOVERY_20260511.md` (NEW)
+- `docs/TECH_SPEC_SAAS_SERVICES_RECOVERY_20260511.md` (NEW)
+- `docs/TASKBOARD_SAAS_SERVICES_RECOVERY_20260511.md` (NEW)
+- `docs/SAAS_SERVICES_RECOVERY_TRACEABILITY_MATRIX_20260511.md` (NEW)
+- `docs/SAAS_SERVICES_RECOVERY_SELF_AUDIT_AND_TEST_PROTOCOL_20260511.md` (NEW)
+- `docs/SAAS_SERVICES_RECOVERY_EXECUTION_EVIDENCE_TEMPLATE_20260511.md` (NEW)
+- `docs/SAAS_SERVICES_RECOVERY_CONFIG_OWNERSHIP_MATRIX_20260511.md` (NEW)
+- `docs/SAAS_SERVICES_RECOVERY_CODE_QUALITY_CONSTITUTION_20260511.md` (NEW)
+- `docs/RUN_CODE_REVIEW_SAAS_SERVICES_RECOVERY_20260511.md` (NEW)
+- `docs/RUN_INTEGRATION_TESTS_SAAS_SERVICES_RECOVERY_20260511.md` (NEW)
+- `docs/RUN_SPEC_AUDIT_SAAS_SERVICES_RECOVERY_20260511.md` (NEW)
+- `docs/RUNBOOK_SAAS_SERVICES_RECOVERY_20260511.md` (NEW)
+
+Validation:
+- PASSED: file discovery kiểm tra đủ 13 files theo pattern `docs/*SAAS_SERVICES_RECOVERY*20260511.md`.
+- PASSED: bộ tài liệu bao phủ đầy đủ các thành phần bắt buộc: handoff master, implementation plan, tech spec, taskboard, traceability, self-audit protocol, evidence template, config ownership, code quality constitution, run code review, run integration tests, run spec audit, runbook.
+
+Residual risk:
+- Bộ tài liệu hiện ở mức ready-for-execution; chưa kèm execution evidence runtime vì chưa chạy rollout kỹ thuật trong vòng này.
+
 # ✅ AUDIT FILE LIST (2026-05-10-PHASE3-SHADOW-RUN-IMPLEMENTATION) — Phase 3 infrastructure for parity verification
 
 # ✅ AUDIT FILE LIST (2026-05-10-PROD-DEBUG-PAGES-DISABLED) — Tắt toàn bộ shell/debug pages trên production
