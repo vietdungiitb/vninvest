@@ -242,6 +242,7 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(resp.data['queued'])
         self.assertEqual(resp.data['task_id'], 'task-123')
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
 
     @patch('config.health.build_prefetch_health_snapshot')
     @patch('portfolio.tasks.schedule_realtime_prefetch_shards.run')
@@ -291,6 +292,7 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertEqual(resp.data['task_id'], 'offpeak-task-123')
         self.assertEqual(resp.data['kwargs']['days'], 3)
         self.assertEqual(resp.data['kwargs']['max_symbols'], 120)
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
 
     @patch('config.health.build_prefetch_health_snapshot')
     @patch('portfolio.tasks.offpeak_vnbroker_ingest.run')
@@ -603,6 +605,7 @@ class AdminOpsvnbrokerBenchmarkTests(APITestCase):
         self.assertEqual(resp.data['mode'], 'celery')
         self.assertEqual(resp.data['task_id'], 'bench-task-123')
         self.assertTrue(mock_set_latest.called)
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
 
     @patch('portfolio.views_admin_vnbroker_benchmark.get_latest_price_board_benchmark_report')
     def test_staff_can_get_latest_benchmark_report(self, mock_latest):
@@ -679,6 +682,7 @@ class AdminIntradaySideBackfillAsyncTests(APITestCase):
         self.assertTrue(resp.data['ok'])
         self.assertEqual(resp.data['status'], 'queued')
         self.assertEqual(resp.data['task_id'], 'backfill-task-123')
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')
 
     @patch('portfolio.views_admin_runtime._is_celery_worker_available', return_value=True)
     def test_staff_without_intraday_permission_cannot_queue_apply(self, _mock_worker_available):

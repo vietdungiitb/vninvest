@@ -120,3 +120,4 @@ class AdminGlobalScreenerManualRunTests(APITestCase):
         self.assertEqual(resp.data['status'], 'queued')
         self.assertEqual(resp.data['task_id'], 'task-123')
         mock_apply_async.assert_called_once_with(kwargs={}, countdown=0)
+        self.assertEqual(mock_apply_async.call_args.kwargs.get('queue'), 'manual_on_demand')

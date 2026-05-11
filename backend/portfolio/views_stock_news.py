@@ -235,7 +235,6 @@ def stock_news_ai_summary_api(request, symbol: str):
       - force_refresh: bool (bỏ cache tin tức khi true)
     """
     from .ai_options import ADVISORY_CAPABILITY, get_model_entry, is_valid_provider
-    from .ai_service import generate_portfolio_digest
     from .adapters.cache_adapter import get_cache, set_cache
 
     normalized_symbol = str(symbol or '').strip().upper()
@@ -359,22 +358,29 @@ def stock_news_ai_summary_api(request, symbol: str):
             ai_cached['cached'] = True
             return Response(ai_cached)
 
+    from celery.exceptions import TimeoutError as CeleryTimeoutError
+    from portfolio.tasks_news_digest import generate_stock_news_ai_summary_task
+
     try:
-        digest_payload = generate_portfolio_digest(
-            provider=user_provider,
-            model=user_model,
-            api_key=user_api_key,
-            symbols=[normalized_symbol],
-            news_context_by_symbol=news_context_by_symbol,
-            user=request.user,
-        )
+        task_timeout_seconds = max(int(getattr(settings, 'STOCK_NEWS_AI_SUMMARY_TASK_TIMEOUT_SECONDS', 180)), 30)
+        digest_payload = generate_stock_news_ai_summary_task.apply_async(
+            kwargs={
+                'user_config_id': user_cfg.id,
+                'provider': user_provider,
+                'model': user_model,
+                'api_key': user_api_key,
+                'symbols': [normalized_symbol],
+                'news_context_by_symbol': news_context_by_symbol,
+            },
+            queue='manual_on_demand',
+        ).get(timeout=task_timeout_seconds)
     except Exception as exc:
         from . import views as legacy_views
 
         legacy_views.logger.exception('stock_news_ai_summary_api failed for %s: %s', normalized_symbol, exc)
         import httpx
 
-        if isinstance(exc, (httpx.ReadTimeout, httpx.ConnectTimeout, TimeoutError)):
+        if isinstance(exc, (httpx.ReadTimeout, httpx.ConnectTimeout, TimeoutError, CeleryTimeoutError)):
             return Response(
                 {
                     'detail': 'AI provider phản hồi quá chậm (timeout). Vui lòng thử lại sau 1-2 phút.',

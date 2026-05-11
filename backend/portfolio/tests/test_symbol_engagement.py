@@ -57,6 +57,7 @@ class TestSymbolEngagement(TestCase):
         # First call
         activate_symbol_engagement(user_id, symbol, 'test')
         assert mock_warmup.call_count == 1
+        assert mock_warmup.call_args.kwargs['queue'] == 'manual_on_demand'
 
         # Second call within guard window should be ignored
         activate_symbol_engagement(user_id, symbol, 'test')

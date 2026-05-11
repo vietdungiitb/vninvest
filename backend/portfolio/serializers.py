@@ -759,7 +759,7 @@ class SignalServiceRunSerializer(serializers.ModelSerializer):
         model = SignalServiceRun
         fields = [
             'id', 'service_domain', 'service_domain_display', 'run_type', 'run_type_display',
-            'status', 'status_display', 'params_json', 'task_id', 'progress_pct',
+            'status', 'status_display', 'created_by_username', 'params_json', 'task_id', 'progress_pct',
             'processed_items', 'stored_items', 'failed_items', 'log',
             'created_at', 'updated_at',
         ]

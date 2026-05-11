@@ -105,7 +105,7 @@ class AdminGlobalScreenerRunManualView(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request):
-        async_result = run_global_screener_manual_task.apply_async(kwargs={}, countdown=0)
+        async_result = run_global_screener_manual_task.apply_async(kwargs={}, countdown=0, queue='manual_on_demand')
         return Response(
             {
                 'status': 'queued',

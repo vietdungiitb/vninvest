@@ -7,6 +7,7 @@
 #   runtime  — minimal final image
 
 ARG PYTHON_VERSION=3.13
+ARG VNBROKER_GITHUB_TOKEN
 
 # ── Stage 1: builder ──────────────────────────────────────────────────────────
 FROM python:${PYTHON_VERSION}-slim AS builder
@@ -20,6 +21,7 @@ RUN apt-get update \
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
+    && : "${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}" \
     && pip install --prefix=/install --no-cache-dir -r requirements.txt
 
 

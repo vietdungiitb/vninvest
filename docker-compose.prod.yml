@@ -89,6 +89,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-api
     restart: unless-stopped
@@ -132,6 +133,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker
     restart: unless-stopped
@@ -150,12 +152,148 @@ services:
     mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
     cpus: ${CORE_WORKER_CPUS:-0.25}
 
+  core-worker-realtime-prefetch:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-realtime-prefetch
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CELERY_QUEUES: realtime_prefetch
+      CELERY_CONCURRENCY: "4"
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-realtime-stream:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-realtime-stream
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CELERY_QUEUES: realtime_stream
+      CELERY_CONCURRENCY: "4"
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-enrichment:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-enrichment
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CELERY_QUEUES: enrichment_offhours
+      CELERY_CONCURRENCY: "6"
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-analytics:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-analytics
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CELERY_QUEUES: analytics_heavy
+      CELERY_CONCURRENCY: "4"
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-manual:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-manual
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/0
+      CELERY_QUEUES: manual_on_demand
+      CELERY_CONCURRENCY: "3"
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
   core-beat:
     build:
       context: ./packages/core/backend
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-beat
     restart: unless-stopped
@@ -180,6 +318,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
+        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
     container_name: vninvest-backend
     restart: unless-stopped
     env_file:

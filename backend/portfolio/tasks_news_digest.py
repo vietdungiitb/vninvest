@@ -8,6 +8,38 @@ from portfolio.tasks_news_context import _fetch_news_context_for_advisory
 logger = logging.getLogger(__name__)
 
 
+@shared_task(
+    bind=True,
+    name='portfolio.tasks.generate_stock_news_ai_summary_task',
+    queue='manual_on_demand',
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_kwargs={'max_retries': 1},
+)
+def generate_stock_news_ai_summary_task(
+    self,
+    *,
+    user_config_id: int,
+    provider: str,
+    model: str,
+    api_key: str,
+    symbols: list[str],
+    news_context_by_symbol: dict[str, str],
+) -> dict:
+    from portfolio.ai_service import generate_portfolio_digest
+    from portfolio.models import UserConfig
+
+    user_config = UserConfig.objects.select_related('user').get(pk=user_config_id)
+    return generate_portfolio_digest(
+        provider=provider,
+        model=model,
+        api_key=api_key,
+        symbols=symbols,
+        news_context_by_symbol=news_context_by_symbol,
+        user=user_config,
+    )
+
+
 def _generate_news_digest_for_user(user) -> dict:
     """
     Tạo bản tóm tắt tin tức danh mục cho một user.

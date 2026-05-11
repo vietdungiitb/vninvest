@@ -9,6 +9,7 @@ import pandas as pd
 
 from portfolio.exceptions import ExternalSystemException
 from portfolio.vnbroker_runtime_config import get_vnbroker_runtime_settings
+from portfolio.vnbroker_provider_quality import resolve_provider_order
 from portfolio.price_units import (
     normalize_quote_price_to_canonical,
     PriceSource,
@@ -537,8 +538,20 @@ def _resolve_runtime_sources(
     return ordered or [default_primary]
 
 
+def _apply_provider_quality_order(channel: str, sources: list[str], explicit_source: str | None = None) -> list[str]:
+    if explicit_source:
+        return sources
+
+    try:
+        ordered_sources = resolve_provider_order(channel, sources)
+    except Exception:
+        return sources
+
+    return ordered_sources or sources
+
+
 def _resolve_price_board_sources(explicit_source: str | None = None) -> list[str]:
-    return _resolve_runtime_sources(
+    sources = _resolve_runtime_sources(
         explicit_source=explicit_source,
         runtime_primary_key='price_board_source',
         env_primary_key='VNBROKER_PRICE_BOARD_SOURCE',
@@ -546,10 +559,11 @@ def _resolve_price_board_sources(explicit_source: str | None = None) -> list[str
         default_primary='KBS',
         default_fallbacks=['VCI'],
     )
+    return _apply_provider_quality_order('price_board', sources, explicit_source=explicit_source)
 
 
 def _resolve_intraday_sources(explicit_source: str | None = None) -> list[str]:
-    return _resolve_runtime_sources(
+    sources = _resolve_runtime_sources(
         explicit_source=explicit_source,
         runtime_primary_key='price_board_source',
         env_primary_key='VNBROKER_INTRADAY_SOURCE',
@@ -557,10 +571,11 @@ def _resolve_intraday_sources(explicit_source: str | None = None) -> list[str]:
         default_primary='KBS',
         default_fallbacks=['VCI'],
     )
+    return _apply_provider_quality_order('intraday', sources, explicit_source=explicit_source)
 
 
 def _resolve_history_sources(explicit_source: str | None = None) -> list[str]:
-    return _resolve_runtime_sources(
+    sources = _resolve_runtime_sources(
         explicit_source=explicit_source,
         runtime_primary_key='price_board_source',
         env_primary_key='VNBROKER_HISTORY_SOURCE',
@@ -568,10 +583,11 @@ def _resolve_history_sources(explicit_source: str | None = None) -> list[str]:
         default_primary='KBS',
         default_fallbacks=['VCI'],
     )
+    return _apply_provider_quality_order('history', sources, explicit_source=explicit_source)
 
 
 def _resolve_listing_sources(explicit_source: str | None = None) -> list[str]:
-    return _resolve_runtime_sources(
+    sources = _resolve_runtime_sources(
         explicit_source=explicit_source,
         runtime_primary_key='price_board_source',
         env_primary_key='VNBROKER_LISTING_SOURCE',
@@ -579,6 +595,7 @@ def _resolve_listing_sources(explicit_source: str | None = None) -> list[str]:
         default_primary='KBS',
         default_fallbacks=['VCI'],
     )
+    return _apply_provider_quality_order('listing', sources, explicit_source=explicit_source)
 
 
 def _resolve_financial_ratio_sources(explicit_source: str | None = None) -> list[str]:

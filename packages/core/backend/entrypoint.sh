@@ -35,13 +35,10 @@ case "${ROLE}" in
         --pythonpath /app/src
     ;;
   worker)
-    echo "[entrypoint] Starting Celery worker..."
-    exec celery -A vninvest_core worker \
-        --loglevel="${CELERY_LOG_LEVEL:-INFO}" \
-        --concurrency="${CELERY_CONCURRENCY:-2}" \
-        --without-heartbeat \
-        --without-gossip \
-        --without-mingle
+    WORKER_QUEUES="${CELERY_QUEUES:-celery}"
+    WORKER_CONCURRENCY="${CELERY_CONCURRENCY:-2}"
+    echo "[entrypoint] Starting Celery worker on queue(s): ${WORKER_QUEUES}..."
+    exec celery -A vninvest_core worker --loglevel="${CELERY_LOG_LEVEL:-INFO}" --concurrency="${WORKER_CONCURRENCY}" --queues="${WORKER_QUEUES}" --without-heartbeat --without-gossip --without-mingle
     ;;
   beat)
     echo "[entrypoint] Starting Celery beat..."

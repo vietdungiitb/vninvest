@@ -1,3 +1,381 @@
+# AUDIT FILE LIST (2026-05-11-P3-MANUAL-QUEUE-REMAINING-SURFACES)
+
+Muc tieu:
+- Dua signal admin run/retry va stock news AI summary sang `manual_on_demand` queue.
+- Giu nguyen HTTP contract cho cac API nay trong khi tach heavy work ra khoi lane realtime/default.
+
+Files changed:
+- [backend/portfolio/tasks_news_digest.py](backend/portfolio/tasks_news_digest.py) (MODIFIED)
+- [backend/portfolio/views_stock_news.py](backend/portfolio/views_stock_news.py) (MODIFIED)
+- [backend/portfolio/views_signal_admin.py](backend/portfolio/views_signal_admin.py) (MODIFIED)
+- [backend/portfolio/serializers.py](backend/portfolio/serializers.py) (MODIFIED)
+- [backend/portfolio/tests/test_manual_queue_policy_surfaces.py](backend/portfolio/tests/test_manual_queue_policy_surfaces.py) (NEW)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_manual_queue_policy_surfaces --keepdb -v 2; Pop-Location`.
+- PASSED: `get_errors` reported no syntax errors for the touched backend files.
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & ".\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py; Pop-Location` regenerated `module_tree_full.md`.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend backend-worker backend-worker-manual backend-prefetch-worker backend-beat` refreshed the legacy backend runtime slice.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml restart backend-worker backend-prefetch-worker backend-beat` reloaded the existing worker processes with the edited task modules.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps backend-worker backend-prefetch-worker backend-beat backend-worker-manual backend` shows all five backend services Up.
+- PASSED: dev compose now includes a dedicated `backend-worker-manual` consumer for `manual_on_demand`.
+
+Residual risk:
+- `stock_ai_advisory_summary_regenerate_api` remains an adjacent inline summary surface if you want the same queue policy applied there in a later slice.
+
+# AUDIT FILE LIST (2026-05-11-P3-MANUAL-QUEUE-EXPANSION)
+
+Muc tieu:
+- Dong bo cac manual-trigger surface con lai ve cung `manual_on_demand` queue.
+- Giu nguyen contract HTTP/hien thi, chi doi lane dispatch cho cac task manual/admin.
+
+Files changed:
+- [backend/portfolio/services_symbol_engagement.py](backend/portfolio/services_symbol_engagement.py) (MODIFIED)
+- [backend/portfolio/views_admin_runtime.py](backend/portfolio/views_admin_runtime.py) (MODIFIED)
+- [backend/portfolio/views_admin_vnbroker_benchmark.py](backend/portfolio/views_admin_vnbroker_benchmark.py) (MODIFIED)
+- [backend/portfolio/views_screener_admin.py](backend/portfolio/views_screener_admin.py) (MODIFIED)
+- [backend/portfolio/views_signal_admin.py](backend/portfolio/views_signal_admin.py) (MODIFIED)
+- [backend/portfolio/tests/test_symbol_engagement.py](backend/portfolio/tests/test_symbol_engagement.py) (MODIFIED)
+- [backend/portfolio/tests/test_admin_ops.py](backend/portfolio/tests/test_admin_ops.py) (MODIFIED)
+- [backend/portfolio/tests/test_admin_screener_admin.py](backend/portfolio/tests/test_admin_screener_admin.py) (MODIFIED)
+- [backend/portfolio/tests/test_signal_admin_api.py](backend/portfolio/tests/test_signal_admin_api.py) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: direct code probes confirmed `manual_on_demand` dispatch for symbol engagement warm-up, admin prefetch warm, offpeak ingest, admin intraday backfill, admin intraday warm-now, benchmark run, global screener manual run, and signal materialization run.
+- PASSED: `manage.py test portfolio.tests.test_symbol_engagement.TestSymbolEngagement.test_activate_symbol_engagement_guard portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_money_flow_materialization_preview_and_run_return_confirmation_metadata -v 2`.
+- PASSED: `get_errors` reported no syntax errors for the touched backend files.
+- PASSED: backend container was restarted after the edit and returned to `Up` state.
+
+Residual risk:
+- `views_signal_admin` manual whale/dark_flow run/retry paths and inline news-summary flows remain separate surfaces for a later slice if you want full policy coverage.
+
+# AUDIT FILE LIST (2026-05-11-P3-AI-ADVISORY-MANUAL-QUEUE-GUARD)
+
+Muc tieu:
+- Rut manual refresh AI advisory sang `manual_on_demand` queue de khong chen vao lane realtime/heavy.
+- Giữ entitlement, quota va cooldown cua advisory session, dong thoi khong lam thay doi read path.
+
+Files changed:
+- [backend/portfolio/views_ai_advisory_management.py](backend/portfolio/views_ai_advisory_management.py) (MODIFIED)
+- [backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py](backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: direct code probe of `_submit_advisory_generation_with_fallback()` confirmed `source=user_refresh` dispatches to `manual_on_demand`.
+- PASSED: `get_errors` reported no syntax errors for [backend/portfolio/views_ai_advisory_management.py](backend/portfolio/views_ai_advisory_management.py) and [backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py](backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py).
+- PASSED: backend container was restarted after the edit and returned to `Up` state.
+
+Residual risk:
+- This slice only changes the manual advisory refresh dispatch path; other manual-trigger surfaces can be aligned later if required.
+
+# AUDIT FILE LIST (2026-05-11-P2-VNBROKER-PROVIDER-QUALITY-SCORING)
+
+Muc tieu:
+- Dua provider scoring ve chung mot helper cache-backed, co formula ro rang va hysteresis de chon best-source.
+- Cho benchmark price-board ghi snapshot quality vao Redis TTL 1h va cho adapter resolver uu tien provider diem cao hon khi khong co explicit source.
+
+Files changed:
+- [backend/portfolio/vnbroker_provider_quality.py](backend/portfolio/vnbroker_provider_quality.py) (NEW)
+- [backend/portfolio/vnbroker_provider_benchmark.py](backend/portfolio/vnbroker_provider_benchmark.py) (MODIFIED)
+- [backend/portfolio/adapters/vnbroker_adapter.py](backend/portfolio/adapters/vnbroker_adapter.py) (MODIFIED)
+- [backend/portfolio/tests/test_vnbroker_provider_quality.py](backend/portfolio/tests/test_vnbroker_provider_quality.py) (NEW)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='*'; $env:REDIS_URL='redis://127.0.0.1:6379/1'; & 'c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe' manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb -v 2; Pop-Location`
+- PASSED: `get_errors` on the four changed backend files returned no syntax errors.
+
+Residual risk:
+- Quality snapshots are benchmark-seeded for this slice; live runtime observation hooks can be added later if we want always-hot cache updates without waiting for benchmark runs.
+
+# AUDIT FILE LIST (2026-05-11-SAAS-BACKGROUND-SERVICES-MULTI-PROVIDER-CLARIFICATION-CLOSURE)
+
+Muc tieu:
+- Dong bang lai cac clarifications con mo trong decision addendum thanh cac quyet dinh implementation co the trich dan truc tiep.
+- Ghi ro cac quay dau P0-P5 da co source of truth, khong con la intent mo.
+
+Files changed:
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Reviewed the addendum against the audit summary and added a closure table covering P0 drift checker, P1 concurrency, P2 provider scoring, user-scope sizing, stale-spike trigger, Redis topology, WebSocket fanout, and offhours/result-backend policy.
+- Updated the repo progress log so the resolved clarifications are visible to follow-on slices.
+
+Residual risk:
+- This is a decision-document update only; the next implementation slice still needs code-level rollout against the agreed anchors.
+
+# AUDIT FILE LIST (2026-05-11-PROMETHEUS-LEGACY-BACKEND-SCRAPE-CLEANUP)
+
+Muc tieu:
+- Loai bo scrape target `backend:8000` khoi Prometheus shared config de dung log 404 /metrics o legacy backend.
+- Giu scrape target `core-api:8100` va cac target ha tang khac nguyen trang.
+
+Files changed:
+- [infra/prometheus/prometheus.yml](infra/prometheus/prometheus.yml) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Restarted Prometheus with `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml restart prometheus`.
+- Queried runtime targets inside the Prometheus container and confirmed `backend:8000` no longer appears.
+- Queried runtime targets inside the Prometheus container and confirmed `core-api:8100` is still present.
+
+Residual risk:
+- Old backend log lines may remain in historical output, but the active scrape target that generated them is gone.
+
+# AUDIT FILE LIST (2026-05-11-LEGACY-BACKEND-ALLOWED-HOSTS-DEV-FIX)
+
+Muc tieu:
+- Cho legacy backend dev service chap nhan host `backend` trong compose, de /metrics khong con bi `DisallowedHost`.
+- Giu dev stack dong bo voi service name the host request dung trong compose network.
+
+Files changed:
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Recreated legacy backend service with `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate backend`.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml ps` shows the backend container back up after the recreate.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail=200 backend | Select-String -Pattern 'DisallowedHost'` returned no matches after the env update.
+
+Residual risk:
+- Legacy backend still spends time on apt/pip install during container startup; the smoke check should be re-read once the server has finished booting.
+
+# AUDIT FILE LIST (2026-05-11-CORE-WORKER-TOPOLOGY-SPLIT-EXPANSION)
+
+Muc tieu:
+- Mo rong core worker topology den day du 5 queue domain trong dev/prod/core compose.
+- Cho production core entrypoint nhan `CELERY_QUEUES` va `CELERY_CONCURRENCY` theo service.
+- Chuan hoa `packages/core/backend/entrypoint.sh` sang LF de shell parse tren Linux container.
+
+Files changed:
+- [packages/core/backend/entrypoint.sh](packages/core/backend/entrypoint.sh) (MODIFIED)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [docker-compose.prod.yml](docker-compose.prod.yml) (MODIFIED)
+- [packages/core/docker-compose.core.yml](packages/core/docker-compose.core.yml) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- `docker run --rm -v 'c:\Mujoco Projects\vninvest\packages\core\backend:/app' -w /app alpine:3.20 sh -n entrypoint.sh` passed after LF normalization.
+- `docker compose -f docker-compose.dev.yml config --services` includes `core-worker-realtime-stream`, `core-worker-enrichment`, and `core-worker-manual`.
+- `docker compose -f docker-compose.prod.yml config` passed with dummy env values.
+- `docker compose -f packages/core/docker-compose.core.yml config` passed with dummy env values.
+- `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1030 modules).
+
+Residual risk:
+- Dev `core-api` still restarts because the current `VNBROKER_GITHUB_TOKEN` is rejected by GitHub for the private `vnbroker` clone; this is external to the topology change.
+
+# AUDIT FILE LIST (2026-05-11-VNBROKER-HTTPS-AUTH-FORMAT-FIX)
+
+Muc tieu:
+- Sua format HTTPS clone de `vnbroker` dung token o vi tri password, khong con bi Git hoi interactive password.
+- Giu flow bootstrap/dev compose khong can nhap credential thu cong trong luc pip clone repo private.
+
+Files changed:
+- [backend/requirements.txt](backend/requirements.txt) (MODIFIED)
+- [packages/core/backend/requirements.txt](packages/core/backend/requirements.txt) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- `docker compose -f docker-compose.dev.yml up --build core-api core-worker core-worker-realtime-prefetch core-worker-analytics core-beat` now reaches GitHub auth instead of prompting for a password.
+- The clone step no longer fails with the previous interactive password prompt.
+
+Residual risk:
+- Dev startup still requires a GitHub PAT with valid access to `vietdungiitb/vnbroker`; an invalid or under-scoped token will still fail the clone.
+
+# AUDIT FILE LIST (2026-05-11-CORE-WORKER-TOPOLOGY-SPLIT)
+
+Muc tieu:
+- Tach core dev worker topology theo queue de materializer hot path chay tren worker rieng.
+- Dua queue routing cua materializer ve source of truth trong `packages/core/backend/src/vninvest_core/settings.py`.
+
+Files changed:
+- [packages/core/backend/src/vninvest_core/celery.py](packages/core/backend/src/vninvest_core/celery.py) (MODIFIED)
+- [packages/core/backend/src/vninvest_core/settings.py](packages/core/backend/src/vninvest_core/settings.py) (MODIFIED)
+- [packages/core/backend/tests/test_signal_materializer_schedule.py](packages/core/backend/tests/test_signal_materializer_schedule.py) (MODIFIED)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- `docker compose -f docker-compose.dev.yml config --services` includes `core-worker-realtime-prefetch` and `core-worker-analytics`.
+- `python manage.py test tests.test_signal_materializer_schedule` passed with `DJANGO_DEBUG=true` and `DJANGO_ALLOWED_HOSTS=*`.
+- Direct Python assertion via `vninvest_core.celery` confirmed `app.conf.task_routes` and `settings.CELERY_BEAT_SCHEDULE` queue options match.
+- `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1030 modules).
+
+Residual risk:
+- Production/core-package compose still uses the older single-worker topology and needs a follow-up mirror slice.
+
+# AUDIT FILE LIST (2026-05-11-VNBROKER-ONE-TIME-SECRET-BOOTSTRAP)
+
+Muc tieu:
+- Cho phep bootstrap VNBROKER_GITHUB_TOKEN mot lan va luu vao backend/.env.dev (ignored local file).
+- Dam bao start_dev.ps1 va scripts/ops/dev_compose.ps1 tu dong import token do truoc khi chay compose.
+
+Files changed:
+- [scripts/dev-setup.ps1](scripts/dev-setup.ps1) (MODIFIED)
+- [start_dev.ps1](start_dev.ps1) (MODIFIED)
+- [scripts/ops/dev_compose.ps1](scripts/ops/dev_compose.ps1) (MODIFIED)
+- [backend/.env.example](backend/.env.example) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Parse-only validation passed for all modified PowerShell scripts using `[scriptblock]::Create(...)`.
+- Existing dev compose flow now has a local, ignored persistence point for the private vnbroker GitHub token.
+
+Residual risk:
+- User still needs to provide the token once on first bootstrap; after that the ignored local file is reused by dev entrypoints.
+
+# AUDIT FILE LIST (2026-05-11-VNBROKER-PRIVATE-DEPENDENCY-CONFIG-FIX)
+
+Muc tieu:
+- Loai bo token GitHub hardcoded khoi requirements files.
+- Chuyen install path vnbroker sang env-driven token `${VNBROKER_GITHUB_TOKEN}`.
+- Wire token vao dev compose, prod build args, va Dockerfiles de private repo clone co cau hinh ro rang.
+
+Files changed:
+- [backend/requirements.txt](backend/requirements.txt) (MODIFIED)
+- [packages/core/backend/requirements.txt](packages/core/backend/requirements.txt) (MODIFIED)
+- [backend/Dockerfile](backend/Dockerfile) (MODIFIED)
+- [packages/core/backend/Dockerfile](packages/core/backend/Dockerfile) (MODIFIED)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [docker-compose.prod.yml](docker-compose.prod.yml) (MODIFIED)
+- [packages/core/docker-compose.core.yml](packages/core/docker-compose.core.yml) (MODIFIED)
+- [compose.dev.env](compose.dev.env) (MODIFIED)
+- [compose.prod.env.example](compose.prod.env.example) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Local config sanity check passed via Python snippet: all patched files contain the env-driven token reference and no longer contain the hardcoded GitHub token string in the requirements files.
+- Verified Dockerfiles now require `VNBROKER_GITHUB_TOKEN` at build time.
+- `docker compose -f docker-compose.dev.yml --env-file compose.dev.env config` passed with a dummy token value injected for interpolation.
+- `docker compose -f docker-compose.prod.yml --env-file compose.prod.env.example config` passed with dummy token and Grafana admin password values injected for interpolation.
+- `docker compose -f packages/core/docker-compose.core.yml config` passed with a dummy token value injected for interpolation.
+
+Residual risk:
+- Builds and dev containers still require a real GitHub PAT with access to `vietdungiitb/vnbroker`; without that local secret, install will fail by design.
+
+# AUDIT FILE LIST (2026-05-11-CHECK-SCHEDULER-QUEUE-DRIFT-SYNC-SLICE)
+
+Muc tieu:
+- Tao 2 management commands de phat hien va dong bo queue drift cho DatabaseScheduler.
+- Co test coverage cho command discovery, drift detection va queue sync.
+
+Files changed:
+- [packages/core/backend/src/vninvest_core/apps.py](packages/core/backend/src/vninvest_core/apps.py) (NEW)
+- [packages/core/backend/src/vninvest_core/settings.py](packages/core/backend/src/vninvest_core/settings.py) (MODIFIED)
+- [packages/core/backend/src/vninvest_core/management/__init__.py](packages/core/backend/src/vninvest_core/management/__init__.py) (NEW)
+- [packages/core/backend/src/vninvest_core/management/commands/__init__.py](packages/core/backend/src/vninvest_core/management/commands/__init__.py) (NEW)
+- [packages/core/backend/src/vninvest_core/management/commands/check_scheduler_queue_drift.py](packages/core/backend/src/vninvest_core/management/commands/check_scheduler_queue_drift.py) (NEW)
+- [packages/core/backend/src/vninvest_core/management/commands/sync_scheduler_queues.py](packages/core/backend/src/vninvest_core/management/commands/sync_scheduler_queues.py) (NEW)
+- [packages/core/backend/tests/test_scheduler_management_commands.py](packages/core/backend/tests/test_scheduler_management_commands.py) (NEW)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Local venv test run passed: `python manage.py test tests.test_scheduler_management_commands --keepdb -v 2` with `DJANGO_DEBUG=true` and `DJANGO_ALLOWED_HOSTS=*`.
+- Command discovery is now backed by explicit `VninvestCoreConfig` registration.
+
+Residual risk:
+- Dev container startup is blocked by private GitHub dependency auth for `vnbroker`; the container fails while running `pip install -r requirements.txt` before Django can start.
+
+# AUDIT FILE LIST (2026-05-11-SAAS-BACKGROUND-SERVICES-MULTI-PROVIDER-AUDIT-CLOSURE)
+
+Muc tieu:
+- Chot audit closure cho goi de xuat SaaS Background Services Multi-Provider.
+- Bo sung technical clarifications (Decision Addendum v1.1) va implementation checklist Phase P0 de team co the bat dau coding ngay.
+
+Files changed:
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) (NEW)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (NEW)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Cross-check noi dung Addendum v1.1 voi proposal packet 8 files da audit.
+- Checklist P0 co command-level huong dan cho queue drift checker va scheduler queue sync.
+
+Residual risk:
+- Checklist hien la tai lieu implementation guide; command files trong checklist can duoc tao code that o slice implementation tiep theo.
+
+# AUDIT FILE LIST (2026-05-11-SAAS-BACKGROUND-SERVICES-MULTI-PROVIDER-PROPOSAL)
+
+Muc tieu:
+- Tao bo tai lieu de xuat day du cho kien truc background services da provider (periodic + event-driven + manual trigger).
+- Chot huong thiet ke SaaS cho quy mo 10.000 users voi trong tam freshness, reliability, governance va offhours enrichment.
+
+Can cu khao sat:
+- Scheduler/prefetch topology hien tai trong backend.
+- Runtime policy SSOT va admin-ops contracts.
+- vnbroker adapter fallback/timeout/rate-limit/canonical normalization.
+
+Files changed:
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_HANDOFF_MASTER_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_HANDOFF_MASTER_20260511.md) (NEW)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_BUSINESS_CASE_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_BUSINESS_CASE_20260511.md) (NEW)
+- [docs/TECH_SPEC_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TECH_SPEC_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (NEW)
+- [docs/IMPLEMENTATION_PLAN_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/IMPLEMENTATION_PLAN_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (NEW)
+- [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (NEW)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_TRACEABILITY_MATRIX_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_TRACEABILITY_MATRIX_20260511.md) (NEW)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_SELF_AUDIT_AND_TEST_PROTOCOL_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_SELF_AUDIT_AND_TEST_PROTOCOL_20260511.md) (NEW)
+- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_EXECUTION_EVIDENCE_TEMPLATE_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_EXECUTION_EVIDENCE_TEMPLATE_20260511.md) (NEW)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Noi dung de xuat duoc doi chieu truc tiep voi cac anchor files runtime/adapters/tasks/contracts da khao sat.
+- Khong co thay doi source code runtime trong slice nay.
+
+Residual risk:
+- Day la goi de xuat kien truc, chua bao gom implementation code va soak/load test evidence.
+- Can phe duyet triad va taskboard truoc khi bat dau coding phases P0-P5.
+
+# AUDIT FILE LIST (2026-05-11-DASHBOARD-MARKET-DESYNC-REALTIME-PREFETCH-QUEUE-ISOLATION)
+
+Muc tieu:
+- Khac phuc tinh trang /dashboard hien thi du lieu thi truong khong dong bo (cache_miss_batch, tile xam/0.00).
+- Dam bao prefetch realtime ticker khong bi starvation boi cac task nang cung queue.
+
+Root cause:
+- `schedule_realtime_prefetch_shards` va `prefetch_realtime_ticker_shard` cung chia se queue `celery` voi `detect_and_store_global_whale_alerts`, `detect_order_flow`, `run_stream_consumer_batch`.
+- Queue backlog tang cao lam `ticker:<symbol>` het han, API ticker tra cache miss cho cac ma dashboard.
+
+Files changed:
+- [backend/portfolio/tasks_prefetch.py](backend/portfolio/tasks_prefetch.py) (MODIFIED)
+- [backend/config/settings.py](backend/config/settings.py) (MODIFIED)
+- [docker-compose.dev.yml](docker-compose.dev.yml) (MODIFIED)
+- [module_tree_full.md](module_tree_full.md) (REGENERATED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
+- [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+
+Validation:
+- Rebuild/restart runtime: `docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build frontend backend backend-worker backend-prefetch-worker backend-beat`.
+- Queue check: broker `realtime_prefetch` backlog = 0.
+- End-to-end warm run: `build_realtime_symbol_universe_snapshot.run()` + hot shards cho ket qua cached > 0 tren tung shard.
+- Ticker service probe sau warm: MBB/FPT/VCB/SSI/VNM tra du lieu tu source `prefetch`, khong con cache_miss_batch tren nhom mau kiem tra.
+
+Residual risk:
+- Legacy worker startup hien tai can apt/pip runtime nen warm-up cham sau restart; trong khoang startup co the gap cache miss tam thoi.
+- Nen theo doi tiep backlog queue `celery` va xem xet tach them task nang sang queue rieng neu can.
+
 # � AUDIT FILE LIST (2026-05-11-SAAS-SERVICES-RECOVERY-R5-SOAK-WINDOW-REALTIME-INGEST) — Active monitoring with market data sync
 
 # AUDIT FILE LIST (2026-05-11-WHALE-SHELL-SYMBOL-DRIFT-FIX)

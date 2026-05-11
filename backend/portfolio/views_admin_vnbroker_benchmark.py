@@ -185,7 +185,7 @@ def admin_vnbroker_price_board_benchmark_run_api(request):
             status=status.HTTP_202_ACCEPTED,
         )
 
-    task = run_vnbroker_price_board_benchmark.apply_async(kwargs={'payload': payload})
+    task = run_vnbroker_price_board_benchmark.apply_async(kwargs={'payload': payload}, queue='manual_on_demand')
     base_report['execution_mode'] = 'celery'
     base_report['task_id'] = str(task.id)
     set_latest_price_board_benchmark_report(base_report)

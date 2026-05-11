@@ -273,6 +273,10 @@ def _submit_advisory_generation_with_fallback(
 ) -> dict:
     legacy_views = _legacy_views_module()
     from portfolio.tasks import generate_whale_advisory_task
+    task_queue = None
+    source_key = str(payload_kwargs.get('source') or '').strip().lower()
+    if source_key == legacy_views.WhaleAdvisory.SourceChoices.USER_REFRESH:
+        task_queue = 'manual_on_demand'
 
     if force_sync:
         try:
@@ -284,7 +288,10 @@ def _submit_advisory_generation_with_fallback(
     worker_available = legacy_views._is_celery_worker_available()
     if worker_available:
         try:
-            task = generate_whale_advisory_task.apply_async(kwargs=payload_kwargs, countdown=0)
+            async_kwargs = {'kwargs': payload_kwargs, 'countdown': 0}
+            if task_queue:
+                async_kwargs['queue'] = task_queue
+            task = generate_whale_advisory_task.apply_async(**async_kwargs)
             return {'queued': True, 'task_id': task.id, 'sync': False}
         except Exception as exc:
             legacy_views.logger.warning('%s queue submit failed (fallback=%s): %s', context_label, prefer_sync_fallback, exc)
