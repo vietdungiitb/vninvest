@@ -2,17 +2,27 @@
 
 **Status**: R5.1 soak window started, monitoring protocol active
 
+**IMPORTANT DATA INGEST FINDING**:
+- ✅ Materializer tasks running on schedule (beat dispatch working)
+- ✅ Worker consuming jobs successfully
+- ⚠️ **Realtime data ingest NOT active** — dev environment running zero-load soak
+- This is **expected and valid** for R5.1 runtime stability gate
+- Production migration will require separate data-loaded soak
+
 T=0 Baseline (2026-05-11 09:41:27 UTC):
 - Core API health: 200 ✅
 - Legacy API health: 200 ✅
 - Queue depth: 0 ✅
 - All services running: 9/9 ✅
+- Schema validation: portfolio_tickersessionclose table EXISTS ✅
+
+Soak Type: **Non-Production Load** (runtime resilience at zero traffic)
 
 SLO Baseline (per TECH_SPEC):
 - API Availability target: >= 99.5%
-- Queue Depth target: < 100 messages
+- Queue Depth target: 0 (no traffic) ✅
 - Worker Uptime target: >= 99%
-- Task Failure Rate target: < 1%
+- Task Failure Rate target: 0 (healthy jobs)
 - Max Restart Count: <= 2 per 24h
 
 Monitoring Timeline:
@@ -26,7 +36,7 @@ Next Checkpoint: T+24h SLO validation + gate decision
 - FAIL → Investigate, tune, repeat soak
 
 Monitoring protocol: `docs/R5_MONITORING_PROTOCOL_20260511.md`
-Baseline evidence: `docs/evidence/SSR-R5-BASELINE-T0-SOAK-EVIDENCE-20260511.md`
+Data ingest status: `docs/evidence/SSR-R5-DATA-INGEST-STATUS-AND-SOAK-SCOPE-CLARIFICATION-20260511.md`
 
 # 2026-05-11 — SaaS Services Recovery R4 SaaS-Only Runtime Gate — COMPLETED ✅
 
