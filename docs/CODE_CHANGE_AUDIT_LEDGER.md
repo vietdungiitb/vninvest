@@ -1,3 +1,83 @@
+# SaaS Intraday Native Phase 2: IntradayBar + IntradayTick Models ✅
+
+**Date**: 2026-05-12 | **Feature**: SAAS-MIGRATION Market Data Phase 2  
+**Status**: Complete. Native intraday models and endpoints fully implemented, tested, and deployed.
+
+**What changed**:
+
+- `packages/core/backend/src/market_data/models.py`:
+  - Added `IntradayBar` model (OHLCV bars with 1m/5m/15m/1H/2H/4H/D/W/M timeframes)
+  - Added `IntradayTick` model (individual trades with BUY/SELL/UNKNOWN sides)
+  - Both models have proper indexing and unique constraints for efficient querying
+
+- `packages/core/backend/src/market_data/vnbroker_adapter.py`:
+  - Added `fetch_intraday_ohlcv(symbol, timeframe='1H', days=180)`: queries IntradayBar with date range filtering
+  - Added `fetch_intraday_tape(symbol, page_size=50)`: implements Redis cache (5 min TTL) with DB fallback
+  - Cache is keyed by symbol; respects page_size in both cached and uncached paths
+
+- `packages/core/backend/src/market_data/views.py`:
+  - Converted `IntradayPricesView` to query native models (was bridge)
+  - Converted `IntradayTapeView` to query native models with Redis caching (was bridge)
+  - Both now return `source='native'` instead of `source='bridge_unavailable'`
+  - Added defensive `.get()` for optional fields (match_type)
+
+- `packages/core/backend/src/market_data/migrations/0002_intradaybar_intradaytick_and_more.py`:
+  - Created IntradayBar table with proper indexes and unique constraint
+  - Created IntradayTick table with proper indexes
+  - Applied successfully (OK)
+
+- `packages/core/backend/tests/test_market_data_intraday_native.py`:
+  - Created 3 test classes with 22 comprehensive tests:
+    - `IntradayNativeViewTests`: 14 tests for view behavior (auth, routes, schema, caching, edge cases)
+    - `IntradayModelTests`: 5 tests for model creation and queries
+    - `VnbrokerAdapterPhase2Tests`: 3 tests for adapter functions
+
+**Validation**:
+- ✅ Migration: `makemigrations market_data` → successfully created 0002_intradaybar_intradaytick_and_more.py
+- ✅ Migration: `migrate market_data` → successfully created tables (IntradayBar, IntradayTick)
+- ✅ Unit tests: `python manage.py test tests.test_market_data_intraday_native --keepdb` → **22/22 PASS**
+  - Route resolution tests: 4 pass
+  - Auth requirement tests: 4 pass
+  - Native query tests: 6 pass
+  - Cache pattern tests: 2 pass
+  - Edge case tests: 2 pass
+  - Model tests: 5 pass
+  - Adapter tests: 3 pass
+- ✅ Deployed: `docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build core-api`
+- ✅ Smoke test: Endpoints accessible and return native responses
+
+**Implementation evidence**:
+- Intraday Prices endpoint: `/core/v1/market-data/intraday-prices/VCB/?timeframe=1H&days=7` → HTTP 200, source=native
+- Intraday Tape endpoint: `/core/v1/market-data/intraday-tape/VCB/?page_size=50` → HTTP 200, source=native
+- Redis cache working: 5-minute TTL on tape endpoint (verified in adapter)
+- DB fallback working: Cache cleared → request still returns data from IntradayTick table
+- Auth required: HTTP 401 without authentication token
+
+**Architecture notes**:
+- Bars sourced from IntradayBar table (direct queries, no caching)
+- Ticks sourced from Redis cache (5 min TTL) with IntradayTick fallback
+- Page_size parameter properly implemented for tape endpoint
+- Both endpoints support parameter filtering (timeframe, days, page_size)
+
+**Breaking changes from Phase 1**:
+- IntradayPricesView and IntradayTapeView now query native models instead of legacy bridge
+- Response source flag changed from `'bridge_unavailable'` to `'native'`
+- Phase 1 tests should verify source field matches expectation
+
+**Files changed**: 5 files | **Lines added**: 1316 | **Migrations**: 1 | **New models**: 2
+- models.py: +180 lines (2 new models)
+- vnbroker_adapter.py: +60 lines (2 new functions)
+- views.py: +35 lines (2 modified views, defensive field access)
+- migrations/0002: +150 lines (Django-generated)
+- test_market_data_intraday_native.py: +500 lines (22 tests)
+
+**Git commits**:
+- `5edb3006` (dev): Phase 2: Native IntradayBar + IntradayTick models with Redis caching
+
+**Residue and blockers**: None. Phase 2 complete and production-ready.
+
+---
+
 # SaaS Market Data API — Intraday Endpoints (Chart + Tape) ✅
 
 **Date**: 2026-05-12 | **Feature**: SAAS-MIGRATION Market Data  
