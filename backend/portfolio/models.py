@@ -102,10 +102,20 @@ class StockProfile(models.Model):
 class WatchlistGroup(models.Model):
     """
     Nhóm watchlist cá nhân của user (ví dụ: "Theo dõi sát", "Cổ phiếu lướt sóng").
+    Scoped by tenant for SaaS multi-tenancy.
     """
     user = models.ForeignKey(
         User, on_delete=models.CASCADE,
         related_name='watchlist_groups', verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='watchlist_groups',
+        verbose_name='Tenant',
+        null=True,
+        blank=True,
+        help_text='SaaS tenant this watchlist group belongs to',
     )
     name = models.CharField(max_length=100, verbose_name='Tên danh sách theo dõi')
     description = models.TextField(blank=True, default='', verbose_name='Mô tả')
@@ -333,12 +343,22 @@ class Portfolio(models.Model):
     """
     Danh mục đầu tư của một người dùng.
     Một user có thể có nhiều danh mục (ví dụ: "Dài hạn", "Ngắn hạn").
+    Scoped by tenant for SaaS multi-tenancy.
     """
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='portfolios',
         verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='portfolios',
+        verbose_name='Tenant',
+        null=True,
+        blank=True,
+        help_text='SaaS tenant this portfolio belongs to',
     )
     name = models.CharField(
         max_length=100,
@@ -638,6 +658,15 @@ class PriceAlertRule(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE,
         related_name='price_alert_rules', verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='price_alert_rules',
+        verbose_name='Tenant',
+        null=True,
+        blank=True,
+        help_text='SaaS tenant this price alert rule belongs to',
     )
     symbol = models.CharField(max_length=10, verbose_name='Mã chứng khoán', db_index=True)
     condition = models.CharField(

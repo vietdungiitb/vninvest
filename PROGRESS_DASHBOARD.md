@@ -1,3 +1,105 @@
+# 2026-05-12 — TENANT-T10 Data Isolation Audit + FK Migration ⚠️ 60% COMPLETE
+
+Status: T10 partially complete. Model-level FK migrations drafted and schema migration file created; blocked by pre-existing django_migrations table corruption in legacy backend. Core work (FK additions, backfill strategy documentation, isolation test design) is complete and ready for deployment once DBA clears migration history.
+
+Completed in this slice:
+- Added explicit `CoreTenant` FK to 3 critical legacy backend models: `Portfolio`, `WatchlistGroup`, `PriceAlertRule` (13 lines each, ORM syntax valid).
+- Created schema migration file `0078_add_tenant_fk_portfolio_watchlistgroup_pricealertrule.py` (3 AddField operations, dependency chain correct).
+- Documented 3 data backfill migration templates (0079, 0080, 0081) with user→tenant mapping strategy (owner_user or TenantMember).
+- Designed 6 isolation test cases covering cross-tenant query boundaries, cascade deletes, bulk efficiency, backfill validation.
+- Generated comprehensive implementation plan (IMPLEMENTATION_PLAN_T10_DATA_ISOLATION_AUDIT_20260512_DRAFT.md) with phases, risks, DoD.
+
+Validation snapshot:
+- ✅ Model syntax: Python 3.13 + Django ORM valid
+- ✅ ForeignKey references: identity_access.CoreTenant resolvable
+- ✅ Related names: Correct Django conventions (portfolios, watchlist_groups, price_alert_rules)
+- ⚠️ Schema migration application: BLOCKED by InconsistentMigrationHistory (0041→0040 dependency broken)
+- ⏳ Data backfill migrations: Not created (pending schema application)
+- ⏳ Isolation tests: Not written (pending schema application)
+
+Residual risks:
+- Django migration history in `django_migrations` table has pre-existing corruption (not T10-introduced); requires DBA cleanup of parent-child dependencies for migrations 0038-0077.
+- Backfill data migration may discover orphaned records (users with no tenant affiliation); mitigation: implement check in backfill RunPython to count orphaned and report.
+- Post-backfill NULL constraint needed: `ALTER TABLE portfolio_portfolio ADD CONSTRAINT tenant_not_null CHECK (tenant_id IS NOT NULL)` after backfill verified.
+
+Evidence:
+- [AUDIT_T10_DATA_ISOLATION_INFRASTRUCTURE_REPORT_20260512.md](docs/AUDIT_T10_DATA_ISOLATION_INFRASTRUCTURE_REPORT_20260512.md) — Full audit with model changes, migration strategy, test design, blocker analysis.
+- [IMPLEMENTATION_PLAN_T10_DATA_ISOLATION_AUDIT_20260512_DRAFT.md](docs/IMPLEMENTATION_PLAN_T10_DATA_ISOLATION_AUDIT_20260512_DRAFT.md) — 20+ page roadmap (phases, strategy, DoD).
+
+Next action:
+- Require DBA to clean django_migrations table (OR use packages/core for new tenant-scoped models going forward).
+- Upon DBA clearance: Apply 0078, create 0079-0081 backfill migrations, write test_data_isolation.py, run full portfolio test suite.
+- Commit to dev: `TENANT-T10: Data isolation audit + FK migration (Portfolio, WatchlistGroup, PriceAlertRule) [infrastructure-blocked]`
+
+# 2026-05-12 — TENANT-T09 TenantMember + TenantInvite Management ✅
+
+Status: T09 completed end-to-end. Core now supports multi-user tenant collaboration with invite-based onboarding, role-based access control (owner/admin/editor/viewer), and immutable lifecycle event logging.
+
+Completed in this slice:
+- Created `TenantMember` model: FK(tenant, user), role choices, unique_together, invited_by, timestamps.
+- Created `TenantInvite` model: 64-char token, status (pending/accepted/declined/expired), 7-day expiry, lifecycle tracking.
+- Built `TenantInvitesCombinedView` (APIView): POST creates invite, GET lists pending. Owner/admin only via `IsTenantOwnerOrAdmin` permission.
+- Built `TenantInviteAcceptView`: Validates token, email match, expiry; creates TenantMember; logs MEMBER_JOINED event.
+- Built `TenantMemberRemoveView`: DELETE removes member; prevents owner/self removal; logs MEMBER_REMOVED event.
+- Built `TenantMemberListView`: GET lists members with roles, invited_by, join timestamps.
+- Created `IsTenantOwnerOrAdmin` permission class: Checks user is tenant owner OR has admin/owner role in TenantMember.
+- Implemented tenant access hierarchy: User can access tenant if they own it OR are a member.
+- Added 4 serializers: TenantMemberSerializer, TenantInviteSerializer, TenantInviteCreateSerializer, TenantInviteAcceptSerializer.
+- Created migration `0004_tenantmember_tenantinvite`: Creates both tables with proper indexes and constraints.
+- Wired 4 new API routes: `/api/core/v1/tenant-members/`, `/invites/`, `/invites/{token}/accept/`, `/members/{member_id}/`.
+
+Validation snapshot:
+- `manage.py migrate --noinput` PASS (applied `identity_access.0004_tenantmember_tenantinvite`)
+- `manage.py test tests.test_tenant_member_views --keepdb` PASS (14/14 tests)
+- `manage.py check` PASS (0 issues)
+- Test coverage: Create invite, list members, list invites, accept invite (valid/invalid/expired), remove member (self/owner/success), permissions, constraints, lifecycle events
+
+Residual risk:
+- Multi-tenant tenant access (user member of multiple tenants) currently returns FIRST matching tenant; no tenant selector parameter yet.
+
+Next slice:
+- TENANT-T10 (Data isolation audit + FK migration) — audit top 3 tables for cross-tenant leakage, add missing FK migrations.
+
+# 2026-05-12 — TENANT-T08 Self-Service Onboarding Endpoint ✅
+
+Status: T08 completed. Authenticated users can now self-serve a 14-day FREE trial tenant via `/api/core/v1/onboarding/register`.
+
+Completed in this slice:
+- Created `register_tenant_view` (function-based): POST creates trial CoreTenant (status=trial, plan=free, trial_ends_at=now+14d).
+- Validates display_name (required, max 120 chars), trims whitespace, prevents duplicate tenant per user (409 if exists).
+- Logs `TenantLifecycleEvent(TRIAL_STARTED)` with actor_user and new_value (status, plan, trial_ends_at).
+- Enqueues welcome email via `_enqueue_welcome_email()` stub (non-critical failures ignored).
+- Created `RegisterTenantSerializer` for input validation.
+- Wired route to both `identity_access/urls.py` and `identity_access/api_urls.py` (both with/without trailing slash).
+- Added 9 focused tests: Success (201), duplicate (409), missing field (400), whitespace trim, max length, lifecycle logging, email enqueue, superuser bypass.
+
+Validation snapshot:
+- `manage.py test tests.test_onboarding_views --keepdb` PASS (9/9 tests)
+- `manage.py check` PASS
+
+Residual risk:
+- Welcome email enqueue is stubbed; requires integration with mail pipeline in later slices.
+- Trial plan lock-in: User cannot downgrade trial before 14 days; upgrade path needs definition.
+
+# 2026-05-12 — TENANT-T02 ORM Path Verification (core_pat_auth.py) ✅
+
+Status: T02 completed. PAT authentication flow is verified to use ORM exclusively (zero raw SQL).
+
+Completed in this slice:
+- Created `backend/portfolio/tests/test_core_pat_auth.py` with 17 focused tests.
+- Verified all PAT operations (issue, resolve, authenticate, revoke) use ORM, no raw SQL.
+- Test suite: PatAuthenticationFlowTest (13 tests) covering full lifecycle, revocation, inactive user, DRF authentication.
+- Test suite: PatCredentialEdgeCasesTest (3 tests) covering empty/null/whitespace handling.
+- Test suite: PatSmokeTest (1 test) end-to-end user create → issue PAT → authenticate flow.
+
+Validation snapshot:
+- `manage.py test portfolio.tests.test_core_pat_auth --keepdb` PASS (17/17 tests)
+- `grep_search` for raw SQL in core_pat_auth.py: 0 matches
+- `manage.py check` PASS
+
+Residual risk:
+- None identified; ORM path fully tested and verified.
+
 # 2026-05-12 — TENANT-T07 Operator Write API ✅
 
 Status: T07 da chot xong va da duoc verify bang test focused + adjacent regression.
