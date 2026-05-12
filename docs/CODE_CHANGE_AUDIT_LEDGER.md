@@ -1,3 +1,37 @@
+# 2026-05-12 — TENANT-T02 Refactor core_pat_auth.py ORM Path ✅
+
+Status: T02 completed. core_pat_auth.py confirmed using ORM helpers throughout; zero raw SQL. New focused test suite (17 tests) covers PAT lifecycle, authentication flow, and edge cases.
+
+What changed:
+- `backend/portfolio/tests/test_core_pat_auth.py` added with 3 test classes and 17 test cases: PatAuthenticationFlowTest (13 tests), PatCredentialEdgeCasesTest (3 tests), PatSmokeTest (1 test).
+- No changes to `backend/core_pat_auth.py` — already uses ORM helpers (`CorePATCredential.resolve_from_raw_secret()`, `CoreTenant.objects.get_or_create()`, etc.).
+
+Validation:
+- PASSED: `portfolio.tests.test_core_pat_auth` — 17/17 tests
+  - test_resolve_or_create_tenant_for_user_creates_new ✅
+  - test_resolve_or_create_tenant_for_user_idempotent ✅
+  - test_issue_pat_for_user_creates_credential_and_returns_secret ✅
+  - test_resolve_user_from_pat_success ✅
+  - test_resolve_user_from_pat_invalid_prefix ✅
+  - test_resolve_user_from_pat_not_found ✅
+  - test_resolve_user_from_pat_revoked_credential ✅
+  - test_resolve_user_from_pat_inactive_user ✅
+  - test_drf_authentication_class_with_valid_pat ✅
+  - test_drf_authentication_class_without_auth_header ✅
+  - test_drf_authentication_class_with_jwt_bearer ✅
+  - test_drf_authentication_class_invalid_pat_raises_error ✅
+  - test_issue_pat_without_existing_service_account_creates_default ✅
+  - test_pat_with_empty_string_returns_none ✅
+  - test_pat_with_none_returns_none ✅
+  - test_pat_with_whitespace_stripped ✅
+  - test_full_pat_lifecycle ✅
+- PASSED: PowerShell verification — zero raw SQL found in core_pat_auth.py
+  - `Select-String -Path backend/core_pat_auth.py -Pattern 'identity_access_coretenant|SELECT.*FROM.*coretenant'` → 0 matches
+
+Residue and blockers: None. T02 unblocks T03.
+
+---
+
 # 2026-05-12 — TENANT-T07 Operator Write API ✅
 
 Status: T07 completed. Operator write APIs now support suspend/activate/provision/change-plan flows with lifecycle event logging and focused regression coverage.

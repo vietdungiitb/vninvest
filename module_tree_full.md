@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-12 19:21:43`
+Generated at: `2026-05-12 19:25:06`
 
 ## Summary
 
-- Total modules: 1060
-- Python modules: 560
+- Total modules: 1061
+- Python modules: 561
 - JS/TS modules: 500
-- Total classes: 886
+- Total classes: 889
 - Total functions: 2891
-- Total top-level variables: 4548
+- Total top-level variables: 4549
 
 ## Python Modules
 
@@ -1541,6 +1541,15 @@ Generated at: `2026-05-12 19:21:43`
   - `CorrelationOptimizerTests` -> methods: `test_high_confidence_buy_campaign_with_absorption`, `test_low_confidence_misaligned_side`, `test_medium_confidence_time_delay`, `test_strong_signals_high_confidence`, `test_weak_signals_low_confidence`
   - `EndToEndCoObservationTests` -> methods: `setUp`, `test_scenario_aligned_buy_signals`
   - `TimeWindowResolverTests` -> methods: `test_1h_window`, `test_5d_window`, `test_5m_window`, `test_invalid_window_raises_error`, `test_session_window_before_market_hours`, `test_session_window_during_market_hours`
+
+### `backend/portfolio/tests/test_core_pat_auth.py`
+
+- Classes:
+  - `PatAuthenticationFlowTest` -> methods: `setUp`, `test_drf_authentication_class_invalid_pat_raises_error`, `test_drf_authentication_class_with_jwt_bearer`, `test_drf_authentication_class_with_valid_pat`, `test_drf_authentication_class_without_auth_header`, `test_issue_pat_for_user_creates_credential_and_returns_secret`, `test_resolve_or_create_tenant_for_user_creates_new`, `test_resolve_or_create_tenant_for_user_idempotent`, `test_resolve_user_from_pat_inactive_user`, `test_resolve_user_from_pat_invalid_prefix`, `test_resolve_user_from_pat_not_found`, `test_resolve_user_from_pat_revoked_credential`, `test_resolve_user_from_pat_success`
+  - `PatCredentialEdgeCasesTest` -> methods: `setUp`, `test_issue_pat_without_existing_service_account_creates_default`, `test_pat_with_empty_string_returns_none`, `test_pat_with_none_returns_none`, `test_pat_with_whitespace_stripped`
+  - `PatSmokeTest` -> methods: `test_full_pat_lifecycle`
+- Top-level variables:
+  - `User`
 
 ### `backend/portfolio/tests/test_dark_money_history_api.py`
 

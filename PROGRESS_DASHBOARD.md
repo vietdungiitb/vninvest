@@ -17,7 +17,7 @@ Residual risk:
 - Local warning `DJANGO_SECRET_KEY` ephemeral va `CORE_PAT_PEPPER` chua set van la warning moi truong, khong chan T07 behavior.
 
 Next slice:
-- TENANT-T02 (`core_pat_auth.py` bo raw SQL, chuyen sang ORM path) de tiep tuc dong lane P0.
+- TENANT-T03 (`IsTenantActive` permission enforcement; tenant suspended/deprovisioned receive 403) — next lane P0 after T02 ✅.
 
 # 2026-05-12 — TENANT-T06 Tenant Lifecycle App + Automation ✅
 

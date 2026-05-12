@@ -14,7 +14,7 @@
 | Task ID | Title | Priority | Status | Owner | Branch | Notes |
 |---|---|---|---|---|---|---|
 | TENANT-T01 | Hợp nhất SSOT CoreTenant | 🔴 P0 | done | AI agent | `tenant/T01-ssot-coretenant` | Xoá class duplicate trong portfolio/models.py; runtime đã boot qua SaaS `identity_access` |
-| TENANT-T02 | Refactor core_pat_auth.py xoá raw SQL | 🔴 P0 | not-started | — | `tenant/T02-pat-auth-orm` | Blocker cho T03+ |
+| TENANT-T02 | Refactor core_pat_auth.py xoá raw SQL | 🔴 P0 | done | AI agent | `tenant/T02-pat-auth-orm` | ORM path verified via 17-test suite; zero raw SQL |
 | TENANT-T03 | IsTenantActive permission class | 🔴 P0 | done | AI agent | `tenant/T03-tenant-active-perm` | Applied to identity_access tenant surfaces + REST defaults |
 
 ---
@@ -58,6 +58,13 @@
 ## Overall Progress
 
 | Sprint | Tasks | Done | In Progress | Remaining |
+| — | — | — | — | — |
+| Sprint 1 | 3 | **3/3** | — | — |
+| Sprint 2 | 2 | **2/2** | — | — |
+| Sprint 3 | 2 | **2/2** | — | — |
+| Sprint 4 | 2 | 0 | — | **2** |
+| Sprint 5 | 2 | 0 | — | **2** |
+| **TOTAL** | **11** | **7/11** | — | **4** |
 |---|---|---|---|---|
 | Sprint 1 | T01–T03 | 2 | 0 | 1 |
 | Sprint 2 | T04–T05 | 2 | 0 | 0 |
