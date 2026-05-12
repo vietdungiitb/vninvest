@@ -2,7 +2,8 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .global_signal_policy_helpers import invalidate_global_signal_universe_cache
-from .models import PriceAlertRule, RuntimeVnbrokerConfig, SecuritiesItem, TrackedSymbol, Transaction, WatchlistItem
+from .models import RuntimeVnbrokerConfig, SecuritiesItem, TrackedSymbol, Transaction
+# [DELETED: PriceAlertRule, WatchlistItem → packages/core]
 from .vnbroker_runtime_config import invalidate_vnbroker_runtime_cache
 
 
@@ -34,10 +35,7 @@ def invalidate_holdings_cache_on_transaction(sender, instance, **kwargs):
 
 @receiver(post_save, sender=TrackedSymbol)
 @receiver(post_delete, sender=TrackedSymbol)
-@receiver(post_save, sender=WatchlistItem)
-@receiver(post_delete, sender=WatchlistItem)
-@receiver(post_save, sender=PriceAlertRule)
-@receiver(post_delete, sender=PriceAlertRule)
+# [DELETED: WatchlistItem, PriceAlertRule signal receivers → packages/core]
 @receiver(post_save, sender=SecuritiesItem)
 @receiver(post_delete, sender=SecuritiesItem)
 def invalidate_global_signal_universe_on_source_change(sender, instance, **kwargs):

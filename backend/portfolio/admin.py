@@ -26,8 +26,7 @@ from .models import (
     GlobalScreenerRule,
     IntradayTick,
     MarketGroupSyncLog,
-    Portfolio,
-    PriceAlertRule,
+    # [DELETED: Portfolio, PriceAlertRule, WatchlistGroup, WatchlistItem → packages/core]
     PlanAssignmentLog,
     ScreenerRule,
     ScreenerScheduleConfig,
@@ -45,8 +44,6 @@ from .models import (
     Transaction,
     UserConfig,
     UserAlertHistory,
-    WatchlistGroup,
-    WatchlistItem,
     WhaleAdvisory,
     WhaleConfigApproval,
     WhaleConfigAuditLog,
@@ -475,12 +472,7 @@ def _admin_stock_profile_workspace_view(request, symbol):
         .select_related('user', 'source_group')
         .order_by('user__username')[:12]
     )
-    watchlist_memberships = list(
-        WatchlistItem.objects
-        .filter(symbol=normalized_symbol)
-        .select_related('group', 'group__user')
-        .order_by('group__user__username', 'group__name')[:16]
-    )
+    # [DELETED: watchlist_memberships (WatchlistItem model removed → packages/core)]
     recent_prices = [
         {
             'date': row['date'],
@@ -564,8 +556,7 @@ def _admin_stock_profile_workspace_view(request, symbol):
         ),
         'tracked_users': tracked_users,
         'tracked_user_count': TrackedSymbol.objects.filter(symbol=normalized_symbol).count(),
-        'watchlist_memberships': watchlist_memberships,
-        'watchlist_membership_count': WatchlistItem.objects.filter(symbol=normalized_symbol).count(),
+        # [DELETED: watchlist_memberships, watchlist_membership_count (WatchlistItem removed)]
         'sparkline_points': _build_sparkline_points(closes),
         'sparkline_min': _format_vnd(min(closes)) if closes else '—',
         'sparkline_max': _format_vnd(max(closes)) if closes else '—',
@@ -574,7 +565,7 @@ def _admin_stock_profile_workspace_view(request, symbol):
         'workspace_back_url': reverse('admin:portfolio_stockprofile_changelist'),
         'change_url': reverse('admin:portfolio_stockprofile_change', args=[profile.pk]),
         'tracked_user_count_display': _format_number(TrackedSymbol.objects.filter(symbol=normalized_symbol).count()),
-        'watchlist_membership_count_display': _format_number(WatchlistItem.objects.filter(symbol=normalized_symbol).count()),
+        # [DELETED: watchlist_membership_count_display (WatchlistItem removed)]
         'depth_panel': depth_panel,
     }
     return render(request, 'admin/portfolio/stockprofile/workspace.html', context)
@@ -632,7 +623,7 @@ def _vninvest_each_context(request):
     from_date = today - timezone.timedelta(days=selected_window)
 
     context['system_quick_stats'] = {
-        'portfolio_count': Portfolio.objects.count(),
+        # [DELETED: portfolio_count (Portfolio model removed → packages/core)]
         'subaccount_count': SubAccount.objects.count(),
         'transaction_count': Transaction.objects.count(),
         'transaction_today_count': Transaction.objects.filter(date=today).count(),
@@ -772,9 +763,7 @@ def _vninvest_get_app_list(request, app_label=None):
         'SecuritiesGroup': 'Nhóm thị trường',
         'SecuritiesItem': 'Mã trong nhóm thị trường',
         'TrackedSymbol': 'Danh sách mã theo dõi tổng hợp',
-        'PriceAlertRule': 'Cảnh báo giá',
-        'WatchlistGroup': 'Danh sách theo dõi cá nhân',
-        'WatchlistItem': 'Mã trong danh sách theo dõi',
+        # [DELETED: PriceAlertRule, WatchlistGroup, WatchlistItem → packages/core]
         'ScreenerRule': 'Bộ lọc động',
         'StockProfile': 'Hồ sơ mã chứng khoán',
         'DailyPrice': 'Dữ liệu giá hàng ngày',
@@ -818,22 +807,20 @@ def _vninvest_get_app_list(request, app_label=None):
             'portfolio_tracker',
             '01. Portfolio Tracker',
             [
-                'Portfolio',
                 'SubAccount',
                 'Transaction',
                 'AccountSnapshot',
+                # [DELETED: Portfolio → packages/core]
             ],
         ),
         (
             'market_watch',
             '02. Market Watch và theo dõi cá nhân',
             [
-                'WatchlistGroup',
-                'WatchlistItem',
+                # [DELETED: WatchlistGroup, WatchlistItem, PriceAlertRule → packages/core]
                 'SecuritiesGroup',
                 'SecuritiesItem',
                 'TrackedSymbol',
-                'PriceAlertRule',
                 'ScreenerRule',
             ],
         ),
@@ -981,24 +968,7 @@ class SecuritiesItemInline(admin.TabularInline):
         return format_html('<a href="{}">Mở workspace</a>', _workspace_url_for_symbol(obj.symbol))
 
 
-class WatchlistItemInline(admin.TabularInline):
-    model = WatchlistItem
-    verbose_name = 'Mã trong danh sách theo dõi'
-    verbose_name_plural = 'Mã trong danh sách theo dõi'
-    extra = 1
-    fields = ('symbol',)
-
-
-@admin.register(Portfolio)
-class PortfolioAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'created_at', 'subaccount_count')
-    list_filter = ('user',)
-    search_fields = ('name', 'user__username')
-    ordering = ('-created_at',)
-
-    @admin.display(description='So tieu khoan')
-    def subaccount_count(self, obj):
-        return obj.sub_accounts.count()
+# [DELETED: WatchlistItemInline, PortfolioAdmin → packages/core admin.py]
 
 
 @admin.register(SubAccount)
@@ -2045,22 +2015,7 @@ class TrackedSymbolAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(PriceAlertRule)
-class PriceAlertRuleAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'condition', 'target_price', 'user', 'cooldown_seconds', 'is_active', 'last_triggered_at')
-    list_filter = ('condition', 'is_active', 'user')
-    search_fields = ('symbol', 'user__username')
-    ordering = ('-created_at',)
-    readonly_fields = ('created_at', 'updated_at', 'last_triggered_at')
-
-    fieldsets = (
-        ('Thông tin cảnh báo giá', {
-            'fields': ('user', 'symbol', 'condition', 'target_price', 'cooldown_seconds', 'is_active'),
-        }),
-        ('Theo dõi trigger', {
-            'fields': ('last_triggered_at', 'created_at', 'updated_at'),
-        }),
-    )
+# [DELETED: PriceAlertRuleAdmin → packages/core admin.py]
 
 
 @admin.register(StockProfile)
@@ -2107,25 +2062,7 @@ class IntradayTickAdmin(admin.ModelAdmin):
     readonly_fields = ('stream_id', 'created_at')
 
 
-@admin.register(WatchlistGroup)
-class WatchlistGroupAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'created_at', 'item_count')
-    list_filter = ('user',)
-    search_fields = ('name', 'user__username')
-    ordering = ('name',)
-    inlines = [WatchlistItemInline]
-
-    @admin.display(description='Số mã trong danh sách')
-    def item_count(self, obj):
-        return obj.items.count()
-
-
-@admin.register(WatchlistItem)
-class WatchlistItemAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'group', 'added_at')
-    list_filter = ('group',)
-    search_fields = ('symbol', 'group__name', 'group__user__username')
-    ordering = ('-added_at',)
+# [DELETED: WatchlistGroupAdmin, WatchlistItemAdmin → packages/core admin.py]
 
 
 @admin.register(ScreenerRule)

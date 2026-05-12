@@ -25,14 +25,14 @@ from .models import (
     DailyPrice,
     IntradayTick,
     MarketGroupSyncLog,
-    Portfolio,
+    # [DELETED: Portfolio → packages/core]
     SecuritiesGroup,
     SecuritiesItem,
     StockProfile,
     StockProfileSyncLog,
     Transaction,
     TrackedSymbol,
-    WatchlistItem,
+    # [DELETED: WatchlistItem → packages/core]
     WhaleAdvisory,
     WhaleConfigAuditLog,
     WhaleConfigRollout,
@@ -1620,31 +1620,11 @@ def fetch_and_save_daily_prices(
 
 def sync_portfolio_prices(portfolio_id: int, days: int = 30) -> list[dict]:
     """
-    Lấy toàn bộ mã CK đang có trong portfolio và gọi fetch_and_save_daily_prices
-    cho từng mã.
-
-    Trả về danh sách kết quả (list of dict) của từng mã.
+    [DEPRECATED] Portfolio model has been migrated to packages/core.
+    This function is a no-op; use packages/core portfolio sync instead.
     """
-    try:
-        portfolio = Portfolio.objects.get(pk=portfolio_id)
-    except Portfolio.DoesNotExist:
-        logger.error('Portfolio id=%d không tồn tại', portfolio_id)
-        return []
-
-    symbols = (
-        Transaction.objects
-        .filter(sub_account__portfolio=portfolio)
-        .values_list('symbol', flat=True)
-        .distinct()
-    )
-
-    start_date = date.today() - timedelta(days=days)
-    results = []
-    for symbol in symbols:
-        res = fetch_and_save_daily_prices(symbol, start_date=start_date)
-        results.append(res)
-
-    return results
+    logger.warning('sync_portfolio_prices() is deprecated; Portfolio model moved to packages/core')
+    return []
 
 
 def get_latest_price(symbol: str) -> Decimal | None:
@@ -1737,11 +1717,11 @@ def get_price_changes(symbols: list) -> dict:
 
 def sync_watchlist_prices(user_id: int, days: int = 5, include_global_groups: bool = False) -> list[dict]:
     """
-    Kéo giá EOD mới nhất cho các mã CK user đang quan tâm.
-    - include_global_groups=False: chỉ sync tracked symbols + watchlist cá nhân.
-    - include_global_groups=True: sync thêm market groups taxonomy dùng chung (chỉ dùng cho admin flow).
-    Mặc định sync 5 ngày để cập nhật giá nhanh.
+    [DEPRECATED] WatchlistItem model has been migrated to packages/core.
+    This function is a no-op; use packages/core watchlist sync instead.
     """
+    logger.warning('sync_watchlist_prices() is deprecated; WatchlistItem model moved to packages/core')
+    # Still sync global groups if requested (SecuritiesGroup is legacy but used)
     group_symbols = []
     if include_global_groups:
         group_symbols = list(
@@ -1749,20 +1729,16 @@ def sync_watchlist_prices(user_id: int, days: int = 5, include_global_groups: bo
             .values_list('items__symbol', flat=True)
             .distinct()
         )
+    # Only sync tracked symbols (TrackedSymbol is still in legacy app)
     tracked_symbols = list(
         TrackedSymbol.objects
         .filter(user_id=user_id)
         .values_list('symbol', flat=True)
         .distinct()
     )
-    watchlist_symbols = list(
-        WatchlistItem.objects
-        .filter(group__user_id=user_id)
-        .values_list('symbol', flat=True)
-        .distinct()
-    )
-    symbols = sorted({symbol for symbol in [*group_symbols, *tracked_symbols, *watchlist_symbols] if symbol})
-
+    # WatchlistItem is no longer available; skip watchlist symbols sync
+    symbols = sorted({symbol for symbol in [*group_symbols, *tracked_symbols] if symbol})
+    
     start_date = date.today() - timedelta(days=days)
     results = []
     for symbol in symbols:
