@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-12 19:28:52`
+Generated at: `2026-05-12 19:35:49`
 
 ## Summary
 
-- Total modules: 1063
-- Python modules: 563
+- Total modules: 1066
+- Python modules: 566
 - JS/TS modules: 500
-- Total classes: 891
+- Total classes: 903
 - Total functions: 2893
-- Total top-level variables: 4550
+- Total top-level variables: 4551
 
 ## Python Modules
 
@@ -2754,6 +2754,11 @@ Generated at: `2026-05-12 19:28:52`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/identity_access/migrations/0004_tenantmember_tenantinvite.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/identity_access/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -2764,6 +2769,8 @@ Generated at: `2026-05-12 19:28:52`
   - `CorePATCredential` -> methods: `__str__`, `effective_status`, `issue_for_service_account`, `resolve_from_raw_secret`, `revoke_pat`, `save`
   - `CoreServiceAccount` -> methods: `__str__`, `clean`, `save`
   - `CoreTenant` -> methods: `__str__`, `save`, `tenant_id`
+  - `TenantInvite` -> methods: `__str__`, `generate_token`, `is_expired`, `save`
+  - `TenantMember` -> methods: `__str__`, `save`
   - `UserProfile` -> methods: `__str__`
 - Functions:
   - `_build_pat_secret`, `_extract_pat_prefix`, `_generate_public_id`, `_hash_pat_secret`
@@ -2793,6 +2800,18 @@ Generated at: `2026-05-12 19:28:52`
   - `CorePATIssueResponseSerializer`
   - `CoreServiceAccountSerializer`
   - `CoreTenantSerializer`
+  - `TenantInviteCreateSerializer`
+  - `TenantInviteSerializer` -> methods: `get_is_expired`
+  - `TenantMemberSerializer`
+
+### `packages/core/backend/src/identity_access/tenant_member_views.py`
+
+- Classes:
+  - `IsTenantOwnerOrAdmin` -> methods: `has_object_permission`, `has_permission`
+  - `TenantInviteAcceptView` -> methods: `post`
+  - `TenantInvitesCombinedView` -> methods: `_get_tenant_for_user`, `get`, `post`
+  - `TenantMemberListView` -> methods: `get`
+  - `TenantMemberRemoveView` -> methods: `delete`
 
 ### `packages/core/backend/src/identity_access/urls.py`
 
@@ -3802,6 +3821,13 @@ Generated at: `2026-05-12 19:28:52`
   - `TenantLifecycleScheduleTests` -> methods: `test_tenant_lifecycle_app_is_registered`, `test_tenant_lifecycle_periodic_schedules_exist`, `test_tenant_lifecycle_tasks_route_to_celery_queue`
 - Top-level variables:
   - `_src_dir`
+
+### `packages/core/backend/tests/test_tenant_member_views.py`
+
+- Classes:
+  - `TenantMemberInviteTest` -> methods: `setUp`, `test_accept_invite_already_accepted_409`, `test_accept_invite_email_mismatch_403`, `test_accept_invite_expired_410`, `test_accept_invite_with_valid_token`, `test_invite_creates_lifecycle_event`, `test_invite_duplicate_email_409`, `test_invite_member_creates_tenantinvite_with_token`, `test_invite_member_non_owner_403`, `test_list_invites`, `test_list_members`, `test_remove_member_cannot_remove_owner`, `test_remove_member_cannot_remove_self`, `test_remove_member_deletes_and_logs_event`, `test_unique_tenant_user_constraint`
+- Top-level variables:
+  - `User`
 
 ### `packages/core/backend/tests/test_tenant_quota_middleware.py`
 

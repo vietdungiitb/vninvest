@@ -5,6 +5,7 @@ from vninvest_core.utils.legacy_stubs import GenericEmptyListView, GenericEmptyS
 
 from . import views_auth
 from . import onboarding_views
+from . import tenant_member_views
 
 urlpatterns = [
     # SFI-B2 native PAT login — used by both legacy frontend (compat) and new clients.
@@ -28,6 +29,11 @@ urlpatterns = [
     # Onboarding endpoints (T08)
     path('core/v1/onboarding/register', onboarding_views.register_tenant_view, name='api-onboarding-register'),
     path('core/v1/onboarding/register/', onboarding_views.register_tenant_view, name='api-onboarding-register-slash'),
+    # Tenant member & invite endpoints (T09) — specific routes FIRST
+    path('core/v1/tenant-members/invites/<str:token>/accept/', tenant_member_views.TenantInviteAcceptView.as_view(), name='api-tenant-invites-accept'),
+    path('core/v1/tenant-members/invites/', tenant_member_views.TenantInvitesCombinedView.as_view(), name='api-tenant-invites'),
+    path('core/v1/tenant-members/<str:member_id>/', tenant_member_views.TenantMemberRemoveView.as_view(), name='api-tenant-members-remove'),
+    path('core/v1/tenant-members/', tenant_member_views.TenantMemberListView.as_view(), name='api-tenant-members-list'),
     # Partner / tenant-admin native mount — frontend calls /api/core/v1/partner/*
     path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner_api'), namespace='identity_access_partner_api')),
 

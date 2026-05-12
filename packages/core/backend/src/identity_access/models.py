@@ -353,3 +353,149 @@ class UserProfile(models.Model):
 
     def __str__(self) -> str:
         return f'UserProfile({self.user.username})'
+
+
+class TenantMember(models.Model):
+    """
+    Represents a user's membership in a tenant.
+    
+    Owner is implicitly a member (CoreTenant.owner_user) and is not required
+    to have a TenantMember row. Other users become members by accepting invites.
+    """
+    class RoleChoices(models.TextChoices):
+        OWNER = 'owner', 'Owner'
+        ADMIN = 'admin', 'Admin'
+        EDITOR = 'editor', 'Editor'
+        VIEWER = 'viewer', 'Viewer'
+
+    public_id = models.CharField(
+        max_length=36,
+        unique=True,
+        db_index=True,
+        editable=False,
+    )
+    tenant = models.ForeignKey(
+        CoreTenant,
+        on_delete=models.CASCADE,
+        related_name='members',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='tenant_memberships',
+    )
+    role = models.CharField(
+        max_length=32,
+        choices=RoleChoices.choices,
+        default=RoleChoices.VIEWER,
+        db_index=True,
+    )
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tenant_invitations_sent',
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Tenant Member'
+        verbose_name_plural = 'Tenant Members'
+        unique_together = [('tenant', 'user')]
+        indexes = [
+            models.Index(fields=['tenant', 'role']),
+            models.Index(fields=['user', 'tenant']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.user.username} → {self.tenant.display_name} ({self.role})'
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            import uuid
+            self.public_id = str(uuid.uuid4())
+        super().save(*args, **kwargs)
+
+
+class TenantInvite(models.Model):
+    """
+    Represents a pending invitation for a user to join a tenant.
+    
+    Owner generates an invite token, sends it to the invitee (email), and 
+    invitee accepts via `POST /api/core/v1/tenant-members/invites/{token}/accept/`.
+    """
+    class StatusChoices(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        ACCEPTED = 'accepted', 'Accepted'
+        DECLINED = 'declined', 'Declined'
+        EXPIRED = 'expired', 'Expired'
+
+    public_id = models.CharField(
+        max_length=36,
+        unique=True,
+        db_index=True,
+        editable=False,
+    )
+    tenant = models.ForeignKey(
+        CoreTenant,
+        on_delete=models.CASCADE,
+        related_name='invites',
+    )
+    invited_email = models.EmailField(max_length=254)
+    invited_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='tenant_invites_received',
+    )
+    inviter = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='tenant_invites_sent',
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    role = models.CharField(
+        max_length=32,
+        choices=TenantMember.RoleChoices.choices,
+        default=TenantMember.RoleChoices.VIEWER,
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=StatusChoices.choices,
+        default=StatusChoices.PENDING,
+        db_index=True,
+    )
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Tenant Invite'
+        verbose_name_plural = 'Tenant Invites'
+        indexes = [
+            models.Index(fields=['tenant', 'status']),
+            models.Index(fields=['invited_email', 'status']),
+        ]
+
+    def __str__(self) -> str:
+        return f'Invite {self.invited_email} → {self.tenant.display_name} ({self.status})'
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            import uuid
+            self.public_id = str(uuid.uuid4())
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self) -> bool:
+        """Check if invite token has expired."""
+        return timezone.now() > self.expires_at
+
+    @classmethod
+    def generate_token(cls) -> str:
+        """Generate a secure 64-char invite token."""
+        return secrets.token_urlsafe(48)
