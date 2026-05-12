@@ -104,3 +104,67 @@ class TrackedSymbolsView(APIView):
         if bridged_response is not None:
             return bridged_response
         return Response({'detail': 'Feature not yet available in SaaS.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class IntradayPricesView(APIView):
+    """
+    GET /core/v1/market-data/intraday-prices/{symbol}/
+
+    Phase 1: Bridge to legacy chart endpoint.
+    Phase 2: Replace with native vnbroker adapter.
+
+    Query params (forwarded to legacy):
+        timeframe: 1m|5m|15m|1H|2H|4H|D|W|M  (default: 1H)
+        days: int  (default: 180)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, symbol):
+        symbol = symbol.upper()
+        bridged = legacy_bridge_response(
+            request,
+            f'/api/stock-management/stocks/{symbol}/chart/',
+            unavailable_message='Legacy intraday chart bridge hiện không khả dụng.',
+        )
+        if bridged is not None and bridged.status_code < 500:
+            return bridged
+        return Response({
+            'symbol': symbol,
+            'days': 0,
+            'timeframe': request.query_params.get('timeframe', '1H'),
+            'interval': 'n/a',
+            'points': [],
+            'technical': {},
+            'source': 'bridge_unavailable',
+        })
+
+
+class IntradayTapeView(APIView):
+    """
+    GET /core/v1/market-data/intraday-tape/{symbol}/
+
+    Phase 1: Bridge to legacy intraday endpoint.
+    Phase 2: Replace with native tick stream.
+
+    Query params (forwarded to legacy):
+        page_size: int  (default: 50)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, symbol):
+        symbol = symbol.upper()
+        bridged = legacy_bridge_response(
+            request,
+            f'/api/realtime/intraday/{symbol}/',
+            unavailable_message='Legacy intraday tape bridge hiện không khả dụng.',
+        )
+        if bridged is not None and bridged.status_code < 500:
+            return bridged
+        return Response({
+            'symbol': symbol,
+            'trades': [],
+            'total': 0,
+            'source': 'bridge_unavailable',
+            'stale': True,
+            'fetched_at': None,
+        })
