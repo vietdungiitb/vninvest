@@ -63,7 +63,7 @@ DoD: Có log truy vết provider decision mỗi chu kỳ
 
 ## P3 — Manual Trigger Framework
 
-- [ ] `SBMP-P3.1` API trigger thủ công cho user/admin
+- [x] `SBMP-P3.1` API trigger thủ công cho user/admin
 Owner: Backend  
 DoD: API có auth, entitlement, quota gate
 

@@ -1,17 +1,17 @@
-# 2026-05-11 — P2.4 Provider Routing Audit Trail ✅
+# 2026-05-12 — P3.1 Manual Trigger API ✅
 
-Status: provider benchmark runs now emit a phase-tagged audit payload with ranked providers, chosen provider, fallback provider, and quality scores for each cycle.
+Status: advisory manual refresh is now a tenant-aware trigger API with entitlement, quota, cooldown, and audit gates, and it records per-user pending trigger rows for traceability.
 
 What was changed:
-- Extended `build_runtime_recommendation` to include a phase-aware `decision_audit` payload and a resolved `market_phase` field.
-- Kept provider ranking scoped to the active market phase so the audit trail matches the selection decision.
-- Added regression coverage for both explicit phase input and implicit current-phase resolution.
+- Hardened `AdvisoryRefreshView` into the manual trigger API for advisory generation.
+- Added tenant entitlement, per-period quota, cooldown, and audit logging gates.
+- Changed advisory triggers to create per-user pending records and return a traceable `task_id`.
 
 Validation:
-- `manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb` passed with 9 tests green.
+- `manage.py test tests.test_advisory_api_routes --keepdb` passed with 4 tests green.
 
 Residual risk:
-- P3.1 manual trigger API remains open.
+- P3.2 manual_on_demand queue + priority rules remains open.
 
 # 2026-05-11 — P2.2 Market-Phase Resolver ✅
 

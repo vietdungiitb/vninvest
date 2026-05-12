@@ -1,22 +1,23 @@
-# AUDIT FILE LIST (2026-05-11-P2.4-PROVIDER-ROUTING-AUDIT-TRAIL)
+# AUDIT FILE LIST (2026-05-12-P3.1-MANUAL-TRIGGER-API)
 
 Muc tieu:
-- Ghi log truy vet provider decision moi chu ky trong benchmark report voi phase tag va ranked providers.
-- Giu selection scope theo market phase de audit payload khop voi decision thuc te.
+- Hardening advisory refresh thanh manual trigger API co auth, entitlement, quota, cooldown, va audit gates.
+- Ghi trace per-user pending advisory rows de co handoff cho status/retry o slice sau.
 
 Files changed:
-- [backend/portfolio/vnbroker_provider_benchmark.py](backend/portfolio/vnbroker_provider_benchmark.py) (MODIFIED)
-- [backend/portfolio/tests/test_vnbroker_provider_quality.py](backend/portfolio/tests/test_vnbroker_provider_quality.py) (MODIFIED)
+- [packages/core/backend/src/advisory/views.py](packages/core/backend/src/advisory/views.py) (MODIFIED)
+- [packages/core/backend/tests/test_advisory_api_routes.py](packages/core/backend/tests/test_advisory_api_routes.py) (NEW)
+- [packages/core/backend/tests/__init__.py](packages/core/backend/tests/__init__.py) (NEW)
 - [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
 - [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (MODIFIED)
-- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
 - [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
+- [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
 
 Validation:
-- PASSED: `manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb`.
+- PASSED: `manage.py test tests.test_advisory_api_routes --keepdb` after making `packages/core/backend/tests` importable.
 
 Residual risk:
-- P3.1 manual trigger API remains open.
+- P3.2 manual_on_demand queue + priority rules remains open.
 
 # AUDIT FILE LIST (2026-05-11-P2.2-MARKET-PHASE-RESOLVER)
 

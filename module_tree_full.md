@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-12 07:39:16`
+Generated at: `2026-05-12 07:54:10`
 
 ## Summary
 
-- Total modules: 1036
-- Python modules: 536
+- Total modules: 1038
+- Python modules: 538
 - JS/TS modules: 500
-- Total classes: 861
-- Total functions: 2850
-- Total top-level variables: 4534
+- Total classes: 862
+- Total functions: 2855
+- Total top-level variables: 4538
 
 ## Python Modules
 
@@ -2542,6 +2542,10 @@ Generated at: `2026-05-12 07:39:16`
   - `AdvisoryHistoryView` -> methods: `get`
   - `AdvisoryLatestView` -> methods: `get`
   - `AdvisoryRefreshView` -> methods: `post`
+- Functions:
+  - `_get_tenant`, `_manual_trigger_period`, `_manual_trigger_priority`, `_manual_trigger_quota_limit`, `_record_manual_trigger_audit`
+- Top-level variables:
+  - `_MANUAL_TRIGGER_BLOCKED_STATUSES`, `_MANUAL_TRIGGER_PLAN_LIMITS`, `_MANUAL_TRIGGER_PRIORITY`
 
 ### `packages/core/backend/src/commercial/__init__.py`
 
@@ -3491,6 +3495,10 @@ Generated at: `2026-05-12 07:39:16`
 - Top-level variables:
   - `application`
 
+### `packages/core/backend/tests/__init__.py`
+
+- No parseable top-level symbols found
+
 ### `packages/core/backend/tests/test_admin_ops_contract_api.py`
 
 - Classes:
@@ -3509,6 +3517,13 @@ Generated at: `2026-05-12 07:39:16`
 
 - Classes:
   - `CoreAdminRouteTests` -> methods: `test_admin_login_page_is_servable`, `test_admin_root_redirects_to_login`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_advisory_api_routes.py`
+
+- Classes:
+  - `AdvisoryManualTriggerApiTests` -> methods: `_create_quota_record`, `_current_period`, `setUp`, `test_advisory_refresh_enforces_cooldown_between_manual_triggers`, `test_advisory_refresh_rejects_suspended_tenant`, `test_advisory_refresh_rejects_when_quota_is_exhausted`, `test_advisory_refresh_route_triggers_pending_job_and_records_audit`
 - Top-level variables:
   - `_src_dir`
 

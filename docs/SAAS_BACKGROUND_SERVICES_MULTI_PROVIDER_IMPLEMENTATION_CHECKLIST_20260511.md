@@ -251,7 +251,7 @@ docker exec vninvest-dev-core-beat python manage.py check_scheduler_queue_drift 
 
 After P0.1-P0.3:
 - Proceed to P1.1: Define queue map (already in P0)
-- Proceed to P3.1: Manual trigger API (P1.1-P2.4 already aligned)
+- Proceed to P3.2: Queue manual_on_demand + priority rules (P1.1-P3.1 already aligned)
 
 ---
 

@@ -6,15 +6,88 @@ Endpoints:
   POST /core/v1/advisory/refresh/<symbol>/  — request advisory generation
   GET  /core/v1/advisory/history/<symbol>/  — paginated AdvisoryRecord history
 """
-from datetime import date as _date
+from calendar import monthrange
+from datetime import date as _date, timedelta
 
 from django.conf import settings as django_settings
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from commercial.models import QuotaRecord
+from identity_access.models import CoreTenant
+from ops_audit.models import AuditEvent
+
 from .models import AdvisoryRecord, AdvisorySession
 from .serializers import AdvisoryRecordSerializer
+
+
+_MANUAL_TRIGGER_PLAN_LIMITS = {
+    CoreTenant.PlanChoices.FREE: 3,
+    CoreTenant.PlanChoices.STARTER: 10,
+    CoreTenant.PlanChoices.PRO: 25,
+    CoreTenant.PlanChoices.ENTERPRISE: -1,
+    CoreTenant.PlanChoices.CUSTOM: -1,
+    CoreTenant.PlanChoices.INTERNAL: -1,
+}
+
+_MANUAL_TRIGGER_PRIORITY = {
+    CoreTenant.PlanChoices.FREE: 'community',
+    CoreTenant.PlanChoices.STARTER: 'team',
+    CoreTenant.PlanChoices.PRO: 'pro',
+    CoreTenant.PlanChoices.ENTERPRISE: 'team',
+    CoreTenant.PlanChoices.CUSTOM: 'team',
+    CoreTenant.PlanChoices.INTERNAL: 'operator',
+}
+
+_MANUAL_TRIGGER_BLOCKED_STATUSES = {
+    CoreTenant.StatusChoices.SUSPENDED,
+    CoreTenant.StatusChoices.DEPROVISIONED,
+    CoreTenant.StatusChoices.PENDING_ACTIVATION,
+}
+
+
+def _get_tenant(user):
+    try:
+        return user.core_tenant
+    except CoreTenant.DoesNotExist:
+        return None
+
+
+def _manual_trigger_period(tenant: CoreTenant, session_date: _date) -> tuple[_date, _date]:
+    if tenant.billing_period_start and tenant.billing_period_end:
+        if tenant.billing_period_start <= session_date <= tenant.billing_period_end:
+            return tenant.billing_period_start, tenant.billing_period_end
+
+    period_start = _date(session_date.year, session_date.month, 1)
+    period_end = _date(session_date.year, session_date.month, monthrange(session_date.year, session_date.month)[1])
+    return period_start, period_end
+
+
+def _manual_trigger_quota_limit(tenant: CoreTenant) -> int:
+    return int(_MANUAL_TRIGGER_PLAN_LIMITS.get(str(tenant.plan), 3))
+
+
+def _manual_trigger_priority(tenant: CoreTenant) -> str:
+    return str(_MANUAL_TRIGGER_PRIORITY.get(str(tenant.plan), 'community'))
+
+
+def _record_manual_trigger_audit(*, request, tenant: CoreTenant | None, symbol: str, session_date: _date, action: str, metadata: dict) -> None:
+    try:
+        AuditEvent.objects.create(
+            actor_user_id=request.user.id if request.user.is_authenticated else None,
+            actor_label=request.user.username if request.user.is_authenticated else '',
+            tenant_id=str(getattr(tenant, 'public_id', '') or ''),
+            action=action,
+            resource_type='manual_trigger',
+            resource_id=f'{symbol}:{session_date.isoformat()}',
+            metadata=metadata,
+        )
+    except Exception:
+        # Audit must not block manual trigger flows.
+        pass
 
 
 class AdvisoryLatestView(APIView):
@@ -42,14 +115,78 @@ class AdvisoryRefreshView(APIView):
     """
     Create a pending AdvisoryRecord to trigger async generation.
 
-    Actual generation is handled by a Celery task (Phase 3 shadow run not yet cutover).
-    Returns 202 with the pending record.
+    The endpoint acts as the manual trigger API for advisory generation and
+    enforces tenant entitlement, quota, cooldown, and audit logging.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, symbol):
         symbol = symbol.upper()
         session_date = str(_date.today())
+        session_date_obj = _date.today()
+        tenant = _get_tenant(request.user)
+
+        if tenant is None:
+            return Response(
+                {'detail': 'Không tìm thấy tenant của người dùng hiện tại.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if tenant.status in _MANUAL_TRIGGER_BLOCKED_STATUSES:
+            _record_manual_trigger_audit(
+                request=request,
+                tenant=tenant,
+                symbol=symbol,
+                session_date=session_date_obj,
+                action='access',
+                metadata={
+                    'job_key': 'advisory_refresh',
+                    'decision': 'blocked',
+                    'reason': 'tenant_status',
+                    'tenant_status': tenant.status,
+                    'tenant_plan': tenant.plan,
+                },
+            )
+            return Response(
+                {'detail': 'Tenant hiện tại chưa đủ điều kiện để trigger manual job.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        priority_tier = _manual_trigger_priority(tenant)
+        cooldown_seconds = max(0, int(getattr(django_settings, 'ADVISORY_MANUAL_TRIGGER_COOLDOWN_SECONDS', 60)))
+        if cooldown_seconds > 0:
+            cooldown_cutoff = timezone.now() - timedelta(seconds=cooldown_seconds)
+            recent_trigger = (
+                AdvisoryRecord.objects
+                .filter(user=request.user, symbol=symbol, session_date=session_date)
+                .order_by('-created_at', '-pk')
+                .first()
+            )
+            if recent_trigger is not None and recent_trigger.created_at and recent_trigger.created_at >= cooldown_cutoff:
+                retry_after = max(1, int(cooldown_seconds - (timezone.now() - recent_trigger.created_at).total_seconds()))
+                _record_manual_trigger_audit(
+                    request=request,
+                    tenant=tenant,
+                    symbol=symbol,
+                    session_date=session_date_obj,
+                    action='access',
+                    metadata={
+                        'job_key': 'advisory_refresh',
+                        'decision': 'blocked',
+                        'reason': 'cooldown',
+                        'retry_after_seconds': retry_after,
+                        'priority_tier': priority_tier,
+                        'tenant_plan': tenant.plan,
+                    },
+                )
+                return Response(
+                    {
+                        'detail': f'Vui lòng chờ {retry_after} giây trước khi trigger lại {symbol}.',
+                        'retry_after_seconds': retry_after,
+                        'cooldown_seconds': cooldown_seconds,
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
 
         # SFI-B5: Token budget check — block request if today's sessions have exceeded budget.
         token_budget = getattr(django_settings, 'ADVISORY_TOKEN_BUDGET', 2000)
@@ -60,6 +197,22 @@ class AdvisoryRefreshView(APIView):
         )
         total_tokens = sum(tokens_used_today)
         if total_tokens >= token_budget:
+            _record_manual_trigger_audit(
+                request=request,
+                tenant=tenant,
+                symbol=symbol,
+                session_date=session_date_obj,
+                action='access',
+                metadata={
+                    'job_key': 'advisory_refresh',
+                    'decision': 'blocked',
+                    'reason': 'token_budget',
+                    'tokens_used': total_tokens,
+                    'token_budget': token_budget,
+                    'priority_tier': priority_tier,
+                    'tenant_plan': tenant.plan,
+                },
+            )
             return Response(
                 {
                     'detail': f'Token budget ({token_budget}) đã được sử dụng hết trong ngày hôm nay.',
@@ -69,17 +222,120 @@ class AdvisoryRefreshView(APIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
-        record, created = AdvisoryRecord.objects.get_or_create(
+        quota_start, quota_end = _manual_trigger_period(tenant, session_date_obj)
+        quota_defaults = {
+            'api_calls_used': 0,
+            'api_calls_limit': _manual_trigger_quota_limit(tenant),
+            'symbols_used': 0,
+            'symbols_limit': -1,
+            'users_used': 0,
+            'users_limit': -1,
+            'storage_mb_used': 0,
+            'storage_mb_limit': -1,
+        }
+
+        with transaction.atomic():
+            quota_record, _ = QuotaRecord.objects.get_or_create(
+                tenant=tenant,
+                period_start=quota_start,
+                period_end=quota_end,
+                defaults=quota_defaults,
+            )
+            quota_limit = quota_record.api_calls_limit
+            if quota_limit < 0:
+                quota_limit = _manual_trigger_quota_limit(tenant)
+
+            if quota_limit >= 0 and quota_record.api_calls_used >= quota_limit:
+                _record_manual_trigger_audit(
+                    request=request,
+                    tenant=tenant,
+                    symbol=symbol,
+                    session_date=session_date_obj,
+                    action='access',
+                    metadata={
+                        'job_key': 'advisory_refresh',
+                        'decision': 'blocked',
+                        'reason': 'quota_exhausted',
+                        'quota_period_start': quota_start.isoformat(),
+                        'quota_period_end': quota_end.isoformat(),
+                        'quota_used': quota_record.api_calls_used,
+                        'quota_limit': quota_limit,
+                        'priority_tier': priority_tier,
+                        'tenant_plan': tenant.plan,
+                    },
+                )
+                return Response(
+                    {
+                        'detail': 'Quota manual trigger đã hết cho chu kỳ hiện tại.',
+                        'quota': {
+                            'period_start': quota_start.isoformat(),
+                            'period_end': quota_end.isoformat(),
+                            'used': quota_record.api_calls_used,
+                            'limit': quota_limit,
+                        },
+                    },
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+
+            record = AdvisoryRecord.objects.create(
+                symbol=symbol,
+                session_date=session_date,
+                user=request.user,
+                status='pending',
+                ai_model='',
+                advisory_text='',
+                context_snapshot={
+                    'manual_trigger': {
+                        'job_key': 'advisory_refresh',
+                        'tenant_plan': tenant.plan,
+                        'tenant_status': tenant.status,
+                        'priority_tier': priority_tier,
+                    }
+                },
+                tokens_used=0,
+            )
+
+            quota_record.api_calls_used += 1
+            quota_record.save(update_fields=['api_calls_used', 'updated_at'])
+
+        audit_metadata = {
+            'job_key': 'advisory_refresh',
+            'decision': 'accepted',
+            'task_id': str(record.advisory_id),
+            'priority_tier': priority_tier,
+            'tenant_plan': tenant.plan,
+            'tenant_status': tenant.status,
+            'quota_period_start': quota_start.isoformat(),
+            'quota_period_end': quota_end.isoformat(),
+            'quota_used_after': quota_record.api_calls_used,
+            'quota_limit': quota_limit,
+            'cooldown_seconds': cooldown_seconds,
+        }
+        _record_manual_trigger_audit(
+            request=request,
+            tenant=tenant,
             symbol=symbol,
-            session_date=session_date,
-            status='pending',
-            defaults={
-                'user': request.user,
-                'ai_model': '',
-            },
+            session_date=session_date_obj,
+            action='create',
+            metadata=audit_metadata,
         )
-        code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        return Response(AdvisoryRecordSerializer(record).data, status=code)
+
+        response_data = AdvisoryRecordSerializer(record).data
+        response_data['task_id'] = str(record.advisory_id)
+        response_data['manual_trigger'] = {
+            'job_key': 'advisory_refresh',
+            'priority_tier': priority_tier,
+            'quota': {
+                'period_start': quota_start.isoformat(),
+                'period_end': quota_end.isoformat(),
+                'used': quota_record.api_calls_used,
+                'limit': quota_limit,
+            },
+            'cooldown_seconds': cooldown_seconds,
+            'tenant_plan': tenant.plan,
+            'tenant_status': tenant.status,
+        }
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 class AdvisoryHistoryView(APIView):
