@@ -4,6 +4,7 @@ User Workspace domain models for packages/core.
 Portfolio, Transaction, Watchlist/WatchlistItem replacing legacy counterparts.
 
 ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
+TENANT ISOLATION: All user-scoped models now have explicit tenant FK to identity_access.CoreTenant.
 """
 from django.contrib.auth.models import User
 from django.db import models
@@ -14,6 +15,7 @@ class Portfolio(models.Model):
     """
     Danh mục đầu tư của một người dùng trong core SaaS.
     Mirrors legacy Portfolio model.
+    TENANT ISOLATION: explicit FK to CoreTenant via tenant field.
     """
 
     user = models.ForeignKey(
@@ -21,6 +23,15 @@ class Portfolio(models.Model):
         on_delete=models.CASCADE,
         related_name='core_portfolios',
         verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='core_portfolios',
+        null=True,
+        blank=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant owner of this portfolio. Must be set after migration.',
     )
     name = models.CharField(max_length=100, verbose_name='Tên danh mục')
     description = models.TextField(blank=True, default='', verbose_name='Mô tả')
@@ -89,6 +100,7 @@ class Watchlist(models.Model):
     """
     Danh sách theo dõi cổ phiếu cá nhân.
     Mirrors legacy WatchlistGroup model.
+    TENANT ISOLATION: explicit FK to CoreTenant via tenant field.
     """
 
     user = models.ForeignKey(
@@ -96,6 +108,15 @@ class Watchlist(models.Model):
         on_delete=models.CASCADE,
         related_name='core_watchlists',
         verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='core_watchlists',
+        null=True,
+        blank=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant owner of this watchlist. Must be set after migration.',
     )
     name = models.CharField(max_length=100, verbose_name='Tên danh sách')
     description = models.TextField(blank=True, default='', verbose_name='Mô tả')
@@ -136,6 +157,84 @@ class WatchlistItem(models.Model):
 
     def __str__(self) -> str:
         return f'{self.symbol} ({self.watchlist.name})'
+
+
+class PriceAlert(models.Model):
+    """
+    Cảnh báo giá cho một mã cổ phiếu.
+    Mirrors legacy PriceAlertRule model.
+    TENANT ISOLATION: explicit FK to CoreTenant via tenant field.
+    """
+
+    class AlertType(models.TextChoices):
+        ABOVE = 'ABOVE', 'Giá vượt quá'
+        BELOW = 'BELOW', 'Giá giảm dưới'
+        EQUAL = 'EQUAL', 'Bằng giá'
+
+    class AlertStatus(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Đang hoạt động'
+        TRIGGERED = 'TRIGGERED', 'Đã kích hoạt'
+        EXPIRED = 'EXPIRED', 'Hết hạn'
+        DISABLED = 'DISABLED', 'Vô hiệu'
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='core_price_alerts',
+        verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='core_price_alerts',
+        null=True,
+        blank=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant owner of this price alert. Must be set after migration.',
+    )
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    alert_type = models.CharField(
+        max_length=10,
+        choices=AlertType.choices,
+        default=AlertType.ABOVE,
+        verbose_name='Loại cảnh báo',
+    )
+    price_threshold = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        verbose_name='Ngưỡng giá (VNĐ)',
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=AlertStatus.choices,
+        default=AlertStatus.ACTIVE,
+        db_index=True,
+        verbose_name='Trạng thái',
+    )
+    is_enabled = models.BooleanField(default=True, db_index=True, verbose_name='Bật/Tắt')
+    
+    # Notification settings
+    notify_email = models.BooleanField(default=True, verbose_name='Thông báo qua email')
+    notify_sms = models.BooleanField(default=False, verbose_name='Thông báo qua SMS')
+    notify_push = models.BooleanField(default=False, verbose_name='Thông báo Push')
+    
+    # Tracking
+    last_triggered_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần kích hoạt cuối')
+    legacy_rule_id = models.IntegerField(null=True, blank=True, db_index=True, verbose_name='ID Rule cũ')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Cảnh báo giá'
+        verbose_name_plural = 'Cảnh báo giá'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'symbol', 'status']),
+            models.Index(fields=['tenant', 'symbol', 'status']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.symbol} {self.get_alert_type_display()} {self.price_threshold} ({self.user.username})'
 
 
 class SubAccount(models.Model):
