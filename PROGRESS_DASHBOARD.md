@@ -1,3 +1,53 @@
+# 2026-05-12 — SaaS Market Data API: Intraday Chart + Tape Bridge Endpoints ✅ 100% COMPLETE
+
+**Status**: SAAS-MIGRATION Market Data gap fill completed. Both intraday API contracts now live on core-api.
+
+**Scope**: Add `/core/v1/market-data/intraday-prices/{symbol}/` and `/core/v1/market-data/intraday-tape/{symbol}/` endpoints to unblock frontend from legacy fallbacks.
+
+**Execution Summary**:
+- **Slice 1 — Views + URLs** (30 min):
+  * Added `IntradayPricesView` to `market_data/views.py`: bridges to `/api/stock-management/stocks/{symbol}/chart/`
+  * Added `IntradayTapeView` to `market_data/views.py`: bridges to `/api/realtime/intraday/{symbol}/`
+  * Registered both routes in `market_data/urls.py`
+  * Commit: `e4d8d35e` (dev)
+
+- **Slice 2 — Unit Tests** (45 min):
+  * Added `IntradayApiRouteTests` class with 10 test methods
+  * Coverage: route resolution, auth required, bridge forwarding, graceful degradation, symbol normalization
+  * All 12 tests pass (2 existing + 10 new)
+  * Commit: `0075f518` (dev)
+
+- **Slice 3 — Integration + Validation** (30 min):
+  * Rebuilt dev stack: `docker compose up -d --build core-api`
+  * Smoke test: `GET /core/v1/market-data/intraday-prices/VCB/` → HTTP 200, schema OK
+  * Smoke test: `GET /core/v1/market-data/intraday-tape/VCB/` → HTTP 200, schema OK
+  * Auth test: Endpoints require Bearer token (HTTP 401 without auth)
+
+**Validation Evidence**:
+- ✅ Unit tests: 12/12 pass (`python manage.py test tests.test_market_data_api_routes`)
+- ✅ Route resolution: Both paths resolve to correct view classes
+- ✅ Auth enforcement: Missing token returns HTTP 401
+- ✅ Bridge forwarding verified: mock tests confirm correct legacy path
+- ✅ Graceful degradation: empty points/trades + `source=bridge_unavailable` when bridge off
+- ✅ Symbol normalization: lowercase `vcb` normalized to `VCB`
+- ✅ Live endpoint test: HTTP 200 responses with correct JSON schema
+
+**Architecture Decision (LOCKED)**:
+- Phase 1 (NOW): Bridge-first — proxy to legacy, no data migration needed
+- Phase 2 (post-decom): Replace with native vnbroker adapter + core DB
+
+**Files Changed**: 3 | **Lines**: +160 | **Migrations**: 0 | **New models**: 0
+
+**Success Criteria**: ✅ 100% MET
+- ✅ Both endpoints implemented and live
+- ✅ All unit tests passing
+- ✅ Auth required enforced
+- ✅ Graceful degradation when legacy unavailable
+- ✅ Dev stack rebuilt and verified
+- ✅ Code committed to dev branch
+
+---
+
 # 2026-05-12 — PAT Token Management UI: Pagination + Rotate Display Fix + Bulk Revoke ✅ 100% COMPLETE
 
 Status: All three UX improvements implemented, tested, and deployed to frontend.

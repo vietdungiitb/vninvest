@@ -1,3 +1,47 @@
+# SaaS Market Data API — Intraday Endpoints (Chart + Tape) ✅
+
+**Date**: 2026-05-12 | **Feature**: SAAS-MIGRATION Market Data  
+**Status**: Complete. Both intraday-prices and intraday-tape bridge endpoints implemented, tested, and deployed.
+
+**What changed**:
+- `packages/core/backend/src/market_data/views.py`: 
+  - Added `IntradayPricesView` (58 lines): bridges to `/api/stock-management/stocks/{symbol}/chart/`
+  - Added `IntradayTapeView` (57 lines): bridges to `/api/realtime/intraday/{symbol}/`
+  - Both use existing `legacy_bridge_response()` helper; graceful degradation when bridge unavailable
+
+- `packages/core/backend/src/market_data/urls.py`:
+  - Added route: `path('market-data/intraday-prices/<str:symbol>/', views.IntradayPricesView.as_view())`
+  - Added route: `path('market-data/intraday-tape/<str:symbol>/', views.IntradayTapeView.as_view())`
+
+- `packages/core/backend/tests/test_market_data_api_routes.py`:
+  - Added `IntradayApiRouteTests` class with 10 test methods:
+    - Route resolution (2 tests)
+    - Auth required (2 tests)
+    - Bridge forwarding with proper path validation (2 tests)
+    - Graceful degradation when bridge off (2 tests)
+    - Symbol normalization to uppercase (2 tests)
+
+**Validation**:
+- ✅ Unit tests: `python manage.py test tests.test_market_data_api_routes` → **12/12 PASS** (2 existing + 10 new)
+- ✅ Smoke test: `GET /core/v1/market-data/intraday-prices/VCB/` → HTTP 200, symbol=VCB, points=[], source=bridge_unavailable
+- ✅ Smoke test: `GET /core/v1/market-data/intraday-tape/VCB/` → HTTP 200, symbol=VCB, trades=[], source=bridge_unavailable
+- ✅ Smoke test: Auth required → HTTP 401 Unauthorized without token
+
+**Implementation evidence**:
+- Intraday Prices bridge target: `/api/stock-management/stocks/VCB/chart/` ✓
+- Intraday Tape bridge target: `/api/realtime/intraday/VCB/` ✓
+- Graceful degradation returns empty points/trades with source flag when legacy unavailable ✓
+- Query parameters forwarded to legacy (timeframe, days for prices; page_size for tape) ✓
+- Git commits:
+  - `e4d8d35e` (dev): feat(market_data) views + urls
+  - `0075f518` (dev): test(market_data) unit tests
+
+**Files changed**: 3 files | **Lines added**: 160 | **Migrations**: 0 | **New models**: 0
+
+**Residue and blockers**: None. Bridge-first approach unblocks frontend immediately. Phase 2 (native vnbroker adapter) after legacy decommission.
+
+---
+
 # 2026-05-12 — PAT Token Management UI: Pagination, Rotate Token Display, Bulk Revoke ✅
 
 Status: Complete. All three UX improvements implemented, tested, and deployed.
