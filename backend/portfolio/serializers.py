@@ -2,8 +2,27 @@
 serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watchlist, UserConfig.
 """
 
+import sys
+import os
+
 from rest_framework import serializers
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule, RuntimeVnbrokerConfig, DNSECredential
+
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import Portfolio, Watchlist, PriceAlert, WatchlistItem
+except ImportError as e:
+    # Fallback to legacy models if core not available (dev environment fallback)
+    from .models import Portfolio, WatchlistGroup as Watchlist, WatchlistItem, PriceAlertRule as PriceAlert  # noqa: F401
+
+# Legacy models (remaining)
+from .models import Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, RuntimeVnbrokerConfig, DNSECredential
 from .models import AICommandCenterAuditLog, AICommandCenterConfig
 from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, LegalPage
 from .models import ScreenerRule, CrawlJob, CrawlSchedule, CrawlRun, CrawlAuditLog, SignalServiceRun
@@ -562,31 +581,33 @@ class TrackedSymbolSerializer(serializers.Serializer):
 
 
 class PriceAlertRuleSerializer(serializers.ModelSerializer):
-    current_price = serializers.FloatField(read_only=True, allow_null=True)
-    is_triggered = serializers.BooleanField(read_only=True)
+    """DRF Serializer cho PriceAlert (core model)."""
+    alert_type_display = serializers.CharField(source='get_alert_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
 
     class Meta:
-        model = PriceAlertRule
+        model = PriceAlert
         fields = [
-            'id', 'symbol', 'condition', 'target_price', 'cooldown_seconds',
-            'is_active', 'last_triggered_at', 'created_at', 'updated_at',
-            'current_price', 'is_triggered',
+            'id', 'symbol', 'alert_type', 'alert_type_display', 'price_threshold',
+            'status', 'status_display', 'is_enabled', 'notify_email', 'notify_sms', 'notify_push',
+            'last_triggered_at', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'last_triggered_at', 'created_at', 'updated_at', 'current_price', 'is_triggered']
+        read_only_fields = ['id', 'status', 'last_triggered_at', 'created_at', 'updated_at']
 
     def validate_symbol(self, value):
         return value.upper().strip()
 
-    def validate_cooldown_seconds(self, value):
+    def validate_price_threshold(self, value):
         if value < 0:
-            raise serializers.ValidationError('Cooldown phải >= 0 giây.')
+            raise serializers.ValidationError('Ngưỡng giá phải >= 0.')
         return value
 
 class WatchlistGroupSerializer(serializers.ModelSerializer):
+    """DRF Serializer cho Watchlist (core model)."""
     items = serializers.SerializerMethodField()
 
     class Meta:
-        model = WatchlistGroup
+        model = Watchlist
         fields = ['id', 'name', 'description', 'created_at', 'items']
         read_only_fields = ['id', 'created_at']
 
@@ -594,11 +615,12 @@ class WatchlistGroupSerializer(serializers.ModelSerializer):
         return WatchlistItemSerializer(obj.items.all(), many=True).data
 
 class WatchlistItemSerializer(serializers.ModelSerializer):
-    group_name = serializers.CharField(source='group.name', read_only=True)
+    """DRF Serializer cho WatchlistItem (core model)."""
+    watchlist_name = serializers.CharField(source='watchlist.name', read_only=True)
     class Meta:
         model = WatchlistItem
-        fields = ['id', 'group', 'group_name', 'symbol', 'added_at']
-        read_only_fields = ['id', 'group', 'added_at']
+        fields = ['id', 'watchlist', 'watchlist_name', 'symbol', 'added_at']
+        read_only_fields = ['id', 'watchlist', 'added_at']
 
     def validate_symbol(self, value):
         value = value.upper().strip()

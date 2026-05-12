@@ -1,5 +1,7 @@
 from decimal import Decimal
 import logging
+import os
+import sys
 
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -9,8 +11,21 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import PriceAlert
+except ImportError:
+    from .models import PriceAlertRule as PriceAlert  # noqa: F401 - fallback
+
 from .services import get_price_changes, sync_market_groups_for_user, sync_watchlist_prices
-from .models import PriceAlertRule, SecuritiesGroup, TrackedSymbol, StockProfile
+from .models import SecuritiesGroup, TrackedSymbol, StockProfile
 from .serializers import PriceAlertRuleSerializer, TrackedSymbolSerializer
 from .view_helpers import _build_group_response, _build_price_alert_rule_row
 from .views_portfolio_watchlist import _acquire_sync_cooldown
@@ -511,7 +526,7 @@ class PriceAlertRuleListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        rules = list(PriceAlertRule.objects.filter(user=request.user).order_by('-created_at'))
+        rules = list(PriceAlert.objects.filter(user=request.user).order_by('-created_at'))
         price_map = get_price_changes([rule.symbol for rule in rules])
         rows = [_build_price_alert_rule_row(rule, price_map) for rule in rules]
         return Response(PriceAlertRuleSerializer(rows, many=True).data)
@@ -521,14 +536,14 @@ class PriceAlertRuleListCreateView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        rule, created = PriceAlertRule.objects.get_or_create(
+        # Core PriceAlert model uses alert_type (ABOVE/BELOW/EQUAL) and price_threshold
+        alert, created = PriceAlert.objects.get_or_create(
             user=request.user,
             symbol=serializer.validated_data['symbol'],
-            condition=serializer.validated_data['condition'],
-            target_price=serializer.validated_data['target_price'],
+            alert_type=serializer.validated_data['alert_type'],
+            price_threshold=serializer.validated_data['price_threshold'],
             defaults={
-                'cooldown_seconds': serializer.validated_data['cooldown_seconds'],
-                'is_active': serializer.validated_data['is_active'],
+                'is_enabled': serializer.validated_data.get('is_enabled', True),
             },
         )
 
@@ -538,8 +553,8 @@ class PriceAlertRuleListCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        price_map = get_price_changes([rule.symbol])
-        row = _build_price_alert_rule_row(rule, price_map)
+        price_map = get_price_changes([alert.symbol])
+        row = _build_price_alert_rule_row(alert, price_map)
         return Response(PriceAlertRuleSerializer(row).data, status=status.HTTP_201_CREATED)
 
 
@@ -548,21 +563,21 @@ class PriceAlertRuleDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, request, rule_id):
-        return generics.get_object_or_404(PriceAlertRule, id=rule_id, user=request.user)
+        return generics.get_object_or_404(PriceAlert, id=rule_id, user=request.user)
 
     def patch(self, request, rule_id):
-        rule = self.get_object(request, rule_id)
-        serializer = PriceAlertRuleSerializer(rule, data=request.data, partial=True)
+        alert = self.get_object(request, rule_id)
+        serializer = PriceAlertRuleSerializer(alert, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
-        price_map = get_price_changes([rule.symbol])
-        row = _build_price_alert_rule_row(rule, price_map)
+        price_map = get_price_changes([alert.symbol])
+        row = _build_price_alert_rule_row(alert, price_map)
         return Response(PriceAlertRuleSerializer(row).data)
 
     def delete(self, request, rule_id):
-        rule = self.get_object(request, rule_id)
-        rule.delete()
+        alert = self.get_object(request, rule_id)
+        alert.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -571,9 +586,9 @@ class PriceAlertRuleTriggerView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, rule_id):
-        rule = generics.get_object_or_404(PriceAlertRule, id=rule_id, user=request.user)
-        rule.last_triggered_at = timezone.now()
-        rule.save(update_fields=['last_triggered_at', 'updated_at'])
-        price_map = get_price_changes([rule.symbol])
-        row = _build_price_alert_rule_row(rule, price_map)
+        alert = generics.get_object_or_404(PriceAlert, id=rule_id, user=request.user)
+        alert.last_triggered_at = timezone.now()
+        alert.save(update_fields=['last_triggered_at', 'updated_at'])
+        price_map = get_price_changes([alert.symbol])
+        row = _build_price_alert_rule_row(alert, price_map)
         return Response(PriceAlertRuleSerializer(row).data)

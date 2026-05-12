@@ -1,4 +1,5 @@
 import os
+import sys
 from decimal import Decimal
 
 from django.core.cache import cache
@@ -9,6 +10,19 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import Portfolio, Watchlist, WatchlistItem
+except ImportError:
+    from .models import Portfolio, WatchlistGroup as Watchlist, WatchlistItem  # noqa: F401 - fallback
 
 from .analytics import (
     build_risk_metrics,
@@ -21,12 +35,9 @@ from .analytics import (
 from .services import sync_portfolio_prices, sync_watchlist_prices
 from .models import (
     DailyPrice,
-    Portfolio,
     SubAccount,
     Transaction,
     UserConfig,
-    WatchlistGroup,
-    WatchlistItem,
     StockProfile,
 )
 from .serializers import (
@@ -52,8 +63,8 @@ class WatchlistGroupListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         if not self.request.user or not self.request.user.is_authenticated:
-            return WatchlistGroup.objects.none()
-        return WatchlistGroup.objects.filter(user=self.request.user).prefetch_related('items')
+            return Watchlist.objects.none()
+        return Watchlist.objects.filter(user=self.request.user).prefetch_related('items')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -69,8 +80,8 @@ class WatchlistGroupDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         if not self.request.user or not self.request.user.is_authenticated:
-            return WatchlistGroup.objects.none()
-        return WatchlistGroup.objects.filter(user=self.request.user).prefetch_related('items')
+            return Watchlist.objects.none()
+        return Watchlist.objects.filter(user=self.request.user).prefetch_related('items')
 
 
 class WatchlistItemCreateView(generics.CreateAPIView):
@@ -79,8 +90,8 @@ class WatchlistItemCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         group_id = self.kwargs['group_id']
-        group = generics.get_object_or_404(WatchlistGroup, pk=group_id, user=self.request.user)
-        instance = serializer.save(group=group)
+        group = generics.get_object_or_404(Watchlist, pk=group_id, user=self.request.user)
+        instance = serializer.save(watchlist=group)
 
         from .services_symbol_engagement import activate_symbol_engagement
         from django.db import transaction as db_transaction
@@ -106,7 +117,7 @@ class WatchlistItemDeleteView(generics.DestroyAPIView):
     lookup_url_kwarg = 'item_id'
 
     def get_queryset(self):
-        return WatchlistItem.objects.filter(group__user=self.request.user)
+        return WatchlistItem.objects.filter(watchlist__user=self.request.user)
 
 
 class WatchlistSeedView(APIView):
