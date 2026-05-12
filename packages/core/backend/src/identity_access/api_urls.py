@@ -4,6 +4,7 @@ from vninvest_core import views_health
 from vninvest_core.utils.legacy_stubs import GenericEmptyListView, GenericEmptyStaffView
 
 from . import views_auth
+from . import onboarding_views
 
 urlpatterns = [
     # SFI-B2 native PAT login — used by both legacy frontend (compat) and new clients.
@@ -24,6 +25,9 @@ urlpatterns = [
     path('core/v1/health', views_health.health, name='api-core-health'),
     path('core/v1/capability-bootstrap', views_health.capability_bootstrap, name='api-core-capability-bootstrap'),
     path('core/v1/access/capabilities/', views_auth.capabilities_view, name='api-core-capabilities'),
+    # Onboarding endpoints (T08)
+    path('core/v1/onboarding/register', onboarding_views.register_tenant_view, name='api-onboarding-register'),
+    path('core/v1/onboarding/register/', onboarding_views.register_tenant_view, name='api-onboarding-register-slash'),
     # Partner / tenant-admin native mount — frontend calls /api/core/v1/partner/*
     path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner_api'), namespace='identity_access_partner_api')),
 
@@ -35,4 +39,4 @@ urlpatterns = [
     path('v1/admin/crawl/jobs/', GenericEmptyStaffView.as_view(), name='legacy-crawl-jobs'),
     path('v1/admin/crawl/jobs/<str:pk>/run/', GenericEmptyStaffView.as_view(), name='legacy-crawl-jobs-run'),
     path('health/realtime/', GenericEmptyStaffView.as_view(), name='legacy-health-realtime'),
-]
+]

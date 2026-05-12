@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-12 19:25:06`
+Generated at: `2026-05-12 19:28:52`
 
 ## Summary
 
-- Total modules: 1061
-- Python modules: 561
+- Total modules: 1063
+- Python modules: 563
 - JS/TS modules: 500
-- Total classes: 889
-- Total functions: 2891
-- Total top-level variables: 4549
+- Total classes: 891
+- Total functions: 2893
+- Total top-level variables: 4550
 
 ## Python Modules
 
@@ -2768,6 +2768,13 @@ Generated at: `2026-05-12 19:25:06`
 - Functions:
   - `_build_pat_secret`, `_extract_pat_prefix`, `_generate_public_id`, `_hash_pat_secret`
 
+### `packages/core/backend/src/identity_access/onboarding_views.py`
+
+- Classes:
+  - `RegisterTenantSerializer`
+- Functions:
+  - `_enqueue_welcome_email`, `register_tenant_view`
+
 ### `packages/core/backend/src/identity_access/partner_urls.py`
 
 - Top-level variables:
@@ -3688,6 +3695,13 @@ Generated at: `2026-05-12 19:25:06`
   - `MarketServingApiRouteTests` -> methods: `setUp`, `test_session_facts_list_and_detail_routes_are_native`, `test_symbol_snapshot_list_and_detail_routes_are_native`
 - Top-level variables:
   - `_src_dir`
+
+### `packages/core/backend/tests/test_onboarding_views.py`
+
+- Classes:
+  - `OnboardingRegisterTenantTest` -> methods: `setUp`, `test_register_tenant_creates_lifecycle_event`, `test_register_tenant_duplicate_409`, `test_register_tenant_max_length_display_name`, `test_register_tenant_missing_display_name_400`, `test_register_tenant_over_max_length_display_name`, `test_register_tenant_response_has_required_fields`, `test_register_tenant_success_creates_trial`, `test_register_tenant_unauthenticated_401`, `test_register_tenant_with_whitespace_display_name`
+- Top-level variables:
+  - `User`
 
 ### `packages/core/backend/tests/test_operator_contract_api.py`
 

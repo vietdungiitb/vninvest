@@ -2,6 +2,7 @@ from django.urls import path
 
 from . import views
 from . import views_auth
+from . import onboarding_views
 
 urlpatterns = [
     # Auth endpoints (Gate A2, A3)
@@ -14,6 +15,9 @@ urlpatterns = [
     # Capability bootstrap (used by packages/web coreAdapter at /core/v1/access/capabilities)
     path('access/capabilities', views_auth.capabilities_view, name='access-capabilities'),
     path('access/capabilities/', views_auth.capabilities_view, name='access-capabilities-slash'),
+    # Onboarding endpoints (T08)
+    path('onboarding/register', onboarding_views.register_tenant_view, name='onboarding-register'),
+    path('onboarding/register/', onboarding_views.register_tenant_view, name='onboarding-register-slash'),
     # Tenant & Service Account management
     path('tenant', views.TenantDetailView.as_view(), name='tenant-detail'),
     path('service-accounts', views.ServiceAccountListView.as_view(), name='service-account-list'),
