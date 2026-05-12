@@ -15,7 +15,14 @@ import secrets
 
 from django.contrib.auth import get_user_model
 
-from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
+try:
+    from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
+    HAS_IDENTITY_ACCESS = True
+except ImportError:
+    HAS_IDENTITY_ACCESS = False
+    CorePATCredential = None
+    CoreServiceAccount = None
+    CoreTenant = None
 
 User = get_user_model()
 

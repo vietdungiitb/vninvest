@@ -20,7 +20,8 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 try:
     from user_workspace.models import Portfolio
 except (ImportError, RuntimeError):
-    from .models import Portfolio  # noqa: F401 - fallback
+    class Portfolio:
+        pass
 
 # Legacy models (remaining)
 from .analytics import compute_holdings

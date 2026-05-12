@@ -16,14 +16,22 @@ from .models import (
     AdvisoryAggregateAuditLog,
     CorePATCredential,
     CoreServiceAccount,
-    CoreTenant,
     CrawlAuditLog,
     CrawlRun,
     SignalServiceRun,
     SystemAISettingsAuditLog,
     WhaleConfigAuditLog,
 )
-from .partner_tenant_context import resolve_partner_tenant_context
+
+try:
+    from .models import CoreTenant
+except ImportError:
+    CoreTenant = None
+
+try:
+    from .partner_tenant_context import resolve_partner_tenant_context
+except (ImportError, RuntimeError):
+    resolve_partner_tenant_context = None
 from .serializers import CrawlRunSerializer, SignalServiceRunSerializer
 from .views_partner_admin import PARTNER_USAGE_METERS, _build_plan_lifecycle_summary, _build_quota_snapshot_row, _build_subscription_summary
 

@@ -196,10 +196,8 @@ def _handle_portfolio(chat_id: int, user: User):
         try:
             from user_workspace.models import Watchlist
         except (ImportError, RuntimeError):
-            from portfolio.models import WatchlistGroup as Watchlist  # noqa: F401 - fallback
-        
-        groups = Watchlist.objects.filter(user=user)[:5]
-        if not groups:
+                class Watchlist:
+                    pass
             send_message(chat_id, '📂 Bạn chưa có danh mục nào. Tạo danh mục trên web app.')
             return
 

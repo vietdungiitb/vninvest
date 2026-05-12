@@ -14,7 +14,6 @@ import secrets
 from .ai_options import ADVISORY_CAPABILITY, PROVIDER_CHOICES, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
 from .vnbroker_runtime_config import default_vnbroker_source_config
 from .encryption_utils import decrypt_text, encrypt_text, hash_with_pepper
-from identity_access.models import CoreTenant
 
 # ============================================================================
 # OpenCore models - Import for Django to recognize them

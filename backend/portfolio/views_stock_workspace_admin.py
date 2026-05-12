@@ -22,7 +22,10 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 try:
     from user_workspace.models import Portfolio, WatchlistItem
 except (ImportError, RuntimeError):
-    from .models import Portfolio, WatchlistItem  # noqa: F401 - fallback
+    class Portfolio:
+        pass
+    class WatchlistItem:
+        pass
 
 # Legacy models (remaining)
 from .exceptions import ExternalSystemException, MarketDataValidationException

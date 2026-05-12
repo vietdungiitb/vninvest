@@ -22,7 +22,8 @@ try:
     from user_workspace.models import Watchlist
     _watchlist_model = Watchlist
 except (ImportError, RuntimeError):
-    from .models import WatchlistGroup as Watchlist  # noqa: F401 - fallback
+    class Watchlist:
+        pass
     _watchlist_model = Watchlist
 
 from .adapters.vnbroker_adapter import fetch_intraday_dataframe

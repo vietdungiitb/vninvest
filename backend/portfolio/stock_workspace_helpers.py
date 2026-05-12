@@ -17,7 +17,8 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 try:
     from user_workspace.models import WatchlistItem
 except (ImportError, RuntimeError):
-    from .models import WatchlistItem  # noqa: F401 - fallback
+    class WatchlistItem:
+        pass
 
 from .models import DailyPrice, SecuritiesGroup, StockProfile, TrackedSymbol
 from .services import get_price_changes

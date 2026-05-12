@@ -17,7 +17,8 @@ try:
     from user_workspace.models import Watchlist
     _watchlist_model = Watchlist
 except (ImportError, RuntimeError):
-    from portfolio.models import WatchlistGroup as Watchlist  # noqa: F401 - fallback
+    class Watchlist:
+        pass
     _watchlist_model = Watchlist
 
 from portfolio.models import TrackedSymbol

@@ -22,7 +22,12 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 try:
     from user_workspace.models import Portfolio, Watchlist, WatchlistItem
 except (ImportError, RuntimeError):
-    from .models import Portfolio, WatchlistGroup as Watchlist, WatchlistItem  # noqa: F401 - fallback
+    class Portfolio:
+        pass
+    class Watchlist:
+        pass
+    class WatchlistItem:
+        pass
 
 from .analytics import (
     build_risk_metrics,

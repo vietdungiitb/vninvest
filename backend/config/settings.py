@@ -123,11 +123,19 @@ INSTALLED_APPS = [
     'channels',
     'django_celery_beat',
     # Local
-    'identity_access',
-    'tenant_lifecycle',
     'portfolio',
     'support',
 ]
+
+# Conditionally add core apps if available
+_core_apps = ['identity_access', 'tenant_lifecycle']
+for app in _core_apps:
+    try:
+        __import__(app)
+        if app not in INSTALLED_APPS:
+            INSTALLED_APPS.insert(-2, app)
+    except ImportError:
+        pass
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -235,7 +243,7 @@ def _get_throttle_rate(env_var: str, default: str) -> str:
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-        'identity_access.permissions.IsTenantActive',
+        # 'identity_access.permissions.IsTenantActive',  # Only available with core
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         # PAT-only architecture: all tokens are issued by core-api as PATs (vni_ prefix).

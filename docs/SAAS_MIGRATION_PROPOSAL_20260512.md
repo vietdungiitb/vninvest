@@ -269,15 +269,15 @@ interface SymbolSnapshot {
 
 ### Backend Team
 
-| Task | Priority | Status |
-|---|---|---|
-| Tạo `/core/v1/market-data/symbols/` endpoint | P0 | ❌ |
-| Tạo `/core/v1/market-data/daily-prices/{symbol}/` endpoint | P0 | ❌ |
-| Seed VCB, TPB vào market_data_daily_price table | P0 | ❌ |
-| Tạo `/core/v1/symbol-snapshot/{symbol}/` endpoint | P0 | ❌ |
-| Tạo `/core/v1/market-data/intraday-prices/{symbol}/` endpoint | P1 | ❌ |
-| Tạo `/core/v1/market-data/intraday-tape/{symbol}/` endpoint | P1 | ❌ |
-| Seed VCB, TPB vào IntradayTick table | P1 | �� |
+| Task | Priority | Status | Handoff Doc |
+|---|---|---|---|
+| Tạo `/core/v1/market-data/symbols/` endpoint | P0 | ❌ | [SPEC](SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md) |
+| Tạo `/core/v1/market-data/daily-prices/{symbol}/` endpoint | P0 | ❌ | [SPEC](SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md) |
+| Seed VCB, TPB vào market_data_daily_price table | P0 | ❌ | [SPEC](SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md#4-data-migration--seeding) |
+| Tạo `/core/v1/symbol-snapshot/{symbol}/` endpoint | P0 | ❌ | [SPEC](SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md) |
+| **Tạo `/core/v1/market-data/intraday-prices/{symbol}/` endpoint** | **P0** | **🚀 DETAILED SPEC** | [FULL HANDOFF](SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md#2-endpoint-spec-1-intraday-ohlcv-bars) |
+| **Tạo `/core/v1/market-data/intraday-tape/{symbol}/` endpoint** | **P0** | **🚀 DETAILED SPEC** | [FULL HANDOFF](SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md#3-endpoint-spec-2-intraday-tape-tick-trades) |
+| Seed VCB, TPB vào IntradayTick table | P0 | ❌ | [SPEC](SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md#41-seed-requirements-critical-blocker) |
 
 ### Frontend Team
 
@@ -339,6 +339,77 @@ Phase 4: Cleanup (Day 5+)
 
 - Backend giữ backward compatible
 - Hoặc coordinate với frontend trước khi deploy
+
+---
+
+---
+
+## 🚀 DETAILED IMPLEMENTATION HANDOFF (2026-05-12)
+
+### Handoff Documents Created
+
+Gói handoff chi tiết gồm 2 tài liệu tham khảo:
+
+1. **[SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md](SAAS_MARKET_DATA_API_HANDOFF_INTRADAY_CHART_TAPE_20260512.md)**
+   - **90-page comprehensive spec** cho cả 2 intraday endpoints
+   - Covers: query params, response schemas, data source priority chain, unit normalization
+   - Includes: 5-day implementation roadmap (Phase A-E) với breaking points rõ ràng
+   - Contains: full testing strategy (unit + integration + load tests)
+   - Status: **🟢 READY FOR BACKEND TEAM EXECUTION**
+
+2. **[SAAS_MARKET_DATA_API_EXECUTION_EVIDENCE_TEMPLATE_20260512.md](SAAS_MARKET_DATA_API_EXECUTION_EVIDENCE_TEMPLATE_20260512.md)**
+   - Template để backend team report completion results
+   - Sections: test results, performance validation, data quality, sign-off
+   - Status: **🟢 TEMPLATE READY FOR TEAM**
+
+### Nội Dung Handoff Package
+
+✅ **Complete Schema Contracts**
+- TypeScript interfaces for all query + response types
+- Price unit normalization rules (THOUSAND_VND conversion)
+- Field-by-field documentation + examples
+
+✅ **Implementation Roadmap (7 days)**
+- Phase A: Scaffolding (Day 1) — Views + Serializers
+- Phase B: Data Layer (Day 2) — Seeding + Queries
+- Phase C: Core Logic (Day 3-4) — Full endpoint impl
+- Phase D: Integration (Day 5) — vnbroker + Redis
+- Phase E: Audit (Day 6-7) — Testing + Sign-off
+- Breaking points defined for each phase
+
+✅ **Comprehensive Test Strategy**
+- 45+ unit test cases (OHLC, pagination, auth, etc.)
+- Integration tests with pre-seeded data
+- Contract validation tests (schema matching)
+- Performance benchmarks (p95 < 500ms, 100 concurrent req/s)
+- Data quality checks (no duplicates, OHLC sanity)
+
+✅ **Data Requirements Specified**
+- Seed data checklist (VCB, TPB, FPT, SSI, VNM, VIC)
+- IntradayTick table structure confirmed (no schema changes)
+- OHLC aggregation logic provided (code snippet)
+- Unit conversion rules documented (price / 1000)
+
+✅ **Validation Checklist**
+- Functional: 8 requirements
+- Performance: 4 targets (p95, concurrent, memory)
+- Integration: 4 frontend touchpoints
+- Data quality: 4 sanity rules
+
+### Timeline
+
+**Backend Development**: 5-7 days  
+**Backend Testing**: 2 days  
+**Frontend Integration**: 2-3 days (can start once endpoints live)  
+**Total SaaS Cutover**: ~10 days  
+
+### Key Commitments
+
+✅ Frontend coreApiAdapter is single API client  
+✅ Backend only exposes `/core/v1/` endpoints  
+✅ No legacy fallback from frontend  
+✅ Schema locked (no breaking changes planned)  
+✅ Seed data ready (V CB, TPB validated)
 
 ---
 

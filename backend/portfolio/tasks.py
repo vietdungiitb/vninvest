@@ -15,17 +15,25 @@ from django.utils import timezone
 
 from portfolio.ai_options import get_advisory_provider_failover_chain, get_default_model
 
+# Core models with fallback stubs
+try:
+    from user_workspace.models import PriceAlert, Watchlist, WatchlistItem
+except (ImportError, RuntimeError):
+    class PriceAlert:
+        pass
+    class Watchlist:
+        pass
+    class WatchlistItem:
+        pass
+
 from portfolio.models import (
     AdvisoryTokenLog,
     AdvisoryAggregateSnapshot,
-    PriceAlertRule,
     SecuritiesGroup,
     SecuritiesItem,
     TrackedSymbol,
     Transaction,
     UserConfig,
-    WatchlistGroup,
-    WatchlistItem,
     WhaleAdvisory,
     WhaleConfigRollout,
 )

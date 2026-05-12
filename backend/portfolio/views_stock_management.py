@@ -22,7 +22,8 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 try:
     from user_workspace.models import PriceAlert
 except (ImportError, RuntimeError):
-    from .models import PriceAlertRule as PriceAlert  # noqa: F401 - fallback
+    class PriceAlert:
+        pass
 
 from .services import get_price_changes, sync_market_groups_for_user, sync_watchlist_prices
 from .models import SecuritiesGroup, TrackedSymbol, StockProfile

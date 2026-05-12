@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 
-from identity_access.models import CoreTenant
+try:
+    from identity_access.models import CoreTenant
+    HAS_CORETENANT = True
+except ImportError:
+    HAS_CORETENANT = False
+    CoreTenant = None
 
 
 @dataclass(frozen=True)
@@ -27,6 +32,9 @@ def _normalize_tenant_code(raw_value: str, fallback: str, owner_user_id: int) ->
 
 
 def resolve_partner_tenant_context(user) -> PartnerTenantContext:
+    if not HAS_CORETENANT:
+        raise RuntimeError('identity_access module not available. This function requires CoreTenant.')
+    
     owner_user_id = getattr(user, 'pk', None)
     if not owner_user_id:
         raise ValueError('owner_user must be saved before resolving CoreTenant.')

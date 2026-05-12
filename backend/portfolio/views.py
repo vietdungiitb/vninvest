@@ -78,7 +78,15 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 try:
     from user_workspace.models import Portfolio, Watchlist, PriceAlert, WatchlistItem
 except (ImportError, RuntimeError):
-    from .models import Portfolio, WatchlistGroup as Watchlist, WatchlistItem, PriceAlertRule as PriceAlert  # noqa: F401
+    # Models migrated to packages/core - stubs for dev environment
+    class Portfolio:
+        pass
+    class Watchlist:
+        pass
+    class PriceAlert:
+        pass
+    class WatchlistItem:
+        pass
 
 # Legacy models (remaining)
 from .models import Transaction, DailyPrice, IntradayTick, OrderFlowSignal, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, AdvisoryTokenLog, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, StockProfile, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory

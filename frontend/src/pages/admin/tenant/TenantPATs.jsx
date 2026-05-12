@@ -49,6 +49,11 @@ export default function TenantPATs() {
   const [submitting, setSubmitting] = useState(false);
   const [activeTokenId, setActiveTokenId] = useState('');
   const [secretReveal, setSecretReveal] = useState(null);
+  const [selectedTokenIds, setSelectedTokenIds] = useState(new Set());
+  const [revoking, setRevoking] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [issueForm, setIssueForm] = useState({
     serviceAccountId: '',
     scopeCodes: 'market:read, signals:read',
@@ -158,7 +163,10 @@ export default function TenantPATs() {
     setError('');
     try {
       const response = await rotateTenantPAT(tokenId, { grace_period_seconds: 3600 });
-      setSecretReveal(response.data.new_token);
+      setSecretReveal({
+        token: response.data.new_token || response.data.token,
+        token_prefix: response.data.new_token_prefix || response.data.token_prefix,
+      });
       await loadData();
     } catch (nextError) {
       setError(resolveErrorMessage(nextError, t('tenantPats.rotateError')));
@@ -181,6 +189,62 @@ export default function TenantPATs() {
       setError(resolveErrorMessage(nextError, t('tenantPats.revokeError')));
     } finally {
       setActiveTokenId('');
+    }
+  }
+
+  async function handleBulkRevoke() {
+    if (!canRevoke || selectedTokenIds.size === 0) {
+      setError(t('tenantPats.noTokensSelected'));
+      return;
+    }
+
+    const confirmed = window.confirm(
+      t('tenantPats.bulkRevokeWarning').replace('{{count}}', selectedTokenIds.size.toString())
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setRevoking(true);
+    setError('');
+    try {
+      const tokenIdsList = Array.from(selectedTokenIds);
+      await Promise.all(
+        tokenIdsList.map((tokenId) =>
+          revokeTenantPAT(tokenId, { reason: 'tenant_admin_bulk_revoke' })
+        )
+      );
+      setSelectedTokenIds(new Set());
+      await loadData();
+    } catch (nextError) {
+      setError(resolveErrorMessage(nextError, t('tenantPats.bulkRevokeError')));
+    } finally {
+      setRevoking(false);
+    }
+  }
+
+  function handleCopyToken(token) {
+    navigator.clipboard.writeText(token).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    });
+  }
+
+  function toggleTokenSelection(tokenId) {
+    const newSelected = new Set(selectedTokenIds);
+    if (newSelected.has(tokenId)) {
+      newSelected.delete(tokenId);
+    } else {
+      newSelected.add(tokenId);
+    }
+    setSelectedTokenIds(newSelected);
+  }
+
+  function toggleSelectAll() {
+    if (selectedTokenIds.size === tokens.length) {
+      setSelectedTokenIds(new Set());
+    } else {
+      setSelectedTokenIds(new Set(tokens.map((t) => t.id)));
     }
   }
 
@@ -223,12 +287,32 @@ export default function TenantPATs() {
           </div>
         </section>
 
-        {secretReveal?.secret ? (
+        {secretReveal?.token ? (
           <section className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200">{t('tenantPats.secretTitle')}</p>
-            <p className="mt-2 text-sm text-emerald-50">{t('tenantPats.secretHint')}</p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200">{t('tenantPats.secretTitle')}</p>
+                <p className="mt-2 text-sm text-emerald-50">{t('tenantPats.secretHint')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSecretReveal(null)}
+                className="rounded-full border border-slate-500/40 bg-slate-700/30 px-3 py-1.5 text-xs font-semibold text-slate-100 transition-colors hover:border-slate-400 hover:bg-slate-600/40"
+              >
+                {t('tenantPats.closeAction')}
+              </button>
+            </div>
             <div className="mt-4 rounded-2xl border border-emerald-500/25 bg-slate-950/70 p-4">
-              <p className="break-all font-mono text-sm text-emerald-100">{secretReveal.secret}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="break-all font-mono text-sm text-emerald-100">{secretReveal.token}</p>
+                <button
+                  type="button"
+                  onClick={() => handleCopyToken(secretReveal.token)}
+                  className="flex-shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/25"
+                >
+                  {copySuccess ? t('tenantPats.copySuccess') : t('tenantPats.copyTokenAction')}
+                </button>
+              </div>
             </div>
           </section>
         ) : null}
@@ -307,21 +391,82 @@ export default function TenantPATs() {
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">{t('tenantPats.listTitle')}</p>
               {loading ? <span className="text-xs text-slate-500">{t('common.loading')}</span> : null}
             </div>
+            {tokens.length > 0 && canRevoke ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-b border-slate-800 pb-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedTokenIds.size === tokens.length && tokens.length > 0}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-950 text-emerald-600 transition-colors focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs font-semibold text-slate-300">{t('tenantPats.selectAllLabel')}</span>
+                </label>
+                {selectedTokenIds.size > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleBulkRevoke}
+                    disabled={revoking}
+                    className="ml-auto rounded-full border border-rose-500/35 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-100 transition-colors hover:border-rose-400 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {revoking ? t('tenantPats.submitting') : t('tenantPats.bulkRevokeAction')} ({selectedTokenIds.size})
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            {tokens.length > 0 && !loading ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <label className="flex items-center gap-2 text-xs text-slate-300">
+                  <span>{t('tenantPats.itemsPerPageLabel')}:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none transition-colors focus:border-emerald-400"
+                  >
+                    <option value={5}>{t('tenantPats.pageSize5')}</option>
+                    <option value={10}>{t('tenantPats.pageSize10')}</option>
+                    <option value={15}>{t('tenantPats.pageSize15')}</option>
+                    <option value={20}>{t('tenantPats.pageSize20')}</option>
+                  </select>
+                </label>
+                <span className="text-xs text-slate-400">
+                  {t('tenantPats.showing')} {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, tokens.length)} {t('tenantPats.of')} {tokens.length}
+                </span>
+              </div>
+            ) : null}
             <div className="mt-4 space-y-3">
               {!loading && tokens.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/60 px-4 py-5 text-sm text-slate-500">
                   {t('tenantPats.emptyState')}
                 </div>
               ) : null}
-              {tokens.map((item) => {
+              {tokens
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((item) => {
                 const serviceAccount = serviceAccountMap.get(item.service_account_id);
                 const rotating = activeTokenId === item.id;
+                const isSelected = selectedTokenIds.has(item.id);
                 return (
-                  <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div key={item.id} className={`rounded-2xl border p-4 ${
+                    isSelected ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950/60'
+                  }`}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="font-mono text-sm text-emerald-100">{item.token_prefix}</p>
-                        <p className="mt-1 text-xs text-slate-500">{serviceAccount?.name || item.service_account_id}</p>
+                      <div className="flex items-start gap-3">
+                        {canRevoke && item.status !== 'revoked' ? (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleTokenSelection(item.id)}
+                            className="mt-1 h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-950 text-emerald-600 transition-colors focus:ring-2 focus:ring-emerald-500"
+                          />
+                        ) : null}
+                        <div>
+                          <p className="font-mono text-sm text-emerald-100">{item.token_prefix}</p>
+                          <p className="mt-1 text-xs text-slate-500">{serviceAccount?.name || item.service_account_id}</p>
+                        </div>
                       </div>
                       <div className="rounded-full border border-slate-700/70 bg-slate-900/80 px-3 py-1 text-xs font-semibold text-slate-100">
                         {item.status}
@@ -371,6 +516,32 @@ export default function TenantPATs() {
                 );
               })}
             </div>
+            {tokens.length > itemsPerPage && !loading ? (
+              <div className="mt-4 flex items-center justify-between border-t border-slate-800 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-full border border-slate-700/50 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t('tenantPats.previousPage')}
+                </button>
+                <span className="text-xs text-slate-400">
+                  {t('tenantPats.showing')} {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, tokens.length)} {t('tenantPats.of')} {tokens.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const totalPages = Math.ceil(tokens.length / itemsPerPage);
+                    setCurrentPage((p) => Math.min(totalPages, p + 1));
+                  }}
+                  disabled={currentPage >= Math.ceil(tokens.length / itemsPerPage)}
+                  className="rounded-full border border-slate-700/50 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t('tenantPats.nextPage')}
+                </button>
+              </div>
+            ) : null}
           </section>
         </div>
       </div>

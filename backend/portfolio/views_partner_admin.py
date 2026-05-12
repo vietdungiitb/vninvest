@@ -11,7 +11,19 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .authentication_partner import CorePartnerPATAuthentication
 from .opencore_revenue import DPIInvoice, DPISubscription
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant, UserConfig
+
+# Core models with fallback stubs
+try:
+    from identity_access.models import CoreTenant, CorePATCredential, CoreServiceAccount
+except (ImportError, RuntimeError):
+    class CoreTenant:
+        pass
+    class CorePATCredential:
+        pass
+    class CoreServiceAccount:
+        pass
+
+from .models import UserConfig
 from .partner_tenant_context import resolve_partner_tenant_context
 from .permissions import IsProPlan
 from .quota_service import get_usage

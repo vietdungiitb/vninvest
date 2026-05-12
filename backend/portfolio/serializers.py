@@ -18,9 +18,20 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 try:
     from user_workspace.models import Portfolio, Watchlist, PriceAlert, WatchlistItem
 except (ImportError, RuntimeError):
-    # Fallback to legacy models if core not available (dev environment fallback)
-    # RuntimeError: Models not in INSTALLED_APPS (dev environment)
-    from .models import Portfolio, WatchlistGroup as Watchlist, WatchlistItem, PriceAlertRule as PriceAlert  # noqa: F401
+    # Models migrated to packages/core/backend/src/user_workspace/models.py
+    # Create stubs to allow module import (dev environment without core)
+    class Portfolio:
+        """Stub for core Portfolio model"""
+        pass
+    class Watchlist:
+        """Stub for core Watchlist model"""
+        pass
+    class PriceAlert:
+        """Stub for core PriceAlert model"""
+        pass
+    class WatchlistItem:
+        """Stub for core WatchlistItem model"""
+        pass
 
 # Legacy models (remaining)
 from .models import Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, RuntimeVnbrokerConfig, DNSECredential

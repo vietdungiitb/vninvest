@@ -563,22 +563,6 @@ services:
     mem_limit: 256m
     cpus: 0.25
 
-  opencore-site:
-    container_name: vninvest-dev-opencore-site
-    build:
-      context: .
-      dockerfile: packages/opencore-site/Dockerfile.dev
-    ports:
-      - "${OPENCORE_SITE_PORT:-3007}:3007"
-    restart: unless-stopped
-    networks:
-      - vninvest_network
-    mem_limit: ${OPENCORE_SITE_MEM_LIMIT:-512m}
-    cpus: ${OPENCORE_SITE_CPUS:-0.5}
-    env_file: ./compose.dev.env
-    environment:
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
   frontend:
     container_name: vninvest-dev-frontend
     build:

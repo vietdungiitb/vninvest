@@ -20,7 +20,8 @@ try:
     from user_workspace.models import PriceAlert
     _USE_CORE_MODELS = True
 except (ImportError, RuntimeError):
-    from .models import PriceAlertRule as PriceAlert  # noqa: F401 - fallback
+    class PriceAlert:
+        pass
     _USE_CORE_MODELS = False
 
 from .models import SecuritiesGroup

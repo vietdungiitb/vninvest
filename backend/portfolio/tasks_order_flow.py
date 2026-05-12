@@ -20,7 +20,8 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 try:
     from user_workspace.models import WatchlistItem
 except (ImportError, RuntimeError):
-    from portfolio.models import WatchlistItem  # noqa: F401 - fallback
+    class WatchlistItem:
+        pass
 
 from portfolio.global_signal_policy_helpers import (
     get_global_signal_retention_policy,

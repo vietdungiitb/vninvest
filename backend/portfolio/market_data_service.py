@@ -41,6 +41,16 @@ from .domain_constants import (
 )
 from .exceptions import ExternalSystemException, MarketDataValidationException
 from .market_calendar import resolve_market_phase
+
+# Core models with fallback stubs
+try:
+    from user_workspace.models import Watchlist, WatchlistItem
+except (ImportError, RuntimeError):
+    class Watchlist:
+        pass
+    class WatchlistItem:
+        pass
+
 from .models import (
     DailyPrice,
     IntradayTick,
@@ -51,8 +61,6 @@ from .models import (
     TickerSessionClose,
     TrackedSymbol,
     UserConfig,
-    WatchlistGroup,
-    WatchlistItem,
     WhaleAlertEvent,
 )
 from .observability import (

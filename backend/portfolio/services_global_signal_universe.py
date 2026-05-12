@@ -17,8 +17,12 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 # Core models (AUTHORITY)
 try:
     from user_workspace.models import PriceAlert, WatchlistItem
-except (ImportError, RuntimeError):
-    from .models import PriceAlertRule as PriceAlert, WatchlistItem as WatchlistItem  # noqa: F401 - fallback
+except (ImportError, RuntimeError) as e:
+    # Models migrated to packages/core - stubs for dev environment
+    class PriceAlert:
+        pass
+    class WatchlistItem:
+        pass
 
 # Legacy models (remaining)
 from .models import SecuritiesItem, TrackedSymbol, Transaction

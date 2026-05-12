@@ -23,14 +23,22 @@ from portfolio.market_calendar import (
     resolve_market_phase,
 )
 from portfolio.services_global_signal_universe import GlobalSignalUniverseResolver
+
+# Core models with fallback stubs
+try:
+    from user_workspace.models import PriceAlert, WatchlistItem
+except (ImportError, RuntimeError):
+    class PriceAlert:
+        pass
+    class WatchlistItem:
+        pass
+
 from portfolio.models import (
     DailyPrice,
-    PriceAlertRule,
     SecuritiesItem,
     TickerSessionClose,
     TrackedSymbol,
     Transaction,
-    WatchlistItem,
 )
 
 logger = logging.getLogger(__name__)
