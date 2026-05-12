@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 
 from celery import shared_task
 from portfolio.tasks_news_context import _fetch_news_context_for_advisory
+
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +59,13 @@ def _generate_news_digest_for_user(user) -> dict:
 
     from portfolio.ai_options import get_advisory_provider_failover_chain, get_default_model
     from portfolio.ai_service import generate_portfolio_digest, _resolve_provider_api_key
-    from portfolio.models import PortfolioNewsDigest, WatchlistItem
+    from portfolio.models import PortfolioNewsDigest
+    
+    # Core models (AUTHORITY)
+    try:
+        from user_workspace.models import WatchlistItem
+    except (ImportError, RuntimeError):
+        from portfolio.models import WatchlistItem  # noqa: F401 - fallback
 
     today = _tz.localdate()
 
@@ -59,7 +74,7 @@ def _generate_news_digest_for_user(user) -> dict:
         return {'skipped': True, 'reason': 'already_exists'}
 
     symbols = list(
-        WatchlistItem.objects.filter(group__user=user)
+        WatchlistItem.objects.filter(watchlist__user=user)
         .values_list('symbol', flat=True)
         .distinct()
         .order_by('symbol')[:20]
@@ -164,13 +179,17 @@ def generate_all_portfolio_news_digests_task(self, batch_size: int = 200) -> dic
     """
     from django.contrib.auth.models import User as _User
 
-    from portfolio.models import WatchlistItem
+    # Core models (AUTHORITY)
+    try:
+        from user_workspace.models import WatchlistItem
+    except (ImportError, RuntimeError):
+        from portfolio.models import WatchlistItem  # noqa: F401 - fallback
 
     logger.info('event=sprint35_digest_start')
     results = {'ok': 0, 'skipped': 0, 'error': 0}
 
     user_ids = list(
-        WatchlistItem.objects.values_list('group__user_id', flat=True)
+        WatchlistItem.objects.values_list('watchlist__user_id', flat=True)
         .distinct()[:batch_size]
     )
 

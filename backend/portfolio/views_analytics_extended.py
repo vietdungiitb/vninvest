@@ -1,3 +1,5 @@
+import os
+import sys
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -6,7 +8,21 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Max, Q
 from datetime import date, timedelta
 
-from .models import Portfolio, DailyPrice
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import Portfolio
+except (ImportError, RuntimeError):
+    from .models import Portfolio  # noqa: F401 - fallback
+
+# Legacy models (remaining)
+from .models import DailyPrice
 from .analytics import compute_holdings
 from .screener_helpers import _screener_build_technical
 

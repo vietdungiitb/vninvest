@@ -1,10 +1,27 @@
 from __future__ import annotations
 
+import os
+import sys
 from django.db.models import Count
 from django.utils import timezone
 
 from .global_signal_policy_helpers import GLOBAL_SIGNAL_UNIVERSE_POLICY_KEY, get_global_signal_universe_policy
-from .models import PriceAlertRule, SecuritiesItem, TrackedSymbol, Transaction, WatchlistItem
+
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import PriceAlert, WatchlistItem
+except (ImportError, RuntimeError):
+    from .models import PriceAlertRule as PriceAlert, WatchlistItem as WatchlistItem  # noqa: F401 - fallback
+
+# Legacy models (remaining)
+from .models import SecuritiesItem, TrackedSymbol, Transaction
 
 
 def _build_symbol_count_map(queryset, symbol_field: str, count_field: str) -> dict[str, int]:
@@ -136,7 +153,7 @@ class GlobalSignalUniverseResolver:
         watchlist_users = {}
         if config['include_watchlist_symbols']:
             watchlist_users = _build_symbol_count_map(
-                WatchlistItem.objects.values('symbol').annotate(user_count=Count('group__user', distinct=True)),
+                WatchlistItem.objects.values('symbol').annotate(user_count=Count('watchlist__user', distinct=True)),
                 'symbol',
                 'user_count',
             )
@@ -144,7 +161,7 @@ class GlobalSignalUniverseResolver:
         alert_users = {}
         if config['include_alert_symbols']:
             alert_users = _build_symbol_count_map(
-                PriceAlertRule.objects.filter(is_active=True).values('symbol').annotate(user_count=Count('user', distinct=True)),
+                PriceAlert.objects.filter(is_enabled=True).values('symbol').annotate(user_count=Count('user', distinct=True)),
                 'symbol',
                 'user_count',
             )

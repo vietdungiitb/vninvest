@@ -192,8 +192,13 @@ def _handle_start(update: dict, profile):
 def _handle_portfolio(chat_id: int, user: User):
     """Trả về NAV tóm tắt + Inline Keyboard chọn danh mục."""
     try:
-        from portfolio.models import WatchlistGroup
-        groups = WatchlistGroup.objects.filter(user=user)[:5]
+        # Core models (AUTHORITY)
+        try:
+            from user_workspace.models import Watchlist
+        except (ImportError, RuntimeError):
+            from portfolio.models import WatchlistGroup as Watchlist  # noqa: F401 - fallback
+        
+        groups = Watchlist.objects.filter(user=user)[:5]
         if not groups:
             send_message(chat_id, '📂 Bạn chưa có danh mục nào. Tạo danh mục trên web app.')
             return
@@ -281,8 +286,13 @@ def process_webhook_update(update: dict) -> None:
         if data.startswith('portfolio:'):
             group_id = data.split(':', 1)[1]
             try:
-                from portfolio.models import WatchlistItem
-                items = WatchlistItem.objects.filter(group_id=group_id, group__user=profile.user)[:10]
+                # Core models (AUTHORITY)
+                try:
+                    from user_workspace.models import WatchlistItem
+                except (ImportError, RuntimeError):
+                    from portfolio.models import WatchlistItem  # noqa: F401 - fallback
+                
+                items = WatchlistItem.objects.filter(watchlist_id=group_id, watchlist__user=profile.user)[:10]
                 lines = [f'• {i.symbol}' for i in items] or ['(Danh mục trống)']
                 edit_message_text(chat_id, message_id, '📊 <b>Danh mục:</b>\n' + '\n'.join(lines), parse_mode='HTML')
             except Exception as exc:

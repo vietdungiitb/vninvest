@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -8,7 +10,21 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Portfolio, SubAccount, UserConfig
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import Portfolio
+except (ImportError, RuntimeError):
+    from .models import Portfolio  # noqa: F401 - fallback
+
+# Legacy models (remaining)
+from .models import SubAccount, UserConfig
 
 
 STARTER_TEMPLATE_VERSION = 'v1'

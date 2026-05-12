@@ -4,7 +4,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.utils import timezone
 
-from portfolio.models import TrackedSymbol, UserAlertHistory, WatchlistItem
+from portfolio.models import TrackedSymbol, UserAlertHistory
 from portfolio.services_global_signal_distribution import resolve_signal_audience
 
 

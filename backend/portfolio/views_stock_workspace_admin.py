@@ -1,3 +1,5 @@
+import os
+import sys
 import redis as redis_lib
 
 from django.contrib.auth.models import User
@@ -9,9 +11,23 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import Portfolio, WatchlistItem
+except (ImportError, RuntimeError):
+    from .models import Portfolio, WatchlistItem  # noqa: F401 - fallback
+
+# Legacy models (remaining)
 from .exceptions import ExternalSystemException, MarketDataValidationException
 from .market_data_service import market_data_service
-from .models import DailyPrice, MarketGroupSyncLog, Portfolio, StockProfile, StockProfileSyncLog, TrackedSymbol, WatchlistItem
+from .models import DailyPrice, MarketGroupSyncLog, StockProfile, StockProfileSyncLog, TrackedSymbol
 from .serializers import StockProfileSerializer, StockWorkspaceOverviewSerializer
 
 

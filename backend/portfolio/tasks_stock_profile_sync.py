@@ -10,9 +10,18 @@ Có thể trigger thủ công qua admin API.
 """
 
 import logging
+import os
+import sys
 
 from celery import shared_task
 from django.core.cache import cache
+
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +59,13 @@ def sync_stock_profiles_from_snapshot(self, symbols: list[str] | None = None):
         dict: {"updated": N, "skipped": N, "errors": N}
     """
     from portfolio.adapters.vnbroker_adapter import fetch_heatmap_snapshot
-    from portfolio.models import StockProfile, TrackedSymbol, WatchlistItem, Transaction
+    from portfolio.models import StockProfile, TrackedSymbol, Transaction
+    
+    # Core models (AUTHORITY)
+    try:
+        from user_workspace.models import WatchlistItem
+    except (ImportError, RuntimeError):
+        from portfolio.models import WatchlistItem  # noqa: F401 - fallback
 
     # Thu thập danh sách mã cần sync
     if symbols:

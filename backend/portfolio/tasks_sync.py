@@ -1,9 +1,26 @@
 from __future__ import annotations
 
+import os
+import sys
 from celery import shared_task
 from django.conf import settings
 
-from portfolio.models import TrackedSymbol, WatchlistGroup
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import Watchlist
+    _watchlist_model = Watchlist
+except (ImportError, RuntimeError):
+    from portfolio.models import WatchlistGroup as Watchlist  # noqa: F401 - fallback
+    _watchlist_model = Watchlist
+
+from portfolio.models import TrackedSymbol
 
 
 @shared_task(bind=True, name='portfolio.tasks.sync_user_watch_assets', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
@@ -28,7 +45,7 @@ def sync_all_watch_assets(self, days: int | None = None) -> dict:
     sync_days = int(days or getattr(settings, 'WATCHLIST_SYNC_DAYS', 5))
     user_ids = sorted({
         *TrackedSymbol.objects.values_list('user_id', flat=True),
-        *WatchlistGroup.objects.values_list('user_id', flat=True),
+        *_watchlist_model.objects.values_list('user_id', flat=True),
     })
     user_ids = [user_id for user_id in user_ids if user_id]
 

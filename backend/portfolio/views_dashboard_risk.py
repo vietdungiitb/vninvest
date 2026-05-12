@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 from datetime import timedelta
 
 from django.utils import timezone
@@ -7,9 +9,23 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import Portfolio
+except (ImportError, RuntimeError):
+    from .models import Portfolio  # noqa: F401 - fallback
+
+# Legacy models (remaining)
 from .analytics import compute_holdings
 from .market_data_service import MarketDataService, market_data_service
-from .models import OrderFlowSignal, Portfolio, WhaleAlertEvent
+from .models import OrderFlowSignal, WhaleAlertEvent
 
 logger = logging.getLogger(__name__)
 

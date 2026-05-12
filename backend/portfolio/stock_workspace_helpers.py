@@ -1,10 +1,25 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+import os
+import sys
 from django.db.models import Max, Min
 from rest_framework import generics
 
-from .models import DailyPrice, SecuritiesGroup, StockProfile, TrackedSymbol, WatchlistItem
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import WatchlistItem
+except (ImportError, RuntimeError):
+    from .models import WatchlistItem  # noqa: F401 - fallback
+
+from .models import DailyPrice, SecuritiesGroup, StockProfile, TrackedSymbol
 from .services import get_price_changes
 
 
@@ -87,12 +102,12 @@ def _build_stock_workspace_overview(symbol, user):
         market_groups = [group['name'] for group in market_group_refs]
         watchlist_memberships = list(
             WatchlistItem.objects
-            .filter(group__user=user, symbol=normalized_symbol)
-            .select_related('group')
-            .order_by('group__name')
-            .values('id', 'group_id', 'group__name')
+            .filter(watchlist__user=user, symbol=normalized_symbol)
+            .select_related('watchlist')
+            .order_by('watchlist__name')
+            .values('id', 'watchlist_id', 'watchlist__name')
         )
-        watchlist_groups = [item['group__name'] for item in watchlist_memberships]
+        watchlist_groups = [item['watchlist__name'] for item in watchlist_memberships]
 
     return {
         'tracked_symbol_id': tracked_item.id if tracked_item else None,

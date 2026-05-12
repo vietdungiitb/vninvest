@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import sys
 from datetime import timedelta
 from decimal import Decimal
 from statistics import pstdev
@@ -7,7 +9,21 @@ from statistics import pstdev
 from django.utils import timezone
 from django.db.models import Sum, Q, DecimalField, Value
 
-from .models import IntradayTick, OrderFlowSignal, PriceAlertRule, StockProfile, WhaleAdvisory, Transaction
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import PriceAlert
+except (ImportError, RuntimeError):
+    from .models import PriceAlertRule as PriceAlert  # noqa: F401 - fallback
+
+# Legacy models (remaining)
+from .models import IntradayTick, OrderFlowSignal, StockProfile, WhaleAdvisory, Transaction
 
 
 def _to_float(value, default=0.0) -> float:
@@ -110,7 +126,7 @@ def build_symbol_ai_context(symbol: str, user=None) -> dict:
         },
     }
 
-    active_alerts_count = PriceAlertRule.objects.filter(symbol=normalized_symbol, is_active=True).count()
+    active_alerts_count = PriceAlert.objects.filter(symbol=normalized_symbol, is_enabled=True).count()
 
     # Recent advisories: only include user-owned ones to avoid legacy/placeholder records
     advisory_qs = WhaleAdvisory.objects.filter(symbol=normalized_symbol)

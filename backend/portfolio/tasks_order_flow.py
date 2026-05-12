@@ -2,17 +2,31 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 
 from celery import shared_task
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import WatchlistItem
+except (ImportError, RuntimeError):
+    from portfolio.models import WatchlistItem  # noqa: F401 - fallback
+
 from portfolio.global_signal_policy_helpers import (
     get_global_signal_retention_policy,
     get_global_signal_services_config,
 )
-from portfolio.models import TrackedSymbol, UserConfig, WatchlistItem, WhaleAdvisory
+from portfolio.models import TrackedSymbol, UserConfig, WhaleAdvisory
 from portfolio.models import SignalServiceRun
 from portfolio.services_money_flow_retention import (
     materialize_money_flow_forensic_window_from_order_flow_signal,

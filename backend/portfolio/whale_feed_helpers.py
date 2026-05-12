@@ -1,18 +1,29 @@
-"""
-whale_feed_helpers.py
-Extracted helper functions for the Whale Feed / Aggregate Event pipeline.
-S23-04 views decomposition — extracted from views.py.
-"""
 from __future__ import annotations
 
 import base64
 import json
 import logging
 import os
+import sys
 from datetime import date, datetime, time, timedelta
 
 from django.core.cache import cache
 from django.utils import timezone
+
+# Setup path for packages/core imports
+_core_backend_src = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '../../packages/core/backend/src')
+)
+if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
+    sys.path.insert(0, _core_backend_src)
+
+# Core models (AUTHORITY)
+try:
+    from user_workspace.models import Watchlist
+    _watchlist_model = Watchlist
+except (ImportError, RuntimeError):
+    from .models import WatchlistGroup as Watchlist  # noqa: F401 - fallback
+    _watchlist_model = Watchlist
 
 from .adapters.vnbroker_adapter import fetch_intraday_dataframe
 from .domain_constants import (
@@ -22,7 +33,7 @@ from .domain_constants import (
     resolve_user_whale_threshold_vnd,
 )
 from .exceptions import ExternalSystemException
-from .models import TrackedSymbol, UserConfig, WatchlistGroup
+from .models import TrackedSymbol, UserConfig
 from .whale_scoring import calculate_display_score, calculate_event_score
 
 logger = logging.getLogger(__name__)
@@ -259,8 +270,14 @@ def _resolve_whale_feed_symbols(request) -> tuple[list[str], str, list[int], str
 
     if scope_raw == 'watchlist':
         group_ids = _parse_watchlist_group_ids(watchlist_group_ids_raw)
-        groups = WatchlistGroup.objects.filter(user=request.user, id__in=group_ids).prefetch_related('items')
-        symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
+        groups = _watchlist_model.objects.filter(user=request.user, id__in=group_ids).prefetch_related('items' if hasattr(_watchlist_model, '_meta') and 'items' in [f.name for f in _watchlist_model._meta.get_fields()] else 'watchlistitem_set')
+        # Handle both core and legacy models' item accessors
+        if hasattr(_watchlist_model, 'items'):
+            # Legacy model has 'items' relationship
+            symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
+        else:
+            # Core model uses reverse FK accessor
+            symbols = sorted({item.symbol.upper() for group in groups for item in group.watchlistitem_set.all()})
         return symbols, 'watchlist', group_ids, 'query_scope'
 
     if scope_raw == 'tracked':
@@ -282,8 +299,14 @@ def _resolve_whale_feed_symbols(request) -> tuple[list[str], str, list[int], str
 
     if watchlist_group_ids_raw:
         group_ids = _parse_watchlist_group_ids(watchlist_group_ids_raw)
-        groups = WatchlistGroup.objects.filter(user=request.user, id__in=group_ids).prefetch_related('items')
-        symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
+        groups = _watchlist_model.objects.filter(user=request.user, id__in=group_ids).prefetch_related('items' if hasattr(_watchlist_model, '_meta') and 'items' in [f.name for f in _watchlist_model._meta.get_fields()] else 'watchlistitem_set')
+        # Handle both core and legacy models' item accessors
+        if hasattr(_watchlist_model, 'items'):
+            # Legacy model has 'items' relationship
+            symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
+        else:
+            # Core model uses reverse FK accessor
+            symbols = sorted({item.symbol.upper() for group in groups for item in group.watchlistitem_set.all()})
         return symbols, 'watchlist', group_ids, 'watchlist_param'
 
     tracked_symbols = list(
