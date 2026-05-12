@@ -1,3 +1,55 @@
+# 2026-05-12 — PAT Token Management UI: Pagination + Rotate Display Fix + Bulk Revoke ✅ 100% COMPLETE
+
+Status: All three UX improvements implemented, tested, and deployed to frontend.
+
+Execution Summary:
+- **Pagination Implementation**:
+  * Added `currentPage` and `itemsPerPage` state hooks
+  * Items-per-page dropdown with 4 options: 5, 10, 15, 20
+  * Top display: "Số mục trên trang: [dropdown]" with range counter "Hiển thị X - Y của Z"
+  * Bottom pagination controls: "Trang trước" | Range | "Trang sau" buttons
+  * Token list sliced based on current page and items per page
+  * Previous/Next buttons disable appropriately at boundaries
+
+- **Rotate Token Display Fix**:
+  * Fixed `handleRotate()` function mapping: `response.data.new_token` → `secretReveal.token`
+  * Newly rotated token now displays in emerald secret reveal section with copy button
+  * Close button working on secret reveal
+
+- **Bulk Revoke Checkbox System**:
+  * Checkboxes on each token card (enabled only for active tokens)
+  * Select-all checkbox at top with count display "Chọn tất cả"
+  * "Revoke selected (N)" button with confirmation dialog
+  * Visual feedback with emerald highlight on selected tokens
+
+Validation Snapshot:
+- ✓ Browser test: Page size dropdown displays all 4 options (5, 10, 15, 20)
+- ✓ Browser test: Selecting 5 items shows "Hiển thị 1 - 5 của 50" with 5 tokens
+- ✓ Browser test: Next page button navigates to page 2 (6-10 of 50)
+- ✓ Browser test: Previous button disabled on page 1, enabled on page 2+
+- ✓ Browser test: Changing page size resets to page 1 automatically
+- ✓ Browser test: Rotate token displays new secret with copy button working
+- ✓ Browser test: Bulk select all, count display, revoke with confirmation
+- ✓ All 8 new i18n keys added (Vietnamese + English): `itemsPerPageLabel`, `showing`, `of`, `previousPage`, `nextPage`, `pageSize5`, `pageSize10`, `pageSize15`, `pageSize20`
+
+Files Modified:
+- frontend/src/pages/admin/tenant/TenantPATs.jsx: State hooks, pagination UI, render logic, bulk revoke
+- frontend/src/i18n/vi.js: 8 new translation keys
+- frontend/src/i18n/en.js: 8 new translation keys
+- Git commit: `a7e4f3a4` (dev branch)
+
+T12 Success Criteria: ✅ 100% MET
+- ✅ Pagination dropdown with 5/10/15/20 options
+- ✅ Display showing current page range and total count
+- ✅ Previous/Next buttons with proper state management
+- ✅ Rotate token now shows the new token with copy functionality
+- ✅ Bulk revoke with checkbox selection and confirmation
+- ✅ All UI in Vietnamese with full diacritics
+- ✅ Deployed to frontend container
+- ✅ Visual browser testing confirmed working
+
+---
+
 # 2026-05-12 — TENANT-T11 Legacy Code Removal (Direct 2-3 Week Cutover) ✅ 100% COMPLETE
 
 Status: T11 completed end-to-end. All legacy Portfolio/Watchlist/PriceAlertRule models deleted from backend/portfolio. Core models in packages/core are now canonical.

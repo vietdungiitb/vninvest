@@ -1,3 +1,42 @@
+# 2026-05-12 — PAT Token Management UI: Pagination, Rotate Token Display, Bulk Revoke ✅
+
+Status: Complete. All three UX improvements implemented, tested, and deployed.
+
+What changed:
+- `frontend/src/pages/admin/tenant/TenantPATs.jsx`: 
+  - Added state hooks: `currentPage`, `itemsPerPage`
+  - Added pagination UI controls: items-per-page dropdown (5/10/15/20), Previous/Next buttons
+  - Fixed `handleRotate()` to properly map `response.data.new_token` and `response.data.new_token_prefix` to `secretReveal` object
+  - Token list now sliced based on current page and items per page
+  - Bottom pagination buttons show with disabled state appropriately
+
+- `frontend/src/i18n/vi.js`:
+  - Added 8 new i18n keys: `itemsPerPageLabel`, `showing`, `of`, `previousPage`, `nextPage`, `pageSize5`, `pageSize10`, `pageSize15`, `pageSize20`
+  - All translations in Vietnamese with full diacritics
+
+- `frontend/src/i18n/en.js`:
+  - Added 8 corresponding English translations for pagination UI
+
+Validation:
+- ✅ Browser test: Page size dropdown shows all 4 options (5, 10, 15, 20)
+- ✅ Browser test: Selecting 5 items per page updates display to "Hiển thị 1 - 5 của 50"
+- ✅ Browser test: Token list renders exactly 5 items on first page
+- ✅ Browser test: "Trang sau" (Next page) button navigates to page 2, updating display to "Hiển thị 6 - 10 của 50"
+- ✅ Browser test: "Trang trước" (Previous page) button enabled/disabled appropriately
+- ✅ Browser test: Changing page size resets to page 1 automatically
+- ✅ Rotate token now displays the new token in the emerald secret reveal section with copy button
+- ✅ Bulk revoke checkboxes and select-all working with count display "(N selected)"
+
+Implementation evidence:
+- Token list pagination: 50 total PATs split across pages
+- Page 1 (5 items): vni_JEyDXaGC, vni_amGa_5Ob, vni_tIUr7pD_, and 2 more
+- Page 2 (5 items): vni_K-WMjkkW, vni_K7DfmtmC, vni_6Zy-MmQu, vni_6s0VyRm8, vni_5qBEdfWH
+- Git commit: `a7e4f3a4` (dev branch)
+
+Residue and blockers: None.
+
+---
+
 # 2026-05-12 — TENANT-T02 Refactor core_pat_auth.py ORM Path ✅
 
 Status: T02 completed. core_pat_auth.py confirmed using ORM helpers throughout; zero raw SQL. New focused test suite (17 tests) covers PAT lifecycle, authentication flow, and edge cases.
