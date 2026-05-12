@@ -197,14 +197,59 @@ class VnbrokerProviderQualityTests(SimpleTestCase):
                 },
             ],
             timeout_seconds=8,
+            market_phase='market_open',
         )
 
         self.assertEqual(report['primary_provider'], 'VCI')
         self.assertEqual(report['runtime_patch']['price_board_source'], 'VCI')
         self.assertEqual(report['runtime_patch']['fallback_sources'][0], 'KBS')
+        self.assertEqual(report['market_phase'], 'market_open')
+        self.assertEqual(report['decision_audit']['market_phase'], 'market_open')
+        self.assertEqual(report['decision_audit']['selected_provider'], 'VCI')
         self.assertIn('quality_scores', report)
         self.assertGreaterEqual(len(report['quality_scores']), 2)
         self.assertEqual(mock_resolve_order.call_args.args[0], 'price_board')
+        self.assertEqual(mock_resolve_order.call_args.kwargs['market_phase'], 'market_open')
+        self.assertTrue(mock_cache_snapshot.called)
+
+    @patch('portfolio.vnbroker_provider_benchmark.resolve_market_phase', return_value={'profile': 'offhours'})
+    @patch('portfolio.vnbroker_provider_benchmark.cache_provider_quality_snapshot')
+    @patch('portfolio.vnbroker_provider_benchmark.resolve_provider_order', return_value=['VCI', 'KBS'])
+    def test_build_runtime_recommendation_uses_current_market_phase_when_not_provided(
+        self,
+        mock_resolve_order,
+        mock_cache_snapshot,
+        _mock_phase,
+    ):
+        report = build_runtime_recommendation(
+            [
+                {
+                    'provider': 'KBS',
+                    'concurrency': 4,
+                    'p95_latency_seconds': 6.0,
+                    'success_pct': 84.0,
+                    'rate_limited_pct': 4.0,
+                    'transport_errors': 2,
+                    'total_requests': 100,
+                    'requests_per_minute': 120.0,
+                },
+                {
+                    'provider': 'VCI',
+                    'concurrency': 8,
+                    'p95_latency_seconds': 2.0,
+                    'success_pct': 97.0,
+                    'rate_limited_pct': 1.0,
+                    'transport_errors': 0,
+                    'total_requests': 100,
+                    'requests_per_minute': 140.0,
+                },
+            ],
+            timeout_seconds=8,
+        )
+
+        self.assertEqual(report['market_phase'], 'offhours')
+        self.assertEqual(report['decision_audit']['market_phase'], 'offhours')
+        self.assertEqual(mock_resolve_order.call_args.kwargs['market_phase'], 'offhours')
         self.assertTrue(mock_cache_snapshot.called)
 
     @patch('portfolio.adapters.vnbroker_adapter.get_vnbroker_runtime_settings', return_value={})

@@ -1,30 +1,22 @@
-# AUDIT FILE LIST (2026-05-11-P2.3-RUNTIME-CONFIG-SCHEMA-V2)
+# AUDIT FILE LIST (2026-05-11-P2.4-PROVIDER-ROUTING-AUDIT-TRAIL)
 
 Muc tieu:
-- Mo rong RuntimeVnbrokerConfig voi `source_config` nested theo channel va giu backward compatibility voi flat fields cu.
-- Duy tri adapter precedence: source_config[channel].primary > price_board_source/env/default.
+- Ghi log truy vet provider decision moi chu ky trong benchmark report voi phase tag va ranked providers.
+- Giu selection scope theo market phase de audit payload khop voi decision thuc te.
 
 Files changed:
-- [backend/portfolio/models.py](backend/portfolio/models.py) (MODIFIED)
-- [backend/portfolio/serializers.py](backend/portfolio/serializers.py) (MODIFIED)
-- [backend/portfolio/vnbroker_runtime_config.py](backend/portfolio/vnbroker_runtime_config.py) (MODIFIED)
-- [backend/portfolio/adapters/vnbroker_adapter.py](backend/portfolio/adapters/vnbroker_adapter.py) (MODIFIED)
-- [backend/portfolio/tests/test_admin_ops.py](backend/portfolio/tests/test_admin_ops.py) (MODIFIED)
-- [backend/portfolio/tests/test_adapters.py](backend/portfolio/tests/test_adapters.py) (MODIFIED)
-- [backend/portfolio/migrations/0077_runtimevnbrokerconfig_source_config.py](backend/portfolio/migrations/0077_runtimevnbrokerconfig_source_config.py) (NEW)
+- [backend/portfolio/vnbroker_provider_benchmark.py](backend/portfolio/vnbroker_provider_benchmark.py) (MODIFIED)
+- [backend/portfolio/tests/test_vnbroker_provider_quality.py](backend/portfolio/tests/test_vnbroker_provider_quality.py) (MODIFIED)
 - [docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TASKBOARD_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
 - [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_IMPLEMENTATION_CHECKLIST_20260511.md) (MODIFIED)
-- [docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md](docs/SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_DECISION_ADDENDUM_20260511.md) (MODIFIED)
-- [docs/TECH_SPEC_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md](docs/TECH_SPEC_SAAS_BACKGROUND_SERVICES_MULTI_PROVIDER_20260511.md) (MODIFIED)
 - [docs/CODE_CHANGE_AUDIT_LEDGER.md](docs/CODE_CHANGE_AUDIT_LEDGER.md) (MODIFIED)
 - [PROGRESS_DASHBOARD.md](PROGRESS_DASHBOARD.md) (MODIFIED)
 
 Validation:
-- PASSED: `manage.py test portfolio.tests.test_admin_ops.AdminOpsvnbrokerRuntimeConfigTests.test_staff_can_get_update_and_read_changelog portfolio.tests.test_admin_ops.AdminOpsvnbrokerRuntimeConfigTests.test_staff_can_reset_defaults portfolio.tests.test_adapters.VnbrokerAdapterTests.test_resolve_price_board_sources_prefers_source_config_primary`.
-- PASSED: fresh test database applied the new `source_config` migration cleanly.
+- PASSED: `manage.py test portfolio.tests.test_vnbroker_provider_quality --keepdb`.
 
 Residual risk:
-- P2.4 provider routing audit trail remains open.
+- P3.1 manual trigger API remains open.
 
 # AUDIT FILE LIST (2026-05-11-P2.2-MARKET-PHASE-RESOLVER)
 

@@ -55,7 +55,7 @@ DoD: Routing policy chạy được qua runtime config
 Owner: Backend  
 DoD: Admin-ops có thể điều chỉnh provider strategy
 
-- [ ] `SBMP-P2.4` Add provider routing audit trail
+- [x] `SBMP-P2.4` Add provider routing audit trail
 Owner: Backend  
 DoD: Có log truy vết provider decision mỗi chu kỳ
 

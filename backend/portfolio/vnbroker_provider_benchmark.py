@@ -11,6 +11,7 @@ from django.core.cache import cache
 
 from portfolio.adapters.cache_adapter import is_rate_limited_error
 from portfolio.adapters.vnbroker_adapter import _build_stock_client
+from portfolio.market_calendar import resolve_market_phase
 from portfolio.vnbroker_provider_quality import (
     build_provider_quality_snapshot,
     cache_provider_quality_snapshot,
@@ -227,7 +228,11 @@ def _build_quality_metrics_from_benchmark(result: dict[str, Any], timeout_second
     }
 
 
-def build_runtime_recommendation(results: list[dict[str, Any]], timeout_seconds: int | None = None) -> dict[str, Any]:
+def build_runtime_recommendation(
+    results: list[dict[str, Any]],
+    timeout_seconds: int | None = None,
+    market_phase: str | None = None,
+) -> dict[str, Any]:
     by_provider: dict[str, list[dict[str, Any]]] = {}
     for item in results:
         provider = str(item.get('provider') or '').upper()
@@ -241,6 +246,15 @@ def build_runtime_recommendation(results: list[dict[str, Any]], timeout_seconds:
 
     benchmark_timeout_seconds = max(int(timeout_seconds or 8), 1)
     quality_snapshots: dict[str, dict[str, Any]] = {}
+    resolved_market_phase = str(market_phase or '').strip().lower()
+    if not resolved_market_phase:
+        try:
+            resolved_market_phase = str((resolve_market_phase() or {}).get('profile') or '').strip().lower()
+        except Exception:
+            resolved_market_phase = 'default'
+    if not resolved_market_phase:
+        resolved_market_phase = 'default'
+
     for provider, entry in provider_best.items():
         quality_metrics = _build_quality_metrics_from_benchmark(entry, benchmark_timeout_seconds)
         snapshot = build_provider_quality_snapshot(
@@ -252,7 +266,7 @@ def build_runtime_recommendation(results: list[dict[str, Any]], timeout_seconds:
         cache_provider_quality_snapshot(snapshot)
         quality_snapshots[provider] = snapshot
 
-    ranked_providers = resolve_provider_order('price_board', list(provider_best.keys()))
+    ranked_providers = resolve_provider_order('price_board', list(provider_best.keys()), market_phase=resolved_market_phase)
 
     if not ranked_providers:
         ranked_providers = list(provider_best.keys())
@@ -274,6 +288,20 @@ def build_runtime_recommendation(results: list[dict[str, Any]], timeout_seconds:
 
     ordered_fallbacks = [provider for provider in ranked_providers[1:]]
 
+    decision_audit = {
+        'channel': 'price_board',
+        'market_phase': resolved_market_phase,
+        'ranked_providers': ranked_providers,
+        'selected_provider': str(best.get('provider') or 'KBS').upper(),
+        'fallback_provider': str((fallback or {}).get('provider') or 'VCI').upper(),
+        'quality_scores': {
+            provider: quality_snapshots.get(provider, {}).get('score')
+            for provider in ranked_providers
+            if provider in quality_snapshots
+        },
+        'generated_at': _utc_now_iso(),
+    }
+
     return {
         'primary_provider': str(best.get('provider') or 'KBS').upper(),
         'fallback_provider': str((fallback or {}).get('provider') or 'VCI').upper(),
@@ -287,6 +315,8 @@ def build_runtime_recommendation(results: list[dict[str, Any]], timeout_seconds:
             if provider in quality_snapshots
         },
         'quality_snapshots': quality_snapshots,
+        'market_phase': resolved_market_phase,
+        'decision_audit': decision_audit,
         'runtime_patch': {
             'price_board_source': str(best.get('provider') or 'KBS').upper(),
             'fallback_sources': ordered_fallbacks or [str((fallback or {}).get('provider') or 'VCI').upper()],
