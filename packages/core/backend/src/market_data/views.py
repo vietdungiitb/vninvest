@@ -10,11 +10,11 @@ from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from vninvest_core.legacy_http_bridge import legacy_bridge_response
+from django.utils import timezone
 
 from .models import DailyPrice, StockProfile
 from .serializers import DailyPriceSerializer, StockProfileSerializer
+from . import vnbroker_adapter
 
 
 class StockProfileListView(APIView):
@@ -110,10 +110,9 @@ class IntradayPricesView(APIView):
     """
     GET /core/v1/market-data/intraday-prices/{symbol}/
 
-    Phase 1: Bridge to legacy chart endpoint.
-    Phase 2: Replace with native vnbroker adapter.
+    Phase 2: Query native IntradayBar model (replaces bridge).
 
-    Query params (forwarded to legacy):
+    Query params:
         timeframe: 1m|5m|15m|1H|2H|4H|D|W|M  (default: 1H)
         days: int  (default: 180)
     """
@@ -121,21 +120,30 @@ class IntradayPricesView(APIView):
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        bridged = legacy_bridge_response(
-            request,
-            f'/api/stock-management/stocks/{symbol}/chart/',
-            unavailable_message='Legacy intraday chart bridge hiện không khả dụng.',
-        )
-        if bridged is not None and bridged.status_code < 500:
-            return bridged
+        timeframe = request.query_params.get('timeframe', '1H')
+        days = int(request.query_params.get('days', 180))
+        
+        # Query native adapter
+        data = vnbroker_adapter.fetch_intraday_ohlcv(symbol, timeframe, days)
+        
         return Response({
             'symbol': symbol,
-            'days': 0,
-            'timeframe': request.query_params.get('timeframe', '1H'),
-            'interval': 'n/a',
-            'points': [],
+            'days': len(data['bars']),
+            'timeframe': timeframe,
+            'interval': timeframe.lower(),
+            'points': [
+                {
+                    'date': bar['datetime'],
+                    'open': bar['open'],
+                    'high': bar['high'],
+                    'low': bar['low'],
+                    'close': bar['close'],
+                    'volume': bar['volume'],
+                }
+                for bar in data['bars']
+            ],
             'technical': {},
-            'source': 'bridge_unavailable',
+            'source': 'native',
         })
 
 
@@ -143,28 +151,35 @@ class IntradayTapeView(APIView):
     """
     GET /core/v1/market-data/intraday-tape/{symbol}/
 
-    Phase 1: Bridge to legacy intraday endpoint.
-    Phase 2: Replace with native tick stream.
+    Phase 2: Query native IntradayTick model with Redis cache (5 min TTL).
 
-    Query params (forwarded to legacy):
+    Query params:
         page_size: int  (default: 50)
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        bridged = legacy_bridge_response(
-            request,
-            f'/api/realtime/intraday/{symbol}/',
-            unavailable_message='Legacy intraday tape bridge hiện không khả dụng.',
-        )
-        if bridged is not None and bridged.status_code < 500:
-            return bridged
+        page_size = int(request.query_params.get('page_size', 50))
+        
+        # Query native adapter (Redis cache → DB fallback)
+        data = vnbroker_adapter.fetch_intraday_tape(symbol, page_size)
+        
         return Response({
             'symbol': symbol,
-            'trades': [],
-            'total': 0,
-            'source': 'bridge_unavailable',
-            'stale': True,
-            'fetched_at': None,
+            'trades': [
+                {
+                    'time': t['timestamp'].split('T')[1][:8],
+                    'ts': t['timestamp'],
+                    'price': t['price'],
+                    'volume': t['volume'],
+                    'side': t['side'],
+                    'match_type': t.get('match_type', 'NormalMatch'),
+                }
+                for t in data['trades']
+            ],
+            'total': len(data['trades']),
+            'source': 'native',
+            'stale': False,
+            'fetched_at': timezone.now().isoformat(),
         })

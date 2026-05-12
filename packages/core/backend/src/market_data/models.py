@@ -127,3 +127,73 @@ class VnbrokerRuntimeConfig(models.Model):
     def __str__(self) -> str:
         active_flag = ' [ACTIVE]' if self.is_active else ''
         return f'{self.name} ({self.data_source}){active_flag}'
+
+
+class IntradayBar(models.Model):
+    """
+    Intraday OHLCV bars from vnbroker (1m, 5m, 15m, 1H, 2H, 4H, D, W, M).
+    Phase 2: Native storage (replaces bridge).
+    """
+
+    symbol = models.CharField(max_length=10, db_index=True, verbose_name='Mã cổ phiếu')
+    datetime = models.DateTimeField(db_index=True, verbose_name='Thời gian khôi đầu nến')
+    timeframe = models.CharField(max_length=5, default='1H', verbose_name='Khung thời gian')
+    open = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá mở')
+    high = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá cao')
+    low = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá thấp')
+    close = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá đóng')
+    volume = models.BigIntegerField(default=0, verbose_name='Khối lượng')
+    source = models.CharField(max_length=50, default='vnbroker', verbose_name='Nguồn dữ liệu')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'market_data_intraday_bar'
+        verbose_name = 'Nến intraday'
+        verbose_name_plural = 'Nến intraday'
+        indexes = [
+            models.Index(fields=['symbol', 'datetime']),
+            models.Index(fields=['symbol', 'timeframe', 'datetime']),
+        ]
+        unique_together = [['symbol', 'datetime', 'timeframe']]
+        ordering = ['-datetime']
+
+    def __str__(self) -> str:
+        return f'{self.symbol} {self.timeframe} {self.datetime} {self.close}'
+
+
+class IntradayTick(models.Model):
+    """
+    Individual tick trades from vnbroker (real-time).
+    Phase 2: Native storage + Redis cache (5 min TTL).
+    """
+
+    class SideChoices(models.TextChoices):
+        BUY = 'BUY', 'Mua'
+        SELL = 'SELL', 'Bán'
+        UNKNOWN = 'UNKNOWN', 'Không xác định'
+
+    symbol = models.CharField(max_length=10, db_index=True, verbose_name='Mã cổ phiếu')
+    timestamp = models.DateTimeField(db_index=True, verbose_name='Thời điểm khớp lệnh')
+    price = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá khớp lệnh')
+    volume = models.BigIntegerField(verbose_name='Khối lượng khớp lệnh')
+    side = models.CharField(
+        max_length=10,
+        choices=SideChoices.choices,
+        verbose_name='Hướng giao dịch',
+    )
+    match_type = models.CharField(max_length=50, blank=True, default='', verbose_name='Loại khớp lệnh')
+    source = models.CharField(max_length=50, default='vnbroker', verbose_name='Nguồn dữ liệu')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'market_data_intraday_tick'
+        verbose_name = 'Tick lệnh intraday'
+        verbose_name_plural = 'Tick lệnh intraday'
+        indexes = [
+            models.Index(fields=['symbol', 'timestamp']),
+            models.Index(fields=['created_at']),
+        ]
+        ordering = ['-timestamp']
+
+    def __str__(self) -> str:
+        return f'{self.symbol} {self.timestamp} {self.price} {self.side}'

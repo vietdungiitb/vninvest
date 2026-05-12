@@ -3,6 +3,7 @@ import time
 import random
 from typing import Any, Optional
 import httpx
+from django.utils import timezone
 from django.utils.timezone import now
 from .models import VnbrokerRuntimeConfig
 
@@ -108,3 +109,97 @@ def fetch_listing_symbols() -> list[dict[str, Any]]:
         {'symbol': 'FPT', 'exchange': 'HOSE', 'company_name': 'FPT Corp', 'industry': 'Công nghệ thông tin'},
     ]
     return mock_symbols
+
+
+def fetch_intraday_ohlcv(symbol: str, timeframe: str = '1H', days: int = 180) -> dict[str, Any]:
+    """
+    Fetch intraday OHLCV bars from native IntradayBar model.
+    Phase 2: Direct DB query (no vnbroker API call yet).
+    """
+    from .models import IntradayBar
+    from datetime import timedelta
+    
+    symbol_upper = symbol.upper()
+    qs = IntradayBar.objects.filter(
+        symbol=symbol_upper,
+        timeframe=timeframe,
+    ).order_by('-datetime')
+    
+    # Limit to last N days using date range filter
+    if days:
+        cutoff_date = timezone.now() - timedelta(days=days)
+        qs = qs.filter(datetime__gte=cutoff_date)
+    
+    # Reverse to chronological order
+    bars = list(qs.order_by('datetime'))
+    
+    return {
+        'symbol': symbol_upper,
+        'timeframe': timeframe,
+        'bars': [
+            {
+                'datetime': bar.datetime.isoformat(),
+                'open': float(bar.open),
+                'high': float(bar.high),
+                'low': float(bar.low),
+                'close': float(bar.close),
+                'volume': bar.volume,
+            }
+            for bar in bars
+        ]
+    }
+
+
+def fetch_intraday_tape(symbol: str, page_size: int = 50) -> dict[str, Any]:
+    """
+    Fetch intraday tick trades from Redis cache (5 min TTL) or DB fallback.
+    Phase 2: Native storage with caching.
+    
+    Note: Cache is keyed by symbol only. For different page_sizes,
+    the cached result will contain whatever was cached first.
+    """
+    import json
+    from django.core.cache import cache
+    from .models import IntradayTick
+    
+    symbol_upper = symbol.upper()
+    cache_key = f'intraday_tape:{symbol_upper}'
+    
+    # Try Redis cache first
+    cached = cache.get(cache_key)
+    if cached:
+        logger.debug(f"Cache HIT for {cache_key}")
+        cached_data = json.loads(cached)
+        # If cached data has more items than requested page_size,
+        # return the last page_size items (most recent)
+        if len(cached_data['trades']) > page_size:
+            cached_data['trades'] = cached_data['trades'][-page_size:]
+        return cached_data
+    
+    # Cache miss — query DB (latest page_size ticks)
+    logger.debug(f"Cache MISS for {cache_key} — querying DB")
+    ticks = IntradayTick.objects.filter(
+        symbol=symbol_upper
+    ).order_by('-timestamp')[:page_size]
+    
+    # Build result with reverse order (chronological)
+    tick_list = [
+        {
+            'timestamp': tick.timestamp.isoformat(),
+            'price': float(tick.price),
+            'volume': tick.volume,
+            'side': tick.side.lower(),
+            'match_type': tick.match_type or 'NormalMatch',
+        }
+        for tick in reversed(list(ticks))
+    ]
+    
+    result = {
+        'symbol': symbol_upper,
+        'trades': tick_list,
+    }
+    
+    # Cache for 5 minutes (300 seconds)
+    cache.set(cache_key, json.dumps(result, default=str), timeout=300)
+    
+    return result
