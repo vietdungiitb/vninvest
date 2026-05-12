@@ -8,6 +8,7 @@ from .models import AICommandCenterAuditLog, AICommandCenterConfig
 from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, LegalPage
 from .models import ScreenerRule, CrawlJob, CrawlSchedule, CrawlRun, CrawlAuditLog, SignalServiceRun
 from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
+from .vnbroker_runtime_config import ALLOWED_VNBROKER_SOURCES, default_vnbroker_source_config
 
 
 
@@ -240,6 +241,7 @@ class RuntimeVnbrokerConfigSerializer(serializers.ModelSerializer):
             'timeout_config',
             'price_board_source',
             'fallback_sources',
+            'source_config',
             'enable_caching',
             'enable_rate_limit_detection',
             'enable_concurrent_limit',
@@ -253,24 +255,41 @@ class RuntimeVnbrokerConfigSerializer(serializers.ModelSerializer):
 
     def validate_price_board_source(self, value):
         source = str(value or '').strip().upper()
-        allowed = {'VCI', 'KBS', 'TCBS', 'SSI'}
-        if source not in allowed:
+        if source not in ALLOWED_VNBROKER_SOURCES:
             raise serializers.ValidationError('price_board_source không hợp lệ.')
         return source
 
     def validate_fallback_sources(self, value):
         if not isinstance(value, list):
             raise serializers.ValidationError('fallback_sources phải là danh sách.')
-        allowed = {'VCI', 'KBS', 'TCBS', 'SSI'}
         normalized = []
         for item in value:
             source = str(item or '').strip().upper()
             if not source:
                 continue
-            if source not in allowed:
+            if source not in ALLOWED_VNBROKER_SOURCES:
                 raise serializers.ValidationError(f'Provider không hợp lệ: {source}')
             if source not in normalized:
                 normalized.append(source)
+        return normalized
+
+    def validate_source_config(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError('source_config phải là object hợp lệ.')
+
+        allowed_channels = set(default_vnbroker_source_config().keys())
+        normalized = {}
+        for channel, channel_value in value.items():
+            if channel not in allowed_channels:
+                raise serializers.ValidationError(f'source_config chứa channel không hợp lệ: {channel}')
+            if not isinstance(channel_value, dict):
+                raise serializers.ValidationError(f'source_config.{channel} phải là object.')
+
+            source = str(channel_value.get('primary') or '').strip().upper()
+            if source not in ALLOWED_VNBROKER_SOURCES:
+                raise serializers.ValidationError(f'source_config.{channel}.primary không hợp lệ.')
+            normalized[channel] = {'primary': source}
+
         return normalized
 
     def validate_timeout_config(self, value):
@@ -293,6 +312,18 @@ class RuntimeVnbrokerConfigSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         source = str(attrs.get('price_board_source') or getattr(self.instance, 'price_board_source', 'KBS')).strip().upper()
+        source_config = attrs.get('source_config')
+        if source_config is not None:
+            merged_source_config = default_vnbroker_source_config()
+            if self.instance is not None:
+                existing_source_config = getattr(self.instance, 'source_config', None)
+                if isinstance(existing_source_config, dict):
+                    merged_source_config.update(existing_source_config)
+            merged_source_config.update(source_config)
+            attrs['source_config'] = merged_source_config
+            source = str(merged_source_config.get('price_board', {}).get('primary') or source).strip().upper()
+            attrs['price_board_source'] = source
+
         fallback_sources = attrs.get('fallback_sources')
         if fallback_sources is None and self.instance is not None:
             fallback_sources = list(self.instance.fallback_sources or [])

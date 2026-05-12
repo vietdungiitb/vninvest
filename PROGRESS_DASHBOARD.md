@@ -1,3 +1,19 @@
+# 2026-05-11 — P2.3 Runtime Config Schema V2 ✅
+
+Status: RuntimeVnbrokerConfig now persists nested `source_config` per channel while preserving flat legacy fields for backward compatibility, and adapter resolution prefers the nested channel primary.
+
+What was changed:
+- Added `source_config` to `RuntimeVnbrokerConfig`, the serializer, and the runtime config normalization helpers.
+- Updated the adapter choke point so `source_config[channel].primary` is preferred before legacy `price_board_source` and env defaults.
+- Added migration `0077_runtimevnbrokerconfig_source_config.py` and regression tests for admin round-trip plus adapter precedence.
+
+Validation:
+- `manage.py test portfolio.tests.test_admin_ops.AdminOpsvnbrokerRuntimeConfigTests.test_staff_can_get_update_and_read_changelog portfolio.tests.test_admin_ops.AdminOpsvnbrokerRuntimeConfigTests.test_staff_can_reset_defaults portfolio.tests.test_adapters.VnbrokerAdapterTests.test_resolve_price_board_sources_prefers_source_config_primary` passed on a fresh test database.
+- `manage.py makemigrations portfolio` generated the schema migration, then the migration was trimmed to the source-config add only.
+
+Residual risk:
+- P2.4 provider routing audit trail remains open.
+
 # 2026-05-11 — P2.2 Market-Phase Resolver ✅
 
 Status: provider selection is now phase-aware; the cached selected provider is scoped by channel + market phase, so market_open/offhours decisions do not bleed across each other.

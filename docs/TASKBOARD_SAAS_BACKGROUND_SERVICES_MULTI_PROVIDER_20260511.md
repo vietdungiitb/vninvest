@@ -51,7 +51,7 @@ DoD: Có score per provider/channel trong metrics
 Owner: Backend  
 DoD: Routing policy chạy được qua runtime config
 
-- [ ] `SBMP-P2.3` Expand runtime config schema v2
+- [x] `SBMP-P2.3` Expand runtime config schema v2
 Owner: Backend  
 DoD: Admin-ops có thể điều chỉnh provider strategy
 

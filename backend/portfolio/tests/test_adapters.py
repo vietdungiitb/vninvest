@@ -65,6 +65,21 @@ class VnbrokerAdapterTests(SimpleTestCase):
             sources = vnbroker_adapter._resolve_financial_ratio_sources(explicit_source='AUTO')
         self.assertEqual(sources, ['AUTO', 'TCBS', 'VCI'])
 
+    @patch('portfolio.adapters.vnbroker_adapter.resolve_provider_order', side_effect=lambda channel, sources, **kwargs: sources)
+    @patch(
+        'portfolio.adapters.vnbroker_adapter.get_vnbroker_runtime_settings',
+        return_value={
+            'source_config': {'price_board': {'primary': 'SSI'}},
+            'price_board_source': 'KBS',
+            'fallback_sources': ['VCI'],
+        },
+    )
+    def test_resolve_price_board_sources_prefers_source_config_primary(self, _mock_settings, mock_resolve_order):
+        sources = vnbroker_adapter._resolve_price_board_sources()
+
+        self.assertEqual(sources, ['SSI', 'VCI'])
+        mock_resolve_order.assert_called_once_with('price_board', ['SSI', 'VCI'])
+
     @patch(
         'portfolio.adapters.vnbroker_adapter.get_vnbroker_runtime_settings',
         return_value={'price_board_source': 'KBS', 'fallback_sources': ['VCI', 'KBS']},

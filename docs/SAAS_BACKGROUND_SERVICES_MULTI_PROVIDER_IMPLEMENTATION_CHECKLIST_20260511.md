@@ -251,7 +251,7 @@ docker exec vninvest-dev-core-beat python manage.py check_scheduler_queue_drift 
 
 After P0.1-P0.3:
 - Proceed to P1.1: Define queue map (already in P0)
-- Proceed to P2.3: Expand runtime config schema v2 (P1.1-P2.2 already aligned)
+- Proceed to P2.4: Add provider routing audit trail (P1.1-P2.3 already aligned)
 
 ---
 

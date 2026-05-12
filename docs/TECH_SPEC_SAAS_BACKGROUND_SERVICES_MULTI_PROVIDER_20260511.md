@@ -57,7 +57,7 @@
 ## 2. Provider orchestration contract
 
 1. Provider selection
-- primary source + fallback_sources lấy từ runtime config.
+- primary source + fallback_sources lấy từ runtime config.source_config[channel].primary, backward-compatible với `price_board_source`.
 
 2. Failure handling
 - timeout theo channel (price_board, intraday, history, fundamentals, listing).

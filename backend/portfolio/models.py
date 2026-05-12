@@ -12,6 +12,7 @@ import os
 import secrets
 
 from .ai_options import ADVISORY_CAPABILITY, PROVIDER_CHOICES, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
+from .vnbroker_runtime_config import default_vnbroker_source_config
 from .encryption_utils import decrypt_text, encrypt_text, hash_with_pepper
 
 # ============================================================================
@@ -1552,6 +1553,11 @@ class RuntimeVnbrokerConfig(models.Model):
         blank=True,
         verbose_name='Provider fallback',
     )
+    source_config = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Cấu hình nguồn theo channel',
+    )
     enable_caching = models.BooleanField(default=True, verbose_name='Bật cache adapter')
     enable_rate_limit_detection = models.BooleanField(default=True, verbose_name='Bật nhận diện rate limit')
     enable_concurrent_limit = models.BooleanField(default=True, verbose_name='Bật giới hạn đồng thời')
@@ -1590,12 +1596,17 @@ class RuntimeVnbrokerConfig(models.Model):
         return ['VCI']
 
     @classmethod
+    def default_source_config(cls):
+        return default_vnbroker_source_config()
+
+    @classmethod
     def get_or_create_singleton(cls):
         instance, _created = cls.objects.get_or_create(
             pk=1,
             defaults={
                 'timeout_config': cls.default_timeout_config,
                 'fallback_sources': cls.default_fallback_sources,
+                'source_config': cls.default_source_config,
             },
         )
         return instance
@@ -1606,6 +1617,8 @@ class RuntimeVnbrokerConfig(models.Model):
             raise ValidationError({'timeout_config': 'timeout_config phải là object.'})
         if not isinstance(self.fallback_sources, list):
             raise ValidationError({'fallback_sources': 'fallback_sources phải là danh sách.'})
+        if not isinstance(self.source_config, dict):
+            raise ValidationError({'source_config': 'source_config phải là object.'})
 
     def to_runtime_dict(self):
         return {
@@ -1616,6 +1629,7 @@ class RuntimeVnbrokerConfig(models.Model):
             'timeout_config': self.timeout_config if isinstance(self.timeout_config, dict) else self.default_timeout_config(),
             'price_board_source': str(self.price_board_source or 'KBS').strip().upper(),
             'fallback_sources': self.fallback_sources if isinstance(self.fallback_sources, list) else self.default_fallback_sources(),
+            'source_config': self.source_config if isinstance(self.source_config, dict) else self.default_source_config(),
             'enable_caching': bool(self.enable_caching),
             'enable_rate_limit_detection': bool(self.enable_rate_limit_detection),
             'enable_concurrent_limit': bool(self.enable_concurrent_limit),

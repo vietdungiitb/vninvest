@@ -54,6 +54,7 @@ INTRADAY_BACKFILL_STATUS_URL = '/api/admin-ops/intraday-side-backfill/status/{ta
 
 
 def _grant_portfolio_permission(user, codename):
+    codename = str(codename or '').strip().lower()
     permission = Permission.objects.get(codename=codename, content_type__app_label='portfolio')
     user.user_permissions.add(permission)
 
@@ -502,9 +503,8 @@ class AdminOpsvnbrokerRuntimeConfigTests(APITestCase):
         _grant_portfolio_permission(self.writer_staff, 'change_RuntimeVnbrokerConfig')
 
     def _login(self, username, password='Test@123456'):
-        resp = self.client.post('/api/auth/token/', {'username': username, 'password': password}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+        user = User.objects.get(username=username)
+        self.client.force_authenticate(user=user)
 
     def test_non_staff_forbidden(self):
         self._login('vnbroker_user')
@@ -533,6 +533,13 @@ class AdminOpsvnbrokerRuntimeConfigTests(APITestCase):
             'retry_backoff_seconds': 0.5,
             'price_board_source': 'VCI',
             'fallback_sources': ['KBS', 'VCI'],
+            'source_config': {
+                'price_board': {'primary': 'VCI'},
+                'intraday': {'primary': 'KBS'},
+                'history': {'primary': 'KBS'},
+                'financial_ratio': {'primary': 'TCBS'},
+                'listing': {'primary': 'SSI'},
+            },
             'timeout_config': {
                 'price_board': 9,
                 'intraday': 9,
@@ -546,6 +553,8 @@ class AdminOpsvnbrokerRuntimeConfigTests(APITestCase):
         self.assertEqual(update_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(update_resp.data['settings']['max_concurrency'], 9)
         self.assertEqual(update_resp.data['settings']['retry_attempts'], 2)
+        self.assertEqual(update_resp.data['settings']['price_board_source'], 'VCI')
+        self.assertEqual(update_resp.data['settings']['source_config']['financial_ratio']['primary'], 'TCBS')
 
         changelog_resp = self.client.get(vnbroker_CHANGELOG_URL)
         self.assertEqual(changelog_resp.status_code, status.HTTP_200_OK)
@@ -560,6 +569,7 @@ class AdminOpsvnbrokerRuntimeConfigTests(APITestCase):
         reset_resp = self.client.post(vnbroker_RESET_URL, {}, format='json')
         self.assertEqual(reset_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(reset_resp.data['settings']['max_concurrency'], 12)
+        self.assertEqual(reset_resp.data['settings']['source_config']['price_board']['primary'], 'KBS')
 
 
 class AdminOpsvnbrokerBenchmarkTests(APITestCase):

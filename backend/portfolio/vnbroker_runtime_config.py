@@ -11,6 +11,46 @@ VNBROKER_RUNTIME_CACHE_TTL_SECONDS = 300
 
 ALLOWED_VNBROKER_SOURCES = {'VCI', 'KBS', 'TCBS', 'SSI'}
 TIMEOUT_CHANNELS = {'price_board', 'intraday', 'financial_ratio', 'history', 'listing', 'general'}
+SOURCE_CONFIG_DEFAULT_PRIMARY_BY_CHANNEL = {
+    'price_board': 'KBS',
+    'intraday': 'VCI',
+    'history': 'KBS',
+    'financial_ratio': 'VCI',
+    'listing': 'VCI',
+}
+
+
+def default_vnbroker_source_config() -> dict[str, dict[str, str]]:
+    return {
+        channel: {'primary': source}
+        for channel, source in SOURCE_CONFIG_DEFAULT_PRIMARY_BY_CHANNEL.items()
+    }
+
+
+def coerce_vnbroker_source_config(
+    raw_value: dict[str, Any] | None,
+    *,
+    fallback: dict[str, Any] | None = None,
+) -> dict[str, dict[str, str]]:
+    payload = raw_value if isinstance(raw_value, dict) else {}
+    base = fallback if isinstance(fallback, dict) else default_vnbroker_source_config()
+
+    normalized: dict[str, dict[str, str]] = {}
+    for channel, default_primary in SOURCE_CONFIG_DEFAULT_PRIMARY_BY_CHANNEL.items():
+        base_channel = base.get(channel) if isinstance(base, dict) else {}
+        candidate = payload.get(channel)
+        if not isinstance(candidate, dict):
+            candidate = base_channel if isinstance(base_channel, dict) else {}
+
+        primary = str(candidate.get('primary') or '').strip().upper()
+        if primary not in ALLOWED_VNBROKER_SOURCES:
+            primary = str((base_channel or {}).get('primary') or '').strip().upper()
+        if primary not in ALLOWED_VNBROKER_SOURCES:
+            primary = default_primary
+
+        normalized[channel] = {'primary': primary}
+
+    return normalized
 
 
 def default_vnbroker_runtime_settings() -> dict[str, Any]:
@@ -29,6 +69,7 @@ def default_vnbroker_runtime_settings() -> dict[str, Any]:
         },
         'price_board_source': 'KBS',
         'fallback_sources': ['VCI'],
+        'source_config': default_vnbroker_source_config(),
         'enable_caching': True,
         'enable_rate_limit_detection': True,
         'enable_concurrent_limit': True,
@@ -83,6 +124,15 @@ def coerce_vnbroker_runtime_settings(raw_payload: dict[str, Any] | None, fallbac
     if price_board_source not in ALLOWED_VNBROKER_SOURCES:
         raise ValueError('price_board_source không hợp lệ.')
 
+    source_config_payload = payload.get('source_config')
+    base_source_config = base.get('source_config') if isinstance(base.get('source_config'), dict) else default_vnbroker_source_config()
+    if isinstance(source_config_payload, dict):
+        source_config = coerce_vnbroker_source_config(source_config_payload, fallback=base_source_config)
+        price_board_source = source_config['price_board']['primary']
+    else:
+        source_config = coerce_vnbroker_source_config(base_source_config, fallback=base_source_config)
+        source_config['price_board']['primary'] = price_board_source
+
     fallback_raw = payload.get('fallback_sources', base['fallback_sources'])
     if not isinstance(fallback_raw, list):
         raise ValueError('fallback_sources phải là danh sách.')
@@ -108,6 +158,7 @@ def coerce_vnbroker_runtime_settings(raw_payload: dict[str, Any] | None, fallbac
         'timeout_config': timeout_config,
         'price_board_source': price_board_source,
         'fallback_sources': fallback_sources,
+        'source_config': source_config,
         'enable_caching': bool(payload.get('enable_caching', base['enable_caching'])),
         'enable_rate_limit_detection': bool(payload.get('enable_rate_limit_detection', base['enable_rate_limit_detection'])),
         'enable_concurrent_limit': bool(payload.get('enable_concurrent_limit', base['enable_concurrent_limit'])),

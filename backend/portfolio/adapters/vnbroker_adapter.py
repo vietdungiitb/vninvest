@@ -505,12 +505,20 @@ def _resolve_runtime_sources(
     default_primary: str = 'KBS',
     default_fallbacks: list[str] | None = None,
     supported_sources: set[str] | None = None,
+    source_config_channel: str | None = None,
 ) -> list[str]:
     runtime_settings = _get_runtime_settings()
 
+    source_config = runtime_settings.get('source_config') if isinstance(runtime_settings.get('source_config'), dict) else {}
+
     configured_primary = ''
+    if source_config_channel and isinstance(source_config, dict):
+        channel_config = source_config.get(source_config_channel)
+        if isinstance(channel_config, dict):
+            configured_primary = str(channel_config.get('primary') or '').strip().upper()
+
     if runtime_primary_key:
-        configured_primary = str(runtime_settings.get(runtime_primary_key) or '').strip().upper()
+        configured_primary = configured_primary or str(runtime_settings.get(runtime_primary_key) or '').strip().upper()
     configured_fallbacks = runtime_settings.get('fallback_sources') if isinstance(runtime_settings.get('fallback_sources'), list) else []
     runtime_fallbacks = [str(item or '').strip().upper() for item in configured_fallbacks if str(item or '').strip()]
 
@@ -558,6 +566,7 @@ def _resolve_price_board_sources(explicit_source: str | None = None) -> list[str
         env_fallback_key='VNBROKER_PRICE_BOARD_FALLBACK_SOURCES',
         default_primary='KBS',
         default_fallbacks=['VCI'],
+        source_config_channel='price_board',
     )
     return _apply_provider_quality_order('price_board', sources, explicit_source=explicit_source)
 
@@ -570,6 +579,7 @@ def _resolve_intraday_sources(explicit_source: str | None = None) -> list[str]:
         env_fallback_key='VNBROKER_INTRADAY_FALLBACK_SOURCES',
         default_primary='KBS',
         default_fallbacks=['VCI'],
+        source_config_channel='intraday',
     )
     return _apply_provider_quality_order('intraday', sources, explicit_source=explicit_source)
 
@@ -582,6 +592,7 @@ def _resolve_history_sources(explicit_source: str | None = None) -> list[str]:
         env_fallback_key='VNBROKER_HISTORY_FALLBACK_SOURCES',
         default_primary='KBS',
         default_fallbacks=['VCI'],
+        source_config_channel='history',
     )
     return _apply_provider_quality_order('history', sources, explicit_source=explicit_source)
 
@@ -594,29 +605,22 @@ def _resolve_listing_sources(explicit_source: str | None = None) -> list[str]:
         env_fallback_key='VNBROKER_LISTING_FALLBACK_SOURCES',
         default_primary='KBS',
         default_fallbacks=['VCI'],
+        source_config_channel='listing',
     )
     return _apply_provider_quality_order('listing', sources, explicit_source=explicit_source)
 
 
 def _resolve_financial_ratio_sources(explicit_source: str | None = None) -> list[str]:
-    runtime_settings = _get_runtime_settings()
-
-    configured_primary = str(explicit_source or os.getenv('VNBROKER_FINANCIAL_RATIO_SOURCE', '') or '').strip().upper()
-    configured_fallbacks = runtime_settings.get('fallback_sources') if isinstance(runtime_settings.get('fallback_sources'), list) else []
-    fallback_items = [str(item or '').strip().upper() for item in configured_fallbacks if str(item or '').strip()]
-    supported_sources = {'AUTO', 'TCBS', 'VCI', 'KBS', 'FMP'}
-
-    if not configured_primary:
-        configured_primary = 'AUTO'
-
-    env_fallback_raw = str(os.getenv('VNBROKER_FINANCIAL_RATIO_FALLBACK_SOURCES', 'TCBS,VCI,KBS') or '').strip()
-    env_fallbacks = [item.strip().upper() for item in env_fallback_raw.split(',') if item.strip()]
-
-    ordered = []
-    for source in [configured_primary] + fallback_items + env_fallbacks:
-        if source and source in supported_sources and source not in ordered:
-            ordered.append(source)
-    return ordered or ['AUTO']
+    return _resolve_runtime_sources(
+        explicit_source=explicit_source,
+        runtime_primary_key=None,
+        env_primary_key='VNBROKER_FINANCIAL_RATIO_SOURCE',
+        env_fallback_key='VNBROKER_FINANCIAL_RATIO_FALLBACK_SOURCES',
+        default_primary='AUTO',
+        default_fallbacks=['TCBS', 'VCI', 'KBS'],
+        supported_sources={'AUTO', 'TCBS', 'VCI', 'KBS', 'FMP'},
+        source_config_channel='financial_ratio',
+    )
 
 
 def _normalize_intraday_dataframe(result, *, source_provider: str) -> pd.DataFrame:

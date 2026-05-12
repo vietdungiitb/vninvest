@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-11 23:45:37`
+Generated at: `2026-05-12 07:36:31`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-11 23:45:37`
 - Python modules: 536
 - JS/TS modules: 500
 - Total classes: 861
-- Total functions: 2848
-- Total top-level variables: 4533
+- Total functions: 2850
+- Total top-level variables: 4534
 
 ## Python Modules
 
@@ -552,7 +552,7 @@ Generated at: `2026-05-11 23:45:37`
   - `Portfolio` -> methods: `__str__`
   - `PortfolioNewsDigest` -> methods: `__str__`
   - `PriceAlertRule` -> methods: `__str__`
-  - `RuntimeVnbrokerConfig` -> methods: `__str__`, `append_changelog`, `clean`, `default_fallback_sources`, `default_timeout_config`, `get_or_create_singleton`, `to_runtime_dict`
+  - `RuntimeVnbrokerConfig` -> methods: `__str__`, `append_changelog`, `clean`, `default_fallback_sources`, `default_source_config`, `default_timeout_config`, `get_or_create_singleton`, `to_runtime_dict`
   - `ScreenerRule` -> methods: `__str__`
   - `SecuritiesGroup` -> methods: `__str__`
   - `SecuritiesItem` -> methods: `__str__`
@@ -884,7 +884,7 @@ Generated at: `2026-05-11 23:45:37`
   - `MarketStockChartQuerySerializer`
   - `PortfolioSerializer` -> methods: `get_subaccount_count`, `get_transaction_count`
   - `PriceAlertRuleSerializer` -> methods: `validate_cooldown_seconds`, `validate_symbol`
-  - `RuntimeVnbrokerConfigSerializer` -> methods: `validate`, `validate_fallback_sources`, `validate_price_board_source`, `validate_timeout_config`
+  - `RuntimeVnbrokerConfigSerializer` -> methods: `validate`, `validate_fallback_sources`, `validate_price_board_source`, `validate_source_config`, `validate_timeout_config`
   - `ScreenerRuleSerializer`
   - `SecuritiesGroupCreateSerializer`
   - `SecuritiesGroupDetailSerializer`
@@ -1308,7 +1308,7 @@ Generated at: `2026-05-11 23:45:37`
 
 - Classes:
   - `CacheAdapterTests` -> methods: `test_get_cache_happy_path`, `test_get_cache_returns_none_on_exception`, `test_is_vnbroker_rate_limited_false_when_key_missing`, `test_is_vnbroker_rate_limited_true_when_key_exists`, `test_mark_vnbroker_rate_limited_sets_cache`, `test_set_cache_happy_path`, `test_set_cache_swallows_exceptions`
-  - `VnbrokerAdapterTests` -> methods: `setUp`, `test_build_stock_client_does_not_cache_when_disabled`, `test_build_stock_client_logs_missing_data_payload_warning`, `test_build_stock_client_maps_rate_limit_error`, `test_build_stock_client_raises_vnbroker_missing`, `test_build_stock_client_reuses_cached_instance_when_enabled`, `test_fetch_financial_ratio_dataframe_fallbacks_to_next_source`, `test_fetch_financial_ratio_dataframe_uses_timeout_wrapper`, `test_fetch_history_dataframe_uses_selected_source`, `test_fetch_intraday_dataframe_fallbacks_to_next_runtime_provider`, `test_fetch_listing_symbols_dataframe_uses_runtime_provider_chain`, `test_fetch_price_board_dataframe_fallbacks_on_rate_limit`, `test_fetch_price_board_dataframe_fallbacks_on_unusable_payload`, `test_fetch_price_board_dataframe_preserves_canonical_multiindex_payload`, `test_fetch_symbols_by_exchange_dataframe_returns_dataframe`, `test_fetch_symbols_by_group_series_returns_series`, `test_fetch_symbols_by_industries_dataframe_uses_adapter_runtime_chain`, `test_normalize_price_board_dataframe_keeps_raw_vnbroker_price_units`, `test_normalize_price_board_dataframe_maps_flat_rows_to_parseable_multiindex`, `test_read_stream_intraday_ticks_returns_empty_when_reader_fails`, `test_resolve_financial_ratio_sources_keeps_order_and_dedup`, `test_resolve_intraday_sources_uses_runtime_config_order`, `test_resolve_price_board_sources_keeps_order_and_dedup`, `test_run_with_timeout_returns_function_result`, `test_run_with_timeout_wraps_generic_exception`
+  - `VnbrokerAdapterTests` -> methods: `setUp`, `test_build_stock_client_does_not_cache_when_disabled`, `test_build_stock_client_logs_missing_data_payload_warning`, `test_build_stock_client_maps_rate_limit_error`, `test_build_stock_client_raises_vnbroker_missing`, `test_build_stock_client_reuses_cached_instance_when_enabled`, `test_fetch_financial_ratio_dataframe_fallbacks_to_next_source`, `test_fetch_financial_ratio_dataframe_uses_timeout_wrapper`, `test_fetch_history_dataframe_uses_selected_source`, `test_fetch_intraday_dataframe_fallbacks_to_next_runtime_provider`, `test_fetch_listing_symbols_dataframe_uses_runtime_provider_chain`, `test_fetch_price_board_dataframe_fallbacks_on_rate_limit`, `test_fetch_price_board_dataframe_fallbacks_on_unusable_payload`, `test_fetch_price_board_dataframe_preserves_canonical_multiindex_payload`, `test_fetch_symbols_by_exchange_dataframe_returns_dataframe`, `test_fetch_symbols_by_group_series_returns_series`, `test_fetch_symbols_by_industries_dataframe_uses_adapter_runtime_chain`, `test_normalize_price_board_dataframe_keeps_raw_vnbroker_price_units`, `test_normalize_price_board_dataframe_maps_flat_rows_to_parseable_multiindex`, `test_read_stream_intraday_ticks_returns_empty_when_reader_fails`, `test_resolve_financial_ratio_sources_keeps_order_and_dedup`, `test_resolve_intraday_sources_uses_runtime_config_order`, `test_resolve_price_board_sources_keeps_order_and_dedup`, `test_resolve_price_board_sources_prefers_source_config_primary`, `test_run_with_timeout_returns_function_result`, `test_run_with_timeout_wraps_generic_exception`
 
 ### `backend/portfolio/tests/test_admin_crawl_control.py`
 
@@ -2282,9 +2282,9 @@ Generated at: `2026-05-11 23:45:37`
 ### `backend/portfolio/vnbroker_runtime_config.py`
 
 - Functions:
-  - `coerce_vnbroker_runtime_settings`, `default_vnbroker_runtime_settings`, `get_vnbroker_runtime_settings`, `invalidate_vnbroker_runtime_cache`
+  - `coerce_vnbroker_runtime_settings`, `coerce_vnbroker_source_config`, `default_vnbroker_runtime_settings`, `default_vnbroker_source_config`, `get_vnbroker_runtime_settings`, `invalidate_vnbroker_runtime_cache`
 - Top-level variables:
-  - `ALLOWED_VNBROKER_SOURCES`, `TIMEOUT_CHANNELS`, `VNBROKER_RUNTIME_CACHE_KEY`, `VNBROKER_RUNTIME_CACHE_TTL_SECONDS`, `logger`
+  - `ALLOWED_VNBROKER_SOURCES`, `SOURCE_CONFIG_DEFAULT_PRIMARY_BY_CHANNEL`, `TIMEOUT_CHANNELS`, `VNBROKER_RUNTIME_CACHE_KEY`, `VNBROKER_RUNTIME_CACHE_TTL_SECONDS`, `logger`
 
 ### `backend/portfolio/warmup_cache.py`
 
