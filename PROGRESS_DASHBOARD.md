@@ -1,3 +1,38 @@
+# 2026-05-12 — TENANT-T11 Legacy Code Removal (Direct 2-3 Week Cutover) ⏳ PLANNING PHASE
+
+Status: T11 plan simplified. Instead of 90-day gradual decommission, execute direct cutover: one-shot data migration + immediate legacy code deletion in 2-3 weeks.
+
+Approach (No Shadow Run):
+- Phase 1 (Days 1-3): Extract legacy data, validate tenant mapping
+- Phase 2 (Days 3-5): Run bulk migration script (Portfolio/Watchlist/PriceAlert → core in single transaction)
+- Phase 3 (Days 5-7): Delete legacy models, migrations, tests from backend/portfolio
+- Phase 4 (Days 7-10): Update API endpoints to use core models, run full test suite, commit
+
+Key Deliverables:
+- `migrate_legacy_portfolio_complete.py`: One-shot Django management command (Portfolio, Watchlist, PriceAlert)
+- Updated API views (PortfolioViewSet, WatchlistViewSet, PriceAlertViewSet) to use core models
+- Deleted legacy code: backend/portfolio models, migrations 0050-0077, legacy tests
+- Parity validation: Single count check (legacy count == core count) after migration
+
+Rationale:
+✅ Tenant system is "new" (fresh SaaS, not migrating existing prod)
+✅ Low data volume (test/staging data)
+✅ Clean migration path (core database is fresh)
+✅ No dependencies on legacy code
+✅ Fast timeline (2-3 weeks vs 3 months)
+
+Next Steps:
+1. Review plan with Tech Lead
+2. Run migration script --dry-run first
+3. Execute migration (commit)
+4. Run test suite (must PASS)
+5. Delete legacy code
+6. Deploy to prod, monitor 24h
+
+Implementation plan: `docs/IMPLEMENTATION_PLAN_T11_LEGACY_DECOMMISSION_20260512.md`
+
+---
+
 # 2026-05-12 — TENANT-T10 Data Isolation + FK Migration (Option C: packages/core) ✅ 100% COMPLETE
 
 Status: T10 completed end-to-end using Option C (Bypass Legacy Backend). Tenant isolation implemented in packages/core/backend/src/user_workspace with clean migration history, 10/10 isolation tests passing, ready for production.

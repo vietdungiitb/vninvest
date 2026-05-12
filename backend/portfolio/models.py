@@ -97,58 +97,8 @@ class StockProfile(models.Model):
     def __str__(self):
         return f'{self.symbol} - {self.company_name}'
 # ---------------------------------------------------------------------------
-# WatchlistGroup/WatchlistItem: Danh sách theo dõi cá nhân hóa
-# ---------------------------------------------------------------------------
-class WatchlistGroup(models.Model):
-    """
-    Nhóm watchlist cá nhân của user (ví dụ: "Theo dõi sát", "Cổ phiếu lướt sóng").
-    Scoped by tenant for SaaS multi-tenancy.
-    """
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE,
-        related_name='watchlist_groups', verbose_name='Người dùng',
-    )
-    tenant = models.ForeignKey(
-        'identity_access.CoreTenant',
-        on_delete=models.CASCADE,
-        related_name='watchlist_groups',
-        verbose_name='Tenant',
-        null=True,
-        blank=True,
-        help_text='SaaS tenant this watchlist group belongs to',
-    )
-    name = models.CharField(max_length=100, verbose_name='Tên danh sách theo dõi')
-    description = models.TextField(blank=True, default='', verbose_name='Mô tả')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = 'Danh sách theo dõi cá nhân'
-        verbose_name_plural = 'Danh sách theo dõi cá nhân'
-        ordering = ['name']
-
-    def __str__(self):
-        return f'{self.name} ({self.user.username})'
-
-
-class WatchlistItem(models.Model):
-    """
-    Một mã chứng khoán do user chọn theo dõi, thuộc một nhóm watchlist cá nhân.
-    """
-    group = models.ForeignKey(
-        WatchlistGroup, on_delete=models.CASCADE,
-        related_name='items', verbose_name='Danh sách theo dõi cá nhân',
-    )
-    symbol = models.CharField(max_length=10, verbose_name='Mã chứng khoán', db_index=True)
-    added_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = 'Mã trong danh sách theo dõi'
-        verbose_name_plural = 'Mã trong danh sách theo dõi'
-        unique_together = [('group', 'symbol')]
-        ordering = ['-added_at']
-
-    def __str__(self):
-        return f'{self.symbol} ({self.group.name} - {self.group.user.username})'
+# [DELETED: WatchlistGroup, WatchlistItem - migrated to packages/core/backend/src/user_workspace/models.py as Watchlist, WatchlistItem]
+# Decommissioned as part of T11 Legacy Code Removal (2026-05-12)
 
 
 
@@ -339,46 +289,8 @@ class AccountSnapshot(models.Model):
         return self.net_equity
 
 
-class Portfolio(models.Model):
-    """
-    Danh mục đầu tư của một người dùng.
-    Một user có thể có nhiều danh mục (ví dụ: "Dài hạn", "Ngắn hạn").
-    Scoped by tenant for SaaS multi-tenancy.
-    """
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='portfolios',
-        verbose_name='Người dùng',
-    )
-    tenant = models.ForeignKey(
-        'identity_access.CoreTenant',
-        on_delete=models.CASCADE,
-        related_name='portfolios',
-        verbose_name='Tenant',
-        null=True,
-        blank=True,
-        help_text='SaaS tenant this portfolio belongs to',
-    )
-    name = models.CharField(
-        max_length=100,
-        verbose_name='Tên danh mục',
-    )
-    description = models.TextField(
-        blank=True,
-        default='',
-        verbose_name='Mô tả',
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Cập nhật lần cuối')
-
-    class Meta:
-        verbose_name = 'Danh mục đầu tư'
-        verbose_name_plural = 'Danh mục đầu tư'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f'{self.name} ({self.user.username})'
+# [DELETED: Portfolio - migrated to packages/core/backend/src/user_workspace/models.py]
+# Decommissioned as part of T11 Legacy Code Removal (2026-05-12)
 
 
 class Transaction(models.Model):
@@ -650,54 +562,8 @@ class TrackedSymbol(models.Model):
         return f'{self.symbol} ({self.user.username})'
 
 
-class PriceAlertRule(models.Model):
-    class Condition(models.TextChoices):
-        ABOVE = 'ABOVE', 'Vượt lên trên'
-        BELOW = 'BELOW', 'Rơi xuống dưới'
-
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE,
-        related_name='price_alert_rules', verbose_name='Người dùng',
-    )
-    tenant = models.ForeignKey(
-        'identity_access.CoreTenant',
-        on_delete=models.CASCADE,
-        related_name='price_alert_rules',
-        verbose_name='Tenant',
-        null=True,
-        blank=True,
-        help_text='SaaS tenant this price alert rule belongs to',
-    )
-    symbol = models.CharField(max_length=10, verbose_name='Mã chứng khoán', db_index=True)
-    condition = models.CharField(
-        max_length=10,
-        choices=Condition.choices,
-        default=Condition.ABOVE,
-        verbose_name='Điều kiện cảnh báo',
-    )
-    target_price = models.DecimalField(
-        max_digits=15,
-        decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.01'))],
-        verbose_name='Mức giá mục tiêu (VNĐ)',
-    )
-    cooldown_seconds = models.PositiveIntegerField(
-        default=300,
-        verbose_name='Thời gian chờ lặp lại (giây)',
-    )
-    is_active = models.BooleanField(default=True, verbose_name='Đang kích hoạt')
-    last_triggered_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần trigger gần nhất')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Cảnh báo giá'
-        verbose_name_plural = 'Cảnh báo giá'
-        ordering = ['-created_at']
-        unique_together = [('user', 'symbol', 'condition', 'target_price')]
-
-    def __str__(self):
-        return f'{self.symbol} {self.condition} {self.target_price:,.0f} ({self.user.username})'
+# [DELETED: PriceAlertRule - migrated to packages/core/backend/src/user_workspace/models.py as PriceAlert]
+# Decommissioned as part of T11 Legacy Code Removal (2026-05-12)
 
 
 class MarketGroupSyncLog(models.Model):
