@@ -11,8 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from vnstock.explorer.vci.quote import Quote
-from vnstock.core.utils.async_client import (
+from vnbroker.explorer.vci.quote import Quote
+from vnbroker.core.utils.async_client import (
     get_async_request_stats,
     reset_async_request_stats,
 )

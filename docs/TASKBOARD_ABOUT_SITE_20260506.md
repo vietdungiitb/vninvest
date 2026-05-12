@@ -19,7 +19,7 @@
 - [ ] `SITE-1.2` **Add package deps and scripts**  
   Owner: Frontend Lead  
   Estimate: 1h  
-  DoD: `next-intl`, MDX, Pyodide loader, `vnstockcharts` dependency được khai báo  
+  DoD: `next-intl`, MDX, Pyodide loader, `vnbrokercharts` dependency được khai báo  
   Files: `packages/opencore-site/package.json`  
   Validation: `npm install` / lockfile update
 
@@ -119,11 +119,11 @@
   Files: `src/app/api/bars/[symbol]/route.ts`  
   Validation: curl VNM/invalid symbol
 
-- [ ] `SITE-4.3` **Create vnstock-data relay route**  
+- [ ] `SITE-4.3` **Create vnbroker-data relay route**  
   Owner: Backend/Frontend Lead  
   Estimate: 2h  
-  DoD: `/api/public/vnstock-data` trả JSON cho Pyodide  
-  Files: `src/app/api/public/vnstock-data/route.ts`  
+  DoD: `/api/public/vnbroker-data` trả JSON cho Pyodide  
+  Files: `src/app/api/public/vnbroker-data/route.ts`  
   Validation: curl sample payload
 
 - [ ] `SITE-4.4` **Add rate limiting helper**  
@@ -147,7 +147,7 @@
 - [ ] `SITE-5.2` **Build `/chart` surface**  
   Owner: Frontend Lead  
   Estimate: 3h  
-  DoD: demo hiển thị `VNStockChart` từ `vnstockcharts`  
+  DoD: demo hiển thị `VNBrokerChart` từ `vnbrokercharts`  
   Files: `src/app/[locale]/chart/page.tsx`, `src/components/sections/ChartDemo.tsx`  
   Validation: screenshot chart
 
@@ -172,7 +172,7 @@
 - [ ] `SITE-6.1` **Create chart docs page**  
   Owner: Frontend Lead  
   Estimate: 1.5h  
-  DoD: props/API docs khớp `VNStockChart` thật  
+  DoD: props/API docs khớp `VNBrokerChart` thật  
   Files: `src/app/[locale]/chart/docs/page.tsx`  
   Validation: docs page render smoke
 
@@ -185,13 +185,13 @@
 
 ---
 
-## Phase 7 — vnstock and playground
+## Phase 7 — vnbroker and playground
 
-- [ ] `SITE-7.1` **Implement vnstock overview page**  
+- [ ] `SITE-7.1` **Implement vnbroker overview page**  
   Owner: Frontend Lead  
   Estimate: 1.5h  
   DoD: giới thiệu library, quickstart, links đúng  
-  Files: `src/app/[locale]/vnstock/page.tsx`  
+  Files: `src/app/[locale]/vnbroker/page.tsx`  
   Validation: browser smoke
 
 - [ ] `SITE-7.2` **Implement Pyodide loader**  
@@ -205,13 +205,13 @@
   Owner: Frontend Lead  
   Estimate: 3h  
   DoD: editor, run button, output, examples hoạt động  
-  Files: `src/app/[locale]/vnstock/playground/page.tsx`, `PlaygroundPanel.tsx`  
+  Files: `src/app/[locale]/vnbroker/playground/page.tsx`, `PlaygroundPanel.tsx`  
   Validation: execute sample script
 
 - [ ] `SITE-7.4` **Wire relay fetch examples**  
   Owner: Frontend Lead  
   Estimate: 1.5h  
-  DoD: sample code fetch qua `/api/public/vnstock-data`  
+  DoD: sample code fetch qua `/api/public/vnbroker-data`  
   Files: `PlaygroundPanel.tsx`, `api.ts`  
   Validation: payload screenshot
 

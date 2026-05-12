@@ -285,7 +285,7 @@
             <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8;">Cập nhật lúc</div>
             <div style="font-size:14px; color:#cbd5e1;">{{ overview_display.last_date }}</div>
             <div style="margin-top:4px;">
-              <span class="source-badge {% if overview_display.data_source != 'vnstock live' %}db{% endif %}" style="font-size:10px;">
+              <span class="source-badge {% if overview_display.data_source != 'vnbroker live' %}db{% endif %}" style="font-size:10px;">
                 {{ overview_display.data_source }}
               </span>
             </div>
@@ -324,7 +324,7 @@
             <h2 class="panel-title" style="margin-bottom:2px;">Biểu đồ nến EOD — {{ price_row_count }} phiên</h2>
             <p class="panel-subtitle" style="margin:0;">Min: {{ sparkline_min }} · Max: {{ sparkline_max }}</p>
           </div>
-          <span class="source-badge {% if overview_display.data_source != 'vnstock live' %}db{% endif %}">
+          <span class="source-badge {% if overview_display.data_source != 'vnbroker live' %}db{% endif %}">
             {{ overview_display.data_source }}
           </span>
         </div>

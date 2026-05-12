@@ -185,7 +185,7 @@ Result: Ran 2 tests in 6.231s - OK
 ### 2026-04-11 Continuation: Whale Aggregate Window Logic
 
 - Updated whale aggregate window filtering so `session` is bounded from market open to current time and `5d` is anchored from the market-open timestamp 4 days back.
-- Added graceful degradation for aggregate vnstock fallback: when external provider fetch fails after DB page is empty, endpoint now returns a normal aggregate response instead of bubbling a 502.
+- Added graceful degradation for aggregate vnbroker fallback: when external provider fetch fails after DB page is empty, endpoint now returns a normal aggregate response instead of bubbling a 502.
 - Stabilized the window-filter regression test to use local date/time instead of hardcoded wall-clock values.
 
 #### Files Updated In This Follow-up
@@ -193,11 +193,11 @@ Result: Ran 2 tests in 6.231s - OK
 - `backend/portfolio/market_data_service.py`
    - Added market-open aware `_window_start_datetime()` handling for `session` and `5d`.
    - Tightened `_is_event_timestamp_in_window()` and `_is_tick_row_in_window()` to enforce `start <= ts <= now`.
-   - Wrapped aggregate vnstock fallback with graceful handling of `ExternalSystemException`.
+   - Wrapped aggregate vnbroker fallback with graceful handling of `ExternalSystemException`.
 - `backend/portfolio/whale_feed_helpers.py`
    - Mirrored the same bounded window logic used by the refactored service path.
 - `backend/portfolio/views.py`
-   - Mirrored the graceful vnstock fallback handling in the legacy aggregate view path so both code paths degrade consistently.
+   - Mirrored the graceful vnbroker fallback handling in the legacy aggregate view path so both code paths degrade consistently.
 - `backend/portfolio/tests/test_api_routes.py`
    - Replaced hardcoded `10:15:00` fixtures with `timezone.localtime()` / `timezone.localdate()` derived values.
    - Added `patch.dict(os.environ, ...)` to pin market-open inputs during the test.
@@ -208,7 +208,7 @@ Result: Ran 2 tests in 6.231s - OK
 #### Why These Changes Were Needed
 
 - Short windows (`5m`, `15m`, `1h`, `session`) were previously producing nearly identical results because historical ticks were only compared against a lower bound, not against the current request timestamp.
-- The aggregate route could return `502` even when local DB data path was otherwise valid, because an empty DB page triggered vnstock fallback and provider errors escaped too aggressively.
+- The aggregate route could return `502` even when local DB data path was otherwise valid, because an empty DB page triggered vnbroker fallback and provider errors escaped too aggressively.
 - The original regression test depended on a specific wall-clock fixture (`10:15`) that became invalid once session windows were made realistic.
 
 #### Environment Findings During Verification

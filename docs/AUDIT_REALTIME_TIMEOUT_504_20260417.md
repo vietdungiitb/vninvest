@@ -15,7 +15,7 @@ On **2026-04-17**, the system experienced widespread **504 Gateway Timeout** err
 Server logs show frequent occurrences of:
 `StreamReader._from_stream(SYMBOL): ignore stale stream payload (age=...s > 120s)`
 
-This indicates that the **Tick Collector** (responsible for fetching data from vnstock and pushing to Redis) is lagging or stalled. When the stream is older than 120 seconds, the application ignores it to avoid showing "fake" realtime data.
+This indicates that the **Tick Collector** (responsible for fetching data from vnbroker and pushing to Redis) is lagging or stalled. When the stream is older than 120 seconds, the application ignores it to avoid showing "fake" realtime data.
 
 ### Layer 2: Slow Database Fallback
 When the Redis tier fails (due to staleness), the system falls back to querying the `IntradayTick` table. 

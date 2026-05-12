@@ -762,14 +762,14 @@ export const updateAdminPrefetchRuntimeSettings = (payload) =>
 export const getAdminPrefetchTimePolicy = () => apiClient.get('/admin-ops/system-ai-settings/');
 export const updateAdminPrefetchTimePolicy = (payload) =>
   apiClient.put('/admin-ops/system-ai-settings/', { prefetch_time_policy: payload });
-export const getAdminVnstockConfigCurrent = () => apiClient.get('/admin-ops/vnbroker-config/current/');
-export const updateAdminVnstockConfig = (payload) => apiClient.patch('/admin-ops/vnbroker-config/update-config/', payload);
-export const resetAdminVnstockConfig = () => apiClient.post('/admin-ops/vnbroker-config/reset-to-defaults/');
-export const getAdminVnstockConfigChangelog = (limit = 20, offset = 0) =>
+export const getAdminVnbrokerConfigCurrent = () => apiClient.get('/admin-ops/vnbroker-config/current/');
+export const updateAdminVnbrokerConfig = (payload) => apiClient.patch('/admin-ops/vnbroker-config/update-config/', payload);
+export const resetAdminVnbrokerConfig = () => apiClient.post('/admin-ops/vnbroker-config/reset-to-defaults/');
+export const getAdminVnbrokerConfigChangelog = (limit = 20, offset = 0) =>
   apiClient.get(`/admin-ops/vnbroker-config/changelog/?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
-export const getAdminVnstockBenchmarkLatest = () =>
+export const getAdminVnbrokerBenchmarkLatest = () =>
   apiClient.get('/admin-ops/vnbroker-config/benchmark-price-board/latest/');
-export const runAdminVnstockBenchmark = (payload) =>
+export const runAdminVnbrokerBenchmark = (payload) =>
   apiClient.post('/admin-ops/vnbroker-config/benchmark-price-board/run/', payload || {});
 export const warmTickerPrefetch = (mode = 'async') =>
   apiClient.post(`/admin-ops/prefetch/warm/?mode=${encodeURIComponent(mode)}`);

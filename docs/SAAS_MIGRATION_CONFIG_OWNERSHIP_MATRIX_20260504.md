@@ -69,17 +69,17 @@
 
 ---
 
-### 2.4 vnstock / Market Data Config
+### 2.4 vnbroker / Market Data Config
 
 | Config | Canonical file | Writer | Read access |
 |---|---|---|---|
-| `RuntimeVnstockConfig` | `portfolio_runtimevnstockconfig` | `runtime_policy_helpers.py` | Legacy backend (all) + Core (read-only via materializer) |
-| Default provider (KBS/VCI) | `RuntimeVnstockConfig.default_provider` | `runtime_policy_helpers.py` | Both |
-| Provider fallback chain | `RuntimeVnstockConfig.fallback_chain` | `runtime_policy_helpers.py` | Both |
-| Ingest concurrency | `RuntimeVnstockConfig.ingest_concurrency` | `runtime_policy_helpers.py` | Legacy only |
-| **Phase 3.6**: `VnstockRuntimeConfig` | `market_data_vnstockriuntimeconfig` | `market_data.service` | Core only (post-cutover) |
+| `RuntimeVnbrokerConfig` | `portfolio_runtimevnbrokerconfig` | `runtime_policy_helpers.py` | Legacy backend (all) + Core (read-only via materializer) |
+| Default provider (KBS/VCI) | `RuntimeVnbrokerConfig.default_provider` | `runtime_policy_helpers.py` | Both |
+| Provider fallback chain | `RuntimeVnbrokerConfig.fallback_chain` | `runtime_policy_helpers.py` | Both |
+| Ingest concurrency | `RuntimeVnbrokerConfig.ingest_concurrency` | `runtime_policy_helpers.py` | Legacy only |
+| **Phase 3.6**: `VnbrokerRuntimeConfig` | `market_data_vnbrokerriuntimeconfig` | `market_data.service` | Core only (post-cutover) |
 
-**Transition rule**: Trong Phase 3.6, core `market_data.VnstockRuntimeConfig` được seed từ legacy `RuntimeVnstockConfig`. Sau cutover, legacy config becomes read-only reference, core config is canonical.
+**Transition rule**: Trong Phase 3.6, core `market_data.VnbrokerRuntimeConfig` được seed từ legacy `RuntimeVnbrokerConfig`. Sau cutover, legacy config becomes read-only reference, core config is canonical.
 
 ---
 
@@ -91,7 +91,7 @@
 | Whale alert threshold | `global_signal_policy_helpers.py` | `portfolio_globalsignalservicesconfig.whale_service` | `signal_intelligence.WhalePolicy` |
 | Dark flow threshold | `global_signal_policy_helpers.py` | `portfolio_globalsignalservicesconfig.dark_flow_service` | `signal_intelligence.DarkFlowPolicy` |
 | Whale governance versioning | Whale mission-control services | `portfolio_whaleconfigversion` | `signal_intelligence.WhaleConfigVersion` (Phase 3.3) |
-| `intraday_universe_group_ids` (hint) | `runtime_policy_helpers.py` | `portfolio_runtimevnstockconfig` | Decommission Phase 6 (hint becomes unnecessary) |
+| `intraday_universe_group_ids` (hint) | `runtime_policy_helpers.py` | `portfolio_runtimevnbrokerconfig` | Decommission Phase 6 (hint becomes unnecessary) |
 
 **Rules (Phase 1-3)**:
 - Core containers KHÔNG ghi vào `portfolio_globalsignalpolicy` hoặc `portfolio_whaleconfigversion`.

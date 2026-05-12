@@ -26,7 +26,7 @@ Date: 2026-04-10
 - Expected: same events keep stable identity.
 
 2. TC-A1-02
-- Fallback source transition (redis -> db/vnstock).
+- Fallback source transition (redis -> db/vnbroker).
 - Expected: identity remains consistent by defined key policy.
 
 ### F-A2 cursor v2

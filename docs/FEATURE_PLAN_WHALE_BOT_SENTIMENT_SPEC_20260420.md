@@ -15,7 +15,7 @@
 *   **Xử lý ngoại lệ:**
     *   **IPO:** Loại khỏi backtesting cho đến khi mã có đủ 30 phiên giao dịch để tránh nhiễu số liệu.
     *   **Cổ tức:** Sử dụng `adjusted_close_price` (giá điều chỉnh) để tính toán, loại bỏ các biến động ảo do chia quyền.
-    *   **Dữ liệu lỗi:** Triển khai `validate_adjusted_price()` so sánh chéo giữa vnstock và nguồn backup (CafeF). Nếu lệch > 1%, gắn nhãn "Data Warning" thay vì tính toán kết quả.
+    *   **Dữ liệu lỗi:** Triển khai `validate_adjusted_price()` so sánh chéo giữa vnbroker và nguồn backup (CafeF). Nếu lệch > 1%, gắn nhãn "Data Warning" thay vì tính toán kết quả.
 *   **Thời điểm tính toán:** Task chạy định kỳ lúc **16:00 hàng ngày** (sau khi chốt giá đóng cửa) để lock dữ liệu.
 
 ---

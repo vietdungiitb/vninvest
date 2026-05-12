@@ -12,7 +12,7 @@
 
 Dat muc release candidate cho tinh nang Dark Money Flow tren 3 truc:
 1. Correctness: event identity, pagination consistency, severity mapping dung nghia.
-2. Stability: contract nhat quan giua redis_stream/intraday_tick_db/vnstock fallback.
+2. Stability: contract nhat quan giua redis_stream/intraday_tick_db/vnbroker fallback.
 3. Usability baseline: trader de xac dinh event quan trong va tin vao signal.
 
 ## 3) In-scope
@@ -44,7 +44,7 @@ Dat muc release candidate cho tinh nang Dark Money Flow tren 3 truc:
 - Backward compatibility note for FE.
 
 3. Source parity check:
-- Compare output field parity across redis_stream, db, vnstock fallback.
+- Compare output field parity across redis_stream, db, vnbroker fallback.
 
 ### Stream B - Signal Quality
 1. Dark flow severity rulebook v1:

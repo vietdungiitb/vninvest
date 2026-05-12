@@ -4,7 +4,7 @@
 
 Tong hop dot sua tiep theo cho khu vuc Whale Aggregate de:
 - Lam ro logic window `5m/15m/1h/session/5d`
-- Chan hoi quy 502 khi aggregate fallback sang vnstock gap loi
+- Chan hoi quy 502 khi aggregate fallback sang vnbroker gap loi
 - Ghi lai cach verify dung de tranh debug lap lai do moi truong compose bi drift
 
 ## 2) Pham vi van de da xu ly
@@ -32,14 +32,14 @@ Anh huong:
 
 ---
 
-### 2.2 Aggregate endpoint co the tra `502` khi DB page rong va vnstock loi
+### 2.2 Aggregate endpoint co the tra `502` khi DB page rong va vnbroker loi
 
 Trieu chung:
-- Neu DB page khong co row hop le, endpoint co the roi vao fallback vnstock
+- Neu DB page khong co row hop le, endpoint co the roi vao fallback vnbroker
 - Khi provider ngoai loi, aggregate response co the bi day thanh `502`
 
 Nguyen nhan:
-- Nhay qua vnstock fallback nhung khong degrade an toan neu `ExternalSystemException` xay ra
+- Nhay qua vnbroker fallback nhung khong degrade an toan neu `ExternalSystemException` xay ra
 
 Xu ly:
 - Boc fallback bang `try/except ExternalSystemException`
@@ -89,7 +89,7 @@ Anh huong:
 1. `backend/portfolio/market_data_service.py`
 - Them market-open aware window start cho `session` va `5d`
 - Chan tren `<= now` cho event va DB tick
-- Degrade an toan neu vnstock fallback loi
+- Degrade an toan neu vnbroker fallback loi
 
 2. `backend/portfolio/whale_feed_helpers.py`
 - Mirror logic window moi de helper path va service path khong lech nhau

@@ -11,7 +11,7 @@ export function generateStaticParams() {
 export const metadata: Metadata = {
   metadataBase: new URL('https://about.vninvest.edusuccess.vn'),
   title: 'VNInvest Ecosystem Hub',
-  description: 'Public hub for VNInvest, vnstock, and VNStockCharts.'
+  description: 'Public hub for VNInvest, vnbroker, and VNBrokerCharts.'
 };
 
 export default async function LocaleLayout({

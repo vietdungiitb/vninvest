@@ -15,7 +15,7 @@ Theo doi va xu ly 4 loi pre-existing duoc chap nhan tai Gate E3 de khong chan ki
 | DEBT-001 | test_refactored_whale_feed_response_contains_scoring_contract | Thieu truong threshold_source trong payload scoring contract | Mapping metadata chua unify giua service va response adapter | BE | P0 | D1-01 | Done |
 | DEBT-002 | test_refactored_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db | Sai source preference (redis_stream bi mat uu tien) | Session window filtering loai stream fixtures qua chat | BE | P0 | D1-01 | Done |
 | DEBT-003 | test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db | Sai source preference tren legacy path | Session window filtering loai stream fixtures qua chat | BE | P0 | D1-02 | Done |
-| DEBT-004 | test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss | Fallback chain khong xuong vnstock nhu ky vong | Session window filtering loai vnstock fixtures qua chat | BE | P0 | D1-02 | Done |
+| DEBT-004 | test_whale_feed_aggregate_falls_back_to_vnbroker_after_stream_and_db_miss | Fallback chain khong xuong vnbroker nhu ky vong | Session window filtering loai vnbroker fixtures qua chat | BE | P0 | D1-02 | Done |
 
 ## Execution lane result
 
@@ -29,7 +29,7 @@ Theo doi va xu ly 4 loi pre-existing duoc chap nhan tai Gate E3 de khong chan ki
   - DB_ENGINE=sqlite python backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_refactored_whale_feed_response_contains_scoring_contract --verbosity=2
   - DB_ENGINE=sqlite python backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_refactored_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db --verbosity=2
   - DB_ENGINE=sqlite python backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db --verbosity=2
-  - DB_ENGINE=sqlite python backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss --verbosity=2
+  - DB_ENGINE=sqlite python backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_whale_feed_aggregate_falls_back_to_vnbroker_after_stream_and_db_miss --verbosity=2
 - Gate run:
   - DB_ENGINE=sqlite python backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests -k whale --verbosity=1
 

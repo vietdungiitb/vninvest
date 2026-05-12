@@ -21,8 +21,19 @@ class SignalMaterializerScheduleTests(SimpleTestCase):
             self.assertEqual(runtime_entry['options']['queue'], queue_name)
             self.assertEqual(settings_entry['options']['queue'], queue_name)
 
+        self.assertEqual(SCHEDULER_QUEUE_MAP['materialize-pre-open-snapshots-20m'], 'enrichment_offhours')
         self.assertEqual(SCHEDULER_QUEUE_MAP['materialize-session-facts-5m'], 'realtime_prefetch')
         self.assertNotIn('materialize-session-facts-2m', SCHEDULER_QUEUE_MAP)
+
+    def test_pre_open_snapshot_materializer_routes_to_offhours_queue(self):
+        self.assertEqual(
+            app.conf.task_routes['market_serving.materializers.materialize_pre_open_snapshots']['queue'],
+            'enrichment_offhours',
+        )
+        self.assertEqual(
+            settings.CELERY_BEAT_SCHEDULE['materialize-pre-open-snapshots-20m']['options']['queue'],
+            'enrichment_offhours',
+        )
 
     def test_signal_intelligence_critical_tasks_route_to_target_queues(self):
         self.assertEqual(app.conf.task_routes['signal_intelligence.tasks.run_signal_detection_job']['queue'], 'manual_on_demand')

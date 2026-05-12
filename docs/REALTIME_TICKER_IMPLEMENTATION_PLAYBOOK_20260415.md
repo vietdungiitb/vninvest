@@ -33,7 +33,7 @@ Hệ thống hiện tại đã có các thành phần nền tảng cần thiết
 
 Nhưng hot path hiện vẫn còn sai về kiến trúc ở điểm sau:
 
-- request HTTP `/api/realtime/ticker/<symbol>/` vẫn có thể gọi `vnstock` trực tiếp khi cache miss
+- request HTTP `/api/realtime/ticker/<symbol>/` vẫn có thể gọi `vnbroker` trực tiếp khi cache miss
 - request HTTP vẫn có thể enqueue prefetch từ request thread
 - prefetch hiện vẫn là một job quét theo danh sách symbol, chưa có khái niệm tier theo heat và shard theo universe
 - nhiều wrapper realtime backend vẫn dùng helper từ `views.py` cũ nên chưa thể xóa legacy trực tiếp
@@ -41,7 +41,7 @@ Nhưng hot path hiện vẫn còn sai về kiến trúc ở điểm sau:
 Quyết định kiến trúc chốt cho production:
 
 1. HTTP ticker là cache-only.
-2. Upstream `vnstock` chỉ được gọi từ scheduler/prefetch pipeline.
+2. Upstream `vnbroker` chỉ được gọi từ scheduler/prefetch pipeline.
 3. Chi phí upstream phải tỷ lệ theo `unique symbols`, không tỷ lệ theo `users x watchlist size`.
 4. Legacy backend chỉ được bóc sau khi hot path và scheduler mới đã ổn định.
 
@@ -87,13 +87,13 @@ Suy ra:
 Ý nghĩa:
 
 - ở mức `6000 request/phút = 100 request/giây`, Redis không phải nút thắt đầu tiên
-- nút thắt chính vẫn là upstream `vnstock` nếu request path còn chạm upstream
+- nút thắt chính vẫn là upstream `vnbroker` nếu request path còn chạm upstream
 
 ## 3. Mục tiêu cuối cùng
 
 Sau khi hoàn tất toàn bộ playbook này, hệ thống phải đạt được các trạng thái sau:
 
-1. `/api/realtime/ticker/<symbol>/` không gọi `vnstock` trong request path.
+1. `/api/realtime/ticker/<symbol>/` không gọi `vnbroker` trong request path.
 2. Không enqueue prefetch từ request thread.
 3. Mọi ticker response đến từ cache snapshot hoặc stale cache có chủ đích.
 4. Prefetch chạy theo symbol universe tổng hợp, có tier hot/warm/cold.
@@ -109,7 +109,7 @@ Luồng dữ liệu mục tiêu:
 3. Chia symbol thành các tier hot/warm/cold.
 4. Chia từng tier thành các shard ổn định.
 5. Scheduler enqueue job prefetch cho từng shard theo cadence riêng.
-6. Job shard gọi `vnstock` theo batch `40-60` mã.
+6. Job shard gọi `vnbroker` theo batch `40-60` mã.
 7. Kết quả ghi vào Redis snapshot `ticker:<SYMBOL>`.
 8. HTTP `/api/realtime/ticker/<symbol>/` chỉ đọc snapshot.
 9. WebSocket publish đọc snapshot delta hoặc payload mới sinh từ prefetch/realtime stream.
@@ -223,7 +223,7 @@ Pha 1 hoàn thành khi:
 
 - grep code không còn on-demand fetch trong `get_realtime_ticker`
 - load test `6000 request/phút` vào ticker endpoint không làm tăng upstream calls
-- dashboard hoặc log chứng minh cache miss không chạm `vnstock`
+- dashboard hoặc log chứng minh cache miss không chạm `vnbroker`
 
 ## 7. Pha 2: universe snapshot + tier hot/warm/cold + shard scheduler
 
@@ -679,7 +679,7 @@ Hệ thống được coi là hoàn tất khi đồng thời đạt đủ các �
 3. Hot/warm/cold tier vận hành đúng cadence.
 4. Cache hit ratio cao, miss ratio thấp và có giải thích được.
 5. Không còn import `legacy_views` trong nhóm realtime target.
-6. Không còn lỗi `429` do request path gọi trực tiếp `vnstock`.
+6. Không còn lỗi `429` do request path gọi trực tiếp `vnbroker`.
 
 ## 13. Phụ lục: checklist triển khai nhanh
 

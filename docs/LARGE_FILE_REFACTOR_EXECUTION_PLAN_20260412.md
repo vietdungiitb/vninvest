@@ -124,7 +124,7 @@ Tach thanh module:
   - WhaleAdvisoryListView + toan bo stock_ai_advisory_* + trace + observability
   - ai_advisory_canonical_symbol_api, refresh/delete/current stats
 - backend/portfolio/views_admin_runtime.py
-  - admin_runtime_kpi_*, admin_system_ai_*, admin_vnstock_runtime_config_*
+  - admin_runtime_kpi_*, admin_system_ai_*, admin_vnbroker_runtime_config_*
   - prefetch/governance runtime policy helpers
 
 Luu y ky thuat:
@@ -227,7 +227,7 @@ Tien do moi nhat:
 - Da hoan tat PR-3c (phan 2): tach component generation/toggle/refresh/delete/restore + executive summary regenerate/delete sang module backend/portfolio/views_ai_advisory_components_summary.py.
 - Da hoan tat PR-3c (phan 3): tach stock_ai_advisory_session core + session-v2 benchmark/observability helper + holistic rollout gate helper sang module backend/portfolio/views_ai_advisory_session.py.
 - Da hoan tat PR-3c (phan 4): tach WhaleAdvisoryListView + canonical payload/api + auto refresh info + refresh/delete current sang module backend/portfolio/views_ai_advisory_management.py.
-- Da hoan tat PR-3c (phan 5): tach admin runtime KPI + system-ai-settings + vnstock runtime config + warm prefetch sang module backend/portfolio/views_admin_runtime.py.
+- Da hoan tat PR-3c (phan 5): tach admin runtime KPI + system-ai-settings + vnbroker runtime config + warm prefetch sang module backend/portfolio/views_admin_runtime.py.
 - Da hoan tat PR-3c (phan 6): tach ai-options/ai-config/ai-test-connection + whale-advisory-symbol-stats sang module backend/portfolio/views_ai_runtime_stats.py.
 - Da hoan tat PR-3c (phan 7): tach news APIs (stock_news_api, stock_news_ai_summary_api, portfolio_news_digest_api) sang module backend/portfolio/views_stock_news.py.
 - Da bo sung compatibility facade imports cho helper sprint17/whale-feed/stock-workspace de giu patch target portfolio.views.* on dinh.

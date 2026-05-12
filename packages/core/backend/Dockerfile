@@ -12,6 +12,8 @@ ARG VNBROKER_GITHUB_TOKEN
 # ── Stage 1: builder ──────────────────────────────────────────────────────────
 FROM python:${PYTHON_VERSION}-slim AS builder
 
+ARG VNBROKER_GITHUB_TOKEN
+
 WORKDIR /build
 
 # Install build deps
@@ -22,7 +24,8 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --upgrade pip \
     && : "${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}" \
-    && pip install --prefix=/install --no-cache-dir -r requirements.txt
+    && mkdir -p /install \
+    && pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.txt
 
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────

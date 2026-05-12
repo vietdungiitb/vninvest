@@ -12,9 +12,9 @@
 |---|---|---:|---|
 | ABOUT-REQ-01 | About site phải chạy trên `about.vninvest.edusuccess.vn` qua nginx-proxy | P0 | public domain trả 200 |
 | ABOUT-REQ-02 | Site phải có VI/EN toggle, default locale là VI | P0 | UX song ngữ chuẩn |
-| ABOUT-REQ-03 | `/chart` phải dùng `vnstockcharts`, không dùng KLineCharts | P0 | đúng chart engine tự phát triển |
+| ABOUT-REQ-03 | `/chart` phải dùng `vnbrokercharts`, không dùng KLineCharts | P0 | đúng chart engine tự phát triển |
 | ABOUT-REQ-04 | Chart demo phải đi qua same-origin relay `/api/bars/[symbol]` | P0 | không fetch trực tiếp backend từ browser |
-| ABOUT-REQ-05 | `/vnstock/playground` phải chạy Python bằng Pyodide trong browser | P0 | không có server-side code execution |
+| ABOUT-REQ-05 | `/vnbroker/playground` phải chạy Python bằng Pyodide trong browser | P0 | không có server-side code execution |
 | ABOUT-REQ-06 | Public routes phải chặn symbol lạ và có rate limit | P0 | chặn injection + abuse |
 | ABOUT-REQ-07 | Blog phải render MDX và revalidate 24h | P1 | content SEO-friendly |
 | ABOUT-REQ-08 | SEO metadata, sitemap, robots, OG phải hoạt động | P1 | indexable, shareable |
@@ -51,10 +51,10 @@
 | SITE-1 | `packages/opencore-site/**`, `.github/workflows/opencore-site.yml` |
 | SITE-2 | `src/app/[locale]/layout.tsx`, `src/components/layout/*`, `src/messages/*`, `src/app/i18n.ts` |
 | SITE-3 | `src/app/[locale]/page.tsx`, `src/components/sections/HeroSection.tsx`, `ProductCards.tsx`, `FeatureGrid.tsx` |
-| SITE-4 | `src/app/api/bars/[symbol]/route.ts`, `src/app/api/public/vnstock-data/route.ts`, `src/lib/validation.ts`, `src/lib/api.ts` |
+| SITE-4 | `src/app/api/bars/[symbol]/route.ts`, `src/app/api/public/vnbroker-data/route.ts`, `src/lib/validation.ts`, `src/lib/api.ts` |
 | SITE-5 | `src/app/[locale]/chart/page.tsx`, `src/components/sections/ChartDemo.tsx`, `src/lib/adapters/demoAdapter.ts` |
 | SITE-6 | `src/app/[locale]/chart/docs/page.tsx`, `src/app/[locale]/chart/embed/page.tsx` |
-| SITE-7 | `src/app/[locale]/vnstock/page.tsx`, `src/app/[locale]/vnstock/playground/page.tsx`, `src/lib/pyodide.ts` |
+| SITE-7 | `src/app/[locale]/vnbroker/page.tsx`, `src/app/[locale]/vnbroker/playground/page.tsx`, `src/lib/pyodide.ts` |
 | SITE-8 | `src/app/[locale]/blog/page.tsx`, `src/app/[locale]/blog/[slug]/page.tsx`, `src/content/blog/*.mdx` |
 | SITE-9 | `next.config.ts`, `src/lib/seo.ts`, `public/robots.txt`, sitemap route, error pages |
 | SITE-10 | `portainer-stack-vninvest.yml`, release notes, evidence artifacts |
@@ -78,7 +78,7 @@
 ## 5. File-level trace notes
 
 ### 5.1 Immutable dependency
-- `vnstockcharts` is the source of truth for chart rendering.
+- `vnbrokercharts` is the source of truth for chart rendering.
 - About site may wrap it, but must not fork chart logic into a parallel rendering engine.
 
 ### 5.2 Relay boundary

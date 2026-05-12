@@ -81,7 +81,7 @@ Các điểm phải soi kỹ:
 - evidence package có đủ cho self-audit trước final audit không?
 - legacy writer surface có còn hard-block đúng backend-side hay chỉ bị ẩn UI không?
 - whale bridge có tạo pending/draft state và chờ approval/rollout trước khi active publish không?
-- link-out tới Data Ops/Vnstock có permission-gated hay vẫn render link chết cho người thiếu quyền không?
+- link-out tới Data Ops/Vnbroker có permission-gated hay vẫn render link chết cho người thiếu quyền không?
 - forensic carve-out là physical copy/move sang L5 hay chỉ tagging trên raw L0?
 
 Hãy trả kết quả theo thứ tự severity từ cao xuống thấp.

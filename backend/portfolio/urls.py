@@ -82,6 +82,7 @@ urlpatterns = [
     # --- AI Advisory canonical routes ---
     path('ai-advisory/', views.WhaleAdvisoryListView.as_view(), name='ai-advisory-list'),
     path('ai-advisory/<str:symbol>/auto-refresh-info/', views.whale_advisory_auto_refresh_info_api, name='ai-advisory-auto-refresh-info'),
+    path('ai-advisory/<str:symbol>/manual-refresh-status/', views.whale_advisory_manual_refresh_status_api, name='ai-advisory-manual-refresh-status'),
     path('ai-advisory/<str:symbol>/canonical/', views.ai_advisory_canonical_symbol_api, name='ai-advisory-canonical-symbol'),
     path('ai-advisory/<str:symbol>/refresh/', views.refresh_whale_advisory_api, name='ai-advisory-refresh'),
     path('ai-advisory/<str:symbol>/current/', views.delete_current_whale_advisory_api, name='ai-advisory-current-delete'),

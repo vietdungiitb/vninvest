@@ -78,6 +78,7 @@ class ApiRouteSmokeTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
 
     def authenticate_direct(self):
+        self.user = User.objects.get(pk=self.user.pk)
         self.client.force_authenticate(user=self.user)
 
     def _attach_dpi_license(self, plan_name, feature_flags=None, status='active', grace_days=7):

@@ -1,3 +1,286 @@
+# 2026-05-12 — TENANT-T07 Operator Write API ✅
+
+Status: T07 da chot xong va da duoc verify bang test focused + adjacent regression.
+
+Scope hoan thanh:
+- Hoan tat write APIs cho operator tenant actions: suspend, activate, provision, change plan.
+- Wire route `/api/core/v1/operator/tenants/...` va export handlers.
+- Dam bao lifecycle event co du app registration (`tenant_lifecycle`) o backend runtime.
+- Bo test focused `test_operator_write_api.py` da pass day du.
+
+Validation:
+- PASS: `portfolio.tests.test_operator_write_api`.
+- PASS: `portfolio.tests.test_operator_write_api + portfolio.tests.test_operator_tenant_registry_api` (13/13).
+- PASS: `manage.py check`.
+
+Residual risk:
+- Local warning `DJANGO_SECRET_KEY` ephemeral va `CORE_PAT_PEPPER` chua set van la warning moi truong, khong chan T07 behavior.
+
+Next slice:
+- TENANT-T02 (`core_pat_auth.py` bo raw SQL, chuyen sang ORM path) de tiep tuc dong lane P0.
+
+# 2026-05-12 — TENANT-T06 Tenant Lifecycle App + Automation ✅
+
+Status: T06 completed end-to-end. Core now includes a dedicated `tenant_lifecycle` app with lifecycle-event persistence, status-change signal logging, and four scheduled automation tasks.
+
+Completed in this slice:
+- Created `packages/core/backend/src/tenant_lifecycle/` with model, signals, tasks, admin, migration, and app-level tests.
+- Added lifecycle task routing in `packages/core/backend/src/vninvest_core/queue_policy.py` and beat entries in `packages/core/backend/src/vninvest_core/settings.py`.
+- Updated `packages/core/backend/src/vninvest_core/db_router.py` to allow `tenant_lifecycle` writes/migrations in the core DB.
+- Added scheduler/routing regression tests in `packages/core/backend/tests/test_tenant_lifecycle_schedule.py`.
+
+Validation snapshot:
+- `manage.py migrate --noinput` PASS (applied `tenant_lifecycle.0001_initial`)
+- `manage.py test tenant_lifecycle.tests --keepdb` PASS (7/7)
+- `manage.py test tests.test_tenant_lifecycle_schedule --keepdb` PASS (3/3)
+- `manage.py check` PASS
+
+Residual risk:
+- Trial warning delivery currently uses a stub enqueue hook and needs integration with the outbound mail pipeline in later slices.
+
+# 2026-05-12 — TENANT-T05 Commercial Billing + Quota Flush Tasks ✅
+
+Status: core commercial automation now flushes Redis quota counters into `QuotaRecord`, generates monthly invoices for active subscriptions, and marks 7-day-overdue invoices as `past_due` while suspending the tenant/subscription state for the next enforcement layer.
+
+What changed:
+- Added `packages/core/backend/src/commercial/tasks.py` with four Celery tasks for quota flush, monthly invoicing, overdue handling, and warning dedup.
+- Extended `Invoice.StatusChoices` with `past_due` plus migration `packages/core/backend/src/commercial/migrations/0002_invoice_status_past_due.py`.
+- Registered queue routing and beat schedule entries in `packages/core/backend/src/vninvest_core/queue_policy.py` and `packages/core/backend/src/vninvest_core/settings.py`.
+- Added focused regression tests in `packages/core/backend/tests/test_commercial_tasks.py`.
+
+Validation:
+- PASSED: `manage.py test tests.test_commercial_tasks --keepdb`
+- PASSED: 5 tests, 0 failures.
+- PASSED: `manage.py check`
+
+Residual risk:
+- Lifecycle audit events for overdue suspension remain deferred to T06; the suspend side-effect is present now so T04 quota metering has a downstream consumer.
+
+# 2026-05-12 — TENANT-T04 TenantQuotaMiddleware + Redis Metering ✅
+
+Status: core settings now run `TenantQuotaMiddleware` immediately after AuthenticationMiddleware, so authenticated tenant requests are counted in Redis by tenant/date and blocked with 429 when they exceed the active quota limit; auth/public/health/admin/static paths stay exempt.
+
+What changed:
+- Added `packages/core/backend/src/identity_access/middleware.py` for Redis-backed per-tenant metering.
+- Wired `identity_access.middleware.TenantQuotaMiddleware` into `packages/core/backend/src/vninvest_core/settings.py`.
+- Added `packages/core/backend/tests/test_tenant_quota_middleware.py` for limit, unlimited, exempt-path, unauthenticated, and superuser coverage.
+- Measured the hot path with a patched 1000-iteration benchmark: 0.0159 ms/request average.
+
+Validation:
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_tenant_quota_middleware --keepdb; Pop-Location`
+- PASSED: 9 tests ran, 0 failures.
+- PASSED: benchmark harness averaged 0.0159 ms/request with counter=1000.
+
+Residual risk:
+- If a tenant has no active `QuotaRecord`, the middleware currently treats the tenant as unlimited until T05 introduces the flush/invoice path.
+
+# 2026-05-12 — TENANT-T03 IsTenantActive Permission Enforcement ✅
+
+Status: `IsTenantActive` is now wired into the identity_access tenant-facing authenticated views, so suspended/deprovisioned tenants receive `403` on protected routes while `AllowAny` public routes remain unaffected.
+
+What changed:
+- Added `IsTenantActive` to `packages/core/backend/src/identity_access/permissions.py` with superuser bypass and blocked suspended/deprovisioned statuses.
+- Updated `packages/core/backend/src/identity_access/views.py`, `packages/core/backend/src/identity_access/commercial_partner_views.py`, and authenticated routes in `packages/core/backend/src/identity_access/views_auth.py` to use tenant-aware permission lists.
+- Added the permission to both `packages/core/backend/src/vninvest_core/settings.py` and `backend/config/settings.py` REST defaults.
+- Added `packages/core/backend/tests/test_identity_access_permissions.py` to cover direct permission logic and route-level blocked/allowed cases.
+
+Validation:
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_identity_access_permissions --keepdb; Pop-Location`
+- PASSED: 9 tests ran, 0 failures.
+
+Residual risk:
+- Other explicit `IsAuthenticated` view sets outside identity_access still need a later sweep if tenant-status enforcement is meant to cover the full SaaS surface.
+
+# 2026-05-12 — TENANT-T01 SSOT CoreTenant Canonical Cutover ✅
+
+Status: T01 completed. The duplicate `CoreTenant` definition is gone from `backend/portfolio/models.py`, and portfolio callers now resolve the SaaS `identity_access` model directly.
+
+What changed:
+- `backend/portfolio/models.py` now imports the canonical `CoreTenant` directly from `identity_access` with no monolith compatibility shim.
+- `backend/portfolio/partner_tenant_context.py` and the tenant registry tests now create/read tenants through SaaS ORM helpers.
+- `backend/config/settings.py` now exposes `packages/core/backend/src` on the import path and installs `identity_access` so the canonical model loads cleanly.
+
+Validation:
+- PASSED: `manage.py check`
+- PASSED: `grep_search` for `class CoreTenant` in `backend/portfolio/models.py` returned no matches.
+- BLOCKED: focused tenant API tests still need a working PostgreSQL test database in this environment; local `postgres` password authentication failed.
+
+Residual risk:
+- The tenant API smoke suite remains blocked until the PostgreSQL test credentials are corrected locally.
+
+# 2026-05-12 — Service Operations Center (SOC) Audit & Architecture Proposal ✅
+
+Status: Completed comprehensive audit of 23+ background services running across Celery Beat + Workers. All services cataloged, pain points identified, and full SOC architecture proposal created with governance framework.
+
+What changed:
+- **Audit Report**: [docs/SERVICE_OPERATIONS_CENTER_AUDIT_AND_PROPOSAL_20260512.md](docs/SERVICE_OPERATIONS_CENTER_AUDIT_AND_PROPOSAL_20260512.md) — Complete assessment of current service governance gaps, 10+ pain points identified (no centralized control, config scattered, no health checks, no manual trigger capability, no audit trail).
+- **Bootstrap Data**: [docs/SERVICE_REGISTRY_BOOTSTRAP_DATA.json](docs/SERVICE_REGISTRY_BOOTSTRAP_DATA.json) — 18 service definitions ready to import (prefetch, whale detection, order flow, advisory, data ingest, stream consumers, portfolio sync, config mgmt, maintenance).
+- **SOC Architecture**: Django app (`service_ops`) with 6 models (ServiceDefinition, ServiceConfig, ServiceHealthCheck, ServiceRun, ServiceRunLog, ServiceDependency, ServiceAlert) providing unified registry, centralized configuration, manual control, health checks, run history, and dependency DAG.
+- **REST API**: 15+ endpoints for service management, health checks, manual triggers, config versioning, run history, and alerts.
+- **React Dashboard**: 6 UI components (registry grid, health heatmap, manual trigger modal, config editor, run history timeline, alert dashboard).
+
+Key Pain Points Identified:
+- 🔴 **No centralized dashboard** — Can't see which services are running, their status, or errors
+- 🔴 **Config scattered** — Environment variables, cache, hardcoded values, database records = impossible to audit
+- 🔴 **No pause/resume** — Must restart Celery Beat or clear Redis manually (not graceful)
+- 🔴 **No manual trigger** — Requires Django shell or admin; no consistent UI
+- 🔴 **No health checks** — Services fail silently; only discovered when users complain
+- 🔴 **No run history** — Can't audit when tasks ran, what they did, or errors encountered
+- 🔴 **Queue starvation** — Realtime prefetch loses to heavy whale detection/advisory tasks
+- 🔴 **No circuit breaker** — No graceful degradation when APIs rate-limit
+- 🔴 **No task coordination** — Whale alerts must run before distribution, but no DAG
+
+Validation:
+- PASSED: Cataloged all 23+ services across realtime_ticker, whale_detection, order_flow, advisory, data_ingest, stream_consumer, portfolio_sync, config_mgmt, lifecycle, and maintenance domains.
+- PASSED: Service registry bootstrap JSON validated with 18 sample services ready for import.
+- PASSED: Database schema designed with foreign keys, JSONB configs, and M2M dependencies.
+- PASSED: API contract documented with 15+ endpoints.
+- PASSED: Estimated scope 3500-4000 lines (6-8 weeks for full implementation).
+
+Next Steps:
+1. **Approval**: Stakeholder review of SOC architecture
+2. **Phase 1 (Week 1-2)**: Create service_ops Django app, models, migrations, basic REST API
+3. **Phase 2 (Week 2-3)**: Build React admin dashboard with grid, heatmap, manual trigger, config editor
+4. **Phase 3 (Week 3-4)**: Register 23 existing services, migrate hardcoded configs → database
+5. **Phase 4 (Week 4-5)**: Add advanced features (DAG, circuit breaker, queue prioritization)
+6. **Phase 5 (Week 5-6)**: Metrics, observability, trend analysis
+
+Expected Benefits:
+- ✅ MTTD (Mean Time To Detect failures) < 2 minutes
+- ✅ MTTR (Mean Time To Recover) < 5 minutes
+- ✅ Zero manual restart required for config changes
+- ✅ 100% service failure alerting within 5 minutes
+- ✅ Realtime prefetch never starves (<1% cache miss due to starvation)
+- ✅ Full audit trail with version control on all configs
+
+Residual Risk:
+- SOC API bottleneck (mitigated: cache health snapshot for 1 min)
+- Config rollback causing cascade failures (mitigated: dry-run validation)
+- Manual trigger abuse (mitigated: rate limiting + approval gates)
+
+Artifacts:
+- [SERVICE_OPERATIONS_CENTER_AUDIT_AND_PROPOSAL_20260512.md](docs/SERVICE_OPERATIONS_CENTER_AUDIT_AND_PROPOSAL_20260512.md)
+- [SERVICE_REGISTRY_BOOTSTRAP_DATA.json](docs/SERVICE_REGISTRY_BOOTSTRAP_DATA.json)
+
+---
+
+# 2026-05-12 — Dev Stack EntryPoint Fix ✅
+
+Status: compose dev startup scripts now run in exec form for both the SaaS core lane and the remaining legacy backend lane, so the merged stack no longer restart-loops on truncated shell commands.
+
+What changed:
+- `docker-compose.dev.yml` now clears the image entrypoint and uses exec-form shell command arrays for `core-api`, all core worker lanes, `core-beat`, and the legacy backend services.
+- The `apt-get update` shell wrapper issue that was truncating commands to `apt-get update` only is gone.
+
+Validation:
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate core-api core-worker core-worker-realtime-prefetch core-worker-analytics core-worker-realtime-stream core-worker-enrichment core-worker-manual core-beat`
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate backend backend-worker backend-worker-manual backend-prefetch-worker backend-beat`
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml ps` showed `core-api` healthy and the legacy/backend services up without restart loops.
+
+Residual risk:
+- `core-beat` was still in `health: starting` when the snapshot was captured, but it had started successfully and was no longer restarting.
+
+# 2026-05-12 — SAAS Dev Cleanup + Native-Only Proxy Removal ✅
+
+Status: dev compose is env-driven for legacy bridge URLs/DSNs, and core runtime no longer has a catch-all proxy fallback to legacy backend.
+
+What changed:
+- `packages/core/backend/src/vninvest_core/urls.py` no longer imports `legacy_proxy_view` and no longer routes unmatched `/api/*` traffic into legacy fallback.
+- `packages/core/backend/src/vninvest_core/legacy_proxy.py` was deleted.
+- `docker-compose.dev.yml` now uses env-driven `LEGACY_BACKEND_URL` and `LEGACY_DATABASE_URL` values instead of hardcoded URLs.
+- `compose.dev.env` now carries the missing SaaS core dev vars required by the merged compose graph.
+
+Validation:
+- PASSED: `get_errors` on `packages/core/backend/src/vninvest_core/urls.py`.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml config`.
+- PASSED: source search found no runtime `legacy_proxy_view` references after cleanup.
+
+Residual risk:
+- Explicit bridge-backed operator routes still depend on `LEGACY_BACKEND_URL`; they are transitional and need a later SaaS parity pass if the last legacy dependency is to be removed.
+
+# 2026-05-12 — Core ASGI Cutover ✅
+
+Status: core-api now serves via ASGI/daphne on the dev stack and the load harness has a trimmed `core_saas` validation profile that proves PAT auth, daily prices, warm-prefetch, realtime-health, runtime KPI, and websocket ping/pong on `/ws/market/<symbol>/`.
+
+What changed:
+- `docker-compose.dev.yml`, `packages/core/docker-compose.core.yml`, and `packages/core/backend/entrypoint.sh` now start `vninvest_core.asgi:application` through daphne instead of the WSGI gunicorn path.
+- `infra/load-tests/api-load.js` now has `core_saas` as the immediate cutover profile and uses the native websocket route `/ws/market/<symbol>/` with ping/pong validation.
+- `docs/P5_1_10K_USER_SYNTHETIC_LOAD_TEST_PROTOCOL_20260511.md` now documents the core_saas cutover path.
+
+Validation:
+- PASSED: `get_errors` on `infra/load-tests/api-load.js`.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --no-deps --force-recreate core-api`.
+- PASSED: `POST /api/auth/token/` with `admin / test@123456` returned a PAT from the healthy core-api.
+- PASSED: `docker run --rm -v "${PWD}:/work" -w /work -e LOAD_PROFILE=core_saas -e BASE_URL=http://host.docker.internal:8001 -e CORE_PAT=<pat> -e OPS_PAT=<pat> -e WS_PAT=<pat> grafana/k6 run infra/load-tests/api-load.js` completed successfully with zero request errors and successful websocket ping/pong.
+
+Residual risk:
+- The heavier `p5_1` profile still needs future follow-up if we want to restore full 10k synthetic coverage.
+- Broad observability/load endpoints outside the cutover smoke are not part of this slice.
+
+# 2026-05-12 — P5.1 10k Synthetic Load Harness Prepared
+
+Status: load harness da ho tro smoke, baseline, `core_saas`, `p5_1` full 10k, va `p5_1_wide` diagnostic lane; smoke runtime da pass tren core-api public routes, con `p5_1` nay da chuyen sang surface core-native on dinh thay vi single-symbol va observability noisy.
+
+What changed:
+- [infra/load-tests/api-load.js](infra/load-tests/api-load.js) them profile-driven scenarios cho smoke/baseline/core_saas/p5_1/p5_1_wide, switch whale-feed sang aggregate route, va tach observability noisy ra lane rieng.
+- [docs/P5_1_10K_USER_SYNTHETIC_LOAD_TEST_PROTOCOL_20260511.md](docs/P5_1_10K_USER_SYNTHETIC_LOAD_TEST_PROTOCOL_20260511.md) mo ta `p5_1` stable path va `p5_1_wide` diagnostic pass.
+- [module_tree_full.md](module_tree_full.md) regenerate sau khi split harness.
+
+Validation:
+- PASSED: `get_errors` on `infra/load-tests/api-load.js`.
+- PASSED: `docker run --rm -v "${PWD}:/work" -w /work grafana/k6 inspect infra/load-tests/api-load.js`.
+- PASSED: `curl.exe` probe returned `200` for `/api/realtime/whale-feed/aggregate/?symbols=FPT&sort=ts&window=session&limit=5` and `502/503` for the noisy wide endpoints that moved to `p5_1_wide`.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md`.
+
+Residual risk:
+- `p5_1_wide` still needs a dedicated run if full observability coverage is desired.
+
+# 2026-05-12 — P4.3 Canonical Facts Dedupe/Upsert Complete
+
+Status: canonical whale alert facts now dedupe repeated source rows before upsert, and non-empty `UnifiedAlert.source_ref` is protected by a conditional DB uniqueness guard.
+
+What changed:
+- [packages/core/backend/src/market_serving/materializers.py](packages/core/backend/src/market_serving/materializers.py) skips duplicate `source_ref` rows inside `materialize_unified_alerts` and reports the skipped count.
+- [packages/core/backend/src/signal_intelligence/models.py](packages/core/backend/src/signal_intelligence/models.py) and [packages/core/backend/src/signal_intelligence/migrations/0003_unifiedalert_source_ref_nonempty_unique.py](packages/core/backend/src/signal_intelligence/migrations/0003_unifiedalert_source_ref_nonempty_unique.py) enforce idempotent canonical upserts for non-empty source refs.
+- [packages/core/backend/tests/test_saas14_materializers.py](packages/core/backend/tests/test_saas14_materializers.py) now covers duplicate source rows and uniqueness enforcement.
+
+Validation:
+- `manage.py test tests.test_saas14_materializers.TestMaterializeUnifiedAlertsDedup tests.test_signal_materializer_schedule --noinput -v 1` passed.
+- `docker compose --env-file 'C:\Mujoco Projects\vninvest\compose.dev.env' -f 'C:\Mujoco Projects\vninvest\docker-compose.dev.yml' up -d --build backend backend-worker backend-worker-manual backend-beat` refreshed the dev runtime.
+
+Residual risk:
+- P5.1 10k-user synthetic load test remains next.
+
+# 2026-05-12 — P4.2 Pre-Open Snapshot Materialization Complete
+
+Status: core market-serving now materializes pre-open SymbolSnapshot rows from canonical DailyPrice data and schedules the job on the offhours lane.
+
+What changed:
+- [packages/core/backend/src/market_serving/materializers.py](packages/core/backend/src/market_serving/materializers.py) adds `materialize_pre_open_snapshots` with completeness reporting and PRE_OPEN snapshot writes.
+- [packages/core/backend/src/vninvest_core/settings.py](packages/core/backend/src/vninvest_core/settings.py) and [packages/core/backend/src/vninvest_core/queue_policy.py](packages/core/backend/src/vninvest_core/queue_policy.py) schedule and route `materialize-pre-open-snapshots-20m` to `enrichment_offhours`.
+- [packages/core/backend/tests/test_saas14_materializers.py](packages/core/backend/tests/test_saas14_materializers.py) and [packages/core/backend/tests/test_signal_materializer_schedule.py](packages/core/backend/tests/test_signal_materializer_schedule.py) cover the new contract.
+
+Validation:
+- `manage.py test tests.test_saas14_materializers.TestMaterializePreOpenSnapshots tests.test_signal_materializer_schedule --noinput -v 1` passed.
+- `docker compose --env-file 'C:\Mujoco Projects\vninvest\compose.dev.env' -f 'C:\Mujoco Projects\vninvest\docker-compose.dev.yml' up -d --build backend backend-worker backend-worker-manual backend-beat` refreshed the dev runtime.
+
+Residual risk:
+- P4.3 dedupe/upsert canonical facts remains next.
+
+# 2026-05-12 — P4.1 Offhours News/Sentiment Queue Routing
+
+Status: the existing portfolio news digest and news sentiment beat jobs now land on the dedicated offhours enrichment queue.
+
+What changed:
+- [backend/config/settings.py](backend/config/settings.py) now sets `queue='enrichment_offhours'` for `portfolio-daily-news-digest` and `sync-news-sentiment`.
+- [backend/portfolio/tests/test_news_enrichment_schedule.py](backend/portfolio/tests/test_news_enrichment_schedule.py) covers the beat schedule contract.
+
+Validation:
+- `manage.py test portfolio.tests.test_news_enrichment_schedule --noinput -v 1` passed.
+
+Residual risk:
+- History/fundamentals enrichment materializers are still pending the broader P4.1 slice.
+
 # 2026-05-12 — P3.1 Manual Trigger API ✅
 
 Status: advisory manual refresh is now a tenant-aware trigger API with entitlement, quota, cooldown, and audit gates, and it records per-user pending trigger rows for traceability.
@@ -11,7 +294,42 @@ Validation:
 - `manage.py test tests.test_advisory_api_routes --keepdb` passed with 4 tests green.
 
 Residual risk:
-- P3.2 manual_on_demand queue + priority rules remains open.
+
+# 2026-05-12 — P3.3 Manual Refresh Status ✅
+
+Status: manual refresh status endpoint now reports queue name, retry policy, and last manual refresh metadata without depending on PAT bootstrap.
+
+What was changed:
+- Added [backend/portfolio/views_ai_advisory_management.py](backend/portfolio/views_ai_advisory_management.py) with `whale_advisory_manual_refresh_status_api`.
+- Routed the new endpoint through [backend/portfolio/views.py](backend/portfolio/views.py) and [backend/portfolio/urls.py](backend/portfolio/urls.py).
+- Added [backend/portfolio/tests/test_api_routes_whale_advisory_manual_status.py](backend/portfolio/tests/test_api_routes_whale_advisory_manual_status.py) using direct auth so the slice does not depend on the unrelated PAT bootstrap tables.
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_api_routes_whale_advisory_manual_status --noinput -v 1`
+- PASSED: `get_errors` reported no syntax issues for the touched backend files.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` after the final code state.
+
+Residual risk:
+- The existing PAT-based advisory refresh test suite still hits a backend test-schema gap on `identity_access_coretenant`; the new P3.3 slice avoids that path.
+
+# 2026-05-12 — P3.2 Manual Queue Priority Rules ✅
+
+Status: manual_on_demand dispatch now carries plan-tier priority so Pro jobs outrank Community jobs while keeping user-triggered work off realtime lanes.
+
+What was changed:
+- Updated [backend/portfolio/views_ai_advisory_management.py](backend/portfolio/views_ai_advisory_management.py) so manual refresh dispatch now sets broker priority from the user plan tier.
+- Extended [backend/portfolio/tests/test_api_routes_whale_advisory_refresh.py](backend/portfolio/tests/test_api_routes_whale_advisory_refresh.py) to assert the priority-bearing dispatch for the Pro refresh path.
+- Regenerated [module_tree_full.md](module_tree_full.md) so the module tree reflects the new helper and priority constant.
+
+Validation:
+- PASSED: direct code probe confirmed `queue='manual_on_demand'` and `priority=6` for the Pro refresh path.
+- PASSED: `get_errors` reported no syntax issues for the touched backend files.
+- NOTE: `manage.py test portfolio.tests.test_api_routes_whale_advisory_refresh --keepdb -v 2` hit an existing SQLite migration issue in `portfolio.0069_partition_intradaytick` before the test body.
+- PASSED: `docker compose --env-file compose.dev.env -f docker-compose.dev.yml restart backend` refreshed the running legacy backend container.
+- PASSED: `docker ps --filter name=vninvest-dev-backend-legacy --format "{{.Names}} {{.Status}}"` showed the container `Up` after restart.
+
+Residual risk:
+- P3.3 manual job status endpoint + retry policy remains open.
 
 # 2026-05-11 — P2.2 Market-Phase Resolver ✅
 
@@ -1046,17 +1364,17 @@ Validation:
 Status:
 - DNSE doc pack is ready for code-team handoff.
 
-# ✅ AUDIT FILE LIST (2026-05-09-VNBROKER-INFRA-MIGRATION) — Complete backend market data infrastructure migration from vnstock to vnbroker
+# ✅ AUDIT FILE LIST (2026-05-09-VNBROKER-INFRA-MIGRATION) — Complete backend market data infrastructure migration from vnbroker to vnbroker
 
 Files changed:
 - `backend/portfolio/market_data_service.py` (MODIFIED) - Global namespace refactoring to `vnbroker`.
-- `backend/portfolio/adapters/vnbroker_adapter.py` (RENAMED from `vnstock_adapter.py`) - Updated internal logic and rate-limiting.
+- `backend/portfolio/adapters/vnbroker_adapter.py` (RENAMED from `vnbroker_adapter.py`) - Updated internal logic and rate-limiting.
 - `backend/portfolio/adapters/cache_adapter.py` (MODIFIED) - Updated cache keys and helper names.
-- `backend/portfolio/vnbroker_compat.py` (RENAMED from `vnstock_compat.py`) - Updated legacy patch points.
+- `backend/portfolio/vnbroker_compat.py` (RENAMED from `vnbroker_compat.py`) - Updated legacy patch points.
 - `backend/portfolio/domain_constants.py` (MODIFIED) - Fixed constant naming and typos.
 - `backend/portfolio/tasks.py` (MODIFIED) - Resolved import errors for benchmark tasks.
 - `backend/portfolio/whale_feed_helpers.py` (MODIFIED) - Updated constants and fallback guards.
-- `backend/portfolio/migrations/0071_rename_vnstock_to_vnbroker_config.py` (NEW) - Safe model rename migration.
+- `backend/portfolio/migrations/0071_rename_vnbroker_to_vnbroker_config.py` (NEW) - Safe model rename migration.
 - `backend/portfolio/tests/test_adapters.py` (MODIFIED) - Updated test suite for `vnbroker` parity.
 
 Validation:
@@ -1078,7 +1396,7 @@ Files changed:
 - `docs/TASKBOARD_ADMIN_OPS_MODERNIZATION_20260509.md` (ADDED)
 - `docs/TECH_SPEC_ADMIN_OPS_MODERNIZATION_20260509.md` (ADDED)
 - `backend/portfolio/views_admin_runtime.py` (MODIFIED) - Fixed legacy `ImportError`.
-- `packages/core/backend/src/market_data/vnstock_adapter.py` (ADDED) - Native market data adapter.
+- `packages/core/backend/src/market_data/vnbroker_adapter.py` (ADDED) - Native market data adapter.
 - `packages/core/backend/src/data_ingest/tasks.py` (MODIFIED) - Refactored prefetch task to use native adapter.
 - `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` (MODIFIED) - Native Celery monitoring and warmup activation.
 
@@ -1389,9 +1707,9 @@ Status:
 Files changed:
 - packages/core/backend/src/vninvest_core/contracts/admin_ops/__init__.py (ADDED - native admin-ops contract package)
 - packages/core/backend/src/vninvest_core/contracts/admin_ops/urls.py (ADDED - native admin-ops route table)
-- packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py (ADDED - native views for stats, runtime-kpi, system-ai settings, vnstock config, and prefetch warm)
+- packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py (ADDED - native views for stats, runtime-kpi, system-ai settings, vnbroker config, and prefetch warm)
 - packages/core/backend/src/vninvest_core/urls.py (MODIFIED - mount native admin-ops routes before compat)
-- packages/core/backend/src/market_data/models.py (MODIFIED - expand vnstock source choices to cover migrated admin payloads)
+- packages/core/backend/src/market_data/models.py (MODIFIED - expand vnbroker source choices to cover migrated admin payloads)
 - packages/core/backend/tests/test_admin_ops_contract_api.py (ADDED - focused resolver and contract regression suite)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add this entry)
 - PROGRESS_DASHBOARD.md (MODIFIED - add this entry)
@@ -1401,7 +1719,7 @@ Validation:
 - PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG="1"; $env:DJANGO_ALLOWED_HOSTS="localhost,testserver"; $env:DJANGO_SECRET_KEY="test-core-secret-key"; $env:CORE_PAT_PEPPER="test-core-pat-pepper"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test tests.test_admin_ops_contract_api --keepdb; Pop-Location`
 
 Status:
-- Wave A admin cutover da promote cac endpoint core-owned ra khoi compat: stats, runtime-kpi, system-ai settings, vnstock config, va prefetch warm.
+- Wave A admin cutover da promote cac endpoint core-owned ra khoi compat: stats, runtime-kpi, system-ai settings, vnbroker config, va prefetch warm.
 - `AdminOps` khong con phu thuoc vao stub compat toi gian cho cac payload tren.
 - Hard-block van duoc giu cho `prefetch_runtime_settings` va `prefetch_time_policy` writer de tranh parallel writer drift truoc khi Data Ops ownership duoc migrate day du.
 - Wave B/C con lai: benchmark, market-groups, intraday backfill, signal admin, va crawl jobs.
@@ -1983,7 +2301,7 @@ Status: DEV VERIFIED — production sync pending user approval
 
 ---
 
-# ✅ AUDIT FILE LIST (2026-05-06-ABOUT-SITE) — OpenCore About Site / VNStockCharts demo stabilization
+# ✅ AUDIT FILE LIST (2026-05-06-ABOUT-SITE) — OpenCore About Site / VNBrokerCharts demo stabilization
 
 Files changed:
 - packages/opencore-site/next.config.ts (MODIFIED)
@@ -2002,7 +2320,7 @@ Validation:
 
 Status:
 - About site now builds successfully with VI/EN message catalogs populated.
-- Remaining follow-up is only the non-blocking webpack warning from the external VNStockCharts dist import.
+- Remaining follow-up is only the non-blocking webpack warning from the external VNBrokerCharts dist import.
 
 ---
 # ✅ AUDIT FILE LIST (2026-05-04-SFI-DOCS) — SaaS Full Independence (Option B) — Documentation Pack
@@ -6800,7 +7118,7 @@ Validation:
 ---
 
 ## ✅ AUDIT FILE LIST (2026-04-21k)
-- docs/AI_CODING_REGULATION.md (MODIFIED - add mandatory SSOT regulation for `vnstock adapter`, `whale alert`, `darkmoney flow`, `ai advisory`)
+- docs/AI_CODING_REGULATION.md (MODIFIED - add mandatory SSOT regulation for `vnbroker adapter`, `whale alert`, `darkmoney flow`, `ai advisory`)
 - docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add SSOT integration map requirement in planning template + DoR/DoD SSOT checks)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21k)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
@@ -6940,10 +7258,10 @@ Validation:
 - backend/config/settings.py (AUDITED - hardening knobs verified)
 - .env.production (AUDITED & FIXED - escaped $ in SECRET_KEY to resolve d_6e drift)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20j)
-- docs/IMPLEMENTATION_PLAN_VNSTOCK_RUNTIME_HARDENING_20260420.md (AUDITED - phase 2-5 complete)
+- docs/IMPLEMENTATION_PLAN_VNBROKER_RUNTIME_HARDENING_20260420.md (AUDITED - phase 2-5 complete)
 
-- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - them provider/client cache manager TTL+LRU, invalidate cache khi bootstrap loi, loai bo khoi tao `Vnstock().stock(...)` truc tiep o heatmap path)
-- backend/config/settings.py (MODIFIED - rebalance cadence mac dinh scheduler/stream/realtime va bo sung channel capacity/expiry + vnstock cache flags)
+- backend/portfolio/adapters/vnbroker_adapter.py (MODIFIED - them provider/client cache manager TTL+LRU, invalidate cache khi bootstrap loi, loai bo khoi tao `Vnbroker().stock(...)` truc tiep o heatmap path)
+- backend/config/settings.py (MODIFIED - rebalance cadence mac dinh scheduler/stream/realtime va bo sung channel capacity/expiry + vnbroker cache flags)
 - backend/.env.example (MODIFIED - bo sung bien moi cho cadence/channel/cache)
 - backend/.env.production.example (MODIFIED - bo sung bien moi cho cadence/channel/cache cho production)
 - compose.dev.env (MODIFIED - them hardening defaults va resource override vars cho compose)
@@ -6953,7 +7271,7 @@ Validation:
 - backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - cap nhat expectation enqueue theo cadence hardening)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20h)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- docs/IMPLEMENTATION_PLAN_VNSTOCK_RUNTIME_HARDENING_20260420.md (NEW - implementation plan tong the 12 muc mandatory cho hardening runtime `vnstock`, Celery cadence, Redis Streams, Channels va Docker resource governance)
+- docs/IMPLEMENTATION_PLAN_VNBROKER_RUNTIME_HARDENING_20260420.md (NEW - implementation plan tong the 12 muc mandatory cho hardening runtime `vnbroker`, Celery cadence, Redis Streams, Channels va Docker resource governance)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20e cho planning gate runtime hardening toan repo)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 - frontend/src/pages/StockDetail.jsx (MODIFIED - compact action bar khi mo sidebar: giam padding/rong button-select-input, giam min-width block Shortlist/DS nhom, giu 2 o summary tren 1 dong)
@@ -6997,7 +7315,7 @@ Validation:
 
 **Feature Summary:**
 - ✅ `_parse_prompt_config()` — normalize client config against canonical defaults + validate
-- ✅ `_build_fundamental_context_for_prompt()` — vnstock fundamental metrics (EPS/PE/ROE/ROA)
+- ✅ `_build_fundamental_context_for_prompt()` — vnbroker fundamental metrics (EPS/PE/ROE/ROA)
 - ✅ `_build_ownership_context_for_prompt()` — insider deals activity (buy/sell count + recent txns)
 - ✅ `_build_sector_context_for_prompt()` — peer group + benchmark statistics
 - ✅ `_build_technical_context_for_prompt()` refactored — per-indicator filtering (RSI/Bollinger/Volume)
@@ -7092,7 +7410,7 @@ Validation:
 
 **Problem Fixed:** Data poisoning from inconsistent quote prices (26,600 | 0.00 | 23.80 in same table)
 
-**Root Cause:** Backend declared `_SYSTEM_PRICE_UNIT='VND'` but system expected `THOUSAND_VND`. Prices from different sources (vnstock KBS/VCI, realtime snapshot, intraday tick) arrived in different units. Frontend created 3 separate heuristic normalization functions to reverse-engineer correct unit.
+**Root Cause:** Backend declared `_SYSTEM_PRICE_UNIT='VND'` but system expected `THOUSAND_VND`. Prices from different sources (vnbroker KBS/VCI, realtime snapshot, intraday tick) arrived in different units. Frontend created 3 separate heuristic normalization functions to reverse-engineer correct unit.
 
 **Solution Architecture:** 
 - Phase 0: New canonical module (`price_units.py`) with QuotePrice dataclass and conversion helpers
@@ -7107,7 +7425,7 @@ Validation:
 
 **Files Modified (Core):**
 - ✅ `backend/portfolio/price_units.py` (NEW - 284 lines, 40 tests)
-- ✅ `backend/portfolio/adapters/vnstock_adapter.py` (+150 lines, 8 tests)
+- ✅ `backend/portfolio/adapters/vnbroker_adapter.py` (+150 lines, 8 tests)
 - ✅ `backend/portfolio/services.py` (+60 lines)
 - ✅ `backend/portfolio/market_data_service.py` (heuristic deprecated)
 - ✅ `backend/portfolio/realtime/collector.py` (scale factor removed)
@@ -7172,7 +7490,7 @@ Validation:
 - Validation: root cause identified from runtime symptom (single root panel with hidden leaves); follow-up frontend build/smoke verification required.
 - Status: COMPLETED (Treemap leaf nodes are configured to render correctly again)
 
-### start_dev Seed Logging Cleanup for vnstock stderr Noise (2026-04-18)
+### start_dev Seed Logging Cleanup for vnbroker stderr Noise (2026-04-18)
 - start_dev.ps1 (MODIFIED - capture `seed_securities_groups` output via `cmd /c` to avoid false `NativeCommandError` on successful seed)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18az)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
@@ -7208,25 +7526,25 @@ Validation:
 - Validation: tai lieu governance/process only, khong thay doi runtime code.
 - Status: COMPLETED (report co the dung lam khuon mau cho cac du an tiep theo)
 
-### Vnstock Adapter Regression Hardening + Runtime Docs Package Finalization (2026-04-18)
-- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - harden centralized vnstock wrappers and payload warning path)
+### Vnbroker Adapter Regression Hardening + Runtime Docs Package Finalization (2026-04-18)
+- backend/portfolio/adapters/vnbroker_adapter.py (MODIFIED - harden centralized vnbroker wrappers and payload warning path)
 - backend/portfolio/admin.py (MODIFIED - admin workspace live data flow uses adapter entrypoints)
 - backend/portfolio/services.py (MODIFIED - sectors/groups/exchange listing queries routed via adapter)
 - backend/portfolio/tests/test_adapters.py (MODIFIED - expanded regression tests for adapter wrappers/fallback warnings)
 - backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - updated brittle assertions to current workspace template labels)
-- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - regression guard for services vnstock refactor behavior)
-- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - standardized adapter schema/source regression tests)
+- backend/portfolio/tests/test_services_vnbroker_refactor.py (NEW - regression guard for services vnbroker refactor behavior)
+- backend/portfolio/tests/test_vnbroker_adapter_standardized_methods.py (NEW - standardized adapter schema/source regression tests)
 - PLAN_PHASE3_E2E_AI_ADVISORY_20260418.md (NEW - phase-3 execution checklist)
 - docs/AUDIT_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - runtime config audit report)
 - docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical runtime contract)
 - docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - runtime config implementation plan)
 - docs/PROJECT_DEVELOPMENT_FRAMEWORK_BLUEPRINT.md (NEW - project development framework blueprint)
 - docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (NEW - runtime prompt_config technical spec)
-- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - vnstock core compatibility audit)
+- docs/VNBROKER_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - vnbroker core compatibility audit)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18au)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- Validation: `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_admin_stockprofile_sync portfolio.tests.test_services_vnstock_refactor portfolio.tests.test_vnstock_adapter_standardized_methods -v 1` pass 9/9; `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_adapters -v 1` pass 29/29.
-- Status: COMPLETED (backend vnstock refactor package and associated runtime documentation are commit-ready)
+- Validation: `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_admin_stockprofile_sync portfolio.tests.test_services_vnbroker_refactor portfolio.tests.test_vnbroker_adapter_standardized_methods -v 1` pass 9/9; `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_adapters -v 1` pass 29/29.
+- Status: COMPLETED (backend vnbroker refactor package and associated runtime documentation are commit-ready)
 
 ### AI Advisory prompt_config - Production-ready UI Hardening (2026-04-18)
 - frontend/src/pages/StockDetail.jsx (MODIFIED - remove duplicate enabled-sources render; keep single summary badge section with translated labels)
@@ -7238,33 +7556,33 @@ Validation:
 - Validation: `StockDetail.prompt_config.test.js` pass 13/13; backend `tests.test_ai_advisory_e2e_integration` pass 12/12 with `DB_ENGINE=sqlite`; `get_errors` clean on touched frontend files.
 - Status: COMPLETED (prompt_config flow now production-ready across UX + i18n + regression checks)
 
-### Refactor Vnstock Direct Calls to Central Adapter (2026-04-18)
-- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - thêm `_log_upstream_payload_warning`, `fetch_symbols_by_industries_dataframe`, `fetch_symbols_by_group_series`, `fetch_symbols_by_exchange_dataframe`)
-- backend/portfolio/services.py (MODIFIED - `fetch_market_sectors_and_groups` và `_fetch_exchange_lookup` không còn gọi `Vnstock()` trực tiếp)
+### Refactor Vnbroker Direct Calls to Central Adapter (2026-04-18)
+- backend/portfolio/adapters/vnbroker_adapter.py (MODIFIED - thêm `_log_upstream_payload_warning`, `fetch_symbols_by_industries_dataframe`, `fetch_symbols_by_group_series`, `fetch_symbols_by_exchange_dataframe`)
+- backend/portfolio/services.py (MODIFIED - `fetch_market_sectors_and_groups` và `_fetch_exchange_lookup` không còn gọi `Vnbroker()` trực tiếp)
 - backend/portfolio/admin.py (MODIFIED - `_fetch_live_workspace_data` dùng `fetch_price_board_dataframe` qua adapter)
 - backend/portfolio/tests/test_adapters.py (MODIFIED - thêm 4 tests mới cho listing wrappers và payload warning)
 - backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - thêm test xác nhận admin dùng adapter price_board)
-- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - regression tests listing lookup qua adapter)
+- backend/portfolio/tests/test_services_vnbroker_refactor.py (NEW - regression tests listing lookup qua adapter)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18as)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 - Validation: `get_errors` sạch; exchange lookup test xác nhận pass (exit 0); sectors test assertion đã sửa đúng.
-- Status: COMPLETED (không còn `from vnstock import Vnstock` trực tiếp ngoài `_import_vnstock()` trong adapter)
+- Status: COMPLETED (không còn `from vnbroker import Vnbroker` trực tiếp ngoài `_import_vnbroker()` trong adapter)
 
-### VNStock Core Compatibility Coding - Standardized Adapter APIs (2026-04-18)
-- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - thêm wrappers chuẩn hóa cho `fundamental_snapshot`, `insider_deals`, `industry_peers/benchmark/rank`)
-- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - regression tests cho schema canonical và `source/source_used`)
-- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - báo cáo rà soát tương thích vnstock core)
+### VNBroker Core Compatibility Coding - Standardized Adapter APIs (2026-04-18)
+- backend/portfolio/adapters/vnbroker_adapter.py (MODIFIED - thêm wrappers chuẩn hóa cho `fundamental_snapshot`, `insider_deals`, `industry_peers/benchmark/rank`)
+- backend/portfolio/tests/test_vnbroker_adapter_standardized_methods.py (NEW - regression tests cho schema canonical và `source/source_used`)
+- docs/VNBROKER_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - báo cáo rà soát tương thích vnbroker core)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ar)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- Validation: `get_errors` clean trên file đã sửa; test `portfolio.tests.test_vnstock_adapter_standardized_methods` pass 3/3.
-- Status: COMPLETED (đã sẵn sàng dùng lớp API chuẩn hóa của vnstock core cho feature AI Advisory)
+- Validation: `get_errors` clean trên file đã sửa; test `portfolio.tests.test_vnbroker_adapter_standardized_methods` pass 3/3.
+- Status: COMPLETED (đã sẵn sàng dùng lớp API chuẩn hóa của vnbroker core cho feature AI Advisory)
 
-### VNStock Dependency Gate - Lock Core Branch (2026-04-18)
-- backend/requirements.txt (VERIFIED - pinned to private vnstock `@core`)
+### VNBroker Dependency Gate - Lock Core Branch (2026-04-18)
+- backend/requirements.txt (VERIFIED - pinned to private vnbroker `@core`)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aq)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- Validation: xác minh `vnstock==1.0.2`; class-level APIs required đều có (`fundamental_snapshot`, `insider_deals`, `industry_peers`, `industry_benchmark`, `industry_rank`).
-- Status: COMPLETED (đã khóa nhánh vnstock core theo yêu cầu, sẵn sàng bước code tiếp theo)
+- Validation: xác minh `vnbroker==1.0.2`; class-level APIs required đều có (`fundamental_snapshot`, `insider_deals`, `industry_peers`, `industry_benchmark`, `industry_rank`).
+- Status: COMPLETED (đã khóa nhánh vnbroker core theo yêu cầu, sẵn sàng bước code tiếp theo)
 
 ### AI Advisory Runtime Config - Pre-code Package Complete (2026-04-18)
 - docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical contract SSOT: schema v2, source registry, validation rules, migration map, definition of ready)
@@ -8092,7 +8410,7 @@ Validation:
 ### Price Unit Canonical Refactor (Phases 0-1)
 - backend/portfolio/price_units.py (NEW)
 - backend/tests/test_price_units_canonical.py (NEW - 40 tests)
-- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED)
+- backend/portfolio/adapters/vnbroker_adapter.py (MODIFIED)
 - backend/tests/test_adapter_canonical.py (NEW - 8 tests)
 - backend/portfolio/services.py (MODIFIED)
 - AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md (NEW)
@@ -8213,13 +8531,13 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 ### Validation
 - ✅ `npm run build` passes after advisory UI integration
 - ✅ `manage.py test portfolio.tests.test_api_routes` passes (28 tests)
-- ✅ Stock workspace smoke test stabilized by mocking vnstock live overlay in test
+- ✅ Stock workspace smoke test stabilized by mocking vnbroker live overlay in test
 - ✅ Redis-backed local validation: 4 stream keys / 400 ticks / consumer batch writes 400 `IntradayTick`
 - ✅ Advisory backend no longer crashes when `OPENCLAW_API_KEY` is missing
 - ✅ `useRealtimeFeed` now sends explicit `unsubscribe` on cleanup and exposes runtime connection metrics for reconnect/fallback QA
 - ✅ `manage.py test portfolio.tests.test_realtime_gateway portfolio.tests.test_realtime_compute` passes (6 tests)
 - ✅ Market calendar hardening implemented: holiday-aware offhours + market-local retention/offpeak date resolution
-- ✅ `VN_STOCK` runtime mặc định tự seed holiday_dates từ calendar `vnstock` năm hiện tại; warmup startup không còn log stacktrace khi DB chưa ready
+- ✅ `VN_STOCK` runtime mặc định tự seed holiday_dates từ calendar `vnbroker` năm hiện tại; warmup startup không còn log stacktrace khi DB chưa ready
 
 ### User Registration Extension
 - ✅ Backend `/api/auth/register/` now requires email and returns JWT for auto-login

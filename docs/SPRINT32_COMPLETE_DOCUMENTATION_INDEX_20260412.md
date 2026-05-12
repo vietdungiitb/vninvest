@@ -12,9 +12,9 @@
 
 | # | Document | Purpose | Status | Read Time |
 |----|----------|---------|--------|-----------|
-| 1️⃣ | [SPRINT32_VNSTOCK_RUNTIME_CONFIG_MASTER_PLAN_20260412.md](SPRINT32_VNSTOCK_RUNTIME_CONFIG_MASTER_PLAN_20260412.md) | **START HERE** - Sprint overview, phases, timeline, success metrics | ✅ | 30min |
-| 2️⃣ | [VNSTOCK_RUNTIME_CONFIG_ROADMAP_20260412.md](VNSTOCK_RUNTIME_CONFIG_ROADMAP_20260412.md) | Detailed implementation roadmap with full code for 3 phases | ✅ | 60min |
-| 3️⃣ | [PREFETCH_POLICY_VS_VNSTOCK_CONFIG_ANALYSIS_20260412.md](PREFETCH_POLICY_VS_VNSTOCK_CONFIG_ANALYSIS_20260412.md) | Architecture analysis - no conflicts, separate concerns | ✅ | 15min |
+| 1️⃣ | [SPRINT32_VNBROKER_RUNTIME_CONFIG_MASTER_PLAN_20260412.md](SPRINT32_VNBROKER_RUNTIME_CONFIG_MASTER_PLAN_20260412.md) | **START HERE** - Sprint overview, phases, timeline, success metrics | ✅ | 30min |
+| 2️⃣ | [VNBROKER_RUNTIME_CONFIG_ROADMAP_20260412.md](VNBROKER_RUNTIME_CONFIG_ROADMAP_20260412.md) | Detailed implementation roadmap with full code for 3 phases | ✅ | 60min |
+| 3️⃣ | [PREFETCH_POLICY_VS_VNBROKER_CONFIG_ANALYSIS_20260412.md](PREFETCH_POLICY_VS_VNBROKER_CONFIG_ANALYSIS_20260412.md) | Architecture analysis - no conflicts, separate concerns | ✅ | 15min |
 
 ### Developer Implementation Guides
 
@@ -22,7 +22,7 @@
 |----------|---------|-------|--------|
 | [SPRINT32_CODE_TEMPLATES_20260412.md](SPRINT32_CODE_TEMPLATES_20260412.md) | 6 ready-to-use code boilerplates (model, serializer, viewset, signal, migration, tests) | BE Dev | ✅ Week 1 |
 | [SPRINT32_API_DOCUMENTATION_20260412.md](SPRINT32_API_DOCUMENTATION_20260412.md) | 4 API endpoints with validation, examples, curl commands, error codes | BE Dev | ✅ Week 1 |
-| [SPRINT32_CODE_TEMPLATES_20260412.md](SPRINT32_CODE_TEMPLATES_20260412.md) | Frontend component template (VnstockConfigPanel.jsx) | FE Dev | ✅ Week 3 |
+| [SPRINT32_CODE_TEMPLATES_20260412.md](SPRINT32_CODE_TEMPLATES_20260412.md) | Frontend component template (VnbrokerConfigPanel.jsx) | FE Dev | ✅ Week 3 |
 
 ### QA & Testing Documents
 
@@ -47,11 +47,11 @@
 **Week 1: Implementation**
 
 ```
-1. Read: SPRINT32_VNSTOCK_RUNTIME_CONFIG_MASTER_PLAN_20260412.md (Phase 1 section)
+1. Read: SPRINT32_VNBROKER_RUNTIME_CONFIG_MASTER_PLAN_20260412.md (Phase 1 section)
 2. Copy: Code from SPRINT32_CODE_TEMPLATES_20260412.md
-   - Model (RuntimeVnstockConfig)
-   - Serializer (RuntimeVnstockConfigSerializer)
-   - ViewSet (RuntimeVnstockConfigViewSet)
+   - Model (RuntimeVnbrokerConfig)
+   - Serializer (RuntimeVnbrokerConfigSerializer)
+   - ViewSet (RuntimeVnbrokerConfigViewSet)
    - Signal handler
    - Migration script
 3. Test: Use pytest examples from SPRINT32_TESTING_GUIDE_20260412.md
@@ -61,7 +61,7 @@
 **Week 2: Integration**
 
 ```
-1. Read: Phase 2 (VnstockConfigManager integration)
+1. Read: Phase 2 (VnbrokerConfigManager integration)
 2. Implement: Adapter lazy-loading + signal handlers
 3. Test: Integration tests from SPRINT32_TESTING_GUIDE_20260412.md
 4. Deploy: Staging (see SPRINT32_DEPLOYMENT_RUNBOOK_20260412.md)
@@ -81,15 +81,15 @@
 **Week 3: Component Development**
 
 ```
-1. Read: SPRINT32_VNSTOCK_RUNTIME_CONFIG_MASTER_PLAN_20260412.md (Phase 3)
-2. Build: VnstockConfigPanel.jsx using template from SPRINT32_CODE_TEMPLATES_20260412.md
+1. Read: SPRINT32_VNBROKER_RUNTIME_CONFIG_MASTER_PLAN_20260412.md (Phase 3)
+2. Build: VnbrokerConfigPanel.jsx using template from SPRINT32_CODE_TEMPLATES_20260412.md
 3. Integrate: Add to AdminOps tabs
 4. Test: Component tests in SPRINT32_TESTING_GUIDE_20260412.md
 5. Verify: All 18 fields edit-able, validation working
 ```
 
 **Checklist for FE Dev:**
-- [ ] VnstockConfigPanel component (fully functional)
+- [ ] VnbrokerConfigPanel component (fully functional)
 - [ ] AdminOps tab integration
 - [ ] Form validation (client-side)
 - [ ] Changelog viewer
@@ -216,7 +216,7 @@ MASTER_PLAN (16min read)
 
 | Day | Task | Owner | Hours | Doc |
 |-----|------|-------|-------|-----|
-| Mon 22 | VnstockConfigManager | BE Dev | 3h | ROADMAP.md |
+| Mon 22 | VnbrokerConfigManager | BE Dev | 3h | ROADMAP.md |
 | Tue 23 | Signal handlers | BE Dev | 3h | CODE_TEMPLATES.md |
 | Wed 24 | Adapter integration | BE Dev | 4h | ROADMAP.md |
 | Thu 25 | Integration tests | QA + BE | 3h | TESTING_GUIDE.md |
@@ -238,7 +238,7 @@ MASTER_PLAN (16min read)
 | Thu May 2 | AdminOps integration | FE Dev | 3h | ROADMAP.md Phase 3 |
 | Fri May 3 | Testing + UI polish | QA + FE | 2h | TESTING_GUIDE.md |
 
-**Deliverables:** VnstockConfigPanel, AdminOps tab ✅
+**Deliverables:** VnbrokerConfigPanel, AdminOps tab ✅
 
 ---
 
@@ -260,7 +260,7 @@ MASTER_PLAN (16min read)
 ## 🎁 Deliverables by Sprint End
 
 ### Backend
-- ✅ RuntimeVnstockConfig model (persistent, singleton)
+- ✅ RuntimeVnbrokerConfig model (persistent, singleton)
 - ✅ DRF serializer with 95%+ validation coverage
 - ✅ ViewSet with 4 endpoints (GET, PATCH, POST reset, GET changelog)
 - ✅ Django admin interface with audit
@@ -270,7 +270,7 @@ MASTER_PLAN (16min read)
 - ✅ Database migration (PostgreSQL tested)
 
 ### Frontend
-- ✅ VnstockConfigPanel.jsx (6 sections, 18 fields)
+- ✅ VnbrokerConfigPanel.jsx (6 sections, 18 fields)
 - ✅ Form validation (client-side)
 - ✅ Error handling + toast notifications
 - ✅ Changelog viewer (expandable)
@@ -349,8 +349,8 @@ MASTER_PLAN (16min read)
 
 ## ✅ Checklist Before Starting
 
-- [ ] Read SPRINT32_VNSTOCK_RUNTIME_CONFIG_MASTER_PLAN_20260412.md (Master Plan)
-- [ ] Review PREFETCH_POLICY_VS_VNSTOCK_CONFIG_ANALYSIS_20260412.md (Architecture)
+- [ ] Read SPRINT32_VNBROKER_RUNTIME_CONFIG_MASTER_PLAN_20260412.md (Master Plan)
+- [ ] Review PREFETCH_POLICY_VS_VNBROKER_CONFIG_ANALYSIS_20260412.md (Architecture)
 - [ ] Backend: Clone SPRINT32_CODE_TEMPLATES_20260412.md (Phase 1 code)
 - [ ] Frontend: Start SPRINT32_CODE_TEMPLATES_20260412.md Phase 3
 - [ ] QA: Setup SPRINT32_TESTING_GUIDE_20260412.md test environment
@@ -397,9 +397,9 @@ MASTER_PLAN (16min read)
 
 ## 🔗 All Documents in One Place
 
-1. [SPRINT32_VNSTOCK_RUNTIME_CONFIG_MASTER_PLAN_20260412.md](SPRINT32_VNSTOCK_RUNTIME_CONFIG_MASTER_PLAN_20260412.md)
-2. [VNSTOCK_RUNTIME_CONFIG_ROADMAP_20260412.md](VNSTOCK_RUNTIME_CONFIG_ROADMAP_20260412.md)
-3. [PREFETCH_POLICY_VS_VNSTOCK_CONFIG_ANALYSIS_20260412.md](PREFETCH_POLICY_VS_VNSTOCK_CONFIG_ANALYSIS_20260412.md)
+1. [SPRINT32_VNBROKER_RUNTIME_CONFIG_MASTER_PLAN_20260412.md](SPRINT32_VNBROKER_RUNTIME_CONFIG_MASTER_PLAN_20260412.md)
+2. [VNBROKER_RUNTIME_CONFIG_ROADMAP_20260412.md](VNBROKER_RUNTIME_CONFIG_ROADMAP_20260412.md)
+3. [PREFETCH_POLICY_VS_VNBROKER_CONFIG_ANALYSIS_20260412.md](PREFETCH_POLICY_VS_VNBROKER_CONFIG_ANALYSIS_20260412.md)
 4. [SPRINT32_CODE_TEMPLATES_20260412.md](SPRINT32_CODE_TEMPLATES_20260412.md)
 5. [SPRINT32_API_DOCUMENTATION_20260412.md](SPRINT32_API_DOCUMENTATION_20260412.md)
 6. [SPRINT32_TESTING_GUIDE_20260412.md](SPRINT32_TESTING_GUIDE_20260412.md)

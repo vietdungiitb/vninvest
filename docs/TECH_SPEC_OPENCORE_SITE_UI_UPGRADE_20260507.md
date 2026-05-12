@@ -33,7 +33,7 @@ const t = useTranslations('featureGrid');
   "item1": "Phân tích dòng tiền thông minh với dữ liệu whale theo thời gian thực.",
   "item2": "Bộ lọc tín hiệu tùy chỉnh cho từng chiến lược giao dịch.",
   "item3": "Pyodide sandbox — chạy Python phân tích ngay trên trình duyệt.",
-  "item4": "Engine VNStockCharts tự phát triển, hiệu năng cao, không phụ thuộc ngoài."
+  "item4": "Engine VNBrokerCharts tự phát triển, hiệu năng cao, không phụ thuộc ngoài."
 }
 ```
 
@@ -44,7 +44,7 @@ const t = useTranslations('featureGrid');
   "item1": "Smart money-flow analysis with real-time whale data.",
   "item2": "Customizable signal filters for any trading strategy.",
   "item3": "Pyodide sandbox — run Python analysis directly in the browser.",
-  "item4": "Custom-built VNStockCharts engine, high performance, zero external dependency."
+  "item4": "Custom-built VNBrokerCharts engine, high performance, zero external dependency."
 }
 ```
 
@@ -196,13 +196,13 @@ const plans = [
 
 **File:** `packages/opencore-site/src/components/layout/Footer.tsx`
 
-**Vấn đề:** `Public surface cho VNInvest, vnstock và VNStockCharts.` hardcode tiếng Việt.
+**Vấn đề:** `Public surface cho VNInvest, vnbroker và VNBrokerCharts.` hardcode tiếng Việt.
 
 **Thay đổi:**
 ```tsx
 // TRƯỚC
 <p className="mt-3 max-w-sm text-sm leading-6 text-slate-400">
-  Public surface cho VNInvest, vnstock và VNStockCharts.
+  Public surface cho VNInvest, vnbroker và VNBrokerCharts.
 </p>
 
 // SAU
@@ -213,12 +213,12 @@ const plans = [
 
 **i18n keys cần thêm vào `vi.json` (namespace `common`):**
 ```json
-"footerDescription": "Mặt tiền công khai cho VNInvest, vnstock và VNStockCharts."
+"footerDescription": "Mặt tiền công khai cho VNInvest, vnbroker và VNBrokerCharts."
 ```
 
 **i18n keys cần thêm vào `en.json` (namespace `common`):**
 ```json
-"footerDescription": "The public front door for VNInvest, vnstock, and VNStockCharts."
+"footerDescription": "The public front door for VNInvest, vnbroker, and VNBrokerCharts."
 ```
 
 ---
@@ -245,7 +245,7 @@ const PRODUCT_ICONS: Record<string, React.ReactNode> = {
       </defs>
     </svg>
   ),
-  vnstock: (
+  vnbroker: (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
       <rect width="28" height="28" rx="8" fill="url(#gs)" />
       <path d="M8 20v-4m4 4v-8m4 8v-5m4 5v-10" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/>
@@ -279,14 +279,14 @@ const PRODUCT_ICONS: Record<string, React.ReactNode> = {
 **i18n keys cần thêm vào `vi.json` (namespace `products`):**
 ```json
 "vinvestMetric": "Quản lý danh mục · Robo-advisor · Tín hiệu whale",
-"vnstockMetric": "600+ mã · HNX, HOSE, UPCOM · REST API",
+"vnbrokerMetric": "600+ mã · HNX, HOSE, UPCOM · REST API",
 "chartMetric": "KLine engine · CVD · Whale overlay · Real-time"
 ```
 
 **i18n keys cần thêm vào `en.json` (namespace `products`):**
 ```json
 "vinvestMetric": "Portfolio manager · Robo-advisor · Whale signals",
-"vnstockMetric": "600+ symbols · HNX, HOSE, UPCOM · REST API",
+"vnbrokerMetric": "600+ symbols · HNX, HOSE, UPCOM · REST API",
 "chartMetric": "KLine engine · CVD · Whale overlay · Real-time"
 ```
 
@@ -295,14 +295,14 @@ const PRODUCT_ICONS: Record<string, React.ReactNode> = {
 **i18n keys cần thêm vào `vi.json` (namespace `products`):**
 ```json
 "vinvestCta": "Dùng ngay",
-"vnstockCta": "Xem tài liệu",
+"vnbrokerCta": "Xem tài liệu",
 "chartCta": "Xem demo chart"
 ```
 
 **i18n keys cần thêm vào `en.json` (namespace `products`):**
 ```json
 "vinvestCta": "Get started",
-"vnstockCta": "View docs",
+"vnbrokerCta": "View docs",
 "chartCta": "See chart demo"
 ```
 
@@ -310,7 +310,7 @@ const PRODUCT_ICONS: Record<string, React.ReactNode> = {
 ```tsx
 const PRODUCT_CTAURL: Record<string, string> = {
   vninvest: 'https://vninvest.edusuccess.vn/register',
-  vnstock: '#vnstock',  // sẽ update khi có trang /vnstock
+  vnbroker: '#vnbroker',  // sẽ update khi có trang /vnbroker
   chart: '/[locale]/chart',  // dùng localeHref
 };
 ```
@@ -520,7 +520,7 @@ export function TopNav() {
           <nav className="grid gap-4 text-sm text-slate-300">
             <Link href={localeHref(pathname, '')} onClick={() => setMobileOpen(false)}>{t('home')}</Link>
             <Link href={localeHref(pathname, '/chart')} onClick={() => setMobileOpen(false)}>{t('chart')}</Link>
-            <Link href={localeHref(pathname, '/vnstock')} onClick={() => setMobileOpen(false)}>{t('vnstock')}</Link>
+            <Link href={localeHref(pathname, '/vnbroker')} onClick={() => setMobileOpen(false)}>{t('vnbroker')}</Link>
             <Link href={localeHref(pathname, '/pricing')} onClick={() => setMobileOpen(false)}>{t('pricing')}</Link>
             <Link href={localeHref(pathname, '/blog')} onClick={() => setMobileOpen(false)}>{t('blog')}</Link>
             <Link href={localeHref(pathname, '/legal')} onClick={() => setMobileOpen(false)}>{t('legal')}</Link>

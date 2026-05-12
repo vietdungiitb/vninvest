@@ -62,6 +62,7 @@ class Invoice(models.Model):
     class StatusChoices(models.TextChoices):
         DRAFT = 'draft', 'Draft'
         OPEN = 'open', 'Open'
+        PAST_DUE = 'past_due', 'Past Due'
         PAID = 'paid', 'Paid'
         VOID = 'void', 'Void'
         UNCOLLECTIBLE = 'uncollectible', 'Uncollectible'

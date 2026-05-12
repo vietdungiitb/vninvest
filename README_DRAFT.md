@@ -46,7 +46,7 @@ Hệ thống được thiết kế với kiến trúc hiện đại, đảm bả
 -   **Frontend**: React, TailwindCSS, Recharts (Modern Bloomberg-style UI).
 -   **Data Processing**: Celery, Redis Streams, Pandas.
 -   **Real-time Engine**: Daphne ASGI, WebSocket gateway.
--   **Data Provider**: Tích hợp `vnstock` cho dữ liệu thị trường Việt Nam.
+-   **Data Provider**: Tích hợp `vnbroker` cho dữ liệu thị trường Việt Nam.
 
 ---
 
@@ -92,7 +92,7 @@ npm start   # Truy cập http://localhost:3000
 
 Dữ liệu chảy qua hệ thống theo đường ống (Pipeline) tối ưu:
 ```text
-vnstock API → Celery Worker (5s) → Compute Engine (VWAP/Whale) → Redis Pub/Sub
+vnbroker API → Celery Worker (5s) → Compute Engine (VWAP/Whale) → Redis Pub/Sub
   → Django Channels → WebSocket → Frontend Hook (useRealtimeFeed.js)
     → UI Update (Dashboard, Watchlist, StockDetail)
 ```

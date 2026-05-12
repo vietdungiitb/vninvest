@@ -322,7 +322,7 @@ Ket qua mong doi:
 
 ### Buoc 23 - Dua dong bo Nhom thi truong vao Django Admin
 - Yeu cau moi:
-  1. Nguoi van hanh can bam duoc `Dong bo Nhom thi truong tu vnstock` ngay trong Django Admin, khong phai chay command rieng.
+  1. Nguoi van hanh can bam duoc `Dong bo Nhom thi truong tu vnbroker` ngay trong Django Admin, khong phai chay command rieng.
   2. Can ho tro ca 2 luong: dong bo cho mot user cu the va dong bo toan he thong.
   3. Admin home can hien thi `lan dong bo gan nhat`, ket qua, canh bao fallback/manual va thong bao thanh cong that bai ngay sau khi bam.
 - Cach lam truoc khi code:

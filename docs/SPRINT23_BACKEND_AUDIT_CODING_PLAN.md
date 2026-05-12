@@ -30,7 +30,7 @@ Out of scope:
 
 | Story ID | Muc tieu | Code area du kien | Output bat buoc | Test bat buoc | Status |
 |---|---|---|---|---|---|
-| S23-01 | External facade hardening | backend/portfolio/adapters/vnstock_adapter.py, backend/portfolio/market_data_service.py | Error map thong nhat + timeout/backoff policy chot | unit tests adapter + service error path | Done |
+| S23-01 | External facade hardening | backend/portfolio/adapters/vnbroker_adapter.py, backend/portfolio/market_data_service.py | Error map thong nhat + timeout/backoff policy chot | unit tests adapter + service error path | Done |
 | S23-02 | Remove direct provider imports (phase 1) | backend/portfolio/views.py, backend/portfolio/market_views.py | Loai call truc tiep trong nhom endpoint market hot-path | api route regression focused | Done |
 | S23-03 | Remove direct provider imports (workspace flow) | backend/portfolio/views.py, backend/portfolio/market_data_service.py | Workspace overview/chart qua service boundary 1 chieu | workspace integration tests | Done |
 | S23-04 | Views decomposition wave | backend/portfolio/views.py + module split | LOC views.py giam >= 30% (so voi baseline 4024) | contract parity tests old/new | Done |
@@ -65,7 +65,7 @@ python manage.py test portfolio.tests.test_adapters
 python manage.py test portfolio.tests.test_api_routes
 
 # Direct provider import scan
-rg "from vnstock import Vnstock" backend/portfolio/views.py
+rg "from vnbroker import Vnbroker" backend/portfolio/views.py
 
 # Quick perf baseline script
 python benchmark_api.py
@@ -80,9 +80,9 @@ python benchmark_api.py
 ## 8) Latest execution update (2026-04-05)
 
 Da hoan tat trong block coding hien tai:
-1. Tang cuong adapter facade cho vnstock (history/financial/listing + timeout theo channel).
+1. Tang cuong adapter facade cho vnbroker (history/financial/listing + timeout theo channel).
 2. Refactor `market_data_service.py` de dung adapter facade thay cho provider import truc tiep.
-3. Loai bo toan bo `from vnstock import Vnstock` trong `views.py` cho nhom endpoint market hot-path va workspace flow.
+3. Loai bo toan bo `from vnbroker import Vnbroker` trong `views.py` cho nhom endpoint market hot-path va workspace flow.
 
 Regression da xac nhan:
 1. `manage.py test portfolio.tests.test_adapters` -> PASS.

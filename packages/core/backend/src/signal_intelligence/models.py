@@ -51,6 +51,13 @@ class UnifiedAlert(models.Model):
         verbose_name = 'Unified Alert'
         verbose_name_plural = 'Unified Alerts'
         ordering = ['-triggered_at', '-pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['source_ref'],
+                condition=~models.Q(source_ref=''),
+                name='uq_unified_alert_source_ref_nonempty',
+            ),
+        ]
         indexes = [
             models.Index(fields=['symbol', 'session_date', 'alert_type']),
             models.Index(fields=['severity', 'triggered_at']),

@@ -173,7 +173,7 @@ def main() -> None:
     print_table("/api/realtime/ticker/<sym>/  — concurrent", con)
 
     # ── 5. Benchmark /admin/ response time ───────────────────────────────
-    print("\n[5] Admin page latency (không nên bị delay bởi vnstock)")
+    print("\n[5] Admin page latency (không nên bị delay bởi vnbroker)")
     t0 = time.perf_counter()
     r = requests.get(f"{BASE_URL}/admin/", headers=headers, timeout=15, allow_redirects=True)
     admin_ms = round((time.perf_counter() - t0) * 1000, 1)

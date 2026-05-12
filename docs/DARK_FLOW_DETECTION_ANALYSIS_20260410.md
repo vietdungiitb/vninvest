@@ -166,9 +166,9 @@ qs: QuerySet = IntradayTick.objects.filter(
   - Tick rate: `window_seconds=300`
   - Iceberg: `window_seconds=300`
 
-**Source 3: No vnstock Fallback**
+**Source 3: No vnbroker Fallback**
 - System relies purely on IntradayTick database
-- NO fallback to vnstock API
+- NO fallback to vnbroker API
 - Empty tick list → returns `signal_type='none', strength=0`
 
 ### 1.5 Signal Components Structure
@@ -889,7 +889,7 @@ ORDER_FLOW_MAX_SYMBOLS = 30  # Max symbols per task run
 | **Database Indexing** | ✅ Partial | Symbol + created_at indexed |
 | **WebSocket Integration** | ✅ Complete | dark_flow_alert event type defined |
 | **Strength Calculation** | ✅ Complete | 3-layer formula with confidence mapping |
-| **Data Source Fallback** | ❌ None | DB-only, no vnstock fallback |
+| **Data Source Fallback** | ❌ None | DB-only, no vnbroker fallback |
 | **Test Coverage** | ✅ Good | 38/38 tests PASS (no pagination tests) |
 | **Time Normalization** | ✅ Complete | UTC ISO 8601 with microseconds |
 

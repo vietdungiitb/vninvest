@@ -34,7 +34,7 @@
     'matched_value': 700000000.0,  # VND
     'price': 100000.0,
     'volume': 7000.0,
-    'source': 'redis_stream' | 'intraday_tick_db' | 'vnstock',
+    'source': 'redis_stream' | 'intraday_tick_db' | 'vnbroker',
     'event_score': 0.75,    # 0-1 scoring
     'display_score': 85,    # 0-100 for UI
     'threshold_source': 'user_default' | 'user_override',
@@ -97,7 +97,7 @@
 4. **Multi-Source Event Aggregation**
    - Redis stream (realtime)
    - IntradayTick DB (historical today)
-   - vnstock (fallback)
+   - vnbroker (fallback)
 
 5. **Optional Baseline Enrichment**
    - File: `baseline_cache_service.py:219-239`
@@ -127,7 +127,7 @@
 Raw Data Sources:
 ├── redis_stream (realtime tick subscription)
 ├── IntradayTick DB (today's trades)
-└── vnstock API (fallback)
+└── vnbroker API (fallback)
           ↓
 get_whale_feed_aggregate()
   - Filter by threshold
@@ -208,8 +208,8 @@ API Response: {results, next_cursor, has_more, ...}
 
 ⚠️ **Monitoring**:
 - `record_whale_event_observation()` tracks event pipeline metrics
-- Source layer observability (redis_stream, intraday_tick_db, vnstock)
-- Rate limiting backoff tracked for vnstock
+- Source layer observability (redis_stream, intraday_tick_db, vnbroker)
+- Rate limiting backoff tracked for vnbroker
 
 📊 **Performance**:
 - Campaign grouping: O(n log n) sorting + O(n) clustering

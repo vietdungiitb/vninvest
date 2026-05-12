@@ -9,12 +9,12 @@
 
 ## 1. Bối cảnh và mục tiêu
 
-VNInvest SaaS (`vninvest.edusuccess.vn`) hiện tại đi thẳng vào màn hình login — không có landing page. Người dùng mới tìm thấy **vnstock** (Python library) trên Google/GitHub, muốn thử app, nhưng không biết SaaS tồn tại. **Conversion funnel đang bị bỏ ngỏ hoàn toàn**.
+VNInvest SaaS (`vninvest.edusuccess.vn`) hiện tại đi thẳng vào màn hình login — không có landing page. Người dùng mới tìm thấy **vnbroker** (Python library) trên Google/GitHub, muốn thử app, nhưng không biết SaaS tồn tại. **Conversion funnel đang bị bỏ ngỏ hoàn toàn**.
 
 About Site là trang public giới thiệu 3 sản phẩm trong VNInvest ecosystem:
 1. **VNInvest** — SaaS portfolio tracker & robo-advisor
-2. **vnstock** — Python library truy xuất dữ liệu thị trường Việt Nam
-3. **VNStockCharts** — thư viện biểu đồ kỹ thuật tự phát triển (React 19 + D3 v7), whale bubbles, CVD, drawing tools
+2. **vnbroker** — Python library truy xuất dữ liệu thị trường Việt Nam
+3. **VNBrokerCharts** — thư viện biểu đồ kỹ thuật tự phát triển (React 19 + D3 v7), whale bubbles, CVD, drawing tools
 
 Domain: `about.vninvest.edusuccess.vn`  
 Ngôn ngữ: Tiếng Việt + English (toggle, default VI)
@@ -33,7 +33,7 @@ about.vninvest.edusuccess.vn
   packages/opencore-site  (Next.js 15, App Router)
          │
          ├── /api/public/chart-demo/     ─► backend (data thật cho chart demo)
-         ├── /api/public/vnstock-data/   ─► backend (proxy cho Pyodide playground)
+         ├── /api/public/vnbroker-data/   ─► backend (proxy cho Pyodide playground)
          └── /api/public/legal-pages/   ─► backend (terms, privacy đã có)
 
   (tất cả /api/* calls đi qua nginx → core-api → legacy proxy → backend)
@@ -52,12 +52,12 @@ packages/opencore-site/
 │   │   │   ├── layout.tsx          ← root layout (dark theme, i18n provider)
 │   │   │   ├── page.tsx            ← / (Ecosystem landing)
 │   │   │   ├── chart/
-│   │   │   │   ├── page.tsx        ← /chart (VNStockCharts live demo)
+│   │   │   │   ├── page.tsx        ← /chart (VNBrokerCharts live demo)
 │   │   │   │   ├── docs/page.tsx   ← /chart/docs (component API docs)
 │   │   │   │   └── embed/page.tsx  ← /chart/embed (embed code generator)
-│   │   │   ├── vnstock/
-│   │   │   │   ├── page.tsx        ← /vnstock (library overview)
-│   │   │   │   └── playground/page.tsx ← /vnstock/playground (Pyodide)
+│   │   │   ├── vnbroker/
+│   │   │   │   ├── page.tsx        ← /vnbroker (library overview)
+│   │   │   │   └── playground/page.tsx ← /vnbroker/playground (Pyodide)
 │   │   │   ├── pricing/page.tsx    ← /pricing (SaaS plans + CTA)
 │   │   │   ├── blog/
 │   │   │   │   ├── page.tsx        ← /blog (article list)
@@ -76,22 +76,22 @@ packages/opencore-site/
 │   │   │   ├── HeroSection.tsx
 │   │   │   ├── ProductCards.tsx
 │   │   │   ├── FeatureGrid.tsx
-│   │   │   ├── ChartDemo.tsx       ← dùng VNStockChart + DemoAdapter → Next.js proxy /api/bars/
+│   │   │   ├── ChartDemo.tsx       ← dùng VNBrokerChart + DemoAdapter → Next.js proxy /api/bars/
 │   │   │   ├── PricingTable.tsx
 │   │   │   └── PlaygroundPanel.tsx ← Pyodide runner
 │   │   └── ui/                     ← shadcn-style primitives
 │   ├── lib/
 │   │   ├── api.ts                  ← fetch wrapper cho /api/public/*
 │   │   ├── pyodide.ts              ← Pyodide loader (lazy)
-│   │   └── demoAdapter.ts          ← DemoAdapter extends DjangoVnstockAdapter, baseUrl='' (proxy local)
+│   │   └── demoAdapter.ts          ← DemoAdapter extends DjangoVnbrokerAdapter, baseUrl='' (proxy local)
 │   ├── messages/
 │   │   ├── vi.json                 ← tất cả text VI
 │   │   └── en.json                 ← tất cả text EN
 │   └── content/
 │       └── blog/                   ← MDX articles
 │           ├── vninvest-intro.mdx
-│           ├── vnstock-quickstart.mdx
-│           └── vnstockchart-whale.mdx
+│           ├── vnbroker-quickstart.mdx
+│           └── vnbrokerchart-whale.mdx
 ├── public/
 │   ├── og-image.png
 │   ├── logo.svg
@@ -114,7 +114,7 @@ packages/opencore-site/
 | Styling | Tailwind CSS v4 | Shared config pattern với packages/web |
 | i18n | next-intl 3.x | Dynamic locale routing `[locale]/` |
 | Blog content | MDX + `@next/mdx` | Markdown với React components |
-| Chart demo | `vnstockcharts` (React 19 + D3 v7) | Thư viện tự phát triển tại `C:\Mujoco Projects\react-stockcharts-master`, package name `vnstockcharts`, export chính `VNStockChart` + `WhaleBubbleOverlay` + `DjangoVnstockAdapter` |
+| Chart demo | `vnbrokercharts` (React 19 + D3 v7) | Thư viện tự phát triển tại `C:\Mujoco Projects\react-stockcharts-master`, package name `vnbrokercharts`, export chính `VNBrokerChart` + `WhaleBubbleOverlay` + `DjangoVnbrokerAdapter` |
 | Python playground | Pyodide 0.26 | Client-side WASM, zero server cost, secure |
 | Package manager | npm | Consistent với workspace |
 
@@ -124,23 +124,23 @@ packages/opencore-site/
 
 ### 5.1 `/` — Ecosystem Landing
 - Hero section: tagline "Hệ sinh thái dữ liệu chứng khoán Việt Nam"
-- 3 product cards: VNInvest SaaS / vnstock library / VNStockChart
+- 3 product cards: VNInvest SaaS / vnbroker library / VNBrokerChart
 - Feature highlights: whale analytics, real-time data, AI advisory
 - Stats: số symbols, số người dùng, data latency
 - CTA primary: "Dùng thử miễn phí" → `https://vninvest.edusuccess.vn/register`
 - CTA secondary: "Xem bảng giá" → `/pricing`
 
-### 5.2 `/chart` — VNStockCharts Live Demo
-- Render `<VNStockChart>` component từ package `vnstockcharts` (local workspace dep)
-- Adapter: `DemoAdapter` (extends `DjangoVnstockAdapter`, baseUrl=`''`) gọi Next.js proxy routes `/api/bars/[symbol]/`
+### 5.2 `/chart` — VNBrokerCharts Live Demo
+- Render `<VNBrokerChart>` component từ package `vnbrokercharts` (local workspace dep)
+- Adapter: `DemoAdapter` (extends `DjangoVnbrokerAdapter`, baseUrl=`''`) gọi Next.js proxy routes `/api/bars/[symbol]/`
 - Next.js proxy routes gọi lại backend VNInvest, áp dụng symbol whitelist + rate limit trước khi forward
 - Whale events overlay: `<WhaleBubbleOverlay>` nhận data từ `GET /api/public/whale-events/?symbol=`
 - Symbol selector: whitelist 10 symbols phổ biến `[VNM, FPT, VHM, ACB, TCB, MBB, VCB, HPG, SSI, VND]`
-- Toggle panes: whale bubbles, CVD, volume — qua `panes` prop của `VNStockChart`
+- Toggle panes: whale bubbles, CVD, volume — qua `panes` prop của `VNBrokerChart`
 - "Nhúng vào dự án của bạn" → link tới `/chart/embed`
 
 ### 5.3 `/chart/docs` — Component API Documentation
-- Props table thực tế từ `VNStockChartProps`:
+- Props table thực tế từ `VNBrokerChartProps`:
   - `adapter: StockDataAdapter` — bắt buộc, implement `fetchBars`, `subscribeToBar`, `subscribeToTrades`
   - `symbol: string` — mã CK
   - `timeframe: Timeframe` — `'1m'|'5m'|'15m'|'1h'|'4h'|'1d'`
@@ -148,25 +148,25 @@ packages/opencore-site/
   - `panes: PaneDescriptor[]` — cấu hình panels (price/volume/CVD/RSI...)
   - `locale: WidgetLocale` — `'vi'|'en'`
   - `onVisibleRangeChange`, `onClick`, `onError` callbacks
-- Install guide: `npm install vnstockcharts`
-- Usage examples với `DjangoVnstockAdapter` và `MockAdapter`
+- Install guide: `npm install vnbrokercharts`
+- Usage examples với `DjangoVnbrokerAdapter` và `MockAdapter`
 
 ### 5.4 `/chart/embed` — Embed Code Generator
 - Live form: chọn symbol, height, theme
 - Realtime preview iframe
 - Copy-paste code snippet
 
-### 5.5 `/vnstock` — Library Overview
-- Giới thiệu, install (`pip install vnstock`)
+### 5.5 `/vnbroker` — Library Overview
+- Giới thiệu, install (`pip install vnbroker`)
 - Quick examples (static code blocks)
 - Link tới playground
 
-### 5.6 `/vnstock/playground` — Pyodide Playground
+### 5.6 `/vnbroker/playground` — Pyodide Playground
 - Editor: textarea hoặc CodeMirror lite
 - "Chạy" button → Pyodide execute trong browser
 - Output panel
 - Preset examples: fetch giá VNM, danh sách cổ phiếu top, historical data
-- Dữ liệu thật từ `GET /api/public/vnstock-data/` (Pyodide gọi via fetch)
+- Dữ liệu thật từ `GET /api/public/vnbroker-data/` (Pyodide gọi via fetch)
 
 ### 5.7 `/pricing` — SaaS Plans
 - Free / Pro / Enterprise cards
@@ -177,7 +177,7 @@ packages/opencore-site/
 - List page: cards với thumbnail, ngày, tóm tắt
 - Article page: MDX render
 - ISR: revalidate mỗi 24h
-- 3 articles bootstrap: VNInvest intro, vnstock quickstart, VNStockChart whale guide
+- 3 articles bootstrap: VNInvest intro, vnbroker quickstart, VNBrokerChart whale guide
 
 ### 5.9 `/legal` — Legal Pages
 - Load từ `GET /api/public/legal-pages/` (endpoint đã có)
@@ -188,11 +188,11 @@ packages/opencore-site/
 
 ### 6.1 Next.js Proxy Routes (KHÔNG cần endpoint Django mới cho chart)
 
-Chart demo dùng `DjangoVnstockAdapter` thông qua **Next.js Route Handlers** làm proxy, không gọi thẳng backend.
+Chart demo dùng `DjangoVnbrokerAdapter` thông qua **Next.js Route Handlers** làm proxy, không gọi thẳng backend.
 
 **File**: `packages/opencore-site/src/app/api/bars/[symbol]/route.ts`  
 **Cách hoạt động**:
-1. Client `VNStockChart` → `DemoAdapter.fetchBars(symbol, tf, from, to)`
+1. Client `VNBrokerChart` → `DemoAdapter.fetchBars(symbol, tf, from, to)`
 2. `DemoAdapter` gọi `GET /api/bars/VNM/?tf=1d&from=...&to=...` (local Next.js)
 3. Next.js route handler kiểm tra symbol whitelist → forward tới `${VNINVEST_BACKEND_URL}/api/bars/VNM/?...`
 4. Response trả về client với header `Cache-Control: public, max-age=300`
@@ -207,7 +207,7 @@ if (!ALLOWED_SYMBOLS.has(params.symbol)) return NextResponse.json({ error: 'symb
 **File**: `packages/opencore-site/src/app/api/whale-events/route.ts`  
 Proxy `GET /api/whale-events/?symbol=` → backend, cùng whitelist logic
 
-### 6.2 `GET /api/public/vnstock-data/`
+### 6.2 `GET /api/public/vnbroker-data/`
 **File**: `backend/portfolio/views.py`  
 **Auth**: không cần  
 **Query params**:
@@ -246,8 +246,8 @@ Proxy `GET /api/whale-events/?symbol=` → backend, cùng whitelist logic
 1. **Không tạo auth** trên about site — chỉ public content, không cookie session
 2. **Symbol whitelist bắt buộc** cho mọi public API endpoint — không để free-form query
 3. **Rate limiting bắt buộc** trên `/api/public/*` — không bypass dù dev/staging
-4. **Không expose internal API keys** trong client-side code — Pyodide gọi qua `/api/public/` relay, không gọi thẳng vnstock data source
-5. **Chart demo phải dùng `VNStockChart` từ package `vnstockcharts`** (local workspace dep) — không tạo chart riêng, không dùng ECharts/Recharts/Chart.js
+4. **Không expose internal API keys** trong client-side code — Pyodide gọi qua `/api/public/` relay, không gọi thẳng vnbroker data source
+5. **Chart demo phải dùng `VNBrokerChart` từ package `vnbrokercharts`** (local workspace dep) — không tạo chart riêng, không dùng ECharts/Recharts/Chart.js
 6. **Text mới phải qua i18n** (both `vi.json` và `en.json`) — không hardcode string
 7. **Tất cả public API response phải có `Cache-Control: public, max-age=300`** để giảm tải
 8. **CSP header** phải được set trên nginx config của opencore-site container
@@ -278,8 +278,8 @@ Proxy `GET /api/whale-events/?symbol=` → backend, cùng whitelist logic
 ## 10. Điều kiện DONE
 
 - [ ] `about.vninvest.edusuccess.vn` trả 200, render đúng VI/EN toggle
-- [ ] `/chart` hiển thị `VNStockChart` (vnstockcharts) với data thật qua Next.js proxy, whale bubbles overlay
-- [ ] `/vnstock/playground` chạy Python code bằng Pyodide, fetch data qua relay
+- [ ] `/chart` hiển thị `VNBrokerChart` (vnbrokercharts) với data thật qua Next.js proxy, whale bubbles overlay
+- [ ] `/vnbroker/playground` chạy Python code bằng Pyodide, fetch data qua relay
 - [ ] `/pricing` có CTA link đúng đến `vninvest.edusuccess.vn/register`
 - [ ] `/blog` render ít nhất 3 bài MDX
 - [ ] CI build `opencore-site` image đẩy lên GHCR thành công

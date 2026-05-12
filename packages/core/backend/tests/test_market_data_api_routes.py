@@ -69,7 +69,7 @@ class MarketDataApiRouteTests(TestCase):
             volume=1_500_000,
             value=134250000000,
             change_pct=Decimal('1.2380'),
-            source='vnstock',
+            source='vnbroker',
             is_adjusted=False,
         )
 

@@ -8,6 +8,10 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 
 from identity_access.models import CoreTenant
+from identity_access.permissions import IsTenantActive
+
+
+TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 
 
 def _get_tenant(user):
@@ -16,7 +20,7 @@ def _get_tenant(user):
 
 class PartnerUsageMetersView(generics.GenericAPIView):
     """Usage meters — placeholder until metering is fully implemented."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         return Response([])
@@ -24,7 +28,7 @@ class PartnerUsageMetersView(generics.GenericAPIView):
 
 class PartnerUsageQuotasView(generics.GenericAPIView):
     """Usage quotas — delegates to commercial QuotaRecord if table exists."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         try:
@@ -39,7 +43,7 @@ class PartnerUsageQuotasView(generics.GenericAPIView):
 
 class PartnerBillingSubscriptionView(generics.GenericAPIView):
     """Subscription detail — delegates to commercial Subscription if exists."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         try:
@@ -69,7 +73,7 @@ class PartnerBillingSubscriptionView(generics.GenericAPIView):
 
 class PartnerBillingInvoicesView(generics.GenericAPIView):
     """Invoices list — delegates to commercial Invoice if exists."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         try:

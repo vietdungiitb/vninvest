@@ -228,8 +228,8 @@ export function WhaleFeedPanel({
     if (src === 'intraday_tick_db') {
       return { label: t('whaleAlertsDashboard.sourceIntradayDb'), tone: 'border-cyan-900/60 bg-cyan-950/30 text-cyan-200' };
     }
-    if (src === 'vnstock') {
-      return { label: t('whaleAlertsDashboard.sourceVnstock'), tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200' };
+    if (src === 'vnbroker') {
+      return { label: t('whaleAlertsDashboard.sourceVnbroker'), tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200' };
     }
     return { label: t('whaleAlertsDashboard.sourceUnknown'), tone: 'border-slate-700 bg-slate-950/70 text-slate-300' };
   }, [activeData?.source, t]);

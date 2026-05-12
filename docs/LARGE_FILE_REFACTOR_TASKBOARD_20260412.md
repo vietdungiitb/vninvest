@@ -42,8 +42,8 @@ Cap nhat: 2026-04-13
 - [x] Tach whale advisory list/canonical/auto-refresh/refresh/current-delete khoi monolith views.py
 - [x] Chay test muc tieu whale-advisory list-management (22 test pass)
 - [x] Tao module moi: backend/portfolio/views_admin_runtime.py
-- [x] Tach admin runtime KPI + system-ai-settings + vnstock runtime config + warm prefetch khoi monolith views.py
-- [x] Chay test muc tieu admin-runtime/system-ai/vnstock-admin-ops (48 test pass)
+- [x] Tach admin runtime KPI + system-ai-settings + vnbroker runtime config + warm prefetch khoi monolith views.py
+- [x] Chay test muc tieu admin-runtime/system-ai/vnbroker-admin-ops (48 test pass)
 - [x] Tao module moi: backend/portfolio/views_ai_runtime_stats.py
 - [x] Tach ai-options/ai-config/ai-test-connection + whale-advisory-symbol-stats khoi monolith views.py
 - [x] Chay test muc tieu ai-config + patch-compat (12 test pass)

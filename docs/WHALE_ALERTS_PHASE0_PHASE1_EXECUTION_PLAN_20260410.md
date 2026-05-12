@@ -116,7 +116,7 @@ Task:
    - dedup hit ratio
    - snapshot recovery ratio
    - stream source ratio
-   - vnstock fallback ratio
+   - vnbroker fallback ratio
 2. Tao health endpoint summary cho whale pipeline.
 3. Tao runbook alerting baseline.
 
@@ -125,7 +125,7 @@ DoD:
 - Co the tra loi 3 cau hoi:
   - alert co tre khong
   - alert co bi duplicate khong
-  - he thong dang phu thuoc stream/DB/vnstock o muc nao
+  - he thong dang phu thuoc stream/DB/vnbroker o muc nao
 
 ### WA-P0-5 FE trust hardening
 

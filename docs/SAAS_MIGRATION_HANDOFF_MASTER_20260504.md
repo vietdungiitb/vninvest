@@ -137,7 +137,7 @@ Sau khi hoàn thành toàn bộ chương trình, hệ thống phải đồng th�
 ### 5.6 Config ownership
 
 1. `global_signal_policy_helpers.py` tiếp tục là SSOT cho detection universe và whale/dark-flow policy trong thời gian legacy vẫn chạy.
-2. `runtime_policy_helpers.py` và `RuntimeVnstockConfig` tiếp tục là SSOT cho ingest cadence và provider config.
+2. `runtime_policy_helpers.py` và `RuntimeVnbrokerConfig` tiếp tục là SSOT cho ingest cadence và provider config.
 3. Core không được tạo parallel writer cho các domain này cho đến khi Phase 3 migration hoàn thành.
 
 ### 5.7 Evidence obligation

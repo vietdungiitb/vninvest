@@ -52,7 +52,7 @@ Hệ thống hiện có khung phát hiện whale và dark flow tương đối m�
 1. Không redesign toàn bộ Django admin site.
 2. Không mở rộng AI advisory logic trong cùng gói này, trừ khi cần consume canonical event mới theo downstream contract.
 3. Không thay chart engine hay website design system ngoài phạm vi admin control center.
-4. Không thay pipeline market data provider hay bypass `vnstock adapter`.
+4. Không thay pipeline market data provider hay bypass `vnbroker adapter`.
 
 ---
 

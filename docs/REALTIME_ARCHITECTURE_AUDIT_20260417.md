@@ -10,13 +10,13 @@ Sau khi rà soát tệp dữ liệu pub/sub (`tick_producer.py`, `stream_consume
 Hệ thống Realtime của VNInvest được thiết kế theo dạng **Event-Driven Pub/Sub**, sử dụng Redis Streams làm Message Broker chính và Django Channels làm WebSocket Layer. 
 
 **Luồng dữ liệu:**
-1. **Producer (`tick_producer.py`)**: Đọc dữ liệu từ vnstock, ghi DataFrames trực tiếp vào `vninvest:ticks:{SYMBOL}` (Redis Streams) với `maxlen=50000`, đồng thời tạo một snapshot giá (`HSET`) để API lấy nhanh (tránh việc API liên tục gọi DB hoặc Stream XREVRANGE).
+1. **Producer (`tick_producer.py`)**: Đọc dữ liệu từ vnbroker, ghi DataFrames trực tiếp vào `vninvest:ticks:{SYMBOL}` (Redis Streams) với `maxlen=50000`, đồng thời tạo một snapshot giá (`HSET`) để API lấy nhanh (tránh việc API liên tục gọi DB hoặc Stream XREVRANGE).
 2. **Consumers (`stream_consumers.py`)**: 3 nhóm consumer độc lập hoạt động theo mô hình Stream Consumer Groups (Giúp phân chia sập độc lập, sập module nào không ảnh hưởng module khác):
    - `db-writer`: Kéo ticks về và chạy `IntradayTick.objects.bulk_create()` để lưu vào PostgreSQL.
    - `ws-broadcaster`: Tính toán payload mới (tạo Pandas DataFrame trong memory) và bắn sự kiện qua Django Channels `group_send` (ticker_{SYMBOL}).
    - `alert-engine`: Chạy thuật toán phát hiện Whale (có check threshold cấu hình override) và bắn qua Channel Layer `whale_{SYMBOL}`.
 3. **Delivery (`consumers.py`)**: Khách hàng duy trì WebSocket connection. Khi nhận được message từ Channels Layer, `AsyncJsonWebsocketConsumer` truyền thẳng JSON xuống Frontend.
-4. **Fallback (`stream_reader.py`)**: Core fallback 3-tier tuyệt vời của API - Khi request `/api/realtime/ticker_abc`, API đọc theo thứ tự: Stream -> Cache -> vnstock.
+4. **Fallback (`stream_reader.py`)**: Core fallback 3-tier tuyệt vời của API - Khi request `/api/realtime/ticker_abc`, API đọc theo thứ tự: Stream -> Cache -> vnbroker.
 
 > **Đánh giá chung:** Đây là một kiến trúc rất tiêu chuẩn và scale tốt (enterprise pattern). Điểm mạnh nhất là việc sử dụng **Redis Stream Consumer Groups**, giúp cô lập (isolate) các tác vụ IO tốn kém như DB insert ra khỏi luồng broadcast cho WebSockets. 
 

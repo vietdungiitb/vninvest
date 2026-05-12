@@ -28,7 +28,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import SystemAISettings
-from market_data.models import VnstockRuntimeConfig
+from market_data.models import VnbrokerRuntimeConfig
 from ops_audit.models import RequestTrace
 from user_workspace.models import Portfolio, Watchlist, WatchlistItem
 from vninvest_core.contracts.admin_ops.views import (
@@ -41,10 +41,10 @@ from vninvest_core.contracts.admin_ops.views import (
     AdminOpsRuntimeKPIView,
     AdminOpsStatsView,
     AdminOpsSystemAiSettingsView,
-    AdminOpsVnstockBenchmarkLatestView,
-    AdminOpsVnstockBenchmarkRunView,
-    AdminOpsVnstockConfigCurrentView,
-    AdminOpsVnstockConfigResetView,
+    AdminOpsVnbrokerBenchmarkLatestView,
+    AdminOpsVnbrokerBenchmarkRunView,
+    AdminOpsVnbrokerConfigCurrentView,
+    AdminOpsVnbrokerConfigResetView,
 )
 
 
@@ -71,17 +71,17 @@ class AdminOpsContractApiTests(TestCase):
         resolver_system_ai = resolve('/api/admin-ops/system-ai-settings/')
         self.assertIs(resolver_system_ai.func.view_class, AdminOpsSystemAiSettingsView)
 
-        resolver_vnstock_current = resolve('/api/admin-ops/vnstock-config/current/')
-        self.assertIs(resolver_vnstock_current.func.view_class, AdminOpsVnstockConfigCurrentView)
+        resolver_vnbroker_current = resolve('/api/admin-ops/vnbroker-config/current/')
+        self.assertIs(resolver_vnbroker_current.func.view_class, AdminOpsVnbrokerConfigCurrentView)
 
-        resolver_vnstock_reset = resolve('/api/admin-ops/vnstock-config/reset-to-defaults/')
-        self.assertIs(resolver_vnstock_reset.func.view_class, AdminOpsVnstockConfigResetView)
+        resolver_vnbroker_reset = resolve('/api/admin-ops/vnbroker-config/reset-to-defaults/')
+        self.assertIs(resolver_vnbroker_reset.func.view_class, AdminOpsVnbrokerConfigResetView)
 
-        resolver_vnstock_benchmark_latest = resolve('/api/admin-ops/vnstock-config/benchmark-price-board/latest/')
-        self.assertIs(resolver_vnstock_benchmark_latest.func.view_class, AdminOpsVnstockBenchmarkLatestView)
+        resolver_vnbroker_benchmark_latest = resolve('/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
+        self.assertIs(resolver_vnbroker_benchmark_latest.func.view_class, AdminOpsVnbrokerBenchmarkLatestView)
 
-        resolver_vnstock_benchmark_run = resolve('/api/admin-ops/vnstock-config/benchmark-price-board/run/')
-        self.assertIs(resolver_vnstock_benchmark_run.func.view_class, AdminOpsVnstockBenchmarkRunView)
+        resolver_vnbroker_benchmark_run = resolve('/api/admin-ops/vnbroker-config/benchmark-price-board/run/')
+        self.assertIs(resolver_vnbroker_benchmark_run.func.view_class, AdminOpsVnbrokerBenchmarkRunView)
 
         resolver_prefetch_warm = resolve('/api/admin-ops/prefetch/warm/')
         self.assertIs(resolver_prefetch_warm.func.view_class, AdminOpsPrefetchWarmView)
@@ -118,7 +118,7 @@ class AdminOpsContractApiTests(TestCase):
         self.assertEqual(response.data['watchlist_item_count'], 3)
         self.assertIn('ticker_prefetch', response.data)
         self.assertIn('surface_permissions', response.data)
-        self.assertTrue(response.data['surface_permissions']['vnstock_config_write'])
+        self.assertTrue(response.data['surface_permissions']['vnbroker_config_write'])
 
     @override_settings(
         CELERY_BEAT_SCHEDULE={
@@ -229,8 +229,8 @@ class AdminOpsContractApiTests(TestCase):
         )
         self.assertEqual(blocked_response.status_code, status.HTTP_409_CONFLICT)
 
-    def test_vnstock_config_update_reset_and_changelog_are_native(self):
-        get_response = self.client.get('/api/admin-ops/vnstock-config/current/')
+    def test_vnbroker_config_update_reset_and_changelog_are_native(self):
+        get_response = self.client.get('/api/admin-ops/vnbroker-config/current/')
 
         self.assertEqual(get_response.status_code, status.HTTP_200_OK)
         self.assertTrue(get_response.data['ok'])
@@ -238,7 +238,7 @@ class AdminOpsContractApiTests(TestCase):
         self.assertIn('rulebook', get_response.data)
 
         patch_response = self.client.patch(
-            '/api/admin-ops/vnstock-config/update-config/',
+            '/api/admin-ops/vnbroker-config/update-config/',
             {
                 'max_concurrency': 8,
                 'retry_attempts': 5,
@@ -262,16 +262,16 @@ class AdminOpsContractApiTests(TestCase):
         self.assertEqual(patch_response.data['settings']['timeout_config']['price_board'], 12)
         self.assertIn('VCI', patch_response.data['settings']['fallback_sources'])
 
-        changelog_response = self.client.get('/api/admin-ops/vnstock-config/changelog/?limit=10&offset=0')
+        changelog_response = self.client.get('/api/admin-ops/vnbroker-config/changelog/?limit=10&offset=0')
         self.assertEqual(changelog_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(changelog_response.data['total'], 1)
 
-        reset_response = self.client.post('/api/admin-ops/vnstock-config/reset-to-defaults/', {}, format='json')
+        reset_response = self.client.post('/api/admin-ops/vnbroker-config/reset-to-defaults/', {}, format='json')
         self.assertEqual(reset_response.status_code, status.HTTP_200_OK)
         self.assertEqual(reset_response.data['settings']['max_concurrency'], 4)
         self.assertEqual(reset_response.data['settings']['price_board_source'], 'KBS')
 
-        config = VnstockRuntimeConfig.objects.get(name='default')
+        config = VnbrokerRuntimeConfig.objects.get(name='default')
         self.assertEqual(config.data_source, 'KBS')
         self.assertEqual(config.max_workers, 4)
 
@@ -302,7 +302,7 @@ class AdminOpsContractApiTests(TestCase):
         self.assertEqual(response.data['result']['upserted'], 42)
 
     def test_bridge_backed_admin_ops_routes_fail_soft_without_bridge(self):
-        benchmark_response = self.client.get('/api/admin-ops/vnstock-config/benchmark-price-board/latest/')
+        benchmark_response = self.client.get('/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
         self.assertEqual(benchmark_response.status_code, status.HTTP_200_OK)
         self.assertEqual(benchmark_response.data['status'], 'not_available')
 
@@ -326,13 +326,13 @@ class AdminOpsContractApiTests(TestCase):
         auth_header = 'Bearer vni_pat_bridge_test'
 
         benchmark_latest_response = self.client.get(
-            '/api/admin-ops/vnstock-config/benchmark-price-board/latest/',
+            '/api/admin-ops/vnbroker-config/benchmark-price-board/latest/',
             HTTP_AUTHORIZATION=auth_header,
         )
         self.assertEqual(benchmark_latest_response.status_code, status.HTTP_200_OK)
 
         benchmark_run_response = self.client.post(
-            '/api/admin-ops/vnstock-config/benchmark-price-board/run/',
+            '/api/admin-ops/vnbroker-config/benchmark-price-board/run/',
             {'symbols': ['FPT']},
             format='json',
             HTTP_AUTHORIZATION=auth_header,
@@ -378,7 +378,7 @@ class AdminOpsContractApiTests(TestCase):
         self.assertEqual(warm_now_response.status_code, status.HTTP_200_OK)
 
         self.assertEqual(mock_request.call_count, 7)
-        self.assertEqual(mock_request.call_args_list[0].kwargs['url'], 'http://legacy.internal/api/admin-ops/vnstock-config/benchmark-price-board/latest/')
+        self.assertEqual(mock_request.call_args_list[0].kwargs['url'], 'http://legacy.internal/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
         self.assertEqual(mock_request.call_args_list[0].kwargs['headers']['Host'], 'testserver')
         self.assertEqual(mock_request.call_args_list[2].kwargs['url'], 'http://legacy.internal/api/admin-ops/market-groups/sync/')
         self.assertEqual(mock_request.call_args_list[2].kwargs['params'], {'mode': 'all', 'clear': 'true'})

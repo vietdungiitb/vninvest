@@ -45,7 +45,7 @@ tests/test_price_units_canonical.py::TestIntegrationRealWorldScenarios::<3 tests
 ## 📋 PHASE 1: ADAPTER STANDARDIZATION (✅ COMPLETE)
 
 ### Files Modified
-1. **`backend/portfolio/adapters/vnstock_adapter.py`** (+~150 lines)
+1. **`backend/portfolio/adapters/vnbroker_adapter.py`** (+~150 lines)
    
    **Changes:**
    - Added imports: `from portfolio.price_units import (normalize_quote_price_to_canonical, PriceSource, QUOTE_UNIT_CANONICAL)`
@@ -112,16 +112,16 @@ tests/test_price_units_canonical.py::TestIntegrationRealWorldScenarios::<3 tests
    **Lines 47-52:** Added detailed comment block + corrected constants
    ```python
    # ==================== CANONICAL PRICE UNIT STANDARDS ====================
-   _VNSTOCK_PRICE_UNIT_VND = 'VND'
-   _VNSTOCK_PRICE_UNIT_THOUSAND = 'THOUSAND_VND'
+   _VNBROKER_PRICE_UNIT_VND = 'VND'
+   _VNBROKER_PRICE_UNIT_THOUSAND = 'THOUSAND_VND'
    
    # CRITICAL: System canonical unit for all quote (stock) prices
    # All prices stored in DailyPrice and served via API MUST be THOUSAND_VND
-   _SYSTEM_PRICE_UNIT = _VNSTOCK_PRICE_UNIT_THOUSAND  # ← CORRECTED from VND
-   _SYSTEM_MONEY_UNIT = _VNSTOCK_PRICE_UNIT_VND
+   _SYSTEM_PRICE_UNIT = _VNBROKER_PRICE_UNIT_THOUSAND  # ← CORRECTED from VND
+   _SYSTEM_MONEY_UNIT = _VNBROKER_PRICE_UNIT_VND
    ```
    
-   **Lines 57-75:** Updated `_resolve_vnstock_price_unit()`
+   **Lines 57-75:** Updated `_resolve_vnbroker_price_unit()`
    - Now checks adapter's `price_unit_canonical` seal FIRST
    - Falls back to old `price_unit` attribute for compatibility
    
@@ -161,7 +161,7 @@ tests/test_price_units_canonical.py::TestIntegrationRealWorldScenarios::<3 tests
 
 ### BEFORE (Broken)
 ```
-vnstock (VND or THOUSAND_VND)
+vnbroker (VND or THOUSAND_VND)
   ↓
 adapter (no canonicalization)
   ↓ [unit unclear!]
@@ -178,7 +178,7 @@ Frontend (3 independent normalization functions - worst case)
 
 ### AFTER (Phase 0-2)
 ```
-vnstock (KBS: VND, VCI: THOUSAND_VND)
+vnbroker (KBS: VND, VCI: THOUSAND_VND)
   ↓
 adapter._ensure_quote_prices_canonical_thousand_vnd() 
   ↓ [guarantee THOUSAND_VND + seal]
@@ -246,7 +246,7 @@ Frontend (just format, no normalization needed)
 - Comprehensive docstrings + type hints
 - 40 unit tests validating all functions
 
-### backend/portfolio/adapters/vnstock_adapter.py
+### backend/portfolio/adapters/vnbroker_adapter.py
 **Status:** MODIFIED
 - Additions: price_units import, _ensure_quote_prices_canonical_thousand_vnd() function
 - Updated: fetch_price_board_dataframe(), fetch_price_depth_dataframe(), fetch_intraday_dataframe()
@@ -257,7 +257,7 @@ Frontend (just format, no normalization needed)
 **Status:** MODIFIED  
 - Additions: price_units import, detailed canonical comments
 - Updated: _SYSTEM_PRICE_UNIT = THOUSAND_VND (corrected from VND)
-- Updated: _resolve_vnstock_price_unit(), _resolve_price_scale_to_system_unit(), _infer_price_unit_from_first_close()
+- Updated: _resolve_vnbroker_price_unit(), _resolve_price_scale_to_system_unit(), _infer_price_unit_from_first_close()
 - Validation: ✅ Syntax OK
 
 ### backend/tests/test_price_units_canonical.py

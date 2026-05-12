@@ -54,7 +54,7 @@ Phase B8: backend container bị tắt, legacy code bị xóa.
 | Market data (stock profile, overview, chart, technicals, financials) | 8 | B3 |
 | Portfolio & Workspace (portfolios, subaccounts, transactions, holdings, watchlist) | 22 | B4 |
 | AI Advisory (sessions, components, summary, observability) | 14 | B5 |
-| Admin Ops (vnstock-config, prefetch, signal admin, runtime-kpi) | 35 | B6 |
+| Admin Ops (vnbroker-config, prefetch, signal admin, runtime-kpi) | 35 | B6 |
 | WebSocket (/ws/*) | 1 namespace | B7 |
 | **Tổng** | **~98** | B1–B7 |
 

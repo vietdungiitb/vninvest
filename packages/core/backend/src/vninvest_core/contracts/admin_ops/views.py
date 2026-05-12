@@ -19,7 +19,7 @@ import time
 from advisory.models import SystemAISettings
 from data_ingest.models import IngestJob, IngestRun
 from identity_access.models import CoreTenant
-from market_data.models import VnstockRuntimeConfig
+from market_data.models import VnbrokerRuntimeConfig
 from market_serving.models import SessionFacts, SymbolSnapshot
 from ops_audit.models import AuditEvent, RequestTrace
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
@@ -43,7 +43,7 @@ DEFAULT_GOVERNANCE_DELTA_RULEBOOK = {
     'recommended': deepcopy(DEFAULT_GOVERNANCE_DELTA_THRESHOLDS),
 }
 
-DEFAULT_VNSTOCK_TIMEOUT_CONFIG = {
+DEFAULT_VNBROKER_TIMEOUT_CONFIG = {
     'price_board': 8,
     'intraday': 8,
     'financial_ratio': 10,
@@ -52,11 +52,11 @@ DEFAULT_VNSTOCK_TIMEOUT_CONFIG = {
     'general': 10,
 }
 
-DEFAULT_VNSTOCK_EXTRA = {
+DEFAULT_VNBROKER_EXTRA = {
     'retry_backoff_seconds': 0.5,
     'rate_limit_cooldown_seconds': 30,
     'fallback_sources': ['VCI'],
-    'timeout_config': deepcopy(DEFAULT_VNSTOCK_TIMEOUT_CONFIG),
+    'timeout_config': deepcopy(DEFAULT_VNBROKER_TIMEOUT_CONFIG),
     'enable_caching': True,
     'enable_rate_limit_detection': True,
     'enable_concurrent_limit': True,
@@ -187,7 +187,7 @@ DEFAULT_PREFETCH_TIME_POLICY_RULEBOOK = {
     },
 }
 
-VNSTOCK_ALLOWED_SOURCES = {'VCI', 'KBS', 'TCBS', 'SSI', 'MSI'}
+VNBROKER_ALLOWED_SOURCES = {'VCI', 'KBS', 'TCBS', 'SSI', 'MSI'}
 
 DEFAULT_SIGNAL_SERVICES_CONFIG = {
     'enabled': True,
@@ -496,19 +496,19 @@ def _get_or_create_active_ai_settings() -> SystemAISettings:
     )
 
 
-def _get_or_create_active_vnstock_config() -> VnstockRuntimeConfig:
-    active = VnstockRuntimeConfig.objects.filter(is_active=True).order_by('-updated_at').first()
+def _get_or_create_active_vnbroker_config() -> VnbrokerRuntimeConfig:
+    active = VnbrokerRuntimeConfig.objects.filter(is_active=True).order_by('-updated_at').first()
     if active is not None:
         return active
 
-    existing = VnstockRuntimeConfig.objects.order_by('-updated_at').first()
+    existing = VnbrokerRuntimeConfig.objects.order_by('-updated_at').first()
     if existing is not None:
         if not existing.is_active:
             existing.is_active = True
             existing.save(update_fields=['is_active', 'updated_at'])
         return existing
 
-    return VnstockRuntimeConfig.objects.create(
+    return VnbrokerRuntimeConfig.objects.create(
         name='default',
         is_active=True,
         data_source='KBS',
@@ -516,27 +516,27 @@ def _get_or_create_active_vnstock_config() -> VnstockRuntimeConfig:
         request_delay_ms=200,
         max_retries=3,
         batch_size=50,
-        extra=deepcopy(DEFAULT_VNSTOCK_EXTRA),
+        extra=deepcopy(DEFAULT_VNBROKER_EXTRA),
     )
 
 
-def _vnstock_extra(config: VnstockRuntimeConfig) -> dict[str, Any]:
-    payload = deepcopy(DEFAULT_VNSTOCK_EXTRA)
+def _vnbroker_extra(config: VnbrokerRuntimeConfig) -> dict[str, Any]:
+    payload = deepcopy(DEFAULT_VNBROKER_EXTRA)
     payload.update(config.extra or {})
     payload['timeout_config'] = {
-        **DEFAULT_VNSTOCK_TIMEOUT_CONFIG,
+        **DEFAULT_VNBROKER_TIMEOUT_CONFIG,
         **(payload.get('timeout_config') or {}),
     }
     fallback_sources = payload.get('fallback_sources') or [config.data_source]
     payload['fallback_sources'] = [
-        source for source in fallback_sources if str(source or '').strip().upper() in VNSTOCK_ALLOWED_SOURCES
+        source for source in fallback_sources if str(source or '').strip().upper() in VNBROKER_ALLOWED_SOURCES
     ] or [config.data_source]
     payload['changelog'] = list(payload.get('changelog') or [])
     return payload
 
 
-def _build_prefetch_runtime_settings(config: VnstockRuntimeConfig) -> dict[str, Any]:
-    extra = _vnstock_extra(config)
+def _build_prefetch_runtime_settings(config: VnbrokerRuntimeConfig) -> dict[str, Any]:
+    extra = _vnbroker_extra(config)
     payload = deepcopy(DEFAULT_PREFETCH_RUNTIME_SETTINGS)
     payload.update(extra.get('prefetch_runtime_settings') or {})
     payload['batch_size'] = int(payload.get('batch_size') or config.batch_size or DEFAULT_PREFETCH_RUNTIME_SETTINGS['batch_size'])
@@ -547,8 +547,8 @@ def _build_prefetch_runtime_settings(config: VnstockRuntimeConfig) -> dict[str, 
     return payload
 
 
-def _build_prefetch_time_policy(config: VnstockRuntimeConfig) -> dict[str, Any]:
-    extra = _vnstock_extra(config)
+def _build_prefetch_time_policy(config: VnbrokerRuntimeConfig) -> dict[str, Any]:
+    extra = _vnbroker_extra(config)
     payload = deepcopy(DEFAULT_PREFETCH_TIME_POLICY)
     payload.update(extra.get('prefetch_time_policy') or {})
     market_payload = payload.get('market') or {}
@@ -577,7 +577,7 @@ def _build_prefetch_time_policy(config: VnstockRuntimeConfig) -> dict[str, Any]:
 
 def _serialize_system_ai_settings(config: SystemAISettings) -> dict[str, Any]:
     metadata = deepcopy(config.metadata or {})
-    vnstock_config = _get_or_create_active_vnstock_config()
+    vnbroker_config = _get_or_create_active_vnbroker_config()
     governance = deepcopy(DEFAULT_GOVERNANCE_DELTA_THRESHOLDS)
     governance.update(metadata.get('governance_delta_thresholds') or {})
 
@@ -596,9 +596,9 @@ def _serialize_system_ai_settings(config: SystemAISettings) -> dict[str, Any]:
         'prompt_template': config.prompt_template,
         'governance_delta_thresholds': governance,
         'governance_delta_rulebook': deepcopy(DEFAULT_GOVERNANCE_DELTA_RULEBOOK),
-        'prefetch_runtime_settings': _build_prefetch_runtime_settings(vnstock_config),
+        'prefetch_runtime_settings': _build_prefetch_runtime_settings(vnbroker_config),
         'prefetch_runtime_rulebook': deepcopy(DEFAULT_PREFETCH_RUNTIME_RULEBOOK),
-        'prefetch_time_policy': _build_prefetch_time_policy(vnstock_config),
+        'prefetch_time_policy': _build_prefetch_time_policy(vnbroker_config),
         'prefetch_time_policy_rulebook': deepcopy(DEFAULT_PREFETCH_TIME_POLICY_RULEBOOK),
         'write_capabilities': {
             'ai_runtime': True,
@@ -610,8 +610,8 @@ def _serialize_system_ai_settings(config: SystemAISettings) -> dict[str, Any]:
     }
 
 
-def _serialize_vnstock_settings(config: VnstockRuntimeConfig) -> dict[str, Any]:
-    extra = _vnstock_extra(config)
+def _serialize_vnbroker_settings(config: VnbrokerRuntimeConfig) -> dict[str, Any]:
+    extra = _vnbroker_extra(config)
     return {
         'id': config.pk,
         'max_concurrency': config.max_workers,
@@ -631,14 +631,14 @@ def _serialize_vnstock_settings(config: VnstockRuntimeConfig) -> dict[str, Any]:
     }
 
 
-def _serialize_vnstock_rulebook() -> dict[str, Any]:
+def _serialize_vnbroker_rulebook() -> dict[str, Any]:
     return {
         'max_concurrency': {'min': 1, 'max': 50},
         'retry_attempts': {'min': 0, 'max': 10},
         'retry_backoff_seconds': {'min': 0.0, 'max': 30.0},
         'rate_limit_cooldown_seconds': {'min': 5, 'max': 1800},
         'timeout_seconds': {'min': 1, 'max': 120},
-        'allowed_sources': sorted(VNSTOCK_ALLOWED_SOURCES),
+        'allowed_sources': sorted(VNBROKER_ALLOWED_SOURCES),
     }
 
 
@@ -653,10 +653,10 @@ def _source_counts() -> dict[str, int]:
 
 
 def _build_prefetch_health_snapshot() -> dict[str, Any]:
-    config = _get_or_create_active_vnstock_config()
+    config = _get_or_create_active_vnbroker_config()
     latest_run = (
         IngestRun.objects.select_related('job')
-        .filter(job__source=IngestJob.SourceChoices.VNSTOCK_PRICE_BOARD)
+        .filter(job__source=IngestJob.SourceChoices.VNBROKER_PRICE_BOARD)
         .order_by('-started_at')
         .first()
     )
@@ -763,7 +763,7 @@ def _build_market_observability_snapshot() -> dict[str, Any]:
 def _build_stats_snapshot(request) -> dict[str, Any]:
     tracked_symbol_count = WatchlistItem.objects.values('symbol').distinct().count()
     surface_permissions = {
-        'vnstock_config_write': bool(request.user and request.user.is_staff),
+        'vnbroker_config_write': bool(request.user and request.user.is_staff),
         'intraday_side_backfill_apply': False,
         'governance_threshold_write': bool(request.user and request.user.is_staff),
         'prefetch_runtime_write': False,
@@ -824,7 +824,7 @@ def _validate_governance_thresholds(payload: Any) -> tuple[dict[str, float] | No
     }, None
 
 
-def _validate_vnstock_payload(payload: Any) -> tuple[dict[str, Any] | None, dict[str, list[str]]]:
+def _validate_vnbroker_payload(payload: Any) -> tuple[dict[str, Any] | None, dict[str, list[str]]]:
     errors: dict[str, list[str]] = {}
     if not isinstance(payload, dict):
         return None, {'non_field_errors': ['Payload phải là object hợp lệ.']}
@@ -852,7 +852,7 @@ def _validate_vnstock_payload(payload: Any) -> tuple[dict[str, Any] | None, dict
 
     if 'price_board_source' in payload:
         source = str(payload.get('price_board_source') or '').strip().upper()
-        if source not in VNSTOCK_ALLOWED_SOURCES:
+        if source not in VNBROKER_ALLOWED_SOURCES:
             errors['price_board_source'] = ['price_board_source không hợp lệ.']
         else:
             normalized['price_board_source'] = source
@@ -867,7 +867,7 @@ def _validate_vnstock_payload(payload: Any) -> tuple[dict[str, Any] | None, dict
                 source = str(item or '').strip().upper()
                 if not source:
                     continue
-                if source not in VNSTOCK_ALLOWED_SOURCES:
+                if source not in VNBROKER_ALLOWED_SOURCES:
                     errors.setdefault('fallback_sources', []).append(f'Provider không hợp lệ: {source}')
                     continue
                 if source not in normalized_sources:
@@ -881,7 +881,7 @@ def _validate_vnstock_payload(payload: Any) -> tuple[dict[str, Any] | None, dict
             errors['timeout_config'] = ['timeout_config phải là object hợp lệ.']
         else:
             timeout_config = {}
-            for channel in DEFAULT_VNSTOCK_TIMEOUT_CONFIG:
+            for channel in DEFAULT_VNBROKER_TIMEOUT_CONFIG:
                 if channel not in raw_timeout_config:
                     continue
                 try:
@@ -903,8 +903,8 @@ def _validate_vnstock_payload(payload: Any) -> tuple[dict[str, Any] | None, dict
     return (normalized if not errors else None), errors
 
 
-def _append_vnstock_changelog(config: VnstockRuntimeConfig, actor, *, reason: str, changes: dict[str, Any]) -> None:
-    extra = _vnstock_extra(config)
+def _append_vnbroker_changelog(config: VnbrokerRuntimeConfig, actor, *, reason: str, changes: dict[str, Any]) -> None:
+    extra = _vnbroker_extra(config)
     changelog = list(extra.get('changelog') or [])
     changelog.insert(
         0,
@@ -1758,22 +1758,22 @@ class AdminOpsSystemAiSettingsView(APIView):
         )
 
 
-class AdminOpsVnstockConfigCurrentView(APIView):
+class AdminOpsVnbrokerConfigCurrentView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        config = _get_or_create_active_vnstock_config()
+        config = _get_or_create_active_vnbroker_config()
         return Response(
             {
                 'ok': True,
-                'settings': _serialize_vnstock_settings(config),
-                'rulebook': _serialize_vnstock_rulebook(),
+                'settings': _serialize_vnbroker_settings(config),
+                'rulebook': _serialize_vnbroker_rulebook(),
             },
             status=status.HTTP_200_OK,
         )
 
     def patch(self, request):
-        payload, errors = _validate_vnstock_payload(request.data)
+        payload, errors = _validate_vnbroker_payload(request.data)
         if errors:
             return Response(
                 {
@@ -1784,9 +1784,9 @@ class AdminOpsVnstockConfigCurrentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        config = _get_or_create_active_vnstock_config()
-        before = _serialize_vnstock_settings(config)
-        extra = _vnstock_extra(config)
+        config = _get_or_create_active_vnbroker_config()
+        before = _serialize_vnbroker_settings(config)
+        extra = _vnbroker_extra(config)
 
         if 'max_concurrency' in payload:
             config.max_workers = payload['max_concurrency']
@@ -1805,7 +1805,7 @@ class AdminOpsVnstockConfigCurrentView(APIView):
             extra['fallback_sources'] = fallback_sources
         if 'timeout_config' in payload:
             merged_timeout = {
-                **DEFAULT_VNSTOCK_TIMEOUT_CONFIG,
+                **DEFAULT_VNBROKER_TIMEOUT_CONFIG,
                 **extra.get('timeout_config', {}),
                 **payload['timeout_config'],
             }
@@ -1818,72 +1818,72 @@ class AdminOpsVnstockConfigCurrentView(APIView):
         config.extra = extra
         config.save()
 
-        after = _serialize_vnstock_settings(config)
+        after = _serialize_vnbroker_settings(config)
         changes = {
             key: {'before': before.get(key), 'after': after.get(key)}
             for key in after
             if before.get(key) != after.get(key)
         }
-        _append_vnstock_changelog(config, request.user, reason='update_config', changes=changes)
+        _append_vnbroker_changelog(config, request.user, reason='update_config', changes=changes)
         config.save(update_fields=['extra', 'updated_at'])
 
         _record_audit_event(
             actor=request.user,
             action='update',
-            resource_type='vnstock_runtime_config',
+            resource_type='vnbroker_runtime_config',
             resource_id=str(config.pk),
             metadata={'changed_fields': sorted(changes.keys())},
         )
         return Response(
             {
                 'ok': True,
-                'message': 'Đã cập nhật Runtime Vnstock Config trên core-api.',
-                'settings': _serialize_vnstock_settings(config),
+                'message': 'Đã cập nhật Runtime Vnbroker Config trên core-api.',
+                'settings': _serialize_vnbroker_settings(config),
             },
             status=status.HTTP_200_OK,
         )
 
 
-class AdminOpsVnstockConfigResetView(APIView):
+class AdminOpsVnbrokerConfigResetView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        config = _get_or_create_active_vnstock_config()
+        config = _get_or_create_active_vnbroker_config()
         config.is_active = True
         config.data_source = 'KBS'
         config.max_workers = 4
         config.request_delay_ms = 200
         config.max_retries = 3
         config.batch_size = 50
-        config.extra = deepcopy(DEFAULT_VNSTOCK_EXTRA)
-        _append_vnstock_changelog(config, request.user, reason='reset_to_defaults', changes={'reset': True})
+        config.extra = deepcopy(DEFAULT_VNBROKER_EXTRA)
+        _append_vnbroker_changelog(config, request.user, reason='reset_to_defaults', changes={'reset': True})
         config.save()
 
         _record_audit_event(
             actor=request.user,
             action='update',
-            resource_type='vnstock_runtime_config',
+            resource_type='vnbroker_runtime_config',
             resource_id=str(config.pk),
             metadata={'reason': 'reset_to_defaults'},
         )
         return Response(
             {
                 'ok': True,
-                'message': 'Đã reset Runtime Vnstock Config về mặc định trên core-api.',
-                'settings': _serialize_vnstock_settings(config),
+                'message': 'Đã reset Runtime Vnbroker Config về mặc định trên core-api.',
+                'settings': _serialize_vnbroker_settings(config),
             },
             status=status.HTTP_200_OK,
         )
 
 
-class AdminOpsVnstockConfigChangelogView(APIView):
+class AdminOpsVnbrokerConfigChangelogView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
         limit = max(1, min(int(request.query_params.get('limit', 30)), 200))
         offset = max(0, int(request.query_params.get('offset', 0)))
-        config = _get_or_create_active_vnstock_config()
-        entries = list((_vnstock_extra(config).get('changelog') or []))
+        config = _get_or_create_active_vnbroker_config()
+        entries = list((_vnbroker_extra(config).get('changelog') or []))
         total = len(entries)
         rows = entries[offset: offset + limit]
         return Response(
@@ -1910,14 +1910,14 @@ class AdminOpsPrefetchWarmView(APIView):
         job, _ = IngestJob.objects.get_or_create(
             name='core-price-board-prefetch',
             defaults={
-                'source': IngestJob.SourceChoices.VNSTOCK_PRICE_BOARD,
+                'source': IngestJob.SourceChoices.VNBROKER_PRICE_BOARD,
                 'status': IngestJob.StatusChoices.ACTIVE,
                 'schedule_seconds': 60,
                 'config': {},
             },
         )
-        if job.source != IngestJob.SourceChoices.VNSTOCK_PRICE_BOARD:
-            job.source = IngestJob.SourceChoices.VNSTOCK_PRICE_BOARD
+        if job.source != IngestJob.SourceChoices.VNBROKER_PRICE_BOARD:
+            job.source = IngestJob.SourceChoices.VNBROKER_PRICE_BOARD
             job.save(update_fields=['source', 'updated_at'])
 
         if mode == 'sync':
@@ -2174,13 +2174,13 @@ class AdminOpsSignalsJobRetryView(APIView):
         )
 
 
-class AdminOpsVnstockBenchmarkLatestView(APIView):
+class AdminOpsVnbrokerBenchmarkLatestView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
         bridged_response = _legacy_admin_bridge_response(
             request,
-            '/api/admin-ops/vnstock-config/benchmark-price-board/latest/',
+            '/api/admin-ops/vnbroker-config/benchmark-price-board/latest/',
             unavailable_message='Không đọc được benchmark price board từ legacy admin bridge.',
         )
         if bridged_response is not None:
@@ -2188,13 +2188,13 @@ class AdminOpsVnstockBenchmarkLatestView(APIView):
         return Response({'status': 'not_available'}, status=status.HTTP_200_OK)
 
 
-class AdminOpsVnstockBenchmarkRunView(APIView):
+class AdminOpsVnbrokerBenchmarkRunView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
         bridged_response = _legacy_admin_bridge_response(
             request,
-            '/api/admin-ops/vnstock-config/benchmark-price-board/run/',
+            '/api/admin-ops/vnbroker-config/benchmark-price-board/run/',
             unavailable_message='Không chạy được benchmark price board qua legacy admin bridge.',
         )
         if bridged_response is not None:
@@ -2270,7 +2270,7 @@ class AdminOpsIntradayUniverseWarmNowView(APIView):
         from data_ingest.tasks import fetch_and_upsert_price_board
         
         # SM-P4 Native: Trigger native warming task.
-        # This replaces the legacy bridge and uses the new vnstock_adapter logic.
+        # This replaces the legacy bridge and uses the new vnbroker_adapter logic.
         task_result = fetch_and_upsert_price_board.delay()
         
         return Response(

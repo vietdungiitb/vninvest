@@ -27,7 +27,7 @@ Nguyen tac quan tri tai lieu (bat buoc):
 8. OC-07 (agenda workshop): OPEN_CORE_07_DECISION_WORKSHOP_AGENDA_V1.md
 9. OC-08 (risk register): OPEN_CORE_08_RISK_REGISTER_V1.md
 10. OC-09 (docker experience strategy): OPEN_CORE_09_DOCKER_EXPERIENCE_STRATEGY_V1.md
-11. OC-10 (vnstock source strategy): OPEN_CORE_10_VNSTOCK_SOURCE_STRATEGY_V1.md
+11. OC-10 (vnbroker source strategy): OPEN_CORE_10_VNBROKER_SOURCE_STRATEGY_V1.md
 12. OC-11 (numeric lock sheet): OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md
 13. OC-12 (entitlement + quota implementation checklist): OPEN_CORE_12_ENTITLEMENT_QUOTA_IMPLEMENTATION_CHECKLIST_V1.md
 14. OC-13 (community publish readiness): OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md

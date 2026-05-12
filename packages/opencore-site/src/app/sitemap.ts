@@ -8,8 +8,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/chart',
     '/chart/docs',
     '/chart/embed',
-    '/vnstock',
-    '/vnstock/playground',
+    '/vnbroker',
+    '/vnbroker/playground',
     '/pricing',
     '/blog',
     '/legal'

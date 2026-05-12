@@ -61,12 +61,12 @@ Per-source lookback min/max bounds for clamping.
 ## 4) New Context Builders
 
 ### `_build_fundamental_context_for_prompt(symbol, lookback_quarters=1) -> str`
-- Uses `fetch_fundamental_snapshot_dataframe` from vnstock adapter
+- Uses `fetch_fundamental_snapshot_dataframe` from vnbroker adapter
 - Returns formatted multi-quarter fundamental metrics block (EPS, PE, ROE, ROA, etc.)
 - Graceful fallback on any error
 
 ### `_build_ownership_context_for_prompt(symbol, lookback_days=365) -> str`
-- Uses `fetch_insider_deals_dataframe` from vnstock adapter
+- Uses `fetch_insider_deals_dataframe` from vnbroker adapter
 - Summarizes insider buy/sell count + top 5 recent transactions
 - Filters by `lookback_days` window
 

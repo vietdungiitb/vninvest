@@ -356,10 +356,10 @@ grep -rn "from backend\.\|import backend\." \
     packages/core/backend/src/ --include="*.py"
 # Expected: 0 kết quả
 
-# Verify: không dùng vnstock trực tiếp trong core (phải qua adapter)
-grep -rn "from vnstock import\|import vnstock" \
+# Verify: không dùng vnbroker trực tiếp trong core (phải qua adapter)
+grep -rn "from vnbroker import\|import vnbroker" \
     packages/core/backend/src/ --include="*.py" \
-    | grep -v "adapters\|vnstock_adapter"
+    | grep -v "adapters\|vnbroker_adapter"
 # Expected: 0 kết quả
 ```
 

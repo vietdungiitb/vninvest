@@ -29,7 +29,7 @@
 | SM-REQ-18 | advisory domain thay thế legacy AI advisory pipeline | `advisory.AdvisoryRecord`, ai_client.py, prompt_engine.py, shadow run | Tech Spec mục 6.7; Impl Plan mục 6 | SM-P3.4.x slices | Shadow parity log + API endpoint test |
 | SM-REQ-19 | user_workspace domain thay thế portfolio/transaction/watchlist | `user_workspace.*` models với CRUD API | Tech Spec mục 2; Impl Plan mục 6 | SM-P3.5.x slices | CRUD integration test |
 | SM-REQ-20 | ForensicWindow phải là physical carve-out, không tag-only | L5 physical table với expiry timestamp | Tech Spec mục 6; Impl Plan mục 6 | SM-P3.3.5 | Model migration + expiry field verify |
-| SM-REQ-21 | market_data domain thay thế DailyPrice/StockProfile/VnstockConfig | `market_data.*` models + vnstock adapter migration | Tech Spec mục 2; Impl Plan mục 6 | SM-P3.6.x slices | Adapter test + data migration parity |
+| SM-REQ-21 | market_data domain thay thế DailyPrice/StockProfile/VnbrokerConfig | `market_data.*` models + vnbroker adapter migration | Tech Spec mục 2; Impl Plan mục 6 | SM-P3.6.x slices | Adapter test + data migration parity |
 | SM-REQ-22 | Frontend phải dùng coreApiAdapter cho tất cả API calls | `coreApiAdapter.js` là single source của API calls | Tech Spec mục 8.1; Impl Plan mục 7 | SM-P4.1, SM-P4.3-SM-P4.7 | Build PASS + adapter usage grep |
 | SM-REQ-23 | Text mới trên UI phải qua i18n tiếng Việt đầy đủ dấu | i18n files update cho mọi page mới trong packages/web | Handoff Master mục 5.5; AGENTS.md mục 3.8 | SM-P4.x page slices | Build PASS + i18n key check |
 | SM-REQ-24 | StockDetail phải dùng KLineChart với CVD pane và strength pane riêng | KLineChart là surface trung tâm; CVD và strength riêng pane | AGENTS.md mục 3.1-3.3 | SM-P4.5 | Screenshot + build PASS |

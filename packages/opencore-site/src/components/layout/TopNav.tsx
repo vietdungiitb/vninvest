@@ -21,7 +21,7 @@ export function TopNav() {
   const navLinks = [
     { key: 'home' as const, href: '' },
     { key: 'chart' as const, href: '/chart' },
-    { key: 'vnstock' as const, href: '/vnstock' },
+    { key: 'vnbroker' as const, href: '/vnbroker' },
     { key: 'pricing' as const, href: '/pricing' },
     { key: 'blog' as const, href: '/blog' },
     { key: 'legal' as const, href: '/legal' },

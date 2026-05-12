@@ -56,7 +56,7 @@ PowerShell snippets de ghi evidence nhanh:
 
 ```powershell
 # Count direct provider imports in legacy views
-rg "from vnstock import Vnstock" backend/portfolio/views.py
+rg "from vnbroker import Vnbroker" backend/portfolio/views.py
 
 # Verify market toggle routes
 rg "_toggle_market_view\(" backend/portfolio/urls_realtime.py backend/portfolio/urls_stock.py

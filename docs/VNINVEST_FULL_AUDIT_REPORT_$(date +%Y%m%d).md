@@ -30,13 +30,13 @@ vninvest/ (Current: c:/Mujoco Projects/vninvest)
 ```
 ✅ 83/83 Tests Pass (from docs)
 ✅ Modern Python (type hints, async, Decimal)
-✅ Robust Fallbacks (vnstock → DB synthetic)
+✅ Robust Fallbacks (vnbroker → DB synthetic)
 ✅ OpenCore Licensing (DPI plans/quotas/features)
 ✅ Maker-Checker (WhaleConfig workflow)
-⚠️  Inline vnstock imports (views.py)
+⚠️  Inline vnbroker imports (views.py)
 ```
 
-**Dependencies**: Django 4.2, DRF, Channels 4+, Celery 5.4, Redis 5, pandas 2.2, vnstock (custom fork).
+**Dependencies**: Django 4.2, DRF, Channels 4+, Celery 5.4, Redis 5, pandas 2.2, vnbroker (custom fork).
 
 ### Frontend (React 18)
 ```
@@ -74,14 +74,14 @@ vninvest/ (Current: c:/Mujoco Projects/vninvest)
 1. **Realtime Pipeline (A+)**: Redis Streams → Pandas compute → Channels → React (P95 <1.5s)
 2. **OpenCore Monetization**: Feature gating + quota tracking + invoices (ready for scale)
 3. **AI Advisory (Innovative)**: Multi-tab components + executive synthesis + chart context
-4. **Fallback Resilience**: vnstock timeout → DB synthetic → polling UX badges
+4. **Fallback Resilience**: vnbroker timeout → DB synthetic → polling UX badges
 5. **Documentation**: 150+ MD files (sprint boards, runbooks, diagrams, audits)
 
 ## ⚠️ 5. RISKS & IMPROVEMENTS (Prioritized)
 
 ### 🔴 P0 Critical (Block Scale)
 ```
-1. vnstock Custom Fork → Official + Circuit Breaker (RateLimitError → 15min backoff)
+1. vnbroker Custom Fork → Official + Circuit Breaker (RateLimitError → 15min backoff)
 2. Frontend React Query → Eliminate 8+ waterfalls/StockDetail page
 3. Celery Worker Scale → Horizontal pod autoscaling (Kubernetes?)
 ```
@@ -105,21 +105,21 @@ vninvest/ (Current: c:/Mujoco Projects/vninvest)
 | Category | Rating | Rationale |
 |----------|--------|-----------|
 | **Technical** | A- | Production-ready, realtime excellence |
-| **Scalability** | B+ | Celery/Redis ready, vnstock single-point |
+| **Scalability** | B+ | Celery/Redis ready, vnbroker single-point |
 | **Monetization** | A | OpenCore + tiers implemented |
 | **UX** | A- | Trust transparency differentiates |
 | **Docs** | A+ | Enterprise-grade sprint management |
 
 **Overall Grade: A-** ✅ Ready for 10k+ users with P0 fixes.
 
-**Recommendation**: Deploy to staging + monitor vnstock rate-limits → P0 fixes → Scale.
+**Recommendation**: Deploy to staging + monitor vnbroker rate-limits → P0 fixes → Scale.
 
 **Audit complete. File saved for discussion: docs/VNINVEST_FULL_AUDIT_REPORT_$(date +%Y%m%d).md**
 
 ## 7. Pricing Display Policy (Discussion Baseline)
 
 ### Agreed Direction
-- Keep raw price data from vnstock unchanged in backend/API.
+- Keep raw price data from vnbroker unchanged in backend/API.
 - Render market-board numbers in US style for readability consistency.
 - Show numbers only in table cells (no unit suffix per cell).
 

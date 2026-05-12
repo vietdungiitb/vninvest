@@ -17,14 +17,14 @@ import {
   getAdminPrefetchRuntimeSettings,
   getAdminPrefetchTimePolicy,
   getAdminSystemAiSettings,
-  getAdminVnstockConfigChangelog,
-  getAdminVnstockConfigCurrent,
+  getAdminVnbrokerConfigChangelog,
+  getAdminVnbrokerConfigCurrent,
   getSecuritiesGroups,
   syncMarketGroups,
-  resetAdminVnstockConfig,
+  resetAdminVnbrokerConfig,
   syncStockProfile,
   syncWatchlistPrices,
-  updateAdminVnstockConfig,
+  updateAdminVnbrokerConfig,
   updateAdminPrefetchRuntimeSettings,
   updateAdminPrefetchTimePolicy,
   updateAdminSystemAiSettings,
@@ -36,7 +36,7 @@ import {
 } from '../api/client';
 import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
-import VnstockBenchmarkPanel from '../components/adminops/VnstockBenchmarkPanel';
+import VnbrokerBenchmarkPanel from '../components/adminops/VnbrokerBenchmarkPanel';
 import SignalControlCenter from '../components/adminops/SignalControlCenter';
 import GlobalScreenerAdminPanel from '../components/adminops/GlobalScreenerAdminPanel';
 
@@ -308,7 +308,7 @@ export default function AdminOps() {
   const [syncStates, setSyncStates] = useState({});
   const [syncCooldowns, setSyncCooldowns] = useState({});
   const [marketGroups, setMarketGroups] = useState([]);
-  const [vnstockConfigForm, setVnstockConfigForm] = useState({
+  const [vnbrokerConfigForm, setVnbrokerConfigForm] = useState({
     max_concurrency: '12',
     retry_attempts: '1',
     retry_backoff_seconds: '0.35',
@@ -325,9 +325,9 @@ export default function AdminOps() {
     enable_rate_limit_detection: true,
     enable_concurrent_limit: true,
   });
-  const [vnstockConfigState, setVnstockConfigState] = useState('idle');
-  const [vnstockConfigMessage, setVnstockConfigMessage] = useState('');
-  const [vnstockChangelog, setVnstockChangelog] = useState([]);
+  const [vnbrokerConfigState, setVnbrokerConfigState] = useState('idle');
+  const [vnbrokerConfigMessage, setVnbrokerConfigMessage] = useState('');
+  const [vnbrokerChangelog, setVnbrokerChangelog] = useState([]);
   const [recentAuditEvents, setRecentAuditEvents] = useState([]);
   const syncCooldownTimersRef = useRef({});
   const prefetchTimePolicyRulebook = systemAiSettings?.prefetch_time_policy_rulebook || {};
@@ -475,10 +475,10 @@ export default function AdminOps() {
     try {
       // stats la du lieu bat buoc cho trang; cac panel con lai fail-soft de tranh treo spinner.
       const statsRes = await withTimeout(getAdminOpsStats(), 15000, 'admin-ops-stats');
-      const [settingsRes, vnstockRes, vnstockChangelogRes, securitiesGroupsRes, auditLogRes] = await Promise.allSettled([
+      const [settingsRes, vnbrokerRes, vnbrokerChangelogRes, securitiesGroupsRes, auditLogRes] = await Promise.allSettled([
         withTimeout(getAdminPrefetchTimePolicy(), 12000, 'admin-ops-settings'),
-        withTimeout(getAdminVnstockConfigCurrent(), 12000, 'admin-ops-vnstock-current'),
-        withTimeout(getAdminVnstockConfigChangelog(20, 0), 12000, 'admin-ops-vnstock-changelog'),
+        withTimeout(getAdminVnbrokerConfigCurrent(), 12000, 'admin-ops-vnbroker-current'),
+        withTimeout(getAdminVnbrokerConfigChangelog(20, 0), 12000, 'admin-ops-vnbroker-changelog'),
         withTimeout(getSecuritiesGroups(), 12000, 'admin-ops-securities-groups'),
         withTimeout(getAdminAuditLog({ page_size: 5 }), 12000, 'admin-ops-audit-log'),
       ]);
@@ -487,30 +487,30 @@ export default function AdminOps() {
       if (payload) {
         setSystemAiSettings(payload);
       }
-      const vnstockSettings = vnstockRes.status === 'fulfilled' ? (vnstockRes.value.data?.settings || null) : null;
+      const vnbrokerSettings = vnbrokerRes.status === 'fulfilled' ? (vnbrokerRes.value.data?.settings || null) : null;
       const groupsPayload = securitiesGroupsRes.status === 'fulfilled' ? (securitiesGroupsRes.value.data || []) : [];
       setMarketGroups(Array.isArray(groupsPayload) ? groupsPayload : []);
-      if (vnstockSettings) {
-        setVnstockConfigForm({
-          max_concurrency: String(vnstockSettings.max_concurrency ?? ''),
-          retry_attempts: String(vnstockSettings.retry_attempts ?? ''),
-          retry_backoff_seconds: String(vnstockSettings.retry_backoff_seconds ?? ''),
-          rate_limit_cooldown_seconds: String(vnstockSettings.rate_limit_cooldown_seconds ?? ''),
-          price_board_source: String(vnstockSettings.price_board_source || 'KBS'),
-          fallback_sources: Array.isArray(vnstockSettings.fallback_sources) ? vnstockSettings.fallback_sources.join(',') : '',
-          timeout_price_board: String(vnstockSettings.timeout_config?.price_board ?? ''),
-          timeout_intraday: String(vnstockSettings.timeout_config?.intraday ?? ''),
-          timeout_financial_ratio: String(vnstockSettings.timeout_config?.financial_ratio ?? ''),
-          timeout_history: String(vnstockSettings.timeout_config?.history ?? ''),
-          timeout_listing: String(vnstockSettings.timeout_config?.listing ?? ''),
-          timeout_general: String(vnstockSettings.timeout_config?.general ?? ''),
-          enable_caching: Boolean(vnstockSettings.enable_caching),
-          enable_rate_limit_detection: Boolean(vnstockSettings.enable_rate_limit_detection),
-          enable_concurrent_limit: Boolean(vnstockSettings.enable_concurrent_limit),
+      if (vnbrokerSettings) {
+        setVnbrokerConfigForm({
+          max_concurrency: String(vnbrokerSettings.max_concurrency ?? ''),
+          retry_attempts: String(vnbrokerSettings.retry_attempts ?? ''),
+          retry_backoff_seconds: String(vnbrokerSettings.retry_backoff_seconds ?? ''),
+          rate_limit_cooldown_seconds: String(vnbrokerSettings.rate_limit_cooldown_seconds ?? ''),
+          price_board_source: String(vnbrokerSettings.price_board_source || 'KBS'),
+          fallback_sources: Array.isArray(vnbrokerSettings.fallback_sources) ? vnbrokerSettings.fallback_sources.join(',') : '',
+          timeout_price_board: String(vnbrokerSettings.timeout_config?.price_board ?? ''),
+          timeout_intraday: String(vnbrokerSettings.timeout_config?.intraday ?? ''),
+          timeout_financial_ratio: String(vnbrokerSettings.timeout_config?.financial_ratio ?? ''),
+          timeout_history: String(vnbrokerSettings.timeout_config?.history ?? ''),
+          timeout_listing: String(vnbrokerSettings.timeout_config?.listing ?? ''),
+          timeout_general: String(vnbrokerSettings.timeout_config?.general ?? ''),
+          enable_caching: Boolean(vnbrokerSettings.enable_caching),
+          enable_rate_limit_detection: Boolean(vnbrokerSettings.enable_rate_limit_detection),
+          enable_concurrent_limit: Boolean(vnbrokerSettings.enable_concurrent_limit),
         });
       }
-      if (vnstockChangelogRes.status === 'fulfilled') {
-        setVnstockChangelog(Array.isArray(vnstockChangelogRes.value.data?.results) ? vnstockChangelogRes.value.data.results : []);
+      if (vnbrokerChangelogRes.status === 'fulfilled') {
+        setVnbrokerChangelog(Array.isArray(vnbrokerChangelogRes.value.data?.results) ? vnbrokerChangelogRes.value.data.results : []);
       }
       if (auditLogRes.status === 'fulfilled') {
         setRecentAuditEvents(Array.isArray(auditLogRes.value.data?.results) ? auditLogRes.value.data.results : []);
@@ -1053,37 +1053,37 @@ export default function AdminOps() {
     }
   }, [load, prefetchTimePolicyForm, prefetchTimePolicyRulebook, t]);
 
-  const handleVnstockConfigInput = useCallback((field, value) => {
-    setVnstockConfigForm((prev) => ({ ...prev, [field]: value }));
-    if (vnstockConfigState !== 'idle') {
-      setVnstockConfigState('idle');
-      setVnstockConfigMessage('');
+  const handleVnbrokerConfigInput = useCallback((field, value) => {
+    setVnbrokerConfigForm((prev) => ({ ...prev, [field]: value }));
+    if (vnbrokerConfigState !== 'idle') {
+      setVnbrokerConfigState('idle');
+      setVnbrokerConfigMessage('');
     }
-  }, [vnstockConfigState]);
+  }, [vnbrokerConfigState]);
 
-  const handleVnstockConfigSave = useCallback(async (event) => {
+  const handleVnbrokerConfigSave = useCallback(async (event) => {
     event.preventDefault();
     const payload = {
-      max_concurrency: Number(vnstockConfigForm.max_concurrency),
-      retry_attempts: Number(vnstockConfigForm.retry_attempts),
-      retry_backoff_seconds: Number(vnstockConfigForm.retry_backoff_seconds),
-      rate_limit_cooldown_seconds: Number(vnstockConfigForm.rate_limit_cooldown_seconds),
-      price_board_source: String(vnstockConfigForm.price_board_source || '').trim().toUpperCase(),
-      fallback_sources: String(vnstockConfigForm.fallback_sources || '')
+      max_concurrency: Number(vnbrokerConfigForm.max_concurrency),
+      retry_attempts: Number(vnbrokerConfigForm.retry_attempts),
+      retry_backoff_seconds: Number(vnbrokerConfigForm.retry_backoff_seconds),
+      rate_limit_cooldown_seconds: Number(vnbrokerConfigForm.rate_limit_cooldown_seconds),
+      price_board_source: String(vnbrokerConfigForm.price_board_source || '').trim().toUpperCase(),
+      fallback_sources: String(vnbrokerConfigForm.fallback_sources || '')
         .split(',')
         .map((item) => item.trim().toUpperCase())
         .filter(Boolean),
       timeout_config: {
-        price_board: Number(vnstockConfigForm.timeout_price_board),
-        intraday: Number(vnstockConfigForm.timeout_intraday),
-        financial_ratio: Number(vnstockConfigForm.timeout_financial_ratio),
-        history: Number(vnstockConfigForm.timeout_history),
-        listing: Number(vnstockConfigForm.timeout_listing),
-        general: Number(vnstockConfigForm.timeout_general),
+        price_board: Number(vnbrokerConfigForm.timeout_price_board),
+        intraday: Number(vnbrokerConfigForm.timeout_intraday),
+        financial_ratio: Number(vnbrokerConfigForm.timeout_financial_ratio),
+        history: Number(vnbrokerConfigForm.timeout_history),
+        listing: Number(vnbrokerConfigForm.timeout_listing),
+        general: Number(vnbrokerConfigForm.timeout_general),
       },
-      enable_caching: Boolean(vnstockConfigForm.enable_caching),
-      enable_rate_limit_detection: Boolean(vnstockConfigForm.enable_rate_limit_detection),
-      enable_concurrent_limit: Boolean(vnstockConfigForm.enable_concurrent_limit),
+      enable_caching: Boolean(vnbrokerConfigForm.enable_caching),
+      enable_rate_limit_detection: Boolean(vnbrokerConfigForm.enable_rate_limit_detection),
+      enable_concurrent_limit: Boolean(vnbrokerConfigForm.enable_concurrent_limit),
     };
 
     const scalarNums = [
@@ -1094,51 +1094,51 @@ export default function AdminOps() {
       ...Object.values(payload.timeout_config),
     ];
     if (scalarNums.some((item) => Number.isNaN(item))) {
-      setVnstockConfigState('error');
-      setVnstockConfigMessage('Gia tri cau hinh vnstock khong hop le.');
+      setVnbrokerConfigState('error');
+      setVnbrokerConfigMessage('Gia tri cau hinh vnbroker khong hop le.');
       return;
     }
 
-    setVnstockConfigState('saving');
-    setVnstockConfigMessage('');
+    setVnbrokerConfigState('saving');
+    setVnbrokerConfigMessage('');
     try {
-      await updateAdminVnstockConfig(payload);
+      await updateAdminVnbrokerConfig(payload);
       await load({ silent: true });
-      setVnstockConfigState('success');
-      setVnstockConfigMessage('Da cap nhat Runtime Vnstock Config.');
+      setVnbrokerConfigState('success');
+      setVnbrokerConfigMessage('Da cap nhat Runtime Vnbroker Config.');
     } catch (err) {
-      setVnstockConfigState('error');
-      setVnstockConfigMessage(err.response?.data?.message || 'Cap nhat Runtime Vnstock Config that bai.');
+      setVnbrokerConfigState('error');
+      setVnbrokerConfigMessage(err.response?.data?.message || 'Cap nhat Runtime Vnbroker Config that bai.');
     }
-  }, [load, vnstockConfigForm]);
+  }, [load, vnbrokerConfigForm]);
 
-  const handleVnstockConfigReset = useCallback(async () => {
-    setVnstockConfigState('saving');
-    setVnstockConfigMessage('');
+  const handleVnbrokerConfigReset = useCallback(async () => {
+    setVnbrokerConfigState('saving');
+    setVnbrokerConfigMessage('');
     try {
-      await resetAdminVnstockConfig();
+      await resetAdminVnbrokerConfig();
       await load({ silent: true });
-      setVnstockConfigState('success');
-      setVnstockConfigMessage('Da reset Runtime Vnstock Config ve mac dinh.');
+      setVnbrokerConfigState('success');
+      setVnbrokerConfigMessage('Da reset Runtime Vnbroker Config ve mac dinh.');
     } catch (err) {
-      setVnstockConfigState('error');
-      setVnstockConfigMessage(err.response?.data?.message || 'Reset Runtime Vnstock Config that bai.');
+      setVnbrokerConfigState('error');
+      setVnbrokerConfigMessage(err.response?.data?.message || 'Reset Runtime Vnbroker Config that bai.');
     }
   }, [load]);
 
-  const handleApplyVnstockBenchmarkRecommendation = useCallback((recommendation) => {
+  const handleApplyVnbrokerBenchmarkRecommendation = useCallback((recommendation) => {
     const primary = String(recommendation?.primary_provider || '').trim().toUpperCase();
     const fallback = String(recommendation?.fallback_provider || '').trim().toUpperCase();
     if (!primary) {
       return;
     }
-    setVnstockConfigForm((prev) => ({
+    setVnbrokerConfigForm((prev) => ({
       ...prev,
       price_board_source: primary,
       fallback_sources: fallback && fallback !== primary ? fallback : '',
     }));
-    setVnstockConfigState('idle');
-    setVnstockConfigMessage('');
+    setVnbrokerConfigState('idle');
+    setVnbrokerConfigMessage('');
   }, []);
 
   // ─── Render states ───────────────────────────────────────────────────────
@@ -1198,10 +1198,10 @@ export default function AdminOps() {
   const prefetchRulebook = systemAiSettings?.prefetch_runtime_rulebook || {};
   const activePrefetchPolicy = prefetch?.prefetch?.policy || null;
   const surfacePermissions = stats.surface_permissions || {};
-  const canWriteVnstockConfig = Boolean(surfacePermissions.vnstock_config_write);
+  const canWriteVnbrokerConfig = Boolean(surfacePermissions.vnbroker_config_write);
   const canApplyBackfill = Boolean(surfacePermissions.intraday_side_backfill_apply);
-  const canOpenLegacyCrawlControl = Boolean(canWriteVnstockConfig || canApplyBackfill);
-  const vnstockSurfaceName = t('adminOps.vnstockSurfaceName', { defaultValue: 'Runtime Vnstock Config' });
+  const canOpenLegacyCrawlControl = Boolean(canWriteVnbrokerConfig || canApplyBackfill);
+  const vnbrokerSurfaceName = t('adminOps.vnbrokerSurfaceName', { defaultValue: 'Runtime Vnbroker Config' });
   const dataOpsSurfaceName = t('adminOps.dataOpsSurfaceName', { defaultValue: 'Data Ops' });
 
   const syncBtn = (key, label, fn, ...args) => {
@@ -1269,7 +1269,7 @@ export default function AdminOps() {
         </button>
         <button className={pageBtnClass('governance')} onClick={() => setActivePage('governance')}>Governance</button>
         <button className={pageBtnClass('prefetch')} onClick={() => setActivePage('prefetch')}>Prefetch</button>
-        <button className={pageBtnClass('vnstock')} onClick={() => setActivePage('vnstock')}>Vnstock Config</button>
+        <button className={pageBtnClass('vnbroker')} onClick={() => setActivePage('vnbroker')}>Vnbroker Config</button>
         <button className={pageBtnClass('kpi')} onClick={() => setActivePage('kpi')}>Runtime KPI</button>
         <button className={pageBtnClass('dataops')} onClick={() => setActivePage('dataops')}>Data Ops</button>
       </div>
@@ -1867,38 +1867,38 @@ export default function AdminOps() {
       </section>
       </>) : null}
 
-      {activePage === 'vnstock' ? (<>
+      {activePage === 'vnbroker' ? (<>
       <section className="space-y-4">
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Runtime Vnstock Config</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Runtime Vnbroker Config</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Cap nhat cau hinh vnstock runtime khong can restart backend.
+            Cap nhat cau hinh vnbroker runtime khong can restart backend.
           </p>
         </div>
 
-        {!canWriteVnstockConfig ? (
+        {!canWriteVnbrokerConfig ? (
           <AccessNotice
             t={t}
-            title={t('adminOps.surfaceWriteLockedTitle', { surface: vnstockSurfaceName })}
-            description={t('adminOps.surfaceWriteLockedDescription', { surface: vnstockSurfaceName })}
+            title={t('adminOps.surfaceWriteLockedTitle', { surface: vnbrokerSurfaceName })}
+            description={t('adminOps.surfaceWriteLockedDescription', { surface: vnbrokerSurfaceName })}
           />
         ) : null}
 
-        <VnstockBenchmarkPanel
-          onApplyRecommendation={handleApplyVnstockBenchmarkRecommendation}
-          canApplyRecommendation={canWriteVnstockConfig}
+        <VnbrokerBenchmarkPanel
+          onApplyRecommendation={handleApplyVnbrokerBenchmarkRecommendation}
+          canApplyRecommendation={canWriteVnbrokerConfig}
         />
 
-        <form onSubmit={handleVnstockConfigSave}>
-          <fieldset disabled={!canWriteVnstockConfig} className="grid gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-opacity disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 md:grid-cols-3">
+        <form onSubmit={handleVnbrokerConfigSave}>
+          <fieldset disabled={!canWriteVnbrokerConfig} className="grid gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-opacity disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 md:grid-cols-3">
             <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
               Max Concurrency
               <input
                 type="number"
                 min="1"
                 max="50"
-                value={vnstockConfigForm.max_concurrency}
-                onChange={(event) => handleVnstockConfigInput('max_concurrency', event.target.value)}
+                value={vnbrokerConfigForm.max_concurrency}
+                onChange={(event) => handleVnbrokerConfigInput('max_concurrency', event.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               />
             </label>
@@ -1908,8 +1908,8 @@ export default function AdminOps() {
                 type="number"
                 min="0"
                 max="5"
-                value={vnstockConfigForm.retry_attempts}
-                onChange={(event) => handleVnstockConfigInput('retry_attempts', event.target.value)}
+                value={vnbrokerConfigForm.retry_attempts}
+                onChange={(event) => handleVnbrokerConfigInput('retry_attempts', event.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               />
             </label>
@@ -1920,8 +1920,8 @@ export default function AdminOps() {
                 min="0"
                 max="5"
                 step="0.05"
-                value={vnstockConfigForm.retry_backoff_seconds}
-                onChange={(event) => handleVnstockConfigInput('retry_backoff_seconds', event.target.value)}
+                value={vnbrokerConfigForm.retry_backoff_seconds}
+                onChange={(event) => handleVnbrokerConfigInput('retry_backoff_seconds', event.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               />
             </label>
@@ -1932,8 +1932,8 @@ export default function AdminOps() {
                 type="number"
                 min="5"
                 max="120"
-                value={vnstockConfigForm.rate_limit_cooldown_seconds}
-                onChange={(event) => handleVnstockConfigInput('rate_limit_cooldown_seconds', event.target.value)}
+                value={vnbrokerConfigForm.rate_limit_cooldown_seconds}
+                onChange={(event) => handleVnbrokerConfigInput('rate_limit_cooldown_seconds', event.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               />
             </label>
@@ -1941,8 +1941,8 @@ export default function AdminOps() {
               Price Board Source
               <input
                 type="text"
-                value={vnstockConfigForm.price_board_source}
-                onChange={(event) => handleVnstockConfigInput('price_board_source', event.target.value)}
+                value={vnbrokerConfigForm.price_board_source}
+                onChange={(event) => handleVnbrokerConfigInput('price_board_source', event.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm uppercase text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               />
             </label>
@@ -1950,69 +1950,69 @@ export default function AdminOps() {
               Fallback Sources (comma separated)
               <input
                 type="text"
-                value={vnstockConfigForm.fallback_sources}
-                onChange={(event) => handleVnstockConfigInput('fallback_sources', event.target.value)}
+                value={vnbrokerConfigForm.fallback_sources}
+                onChange={(event) => handleVnbrokerConfigInput('fallback_sources', event.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm uppercase text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               />
             </label>
 
             <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
               Timeout Price Board (s)
-              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_price_board} onChange={(event) => handleVnstockConfigInput('timeout_price_board', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+              <input type="number" min="1" max="120" value={vnbrokerConfigForm.timeout_price_board} onChange={(event) => handleVnbrokerConfigInput('timeout_price_board', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
             </label>
             <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
               Timeout Intraday (s)
-              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_intraday} onChange={(event) => handleVnstockConfigInput('timeout_intraday', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+              <input type="number" min="1" max="120" value={vnbrokerConfigForm.timeout_intraday} onChange={(event) => handleVnbrokerConfigInput('timeout_intraday', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
             </label>
             <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
               Timeout Financial Ratio (s)
-              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_financial_ratio} onChange={(event) => handleVnstockConfigInput('timeout_financial_ratio', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+              <input type="number" min="1" max="120" value={vnbrokerConfigForm.timeout_financial_ratio} onChange={(event) => handleVnbrokerConfigInput('timeout_financial_ratio', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
             </label>
             <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
               Timeout History (s)
-              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_history} onChange={(event) => handleVnstockConfigInput('timeout_history', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+              <input type="number" min="1" max="120" value={vnbrokerConfigForm.timeout_history} onChange={(event) => handleVnbrokerConfigInput('timeout_history', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
             </label>
             <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
               Timeout Listing (s)
-              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_listing} onChange={(event) => handleVnstockConfigInput('timeout_listing', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+              <input type="number" min="1" max="120" value={vnbrokerConfigForm.timeout_listing} onChange={(event) => handleVnbrokerConfigInput('timeout_listing', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
             </label>
             <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
               Timeout General (s)
-              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_general} onChange={(event) => handleVnstockConfigInput('timeout_general', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+              <input type="number" min="1" max="120" value={vnbrokerConfigForm.timeout_general} onChange={(event) => handleVnbrokerConfigInput('timeout_general', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
             </label>
 
             <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <input type="checkbox" checked={vnstockConfigForm.enable_caching} onChange={(event) => handleVnstockConfigInput('enable_caching', event.target.checked)} />
+              <input type="checkbox" checked={vnbrokerConfigForm.enable_caching} onChange={(event) => handleVnbrokerConfigInput('enable_caching', event.target.checked)} />
               Enable Caching
             </label>
             <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <input type="checkbox" checked={vnstockConfigForm.enable_rate_limit_detection} onChange={(event) => handleVnstockConfigInput('enable_rate_limit_detection', event.target.checked)} />
+              <input type="checkbox" checked={vnbrokerConfigForm.enable_rate_limit_detection} onChange={(event) => handleVnbrokerConfigInput('enable_rate_limit_detection', event.target.checked)} />
               Enable Rate Limit Detection
             </label>
             <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <input type="checkbox" checked={vnstockConfigForm.enable_concurrent_limit} onChange={(event) => handleVnstockConfigInput('enable_concurrent_limit', event.target.checked)} />
+              <input type="checkbox" checked={vnbrokerConfigForm.enable_concurrent_limit} onChange={(event) => handleVnbrokerConfigInput('enable_concurrent_limit', event.target.checked)} />
               Enable Concurrent Limit
             </label>
 
             <div className="md:col-span-3 flex flex-wrap items-center gap-3">
               <button
                 type="submit"
-                disabled={vnstockConfigState === 'saving'}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${vnstockConfigState === 'saving' ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                disabled={vnbrokerConfigState === 'saving'}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${vnbrokerConfigState === 'saving' ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
-                {vnstockConfigState === 'saving' ? 'Dang luu...' : 'Luu Runtime Config'}
+                {vnbrokerConfigState === 'saving' ? 'Dang luu...' : 'Luu Runtime Config'}
               </button>
               <button
                 type="button"
-                disabled={vnstockConfigState === 'saving'}
-                onClick={handleVnstockConfigReset}
+                disabled={vnbrokerConfigState === 'saving'}
+                onClick={handleVnbrokerConfigReset}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 Reset Defaults
               </button>
-              {vnstockConfigMessage ? (
-                <span className={`text-sm ${vnstockConfigState === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
-                  {vnstockConfigMessage}
+              {vnbrokerConfigMessage ? (
+                <span className={`text-sm ${vnbrokerConfigState === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                  {vnbrokerConfigMessage}
                 </span>
               ) : null}
             </div>
@@ -2021,11 +2021,11 @@ export default function AdminOps() {
 
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">Change Log</h3>
-          {vnstockChangelog.length === 0 ? (
+          {vnbrokerChangelog.length === 0 ? (
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Chua co thay doi nao.</p>
           ) : (
             <div className="mt-3 space-y-2">
-              {vnstockChangelog.map((item, index) => (
+              {vnbrokerChangelog.map((item, index) => (
                 <div key={`${item.timestamp || 'ts'}-${index}`} className="rounded-lg border border-gray-100 px-3 py-2 text-sm dark:border-gray-700">
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {fmtDateTime(item.timestamp)} · {item.actor || 'system'} · {item.reason || 'update_config'}

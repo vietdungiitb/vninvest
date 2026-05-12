@@ -2,7 +2,7 @@
 
 **Auto-Generated:** 2026-04-12  
 **API Version:** 1.0  
-**Base URL:** `/api/admin-ops/vnstock-config/`
+**Base URL:** `/api/admin-ops/vnbroker-config/`
 
 ---
 
@@ -17,14 +17,14 @@
 
 ---
 
-## 1️⃣ GET `/api/admin-ops/vnstock-config/current/`
+## 1️⃣ GET `/api/admin-ops/vnbroker-config/current/`
 
-**Purpose:** Retrieve current vnstock configuration
+**Purpose:** Retrieve current vnbroker configuration
 
 ### Request
 
 ```bash
-curl -X GET "http://localhost:8000/api/admin-ops/vnstock-config/current/" \
+curl -X GET "http://localhost:8000/api/admin-ops/vnbroker-config/current/" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json"
 ```
@@ -81,14 +81,14 @@ curl -X GET "http://localhost:8000/api/admin-ops/vnstock-config/current/" \
 
 ---
 
-## 2️⃣ PATCH `/api/admin-ops/vnstock-config/update_config/`
+## 2️⃣ PATCH `/api/admin-ops/vnbroker-config/update_config/`
 
 **Purpose:** Update configuration (partial updates allowed)
 
 ### Request
 
 ```bash
-curl -X PATCH "http://localhost:8000/api/admin-ops/vnstock-config/update_config/" \
+curl -X PATCH "http://localhost:8000/api/admin-ops/vnbroker-config/update_config/" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -126,7 +126,7 @@ curl -X PATCH "http://localhost:8000/api/admin-ops/vnstock-config/update_config/
 ```json
 {
   "status": "success",
-  "message": "Vnstock configuration updated successfully",
+  "message": "Vnbroker configuration updated successfully",
   "config": {
     "max_concurrency": 20,
     "retry_attempts": 2,
@@ -178,35 +178,35 @@ curl -X PATCH "http://localhost:8000/api/admin-ops/vnstock-config/update_config/
 
 **Example 1: Update only concurrency**
 ```bash
-curl -X PATCH "/api/admin-ops/vnstock-config/update_config/" \
+curl -X PATCH "/api/admin-ops/vnbroker-config/update_config/" \
   -H "Authorization: Bearer <token>" \
   -d '{"max_concurrency": 25}'
 ```
 
 **Example 2: Update timeout for specific channel**
 ```bash
-curl -X PATCH "/api/admin-ops/vnstock-config/update_config/" \
+curl -X PATCH "/api/admin-ops/vnbroker-config/update_config/" \
   -H "Authorization: Bearer <token>" \
   -d '{"timeout_config": {"price_board": 12, "intraday": 10, "financial_ratio": 15, "history": 18, "listing": 18, "general": 12}}'
 ```
 
 **Example 3: Switch to fallback source**
 ```bash
-curl -X PATCH "/api/admin-ops/vnstock-config/update_config/" \
+curl -X PATCH "/api/admin-ops/vnbroker-config/update_config/" \
   -H "Authorization: Bearer <token>" \
   -d '{"price_board_source": "stock_intraday_data", "fallback_sources": ["price_board"]}'
 ```
 
 ---
 
-## 3️⃣ POST `/api/admin-ops/vnstock-config/reset_to_defaults/`
+## 3️⃣ POST `/api/admin-ops/vnbroker-config/reset_to_defaults/`
 
 **Purpose:** Reset configuration to default values
 
 ### Request
 
 ```bash
-curl -X POST "http://localhost:8000/api/admin-ops/vnstock-config/reset_to_defaults/" \
+curl -X POST "http://localhost:8000/api/admin-ops/vnbroker-config/reset_to_defaults/" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json"
 ```
@@ -249,14 +249,14 @@ curl -X POST "http://localhost:8000/api/admin-ops/vnstock-config/reset_to_defaul
 
 ---
 
-## 4️⃣ GET `/api/admin-ops/vnstock-config/changelog/`
+## 4️⃣ GET `/api/admin-ops/vnbroker-config/changelog/`
 
 **Purpose:** Retrieve audit log of all configuration changes
 
 ### Request
 
 ```bash
-curl -X GET "http://localhost:8000/api/admin-ops/vnstock-config/changelog/" \
+curl -X GET "http://localhost:8000/api/admin-ops/vnbroker-config/changelog/" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -342,7 +342,7 @@ curl -X POST "http://localhost:8000/api-token-auth/" \
 ## Rate Limiting
 
 - **No explicit rate limits** on these endpoints (admin-only)
-- Respects global vnstock rate limiting after config updates
+- Respects global vnbroker rate limiting after config updates
 - Changes take effect within 1 API cycle (5-min cache window)
 
 ---

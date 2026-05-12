@@ -18,7 +18,7 @@
    python manage.py migrate
    ```
 
-4. Kiểm tra lại database (db.sqlite3) để xác nhận bảng SubAccount đã được tạo.
+4. Kiểm tra lại database Postgres để xác nhận bảng SubAccount đã được tạo.
 
 ---
 

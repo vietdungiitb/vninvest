@@ -27,7 +27,7 @@ Realtime ticker data from vnbroker NOT flowing into dev environment because:
 **Setup**: Enable legacy `backend.worker` service in docker-compose.dev.yml to run prefetch tasks
 
 **Pros**:
-- Realtime ticker cache gets populated via vnstock
+- Realtime ticker cache gets populated via vnbroker
 - Dashboard shows real data
 - Mimics prod-like data flow
 

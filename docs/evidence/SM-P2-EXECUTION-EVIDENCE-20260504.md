@@ -51,7 +51,7 @@
 ## 4. SM-P2.3 — data_ingest Domain
 
 New Django app at `packages/core/backend/src/data_ingest/`:
-- `IngestJob`: tracks repeatable ingest sources (vnstock_price_board, legacy_sync, etc.)
+- `IngestJob`: tracks repeatable ingest sources (vnbroker_price_board, legacy_sync, etc.)
 - `IngestRun`: tracks individual task executions with state/rows_upserted/error tracking
 - `fetch_and_upsert_price_board` Celery task: reads legacy DB → upserts SymbolSnapshot + logs IngestRun
 - Migration `0001_initial.py`: creates both tables + indexes

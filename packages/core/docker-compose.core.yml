@@ -35,7 +35,7 @@ services:
       CORE_PAT_PEPPER: "dev-pat-pepper-replace-in-production"
       PYTHONPATH: /workspace/src
     command: >-
-      sh -c "pip install -r requirements.txt -q && python manage.py migrate --noinput && python -m gunicorn vninvest_core.wsgi:application --bind 0.0.0.0:8100 --workers 2 --timeout 60 --access-logfile -"
+      sh -c "pip install -r requirements.txt -q && python manage.py migrate --noinput && python -m daphne --bind 0.0.0.0 --port 8100 vninvest_core.asgi:application"
     depends_on:
       core-db:
         condition: service_started

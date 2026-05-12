@@ -272,7 +272,7 @@ def test_task_skips_when_event_based_advisory_disabled_for_user(self):
 **Location in Code**: Lines 575-680
 
 **Process Flow**:
-1. Collect intraday frame for each symbol (real trades from vnstock)
+1. Collect intraday frame for each symbol (real trades from vnbroker)
 2. Call `detect_whale_signals()` with configured thresholds
 3. For each whale signal detected:
    - Publish to WebSocket channel `whale:{symbol}`

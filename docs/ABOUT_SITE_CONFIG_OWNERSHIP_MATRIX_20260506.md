@@ -27,7 +27,7 @@
 | `ABOUT_SITE_DEFAULT_LOCALE` | package config | Frontend Lead | Frontend Lead | i18n router | default `vi` |
 | `ABOUT_SITE_ALLOWED_SYMBOLS` | code constant / env override | Frontend + Backend | Frontend Lead | chart + playground routes | whitelist must be consistent |
 | `ABOUT_SITE_RATE_LIMIT_BARS` | config constant | Backend Lead | Backend Lead | `/api/bars` route | public chart relay |
-| `ABOUT_SITE_RATE_LIMIT_VNSTOCK` | config constant | Backend Lead | Backend Lead | `/api/public/vnstock-data` route | playground relay |
+| `ABOUT_SITE_RATE_LIMIT_VNBROKER` | config constant | Backend Lead | Backend Lead | `/api/public/vnbroker-data` route | playground relay |
 | `ABOUT_SITE_PYODIDE_CDN` | env or code constant | Frontend Lead | Frontend Lead | playground loader | pin version explicitly |
 | `ABOUT_SITE_REVALIDATE_SECONDS` | route config | Frontend Lead | Frontend Lead | blog ISR | default 86400 |
 | `ABOUT_SITE_CSP_POLICY` | middleware / next config | DevOps | DevOps | public headers | must be reviewed |

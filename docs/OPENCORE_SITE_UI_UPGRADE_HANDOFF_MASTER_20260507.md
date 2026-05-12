@@ -10,7 +10,7 @@
 
 Nâng cấp giao diện trang công khai `packages/opencore-site` từ bản scaffold placeholder sang một publish site production-grade, đủ để:
 
-1. Truyền thông điều rõ ràng về ba sản phẩm VNInvest / vnstock / VNStockCharts.
+1. Truyền thông điều rõ ràng về ba sản phẩm VNInvest / vnbroker / VNBrokerCharts.
 2. Sửa các lỗi nội dung hiện tại (nội dung trùng lặp, text hardcode không qua i18n).
 3. Nâng cấp thẩm mỹ thành phần ProductCards và Hero.
 4. Phân cấp rõ ba gói giá Free / Pro / Enterprise với feature list thật.

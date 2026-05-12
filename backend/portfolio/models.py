@@ -14,6 +14,7 @@ import secrets
 from .ai_options import ADVISORY_CAPABILITY, PROVIDER_CHOICES, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
 from .vnbroker_runtime_config import default_vnbroker_source_config
 from .encryption_utils import decrypt_text, encrypt_text, hash_with_pepper
+from identity_access.models import CoreTenant
 
 # ============================================================================
 # OpenCore models - Import for Django to recognize them
@@ -1135,127 +1136,6 @@ def _extract_pat_prefix(raw_secret: str) -> str:
     if not secret:
         return ''
     return secret[: min(len(secret), 16)]
-
-
-class CoreTenant(models.Model):
-    class StatusChoices(models.TextChoices):
-        ACTIVE = 'active', 'Active'
-        SUSPENDED = 'suspended', 'Suspended'
-
-    class EnvironmentChoices(models.TextChoices):
-        PROD = 'prod', 'Production'
-        STAGING = 'staging', 'Staging'
-        DEV = 'dev', 'Development'
-
-    public_id = models.CharField(
-        max_length=32,
-        unique=True,
-        db_index=True,
-        editable=False,
-        verbose_name='Canonical tenant public id',
-    )
-    owner_user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name='core_tenant',
-        verbose_name='Canonical tenant owner',
-    )
-    tenant_code = models.CharField(
-        max_length=96,
-        unique=True,
-        db_index=True,
-        verbose_name='Tenant code',
-    )
-    display_name = models.CharField(max_length=120, verbose_name='Tenant display name')
-    plan_code = models.CharField(max_length=32, default='free', db_index=True, verbose_name='Plan code')
-    status = models.CharField(
-        max_length=24,
-        choices=StatusChoices.choices,
-        default=StatusChoices.ACTIVE,
-        db_index=True,
-        verbose_name='Tenant status',
-    )
-    default_environment = models.CharField(
-        max_length=16,
-        choices=EnvironmentChoices.choices,
-        default=EnvironmentChoices.PROD,
-        verbose_name='Default environment',
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Core Tenant'
-        verbose_name_plural = 'Core Tenants'
-        ordering = ['display_name', 'pk']
-        indexes = [
-            models.Index(fields=['status', 'plan_code']),
-        ]
-
-    def __str__(self):
-        return f'{self.display_name} ({self.public_id})'
-
-    @property
-    def tenant_id(self) -> str:
-        return self.public_id
-
-    @staticmethod
-    def _normalize_tenant_code(raw_value: str, fallback: str, owner_user_id: int) -> str:
-        value = str(raw_value or '').strip().lower().replace('_', '-')
-        normalized = ''.join(ch if ch.isalnum() or ch == '-' else '-' for ch in value)
-        normalized = '-'.join(part for part in normalized.split('-') if part)
-        if not normalized:
-            normalized = fallback
-        suffix = str(owner_user_id or 0)
-        if not normalized.endswith(f'-{suffix}'):
-            normalized = f'{normalized}-{suffix}'
-        return normalized[:96]
-
-    @classmethod
-    def ensure_for_user(cls, user):
-        owner_user_id = getattr(user, 'pk', None)
-        if not owner_user_id:
-            raise ValueError('owner_user must be saved before resolving CoreTenant.')
-
-        username = str(getattr(user, 'username', '') or '').strip()
-        email = str(getattr(user, 'email', '') or '').strip()
-        email_local = email.split('@', 1)[0] if email else ''
-        display_name = username or email or f'user-{owner_user_id}'
-        plan_code = str(getattr(getattr(user, 'user_config', None), 'plan', 'free') or 'free').strip().lower()
-        defaults = {
-            'public_id': f'ten_usr_{owner_user_id}',
-            'tenant_code': cls._normalize_tenant_code(username or email_local, fallback=f'tenant-{owner_user_id}', owner_user_id=owner_user_id),
-            'display_name': display_name,
-            'plan_code': plan_code,
-            'status': cls.StatusChoices.ACTIVE,
-            'default_environment': cls.EnvironmentChoices.PROD,
-        }
-        tenant, created = cls.objects.get_or_create(owner_user=user, defaults=defaults)
-        if created:
-            return tenant
-
-        update_fields = []
-        if not tenant.public_id:
-            tenant.public_id = defaults['public_id']
-            update_fields.append('public_id')
-        if not tenant.tenant_code:
-            tenant.tenant_code = defaults['tenant_code']
-            update_fields.append('tenant_code')
-        if tenant.display_name != defaults['display_name']:
-            tenant.display_name = defaults['display_name']
-            update_fields.append('display_name')
-        if tenant.plan_code != defaults['plan_code']:
-            tenant.plan_code = defaults['plan_code']
-            update_fields.append('plan_code')
-        if not tenant.status:
-            tenant.status = defaults['status']
-            update_fields.append('status')
-        if not tenant.default_environment:
-            tenant.default_environment = defaults['default_environment']
-            update_fields.append('default_environment')
-        if update_fields:
-            tenant.save(update_fields=[*update_fields, 'updated_at'])
-        return tenant
 
 
 class CoreServiceAccount(models.Model):

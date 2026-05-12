@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'market_serving',
     'signal_intelligence',
     'commercial',
+    'tenant_lifecycle',
     'ops_audit',
     'data_ingest',
     'advisory',
@@ -67,6 +68,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'identity_access.middleware.TenantQuotaMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
 
@@ -157,6 +159,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+        'identity_access.permissions.IsTenantActive',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -226,11 +229,51 @@ from vninvest_core.queue_policy import SCHEDULER_QUEUE_MAP, TASK_ROUTES
 CELERY_TASK_ROUTES = TASK_ROUTES
 
 CELERY_BEAT_SCHEDULE = {
+    'flush-quota-counters': {
+        'task': 'commercial.tasks.flush_quota_counters',
+        'schedule': 60.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['flush-quota-counters']},
+    },
+    'generate-monthly-invoices': {
+        'task': 'commercial.tasks.generate_monthly_invoices',
+        'schedule': crontab(day_of_month='1', hour='0', minute='5'),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['generate-monthly-invoices']},
+    },
+    'check-overdue-invoices': {
+        'task': 'commercial.tasks.check_overdue_invoices',
+        'schedule': crontab(hour='8', minute='0'),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['check-overdue-invoices']},
+    },
+    'auto-expire-trials': {
+        'task': 'tenant_lifecycle.tasks.auto_expire_trials',
+        'schedule': crontab(hour='1', minute='0'),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['auto-expire-trials']},
+    },
+    'auto-suspend-quota-overflow': {
+        'task': 'tenant_lifecycle.tasks.auto_suspend_quota_overflow',
+        'schedule': 3600.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['auto-suspend-quota-overflow']},
+    },
+    'send-trial-expiry-warning': {
+        'task': 'tenant_lifecycle.tasks.send_trial_expiry_warning',
+        'schedule': crontab(hour='9', minute='0'),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['send-trial-expiry-warning']},
+    },
+    'auto-deprovision-stale': {
+        'task': 'tenant_lifecycle.tasks.auto_deprovision_stale',
+        'schedule': crontab(day_of_week='0', hour='2', minute='0'),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['auto-deprovision-stale']},
+    },
     # === Materializer tasks (market_serving) ===
     'materialize-symbol-snapshot-60s': {
         'task': 'market_serving.materializers.materialize_symbol_snapshot',
         'schedule': 60.0,  # every 60 seconds
         'options': {'queue': SCHEDULER_QUEUE_MAP['materialize-symbol-snapshot-60s']},
+    },
+    'materialize-pre-open-snapshots-20m': {
+        'task': 'market_serving.materializers.materialize_pre_open_snapshots',
+        'schedule': crontab(hour=8, minute=40, day_of_week='1-5'),  # 08:40 ICT = pre-open -20m
+        'options': {'queue': SCHEDULER_QUEUE_MAP['materialize-pre-open-snapshots-20m']},
     },
     'materialize-session-facts-5m': {
         'task': 'market_serving.materializers.materialize_session_facts',

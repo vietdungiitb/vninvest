@@ -8,7 +8,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'seo' });
   return buildPageMetadata({
-    title: `${t('siteName')} — ${locale === 'en' ? 'VNStockCharts live demo' : 'VNStockCharts bản demo trực tiếp'}`,
+    title: `${t('siteName')} — ${locale === 'en' ? 'VNBrokerCharts live demo' : 'VNBrokerCharts bản demo trực tiếp'}`,
     description: t('description'),
     pathname: `/${locale}/chart`,
     locale: locale === 'en' ? 'en' : 'vi'

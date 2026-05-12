@@ -15,7 +15,7 @@ Captured by: __________
 2. Source modes covered:
 - [ ] redis_stream
 - [ ] intraday_tick_db
-- [ ] vnstock fallback
+- [ ] vnbroker fallback
 
 ## 2) Baseline KPI snapshot
 

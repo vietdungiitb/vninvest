@@ -7,7 +7,7 @@ Decision owner: Product Owner (chu tri)
 Technical owner: Tech Lead (thuc thi)
 Go-to-market owner: Growth Lead (goi va kenh)
 Compliance owner: Legal/Compliance (policy va claim)
-Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_DISCUSSION.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md, OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md, OPEN_CORE_08_RISK_REGISTER_V1.md, OPEN_CORE_09_DOCKER_EXPERIENCE_STRATEGY_V1.md, OPEN_CORE_10_VNSTOCK_SOURCE_STRATEGY_V1.md, OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md, LANGUAGE_POLICY_V1.md
+Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_DISCUSSION.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md, OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md, OPEN_CORE_08_RISK_REGISTER_V1.md, OPEN_CORE_09_DOCKER_EXPERIENCE_STRATEGY_V1.md, OPEN_CORE_10_VNBROKER_SOURCE_STRATEGY_V1.md, OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md, LANGUAGE_POLICY_V1.md
 
 ## 1. Decision scope
 Chot bo quyet dinh V1 cho mo hinh Open Core va goi thu phi annual.
@@ -38,9 +38,9 @@ Luu y quan tri (2026-04-18):
 5. Compliance baseline
 - Co Terms/Privacy/Disclaimer truoc khi mo rong marketing.
 
-6. Vnstock source strategy
-- Community (free): dung vnstock public (PyPI).
-- Pro (paid annual): dung vnstock private da toi uu throughput.
+6. Vnbroker source strategy
+- Community (free): dung vnbroker public (PyPI).
+- Pro (paid annual): dung vnbroker private da toi uu throughput.
 - Van hanh theo dual-source guardrails (tham chieu OC-10).
 
 ## 7. Numeric baseline
@@ -52,7 +52,7 @@ Luu y quan tri (2026-04-18):
 3. Trial policy target: 7 ngay + grace period 7 ngay + disable premium and keep free flow after grace.
 4. Feature boundary lock phai theo OC-05 (V1 matrix).
 5. Docker Community MVP scope lock theo OC-09.
-6. Vnstock dual-source lock theo OC-10.
+6. Vnbroker dual-source lock theo OC-10.
 
 ## 4. Approval checklist (baseline)
 - Product owner: approved

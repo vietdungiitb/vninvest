@@ -36,14 +36,14 @@ class TestPriceSourceEnum:
     
     def test_all_sources_defined(self):
         """Ensure all expected sources exist."""
-        assert hasattr(PriceSource, 'VNSTOCK_DAILY')
+        assert hasattr(PriceSource, 'VNBROKER_DAILY')
         assert hasattr(PriceSource, 'REALTIME_SNAPSHOT')
         assert hasattr(PriceSource, 'INTRADAY_TICK')
         assert hasattr(PriceSource, 'USER_MANUAL')
     
     def test_source_values(self):
         """Verify enum values."""
-        assert PriceSource.VNSTOCK_DAILY.value == "vnstock_daily"
+        assert PriceSource.VNBROKER_DAILY.value == "vnbroker_daily"
         assert PriceSource.REALTIME_SNAPSHOT.value == "realtime_snapshot"
 
 
@@ -62,13 +62,13 @@ class TestQuotePriceClass:
         now = datetime.now()
         price = QuotePrice(
             value=26600.0,
-            source=PriceSource.VNSTOCK_DAILY,
+            source=PriceSource.VNBROKER_DAILY,
             symbol="MBB",
             timestamp=now
         )
         assert price.symbol == "MBB"
         assert price.timestamp == now
-        assert price.source == PriceSource.VNSTOCK_DAILY
+        assert price.source == PriceSource.VNBROKER_DAILY
     
     def test_quote_price_invalid_unit_raises(self):
         """Cannot create QuotePrice with wrong unit."""
@@ -137,12 +137,12 @@ class TestNormalizeQuotePrice:
         result = normalize_quote_price_to_canonical(
             value=26_600_000,
             source_unit="VND",
-            source=PriceSource.VNSTOCK_DAILY,
+            source=PriceSource.VNBROKER_DAILY,
             symbol="MBB"
         )
         assert result.value == 26_600.0
         assert result.unit == QUOTE_UNIT_CANONICAL
-        assert result.source == PriceSource.VNSTOCK_DAILY
+        assert result.source == PriceSource.VNBROKER_DAILY
         assert result.symbol == "MBB"
     
     def test_normalize_thousand_vnd_passthrough(self):
@@ -318,8 +318,8 @@ class TestDetectQuoteUnitHeuristic:
 class TestIntegrationRealWorldScenarios:
     """Integration tests simulating real usage."""
     
-    def test_scenario_vnstock_daily_price_ingestion(self):
-        """Simulate vnstock adapter ingesting KBS daily prices."""
+    def test_scenario_vnbroker_daily_price_ingestion(self):
+        """Simulate vnbroker adapter ingesting KBS daily prices."""
         # Provider returns VND (26,600,000 for MBB)
         raw_prices = {
             "MBB": 26_600_000,
@@ -332,7 +332,7 @@ class TestIntegrationRealWorldScenarios:
             symbol: normalize_quote_price_to_canonical(
                 value=price,
                 source_unit="VND",
-                source=PriceSource.VNSTOCK_DAILY,
+                source=PriceSource.VNBROKER_DAILY,
                 symbol=symbol
             )
             for symbol, price in raw_prices.items()

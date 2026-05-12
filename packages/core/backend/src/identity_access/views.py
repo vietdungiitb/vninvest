@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from vninvest_core.pagination import CoreCursorPagination
 
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant, UserProfile
+from .permissions import IsTenantActive
 from .serializers import (
     CorePATCredentialSerializer,
     CorePATIssueResponseSerializer,
@@ -14,9 +15,12 @@ from .serializers import (
 )
 
 
+TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
+
+
 class TenantDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = CoreTenantSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get_object(self):
         return CoreTenant.objects.get(owner_user=self.request.user)
@@ -25,7 +29,7 @@ class TenantDetailView(generics.RetrieveUpdateAPIView):
 class ServiceAccountListView(generics.ListCreateAPIView):
     serializer_class = CoreServiceAccountSerializer
     pagination_class = CoreCursorPagination
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get_queryset(self):
         tenant = CoreTenant.objects.get(owner_user=self.request.user)
@@ -38,7 +42,7 @@ class ServiceAccountListView(generics.ListCreateAPIView):
 
 class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CoreServiceAccountSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get_queryset(self):
         tenant = CoreTenant.objects.get(owner_user=self.request.user)
@@ -53,7 +57,7 @@ class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
 class PATListView(generics.ListAPIView):
     serializer_class = CorePATCredentialSerializer
     pagination_class = CoreCursorPagination
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get_queryset(self):
         tenant = CoreTenant.objects.get(owner_user=self.request.user)
@@ -63,7 +67,7 @@ class PATListView(generics.ListAPIView):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes(TENANT_PERMISSION_CLASSES)
 def issue_pat(request, service_account_id):
     """Issue a new PAT for a service account. Returns token ONE TIME only."""
     tenant = CoreTenant.objects.get(owner_user=request.user)
@@ -99,7 +103,7 @@ class UserProfileView(APIView):
     GET  /core/v1/identity/profile/  — return authenticated user's UserProfile
     PATCH /core/v1/identity/profile/ — partial update display_name, language, theme, whale_alert_threshold
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request):
         profile, _ = UserProfile.objects.get_or_create(
@@ -150,7 +154,7 @@ class UserProfileView(APIView):
 # ---------------------------------------------------------------------------
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_issue_pat(request):
     """Issue a new PAT. Takes service_account_id from request body."""
     tenant = CoreTenant.objects.get(owner_user=request.user)
@@ -184,7 +188,7 @@ def partner_issue_pat(request):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_rotate_pat(request, pat_id):
     """Revoke old PAT and issue a replacement for the same service account."""
     tenant = CoreTenant.objects.get(owner_user=request.user)
@@ -219,7 +223,7 @@ def partner_rotate_pat(request, pat_id):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_revoke_pat(request, pat_id):
     """Revoke a PAT owned by the authenticated tenant."""
     tenant = CoreTenant.objects.get(owner_user=request.user)
@@ -232,7 +236,7 @@ def partner_revoke_pat(request, pat_id):
 
 class PartnerUsageMetersView(generics.ListAPIView):
     """Usage meters list — placeholder until usage metering is implemented."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def list(self, request, *args, **kwargs):
         return Response([])

@@ -67,7 +67,7 @@ Trang thai: GO - All whale regression gates green
 	- `test_refactored_whale_feed_response_contains_scoring_contract` -> PASS
 	- `test_refactored_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db` -> PASS
 	- `test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db` -> PASS
-	- `test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss` -> PASS
+	- `test_whale_feed_aggregate_falls_back_to_vnbroker_after_stream_and_db_miss` -> PASS
 - Regression evidence moi: bo whale scope `ApiRouteSmokeTests -k whale` dat 51/51 PASS (SQLite mode).
 
 ## Gate H - Re-audit remediation closure (2026-04-11)

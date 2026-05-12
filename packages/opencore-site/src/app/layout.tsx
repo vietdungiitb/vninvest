@@ -14,7 +14,7 @@ const bodyFont = Manrope({
 
 export const metadata: Metadata = {
   title: 'VNInvest About',
-  description: 'Trang giới thiệu hệ sinh thái VNInvest, vnstock và VNStockCharts.'
+  description: 'Trang giới thiệu hệ sinh thái VNInvest, vnbroker và VNBrokerCharts.'
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

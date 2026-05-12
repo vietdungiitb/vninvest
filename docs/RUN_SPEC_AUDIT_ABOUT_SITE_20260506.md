@@ -22,8 +22,8 @@ Audit phải cover:
 
 ### Lens 1 — Product fidelity
 - site có đúng là VNInvest ecosystem hub không?
-- home page có đủ VNInvest, vnstock, VNStockCharts không?
-- `/chart` có thực sự là VNStockCharts demo không?
+- home page có đủ VNInvest, vnbroker, VNBrokerCharts không?
+- `/chart` có thực sự là VNBrokerCharts demo không?
 
 ### Lens 2 — Contract fidelity
 - route handler có đúng contract không?

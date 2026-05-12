@@ -16,6 +16,22 @@ def _legacy_views_module():
     return legacy_views
 
 
+_MANUAL_QUEUE_PRIORITY_BY_TIER = {
+    'community': 0,
+    'pro': 6,
+    'team': 9,
+}
+
+
+def _manual_queue_priority_for_plan(plan: str) -> int:
+    normalized_plan = str(plan or '').strip().lower()
+    if normalized_plan in {'premium', 'admin'}:
+        return _MANUAL_QUEUE_PRIORITY_BY_TIER['team']
+    if normalized_plan == 'pro':
+        return _MANUAL_QUEUE_PRIORITY_BY_TIER['pro']
+    return _MANUAL_QUEUE_PRIORITY_BY_TIER['community']
+
+
 class WhaleAdvisoryListView(generics.ListAPIView):
     """
     GET /api/portfolio/ai-advisory/
@@ -253,6 +269,59 @@ def whale_advisory_auto_refresh_info_api(request, symbol: str):
     return Response(response_payload, status=status.HTTP_200_OK)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def whale_advisory_manual_refresh_status_api(request, symbol: str):
+    legacy_views = _legacy_views_module()
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    tracked = legacy_views.TrackedSymbol.objects.filter(user=request.user, symbol=normalized_symbol).first()
+    if tracked is None:
+        return Response(
+            {'ok': False, 'symbol': normalized_symbol, 'message': 'Symbol chưa nằm trong danh sách theo dõi.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    user_cfg, _ = legacy_views.UserConfig.objects.get_or_create(user=request.user)
+    refresh_cooldown = max(int(getattr(settings, 'WHALE_ADVISORY_MANUAL_REFRESH_COOLDOWN_SECONDS', 90)), 10)
+    refresh_lock_key = f'whale_advisory_refresh_lock:{request.user.id}:{normalized_symbol}'
+    refresh_lock_value = legacy_views._cache_get(refresh_lock_key)
+
+    latest_manual = (
+        legacy_views.WhaleAdvisory.objects
+        .filter(user=request.user, symbol=normalized_symbol, source=legacy_views.WhaleAdvisory.SourceChoices.USER_REFRESH)
+        .order_by('-created_at')
+        .first()
+    )
+
+    entitlements = legacy_views.resolve_user_entitlements(request.user)
+    manual_enabled = bool(user_cfg.advisory_manual_refresh_enabled)
+    locked = bool(refresh_lock_value) and manual_enabled
+    retry_after_seconds = refresh_cooldown if locked else 0
+
+    response_payload = {
+        'ok': True,
+        'symbol': normalized_symbol,
+        'queue_name': 'manual_on_demand',
+        'plan': entitlements.get('plan'),
+        'tier': entitlements.get('tier'),
+        'can_request_manual_refresh': bool(entitlements.get('can_read_whale_advisory', False)),
+        'manual_refresh_enabled': manual_enabled,
+        'manual_refresh_cooldown_seconds': refresh_cooldown,
+        'status': 'disabled' if not manual_enabled else ('cooldown' if locked else 'ready'),
+        'retry_after_seconds': retry_after_seconds,
+        'next_retry_at': timezone.now() + timedelta(seconds=refresh_cooldown) if locked else None,
+        'is_locked': locked,
+        'last_manual_refresh_at': latest_manual.created_at if latest_manual is not None else None,
+        'last_manual_refresh_id': latest_manual.id if latest_manual is not None else None,
+        'last_manual_refresh_count': int(latest_manual.refresh_count or 0) if latest_manual is not None else 0,
+        'last_manual_refresh_source': latest_manual.source if latest_manual is not None else None,
+    }
+    return Response(response_payload, status=status.HTTP_200_OK)
+
+
 def _is_celery_worker_available() -> bool:
     try:
         from config.celery import app as celery_app
@@ -274,9 +343,19 @@ def _submit_advisory_generation_with_fallback(
     legacy_views = _legacy_views_module()
     from portfolio.tasks import generate_whale_advisory_task
     task_queue = None
+    task_priority = None
     source_key = str(payload_kwargs.get('source') or '').strip().lower()
     if source_key == legacy_views.WhaleAdvisory.SourceChoices.USER_REFRESH:
         task_queue = 'manual_on_demand'
+        user_id = payload_kwargs.get('user_id')
+        if user_id is not None:
+            try:
+                from django.contrib.auth.models import User
+
+                user = User.objects.select_related('user_config').get(pk=int(user_id))
+                task_priority = _manual_queue_priority_for_plan(legacy_views._get_plan(user))
+            except Exception:
+                task_priority = None
 
     if force_sync:
         try:
@@ -291,6 +370,8 @@ def _submit_advisory_generation_with_fallback(
             async_kwargs = {'kwargs': payload_kwargs, 'countdown': 0}
             if task_queue:
                 async_kwargs['queue'] = task_queue
+            if task_priority is not None:
+                async_kwargs['priority'] = task_priority
             task = generate_whale_advisory_task.apply_async(**async_kwargs)
             return {'queued': True, 'task_id': task.id, 'sync': False}
         except Exception as exc:

@@ -159,17 +159,17 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'false').lower() == 'true'
 #### Nhóm Realtime (`signal_intelligence` app)
 | Endpoint | Data source | Notes |
 |---------|-------------|-------|
-| `/api/realtime/ticker/<symbol>/` | vnstock realtime hoặc Redis cache | TTL 15s |
+| `/api/realtime/ticker/<symbol>/` | vnbroker realtime hoặc Redis cache | TTL 15s |
 | `/api/realtime/tickers/?symbols=` | Batch fetch | Tối đa 50 symbols |
 | `/api/realtime/intraday/<symbol>/` | `portfolio_intradaytick` qua legacy readonly | Paginated |
-| `/api/realtime/price-board/<symbol>/` | vnstock | TTL 10s |
+| `/api/realtime/price-board/<symbol>/` | vnbroker | TTL 10s |
 | `/api/realtime/breadth/<symbol>/` | Computed từ ticks | |
 | `/api/realtime/whale-feed/<symbol>/` | `portfolio_whalealertevent` qua legacy readonly | |
 | `/api/realtime/whale-feed/aggregate/` | Aggregated | |
 | `/api/realtime/whale-campaigns/` | `portfolio_whalecampaign` qua legacy readonly | |
 | `/api/realtime/unified-alerts/` | Redirect → `/core/v1/signals/unified-alert` | Alias |
 | `/api/realtime/rvol/<symbol>/` | Computed từ intraday | |
-| `/api/realtime/depth-chart/<symbol>/` | vnstock | |
+| `/api/realtime/depth-chart/<symbol>/` | vnbroker | |
 
 #### Nhóm Stock Management (`market_data` + `signal_intelligence` apps)
 | Endpoint | App | Notes |
@@ -184,12 +184,12 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'false').lower() == 'true'
 | `/api/stock-management/groups/` | `market_data` | Market groups |
 | `/api/stock-management/tracked-symbols/` | `signal_intelligence` | CRUD tracked symbols |
 
-### 4.2 vnstock integration spec
+### 4.2 vnbroker integration spec
 
 ```python
-# Không thêm vnstock vào core requirements ngay — dùng legacy readonly DB
+# Không thêm vnbroker vào core requirements ngay — dùng legacy readonly DB
 # làm data source qua CoreRouter legacy_readonly alias.
-# Chỉ khi đến B8 (legacy decommission) mới cần direct vnstock integration.
+# Chỉ khi đến B8 (legacy decommission) mới cần direct vnbroker integration.
 
 DATABASES['legacy_readonly'] = {
     'ENGINE': 'django.db.backends.postgresql',
@@ -340,7 +340,7 @@ AI_ADVISORY_MAX_TOKENS = int(os.environ.get('AI_ADVISORY_MAX_TOKENS', '4096'))
 - `/api/admin-ops/stats/` — system stats
 - `/api/admin-ops/runtime-kpi/` — runtime KPIs
 - `/api/admin-ops/system-ai-settings/` — AI config CRUD
-- `/api/admin-ops/vnstock-config/*` — vnstock runtime config
+- `/api/admin-ops/vnbroker-config/*` — vnbroker runtime config
 - `/api/admin-ops/signals/*` — signal admin (universe, governance, retention)
 
 #### Nhóm B — Port sang Celery tasks trong core

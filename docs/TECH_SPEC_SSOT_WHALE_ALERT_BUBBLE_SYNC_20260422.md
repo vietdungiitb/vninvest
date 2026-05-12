@@ -39,7 +39,7 @@ class WhaleEvent:
     volume: float
     matched_value_vnd: float
     threshold_vnd: float
-    source: Literal['redis_stream', 'intraday_tick_db', 'vnstock']
+    source: Literal['redis_stream', 'intraday_tick_db', 'vnbroker']
     has_ref_price: bool
     price_unit_normalized: bool
     degraded_mode: bool
@@ -55,7 +55,7 @@ class WhaleEvent:
   "unknown_count": int,
   "buy_value_vnd": float,
   "sell_value_vnd": float,
-  "source": "redis_stream|intraday_tick_db|vnstock",
+  "source": "redis_stream|intraday_tick_db|vnbroker",
   "degraded_mode": bool,
   "degraded_mode_reason": "missing_ref_price|empty_source|none"
 }

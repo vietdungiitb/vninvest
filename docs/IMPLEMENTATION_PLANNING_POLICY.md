@@ -14,7 +14,7 @@ Muc tieu la: ro pham vi, ro trach nhiem, ro thu tu thuc hien, ro dieu kien dung/
 - Khong duoc merge khi thieu cac muc mandatory trong ke hoach.
 - Bat ky file `.md` nao trong `docs/` khi tao moi hoac thay doi noi dung deu phai kich hoat auto-audit va lap bao cao chi tiet, khong phu thuoc file do USER, AI, script hay git merge/pull tao ra.
 - **Quy dinh bat buoc Campaign Closure Persistence:** Ngay sau khi hoan thanh trien khai (Phases) hoac dong mot chien dich, AI bat buoc phai ghi lai toan bo tai lieu audit va nghiem thu (Plan, Tech Spec, Taskboard, Walkthrough) thanh cac file vat ly trong `docs/`. Khong duoc phep chi de duoi dang artifact tam thoi.
-- Moi feature lien quan du lieu thi truong/phan tich bat buoc map ve SSOT domains: `vnstock adapter`, `whale alert`, `darkmoney flow`, `ai advisory`.
+- Moi feature lien quan du lieu thi truong/phan tich bat buoc map ve SSOT domains: `vnbroker adapter`, `whale alert`, `darkmoney flow`, `ai advisory`.
 - Nghiem cam tao luong tinh toan song song cho cung nghiep vu neu da co SSOT.
 - Moi thay doi co lien quan `DailyPrice`/OHLCV/technical indicators bat buoc map vao chuong trinh `MDSU - Market Data Service Unification`.
 - Nghiem cam truy van truc tiep `DailyPrice` tai layer views/tasks/services nghiep vu neu da co `MarketDataService` canonical.
@@ -38,9 +38,9 @@ Dat ten theo mau:
 
 Vi du:
 
-- `docs/IMPLEMENTATION_PLAN_VNSTOCK_OFFPEAK_PIPELINE_20260415.md`
-- `docs/TECH_SPEC_VNSTOCK_OFFPEAK_PIPELINE_20260415.md`
-- `docs/TASKBOARD_VNSTOCK_OFFPEAK_PIPELINE_20260415.md`
+- `docs/IMPLEMENTATION_PLAN_VNBROKER_OFFPEAK_PIPELINE_20260415.md`
+- `docs/TECH_SPEC_VNBROKER_OFFPEAK_PIPELINE_20260415.md`
+- `docs/TASKBOARD_VNBROKER_OFFPEAK_PIPELINE_20260415.md`
 
 ## Mau ke hoach bat buoc (khong duoc bo muc)
 
@@ -99,7 +99,7 @@ Vi du:
 - Moc thoi gian tung phase.
 
 13. SSOT integration map (mandatory)
-- Feature nay noi vao domain SSOT nao (`vnstock adapter` / `whale alert` / `darkmoney flow` / `ai advisory`).
+- Feature nay noi vao domain SSOT nao (`vnbroker adapter` / `whale alert` / `darkmoney flow` / `ai advisory`).
 - Call-site, endpoint, cache key, model nao la canonical cua domain.
 - Danh sach luong cu/du lieu cu can retire de tranh 2 ket qua cho 1 nghiep vu.
 

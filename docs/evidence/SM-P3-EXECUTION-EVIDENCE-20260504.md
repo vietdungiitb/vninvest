@@ -16,7 +16,7 @@
 | `packages/core/backend/src/signal_intelligence/migrations/0002_orderflow_event.py` | SM-P3.3 | NEW — migration |
 | `packages/core/backend/src/advisory/` | SM-P3.4 | NEW domain — `SystemAISettings`, `AdvisoryRecord` models + migration |
 | `packages/core/backend/src/user_workspace/` | SM-P3.5 | NEW domain — `Portfolio`, `Transaction`, `Watchlist`, `WatchlistItem` + migration |
-| `packages/core/backend/src/market_data/` | SM-P3.6 | NEW domain — `StockProfile`, `DailyPrice`, `VnstockRuntimeConfig` + migration |
+| `packages/core/backend/src/market_data/` | SM-P3.6 | NEW domain — `StockProfile`, `DailyPrice`, `VnbrokerRuntimeConfig` + migration |
 | `packages/core/backend/src/vninvest_core/settings.py` | SM-P3.4/5/6 | Added `advisory`, `user_workspace`, `market_data` to INSTALLED_APPS |
 | `packages/core/backend/src/vninvest_core/db_router.py` | SM-P3.4/5/6 | Added new apps to `_CORE_APPS` frozenset |
 
@@ -78,7 +78,7 @@ Models: `Portfolio`, `Transaction`, `Watchlist`, `WatchlistItem`
 Models:
 - `StockProfile`: exchange/industry/status metadata per symbol
 - `DailyPrice`: canonical OHLCV, replaces legacy TickerSessionClose as long-term storage
-- `VnstockRuntimeConfig`: adapter configuration (source, concurrency, retry policy)
+- `VnbrokerRuntimeConfig`: adapter configuration (source, concurrency, retry policy)
 
 ---
 

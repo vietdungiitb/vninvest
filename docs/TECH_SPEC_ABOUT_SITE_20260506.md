@@ -3,7 +3,7 @@
 **Ngày**: 2026-05-06  
 **Trạng thái**: APPROVED FOR TEAM EXECUTION  
 **Phạm vi**: `packages/opencore-site`  
-**Mục tiêu**: public marketing site cho hệ sinh thái VNInvest, dùng `vnstockcharts` cho demo biểu đồ.
+**Mục tiêu**: public marketing site cho hệ sinh thái VNInvest, dùng `vnbrokercharts` cho demo biểu đồ.
 
 ---
 
@@ -19,16 +19,16 @@ Browser
         └── nginx-proxy
               └── vninvest-opencore-site:3000
                     ├── /            → landing page
-                    ├── /chart      → VNStockCharts live demo
-                    ├── /vnstock    → library overview
+                    ├── /chart      → VNBrokerCharts live demo
+                    ├── /vnbroker    → library overview
                     ├── /blog       → MDX articles
                     ├── /pricing    → plan page
                     └── /api/*      → route handlers / relay layer
                               ├── /api/bars/[symbol]
-                              ├── /api/public/vnstock-data
+                              ├── /api/public/vnbroker-data
                               └── /api/health
 
-Client chart rendering uses `vnstockcharts` from the sibling repo `C:\Mujoco Projects\react-stockcharts-master` during development.
+Client chart rendering uses `vnbrokercharts` from the sibling repo `C:\Mujoco Projects\react-stockcharts-master` during development.
 ```
 
 ---
@@ -46,7 +46,7 @@ packages/opencore-site/
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── docs/page.tsx
 │   │   │   │   └── embed/page.tsx
-│   │   │   ├── vnstock/
+│   │   │   ├── vnbroker/
 │   │   │   │   ├── page.tsx
 │   │   │   │   └── playground/page.tsx
 │   │   │   ├── pricing/page.tsx
@@ -57,7 +57,7 @@ packages/opencore-site/
 │   │   ├── api/
 │   │   │   ├── health/route.ts
 │   │   │   ├── bars/[symbol]/route.ts
-│   │   │   └── public/vnstock-data/route.ts
+│   │   │   └── public/vnbroker-data/route.ts
 │   │   ├── globals.css
 │   │   └── i18n.ts
 │   ├── components/
@@ -94,18 +94,18 @@ packages/opencore-site/
 | Route | Surface | Render mode | Primary data source | Notes |
 |---|---|---:|---|---|
 | `/` | Landing page | SSR + hydration | Static copy + locale messages | Hero, product cards, CTA |
-| `/chart` | VNStockCharts live demo | SSR shell + client refresh | `/api/bars/[symbol]` proxy | Uses `vnstockcharts` |
+| `/chart` | VNBrokerCharts live demo | SSR shell + client refresh | `/api/bars/[symbol]` proxy | Uses `vnbrokercharts` |
 | `/chart/docs` | Component docs | SSG | Static docs | Props, install, embed snippets |
 | `/chart/embed` | Embed generator | CSR | Static + generated config | Copy-paste embed code |
-| `/vnstock` | Library overview | SSG | Static copy + code samples | `pip install vnstock` |
-| `/vnstock/playground` | Pyodide playground | SSR shell + client runtime | `/api/public/vnstock-data` relay | Browser-only execution |
+| `/vnbroker` | Library overview | SSG | Static copy + code samples | `pip install vnbroker` |
+| `/vnbroker/playground` | Pyodide playground | SSR shell + client runtime | `/api/public/vnbroker-data` relay | Browser-only execution |
 | `/pricing` | Pricing page | SSG | Static plan table | CTAs to main SaaS |
 | `/blog` | Article index | ISR | MDX content | Revalidate 24h |
 | `/blog/[slug]` | Article page | ISR | MDX content | SEO metadata per slug |
 | `/legal` | Terms/privacy | SSR or SSG | Existing legal payload | Mirrors backend legal pages |
 | `/api/health` | Healthcheck | Route handler | None | Used by Docker/Portainer |
 | `/api/bars/[symbol]` | Chart proxy | Route handler | Backend relay | Symbol whitelist + rate limit |
-| `/api/public/vnstock-data` | Playground relay | Route handler | Backend relay | Symbol whitelist + rate limit |
+| `/api/public/vnbroker-data` | Playground relay | Route handler | Backend relay | Symbol whitelist + rate limit |
 
 ---
 
@@ -140,15 +140,15 @@ Responsibilities:
 ### 4.3 `ChartDemo`
 
 Responsibilities:
-- load `vnstockcharts` demo surface
-- feed `VNStockChart` with data through a `DemoAdapter`
+- load `vnbrokercharts` demo surface
+- feed `VNBrokerChart` with data through a `DemoAdapter`
 - choose symbol from whitelist only
 - render whale bubbles overlay and session summary cards
 - auto-refresh bars on interval; phase 1 does not require WebSocket wiring
 
 Required library usage:
-- `VNStockChart` from `vnstockcharts`
-- `DjangoVnstockAdapter` or `DemoAdapter` subclass
+- `VNBrokerChart` from `vnbrokercharts`
+- `DjangoVnbrokerAdapter` or `DemoAdapter` subclass
 - `WhaleBubbleOverlay` for whale events when available
 - `MockAdapter` only for offline/storybook tests
 
@@ -165,7 +165,7 @@ Responsibilities:
 - lazy load Pyodide 0.26 in browser only
 - render editor, run button, output console, preset examples
 - expose no server-side code execution
-- relay sample data through `/api/public/vnstock-data`
+- relay sample data through `/api/public/vnbroker-data`
 
 Hard rule:
 - all execution stays inside browser sandbox
@@ -186,7 +186,7 @@ Responsibilities:
 
 ### 5.1 `GET /api/bars/[symbol]?tf=&from=&to=`
 
-Purpose: proxy bars for `vnstockcharts`.
+Purpose: proxy bars for `vnbrokercharts`.
 
 Input rules:
 - `symbol` must match `^[A-Z0-9]{1,10}$`
@@ -218,7 +218,7 @@ Required headers:
 - `Cache-Control: public, max-age=300`
 - `Content-Type: application/json; charset=utf-8`
 
-### 5.2 `GET /api/public/vnstock-data?symbol=&data_type=&period=`
+### 5.2 `GET /api/public/vnbroker-data?symbol=&data_type=&period=`
 
 Purpose: browser-side examples for Pyodide.
 
@@ -286,7 +286,7 @@ Message namespaces:
 - `chart.*`
 - `chartDocs.*`
 - `chartEmbed.*`
-- `vnstock.*`
+- `vnbroker.*`
 - `playground.*`
 - `pricing.*`
 - `blog.*`
@@ -314,7 +314,7 @@ Bắt buộc:
 Priority pages:
 - `/`
 - `/chart`
-- `/vnstock`
+- `/vnbroker`
 - `/pricing`
 - `/blog`
 
@@ -372,7 +372,7 @@ Add service `opencore-site` to `portainer-stack-vninvest.yml` with:
 1. Không thay thế ứng dụng VNInvest SaaS chính.
 2. Không tạo auth/session riêng cho about site.
 3. Không làm server-side sandbox thực thi Python hoặc JavaScript từ người dùng.
-4. Không viết lại chart engine gốc của `vnstockcharts` trong about site.
+4. Không viết lại chart engine gốc của `vnbrokercharts` trong about site.
 5. Không dùng CMS ngoài trong phase 1.
 6. Không dùng KLineCharts hoặc other chart libs cho demo này.
 
@@ -381,8 +381,8 @@ Add service `opencore-site` to `portainer-stack-vninvest.yml` with:
 ## 11. Done criteria
 
 - `about.vninvest.edusuccess.vn` trả 200 và hiển thị đúng locale mặc định.
-- `/chart` render `vnstockcharts` demo chứ không phải KLineCharts.
-- `/vnstock/playground` chạy Pyodide trong browser.
+- `/chart` render `vnbrokercharts` demo chứ không phải KLineCharts.
+- `/vnbroker/playground` chạy Pyodide trong browser.
 - `/blog` render MDX và có metadata hợp lệ.
 - `curl /api/health` trả 200.
 - `curl /api/bars/VNM?...` trả JSON hợp lệ và chặn symbol lạ.

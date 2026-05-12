@@ -79,7 +79,7 @@ Start date target: 2026-04-11
 
 ### Open items
 1. KPI baseline + after-change measurement capture.
-2. Source parity validation across redis_stream/intraday_tick_db/vnstock fallback.
+2. Source parity validation across redis_stream/intraday_tick_db/vnbroker fallback.
 3. Closeout note + roadmap status final sync.
 
 ## Day 1 (Delivery + hardening) - 2026-04-10
@@ -114,7 +114,7 @@ Start date target: 2026-04-11
 2. Parity validation matrix created:
 - File: docs/SPRINT34_A2_3_PARITY_VALIDATION_MATRIX_20260410.md
 - Scenarios covered: 13 specific test cases + acceptance criteria
-- Source coverage: redis_stream, intraday_tick_db, vnstock fallback
+- Source coverage: redis_stream, intraday_tick_db, vnbroker fallback
 
 3. A2.3 parity tests executed:
 - Command: python backend/manage.py test portfolio.tests.test_order_flow_source_parity
@@ -247,8 +247,8 @@ Start date target: 2026-04-11
 
 ### Completed
 1. News fetch reliability improved:
-- `stock_news_api` bổ sung fallback đa nguồn cho news (`VNSTOCK_NEWS_SOURCES`, mặc định `VCI,TCBS`).
-- Nếu vnstock rỗng/lỗi, fallback RSS (Google News RSS theo symbol) để tránh empty state kéo dài.
+- `stock_news_api` bổ sung fallback đa nguồn cho news (`VNBROKER_NEWS_SOURCES`, mặc định `VCI,TCBS`).
+- Nếu vnbroker rỗng/lỗi, fallback RSS (Google News RSS theo symbol) để tránh empty state kéo dài.
 
 2. AI News account policy enforced:
 - `stock_news_ai_summary_api` bắt buộc dùng AI config của chính user (`UserConfig`) thay vì fallback system.

@@ -260,7 +260,7 @@
   <h1>Ban do chuc nang quan tri</h1>
   <div class="sync-panel">
     <section class="sync-card">
-      <h3>Dong bo Nhom thi truong tu vnstock</h3>
+      <h3>Dong bo Nhom thi truong tu vnbroker</h3>
       <p>Bo dieu khien van hanh de sync theo mot user cu the hoac toan he thong ngay trong Django Admin.</p>
       <form method="post" action="{% url 'admin:market-group-sync' %}" class="sync-form">
         {% csrf_token %}
@@ -316,7 +316,7 @@
 
     <section class="sync-card">
       <h3>Dong bo Ho so ma chung khoan</h3>
-      <p>Dong bo bang `StockProfile` tu vnstock/manual fallback va ghi log chi tiet ngay trong Django Admin.</p>
+      <p>Dong bo bang `StockProfile` tu vnbroker/manual fallback va ghi log chi tiet ngay trong Django Admin.</p>
       <form method="post" action="{% url 'admin:stock-profile-sync' %}" class="sync-form">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.get_full_path }}">

@@ -209,7 +209,7 @@
   - `packages/core/backend/src/data_ingest/` tồn tại với models, tasks, migrations  
   - `IngestJob`, `IngestRun` models đã migrate vào core-db  
   - `fetch_and_upsert_price_board` task có thể trigger thủ công  
-  - Task đọc từ vnstock adapter và upsert vào `market_serving.SymbolSnapshot`  
+  - Task đọc từ vnbroker adapter và upsert vào `market_serving.SymbolSnapshot`  
   Test gate: `python manage.py shell -c "from data_ingest.tasks import fetch_and_upsert_price_board; fetch_and_upsert_price_board.apply()"` PASS  
   Evidence: task output + SymbolSnapshot row count tăng  
   Req IDs: SM-REQ-10  
@@ -401,7 +401,7 @@
 
 ### Phase 3.6 — market_data
 
-- [ ] `SM-P3.6.1` **DailyPrice + StockProfile + VnstockRuntimeConfig models**  
+- [ ] `SM-P3.6.1` **DailyPrice + StockProfile + VnbrokerRuntimeConfig models**  
   Owner: Backend Dev  
   Estimate: 5h  
   Req IDs: SM-REQ-21  
@@ -413,10 +413,10 @@
   DoD: Parity >= 99%  
   Req IDs: SM-REQ-13, SM-REQ-21  
 
-- [ ] `SM-P3.6.3` **vnstock adapter migration**  
+- [ ] `SM-P3.6.3` **vnbroker adapter migration**  
   Owner: Backend Dev  
   Estimate: 4h  
-  DoD: `market_data/adapters/vnstock.py` thay thế legacy adapter  
+  DoD: `market_data/adapters/vnbroker.py` thay thế legacy adapter  
   Req IDs: SM-REQ-21  
 
 - [ ] `SM-P3.6.4` **Shadow run: prefetch_realtime_ticker_shard → fetch_symbol_batch**  

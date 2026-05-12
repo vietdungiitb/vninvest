@@ -21,9 +21,9 @@ Constraints:
 | ID | Epic | Task | Owner | ETA | Dependency | DoD | Status |
 |---|---|---|---|---|---|---|---|
 | A1 | External IO Boundary | Chot 1 facade market external voi timeout/retry/backoff/error-map | BE Lead | D+2 | None | Co facade va unit tests | In Progress |
-| A2 | External IO Boundary | Refactor Intraday/PriceBoard/RVOL/Depth/Financial qua facade | BE | D+4 | A1 | Khong con call vnstock truc tiep tren nhom endpoint nay | Todo |
-| A3 | External IO Boundary | Refactor Stock Workspace Overview/Chart qua facade | BE | D+5 | A1 | Khong con import vnstock trong flow workspace | Todo |
-| A4 | External IO Boundary | Chuan hoa external error schema (`vnstock_timeout`, `vnstock_rate_limited`, `vnstock_unavailable`) | BE | D+5 | A1 | Contract loi thong nhat tren endpoint da tach | Todo |
+| A2 | External IO Boundary | Refactor Intraday/PriceBoard/RVOL/Depth/Financial qua facade | BE | D+4 | A1 | Khong con call vnbroker truc tiep tren nhom endpoint nay | Todo |
+| A3 | External IO Boundary | Refactor Stock Workspace Overview/Chart qua facade | BE | D+5 | A1 | Khong con import vnbroker trong flow workspace | Todo |
+| A4 | External IO Boundary | Chuan hoa external error schema (`vnbroker_timeout`, `vnbroker_rate_limited`, `vnbroker_unavailable`) | BE | D+5 | A1 | Contract loi thong nhat tren endpoint da tach | Todo |
 | B1 | Views Decomposition | Tach route group market/whale/portfolio/ai-screener thanh module rieng | BE Lead | D+7 | A2,A3 | views.py giam >= 30% LOC | Todo |
 | B2 | Views Decomposition | Bo sung route toggle matrix cho old/new implementation | BE | D+8 | B1 | Tat ca route co rollback switch | Todo |
 | B3 | Views Decomposition | Contract parity tests old/new (payload + status + error path) | QA + BE | D+10 | B2 | Test pass tren CI, khong vo backward compatibility | Todo |

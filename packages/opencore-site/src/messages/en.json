@@ -1,8 +1,8 @@
 {
   "nav": {
     "home": "Home",
-    "chart": "VNStockCharts",
-    "vnstock": "vnstock",
+    "chart": "VNBrokerCharts",
+    "vnbroker": "vnbroker",
     "pricing": "Pricing",
     "blog": "Blog",
     "legal": "Legal",
@@ -13,39 +13,39 @@
     "eyebrow": "Public ecosystem",
     "badge": "Public ecosystem",
     "title": "One front door for the full VNInvest ecosystem",
-    "description": "Present VNInvest, vnstock, and VNStockCharts in one public site that is clear, beautiful, and trustworthy enough for new users to start immediately.",
-    "lead": "Present VNInvest, vnstock, and VNStockCharts in one public site that is clear, beautiful, and trustworthy enough for new users to start immediately.",
+    "description": "Present VNInvest, vnbroker, and VNBrokerCharts in one public site that is clear, beautiful, and trustworthy enough for new users to start immediately.",
+    "lead": "Present VNInvest, vnbroker, and VNBrokerCharts in one public site that is clear, beautiful, and trustworthy enough for new users to start immediately.",
     "primaryCta": "Start free",
     "secondaryCta": "See pricing",
     "productHeading": "Three products, one ecosystem",
     "featureHeading": "Why this site exists",
     "featureTitle": "Ecosystem focus",
     "featureLead": "Do not make people hunt for the ecosystem they already need.",
-    "feature1": "A single public path for VNInvest, vnstock, and VNStockCharts.",
+    "feature1": "A single public path for VNInvest, vnbroker, and VNBrokerCharts.",
     "feature2": "Locale-aware pages with Vietnamese and English copy.",
     "feature3": "A browser-based Pyodide sandbox for quick experiments.",
-    "feature4": "A custom chart demo that renders the real VNStockCharts engine.",
+    "feature4": "A custom chart demo that renders the real VNBrokerCharts engine.",
     "statsLabel": "Public stack",
-    "statsValue": "VI / EN / Pyodide / VNStockCharts"
+    "statsValue": "VI / EN / Pyodide / VNBrokerCharts"
   },
   "products": {
     "vinvestTitle": "VNInvest",
     "vinvestText": "A portfolio tracker and robo-advisor SaaS for Vietnam.",
-    "vnstockTitle": "vnstock",
-    "vnstockText": "A Python library for Vietnam market data access.",
-    "chartTitle": "VNStockCharts",
+    "vnbrokerTitle": "vnbroker",
+    "vnbrokerText": "A Python library for Vietnam market data access.",
+    "chartTitle": "VNBrokerCharts",
     "chartText": "A custom-built technical chart toolkit replacing KLineCharts.",
     "vinvestMetric": "Portfolio manager \u00b7 Robo-advisor \u00b7 Whale signals",
-    "vnstockMetric": "600+ symbols \u00b7 HNX, HOSE, UPCOM \u00b7 REST API",
+    "vnbrokerMetric": "600+ symbols \u00b7 HNX, HOSE, UPCOM \u00b7 REST API",
     "chartMetric": "KLine engine \u00b7 CVD \u00b7 Whale overlay \u00b7 Real-time",
     "vinvestCta": "Get started",
-    "vnstockCta": "View docs",
+    "vnbrokerCta": "View docs",
     "chartCta": "See chart demo"
   },
   "chart": {
     "badge": "Live demo",
-    "title": "VNStockCharts live demo",
-    "lead": "Rendered by the VNStockCharts engine itself, not a KLineCharts placeholder or screenshot.",
+    "title": "VNBrokerCharts live demo",
+    "lead": "Rendered by the VNBrokerCharts engine itself, not a KLineCharts placeholder or screenshot.",
     "symbolLabel": "Symbol",
     "timeframeLabel": "Timeframe",
     "refreshLabel": "Auto refresh",
@@ -102,8 +102,8 @@
   "common": {
     "siteName": "VNInvest",
     "home": "Home",
-    "chart": "VNStockCharts",
-    "vnstock": "vnstock",
+    "chart": "VNBrokerCharts",
+    "vnbroker": "vnbroker",
     "pricing": "Pricing",
     "blog": "Blog",
     "legal": "Legal",
@@ -116,20 +116,20 @@
     "copy": "Copy",
     "copied": "Copied",
     "siteSubtitle": "Public platform",
-    "footerDescription": "The public front door for VNInvest, vnstock, and VNStockCharts.",
+    "footerDescription": "The public front door for VNInvest, vnbroker, and VNBrokerCharts.",
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
   },
   "seo": {
     "siteName": "VNInvest",
-    "description": "The public about site for the VNInvest, vnstock, and VNStockCharts ecosystem."
+    "description": "The public about site for the VNInvest, vnbroker, and VNBrokerCharts ecosystem."
   },
   "featureGrid": {
     "heading": "Platform capabilities",
     "item1": "Smart money-flow analysis with real-time whale data.",
     "item2": "Customizable signal filters for any trading strategy.",
     "item3": "Pyodide sandbox \u2014 run Python analysis directly in the browser.",
-    "item4": "Custom-built VNStockCharts engine, high performance, zero external dependency."
+    "item4": "Custom-built VNBrokerCharts engine, high performance, zero external dependency."
   },
   "stats": {
     "symbolsLabel": "Stock symbols",

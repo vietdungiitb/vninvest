@@ -9,8 +9,8 @@
 
 Chất lượng của about site không được định nghĩa bằng việc “đẹp mắt” בלבד. Chất lượng ở đây nghĩa là:
 
-1. `/chart` phải chứng minh được VNStockCharts là chart engine thật, không phải demo dán ngoài.
-2. `/vnstock/playground` phải chạy code trong browser sandbox, không phải server sandbox.
+1. `/chart` phải chứng minh được VNBrokerCharts là chart engine thật, không phải demo dán ngoài.
+2. `/vnbroker/playground` phải chạy code trong browser sandbox, không phải server sandbox.
 3. Người dùng phải đọc được nội dung tiếng Việt đầy đủ dấu ở mọi trang public.
 4. Mọi data relay phải có whitelist, rate limit và cache header rõ ràng.
 5. SEO, metadata, sitemap và legal pages phải đủ để site có thể public thật.
@@ -20,7 +20,7 @@ Chất lượng của about site không được định nghĩa bằng việc �
 ## 2. Non-negotiable principles
 
 1. **Single source of truth cho chart demo**
-   - `vnstockcharts` là engine hiển thị chart.
+   - `vnbrokercharts` là engine hiển thị chart.
    - About site chỉ wrap và consume, không reimplement chart logic.
 
 2. **Browser-only execution cho Pyodide**
@@ -72,7 +72,7 @@ Các thứ sau không được tính là bằng chứng chất lượng:
 
 1. Chỉ có `npm run build` pass mà không có screenshot.
 2. Chỉ có screenshot mà không có payload hoặc curl proof.
-3. Chỉ nói “đã dùng VNStockCharts” nhưng chart page vẫn import wrapper cũ.
+3. Chỉ nói “đã dùng VNBrokerCharts” nhưng chart page vẫn import wrapper cũ.
 4. Chỉ test valid symbol mà không test invalid symbol và rate limit.
 5. Chỉ test Pyodide load thành công mà không test code sample thực thi được.
 6. Chỉ test blog route mà không test metadata/ISR.
@@ -84,7 +84,7 @@ Các thứ sau không được tính là bằng chứng chất lượng:
 Khi review diff, phải trả lời rõ:
 1. Có route nào public còn fetch trực tiếp backend từ client không?
 2. Có string user-facing nào chưa qua i18n không?
-3. `/chart` có thật sự render `vnstockcharts` không?
+3. `/chart` có thật sự render `vnbrokercharts` không?
 4. Symbol allowlist có được áp dụng ở mọi relay route không?
 5. Có header CSP hoặc cache nào bị thiếu ở route công khai không?
 6. Build image có chạy được mà không cần source mount hay runtime install không?
@@ -96,7 +96,7 @@ Khi review diff, phải trả lời rõ:
 About site chỉ được gọi là done khi:
 - domain public trả 200,
 - VI/EN toggle đúng,
-- chart demo dùng `vnstockcharts`,
+- chart demo dùng `vnbrokercharts`,
 - playground chạy trong browser,
 - SEO và blog hoạt động,
 - deploy production khỏe,

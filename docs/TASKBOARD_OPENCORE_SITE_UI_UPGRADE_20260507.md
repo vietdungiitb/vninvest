@@ -43,12 +43,12 @@ Hướng dẫn cập nhật:
 
 | ID | Task | Trạng thái | Ghi chú |
 |----|------|-----------|---------|
-| S2-T1 | Thêm `vinvestMetric`, `vnstockMetric`, `chartMetric` vào `vi.json` | `[ ]` | Namespace `products` |
+| S2-T1 | Thêm `vinvestMetric`, `vnbrokerMetric`, `chartMetric` vào `vi.json` | `[ ]` | Namespace `products` |
 | S2-T2 | Thêm metric keys vào `en.json` | `[ ]` | Namespace `products` |
-| S2-T3 | Thêm `vinvestCta`, `vnstockCta`, `chartCta` vào `vi.json` | `[ ]` | Namespace `products` |
+| S2-T3 | Thêm `vinvestCta`, `vnbrokerCta`, `chartCta` vào `vi.json` | `[ ]` | Namespace `products` |
 | S2-T4 | Thêm CTA keys vào `en.json` | `[ ]` | Namespace `products` |
 | S2-T5 | Thêm `PRODUCT_ICONS` object với 3 SVG inline vào `ProductCards.tsx` | `[ ]` | amber/cyan/emerald gradient |
-| S2-T6 | Thêm `PRODUCT_CTAURL` mapping object | `[ ]` | vinvest/vnstock/chart |
+| S2-T6 | Thêm `PRODUCT_CTAURL` mapping object | `[ ]` | vinvest/vnbroker/chart |
 | S2-T7 | Render icon trên đầu mỗi card | `[ ]` | `<div className="mb-3">` wrap icon |
 | S2-T8 | Render metric tagline dưới title mỗi card | `[ ]` | Text nhỏ, màu slate-400 |
 | S2-T9 | Thêm CTA button/link ở cuối mỗi card | `[ ]` | Hover transition, padding |

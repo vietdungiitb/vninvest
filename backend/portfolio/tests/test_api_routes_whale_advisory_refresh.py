@@ -38,7 +38,7 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
     def authenticate(self):
         from . import test_api_routes as legacy_routes
 
-        return legacy_routes.ApiRouteSmokeTests.authenticate(self)
+        return legacy_routes.ApiRouteSmokeTests.authenticate_direct(self)
 
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.views._is_celery_worker_available', return_value=True)
@@ -74,6 +74,8 @@ class ApiRouteWhaleAdvisoryRefreshTests(APITestCase):
         self.assertTrue(kwargs['force_refresh'])
         self.assertEqual(kwargs['user_id'], self.user.id)
         self.assertEqual(kwargs['source'], WhaleAdvisory.SourceChoices.USER_REFRESH)
+        self.assertEqual(mock_apply_async.call_args.kwargs['queue'], 'manual_on_demand')
+        self.assertEqual(mock_apply_async.call_args.kwargs['priority'], 6)
 
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.views._is_celery_worker_available', return_value=True)

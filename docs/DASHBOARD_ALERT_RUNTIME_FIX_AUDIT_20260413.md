@@ -3,7 +3,7 @@
 ## Pham vi
 - Audit sau refactor fat files cho Dashboard + Alert Configuration Board.
 - Khac phuc loi runtime: whale aggregate 500, unified alerts 502.
-- Doi soat yeu to prefetch health va rate-limit vnstock.
+- Doi soat yeu to prefetch health va rate-limit vnbroker.
 
 ## Trieu chung ban dau
 - `GET /api/realtime/whale-feed/aggregate/` tra `500`.
@@ -11,31 +11,31 @@
 - `GET /api/health/prefetch/` van `healthy=true` (status `throttled_by_policy`).
 
 ## Nguyen nhan goc
-1. Nhanh aggregate whale (legacy/refactored) co fallback vnstock intraday.
-2. Khi vnstock tra 429 duoi dang exception khong map vao `ExternalSystemException`, code cu khong catch du.
+1. Nhanh aggregate whale (legacy/refactored) co fallback vnbroker intraday.
+2. Khi vnbroker tra 429 duoi dang exception khong map vao `ExternalSystemException`, code cu khong catch du.
 3. Exception noi bot lam vo endpoint aggregate, keo theo unified alerts loi day chuyen.
 4. Prefetch health do pipeline ticker cache va policy profile, khong do truc tiep nhanh aggregate intraday fallback.
 
 ## Thay doi da ap dung
 
-### 1) Harden fallback vnstock (legacy helper)
+### 1) Harden fallback vnbroker (legacy helper)
 - File: `backend/portfolio/whale_feed_helpers.py`
-- Them `except Exception` trong `_build_vnstock_aggregate_records`:
-  - Neu message mang dau hieu rate-limit => danh dau cooldown `vnstock:rate-limit:intraday`.
+- Them `except Exception` trong `_build_vnbroker_aggregate_records`:
+  - Neu message mang dau hieu rate-limit => danh dau cooldown `vnbroker:rate-limit:intraday`.
   - Khong nem loi ra ngoai; fallback ve danh sach rong an toan.
 
-### 2) Harden fallback vnstock (refactored service)
+### 2) Harden fallback vnbroker (refactored service)
 - File: `backend/portfolio/market_data_service.py`
-- Them `except Exception` trong `_build_vnstock_aggregate_records`:
+- Them `except Exception` trong `_build_vnbroker_aggregate_records`:
   - Rate-limit generic -> mark cooldown + observability fallback.
   - Khong lam vo response aggregate/unified.
 
 ### 3) Guard tai diem goi legacy aggregate
 - File: `backend/portfolio/views_realtime_aggregate_campaigns.py`
-- Tai khoi goi `legacy_views._build_vnstock_aggregate_records(...)`:
+- Tai khoi goi `legacy_views._build_vnbroker_aggregate_records(...)`:
   - Bo sung `except Exception` de chan toan bo exception generic.
   - Neu la rate-limit -> mark cooldown, ghi log info.
-  - Nguoc lai log warning va tiep tuc voi `vnstock_records=[]`.
+  - Nguoc lai log warning va tiep tuc voi `vnbroker_records=[]`.
 - Bo sung `logger = logging.getLogger(__name__)`.
 
 ### 4) Sửa cooldown lock sau refactor + da dang cache backend
@@ -70,11 +70,11 @@
 - Do do ket qua nay khong phu dinh logic cooldown; no phu thuoc do dai request thuc te va profile user.
 
 ## Tac dong
-- Dashboard khong con vo aggregate/unified khi vnstock bi 429 generic.
+- Dashboard khong con vo aggregate/unified khi vnbroker bi 429 generic.
 - Alert workspace tiep tuc hoat dong voi fallback an toan, khong error 500/502 day chuyen.
 - Phan biet ro: prefetch health (ticker cache) va aggregate fallback health (intraday).
 
 ## De xuat tiep theo
-1. Bo sung metric/health rieng cho aggregate fallback (`aggregate_vnstock_rate_limited`) de tranh nham voi prefetch health.
+1. Bo sung metric/health rieng cho aggregate fallback (`aggregate_vnbroker_rate_limited`) de tranh nham voi prefetch health.
 2. Them test api route cho truong hop exception generic (khong phai `ExternalSystemException`) tai aggregate legacy view.
 3. Canh bao UI khi source aggregate la `intraday_tick_db` va `results=0` trong gio cao diem de user biet dang fallback.

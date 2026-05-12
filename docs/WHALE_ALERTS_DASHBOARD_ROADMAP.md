@@ -45,7 +45,7 @@ Endpoints chính:
 - `GET /api/realtime/depth-chart/:symbol/`
 
 WhaleFeedView hiện:
-- Ưu tiên Redis Stream intraday nếu có, fallback về `vnstock.quote.intraday()` nếu cần.
+- Ưu tiên Redis Stream intraday nếu có, fallback về `vnbroker.quote.intraday()` nếu cần.
 - Đọc `whale_alert_threshold` từ `UserConfig` của user.
 - Quy đổi threshold từ triệu VND sang VND.
 - Tính `matched_value = price * volume` cho từng tick intraday.
@@ -59,7 +59,7 @@ RVOLView hiện:
 - Tính RVOL và gắn cờ `is_spike` khi RVOL >= 2.
 
 DepthChartView hiện:
-- Đọc `price_board` từ vnstock.
+- Đọc `price_board` từ vnbroker.
 - Dùng 3 mức bid và 3 mức ask gần nhất.
 - Tính cumulative volume cho mỗi phía.
 - Xác định tường lệnh khi volume ở một mức giá vượt ngưỡng so với trung bình các mức hiện có.
@@ -224,7 +224,7 @@ Công việc:
 Quyết định kỹ thuật:
 - Thay vì chỉ throttle cố định, áp dụng adaptive throttling theo mức độ nghiêm trọng của signal.
 - Nếu `whale_score` đạt mức `extreme`, depth chart refresh ngay lập tức và được phép bypass throttle một lần để user thấy biến động orderbook tức thời.
-- Nếu severity thấp hoặc thị trường lặng, có thể nới refresh interval để giảm call vnstock và tải UI.
+- Nếu severity thấp hoặc thị trường lặng, có thể nới refresh interval để giảm call vnbroker và tải UI.
 - Nên tách refresh policy thành hàm riêng, ví dụ `getDepthRefreshPolicy(severity, marketState, lastRefreshAt)` để dễ test và tuning.
 - Với depth refresh nóng, cần có request coalescing hoặc dedupe ở frontend để tránh bắn nhiều request chồng nhau khi nhận burst alerts.
 

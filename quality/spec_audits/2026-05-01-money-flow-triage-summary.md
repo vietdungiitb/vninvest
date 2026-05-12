@@ -61,6 +61,6 @@ Thực hiện rà soát chéo (Spec Audit) trên 13 tài liệu kiến trúc thu
 
 - Stale cache sau recompute được khóa lại ở TECH_SPEC mục 4.5-4.6, TASKBOARD `BE-4.3`, TRACEABILITY `MFC-12`.
 - Whale write-through được siết thành pending/draft bridge có approval/rollout proof ở TECH_SPEC mục 5.2-5.3, TASKBOARD `BE-5.3`, TRACEABILITY `MFC-13`.
-- Link-out tới `Data Ops` / `Vnstock Config` được permission-gate ở TECH_SPEC mục 5.3, TASKBOARD `FE-6.5`, TRACEABILITY `MFC-15`.
+- Link-out tới `Data Ops` / `Vnbroker Config` được permission-gate ở TECH_SPEC mục 5.3, TASKBOARD `FE-6.5`, TRACEABILITY `MFC-15`.
 - Phantom writes, purge deadlock và forensic carve-out đã được map vào deprecation hard-block, bounded override và physical carve-out trong các tài liệu core/quality liên quan.
 - Trạng thái implementation vẫn là NO-GO cho đến khi các docs đã vá này được review/approve lại và evidence/test slices tương ứng được chạy.

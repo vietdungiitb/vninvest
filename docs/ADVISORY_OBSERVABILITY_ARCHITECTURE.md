@@ -61,7 +61,7 @@
 │  │  - advisory:429-count:{provider}:{date}     [90k s TTL] │   │
 │  │  - advisory:budget-downgrade-count:{date}   [90k s TTL] │   │
 │  │  - advisory:prompt-cache:components:{md5}   [15m TTL]   │   │
-│  │  - vnstock:timeout-counter:price_board                  │   │
+│  │  - vnbroker:timeout-counter:price_board                  │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                          │                                       │
 │                          ▼                                       │
@@ -482,7 +482,7 @@ advisory:budget-downgrade-count:{YYYY-MM-DD}        # ~25h TTL (daily)
 advisory:prompt-cache:components:{md5_hash}         # 15m TTL (reuse prompts)
 
 # Component circuit breaker
-vnstock:timeout-counter:price_board                 # No TTL (persistent counter)
+vnbroker:timeout-counter:price_board                 # No TTL (persistent counter)
 ```
 
 ---

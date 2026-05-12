@@ -33,7 +33,7 @@
 | P0-07 | Quota race condition | ✅ FIXED |
 | P0-08 | Redis connection leak | ✅ FIXED |
 | P0-09 | Collector silent fail | ✅ FIXED |
-| P0-10 | Collector synthetic volume=0 | ✅ FIXED — routed through vnstock adapter |
+| P0-10 | Collector synthetic volume=0 | ✅ FIXED — routed through vnbroker adapter |
 | P0-11 | `time.sleep(60s)` in Celery | ✅ FIXED — capped at 10s |
 | P0-12 | Celery task overlap no lock | ✅ FIXED — distributed lock via cache.add |
 
@@ -60,7 +60,7 @@
 |------|-----------|--------|
 | 2.1 | Redis connection pooling | ✅ FIXED — NEW `redis_pool.py` + 3 modules |
 | 2.2 | Collector: log fallback | ✅ FIXED — `logger.warning()` |
-| 2.3 | Collector: route qua vnstock_adapter | ✅ FIXED — `fetch_intraday_dataframe()` |
+| 2.3 | Collector: route qua vnbroker_adapter | ✅ FIXED — `fetch_intraday_dataframe()` |
 | 2.4 | Celery distributed lock | ✅ FIXED — `cache.add()` + `finally: cache.delete()` |
 | 2.5 | Timestamp parsing: timezone-aware | ✅ FIXED — `.replace("Z", "+00:00")` + `dj_tz.now()` |
 
@@ -127,7 +127,7 @@
 | `portfolio/realtime/publisher.py` | Use shared pool, removed raw Redis publish to optimize bandwidth |
 | `portfolio/realtime/tick_producer.py` | Use shared pool + `to_dict` |
 | `portfolio/realtime/stream_consumers.py` | Use shared pool + timezone fix |
-| `portfolio/realtime/collector.py` | Log fallback, routed intraday through `vnstock_adapter` |
+| `portfolio/realtime/collector.py` | Log fallback, routed intraday through `vnbroker_adapter` |
 | `portfolio/services.py` | Nested atomic savepoints in daily prices, batched 30-day `get_price_changes` |
 | `portfolio/onboarding_trial_service.py` | Trial fallback set to `FREE` |
 | `portfolio/tasks_whale_advisory.py` | Advisory `cache.delete()` GETDEL atomic lock |

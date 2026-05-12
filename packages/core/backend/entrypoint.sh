@@ -23,16 +23,11 @@ fi
 
 case "${ROLE}" in
   api)
-    echo "[entrypoint] Starting gunicorn (port ${CORE_API_PORT:-8100})..."
-    exec gunicorn vninvest_core.wsgi:application \
-        --bind "0.0.0.0:${CORE_API_PORT:-8100}" \
-        --workers "${GUNICORN_WORKERS:-2}" \
-        --threads "${GUNICORN_THREADS:-2}" \
-        --worker-class "gthread" \
-        --timeout "${GUNICORN_TIMEOUT:-30}" \
-        --access-logfile "-" \
-        --error-logfile "-" \
-        --pythonpath /app/src
+    echo "[entrypoint] Starting daphne (port ${CORE_API_PORT:-8100})..."
+    exec daphne \
+      --bind 0.0.0.0 \
+      --port "${CORE_API_PORT:-8100}" \
+      vninvest_core.asgi:application
     ;;
   worker)
     WORKER_QUEUES="${CELERY_QUEUES:-celery}"

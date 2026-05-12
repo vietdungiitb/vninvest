@@ -30,7 +30,7 @@
 code: CharField(unique=True)
 name: CharField
 service_type: CharField  # crawl/backfill/prefetch/realtime/sync/advisory
-domain: CharField        # vnstock_adapter / ai_advisory / whale_alert / darkmoney_flow / market_data
+domain: CharField        # vnbroker_adapter / ai_advisory / whale_alert / darkmoney_flow / market_data
 enabled: BooleanField
 criticality: CharField   # low/medium/high/critical
 default_queue: CharField

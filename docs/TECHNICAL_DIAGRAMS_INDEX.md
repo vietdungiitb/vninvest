@@ -44,9 +44,9 @@ Tai lieu chi muc de tai su dung cac so do ky thuat.
 - File: docs/SPRINT10_ACCEPTANCE_CHECKLIST.md
 - Muc dich: Checklist nghiem thu va release sign-off cuoi sprint.
 
-11. VNStock Throughput Runtime Guide
-- File: docs/VNSTOCK_THROUGHPUT_RUNTIME_GUIDE.md
-- Muc dich: Mo ta runtime throughput moi cua vnstock, Celery prefetch, Redis cache, benchmark va checklist su co.
+11. VNBroker Throughput Runtime Guide
+- File: docs/VNBROKER_THROUGHPUT_RUNTIME_GUIDE.md
+- Muc dich: Mo ta runtime throughput moi cua vnbroker, Celery prefetch, Redis cache, benchmark va checklist su co.
 
 ## Huong dan cap nhat
 

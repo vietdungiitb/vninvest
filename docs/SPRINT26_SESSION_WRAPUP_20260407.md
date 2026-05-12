@@ -151,7 +151,7 @@ Pro user (testpro/test123):
 
 ### Pre-existing Bugs (Not Sprint26)
 - `fmtCompact is not defined` in whale-alerts page (frontend)
-- 500 errors on realtime price-board endpoints (Redis/vnstock)
+- 500 errors on realtime price-board endpoints (Redis/vnbroker)
 - These are Sprint27+ work, kept out of scope
 
 ### Sprint26 Limitations

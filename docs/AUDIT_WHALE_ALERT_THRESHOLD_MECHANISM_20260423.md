@@ -8,7 +8,7 @@
 ## I. Cơ chế Hoạt động Tổng quát
 
 ```
-vnstock API ──► IntradayTick DB ──► Celery Task ──► detect_whale_signals() ──► Redis Pub/Sub
+vnbroker API ──► IntradayTick DB ──► Celery Task ──► detect_whale_signals() ──► Redis Pub/Sub
                                                                                        │
                                                                               ┌────────┴────────┐
                                                                          whale:{symbol}    user:{id}:alerts
@@ -24,7 +24,7 @@ vnstock API ──► IntradayTick DB ──► Celery Task ──► detect_wha
 
 Task `collect_and_publish_realtime` (Celery periodic) chạy tuần tự:
 
-1. **Thu thập giao dịch**: Lấy intraday frame từ Redis Stream → DB fallback → vnstock
+1. **Thu thập giao dịch**: Lấy intraday frame từ Redis Stream → DB fallback → vnbroker
 2. **Detect**: `detect_whale_signals(symbol, trades_df, thresholds)` trong `backend/portfolio/realtime/compute.py` tính `matched_value = price × volume`, so sánh với ngưỡng, emit một `WhaleSignal` duy nhất tại **threshold cao nhất đạt được**
 3. **Dedup**: Cache key `whale:dedup:{event_id}` TTL 300s, bỏ qua signal trùng
 4. **Publish**: `whale:{symbol}` channel (public), `user:{user_id}:alerts` channel (private)

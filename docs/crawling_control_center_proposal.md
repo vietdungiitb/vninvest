@@ -2,7 +2,7 @@
 
 ## 1) Mục tiêu
 Xây dựng một trung tâm điều phối crawling dữ liệu chứng khoán tập trung, bám sát kiến trúc hiện tại của dự án (Django + Celery + Redis + PostgreSQL), nhằm:
-1. Điều phối tác vụ crawl vnstock tự động trong khung giờ thấp tải (off-peak).
+1. Điều phối tác vụ crawl vnbroker tự động trong khung giờ thấp tải (off-peak).
 2. Cho phép thao tác thủ công theo từng job: chạy ngay, dừng, tạm khóa, mở khóa.
 3. Cấu hình lịch chạy định kỳ từ giao diện quản trị.
 4. Theo dõi trạng thái thời gian thực: running, queued, success, failed, canceled, timeout.
@@ -41,7 +41,7 @@ Django Admin APIs (RBAC + Audit)
              Celery Workers
                  |
                  v
-          vnstock adapters / crawlers
+          vnbroker adapters / crawlers
 ```
 
 ### Thành phần chính
@@ -275,8 +275,8 @@ Ghi chú: tên file cụ thể sẽ chốt sau khi rà soát module tree để t
 - Đã có nhiều task module trong `backend/portfolio/tasks_*.py`.
 - Các luồng quan trọng đang chạy gồm prefetch, realtime, sync dữ liệu, whale pipeline, news pipeline.
 
-3. Adapter vnstock hiện hữu
-- `backend/portfolio/adapters/vnstock_adapter.py` đã có cache provider/client (`_VNSTOCK_PROVIDER_CACHE`, `_VNSTOCK_STOCK_CLIENT_CACHE`).
+3. Adapter vnbroker hiện hữu
+- `backend/portfolio/adapters/vnbroker_adapter.py` đã có cache provider/client (`_VNBROKER_PROVIDER_CACHE`, `_VNBROKER_STOCK_CLIENT_CACHE`).
 - Có timeout wrapper `_run_with_timeout` và logic xử lý lỗi rate-limit để tái sử dụng.
 
 4. Admin API hiện hữu

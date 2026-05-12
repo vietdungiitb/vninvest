@@ -152,7 +152,7 @@ for _, row in df.iterrows():
 
 ---
 
-### 1.5. `sync_portfolio_prices` — N+1 query pattern, gọi vnstock tuần tự cho từng symbol
+### 1.5. `sync_portfolio_prices` — N+1 query pattern, gọi vnbroker tuần tự cho từng symbol
 
 **File**: `portfolio/services.py` — Dòng 1583-1588
 
@@ -162,7 +162,7 @@ for symbol in symbols:
     results.append(res)
 ```
 
-**Vấn đề**: Nếu portfolio có 30 symbols, hệ thống gọi vnstock API **30 lần tuần tự** với timeout 8s mỗi lần — worst case **4 phút** để sync. Không có concurrency, không có batch API.
+**Vấn đề**: Nếu portfolio có 30 symbols, hệ thống gọi vnbroker API **30 lần tuần tự** với timeout 8s mỗi lần — worst case **4 phút** để sync. Không có concurrency, không có batch API.
 
 Tương tự ở `sync_watchlist_prices` (dòng 1701-1703).
 
@@ -326,18 +326,18 @@ async def receive_json(self, content, **kwargs):
 
 ### 3.1. `_get_gate()` Semaphore — Semaphore không bao giờ bị reset khi concurrency thay đổi
 
-**File**: `portfolio/adapters/vnstock_adapter.py` — Dòng 71-88
+**File**: `portfolio/adapters/vnbroker_adapter.py` — Dòng 71-88
 
 ```python
-_VNSTOCK_GATE_BY_LIMIT: dict[int, threading.BoundedSemaphore] = {}
-_VNSTOCK_GATE_LOCK = threading.Lock()
+_VNBROKER_GATE_BY_LIMIT: dict[int, threading.BoundedSemaphore] = {}
+_VNBROKER_GATE_LOCK = threading.Lock()
 
 def _get_gate(limit: int) -> threading.BoundedSemaphore:
-    with _VNSTOCK_GATE_LOCK:
-        gate = _VNSTOCK_GATE_BY_LIMIT.get(limit)
+    with _VNBROKER_GATE_LOCK:
+        gate = _VNBROKER_GATE_BY_LIMIT.get(limit)
         if gate is None:
             gate = threading.BoundedSemaphore(value=limit)
-            _VNSTOCK_GATE_BY_LIMIT[limit] = gate
+            _VNBROKER_GATE_BY_LIMIT[limit] = gate
         return gate
 ```
 
@@ -391,9 +391,9 @@ def get(self, request, *args, **kwargs):
 
 ## 4. MEMORY LEAK & RESOURCE LEAK
 
-### 4.1. `_run_with_timeout` — ThreadPoolExecutor leak khi vnstock gọi `sys.exit()`
+### 4.1. `_run_with_timeout` — ThreadPoolExecutor leak khi vnbroker gọi `sys.exit()`
 
-**File**: `portfolio/adapters/vnstock_adapter.py` — Dòng 174-189
+**File**: `portfolio/adapters/vnbroker_adapter.py` — Dòng 174-189
 
 ```python
 try:
@@ -409,9 +409,9 @@ finally:
         gate.release()
 ```
 
-**Vấn đề**: Khi `future.result(timeout=X)` timeout, `ThreadPoolExecutor.__exit__` sẽ chờ worker thread kết thúc (default `wait=True`). Nhưng vnstock thỉnh thoảng gọi `sys.exit()` trong thread — thread bị kill nhưng **executor không cleanup properly**, có thể giữ thread objects trong memory.
+**Vấn đề**: Khi `future.result(timeout=X)` timeout, `ThreadPoolExecutor.__exit__` sẽ chờ worker thread kết thúc (default `wait=True`). Nhưng vnbroker thỉnh thoảng gọi `sys.exit()` trong thread — thread bị kill nhưng **executor không cleanup properly**, có thể giữ thread objects trong memory.
 
-Tương tự ở `_fetch_exchange_lookup` (services.py dòng 2056-2085): daemon thread chạy vnstock, nếu timeout xảy ra, thread **vẫn chạy ngầm** tiêu tốn CPU và có thể gây side effect.
+Tương tự ở `_fetch_exchange_lookup` (services.py dòng 2056-2085): daemon thread chạy vnbroker, nếu timeout xảy ra, thread **vẫn chạy ngầm** tiêu tốn CPU và có thể gây side effect.
 
 ---
 
@@ -785,7 +785,7 @@ Cooldown logic dùng Redis cache key (dạng `advisory:cooldown:{user_id}:{symbo
 |---|--------|------|--------|
 | 16 | `tasks.py` barrel re-export cleanup | `tasks.py` | 4h |
 | 17 | `views.py` barrel import split | `views.py` | 4h |
-| 18 | Semaphore dict accumulation | `vnstock_adapter.py:71` | 1h |
+| 18 | Semaphore dict accumulation | `vnbroker_adapter.py:71` | 1h |
 | 19 | Config payload flexible key anti-pattern | `services.py:1134` | 4h |
 | 20 | `localStorage` token → HttpOnly cookie | `client.js` | 8h |
 
@@ -1120,7 +1120,7 @@ def validate_symbol(self, value):
 1. `company_name=normalized_symbol` — StockProfile của "VNMM" (typo) sẽ hiển thị company name là "VNMM" thay vì actual company name.
 2. Không validate symbol format — `"A!@#"` sẽ tạo StockProfile hợp lệ.
 3. Race condition: 2 concurrent requests cho cùng symbol → `exists()` = False cho cả hai → `IntegrityError` nếu có unique constraint trên `symbol`.
-4. Không validate symbol against vnstock listing — hoàn toàn có thể tạo profile cho symbol không tồn tại trên sàn.
+4. Không validate symbol against vnbroker listing — hoàn toàn có thể tạo profile cho symbol không tồn tại trên sàn.
 
 **Khuyến nghị**: Validate symbol format + sử dụng `get_or_create` + warning log:
 ```python
@@ -1241,7 +1241,7 @@ Nhiều Celery beat tasks không có distributed lock mechanism:
 | Task | Schedule | Risk |
 |------|----------|------|
 | `collect_and_publish_realtime` | 10s | Nếu task chạy > 10s, instance cũ chưa xong + instance mới start → duplicate publish |
-| `prefetch_ticker_price_board` | 15s | Tương tự, vnstock timeout 8s = có thể chồng chéo |
+| `prefetch_ticker_price_board` | 15s | Tương tự, vnbroker timeout 8s = có thể chồng chéo |
 | `auto_generate_advisories_for_all_tracked` | 5min | Có lock key nhưng lock ở Redis cache → eviction risk |
 | `cleanup_old_intraday_ticks` | 1/ngày | Nếu chạy > 1 lần (worker restart) → double delete harmless nhưng wasteful |
 
@@ -1299,14 +1299,14 @@ except (Exception, SystemExit):
     pass
 ```
 
-**Vấn đề**: Nếu vnstock API trả về lỗi (rate limit, timeout, network error), exception bị nuốt hoàn toàn — **không log, không metric**. Hệ thống chuyển sang fallback synthetic data (1 tick giả từ DB price) mà không ai biết realtime data đã mất.
+**Vấn đề**: Nếu vnbroker API trả về lỗi (rate limit, timeout, network error), exception bị nuốt hoàn toàn — **không log, không metric**. Hệ thống chuyển sang fallback synthetic data (1 tick giả từ DB price) mà không ai biết realtime data đã mất.
 
-Trong production với 50 symbols, nếu vnstock bị chặn → toàn bộ 50 symbols chuyển sang synthetic → dashboard hiển thị dữ liệu cũ giả vờ là realtime → **user ra quyết định giao dịch sai**.
+Trong production với 50 symbols, nếu vnbroker bị chặn → toàn bộ 50 symbols chuyển sang synthetic → dashboard hiển thị dữ liệu cũ giả vờ là realtime → **user ra quyết định giao dịch sai**.
 
 **Khuyến nghị**:
 ```python
 except (Exception, SystemExit) as exc:
-    logger.warning("collect_intraday_frame(%s) vnstock failed, using fallback: %s", symbol, exc)
+    logger.warning("collect_intraday_frame(%s) vnbroker failed, using fallback: %s", symbol, exc)
     # thêm metric counter cho monitoring
     record_collector_fallback_observation(symbol=symbol, reason=str(type(exc).__name__))
 ```
@@ -1326,24 +1326,24 @@ return pd.DataFrame([{"ts": now, "price": float(price), "volume": 0.0, "side": "
 
 **Vấn đề**: Fallback DataFrame có `volume=0`. Whale detection tính `matched_value = price * volume = 0` → **không bao giờ trigger whale alert**. Nhưng ticker payload vẫn publish price → frontend hiển thị price mới nhưng volume = 0 → user tưởng không có giao dịch.
 
-Tệ hơn: `get_price_changes([symbol])` trong fallback lại gọi DB query per symbol (phát hiện §5.2), tạo performance hit ngay khi vnstock đã fail.
+Tệ hơn: `get_price_changes([symbol])` trong fallback lại gọi DB query per symbol (phát hiện §5.2), tạo performance hit ngay khi vnbroker đã fail.
 
 ---
 
-### C.3. `collector.collect_intraday_frame` — Gọi `vnstock` trực tiếp, bypass adapter layer
+### C.3. `collector.collect_intraday_frame` — Gọi `vnbroker` trực tiếp, bypass adapter layer
 
 **File**: `portfolio/realtime/collector.py` — Dòng 23-25
 
 ```python
-from vnstock import Vnstock
-stock = Vnstock().stock(symbol=symbol, source='VCI')
+from vnbroker import Vnbroker
+stock = Vnbroker().stock(symbol=symbol, source='VCI')
 df = stock.quote.intraday(symbol=symbol, page_size=100)
 ```
 
-So sánh với phần còn lại của codebase sử dụng `portfolio/adapters/vnstock_adapter.py` (có timeout, retry, concurrency gate, rate-limit detection).
+So sánh với phần còn lại của codebase sử dụng `portfolio/adapters/vnbroker_adapter.py` (có timeout, retry, concurrency gate, rate-limit detection).
 
-**Vấn đề**: `collector.py` gọi vnstock **trực tiếp** — không có:
-- Timeout protection → nếu vnstock hang, Celery task hang
+**Vấn đề**: `collector.py` gọi vnbroker **trực tiếp** — không có:
+- Timeout protection → nếu vnbroker hang, Celery task hang
 - Concurrency gate → bypass `max_concurrency` limit
 - Rate limit detection → không trigger circuit breaker
 - Retry logic → 1 fail = fallback ngay
@@ -1619,7 +1619,7 @@ LOW RISK ───────────────────────�
 
 **Sprint+1 (2 tuần)**:
 - A.1 — Batch prefetch UserConfig trong realtime task
-- C.3 — Route collector qua vnstock_adapter
+- C.3 — Route collector qua vnbroker_adapter
 - C.12 — Memoize PortfolioContext value
 - §5.1 + §5.2 — Batch DB queries
 
@@ -1738,7 +1738,7 @@ def set_cache(key, value, timeout):
 ```
 
 **Vấn đề**: Nếu Redis down/reconnecting, `cache.set()` raise exception → bị nuốt → downstream code tưởng data đã cached:
-- `mark_vnstock_rate_limited()` fail silently → rate limit không được enforce → flood vnstock API
+- `mark_vnbroker_rate_limited()` fail silently → rate limit không được enforce → flood vnbroker API
 - Whale dedup cache fail silently → duplicate alerts flood frontend
 - Quota cache fail silently → quota bypass (tương tự A.6)
 
@@ -1883,7 +1883,7 @@ tasks_whale_lifecycle.py   (auto-generation + bookkeeping)
 
 **Rủi ro cao nhất** cần xử lý ngay:
 1. 🔴 **Account Takeover via Google OAuth** — attacker có thể chiếm account bất kỳ user nào qua Google login
-2. 🔴 **Silent data pipeline failure** — vnstock fail → hệ thống phát synthetic data giả realtime
+2. 🔴 **Silent data pipeline failure** — vnbroker fail → hệ thống phát synthetic data giả realtime
 3. 🔴 **Redis connection exhaustion** — 16+ connections per worker, không pooling
 4. 🔴 **Celery worker blocking** — `time.sleep(60s)` trong AI retry logic freeze toàn bộ worker pool
 
@@ -1897,7 +1897,7 @@ tasks_whale_lifecycle.py   (auto-generation + bookkeeping)
 
 ### Điểm tốt thực sự
 
-- **Realtime pipeline** (vnstock → Redis Streams → Consumer Groups → WebSocket) là thiết kế cấp production, ít dự án cá nhân nào đạt được.
+- **Realtime pipeline** (vnbroker → Redis Streams → Consumer Groups → WebSocket) là thiết kế cấp production, ít dự án cá nhân nào đạt được.
 - **Whale scoring + explainability** (`why_triggered`, `next_checks`) cho thấy domain thinking rất sâu — mức institutional-grade.
 - **Multi-provider AI abstraction** — switch OpenAI/Claude/Gemini/Copilot không cần đổi business logic.
 - **Observability**: audit logs, metrics, health checks, admin dashboard — tư duy vận hành chắc chắn.
@@ -1905,7 +1905,7 @@ tasks_whale_lifecycle.py   (auto-generation + bookkeeping)
 ### 4 vấn đề cốt lõi
 
 **1. Hệ thống đang "giả vờ realtime"**  
-Khi vnstock fail (rất thường xuyên), collector nuốt exception rồi phát dữ liệu giả (`volume=0`) mà không ai biết. User nhìn dashboard tưởng live, thực chất là stale data. Đây là **rủi ro nghiệp vụ lớn nhất** cho một ứng dụng tài chính.
+Khi vnbroker fail (rất thường xuyên), collector nuốt exception rồi phát dữ liệu giả (`volume=0`) mà không ai biết. User nhìn dashboard tưởng live, thực chất là stale data. Đây là **rủi ro nghiệp vụ lớn nhất** cho một ứng dụng tài chính.
 
 **2. Security chưa sẵn sàng cho production**  
 Google OAuth Account Takeover, password reset token reuse, missing password validation khi register, WebSocket không re-auth. Nếu mở public bây giờ sẽ bị exploit.

@@ -36,7 +36,7 @@ docker compose -f docker-compose.dev.yml exec -T db psql -U postgres -d vninvest
 
 docker compose -f docker-compose.dev.yml exec -T backend python manage.py migrate portfolio 0037_h2_whaleadvisory_aggregate_snapshot_fk --fake
 
-docker compose -f docker-compose.dev.yml exec -T backend python manage.py migrate portfolio 0038_runtimevnstockconfig
+docker compose -f docker-compose.dev.yml exec -T backend python manage.py migrate portfolio 0038_runtimevnbrokerconfig
 
 docker compose -f docker-compose.dev.yml exec -T backend python manage.py migrate portfolio 0076_transaction_reconciliation_fields --fake
 
@@ -76,11 +76,11 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost/api/health/
 ## 4. Root cause và fix
 
 Root cause:
-1. Migration ledger của app `portfolio` bị lệch so với schema thực tế: migration `0038_runtimevnstockconfig` được đánh dấu applied nhưng bảng `portfolio_runtimevnbrokerconfig` không tồn tại.
+1. Migration ledger của app `portfolio` bị lệch so với schema thực tế: migration `0038_runtimevnbrokerconfig` được đánh dấu applied nhưng bảng `portfolio_runtimevnbrokerconfig` không tồn tại.
 
 Fix applied:
 1. Fake rollback về trước `0038`.
-2. Apply thật migration `0038_runtimevnstockconfig` để tạo lại bảng thiếu.
+2. Apply thật migration `0038_runtimevnbrokerconfig` để tạo lại bảng thiếu.
 3. Fake-forward ledger trở lại `0076_transaction_reconciliation_fields` để đồng bộ với schema hiện hữu.
 
 ---

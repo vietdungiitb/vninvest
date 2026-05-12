@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from portfolio.models import CorePATCredential, CoreServiceAccount, CoreTenant, UserConfig
+from portfolio.partner_tenant_context import resolve_partner_tenant_context
 
 
 class OperatorTenantRegistryApiTests(APITestCase):
@@ -33,11 +34,13 @@ class OperatorTenantRegistryApiTests(APITestCase):
             defaults={'plan': 'premium', 'email_verified': True},
         )
 
-        self.active_tenant = CoreTenant.ensure_for_user(self.active_user)
+        resolve_partner_tenant_context(self.active_user)
+        self.active_tenant = CoreTenant.objects.get(owner_user=self.active_user)
         self.active_tenant.display_name = 'Alpha Desk'
         self.active_tenant.save(update_fields=['display_name', 'updated_at'])
 
-        self.suspended_tenant = CoreTenant.ensure_for_user(self.suspended_user)
+        resolve_partner_tenant_context(self.suspended_user)
+        self.suspended_tenant = CoreTenant.objects.get(owner_user=self.suspended_user)
         self.suspended_tenant.display_name = 'Beta Desk'
         self.suspended_tenant.status = CoreTenant.StatusChoices.SUSPENDED
         self.suspended_tenant.save(update_fields=['display_name', 'status', 'updated_at'])

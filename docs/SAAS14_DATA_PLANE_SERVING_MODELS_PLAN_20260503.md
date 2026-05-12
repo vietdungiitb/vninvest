@@ -127,15 +127,15 @@ def materialize_symbol_snapshot():
 
 ### 3.2 Sau khi legacy decommission (SAAS-15)
 
-Materializers sẽ đọc trực tiếp từ vnstock feed thay vì legacy DB:
+Materializers sẽ đọc trực tiếp từ vnbroker feed thay vì legacy DB:
 
 ```python
 @app.task
 def materialize_symbol_snapshot():
     """
-    Sau SAAS-15: đọc trực tiếp từ vnstock/realtime feed.
+    Sau SAAS-15: đọc trực tiếp từ vnbroker/realtime feed.
     """
-    from vninvest_core.vnstock_client import fetch_latest_prices
+    from vninvest_core.vnbroker_client import fetch_latest_prices
     # ...
 ```
 

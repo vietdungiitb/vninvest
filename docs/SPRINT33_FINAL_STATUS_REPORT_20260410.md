@@ -223,7 +223,7 @@ Suggested timeline:
 
 **Risks Identified**:
 - Sprint 34 is more complex (3 interconnected streams)
-- Depends on stable redis/db/vnstock contracts
+- Depends on stable redis/db/vnbroker contracts
 - Recommend adding QA +1 person-day for parity testing
 
 **Handoff Artifacts** Available:

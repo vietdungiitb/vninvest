@@ -2,13 +2,22 @@
 Django settings for vninvest project.
 """
 import os
+import sys
+import sys
 from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+
+CORE_BACKEND_SRC = BASE_DIR.parent / 'packages' / 'core' / 'backend' / 'src'
+if str(CORE_BACKEND_SRC) not in sys.path:
+    sys.path.insert(0, str(CORE_BACKEND_SRC))
+
+CORE_BACKEND_SRC = BASE_DIR.parent / 'packages' / 'core' / 'backend' / 'src'
+if str(CORE_BACKEND_SRC) not in sys.path:
+    sys.path.insert(0, str(CORE_BACKEND_SRC))
 
 
 def _env_int(name: str, default: int) -> int:
@@ -114,6 +123,8 @@ INSTALLED_APPS = [
     'channels',
     'django_celery_beat',
     # Local
+    'identity_access',
+    'tenant_lifecycle',
     'portfolio',
     'support',
 ]
@@ -152,26 +163,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").lower()
-if DB_ENGINE == "postgres":
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB", "vninvest"),
-            "USER": os.getenv("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD", "postgres"),
-            "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-            "PORT": os.getenv("POSTGRES_PORT", "5432"),
-            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / os.getenv("SQLITE_DB_NAME", "db.sqlite3"),
-        }
-    }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'vninvest'),
+        'USER': os.getenv('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
+    },
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -233,6 +235,7 @@ def _get_throttle_rate(env_var: str, default: str) -> str:
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+        'identity_access.permissions.IsTenantActive',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         # PAT-only architecture: all tokens are issued by core-api as PATs (vni_ prefix).
@@ -394,11 +397,11 @@ TICKER_UPSTREAM_HARD_CAP_PER_MINUTE = _env_int("TICKER_UPSTREAM_HARD_CAP_PER_MIN
 TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED = os.getenv("TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED", "False").lower() == "true"
 TICKER_PREFETCH_EMERGENCY_DISABLE_COLD = os.getenv("TICKER_PREFETCH_EMERGENCY_DISABLE_COLD", "True").lower() == "true"
 TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER = max(_env_float("TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER", 2.0), 1.0)
-OFFPEAK_VNSTOCK_INGEST_ENABLED = os.getenv("OFFPEAK_VNSTOCK_INGEST_ENABLED", "True").lower() == "true"
-OFFPEAK_VNSTOCK_INGEST_CRON_HOUR = _env_int("OFFPEAK_VNSTOCK_INGEST_CRON_HOUR", 18)
-OFFPEAK_VNSTOCK_INGEST_CRON_MINUTE = _env_int("OFFPEAK_VNSTOCK_INGEST_CRON_MINUTE", 10)
-OFFPEAK_VNSTOCK_INGEST_DAYS = _env_int("OFFPEAK_VNSTOCK_INGEST_DAYS", 5)
-OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS = _env_int("OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS", 300)
+OFFPEAK_VNBROKER_INGEST_ENABLED = os.getenv("OFFPEAK_VNBROKER_INGEST_ENABLED", "True").lower() == "true"
+OFFPEAK_VNBROKER_INGEST_CRON_HOUR = _env_int("OFFPEAK_VNBROKER_INGEST_CRON_HOUR", 18)
+OFFPEAK_VNBROKER_INGEST_CRON_MINUTE = _env_int("OFFPEAK_VNBROKER_INGEST_CRON_MINUTE", 10)
+OFFPEAK_VNBROKER_INGEST_DAYS = _env_int("OFFPEAK_VNBROKER_INGEST_DAYS", 5)
+OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS = _env_int("OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS", 300)
 
 CELERY_BEAT_SCHEDULE = {}
 # Realtime ticker scheduler theo universe + shard (canonical path).
@@ -416,22 +419,25 @@ CELERY_BEAT_SCHEDULE["schedule-realtime-prefetch-shards"] = {
     "options": {"queue": "realtime_prefetch"},
 }
 
-if OFFPEAK_VNSTOCK_INGEST_ENABLED:
+if OFFPEAK_VNBROKER_INGEST_ENABLED:
     from celery.schedules import crontab as _crontab_offpeak
 
-    CELERY_BEAT_SCHEDULE["offpeak-vnstock-ingest"] = {
-        "task": "portfolio.tasks.offpeak_vnstock_ingest",
+    CELERY_BEAT_SCHEDULE["offpeak-vnbroker-ingest"] = {
+        "task": "portfolio.tasks.offpeak_vnbroker_ingest",
         "schedule": _crontab_offpeak(
-            hour=max(0, min(23, OFFPEAK_VNSTOCK_INGEST_CRON_HOUR)),
-            minute=max(0, min(59, OFFPEAK_VNSTOCK_INGEST_CRON_MINUTE)),
+            hour=max(0, min(23, OFFPEAK_VNBROKER_INGEST_CRON_HOUR)),
+            minute=max(0, min(59, OFFPEAK_VNBROKER_INGEST_CRON_MINUTE)),
             day_of_week='1-5',
         ),
         "kwargs": {
-            "days": max(OFFPEAK_VNSTOCK_INGEST_DAYS, 1),
-            "max_symbols": max(OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS, 1),
+            "days": max(OFFPEAK_VNBROKER_INGEST_DAYS, 1),
+            "max_symbols": max(OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS, 1),
             "trigger": "beat",
         },
-        "options": {"expires": 3600},
+        "options": {
+            "queue": "enrichment_offhours",
+            "expires": 3600,
+        },
     }
 ORDER_FLOW_DETECTION_ENABLED = os.getenv("ORDER_FLOW_DETECTION_ENABLED", "True").lower() == "true"
 ORDER_FLOW_DETECTION_INTERVAL_SECONDS = _env_int("ORDER_FLOW_DETECTION_INTERVAL_SECONDS", 30)
@@ -610,7 +616,10 @@ if STOCK_PROFILE_SYNC_ENABLED:
         "task": "portfolio.tasks_stock_profile_sync.sync_stock_profiles_from_snapshot",
         # 07:15 ICT — dùng trực tiếp vì CELERY_TIMEZONE = TIME_ZONE = 'Asia/Ho_Chi_Minh'
         "schedule": _crontab_profile_sync(hour=7, minute=15),
-        "options": {"expires": 3600},
+        "options": {
+            "queue": "enrichment_offhours",
+            "expires": 3600,
+        },
     }
 
 # Sprint35 Layer 3: Portfolio Daily News Digest sau 16:05 ICT (Mon-Fri)
@@ -622,7 +631,10 @@ if PORTFOLIO_NEWS_DIGEST_ENABLED:
         "task": "portfolio.tasks.generate_all_portfolio_news_digests_task",
         "schedule": _crontab_sprint35(hour=16, minute=5, day_of_week='1-5'),  # 16:05 ICT Mon-Fri
         "kwargs": {"batch_size": PORTFOLIO_NEWS_DIGEST_BATCH_SIZE},
-        "options": {"expires": 3600},  # bỏ qua nếu task cũ vẫn đang chạy
+        "options": {
+            "queue": "enrichment_offhours",
+            "expires": 3600,
+        },  # bỏ qua nếu task cũ vẫn đang chạy
     }
 
 # ── PR-2: W6 Whale Signal Backtesting — 16:30 ICT = 09:30 UTC (Mon-Fri) ────
@@ -643,7 +655,10 @@ if SENTIMENT_SYNC_ENABLED:
     CELERY_BEAT_SCHEDULE["sync-news-sentiment"] = {
         "task": "portfolio.tasks_sentiment.sync_news_sentiment",
         "schedule": timedelta(minutes=max(SENTIMENT_SYNC_INTERVAL_MINUTES, 15)),
-        "options": {"expires": SENTIMENT_SYNC_INTERVAL_MINUTES * 60},
+        "options": {
+            "queue": "enrichment_offhours",
+            "expires": SENTIMENT_SYNC_INTERVAL_MINUTES * 60,
+        },
     }
 
 # ── Watchlist Strategy Indicators — mỗi 10 giây (Phase B) ──────────────────
@@ -671,13 +686,13 @@ REALTIME_BROADCAST_DEGRADE_BATCH_THRESHOLD = _env_int("REALTIME_BROADCAST_DEGRAD
 REALTIME_BROADCAST_MIN_CHANGE_PCT = _env_float("REALTIME_BROADCAST_MIN_CHANGE_PCT", 0.1)
 REALTIME_BROADCAST_FORCE_INTERVAL_S = _env_int("REALTIME_BROADCAST_FORCE_INTERVAL_S", 5)
 
-# vnstock bootstrap/cache hardening flags
-VNSTOCK_PROVIDER_CACHE_ENABLED = os.getenv("VNSTOCK_PROVIDER_CACHE_ENABLED", "True").lower() == "true"
-VNSTOCK_CLIENT_CACHE_ENABLED = os.getenv("VNSTOCK_CLIENT_CACHE_ENABLED", "True").lower() == "true"
-VNSTOCK_PROVIDER_CACHE_TTL_SECONDS = _env_int("VNSTOCK_PROVIDER_CACHE_TTL_SECONDS", 900)
-VNSTOCK_CLIENT_CACHE_TTL_SECONDS = _env_int("VNSTOCK_CLIENT_CACHE_TTL_SECONDS", 900)
-VNSTOCK_CLIENT_CACHE_MAXSIZE = _env_int("VNSTOCK_CLIENT_CACHE_MAXSIZE", 512)
-VNSTOCK_BOOTSTRAP_LOG_SUPPRESS_ENABLED = os.getenv("VNSTOCK_BOOTSTRAP_LOG_SUPPRESS_ENABLED", "True").lower() == "true"
+# vnbroker bootstrap/cache hardening flags
+VNBROKER_PROVIDER_CACHE_ENABLED = os.getenv("VNBROKER_PROVIDER_CACHE_ENABLED", "True").lower() == "true"
+VNBROKER_CLIENT_CACHE_ENABLED = os.getenv("VNBROKER_CLIENT_CACHE_ENABLED", "True").lower() == "true"
+VNBROKER_PROVIDER_CACHE_TTL_SECONDS = _env_int("VNBROKER_PROVIDER_CACHE_TTL_SECONDS", 900)
+VNBROKER_CLIENT_CACHE_TTL_SECONDS = _env_int("VNBROKER_CLIENT_CACHE_TTL_SECONDS", 900)
+VNBROKER_CLIENT_CACHE_MAXSIZE = _env_int("VNBROKER_CLIENT_CACHE_MAXSIZE", 512)
+VNBROKER_BOOTSTRAP_LOG_SUPPRESS_ENABLED = os.getenv("VNBROKER_BOOTSTRAP_LOG_SUPPRESS_ENABLED", "True").lower() == "true"
 
 # Realtime stabilization flags (2026-04-17)
 REALTIME_WS_PLAN_CACHE_ENABLED = os.getenv("REALTIME_WS_PLAN_CACHE_ENABLED", "True").lower() == "true"

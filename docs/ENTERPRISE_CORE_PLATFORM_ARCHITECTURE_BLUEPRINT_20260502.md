@@ -285,7 +285,7 @@ Nếu chưa đạt đủ 6 điều kiện trên, tiếp tục để trong một 
 | User workspace | Portfolio, watchlist, tracked symbols, alerts | `Portfolio`, `SubAccount`, `Transaction`, `AccountSnapshot`, `WatchlistGroup`, `WatchlistItem`, `TrackedSymbol`, `PriceAlertRule` | `UserWorkspaceSnapshot` nếu cần read-model nhanh |
 | Market time-series staging | Giá ngày, session close, intraday staging | `DailyPrice`, `TickerSessionClose`, `IntradayTick` | `PriceBoardSnapshot`, `RealtimeTickerSnapshot` |
 | Signal intelligence canonical | Whale/dark-flow events, screener/materialization runs, forensic windows | `WhaleAlertEvent`, `WhaleAdvisory`, `SignalServiceRun`, `MoneyFlowForensicWindow`, `WhaleConfigVersion`, `WhaleConfigDraft`, `ScreenerRule` | `SessionFacts`, `SymbolSignalSummary`, `UnifiedAlertProjection` |
-| AI runtime and operator control | AI config, system settings, runtime control | `AICommandCenterConfig`, `AICommandCenterAuditLog`, `SystemAISettings`, `SystemAISettingsAuditLog`, `RuntimeVnstockConfig`, `SystemSetting`, `CrawlJob`, `CrawlRun` | `AIRuntimeCapabilitySnapshot`, `PartnerPromptPolicy` |
+| AI runtime and operator control | AI config, system settings, runtime control | `AICommandCenterConfig`, `AICommandCenterAuditLog`, `SystemAISettings`, `SystemAISettingsAuditLog`, `RuntimeVnbrokerConfig`, `SystemSetting`, `CrawlJob`, `CrawlRun` | `AIRuntimeCapabilitySnapshot`, `PartnerPromptPolicy` |
 | Commercial and entitlement | Plan, license, quota, billing, analytics | `DPIPlan`, `DPILicense`, `DPIUsageMetrics`, `DPIEntitlement`, `DPIQuotaTracker`, `DPIAPICallLog`, `DPIFeatureUsage`, `DPIAnalyticsSnapshot`, `DPIInvoice`, `DPISubscription`, `DPIPayment` | `CoreUsageMeter`, `CoreUsageAggregateHourly`, `CoreBillingAccount`, `TenantQuotaLedger`, `PartnerConsumptionSnapshot`, `BillingCreditGrant` |
 
 ### 5.3 Phân tầng dữ liệu vận hành
@@ -459,7 +459,7 @@ Mỗi request từ `vip-app` cần ghi ít nhất:
 | `quota_billing_service` | Quota tracking, usage summary, invoice/subscription logic | `opencore_analytics.py`, `opencore_revenue.py` | Chuẩn bị tenant/PAT accounting |
 | `ai_runtime_service` | Resolve effective provider/model/key, runtime readiness, prompt policy | `ai_runtime_config.py`, `views_ai_runtime_stats.py`, `AICommandCenterConfig` | Mở rộng current SSOT thay vì greenfield |
 | `partner_projection_service` | Convert internal facts sang stable global contracts | chưa có ranh giới rõ | Phải là lớp mới cho B2B/VIP |
-| `operator_runtime_service` | Health, jobs, materialization status, runtime settings | `config/health.py`, admin ops views, `RuntimeVnstockConfig` | Giữ riêng khỏi user-facing APIs |
+| `operator_runtime_service` | Health, jobs, materialization status, runtime settings | `config/health.py`, admin ops views, `RuntimeVnbrokerConfig` | Giữ riêng khỏi user-facing APIs |
 
 ### 6.2 Nhóm asynchronous core services
 

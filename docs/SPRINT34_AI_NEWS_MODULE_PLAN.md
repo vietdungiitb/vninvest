@@ -17,7 +17,7 @@ Tích hợp tin tức theo mã cổ phiếu vào `StockDetail` workspace nhằm 
 
 | Lớp | Tên | Vị trí | Mô tả | Phức tạp |
 |-----|-----|---------|-------|----------|
-| **L1** | Stock News Panel | `StockDetail.jsx` | vnstock `.company.news()` per symbol, không AI, cache Redis 30 phút | S |
+| **L1** | Stock News Panel | `StockDetail.jsx` | vnbroker `.company.news()` per symbol, không AI, cache Redis 30 phút | S |
 | **L2** | Advisory Grounding | `tasks.py` | Inject 4 tiêu đề gần nhất vào prompt AI advisory | M |
 | **L3** | Portfolio Digest | Celery Beat | Tóm tắt cá nhân hóa sau 16:00 mỗi ngày | M — Sprint 35 |
 
@@ -46,7 +46,7 @@ Tích hợp tin tức theo mã cổ phiếu vào `StockDetail` workspace nhằm 
 }
 ```
 
-**Response khi vnstock không hoạt động (graceful degradation):**
+**Response khi vnbroker không hoạt động (graceful degradation):**
 ```json
 {
   "symbol": "VCB",
@@ -84,8 +84,8 @@ Tích hợp tin tức theo mã cổ phiếu vào `StockDetail` workspace nhằm 
 ## 5. Tiêu chí chấp nhận (Acceptance Criteria)
 
 - [ ] `GET /api/stock-management/stocks/VCB/news/` trả về JSON hợp lệ khi đăng nhập
-- [ ] Cache miss gọi vnstock; cache hit trả từ Redis trong < 50ms
-- [ ] Khi vnstock không khả dụng: `items: []`, `unavailable: true`, không trả 500
+- [ ] Cache miss gọi vnbroker; cache hit trả từ Redis trong < 50ms
+- [ ] Khi vnbroker không khả dụng: `items: []`, `unavailable: true`, không trả 500
 - [ ] StockDetail hiển thị section "Tin tức" với danh sách bài báo, link ngoại bộ
 - [ ] Advisory prompt cho mã có tin tức gần đây chứa block `Recent news for {symbol}:`
 - [ ] Advisory prompt cho mã không có tin tức vẫn hoạt động bình thường (không lỗi)
@@ -97,7 +97,7 @@ Tích hợp tin tức theo mã cổ phiếu vào `StockDetail` workspace nhằm 
 
 Hàm helper `_fetch_news_context_for_advisory(symbol, max_items=4)`:
 - Đọc từ Redis cache key `stock:news:{symbol}` (TTL 30 phút)
-- Nếu cache miss: gọi vnstock với timeout 5 giây, lỗi → trả `""`
+- Nếu cache miss: gọi vnbroker với timeout 5 giây, lỗi → trả `""`
 - Định dạng inject vào prompt:
   ```
   Tin tức gần đây về {symbol}:
@@ -111,8 +111,8 @@ Hàm helper `_fetch_news_context_for_advisory(symbol, max_items=4)`:
 ## 7. Phi chức năng
 
 - **Security:** URL ngoại bộ trong `StockNewsPanel` luôn `target="_blank" rel="noopener noreferrer"`
-- **Rate limiting:** không gọi vnstock news service quá 1 lần / 30 phút / symbol
-- **Graceful degradation:** mọi lỗi vnstock → empty state, không crash
+- **Rate limiting:** không gọi vnbroker news service quá 1 lần / 30 phút / symbol
+- **Graceful degradation:** mọi lỗi vnbroker → empty state, không crash
 - **Token safety:** news grounding bỏ qua khi advisory đang dùng `use_concise=True` (ngân sách thấp)
 
 ---
@@ -178,4 +178,4 @@ Hàm helper `_fetch_news_context_for_advisory(symbol, max_items=4)`:
 
 1. RSS sources cấu hình theo user (CRUD + validate URL/feed).
 2. Pipeline ingest RSS định kỳ + deduplicate.
-3. AI News hợp nhất đa nguồn (vnstock + RSS user + curated system feeds).
+3. AI News hợp nhất đa nguồn (vnbroker + RSS user + curated system feeds).

@@ -254,7 +254,7 @@ Hệ thống hiện có nhiều dịch vụ chạy nền phân tán qua Celery/B
 
 ## 13. SSOT Integration Map (Mandatory)
 
-1. `vnstock adapter`
+1. `vnbroker adapter`
 - canonical adapter cho provider access và rate-limit handling.
 
 2. `ai advisory`

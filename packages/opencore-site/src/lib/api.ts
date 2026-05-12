@@ -19,8 +19,8 @@ export async function fetchChartFeed(symbol: string, timeframe: string, from: Da
   return parseJsonResponse<ChartFeed>(response);
 }
 
-export async function fetchVnstockData(symbol: string, dataType = 'ohlcv', period = '1M') {
+export async function fetchVnbrokerData(symbol: string, dataType = 'ohlcv', period = '1M') {
   const params = new URLSearchParams({ symbol, data_type: dataType, period });
-  const response = await fetch(`/api/public/vnstock-data?${params}`);
+  const response = await fetch(`/api/public/vnbroker-data?${params}`);
   return parseJsonResponse<Record<string, unknown>>(response);
 }

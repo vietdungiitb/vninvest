@@ -1,7 +1,7 @@
 """
 data_ingest models.
 
-IngestJob: represents a repeatable ingest source (e.g. vnstock price board).
+IngestJob: represents a repeatable ingest source (e.g. vnbroker price board).
 IngestRun: represents one execution instance of an IngestJob.
 """
 from django.db import models
@@ -10,8 +10,8 @@ from django.utils import timezone
 
 class IngestJob(models.Model):
     class SourceChoices(models.TextChoices):
-        VNSTOCK_PRICE_BOARD = 'vnstock_price_board', 'vnstock Price Board'
-        VNSTOCK_INTRADAY = 'vnstock_intraday', 'vnstock Intraday'
+        VNBROKER_PRICE_BOARD = 'vnbroker_price_board', 'vnbroker Price Board'
+        VNBROKER_INTRADAY = 'vnbroker_intraday', 'vnbroker Intraday'
         LEGACY_SYNC = 'legacy_sync', 'Legacy DB Sync'
         MANUAL = 'manual', 'Manual Trigger'
 

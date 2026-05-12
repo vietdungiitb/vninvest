@@ -381,10 +381,10 @@ def _serialize_tenant_summary(tenant: CoreTenant, *, plan_lifecycle: dict | None
         'tenant_code': tenant.tenant_code,
         'display_name': tenant.display_name,
         'status': tenant.status,
-        'plan_code': tenant.plan_code,
+        'plan_code': tenant.plan,
         'plan_lifecycle': plan_lifecycle or _build_plan_lifecycle_summary(tenant.owner_user),
         'billing_account_id': None,
-        'default_environment': tenant.default_environment,
+        'default_environment': 'prod',
         'created_at': tenant.created_at.isoformat() if tenant.created_at else None,
         'updated_at': tenant.updated_at.isoformat() if tenant.updated_at else None,
     }
@@ -430,7 +430,8 @@ def _resolve_owned_pat(tenant_context, public_id: str) -> CorePATCredential | No
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_tenant_api(request):
     request_id = _request_id()
-    tenant = CoreTenant.ensure_for_user(request.user)
+    resolve_partner_tenant_context(request.user)
+    tenant = CoreTenant.objects.select_related('owner_user').get(owner_user=request.user)
     return _response(
         _serialize_tenant_summary(tenant, plan_lifecycle=_build_plan_lifecycle_summary(tenant.owner_user)),
         request_id=request_id,

@@ -52,7 +52,7 @@ Commands:
 - xác nhận chart refresh
 
 Pass condition:
-- `VNStockChart` render đúng
+- `VNBrokerChart` render đúng
 - relay route `/api/bars/[symbol]` có request
 - không có KLineCharts surface
 
@@ -63,7 +63,7 @@ Commands:
 ```powershell
 curl http://localhost:3000/api/bars/VNM?tf=1d&from=2026-05-01T00:00:00.000Z&to=2026-05-06T00:00:00.000Z
 curl http://localhost:3000/api/bars/ABC%3BDROP?tf=1d&from=2026-05-01T00:00:00.000Z&to=2026-05-06T00:00:00.000Z
-curl http://localhost:3000/api/public/vnstock-data?symbol=VNM&data_type=ohlcv&period=1M
+curl http://localhost:3000/api/public/vnbroker-data?symbol=VNM&data_type=ohlcv&period=1M
 ```
 
 Pass condition:
@@ -75,7 +75,7 @@ Pass condition:
 ### 2.5 Pyodide playground smoke
 
 Commands:
-- mở `/vnstock/playground`
+- mở `/vnbroker/playground`
 - chạy preset example
 - chạy sample fetch helper
 

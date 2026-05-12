@@ -24,7 +24,7 @@
 - `backend/portfolio/services/config_service.py`
 
 ### Adapter layer
-- `backend/portfolio/adapters/vnstock_adapter.py`
+- `backend/portfolio/adapters/vnbroker_adapter.py`
 - `backend/portfolio/adapters/cache_adapter.py`
 - `backend/portfolio/adapters/realtime_adapter.py`
 

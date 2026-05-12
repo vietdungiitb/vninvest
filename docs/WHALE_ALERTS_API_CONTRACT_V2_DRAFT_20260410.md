@@ -123,7 +123,7 @@ Them params:
 - `severity=low|medium|high|extreme|all`
 - `freshness=live|warm|recovered|all`
 - `threshold_source=user_default|symbol_override|all`
-- `source=redis_stream|intraday_tick_db|vnstock|all`
+- `source=redis_stream|intraday_tick_db|vnbroker|all`
 - `view=events|campaigns`
 
 Response top-level:
@@ -137,7 +137,7 @@ Response top-level:
   "source_mix": {
     "redis_stream": 8,
     "intraday_tick_db": 2,
-    "vnstock": 0
+    "vnbroker": 0
   },
   "filters": {},
   "meta": {

@@ -7,7 +7,7 @@ Scope: A1 + A2 + B1
 ## 1) Contract goals
 
 1. Deterministic identity for whale/dark-flow related aggregate events.
-2. Stable cursor semantics across redis_stream, intraday_tick_db, vnstock fallback.
+2. Stable cursor semantics across redis_stream, intraday_tick_db, vnbroker fallback.
 3. Backward-compatible response shape for existing FE consumers where feasible.
 
 ## 2) Aggregate feed response contract (v2 semantics)

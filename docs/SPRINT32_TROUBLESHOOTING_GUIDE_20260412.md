@@ -14,8 +14,8 @@
 ### Symptoms
 - Update config via API (e.g., max_concurrency=20)
 - API returns 200 OK
-- But vnstock adapter still uses old value (12)
-- Current vnstock calls ignore new concurrency
+- But vnbroker adapter still uses old value (12)
+- Current vnbroker calls ignore new concurrency
 
 ### Root Causes & Solutions
 
@@ -25,10 +25,10 @@
 # Check current cache TTL
 redis-cli
 
-> GET vnstock:runtime:config
+> GET vnbroker:runtime:config
 (nil)  # Cache miss, will load from DB
 
-> TTL vnstock:runtime:config
+> TTL vnbroker:runtime:config
 -2  # Expired
 -1  # No expiry set (permanent)
 (integer) 234  # 234 seconds remaining
@@ -36,7 +36,7 @@ redis-cli
 # If TTL is too long, wait or manually invalidate
 FLUSHDB
 # or
-DEL vnstock:runtime:config
+DEL vnbroker:runtime:config
 ```
 
 **Fix:** Wait 5 minutes OR manually clear Redis
@@ -49,17 +49,17 @@ cd backend
 python manage.py shell
 
 >>> from django.db.models.signals import post_save
->>> from portfolio.models import RuntimeVnstockConfig
+>>> from portfolio.models import RuntimeVnbrokerConfig
 >>> from django.dispatch import Signal
 
 # Verify signal handlers
 >>> Signal().receivers
-# Should show invalidate_vnstock_config_cache in list
+# Should show invalidate_vnbroker_config_cache in list
 
 # Manual trigger if needed
->>> config = RuntimeVnstockConfig.objects.get(pk=1)
->>> from portfolio.adapters.vnstock_adapter import VnstockConfigManager
->>> VnstockConfigManager.invalidate_cache()
+>>> config = RuntimeVnbrokerConfig.objects.get(pk=1)
+>>> from portfolio.adapters.vnbroker_adapter import VnbrokerConfigManager
+>>> VnbrokerConfigManager.invalidate_cache()
 >>> print("Cache cleared")
 ```
 
@@ -68,7 +68,7 @@ python manage.py shell
 #### **Cause 3: Multiple Django processes (gunicorn/uWSGI)**
 
 ```bash
-# Each process has its own _VNSTOCK_GATE semaphore
+# Each process has its own _VNBROKER_GATE semaphore
 # Cache invalidation only affects current process
 
 # Check running processes
@@ -88,7 +88,7 @@ ps aux | grep gunicorn
 
 ### Symptoms
 ```bash
-curl -X PATCH /api/admin-ops/vnstock-config/update_config/ \
+curl -X PATCH /api/admin-ops/vnbroker-config/update_config/ \
   -d '{"max_concurrency": 20}'
 
 # Response
@@ -106,10 +106,10 @@ But 20 is between 1-50, so why rejected?
 
 ```python
 # Test serializer validation directly
-from portfolio.serializers import RuntimeVnstockConfigSerializer
+from portfolio.serializers import RuntimeVnbrokerConfigSerializer
 
 test_data = {'max_concurrency': 20}
-s = RuntimeVnstockConfigSerializer(data=test_data, partial=True)
+s = RuntimeVnbrokerConfigSerializer(data=test_data, partial=True)
 s.is_valid()  # Should be True
 s.errors  # Check error details
 ```
@@ -136,10 +136,10 @@ data = json.dumps({"max_concurrency": 20})
 
 ```python
 # Check if validator is working
-from portfolio.models import RuntimeVnstockConfig
+from portfolio.models import RuntimeVnbrokerConfig
 from django.core.exceptions import ValidationError
 
-config = RuntimeVnstockConfig.get_or_create_singleton()
+config = RuntimeVnbrokerConfig.get_or_create_singleton()
 config.max_concurrency = 100  # > 50
 
 # Model validation
@@ -160,7 +160,7 @@ except ValidationError as e:
 ### Symptoms
 - AdminOps page loads ✓
 - Other tabs (Overview, Whale, Governance) visible ✓
-- Vnstock Config tab NOT visible ✗
+- Vnbroker Config tab NOT visible ✗
 - No JavaScript errors in console
 
 ### Root Causes & Solutions
@@ -169,7 +169,7 @@ except ValidationError as e:
 
 ```bash
 # Check AdminOps.jsx
-grep -n "key: 'vnstock'" frontend/src/pages/AdminOps.jsx
+grep -n "key: 'vnbroker'" frontend/src/pages/AdminOps.jsx
 
 # If not found, tab not defined
 ```
@@ -183,7 +183,7 @@ const tabs = [
   { key: 'governance', label: 'Governance' },
   { key: 'prefetch', label: 'Prefetch' },
   { key: 'kpi', label: 'Runtime KPI' },
-  { key: 'vnstock', label: '⚙️ Vnstock Config' },  // ADD THIS
+  { key: 'vnbroker', label: '⚙️ Vnbroker Config' },  // ADD THIS
 ];
 ```
 
@@ -191,7 +191,7 @@ const tabs = [
 
 ```bash
 # Check import statement
-grep -n "VnstockConfigPanel" frontend/src/pages/AdminOps.jsx
+grep -n "VnbrokerConfigPanel" frontend/src/pages/AdminOps.jsx
 
 # If import not found:
 ```
@@ -199,14 +199,14 @@ grep -n "VnstockConfigPanel" frontend/src/pages/AdminOps.jsx
 **Fix:** Add import at top of AdminOps.jsx:
 
 ```jsx
-import VnstockConfigPanel from '../components/AdminOps/VnstockConfigPanel';
+import VnbrokerConfigPanel from '../components/AdminOps/VnbrokerConfigPanel';
 ```
 
 #### **Cause 3: Conditional render missing**
 
 ```bash
 # Check if render condition exists
-grep -n "activePage === 'vnstock'" frontend/src/pages/AdminOps.jsx
+grep -n "activePage === 'vnbroker'" frontend/src/pages/AdminOps.jsx
 
 # If not found:
 ```
@@ -214,7 +214,7 @@ grep -n "activePage === 'vnstock'" frontend/src/pages/AdminOps.jsx
 **Fix:** Add conditional render in content section:
 
 ```jsx
-{activePage === 'vnstock' && <VnstockConfigPanel />}
+{activePage === 'vnbroker' && <VnbrokerConfigPanel />}
 ```
 
 #### **Cause 4: Frontend rebuild not done**
@@ -236,7 +236,7 @@ npm start  # Will automatically rebuild
 
 ### Symptoms
 ```bash
-curl -X GET /api/admin-ops/vnstock-config/current/ \
+curl -X GET /api/admin-ops/vnbroker-config/current/ \
   -H "Authorization: Bearer <token>"
 
 # Response
@@ -270,7 +270,7 @@ user.save()
 # Check portfolio/views.py
 from rest_framework.permissions import IsAdminUser
 
-class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
+class RuntimeVnbrokerConfigViewSet(viewsets.ViewSet):
     permission_classes = [IsAdminUser]  # Must have this!
 ```
 
@@ -283,7 +283,7 @@ class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
 ### Symptoms
 - Update timeout_config["price_board"] = 15
 - Save config ✓
-- Next vnstock call to price_board still times out at 8s
+- Next vnbroker call to price_board still times out at 8s
 - Old timeout (8) still in effect
 
 ### Root Causes & Solutions
@@ -297,17 +297,17 @@ timeout = 8  # Hardcoded, ignores DB
 
 # NEW (CORRECT):
 def _get_timeout(channel: str) -> int:
-    config = VnstockConfigManager.get_current_config()
+    config = VnbrokerConfigManager.get_current_config()
     timeout_config = config.get('timeout_config', {})
     return timeout_config.get(channel, timeout_config.get('general', 8))
 ```
 
-**Fix:** Update `_get_timeout()` to load from `VnstockConfigManager`
+**Fix:** Update `_get_timeout()` to load from `VnbrokerConfigManager`
 
 #### **Cause 2: ThreadPoolExecutor result() not using timeout**
 
 ```python
-# Check vnstock_adapter.py - the call site
+# Check vnbroker_adapter.py - the call site
 
 # OLD (WRONG):
 result = executor.submit(fetch_price_board_dataframe, symbols).result()
@@ -326,7 +326,7 @@ result = executor.submit(fetch_price_board_dataframe, symbols).result(timeout=ti
 
 ### Symptoms
 - Update config successfully (200 OK)
-- Check changelog: `GET /api/admin-ops/vnstock-config/changelog/`
+- Check changelog: `GET /api/admin-ops/vnbroker-config/changelog/`
 - Changelog is empty `[]`
 - Or changelog doesn't show recent changes
 
@@ -427,7 +427,7 @@ python manage.py migrate portfolio
 # JSONField might need different syntax
 
 # Check migration file
-cat backend/portfolio/migrations/000X_add_runtimevnstockconfig.py
+cat backend/portfolio/migrations/000X_add_runtimevnbrokerconfig.py
 
 # Verify JSONField syntax for Postgres:
 # models.JSONField(default=dict, blank=True)  # ✓ Good
@@ -441,7 +441,7 @@ cat backend/portfolio/migrations/000X_add_runtimevnstockconfig.py
 ## Issue #8: Performance - Slow API Responses
 
 ### Symptoms
-- `GET /api/admin-ops/vnstock-config/current/` takes > 500ms
+- `GET /api/admin-ops/vnbroker-config/current/` takes > 500ms
 - Expected < 100ms
 - Django debug toolbar shows N+1 queries
 
@@ -451,7 +451,7 @@ cat backend/portfolio/migrations/000X_add_runtimevnstockconfig.py
 
 ```python
 # Check model
-class RuntimeVnstockConfig(models.Model):
+class RuntimeVnbrokerConfig(models.Model):
     # pk=1 lookup without index?
     
     class Meta:
@@ -473,10 +473,10 @@ updated_by_username = serializers.CharField(
 
 # Optimization might be needed:
 # Configure select_related in ViewSet
-class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
+class RuntimeVnbrokerConfigViewSet(viewsets.ViewSet):
     def current(self, request):
-        config = RuntimeVnstockConfig.objects.select_related('updated_by').get(pk=1)
-        serializer = RuntimeVnstockConfigSerializer(config)
+        config = RuntimeVnbrokerConfig.objects.select_related('updated_by').get(pk=1)
+        serializer = RuntimeVnbrokerConfigSerializer(config)
 ```
 
 **Fix:** Add `.select_related('updated_by')` to optimize query
@@ -504,26 +504,26 @@ PONG  # < 1ms
 
 ### Symptoms
 - Set max_concurrency = 5
-- Make 10 concurrent requests to vnstock
+- Make 10 concurrent requests to vnbroker
 - All 10 complete (not limited to 5)
-- No "vnstock_busy" responses
+- No "vnbroker_busy" responses
 
 ### Root Causes & Solutions
 
 #### **Cause 1: BoundedSemaphore not used in adapter**
 
 ```python
-# Check vnstock_adapter.py
+# Check vnbroker_adapter.py
 
 # OLD (WRONG):
-_VNSTOCK_MAX_CONCURRENCY = 12
+_VNBROKER_MAX_CONCURRENCY = 12
 # Semaphore not created
 
 # NEW (CORRECT):
-_VNSTOCK_GATE = threading.BoundedSemaphore(value=_VNSTOCK_MAX_CONCURRENCY)
+_VNBROKER_GATE = threading.BoundedSemaphore(value=_VNBROKER_MAX_CONCURRENCY)
 
 # In adapter call:
-with _VNSTOCK_GATE:  # MUST use context manager
+with _VNBROKER_GATE:  # MUST use context manager
     result = adapter_call(...)
 ```
 
@@ -533,7 +533,7 @@ with _VNSTOCK_GATE:  # MUST use context manager
 
 ```bash
 # Check configuration
-curl -X GET /api/admin-ops/vnstock-config/current/ | grep concurrent_limit
+curl -X GET /api/admin-ops/vnbroker-config/current/ | grep concurrent_limit
 
 # If enable_concurrent_limit: false, bypassed
 ```
@@ -558,11 +558,11 @@ curl -X GET /api/admin-ops/vnstock-config/current/ | grep concurrent_limit
 
 ### Symptoms
 ```bash
-pytest portfolio/tests/test_runtime_vnstock_config.py
+pytest portfolio/tests/test_runtime_vnbroker_config.py
 
 # Error:
-FAILED - portfolio/tests/test_runtime_vnstock_config.py::TestModel::test_singleton
-RuntimeVnstockConfig matching query does not exist
+FAILED - portfolio/tests/test_runtime_vnbroker_config.py::TestModel::test_singleton
+RuntimeVnbrokerConfig matching query does not exist
 ```
 
 ### Root Causes & Solutions
@@ -587,7 +587,7 @@ pytest
 # If test doesn't use @pytest.mark.django_db
 @pytest.mark.django_db  # Add this!
 def test_something():
-    config = RuntimeVnstockConfig.objects.create(...)
+    config = RuntimeVnbrokerConfig.objects.create(...)
 ```
 
 **Fix:** Add `@pytest.mark.django_db` to test methods
@@ -623,7 +623,7 @@ docker-compose logs backend | tail -50
 docker-compose restart backend
 
 # 4. Check database
-docker-compose exec postgres psql -U postgres -d vninvest -c "SELECT COUNT(*) FROM portfolio_runtimevnstockconfig;"
+docker-compose exec postgres psql -U postgres -d vninvest -c "SELECT COUNT(*) FROM portfolio_runtimevnbrokerconfig;"
 
 # 5. Rollback if needed
 git checkout previous-stable-commit
@@ -645,7 +645,7 @@ docker-compose up -d
 # Full cache clear
 redis-cli FLUSHDB
 # Or specific key
-redis-cli DEL vnstock:runtime:config
+redis-cli DEL vnbroker:runtime:config
 ```
 
 ---
@@ -654,26 +654,26 @@ redis-cli DEL vnstock:runtime:config
 
 ```bash
 # Configuration check
-curl http://localhost:8000/api/admin-ops/vnstock-config/current/ | jq
+curl http://localhost:8000/api/admin-ops/vnbroker-config/current/ | jq
 
 # Cache check
-redis-cli GET vnstock:runtime:config
+redis-cli GET vnbroker:runtime:config
 
 # Signal handlers
 python manage.py shell
 >>> from django.db.models.signals import pre_delete, post_save
 >>> post_save.receivers
-[...]  # Check RuntimeVnstockConfig row
+[...]  # Check RuntimeVnbrokerConfig row
 
 # Database check
 psql -U postgres -d vninvest
-SELECT * FROM portfolio_runtimevnstockconfig;
+SELECT * FROM portfolio_runtimevnbrokerconfig;
 
 # Migration status
 python manage.py showmigrations portfolio
 
 # Admin UI check
-curl http://localhost/admin/portfolio/runtimevnstockconfig/
+curl http://localhost/admin/portfolio/runtimevnbrokerconfig/
 
 # Performance profile
 python manage.py runserver --profile

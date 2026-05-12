@@ -3,7 +3,7 @@ Market Data domain models for packages/core.
 
 DailyPrice: canonical OHLCV daily candle, replaces legacy portfolio data.
 StockProfile: fundamental stock metadata.
-VnstockRuntimeConfig: runtime configuration for vnstock adapter.
+VnbrokerRuntimeConfig: runtime configuration for vnbroker adapter.
 
 ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 """
@@ -61,7 +61,7 @@ class StockProfile(models.Model):
 class DailyPrice(models.Model):
     """
     OHLCV daily price candle. One row per symbol per date.
-    Source: vnstock adapter. Replaces legacy TickerSessionClose as the long-term canonical.
+    Source: vnbroker adapter. Replaces legacy TickerSessionClose as the long-term canonical.
     """
 
     symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
@@ -74,7 +74,7 @@ class DailyPrice(models.Model):
     value = models.BigIntegerField(null=True, blank=True, verbose_name='Giá trị khớp lệnh (VNĐ)')
     change_pct = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True, verbose_name='% thay đổi')
     # Source / quality
-    source = models.CharField(max_length=32, default='vnstock', verbose_name='Nguồn dữ liệu')
+    source = models.CharField(max_length=32, default='vnbroker', verbose_name='Nguồn dữ liệu')
     is_adjusted = models.BooleanField(default=False, verbose_name='Đã điều chỉnh')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -91,9 +91,9 @@ class DailyPrice(models.Model):
         return f'{self.symbol} {self.date} close={self.close}'
 
 
-class VnstockRuntimeConfig(models.Model):
+class VnbrokerRuntimeConfig(models.Model):
     """
-    Runtime configuration for the vnstock data adapter.
+    Runtime configuration for the vnbroker data adapter.
     Controls fetch concurrency, retry policy, rate limits, etc.
     """
 
@@ -110,7 +110,7 @@ class VnstockRuntimeConfig(models.Model):
         max_length=16,
         choices=SourceChoices.choices,
         default=SourceChoices.VCI,
-        verbose_name='Nguồn dữ liệu vnstock',
+        verbose_name='Nguồn dữ liệu vnbroker',
     )
     max_workers = models.IntegerField(default=4, verbose_name='Số luồng tối đa')
     request_delay_ms = models.IntegerField(default=200, verbose_name='Độ trễ giữa request (ms)')
@@ -121,8 +121,8 @@ class VnstockRuntimeConfig(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Cấu hình vnstock runtime'
-        verbose_name_plural = 'Cấu hình vnstock runtime'
+        verbose_name = 'Cấu hình vnbroker runtime'
+        verbose_name_plural = 'Cấu hình vnbroker runtime'
 
     def __str__(self) -> str:
         active_flag = ' [ACTIVE]' if self.is_active else ''

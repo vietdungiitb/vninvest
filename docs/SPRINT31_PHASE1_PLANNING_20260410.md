@@ -67,7 +67,7 @@ Pham vi: Phase 1 kickoff planning dua tren Phase 0 hardening da hoan tat
   - results: [ WhaleEvent array ]
   - next_cursor, has_more
   - server_time
-  - source_mix (redis_stream/intraday_tick_db/vnstock counts)
+  - source_mix (redis_stream/intraday_tick_db/vnbroker counts)
   - filters (echo back request params + window **NEW**)
   - entitlements, weights_version
 

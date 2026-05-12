@@ -68,17 +68,17 @@ services:
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
       PYTHONPATH: /workspace/src
-      LEGACY_BACKEND_URL: http://backend:8000
-      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python manage.py migrate --noinput &&
-      python -m gunicorn vninvest_core.wsgi:application
-      --bind 0.0.0.0:8100
-      --workers 2
-      --timeout 60
-      --access-logfile -"
+      LEGACY_BACKEND_URL: ${LEGACY_BACKEND_URL:?LEGACY_BACKEND_URL must be set in compose.dev.env}
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python manage.py migrate --noinput &&
+        python -m daphne --bind 0.0.0.0 --port 8100 vninvest_core.asgi:application
     restart: unless-stopped
     healthcheck:
       test:
@@ -117,17 +117,15 @@ services:
       CELERY_QUEUES: celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A vninvest_core worker
-      --loglevel=INFO
-      --concurrency=2
-      --queues=\"$${CELERY_QUEUES}\"
-      --without-heartbeat
-      --without-gossip
-      --without-mingle"
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=2 --queues="$${CELERY_QUEUES}" --without-heartbeat --without-gossip --without-mingle
     restart: unless-stopped
     depends_on:
       core-api:
@@ -154,17 +152,15 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/3
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A vninvest_core worker
-      --loglevel=INFO
-      --concurrency=4
-      --queues=realtime_prefetch
-      --without-heartbeat
-      --without-gossip
-      --without-mingle"
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=4 --queues=realtime_prefetch --without-heartbeat --without-gossip --without-mingle
     restart: unless-stopped
     depends_on:
       core-api:
@@ -191,17 +187,15 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/3
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A vninvest_core worker
-      --loglevel=INFO
-      --concurrency=4
-      --queues=analytics_heavy
-      --without-heartbeat
-      --without-gossip
-      --without-mingle"
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=4 --queues=analytics_heavy --without-heartbeat --without-gossip --without-mingle
     restart: unless-stopped
     depends_on:
       core-api:
@@ -228,17 +222,15 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/3
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A vninvest_core worker
-      --loglevel=INFO
-      --concurrency=4
-      --queues=realtime_stream
-      --without-heartbeat
-      --without-gossip
-      --without-mingle"
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=4 --queues=realtime_stream --without-heartbeat --without-gossip --without-mingle
     restart: unless-stopped
     depends_on:
       core-api:
@@ -265,17 +257,15 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/3
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A vninvest_core worker
-      --loglevel=INFO
-      --concurrency=6
-      --queues=enrichment_offhours
-      --without-heartbeat
-      --without-gossip
-      --without-mingle"
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=6 --queues=enrichment_offhours --without-heartbeat --without-gossip --without-mingle
     restart: unless-stopped
     depends_on:
       core-api:
@@ -302,17 +292,15 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/3
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A vninvest_core worker
-      --loglevel=INFO
-      --concurrency=3
-      --queues=manual_on_demand
-      --without-heartbeat
-      --without-gossip
-      --without-mingle"
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=3 --queues=manual_on_demand --without-heartbeat --without-gossip --without-mingle
     restart: unless-stopped
     depends_on:
       core-api:
@@ -339,13 +327,15 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/3
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A vninvest_core beat
-      --loglevel=INFO
-      --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A vninvest_core beat --loglevel=INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
     restart: unless-stopped
     depends_on:
       core-api:
@@ -383,11 +373,15 @@ services:
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/1
       CACHE_REDIS_URL: redis://redis:6379/2
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python manage.py migrate --noinput &&
-      python manage.py runserver 0.0.0.0:8000"
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python manage.py migrate --noinput &&
+        python manage.py runserver 0.0.0.0:8000
     restart: unless-stopped
     networks:
       - vninvest_network
@@ -395,7 +389,7 @@ services:
     cpus: 0.5
 
   # Realtime prefetch worker for market data ingest
-  # Executes legacy backend tasks (schedule_realtime_prefetch_shards, offpeak_vnstock_ingest)
+  # Executes legacy backend tasks (schedule_realtime_prefetch_shards, offpeak_vnbroker_ingest)
   # Syncs ticker data to Redis cache (ticker:{symbol}) and TickerSessionClose table
   backend-worker:
     container_name: vninvest-dev-backend-worker
@@ -420,21 +414,18 @@ services:
       # Realtime prefetch config
       REALTIME_PREFETCH_ENABLED: "true"
       REALTIME_PREFETCH_INTERVAL_SECONDS: "3"
-      OFFPEAK_VNSTOCK_INGEST_ENABLED: "true"
+      OFFPEAK_VNBROKER_INGEST_ENABLED: "true"
       # vnbroker runtime settings
       VNBROKER_PROVIDER_CACHE_ENABLED: "true"
       VNBROKER_CLIENT_CACHE_ENABLED: "true"
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A config worker
-      --loglevel=INFO
-      --concurrency=2
-      --queues=celery,realtime_prefetch
-      --without-heartbeat
-      --without-gossip
-      --without-mingle
-      --max-tasks-per-child=100"
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A config worker --loglevel=INFO --concurrency=2 --queues=celery,realtime_prefetch --without-heartbeat --without-gossip --without-mingle --max-tasks-per-child=100
     restart: unless-stopped
     depends_on:
       db:
@@ -466,17 +457,14 @@ services:
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/1
       CACHE_REDIS_URL: redis://redis:6379/2
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A config worker
-      --loglevel=INFO
-      --concurrency=2
-      --queues=manual_on_demand
-      --without-heartbeat
-      --without-gossip
-      --without-mingle
-      --max-tasks-per-child=100"
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A config worker --loglevel=INFO --concurrency=2 --queues=manual_on_demand --without-heartbeat --without-gossip --without-mingle --max-tasks-per-child=100
     restart: unless-stopped
     depends_on:
       db:
@@ -510,20 +498,17 @@ services:
       CACHE_REDIS_URL: redis://redis:6379/2
       REALTIME_PREFETCH_ENABLED: "true"
       REALTIME_PREFETCH_INTERVAL_SECONDS: "3"
-      OFFPEAK_VNSTOCK_INGEST_ENABLED: "true"
+      OFFPEAK_VNBROKER_INGEST_ENABLED: "true"
       VNBROKER_PROVIDER_CACHE_ENABLED: "true"
       VNBROKER_CLIENT_CACHE_ENABLED: "true"
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python -m celery -A config worker
-      --loglevel=INFO
-      --concurrency=2
-      --queues=realtime_prefetch
-      --without-heartbeat
-      --without-gossip
-      --without-mingle
-      --max-tasks-per-child=100"
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python -m celery -A config worker --loglevel=INFO --concurrency=2 --queues=realtime_prefetch --without-heartbeat --without-gossip --without-mingle --max-tasks-per-child=100
     restart: unless-stopped
     depends_on:
       db:
@@ -557,14 +542,16 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CACHE_REDIS_URL: redis://redis:6379/2
       REALTIME_PREFETCH_ENABLED: "true"
-      OFFPEAK_VNSTOCK_INGEST_ENABLED: "true"
-    command: >
-      sh -c "apt-get update -y && apt-get install -y git &&
-      pip install -r requirements.txt -q &&
-      python manage.py migrate --noinput &&
-      python -m celery -A config beat
-      --loglevel=INFO
-      --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+      OFFPEAK_VNBROKER_INGEST_ENABLED: "true"
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - >-
+        apt-get update && apt-get install -y git &&
+        pip install -r requirements.txt -q &&
+        python manage.py migrate --noinput &&
+        python -m celery -A config beat --loglevel=INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
     restart: unless-stopped
     depends_on:
       db:

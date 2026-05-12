@@ -37,7 +37,7 @@ Thêm các namespace/key sau vào cuối JSON (trước dấu `}`):
   "item1": "Phân tích dòng tiền thông minh với dữ liệu whale theo thời gian thực.",
   "item2": "Bộ lọc tín hiệu tùy chỉnh cho từng chiến lược giao dịch.",
   "item3": "Pyodide sandbox — chạy Python phân tích ngay trên trình duyệt.",
-  "item4": "Engine VNStockCharts tự phát triển, hiệu năng cao, không phụ thuộc ngoài."
+  "item4": "Engine VNBrokerCharts tự phát triển, hiệu năng cao, không phụ thuộc ngoài."
 }
 ```
 
@@ -60,7 +60,7 @@ Thêm các namespace/key sau vào cuối JSON (trước dấu `}`):
 **vi.json — thêm vào namespace `common`:**
 ```json
 "siteSubtitle": "Nền tảng công khai",
-"footerDescription": "Mặt tiền công khai cho VNInvest, vnstock và VNStockCharts.",
+"footerDescription": "Mặt tiền công khai cho VNInvest, vnbroker và VNBrokerCharts.",
 "openMenu": "Mở menu",
 "closeMenu": "Đóng menu"
 ```
@@ -117,8 +117,8 @@ Kiểm tra:
 **Bước 2.1 — Cập nhật `vi.json` và `en.json`**
 
 Thêm vào namespace `products`:
-- `vinvestMetric`, `vnstockMetric`, `chartMetric`
-- `vinvestCta`, `vnstockCta`, `chartCta`
+- `vinvestMetric`, `vnbrokerMetric`, `chartMetric`
+- `vinvestCta`, `vnbrokerCta`, `chartCta`
 
 Xem chi tiết tại TECH_SPEC mục S2-T2, S2-T3.
 
@@ -197,7 +197,7 @@ Xác nhận với Product Owner 4 con số trong StatsStrip:
 - `600+` mã cổ phiếu — có đúng không?
 - `3` sản phẩm — đúng
 - `2` ngôn ngữ — đúng
-- `100%` mã nguồn mở — đúng cho vnstock, nhưng VNInvest có thể không 100% open source → **cần confirm**
+- `100%` mã nguồn mở — đúng cho vnbroker, nhưng VNInvest có thể không 100% open source → **cần confirm**
 
 **Bước 4.2 — Cập nhật `vi.json` và `en.json`**
 

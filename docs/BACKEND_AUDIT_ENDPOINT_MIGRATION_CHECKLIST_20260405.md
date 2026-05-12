@@ -42,7 +42,7 @@ A3 done khi:
 rg "_toggle_market_view\(" backend/portfolio/urls_realtime.py backend/portfolio/urls_stock.py
 
 # 2) Scan direct provider imports in legacy views
-rg "from vnstock import Vnstock" backend/portfolio/views.py
+rg "from vnbroker import Vnbroker" backend/portfolio/views.py
 
 # 3) Run focused route tests
 cd backend

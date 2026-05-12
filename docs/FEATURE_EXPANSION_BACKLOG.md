@@ -240,7 +240,7 @@
 ### P3-4 Social/community features
 ### P3-5 Order Flow Analysis (Sweep/Iceberg/Put-through) [NEW]
 - Phân loại lệnh: quét thị trường (sweep), tảng băng (iceberg), khớp nội khối (put-through).
-- **Phụ thuộc cứng**: cần tick-by-tick data với timestamp microsecond — vnstock hiện không đủ.
+- **Phụ thuộc cứng**: cần tick-by-tick data với timestamp microsecond — vnbroker hiện không đủ.
 - Chỉ khả thi khi có FireAnt API hoặc nguồn dữ liệu level-2 market.
 ### P3-6 Sentiment Gauge (Tâm lý đám đông) [NEW]
 - Tổng hợp tâm lý từ diễn đàn (CafeF, vndirect forum) + tin tức tài chính.

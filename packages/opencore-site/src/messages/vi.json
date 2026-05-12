@@ -1,8 +1,8 @@
 {
   "nav": {
     "home": "Trang chủ",
-    "chart": "VNStockCharts",
-    "vnstock": "vnstock",
+    "chart": "VNBrokerCharts",
+    "vnbroker": "vnbroker",
     "pricing": "Bảng giá",
     "blog": "Blog",
     "legal": "Pháp lý",
@@ -13,39 +13,39 @@
     "eyebrow": "Hệ sinh thái công khai",
     "badge": "Hệ sinh thái public",
     "title": "Một mặt tiền duy nhất cho toàn bộ hệ sinh thái VNInvest",
-    "description": "Giới thiệu VNInvest, vnstock và VNStockCharts bằng một site công khai, đẹp, rõ, và đủ tin cậy để người mới bắt đầu ngay.",
-    "lead": "Giới thiệu VNInvest, vnstock và VNStockCharts bằng một site công khai, đẹp, rõ, và đủ tin cậy để người mới bắt đầu ngay.",
+    "description": "Giới thiệu VNInvest, vnbroker và VNBrokerCharts bằng một site công khai, đẹp, rõ, và đủ tin cậy để người mới bắt đầu ngay.",
+    "lead": "Giới thiệu VNInvest, vnbroker và VNBrokerCharts bằng một site công khai, đẹp, rõ, và đủ tin cậy để người mới bắt đầu ngay.",
     "primaryCta": "Dùng thử miễn phí",
     "secondaryCta": "Xem bảng giá",
     "productHeading": "Ba sản phẩm, một hệ sinh thái",
     "featureHeading": "Tại sao site này tồn tại",
     "featureTitle": "Trọng tâm hệ sinh thái",
     "featureLead": "Không để người dùng tìm mãi mới biết hệ sinh thái đã có sẵn.",
-    "feature1": "Một đường vào công khai duy nhất cho VNInvest, vnstock và VNStockCharts.",
+    "feature1": "Một đường vào công khai duy nhất cho VNInvest, vnbroker và VNBrokerCharts.",
     "feature2": "Trang đa ngôn ngữ với nội dung tiếng Việt và tiếng Anh.",
     "feature3": "Sandbox Pyodide chạy trực tiếp trong trình duyệt để thử nhanh ý tưởng.",
-    "feature4": "Demo chart dùng chính engine VNStockCharts thật, không phải placeholder.",
+    "feature4": "Demo chart dùng chính engine VNBrokerCharts thật, không phải placeholder.",
     "statsLabel": "Nền tảng công khai",
-    "statsValue": "VI / EN / Pyodide / VNStockCharts"
+    "statsValue": "VI / EN / Pyodide / VNBrokerCharts"
   },
   "products": {
     "vinvestTitle": "VNInvest",
     "vinvestText": "SaaS quản lý danh mục và robo-advisor cho thị trường Việt Nam.",
-    "vnstockTitle": "vnstock",
-    "vnstockText": "Python library truy xuất dữ liệu thị trường Việt Nam.",
-    "chartTitle": "VNStockCharts",
+    "vnbrokerTitle": "vnbroker",
+    "vnbrokerText": "Python library truy xuất dữ liệu thị trường Việt Nam.",
+    "chartTitle": "VNBrokerCharts",
     "chartText": "Bộ công cụ chart kỹ thuật tự phát triển, thay cho KLineCharts.",
     "vinvestMetric": "Quản lý danh mục · Robo-advisor · Tín hiệu whale",
-    "vnstockMetric": "600+ mã · HNX, HOSE, UPCOM · REST API",
+    "vnbrokerMetric": "600+ mã · HNX, HOSE, UPCOM · REST API",
     "chartMetric": "KLine engine · CVD · Whale overlay · Real-time",
     "vinvestCta": "Dùng ngay",
-    "vnstockCta": "Xem tài liệu",
+    "vnbrokerCta": "Xem tài liệu",
     "chartCta": "Xem demo chart"
   },
   "chart": {
     "badge": "Live demo",
-    "title": "VNStockCharts live demo",
-    "lead": "Render bằng chính engine VNStockCharts, không phải demo KLineCharts hay ảnh chụp màn hình.",
+    "title": "VNBrokerCharts live demo",
+    "lead": "Render bằng chính engine VNBrokerCharts, không phải demo KLineCharts hay ảnh chụp màn hình.",
     "symbolLabel": "Mã cổ phiếu",
     "timeframeLabel": "Khung thời gian",
     "refreshLabel": "Tự làm mới",
@@ -102,8 +102,8 @@
   "common": {
     "siteName": "VNInvest",
     "home": "Trang chủ",
-    "chart": "VNStockCharts",
-    "vnstock": "vnstock",
+    "chart": "VNBrokerCharts",
+    "vnbroker": "vnbroker",
     "pricing": "Bảng giá",
     "blog": "Blog",
     "legal": "Pháp lý",
@@ -116,20 +116,20 @@
     "copy": "Sao chép",
     "copied": "Đã sao chép",
     "siteSubtitle": "Nền tảng công khai",
-    "footerDescription": "Mặt tiền công khai cho VNInvest, vnstock và VNStockCharts.",
+    "footerDescription": "Mặt tiền công khai cho VNInvest, vnbroker và VNBrokerCharts.",
     "openMenu": "Mở menu",
     "closeMenu": "Đóng menu"
   },
   "seo": {
     "siteName": "VNInvest",
-    "description": "About site của hệ sinh thái VNInvest, vnstock và VNStockCharts."
+    "description": "About site của hệ sinh thái VNInvest, vnbroker và VNBrokerCharts."
   },
   "featureGrid": {
     "heading": "Năng lực nền tảng",
     "item1": "Phân tích dòng tiền thông minh với dữ liệu whale theo thời gian thực.",
     "item2": "Bộ lọc tín hiệu tùy chỉnh cho từng chiến lược giao dịch.",
     "item3": "Pyodide sandbox — chạy Python phân tích ngay trên trình duyệt.",
-    "item4": "Engine VNStockCharts tự phát triển, hiệu năng cao, không phụ thuộc ngoài."
+    "item4": "Engine VNBrokerCharts tự phát triển, hiệu năng cao, không phụ thuộc ngoài."
   },
   "stats": {
     "symbolsLabel": "Mã cổ phiếu",

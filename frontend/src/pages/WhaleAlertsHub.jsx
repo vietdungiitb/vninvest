@@ -133,11 +133,11 @@ function getAggregateSourceMeta(source, t) {
       description: t('whaleHub.sourceIntradayDesc'),
     };
   }
-  if (normalizedSource === 'vnstock') {
+  if (normalizedSource === 'vnbroker') {
     return {
-      label: t('whaleHub.sourceVnstock'),
+      label: t('whaleHub.sourceVnbroker'),
       tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200',
-      description: t('whaleHub.sourceVnstockDesc'),
+      description: t('whaleHub.sourceVnbrokerDesc'),
     };
   }
   return {

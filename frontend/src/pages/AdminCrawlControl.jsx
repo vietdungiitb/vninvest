@@ -54,7 +54,7 @@ export default function AdminCrawlControl() {
       const runsData = runsRes.data?.results || runsRes.data || [];
       if (jobsData.length === 0) {
         setJobs([
-          { id: 1, service_code: 'SYNC_MARKET_GROUPS', description: 'Đồng bộ danh mục VNStock', is_active: true },
+          { id: 1, service_code: 'SYNC_MARKET_GROUPS', description: 'Đồng bộ danh mục VNBroker', is_active: true },
           { id: 2, service_code: 'WARM_INTRADAY', description: 'Tải trước dữ liệu Intraday', is_active: true },
           { id: 3, service_code: 'WHALE_ALERT_SWEEP', description: 'Quét tín hiệu Whale toàn thị trường', is_active: false }
         ]);

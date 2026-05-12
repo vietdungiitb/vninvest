@@ -4,11 +4,11 @@ Tài liệu này ghi nhận các rủi ro kiến trúc đã được xác nhận
 
 ## 1. Điểm Báo Động Đỏ: Fat Views ở `backend/portfolio/views.py`
 - **Tình trạng:** `views.py` đang ôm trực tiếp Network I/O, cache access, parse rate limit, database orchestration và business logic.
-- **Rủi ro:** Khó bảo trì, khó unit test, merge conflict cao, và làm tăng xác suất regression khi thay đổi tích hợp `vnstock`.
+- **Rủi ro:** Khó bảo trì, khó unit test, merge conflict cao, và làm tăng xác suất regression khi thay đổi tích hợp `vnbroker`.
 - **Quyết định kiến trúc:** Refactor theo mô hình 3 lớp với import một chiều cố định:
   - `Views` chỉ parse request, auth/permission, validate input, serialize response.
   - `Services` chỉ chứa business logic và transaction boundary.
-  - `Adapters` chỉ giao tiếp với hệ ngoài như `vnstock`, cache, retry và fallback.
+  - `Adapters` chỉ giao tiếp với hệ ngoài như `vnbroker`, cache, retry và fallback.
 
 ## 2. Chuẩn Cấu Trúc Module Sau Refactor
 Để tránh thiếu nhất quán giữa các tài liệu, cấu trúc chính thức được chốt như sau:

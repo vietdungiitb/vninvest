@@ -38,7 +38,7 @@ flowchart TB
         C1[Celery Beat Scheduler]
         C2[Celery Worker\nIntraday Polling 5-10s]
         C3[Batch Worker\nEOD Sync + Snapshot 15:30]
-        MKT[vnstock Provider]
+        MKT[vnbroker Provider]
     end
 
     D1 <--> DB
@@ -68,7 +68,7 @@ sequenceDiagram
     participant API as Django Realtime API
     participant R as Redis
     participant WB as Celery Worker
-    participant VS as vnstock
+    participant VS as vnbroker
     participant PE as Pandas Engine
 
     rect rgb(240,248,255)

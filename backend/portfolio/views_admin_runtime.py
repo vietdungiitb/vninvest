@@ -1,6 +1,8 @@
 import json
+import re
 from datetime import timedelta
 
+from django.contrib.auth.models import User
 from django.db.models import Count, Max, Q
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -44,6 +46,7 @@ from portfolio.tasks_whale_preflight_cache import (
     _read_preflight_metrics_window,
     _sum_preflight_metrics_window,
 )
+from tenant_lifecycle.models import TenantLifecycleEvent
 
 
 def _is_celery_worker_available() -> bool:
@@ -410,6 +413,123 @@ def _resolve_operator_tenant(tenant_id: str):
     if tenant is None:
         return None, Response({'detail': 'Tenant operator không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
     return tenant, None
+
+
+def _operator_actor_type(user) -> str:
+    if user is None:
+        return 'system'
+    if user.is_superuser or user.is_staff:
+        return 'operator'
+    return 'tenant_user'
+
+
+def _request_ip(request) -> str | None:
+    forwarded_for = str(request.META.get('HTTP_X_FORWARDED_FOR') or '').strip()
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip() or None
+    return str(request.META.get('REMOTE_ADDR') or '').strip() or None
+
+
+def _normalize_tenant_plan(raw_plan) -> str | None:
+    if raw_plan in (None, ''):
+        return None
+    normalized = str(raw_plan).strip().lower()
+    valid_plans = {choice for choice, _ in CoreTenant.PlanChoices.choices}
+    return normalized if normalized in valid_plans else None
+
+
+def _normalize_tenant_status(raw_status) -> str | None:
+    if raw_status in (None, ''):
+        return None
+    normalized = str(raw_status).strip().lower()
+    valid_statuses = {choice for choice, _ in CoreTenant.StatusChoices.choices}
+    return normalized if normalized in valid_statuses else None
+
+
+def _coerce_features(raw_features):
+    if raw_features in (None, ''):
+        return None
+    if not isinstance(raw_features, list):
+        return 'invalid'
+    return [str(item).strip() for item in raw_features if str(item).strip()]
+
+
+def _build_operator_event_context(request):
+    return {
+        'actor_type': _operator_actor_type(request.user),
+        'actor_user': request.user if getattr(request.user, 'is_authenticated', False) else None,
+        'ip_address': _request_ip(request),
+    }
+
+
+def _log_plan_changed_event(*, tenant: CoreTenant, actor_type: str, actor_user, ip_address: str | None, old_plan: str, new_plan: str, reason: str = ''):
+    TenantLifecycleEvent.objects.create(
+        tenant=tenant,
+        event_type=TenantLifecycleEvent.EventType.PLAN_CHANGED,
+        actor_type=actor_type,
+        actor_user=actor_user,
+        ip_address=ip_address,
+        old_value={'plan': old_plan},
+        new_value={'plan': new_plan},
+        metadata={'reason': reason or ''},
+    )
+
+
+def _build_tenant_action_response(tenant: CoreTenant, *, event_id: int | None = None):
+    payload = {
+        'tenant': {
+            'object': 'tenant',
+            'id': tenant.public_id,
+            'tenant_code': tenant.tenant_code,
+            'display_name': tenant.display_name,
+            'status': tenant.status,
+            'plan_code': tenant.plan,
+            'features': list(tenant.features or []),
+            'updated_at': tenant.updated_at.isoformat() if tenant.updated_at else None,
+        },
+        'tenant_id': tenant.public_id,
+        'status': tenant.status,
+        'plan': tenant.plan,
+    }
+    if event_id is not None:
+        payload['event_id'] = event_id
+    return payload
+
+
+def _slugify_tenant_code_seed(seed: str) -> str:
+    normalized = re.sub(r'[^a-z0-9]+', '-', str(seed or '').strip().lower()).strip('-')
+    return normalized[:48] or 'tenant'
+
+
+def _generate_unique_tenant_code(seed: str) -> str:
+    base = _slugify_tenant_code_seed(seed)
+    for suffix in range(1, 1000):
+        candidate = f'{base}-{suffix:03d}'
+        if not CoreTenant.objects.filter(tenant_code=candidate).exists():
+            return candidate
+    return f'{base}-{timezone.now().strftime("%Y%m%d%H%M%S")}'
+
+
+def _resolve_or_create_owner_user(owner_email: str):
+    email = str(owner_email or '').strip().lower()
+    if not email or '@' not in email:
+        return None, Response({'detail': 'owner_email không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email__iexact=email).first()
+    if user is not None:
+        return user, None
+
+    base_username = re.sub(r'[^a-z0-9_]+', '_', email.split('@')[0].lower()).strip('_') or 'tenant_owner'
+    username = base_username
+    idx = 1
+    while User.objects.filter(username=username).exists():
+        idx += 1
+        username = f'{base_username}_{idx}'
+
+    user = User.objects.create_user(username=username, email=email)
+    user.set_unusable_password()
+    user.save(update_fields=['password'])
+    return user, None
 
 
 def _resolve_service_account_rotation_risk(service_account) -> str:
@@ -874,12 +994,12 @@ def _operator_tenant_queryset(request):
 
     plan_values = _parse_multi_query_param(request, 'plan_code')
     if plan_values:
-        queryset = queryset.filter(plan_code__in=plan_values)
+        queryset = queryset.filter(plan__in=plan_values)
 
     return queryset
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAdminUser])
 def operator_tenants_api(request):
     """
@@ -887,11 +1007,59 @@ def operator_tenants_api(request):
     Admin-only tenant registry projection for the operator console.
     """
 
-    tenants = list(_operator_tenant_queryset(request))
-    return Response(_build_operator_tenant_list_snapshot(request, tenants), status=status.HTTP_200_OK)
+    if request.method == 'GET':
+        tenants = list(_operator_tenant_queryset(request))
+        return Response(_build_operator_tenant_list_snapshot(request, tenants), status=status.HTTP_200_OK)
+
+    display_name = str(request.data.get('display_name') or '').strip()
+    owner_email = str(request.data.get('owner_email') or '').strip().lower()
+    if not display_name:
+        return Response({'detail': 'display_name là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    owner_user, owner_error = _resolve_or_create_owner_user(owner_email)
+    if owner_error is not None:
+        return owner_error
+
+    if CoreTenant.objects.filter(owner_user=owner_user).exists():
+        return Response({'detail': 'owner_email đã có tenant.'}, status=status.HTTP_409_CONFLICT)
+
+    plan = _normalize_tenant_plan(request.data.get('plan')) or CoreTenant.PlanChoices.FREE
+    status_value = _normalize_tenant_status(request.data.get('status')) or CoreTenant.StatusChoices.ACTIVE
+    if plan is None:
+        return Response({'detail': 'plan không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+    if status_value is None:
+        return Response({'detail': 'status không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    features = _coerce_features(request.data.get('features'))
+    if features == 'invalid':
+        return Response({'detail': 'features phải là list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    tenant_code = str(request.data.get('tenant_code') or '').strip().lower() or _generate_unique_tenant_code(display_name)
+    if CoreTenant.objects.filter(tenant_code=tenant_code).exists():
+        return Response({'detail': 'tenant_code đã tồn tại.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    event_ctx = _build_operator_event_context(request)
+    tenant = CoreTenant.objects.create(
+        owner_user=owner_user,
+        tenant_code=tenant_code,
+        display_name=display_name,
+        plan=plan,
+        status=status_value,
+        features=features or [],
+    )
+    event = TenantLifecycleEvent.objects.create(
+        tenant=tenant,
+        event_type=TenantLifecycleEvent.EventType.STATUS_CHANGED,
+        actor_type=event_ctx['actor_type'],
+        actor_user=event_ctx['actor_user'],
+        ip_address=event_ctx['ip_address'],
+        new_value={'status': tenant.status},
+        metadata={'action': 'provision'},
+    )
+    return Response(_build_tenant_action_response(tenant, event_id=event.id), status=status.HTTP_201_CREATED)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PATCH'])
 @permission_classes([IsAdminUser])
 def operator_tenant_detail_api(request, tenant_id: str):
     """
@@ -899,11 +1067,138 @@ def operator_tenant_detail_api(request, tenant_id: str):
     Admin-only tenant detail projection for the operator console.
     """
 
-    tenant = CoreTenant.objects.select_related('owner_user').filter(public_id=tenant_id).first()
-    if tenant is None:
-        return Response({'detail': 'Tenant operator không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
+    tenant, error_response = _resolve_operator_tenant(tenant_id)
+    if error_response is not None:
+        return error_response
 
-    return Response(_build_operator_tenant_detail_snapshot(tenant), status=status.HTTP_200_OK)
+    if request.method == 'GET':
+        return Response(_build_operator_tenant_detail_snapshot(tenant), status=status.HTTP_200_OK)
+
+    event_ctx = _build_operator_event_context(request)
+    update_fields = []
+    plan_event_id = None
+    reason = str(request.data.get('reason') or '').strip()
+
+    if 'status' in request.data:
+        new_status = _normalize_tenant_status(request.data.get('status'))
+        if not new_status:
+            return Response({'detail': 'status không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+        if new_status != tenant.status:
+            tenant._actor_type = event_ctx['actor_type']
+            tenant._actor_user = event_ctx['actor_user']
+            tenant.status = new_status
+            if new_status == CoreTenant.StatusChoices.SUSPENDED:
+                tenant.suspended_at = timezone.now()
+                update_fields.append('suspended_at')
+            elif new_status == CoreTenant.StatusChoices.ACTIVE:
+                tenant.suspended_at = None
+                tenant.activated_at = timezone.now()
+                update_fields.extend(['suspended_at', 'activated_at'])
+            update_fields.append('status')
+
+    if 'plan' in request.data:
+        new_plan = _normalize_tenant_plan(request.data.get('plan'))
+        if not new_plan:
+            return Response({'detail': 'plan không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+        if new_plan != tenant.plan:
+            old_plan = tenant.plan
+            tenant.plan = new_plan
+            update_fields.append('plan')
+            plan_event = TenantLifecycleEvent.objects.create(
+                tenant=tenant,
+                event_type=TenantLifecycleEvent.EventType.PLAN_CHANGED,
+                actor_type=event_ctx['actor_type'],
+                actor_user=event_ctx['actor_user'],
+                ip_address=event_ctx['ip_address'],
+                old_value={'plan': old_plan},
+                new_value={'plan': new_plan},
+                metadata={'reason': reason},
+            )
+            plan_event_id = plan_event.id
+
+    if 'features' in request.data:
+        features = _coerce_features(request.data.get('features'))
+        if features == 'invalid':
+            return Response({'detail': 'features phải là list.'}, status=status.HTTP_400_BAD_REQUEST)
+        tenant.features = features or []
+        update_fields.append('features')
+
+    if update_fields:
+        tenant.save(update_fields=sorted(set(update_fields + ['updated_at'])))
+
+    return Response(_build_tenant_action_response(tenant, event_id=plan_event_id), status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def operator_tenant_suspend_api(request, tenant_id: str):
+    tenant, error_response = _resolve_operator_tenant(tenant_id)
+    if error_response is not None:
+        return error_response
+
+    event_ctx = _build_operator_event_context(request)
+    if tenant.status != CoreTenant.StatusChoices.SUSPENDED:
+        tenant._actor_type = event_ctx['actor_type']
+        tenant._actor_user = event_ctx['actor_user']
+        tenant.status = CoreTenant.StatusChoices.SUSPENDED
+        tenant.suspended_at = timezone.now()
+        tenant.save(update_fields=['status', 'suspended_at', 'updated_at'])
+
+    event = tenant.lifecycle_events.order_by('-created_at', '-id').first()
+    return Response(_build_tenant_action_response(tenant, event_id=getattr(event, 'id', None)), status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def operator_tenant_activate_api(request, tenant_id: str):
+    tenant, error_response = _resolve_operator_tenant(tenant_id)
+    if error_response is not None:
+        return error_response
+
+    event_ctx = _build_operator_event_context(request)
+    if tenant.status != CoreTenant.StatusChoices.ACTIVE:
+        tenant._actor_type = event_ctx['actor_type']
+        tenant._actor_user = event_ctx['actor_user']
+        tenant.status = CoreTenant.StatusChoices.ACTIVE
+        tenant.suspended_at = None
+        tenant.activated_at = timezone.now()
+        tenant.save(update_fields=['status', 'suspended_at', 'activated_at', 'updated_at'])
+
+    event = tenant.lifecycle_events.order_by('-created_at', '-id').first()
+    return Response(_build_tenant_action_response(tenant, event_id=getattr(event, 'id', None)), status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def operator_tenant_change_plan_api(request, tenant_id: str):
+    tenant, error_response = _resolve_operator_tenant(tenant_id)
+    if error_response is not None:
+        return error_response
+
+    new_plan = _normalize_tenant_plan(request.data.get('plan'))
+    if not new_plan:
+        return Response({'detail': 'plan không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    reason = str(request.data.get('reason') or '').strip()
+    event_ctx = _build_operator_event_context(request)
+    event_id = None
+    if new_plan != tenant.plan:
+        old_plan = tenant.plan
+        tenant.plan = new_plan
+        tenant.save(update_fields=['plan', 'updated_at'])
+        event = TenantLifecycleEvent.objects.create(
+            tenant=tenant,
+            event_type=TenantLifecycleEvent.EventType.PLAN_CHANGED,
+            actor_type=event_ctx['actor_type'],
+            actor_user=event_ctx['actor_user'],
+            ip_address=event_ctx['ip_address'],
+            old_value={'plan': old_plan},
+            new_value={'plan': new_plan},
+            metadata={'reason': reason},
+        )
+        event_id = event.id
+
+    return Response(_build_tenant_action_response(tenant, event_id=event_id), status=status.HTTP_200_OK)
 
 def _parse_bool_query_param(raw_value, *, default: bool = False) -> bool:
     if raw_value in (None, ''):

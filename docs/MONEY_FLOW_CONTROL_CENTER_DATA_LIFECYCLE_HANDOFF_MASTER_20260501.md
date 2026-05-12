@@ -32,7 +32,7 @@ Sau khi triển khai tương lai theo pack này, hệ thống phải đồng th�
 5. Mọi thay đổi có rủi ro cao về universe, materialization, retention, backfill hoặc purge đều phải có preview-before-apply.
 6. Mọi backfill/recompute phải invalidate impacted L4 caches ngay sau materialization, không chờ TTL hết hạn.
 7. Whale governance write-through phải đi qua pending/draft bridge, không được overwrite active version trực tiếp nếu chưa có approval/rollout proof từ mission-control.
-8. Link-out tới `Data Ops` hoặc `Vnstock Config` phải permission-aware; thiếu quyền thì render disabled state thay vì link chết.
+8. Link-out tới `Data Ops` hoặc `Vnbroker Config` phải permission-aware; thiếu quyền thì render disabled state thay vì link chết.
 9. Selective forensic windows phải là physical carve-out sang L5 table riêng, không phải tagging trên raw L0.
 10. Bộ tài liệu phải đủ cho kiến trúc, implementation, QA và audit nội bộ mà không cần đoán lại ownership, retention rules hay migration boundaries.
 
@@ -89,7 +89,7 @@ Sau khi triển khai tương lai theo pack này, hệ thống phải đồng th�
 ### 5.2 Config ownership matrix
 
 1. Shared lifecycle, service enablement, distribution policy và detection universe tiếp tục bám `global_signal_policy_helpers.py` và control plane liên quan.
-2. Raw ingest cadence, provider throttling, realtime stream và raw-staging cleanup tiếp tục bám `runtime_policy_helpers.py` cùng `RuntimeVnstockConfig`.
+2. Raw ingest cadence, provider throttling, realtime stream và raw-staging cleanup tiếp tục bám `runtime_policy_helpers.py` cùng `RuntimeVnbrokerConfig`.
 3. Whale governance có versioning, approval và rollout phải tiếp tục bám các `WhaleConfig*` models và services hiện có; UI mới chỉ được write-through vào domain này, không tạo config whale song song.
 4. Write-through bridge cho whale governance chỉ được tạo pending/draft version và phải chờ explicit approval trước khi apply/publish active version.
 5. Dark-flow policy hiện chưa có mission-control versioning tương đương, nên giai đoạn đầu vẫn bám `global_signal_services_config.dark_flow_service` cho write path.

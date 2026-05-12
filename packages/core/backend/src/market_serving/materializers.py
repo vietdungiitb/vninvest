@@ -9,9 +9,11 @@ SM-P0.1: Fixed SQL to use correct legacy tables:
   - portfolio_whalealertevent     → SessionFacts (whale aggregates) + UnifiedAlert
   - portfolio_orderflowsignal     → SessionFacts (strength/cvd fields)
 
-After SAAS-15 decommission, swap data source to vnstock feed without changing contract.
+After SAAS-15 decommission, swap data source to vnbroker feed without changing contract.
 """
 import logging
+from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 
 from celery import shared_task
 from django.db import OperationalError, connections
@@ -92,6 +94,123 @@ def materialize_symbol_snapshot(self):
         from market_serving.models import SymbolSnapshot  # noqa: F811
 
         SymbolSnapshot.objects.update(stale=True)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def materialize_pre_open_snapshots(
+    self,
+    symbols: list[str] | None = None,
+    as_of_date: date | None = None,
+):
+    """
+    Materialize pre-open SymbolSnapshot rows from canonical core market data.
+
+    Uses active StockProfile symbols when no explicit symbol list is provided.
+    The resulting snapshot rows are marked PRE_OPEN so the serving layer can
+    render a stable pre-market view before the live session starts.
+    """
+    from market_data.models import DailyPrice, StockProfile
+    from market_serving.models import SymbolSnapshot
+    try:
+        snapshot_date = as_of_date or now().date()
+        if symbols is not None:
+            target_symbols = sorted({str(symbol).strip().upper() for symbol in symbols if str(symbol).strip()})
+        else:
+            target_symbols = list(
+                StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE)
+                .values_list('symbol', flat=True)
+                .distinct()
+            )
+
+        if not target_symbols:
+            logger.info('materialize_pre_open_snapshots: no active symbols available.')
+            return {'status': 'skipped', 'reason': 'no_target_symbols'}
+
+        price_rows = (
+            DailyPrice.objects
+            .filter(symbol__in=target_symbols, date__lte=snapshot_date)
+            .order_by('symbol', '-date')
+            .values('symbol', 'date', 'close', 'volume')
+        )
+
+        latest_rows: dict[str, dict] = {}
+        previous_rows: dict[str, dict] = {}
+        for row in price_rows:
+            symbol = str(row.get('symbol') or '').strip().upper()
+            if not symbol:
+                continue
+            if symbol not in latest_rows:
+                latest_rows[symbol] = row
+                continue
+            if symbol not in previous_rows:
+                previous_rows[symbol] = row
+
+        upserted = 0
+        missing_symbols: list[str] = []
+        for symbol in target_symbols:
+            latest_row = latest_rows.get(symbol)
+            if latest_row is None:
+                missing_symbols.append(symbol)
+                continue
+
+            latest_close = Decimal(str(latest_row.get('close') or 0))
+            previous_row = previous_rows.get(symbol)
+            previous_close = None
+            if previous_row is not None and previous_row.get('close') is not None:
+                previous_close = Decimal(str(previous_row.get('close') or 0))
+
+            price_change = Decimal('0.00')
+            price_change_pct = Decimal('0.0000')
+            if previous_close not in (None, Decimal('0')):
+                price_change = (latest_close - previous_close).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                price_change_pct = ((price_change / previous_close) * Decimal('100')).quantize(
+                    Decimal('0.0001'),
+                    rounding=ROUND_HALF_UP,
+                )
+
+            SymbolSnapshot.objects.update_or_create(
+                symbol=symbol,
+                session_date=snapshot_date,
+                defaults={
+                    'price': latest_close.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP),
+                    'price_change': price_change,
+                    'price_change_pct': price_change_pct,
+                    'volume': int(latest_row.get('volume') or 0),
+                    'fetched_at': now(),
+                    'stale': False,
+                    'source': SymbolSnapshot.SourceChoices.CORE,
+                    'market_status': SymbolSnapshot.MarketStatusChoices.PRE_OPEN,
+                },
+            )
+            upserted += 1
+
+        completeness_pct = round((upserted / len(target_symbols)) * 100.0, 2)
+        meets_target = completeness_pct >= 99.5
+        status = 'ok' if meets_target else 'partial'
+        logger.info(
+            'materialize_pre_open_snapshots: upserted=%d total=%d completeness=%.2f%% date=%s',
+            upserted,
+            len(target_symbols),
+            completeness_pct,
+            snapshot_date,
+        )
+        return {
+            'status': status,
+            'upserted': upserted,
+            'symbols_total': len(target_symbols),
+            'completeness_pct': completeness_pct,
+            'meets_target': meets_target,
+            'missing_symbols': sorted(set(missing_symbols))[:30],
+            'session_date': snapshot_date.isoformat(),
+            'market_status': SymbolSnapshot.MarketStatusChoices.PRE_OPEN,
+            'source_table': 'market_data_daily_price',
+        }
+    except OperationalError as exc:
+        logger.error(
+            'materialize_pre_open_snapshots: core DB unreachable — retrying. %s',
+            exc,
+        )
         raise self.retry(exc=exc)
 
 
@@ -252,11 +371,19 @@ def materialize_unified_alerts(self):
             'low':      UnifiedAlert.SeverityChoices.LOW,
         }
 
-        count = 0
+        upserted = 0
+        duplicate_source_refs = 0
+        seen_source_refs: set[str] = set()
         for row in rows:
             event_id, symbol, side, matched_value_vnd, severity, source_layer, trade_date, occurred_at, payload_json = row
             if not event_id or not symbol or not trade_date or not occurred_at:
                 continue
+
+            source_ref = str(event_id)
+            if source_ref in seen_source_refs:
+                duplicate_source_refs += 1
+                continue
+            seen_source_refs.add(source_ref)
 
             direction = UnifiedAlert.DirectionChoices.NEUTRAL
             if side == 'BUY':
@@ -276,7 +403,7 @@ def materialize_unified_alerts(self):
             volume = payload.get('volume') or payload.get('qty') or 0
 
             alert, _ = UnifiedAlert.objects.update_or_create(
-                source_ref=str(event_id),
+                source_ref=source_ref,
                 defaults={
                     'alert_type': alert_type,
                     'symbol': symbol,
@@ -304,10 +431,19 @@ def materialize_unified_alerts(self):
                     'executed_at': occurred_at,
                 },
             )
-            count += 1
+            upserted += 1
 
-        logger.info("materialize_unified_alerts: upserted %d alerts.", count)
-        return {'status': 'ok', 'upserted': count, 'source_table': 'portfolio_whalealertevent'}
+        logger.info(
+            "materialize_unified_alerts: upserted %d alerts (%d duplicates skipped).",
+            upserted,
+            duplicate_source_refs,
+        )
+        return {
+            'status': 'ok',
+            'upserted': upserted,
+            'duplicates_skipped': duplicate_source_refs,
+            'source_table': 'portfolio_whalealertevent',
+        }
 
     except OperationalError as exc:
         logger.error("materialize_unified_alerts: legacy DB unreachable. %s", exc)

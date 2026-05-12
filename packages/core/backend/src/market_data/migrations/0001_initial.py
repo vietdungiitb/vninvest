@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
                 ('volume', models.BigIntegerField(verbose_name='Khối lượng khớp lệnh')),
                 ('value', models.BigIntegerField(blank=True, null=True, verbose_name='Giá trị khớp lệnh (VNĐ)')),
                 ('change_pct', models.DecimalField(blank=True, decimal_places=4, max_digits=8, null=True, verbose_name='% thay đổi')),
-                ('source', models.CharField(default='vnstock', max_length=32, verbose_name='Nguồn dữ liệu')),
+                ('source', models.CharField(default='vnbroker', max_length=32, verbose_name='Nguồn dữ liệu')),
                 ('is_adjusted', models.BooleanField(default=False, verbose_name='Đã điều chỉnh')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
             ],
@@ -68,7 +68,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='VnstockRuntimeConfig',
+            name='VnbrokerRuntimeConfig',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=64, unique=True, verbose_name='Tên cấu hình')),
@@ -77,7 +77,7 @@ class Migration(migrations.Migration):
                     choices=[('VCI', 'VCI (default)'), ('TCBS', 'TCBS'), ('MSI', 'MSI')],
                     default='VCI',
                     max_length=16,
-                    verbose_name='Nguồn dữ liệu vnstock',
+                    verbose_name='Nguồn dữ liệu vnbroker',
                 )),
                 ('max_workers', models.IntegerField(default=4, verbose_name='Số luồng tối đa')),
                 ('request_delay_ms', models.IntegerField(default=200, verbose_name='Độ trễ giữa request (ms)')),
@@ -88,8 +88,8 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name': 'Cấu hình vnstock runtime',
-                'verbose_name_plural': 'Cấu hình vnstock runtime',
+                'verbose_name': 'Cấu hình vnbroker runtime',
+                'verbose_name_plural': 'Cấu hình vnbroker runtime',
             },
         ),
     ]

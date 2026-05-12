@@ -371,7 +371,7 @@ Thay vì materializer đọc legacy DB (short-term bridge), cần long-term inge
 ```
 data_ingest/
 ├── models.py          ← IngestJob, IngestRun, MarketFeedEvent
-├── vnstock_feed.py    ← Wrapper gọi vnstock trực tiếp (clone adapter từ legacy)
+├── vnbroker_feed.py    ← Wrapper gọi vnbroker trực tiếp (clone adapter từ legacy)
 ├── tasks.py           ← fetch_and_upsert_price_board (thay thế materializers)
 ├── serializers.py
 └── migrations/
@@ -582,14 +582,14 @@ user_workspace/
 ```
 market_data/
 ├── models.py         ← DailyPrice, StockProfile, TickerSessionClose
-├── adapters/         ← vnstock adapter (migrate từ portfolio/adapters/)
+├── adapters/         ← vnbroker adapter (migrate từ portfolio/adapters/)
 │   ├── base.py
-│   └── vnstock_adapter.py
+│   └── vnbroker_adapter.py
 ├── tasks.py          ← sync_daily_price, sync_stock_profiles
 └── migrations/
 ```
 
-**Quan trọng:** Giữ nguyên runtime config pattern `RuntimeVnstockConfig` dưới dạng `market_data.VnstockRuntimeConfig`.
+**Quan trọng:** Giữ nguyên runtime config pattern `RuntimeVnbrokerConfig` dưới dạng `market_data.VnbrokerRuntimeConfig`.
 
 ---
 
@@ -612,7 +612,7 @@ market_data/
 | `run_stream_consumer_batch` | `data_ingest.tasks` | P1 |
 | `trim_streams` | `data_ingest.tasks` | P2 |
 | `sync_stock_profiles` | `market_data.tasks` | P2 |
-| `run_vnstock_price_board_benchmark` | `ops_audit.tasks` | P3 |
+| `run_vnbroker_price_board_benchmark` | `ops_audit.tasks` | P3 |
 | `tasks_telegram.*` | `identity_access.notification_tasks` | P3 |
 | `tasks_sentiment.*` | `signal_intelligence.tasks` | P3 |
 | `tasks_crawl.*` | Standalone `news_ingester` service | P3 |
@@ -1015,7 +1015,7 @@ Sau khi infrastructure ổn định:
 | `models.py:Transaction` | `user_workspace.Transaction` | Move |
 | `models.py:WatchlistGroup/Item` | `user_workspace.WatchlistGroup/Item` | Move |
 | `models.py:SystemAISettings` | `advisory.SystemAISettings` | Move |
-| `models.py:RuntimeVnstockConfig` | `market_data.VnstockRuntimeConfig` | Move |
+| `models.py:RuntimeVnbrokerConfig` | `market_data.VnbrokerRuntimeConfig` | Move |
 | `models.py:SystemEmailAccount` | `ops_audit.SystemEmailAccount` (with KMS) | Move + encrypt |
 | `ai_service.py` | `advisory.ai_client` | Move |
 | `ai_prompt_config_ssot.py` | `advisory.prompt_engine` | Move |
@@ -1025,7 +1025,7 @@ Sau khi infrastructure ổn định:
 | `openclaw_client.py` | `advisory.providers.openclaw` | Move |
 | `permissions.py` | `commercial.permissions` | Move |
 | `quota_service.py` | `commercial.quota` | Move |
-| `adapters/vnstock_adapter.py` | `market_data.adapters.vnstock` | Move |
+| `adapters/vnbroker_adapter.py` | `market_data.adapters.vnbroker` | Move |
 
 ---
 
@@ -1076,7 +1076,7 @@ services:
 | Data loss khi tách DB | LOW | CRITICAL | Backup 7 ngày trước, migration script dry-run |
 | PAT invalidation sau fix hash | HIGH | HIGH | Thông báo trước 48h, auto-rotate script |
 | Materializer lag trong giờ giao dịch | MEDIUM | HIGH | Redis cache layer, fallback sang legacy query |
-| Vnstock API outage | MEDIUM | HIGH | Fallback provider chain (KBS → VCI) đã có |
+| Vnbroker API outage | MEDIUM | HIGH | Fallback provider chain (KBS → VCI) đã có |
 | Frontend regression | MEDIUM | MEDIUM | A/B routing tại nginx, canary release |
 | Celery task duplication (legacy + core) | HIGH | MEDIUM | Shadow run với dedup logic, comparison logging |
 | Legacy DB migration downtime | LOW | HIGH | Rolling migration với compatibility views |

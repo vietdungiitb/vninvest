@@ -15,9 +15,9 @@ from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 import datetime
 
-class RuntimeVnstockConfig(models.Model):
+class RuntimeVnbrokerConfig(models.Model):
     """
-    Singleton configuration for vnstock adapter at runtime.
+    Singleton configuration for vnbroker adapter at runtime.
     One record (pk=1) is created once and updated thereafter.
     Supports zero-downtime configuration changes via admin UI + API.
     """
@@ -28,7 +28,7 @@ class RuntimeVnstockConfig(models.Model):
     max_concurrency = models.IntegerField(
         default=12,
         validators=[MinValueValidator(1), MaxValueValidator(50)],
-        help_text="Maximum number of concurrent vnstock API requests (1-50). "
+        help_text="Maximum number of concurrent vnbroker API requests (1-50). "
         "Benchmark: 12 is stable throughput. Increase for higher volume, "
         "but risk hitting upstream rate limits."
     )
@@ -61,7 +61,7 @@ class RuntimeVnstockConfig(models.Model):
     timeout_config = models.JSONField(
         default=dict,
         blank=True,
-        help_text="Timeout in seconds per vnstock function channel. "
+        help_text="Timeout in seconds per vnbroker function channel. "
         "Format: {\"price_board\": 8, \"intraday\": 8, \"financial_ratio\": 10, "
         "\"history\": 12, \"listing\": 12, \"general\": 8}. "
         "All values positive integers."
@@ -74,7 +74,7 @@ class RuntimeVnstockConfig(models.Model):
         max_length=50,
         default="price_board",
         choices=[
-            ("price_board", "VNStock Price Board (VCI source)"),
+            ("price_board", "VNBroker Price Board (VCI source)"),
             ("stock_intraday_data", "Stock Intraday Data (KBS source)"),
         ],
         help_text="Primary data source for price board. "
@@ -92,7 +92,7 @@ class RuntimeVnstockConfig(models.Model):
     # ╚════════════════════════════════════════════════════════╝
     enable_caching = models.BooleanField(
         default=True,
-        help_text="Enable Redis caching of vnstock results. "
+        help_text="Enable Redis caching of vnbroker results. "
         "Disable for debugging or if Redis is overloaded."
     )
     enable_rate_limit_detection = models.BooleanField(
@@ -126,11 +126,11 @@ class RuntimeVnstockConfig(models.Model):
     )
     
     class Meta:
-        verbose_name = "Vnstock Runtime Configuration"
-        verbose_name_plural = "Vnstock Runtime Configuration"
+        verbose_name = "Vnbroker Runtime Configuration"
+        verbose_name_plural = "Vnbroker Runtime Configuration"
     
     def __str__(self):
-        return f"Vnstock Config (updated by {self.updated_by or 'system'} at {self.updated_at})"
+        return f"Vnbroker Config (updated by {self.updated_by or 'system'} at {self.updated_at})"
     
     @classmethod
     def get_or_create_singleton(cls):
@@ -148,7 +148,7 @@ class RuntimeVnstockConfig(models.Model):
             }
             obj.fallback_sources = ["stock_intraday_data"]
             obj.save()
-            logger.info("RuntimeVnstockConfig singleton created with defaults")
+            logger.info("RuntimeVnbrokerConfig singleton created with defaults")
         return obj
     
     def record_change(self, user, changes: dict):
@@ -191,11 +191,11 @@ class RuntimeVnstockConfig(models.Model):
 
 ```python
 from rest_framework import serializers
-from portfolio.models import RuntimeVnstockConfig
+from portfolio.models import RuntimeVnbrokerConfig
 
-class RuntimeVnstockConfigSerializer(serializers.ModelSerializer):
+class RuntimeVnbrokerConfigSerializer(serializers.ModelSerializer):
     """
-    Serializer for RuntimeVnstockConfig with validation.
+    Serializer for RuntimeVnbrokerConfig with validation.
     """
     updated_by_username = serializers.CharField(
         source='updated_by.username',
@@ -204,7 +204,7 @@ class RuntimeVnstockConfigSerializer(serializers.ModelSerializer):
     )
     
     class Meta:
-        model = RuntimeVnstockConfig
+        model = RuntimeVnbrokerConfig
         fields = [
             'max_concurrency',
             'retry_attempts',
@@ -289,12 +289,12 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
-from portfolio.models import RuntimeVnstockConfig
-from portfolio.serializers import RuntimeVnstockConfigSerializer
+from portfolio.models import RuntimeVnbrokerConfig
+from portfolio.serializers import RuntimeVnbrokerConfigSerializer
 
-class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
+class RuntimeVnbrokerConfigViewSet(viewsets.ViewSet):
     """
-    API ViewSet for managing runtime vnstock configuration.
+    API ViewSet for managing runtime vnbroker configuration.
     
     Endpoints:
       GET    /current/              - Get current configuration
@@ -306,16 +306,16 @@ class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def current(self, request):
-        """Get current vnstock configuration."""
-        config = RuntimeVnstockConfig.get_or_create_singleton()
-        serializer = RuntimeVnstockConfigSerializer(config)
+        """Get current vnbroker configuration."""
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
+        serializer = RuntimeVnbrokerConfigSerializer(config)
         return Response(serializer.data)
     
     @action(detail=False, methods=['patch'])
     def update_config(self, request):
-        """Update vnstock configuration (partial update allowed)."""
-        config = RuntimeVnstockConfig.get_or_create_singleton()
-        serializer = RuntimeVnstockConfigSerializer(
+        """Update vnbroker configuration (partial update allowed)."""
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
+        serializer = RuntimeVnbrokerConfigSerializer(
             config,
             data=request.data,
             partial=True
@@ -342,8 +342,8 @@ class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
             
             return Response({
                 'status': 'success',
-                'message': 'Vnstock configuration updated successfully',
-                'config': RuntimeVnstockConfigSerializer(config).data
+                'message': 'Vnbroker configuration updated successfully',
+                'config': RuntimeVnbrokerConfigSerializer(config).data
             }, status=status.HTTP_200_OK)
         
         return Response({
@@ -355,7 +355,7 @@ class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def changelog(self, request):
         """Get audit changelog of all configuration changes."""
-        config = RuntimeVnstockConfig.get_or_create_singleton()
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
         return Response({
             'status': 'success',
             'changelog': config.changelog or [],
@@ -365,7 +365,7 @@ class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def reset_to_defaults(self, request):
         """Reset configuration to default values."""
-        config = RuntimeVnstockConfig.get_or_create_singleton()
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
         
         # Save old values for changelog
         old_config = config.to_dict()
@@ -394,7 +394,7 @@ class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
         return Response({
             'status': 'success',
             'message': 'Configuration reset to defaults',
-            'config': RuntimeVnstockConfigSerializer(config).data
+            'config': RuntimeVnbrokerConfigSerializer(config).data
         })
 ```
 
@@ -402,7 +402,7 @@ class RuntimeVnstockConfigViewSet(viewsets.ViewSet):
 
 ## 4️⃣ Signal Handler Template
 
-### `backend/portfolio/models.py` - Add after RuntimeVnstockConfig
+### `backend/portfolio/models.py` - Add after RuntimeVnbrokerConfig
 
 ```python
 from django.db.models.signals import post_save
@@ -411,10 +411,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-@receiver(post_save, sender=RuntimeVnstockConfig)
-def invalidate_vnstock_config_cache(sender, instance, created, **kwargs):
+@receiver(post_save, sender=RuntimeVnbrokerConfig)
+def invalidate_vnbroker_config_cache(sender, instance, created, **kwargs):
     """
-    Signal handler: Invalidate vnstock adapter cache when configuration changes.
+    Signal handler: Invalidate vnbroker adapter cache when configuration changes.
     
     Flow:
       1. Admin updates config via API/admin
@@ -429,23 +429,23 @@ def invalidate_vnstock_config_cache(sender, instance, created, **kwargs):
     
     try:
         # Import here to avoid circular imports
-        from portfolio.adapters.vnstock_adapter import (
-            VnstockConfigManager,
+        from portfolio.adapters.vnbroker_adapter import (
+            VnbrokerConfigManager,
             _initialize_adapter
         )
         
         # Clear cache
-        VnstockConfigManager.invalidate_cache()
-        logger.info(f"Vnstock config cache invalidated")
+        VnbrokerConfigManager.invalidate_cache()
+        logger.info(f"Vnbroker config cache invalidated")
         
         # Reinitialize adapter with new settings
         _initialize_adapter()
         logger.info(
-            f"Vnstock adapter reinitialized. "
+            f"Vnbroker adapter reinitialized. "
             f"Changed by: {instance.updated_by or 'system'}"
         )
     except Exception as e:
-        logger.error(f"Failed to invalidate vnstock cache: {e}")
+        logger.error(f"Failed to invalidate vnbroker cache: {e}")
         # Don't raise - let config save succeed even if cache clear fails
 ```
 
@@ -453,7 +453,7 @@ def invalidate_vnstock_config_cache(sender, instance, created, **kwargs):
 
 ## 5️⃣ Migration Template
 
-### `backend/portfolio/migrations/000X_add_runtimevnstockconfig.py`
+### `backend/portfolio/migrations/000X_add_runtimevnbrokerconfig.py`
 
 ```python
 from django.db import migrations, models
@@ -461,8 +461,8 @@ from django.contrib.auth.models import User
 
 def create_default_config(apps, schema_editor):
     """Create default singleton config on migration."""
-    RuntimeVnstockConfig = apps.get_model('portfolio', 'RuntimeVnstockConfig')
-    RuntimeVnstockConfig.objects.get_or_create(
+    RuntimeVnbrokerConfig = apps.get_model('portfolio', 'RuntimeVnbrokerConfig')
+    RuntimeVnbrokerConfig.objects.get_or_create(
         pk=1,
         defaults={
             'max_concurrency': 12,
@@ -488,7 +488,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='RuntimeVnstockConfig',
+            name='RuntimeVnbrokerConfig',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('max_concurrency', models.IntegerField(default=12, help_text='Max concurrent requests (1-50)')),
@@ -496,7 +496,7 @@ class Migration(migrations.Migration):
                 ('retry_backoff_seconds', models.FloatField(default=0.35, help_text='Backoff seconds (0.0-5.0)')),
                 ('rate_limit_cooldown_seconds', models.IntegerField(default=20, help_text='Cooldown seconds (5-120)')),
                 ('timeout_config', models.JSONField(default=dict, blank=True, help_text='Timeout per channel (JSON)')),
-                ('price_board_source', models.CharField(choices=[('price_board', 'VNStock Price Board (VCI)'), ('stock_intraday_data', 'Stock Intraday (KBS)')], default='price_board', max_length=50)),
+                ('price_board_source', models.CharField(choices=[('price_board', 'VNBroker Price Board (VCI)'), ('stock_intraday_data', 'Stock Intraday (KBS)')], default='price_board', max_length=50)),
                 ('fallback_sources', models.JSONField(default=list, blank=True, help_text='Fallback sources (list)')),
                 ('enable_caching', models.BooleanField(default=True)),
                 ('enable_rate_limit_detection', models.BooleanField(default=True)),
@@ -506,7 +506,7 @@ class Migration(migrations.Migration):
                 ('changelog', models.JSONField(default=list, blank=True)),
                 ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=models.SET_NULL, to='auth.user')),
             ],
-            options={'verbose_name': 'Vnstock Runtime Configuration', 'verbose_name_plural': 'Vnstock Runtime Configuration'},
+            options={'verbose_name': 'Vnbroker Runtime Configuration', 'verbose_name_plural': 'Vnbroker Runtime Configuration'},
         ),
         migrations.RunPython(create_default_config),
     ]
@@ -516,23 +516,23 @@ class Migration(migrations.Migration):
 
 ## 6️⃣ Unit Test Template
 
-### `backend/portfolio/tests/test_runtime_vnstock_config.py`
+### `backend/portfolio/tests/test_runtime_vnbroker_config.py`
 
 ```python
 from django.test import TestCase
 from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from rest_framework import status
-from portfolio.models import RuntimeVnstockConfig
-from portfolio.serializers import RuntimeVnstockConfigSerializer
+from portfolio.models import RuntimeVnbrokerConfig
+from portfolio.serializers import RuntimeVnbrokerConfigSerializer
 
-class RuntimeVnstockConfigModelTests(TestCase):
+class RuntimeVnbrokerConfigModelTests(TestCase):
     def setUp(self):
-        self.config = RuntimeVnstockConfig.get_or_create_singleton()
+        self.config = RuntimeVnbrokerConfig.get_or_create_singleton()
     
     def test_singleton_pattern(self):
         """Only one config record (pk=1) exists."""
-        self.assertEqual(RuntimeVnstockConfig.objects.count(), 1)
+        self.assertEqual(RuntimeVnbrokerConfig.objects.count(), 1)
         self.assertEqual(self.config.pk, 1)
     
     def test_record_change_appends_to_changelog(self):
@@ -545,13 +545,13 @@ class RuntimeVnstockConfigModelTests(TestCase):
         self.assertEqual(entry['user'], 'testuser')
         self.assertEqual(entry['changes']['test_field']['old'], 'a')
 
-class RuntimeVnstockConfigSerializerTests(TestCase):
+class RuntimeVnbrokerConfigSerializerTests(TestCase):
     def setUp(self):
-        self.config = RuntimeVnstockConfig.get_or_create_singleton()
+        self.config = RuntimeVnbrokerConfig.get_or_create_singleton()
     
     def test_serialize_valid(self):
         """Serializer outputs all fields correctly."""
-        serializer = RuntimeVnstockConfigSerializer(self.config)
+        serializer = RuntimeVnbrokerConfigSerializer(self.config)
         data = serializer.data
         
         self.assertEqual(data['max_concurrency'], 12)
@@ -559,7 +559,7 @@ class RuntimeVnstockConfigSerializerTests(TestCase):
     
     def test_validate_max_concurrency_range(self):
         """Serializer rejects invalid max_concurrency."""
-        serializer = RuntimeVnstockConfigSerializer(
+        serializer = RuntimeVnbrokerConfigSerializer(
             self.config,
             data={'max_concurrency': 100},
             partial=True
@@ -569,7 +569,7 @@ class RuntimeVnstockConfigSerializerTests(TestCase):
     
     def test_validate_timeout_config_numeric(self):
         """Serializer rejects non-numeric timeout values."""
-        serializer = RuntimeVnstockConfigSerializer(
+        serializer = RuntimeVnbrokerConfigSerializer(
             self.config,
             data={'timeout_config': {'price_board': 'invalid'}},
             partial=True
@@ -577,37 +577,37 @@ class RuntimeVnstockConfigSerializerTests(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('timeout_config', serializer.errors)
 
-class RuntimeVnstockConfigAPITests(APITestCase):
+class RuntimeVnbrokerConfigAPITests(APITestCase):
     def setUp(self):
         self.admin_user = User.objects.create_superuser('admin', 'admin@test.com', 'admin')
         self.client.force_authenticate(user=self.admin_user)
     
     def test_get_current_config(self):
-        """GET /api/admin-ops/vnstock-config/current/ returns config."""
-        response = self.client.get('/api/admin-ops/vnstock-config/current/')
+        """GET /api/admin-ops/vnbroker-config/current/ returns config."""
+        response = self.client.get('/api/admin-ops/vnbroker-config/current/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['max_concurrency'], 12)
     
     def test_patch_update_config(self):
-        """PATCH /api/admin-ops/vnstock-config/update_config/ updates config."""
+        """PATCH /api/admin-ops/vnbroker-config/update_config/ updates config."""
         data = {'max_concurrency': 20}
         response = self.client.patch(
-            '/api/admin-ops/vnstock-config/update_config/',
+            '/api/admin-ops/vnbroker-config/update_config/',
             data
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['config']['max_concurrency'], 20)
     
     def test_post_reset_to_defaults(self):
-        """POST /api/admin-ops/vnstock-config/reset_to_defaults/ resets."""
+        """POST /api/admin-ops/vnbroker-config/reset_to_defaults/ resets."""
         # First change something
-        config = RuntimeVnstockConfig.get_or_create_singleton()
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
         config.max_concurrency = 30
         config.save()
         
         # Then reset
         response = self.client.post(
-            '/api/admin-ops/vnstock-config/reset_to_defaults/'
+            '/api/admin-ops/vnbroker-config/reset_to_defaults/'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['config']['max_concurrency'], 12)

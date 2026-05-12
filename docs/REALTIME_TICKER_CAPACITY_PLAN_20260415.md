@@ -3,7 +3,7 @@
 ## 1. Kết luận ngắn
 
 - Không thể giải quyết bài toán bằng cách chỉ tăng `DRF_REALTIME_TICKER_RATE`.
-- Mô hình đúng là: `vnstock -> batch prefetch -> Redis cache -> WebSocket fan-out -> HTTP ticker chỉ đọc cache`.
+- Mô hình đúng là: `vnbroker -> batch prefetch -> Redis cache -> WebSocket fan-out -> HTTP ticker chỉ đọc cache`.
 - Mọi đường fallback khiến request HTTP có thể gọi upstream trực tiếp phải bị loại bỏ khỏi đường nóng.
 
 ## 2. Số đo tham chiếu trong repo ngày 2026-04-15
@@ -114,19 +114,19 @@ $$
 
 ## 3.3 Kết luận capacity
 
-- `vnstock/KBS` hiện đủ cho bài toán nếu và chỉ nếu truy vấn được gom theo `unique symbols`, không theo user.
+- `vnbroker/KBS` hiện đủ cho bài toán nếu và chỉ nếu truy vấn được gom theo `unique symbols`, không theo user.
 - giới hạn đỏ hiện tại là khoảng `3000 unique symbols @ 5s cadence @ batch 60`.
 - với thị trường Việt Nam, unique active symbols thấp hơn nhiều so với `user_count x watchlist_size`, nên hệ thống có thể scale bằng fan-out.
 
 ## 4. Redis cần gánh gì
 
-Redis không phải để thay `vnstock`; Redis là lớp snapshot và fan-out metadata.
+Redis không phải để thay `vnbroker`; Redis là lớp snapshot và fan-out metadata.
 
 Mỗi ticker hot path hiện nên chỉ còn:
 
 - `1 cache.get(ticker:<SYMBOL>)`
 - không gọi upstream
-- nếu miss: trả stale hoặc 503 có chủ đích, không fallback gọi `vnstock` trong request handler
+- nếu miss: trả stale hoặc 503 có chủ đích, không fallback gọi `vnbroker` trong request handler
 
 Ở mức `6000 requests/phút`:
 
@@ -165,7 +165,7 @@ Hot path đúng:
 - stale cache còn tồn tại: trả payload stale + metadata freshness
 - miss hoàn toàn: trả `503` hoặc payload degraded có `source=cache_miss` và để frontend đợi WS/prefetch
 
-Không gọi `vnstock` trong request thread.
+Không gọi `vnbroker` trong request thread.
 
 ### 5.3 Chuyển từ “collect per user” sang “collect per shard of symbols”
 
@@ -206,8 +206,8 @@ Ví dụ:
 - `TICKER_PREFETCH_BATCH_SIZE=60`
 - `TICKER_PREFETCH_SYMBOL_LIMIT=1800`
 - `TICKER_PREFETCH_INTERVAL=5`
-- `VNSTOCK_TRADING_AUTO_PRIMARY=kbs`
-- `VNSTOCK_KBS_ADAPTIVE_START_CONCURRENCY=16`
+- `VNBROKER_TRADING_AUTO_PRIMARY=kbs`
+- `VNBROKER_KBS_ADAPTIVE_START_CONCURRENCY=16`
 - tắt mọi on-demand upstream fetch trong request path
 
 ### 6.2 Mục tiêu rollout lớn hơn

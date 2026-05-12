@@ -1,8 +1,7 @@
 from django.contrib import admin
-from django.urls import include, path, re_path
+from django.urls import include, path
 
 from . import views_health
-from .legacy_proxy import legacy_proxy_view
 
 from user_workspace.legacy_views import (
     SecuritiesGroupDetailView,
@@ -50,7 +49,4 @@ urlpatterns = [
     path('api/stock-management/seed/', SecuritiesSeedView.as_view(), name='legacy-stock-management-seed'),
     path('api/stock-management/sync/', SecuritiesSyncView.as_view(), name='legacy-stock-management-sync'),
 
-    # SFI-B1: Catch-all proxy for unmigrated legacy endpoints.
-    path('api/v1/admin/crawl/', legacy_proxy_view, {'path': 'v1/admin/crawl/'}), # Explicit for crawl
-    re_path(r'^api/(?P<path>.*)$', legacy_proxy_view),
 ]

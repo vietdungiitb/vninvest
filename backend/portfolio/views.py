@@ -192,6 +192,7 @@ from .views_ai_advisory_management import (
     ai_advisory_canonical_symbol_api,
     delete_current_whale_advisory_api,
     refresh_whale_advisory_api,
+    whale_advisory_manual_refresh_status_api,
     whale_advisory_auto_refresh_info_api,
 )
 from .views_ai_advisory_session import (
@@ -219,9 +220,12 @@ from .views_admin_runtime import (
     operator_audit_request_detail_api,
     operator_audit_requests_api,
     operator_jobs_api,
+    operator_tenant_activate_api,
+    operator_tenant_change_plan_api,
     operator_tenant_detail_api,
     operator_tenant_pats_api,
     operator_tenant_service_accounts_api,
+    operator_tenant_suspend_api,
     operator_tenants_api,
     operator_overview_api,
     admin_system_ai_audit_logs_api,

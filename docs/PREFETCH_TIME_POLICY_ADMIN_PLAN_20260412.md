@@ -2,7 +2,7 @@
 
 ## 1) Muc tieu
 
-Xay dung chuc nang cau hinh theo khung gio tu trang quan tri de he thong tu dong giam tan suat truy van upstream (vnstock) ngoai gio giao dich, dac biet:
+Xay dung chuc nang cau hinh theo khung gio tu trang quan tri de he thong tu dong giam tan suat truy van upstream (vnbroker) ngoai gio giao dich, dac biet:
 - Truoc gio giao dich 30 phut.
 - Sau gio giao dich 30 phut.
 

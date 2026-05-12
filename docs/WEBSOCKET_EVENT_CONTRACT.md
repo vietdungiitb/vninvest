@@ -31,7 +31,7 @@ Guidelines:
   "symbol": "SSI",
   "ts": "2026-04-01T09:30:05.123+07:00",
   "seq": 102934,
-  "source": "collector-vnstock-vci",
+  "source": "collector-vnbroker-vci",
   "data": {}
 }
 ```

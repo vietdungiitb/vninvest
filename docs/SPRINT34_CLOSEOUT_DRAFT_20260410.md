@@ -44,7 +44,7 @@ Branch: deploy
 
 ## 4) Pending sign-off items
 
-1. Source parity validation across redis_stream, intraday_tick_db, vnstock fallback
+1. Source parity validation across redis_stream, intraday_tick_db, vnbroker fallback
 2. Manual severity sample review (>= 30 events)
 3. Formal KPI before/after approval by PM + QA + DevOps
 

@@ -13,7 +13,7 @@ Sprint 21 backlog gom S21-01..S21-12. Phan code boundary da tien trien rat xa; p
 | S21-03 | DONE | portfolio/exceptions.py da co ExternalSystemException + BusinessLogicRuleException va map dung trong code/test. |
 | S21-04 | PENDING OPS | Chua the verify Grafana/APM + alert fire test trong moi truong code local. |
 | S21-05 | DONE | Da co inventory tai docs/SPRINT21_MARKET_DATA_ENDPOINT_INVENTORY.md. |
-| S21-06 | DONE | adapters/vnstock_adapter.py da tach network/timeout/rate-limit wrapper. |
+| S21-06 | DONE | adapters/vnbroker_adapter.py da tach network/timeout/rate-limit wrapper. |
 | S21-07 | DONE | adapters/cache_adapter.py da tach cache boundary; them test happy/miss path trong backend/portfolio/tests/test_adapters.py. |
 | S21-08 | DONE | market_data_service.py da gom business logic market data, giu boundary mot chieu. |
 | S21-09 | DONE | market_views.py + toggle routes realtime/stock da hoat dong sau flag. |

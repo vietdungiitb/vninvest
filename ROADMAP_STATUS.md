@@ -402,7 +402,7 @@ UserConfig settings
 **Delivered scope (100%):**
 - ✅ **A1**: Deterministic event identity (OrderFlowSignal.event_id, unique indexed)
 - ✅ **A2**: Pagination contract v2 (cursor deterministic, has_more/next_cursor semantics)
-- ✅ **A2.3**: Source parity validation (8/8 tests PASS across redis_stream, intraday_tick_db, vnstock)
+- ✅ **A2.3**: Source parity validation (8/8 tests PASS across redis_stream, intraday_tick_db, vnbroker)
 - ✅ **B1**: Dark-flow severity remap (rule-based: strength < 40→info, 40-69→warning, ≥70→urgent)
 - ✅ **B1.3**: Severity sample validation (32 events, 100% accuracy)
 

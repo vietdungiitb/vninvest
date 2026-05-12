@@ -193,7 +193,7 @@
   DoD:  
   - `GET /api/realtime/ticker/<symbol>/` → 200 với price data  
   - `GET /api/realtime/tickers/?symbols=VIC,VHM` → 200 với list  
-  - Data từ legacy readonly DB (không cần vnstock trực tiếp)  
+  - Data từ legacy readonly DB (không cần vnbroker trực tiếp)  
   - Response schema khớp với legacy (verified bằng diff tool)  
   Files: `packages/core/backend/src/signal_intelligence/views.py`, `urls.py`
 
@@ -403,10 +403,10 @@
 
 ---
 
-- [ ] `SFI-B6.2` **vnstock-config CRUD + changelog**  
+- [ ] `SFI-B6.2` **vnbroker-config CRUD + changelog**  
   Owner: Backend Dev 2  
   Estimate: 1 ngày  
-  DoD: 5 vnstock config endpoints hoạt động  
+  DoD: 5 vnbroker config endpoints hoạt động  
   Files: `packages/core/backend/src/ops_audit/views.py`
 
 ---

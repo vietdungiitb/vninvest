@@ -2,7 +2,7 @@ id,title,priority,phase,owner,estimate_points,depends_on,definition_of_done,stat
 S16-01,volume field in _build_aggregate_event_payload,P1,Phase 1,BE-1,1,,aggregate feed record includes volume int; no crash when field absent,Done
 S16-02,volume field in _build_aggregate_event_payload_from_record,P1,Phase 1,BE-1,1,S16-01,record.get('volume') or 0 safe fallback,Done
 S16-03,volume field in _build_stream_aggregate_records,P1,Phase 1,BE-1,1,S16-01,tick.get('volume') parsed; volume in record dict,Done
-S16-04,volume field in _build_vnstock_aggregate_records,P1,Phase 1,BE-1,1,S16-01,tries volume/vol/matchVolume keys; graceful fallback 0,Done
+S16-04,volume field in _build_vnbroker_aggregate_records,P1,Phase 1,BE-1,1,S16-01,tries volume/vol/matchVolume keys; graceful fallback 0,Done
 S16-05,totalVolume accumulation in WhaleAlertsHub,P1,Phase 2,FE-1,2,S16-01,buildSymbolStatsFromFeed accumulates totalVolume per symbol,Done
 S16-06,value-based getFrequencyLabel,P1,Phase 2,FE-1,1,S16-05,thresholds 5B/2B/500M VND; returns correct label+color,Done
 S16-07,TrackedSymbolCard whale avg price display,P1,Phase 2,FE-1,2,S16-05|S16-06,shows Avg gia/Avg lenh/total; hides avg price when volume=0,Done

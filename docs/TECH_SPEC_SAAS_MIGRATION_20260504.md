@@ -40,14 +40,14 @@ Spec này định nghĩa các quyết định kỹ thuật bắt buộc cho toà
     │  commercial    │  │  market_data   │  │  ops_audit    │
     │  Subscription  │  │  DailyPrice    │  │  SystemEmail  │
     │  Quota         │  │  StockProfile  │  │  AuditLog     │
-    │  Plan          │  │  VnstockConfig │  └───────────────┘
+    │  Plan          │  │  VnbrokerConfig │  └───────────────┘
     └────────────────┘  └────────┬───────┘
                                  │
                         ┌────────┴───────────┐
                         │    data_ingest      │
                         │    IngestJob        │
                         │    MarketTick       │
-                        │    VnstockFeed      │
+                        │    VnbrokerFeed      │
                         └────────┬────────────┘
                                  │
               ┌──────────────────┼──────────────────┐

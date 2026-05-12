@@ -5,7 +5,7 @@ Create a single source‑of‑truth file that records **all decisions, tasks, an
 
 ## Contents
 1. **Reading order** – see `BACKGROUND_SERVICES_CONTROL_PLANE_INDEX_20260422.md`.
-2. **High‑level architecture** – Django + Celery + Redis + PostgreSQL, re‑using `vnstock_adapter.py`.
+2. **High‑level architecture** – Django + Celery + Redis + PostgreSQL, re‑using `vnbroker_adapter.py`.
 3. **Pilot jobs (Phase 0)** – stock‑profile sync, market‑snapshot, whale‑advisory.
 4. **Full job set (Phase 1)** – intraday tick, historical price, financial ratios, etc.
 5. **Key decisions to lock** – model schema, idempotency key format, soft‑stop flag, permission classes.

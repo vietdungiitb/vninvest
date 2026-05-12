@@ -183,7 +183,7 @@ OpenCore Copyright © 2026 VietDung & Contributors
 Third-Party Licenses:
 - Django: BSD 3-Clause
 - React: MIT
-- vnstock: MIT (attribution to maintainers)
+- vnbroker: MIT (attribution to maintainers)
 - [List all major dependencies with licenses]
 
 Data Attribution:

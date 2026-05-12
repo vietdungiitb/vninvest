@@ -2,7 +2,7 @@
 
 **Task:** A2.3 — Complete source parity matrix sign-off
 
-**Acceptance Criteria:** "Matrix signed off" - validate contract field consistency across redis_stream, intraday_tick_db, vnstock fallback
+**Acceptance Criteria:** "Matrix signed off" - validate contract field consistency across redis_stream, intraday_tick_db, vnbroker fallback
 
 ---
 
@@ -162,7 +162,7 @@ Result: Response structure matches contract v2 specification
 |--------|----------|--------|
 | **redis_stream (Primary)** | 5-page traversal, cursor replay, field presence | ✅ PASS |
 | **intraday_tick_db (Fallback)** | Implicit via pagination contract validation | ✅ PASS |
-| **vnstock (External)** | Mock-validated via error handling tests | ✅ PASS |
+| **vnbroker (External)** | Mock-validated via error handling tests | ✅ PASS |
 | **Contract v2** | Response structure + pagination semantics | ✅ PASS |
 
 ---

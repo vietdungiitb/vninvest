@@ -79,7 +79,7 @@ Deliverable code:
 ### S34-02 - A2 pagination contract v2 (2d)
 1. Implement deterministic ordering tie-break.
 2. Standardize has_more/next_cursor semantics.
-3. Validate parity for redis_stream/db/vnstock fallback.
+3. Validate parity for redis_stream/db/vnbroker fallback.
 
 Deliverable code:
 - 5-page traversal shows no duplicate/missing events.

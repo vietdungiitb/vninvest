@@ -3,7 +3,7 @@
 
 ## Deferred - Stock Detail financial live fallback [2026-04-16]
 
-### [ ] Rebuild financial live source independent of `vnstock.finance.ratio()`
+### [ ] Rebuild financial live source independent of `vnbroker.finance.ratio()`
 ```
 Scope:
 - Stock Detail financial panel hien tai da failover/fail-soft dung contract
@@ -15,7 +15,7 @@ Huong lam tiep:
 - Neu upstream van khong on dinh, bo sung persisted snapshot/cache noi bo cho financial panel
 - Giu `source` minh bach trong API de frontend hien degraded state dung ngu canh
 ```
-*Latest verify*: `/api/stock-management/stocks/MWG/financials/` -> `years=[]`, `source='vnstock_unavailable'`
+*Latest verify*: `/api/stock-management/stocks/MWG/financials/` -> `years=[]`, `source='vnbroker_unavailable'`
 
 ## Phase 1: Holdings + Core Alerts [3 files, 1 day]
 

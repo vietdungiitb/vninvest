@@ -2,7 +2,7 @@
 
 - Hoàn tất refactor canonical price unit cho quote prices theo chuẩn `THOUSAND_VND` xuyên suốt từ adapter -> services -> market data -> realtime collector -> prefetch tasks -> frontend hiển thị.
 - Thêm module chuẩn hóa đơn vị giá `portfolio/price_units.py` và bộ test đi kèm (`test_price_units_canonical.py`, `test_adapter_canonical.py`) để khóa contract canonical bằng test regression.
-- Chuẩn hóa adapter `vnstock_adapter` để mọi output quote trả về cùng chuẩn đơn vị, giảm phụ thuộc heuristic ở các lớp downstream.
+- Chuẩn hóa adapter `vnbroker_adapter` để mọi output quote trả về cùng chuẩn đơn vị, giảm phụ thuộc heuristic ở các lớp downstream.
 - Sửa constants services để đồng bộ chuẩn hệ thống, đồng thời cập nhật metadata/logging khi ingest DailyPrice.
 - Gỡ heuristic normalize ở frontend (Watchlist, Dashboard, StockDetail), thay bằng luồng tin cậy dữ liệu canonical từ backend.
 - Bổ sung command migration `finalize_price_unit_migration` (safe default dry-run, chỉ ghi DB khi `--force`).
@@ -14,7 +14,7 @@
 - Bổ sung helper lịch thị trường dùng chung cho prefetch/runtime fallback: hỗ trợ `holiday_dates` theo policy, phân giải `market-local date` nhất quán cho `session close retention`, `session close date` và `offpeak ingest`.
 - Mở rộng `prefetch_time_policy` API/UI với `market.holiday_dates`, cho phép staff cấu hình ngày nghỉ thị trường ngay trên Admin Ops thay vì hardcode theo cuối tuần.
 - Thêm regression tests cho holiday offhours và retention theo market timezone để khóa drift khi mở rộng đa thị trường/timezone.
-- Seed mặc định `VN_STOCK` holiday dates từ calendar có sẵn trong `vnstock` cho năm hiện tại, giúp runtime mới có dữ liệu ngày nghỉ usable ngay sau deploy/dev reset.
+- Seed mặc định `VN_STOCK` holiday dates từ calendar có sẵn trong `vnbroker` cho năm hiện tại, giúp runtime mới có dữ liệu ngày nghỉ usable ngay sau deploy/dev reset.
 - Warmup cache startup giờ bỏ qua êm khi DB/schema chưa sẵn sàng, tránh log stacktrace nhiễu trong test bootstrap và fresh dev startup.
 ## Ghi chú thay đổi ngày 12/04/2026
 
@@ -52,7 +52,7 @@
 - Bổ sung tổng hợp lỗi theo trường và cơ chế map `field_errors` từ backend về UI để debug cấu hình nhanh hơn.
 - Thêm nút reset form về giá trị đã tải gần nhất để thao tác cấu hình runtime an toàn hơn.
 - Chốt PR-6 docs/evidence: cập nhật execution board, task tracker, release gates và thêm báo cáo bằng chứng `docs/PREFETCH_TIME_POLICY_PR6_EVIDENCE_20260412.md` (ghi nhận pass test focused + blocker cục bộ với DB-dependent admin API tests).
-- Gỡ blocker test DB local cho nhóm admin API bằng cách chuẩn hóa lệnh evidence test với `DB_ENGINE=sqlite` và Redis timeout ngắn (không phụ thuộc Postgres provisioning tại local).
+- Gỡ blocker test DB local cho nhóm admin API bằng cách chuẩn hóa lệnh evidence test với Postgres local và Redis timeout ngắn.
 - Bổ sung script `backend/run_prefetch_policy_pr6_tests.ps1` để chạy deterministic backend evidence suite cho prefetch time policy.
 - Bổ sung script vận hành `scripts/ops/prefetch_policy_capture_baseline.ps1` và playbook `docs/PREFETCH_TIME_POLICY_BASELINE_CAPTURE_PLAYBOOK_20260412.md` để chụp baseline Gate B2 (429/cooldown/freshness/p95 latency) trước canary.
 - Đã smoke-run script baseline capture thành công (public health mode, không auth) và lưu artifact mẫu tại `docs/ops-evidence/prefetch-policy-baseline/20260412-074032/`; cần chạy lại có auth để hoàn tất đủ KPI Gate B2.
@@ -67,7 +67,7 @@
 
 - Cập nhật logic window cho whale aggregate để `session` bắt đầu từ giờ mở cửa thị trường đến thời điểm hiện tại, còn `5d` neo từ market-open của 4 ngày trước.
 - Chuẩn hóa bộ lọc thời gian cho cả stream event và intraday tick theo điều kiện `start <= ts <= now`, tránh việc các window ngắn trả kết quả gần như giống nhau.
-- Bổ sung graceful fallback cho aggregate endpoint: nếu DB page rỗng và provider vnstock lỗi, endpoint không còn trả `502` ngoài ý muốn mà degrade về aggregate response an toàn.
+- Bổ sung graceful fallback cho aggregate endpoint: nếu DB page rỗng và provider vnbroker lỗi, endpoint không còn trả `502` ngoài ý muốn mà degrade về aggregate response an toàn.
 - Đồng bộ logic trên cả refactored service path và helper/view path cũ để tránh lệch hành vi giữa hai luồng.
 - Ổn định regression test `test_refactored_whale_feed_aggregate_applies_window_filter` bằng local date/time thay cho mốc `10:15:00` hardcode, đồng thời pin env market-open trong test.
 
@@ -75,11 +75,11 @@
 
 ## Ghi chú thay đổi ngày 04/04/2026
 
-- Thay thư viện `vnstock3>=0.3.0.9` bằng fork tùy chỉnh `vnstock @ git+https://github.com/vietdung-edusuccess/vnstock.git@main` trong `backend/requirements.txt`.
-- Phiên bản runtime hiện tại được cài từ branch `main` của fork `vietdung-edusuccess/vnstock`.
+- Thay thư viện `vnbroker3>=0.3.0.9` bằng fork tùy chỉnh `vnbroker @ git+https://github.com/vietdung-edusuccess/vnbroker.git@main` trong `backend/requirements.txt`.
+- Phiên bản runtime hiện tại được cài từ branch `main` của fork `vietdung-edusuccess/vnbroker`.
 - Lý do: sử dụng bản fork riêng có các thay đổi chưa merge vào upstream.
 - Cập nhật theo hướng thư viện nâng cấp throughput: bỏ monkey-patch bypass rate-limit trong `config/settings.py` và dùng đúng runtime từ thư viện.
-- Bổ sung dependency `asyncio-throttle>=1.0.2` trong `backend/requirements.txt` (yêu cầu mới từ bản vnstock nâng cấp).
+- Bổ sung dependency `asyncio-throttle>=1.0.2` trong `backend/requirements.txt` (yêu cầu mới từ bản vnbroker nâng cấp).
 - Bổ sung endpoint `GET /api/health/prefetch/` để theo dõi trạng thái ticker prefetch, metadata lần chạy gần nhất và sample cache hits.
 - Mở rộng phạm vi symbol cho task `prefetch_ticker_price_board`: gom từ `TrackedSymbol`, `WatchlistItem`, `PriceAlertRule`, `Transaction`; hỗ trợ batch size và symbol limit qua biến môi trường.
 - Bổ sung script `backend/start_stack.ps1` để khởi động nhanh backend + Celery worker + Celery beat trên Windows.

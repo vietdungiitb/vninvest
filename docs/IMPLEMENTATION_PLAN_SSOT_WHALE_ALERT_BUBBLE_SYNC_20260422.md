@@ -94,7 +94,7 @@ Trường bắt buộc per event:
 - `volume`
 - `matched_value_vnd`
 - `threshold_vnd`
-- `source` (`redis_stream|intraday_tick_db|vnstock`)
+- `source` (`redis_stream|intraday_tick_db|vnbroker`)
 - `event_id`
 - `quality_flags` (`has_ref_price`, `price_unit_normalized`, `degraded_mode`)
 
@@ -207,7 +207,7 @@ Không xóa ngay các field cũ để tránh phá tương thích.
 ## 7. Scheduling and Operations
 
 - Không thêm scheduler mới ở phase này.
-- Dùng luồng dữ liệu hiện tại: stream -> db -> vnstock fallback.
+- Dùng luồng dữ liệu hiện tại: stream -> db -> vnbroker fallback.
 - Áp dụng timeout/rate-limit policy hiện hữu của realtime stack.
 
 ---

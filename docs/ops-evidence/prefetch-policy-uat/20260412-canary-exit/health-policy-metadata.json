@@ -1,4 +1,4 @@
-﻿{
+{
     "admin_ops_stats":  {
                             "ok":  true,
                             "body":  {
@@ -18,7 +18,7 @@
                                                                          "finished_at":  "2026-04-12T02:13:38.181321+00:00",
                                                                          "success":  true,
                                                                          "mode":  "all",
-                                                                         "message":  "Da dong bo 59 ma chung khoan (tao moi: 1, cap nhat: 58). vnstock lá»i: Failed to fetch data: 429 - Too Many Requests. DÃ¹ng danh sÃ¡ch máº·c Äá»nh. KhÃ´ng láº¥y ÄÆ°á»£c company_name/exchange tá»« vnstock."
+                                                                         "message":  "Da dong bo 59 ma chung khoan (tao moi: 1, cap nhat: 58). vnbroker lá»i: Failed to fetch data: 429 - Too Many Requests. DÃ¹ng danh sÃ¡ch máº·c Äá»nh. KhÃ´ng láº¥y ÄÆ°á»£c company_name/exchange tá»« vnbroker."
                                                                      },
                                          "channel_layer_type":  "redis",
                                          "realtime_enabled":  true,

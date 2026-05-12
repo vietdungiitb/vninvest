@@ -89,14 +89,14 @@ Fixed critical issues where whale advisory and AI features were not respecting i
 - Inconsistency with historical/reference price data (which was in VND)
 
 **Solution:**
-- **Adapter:** `vnstock_adapter.py` → `_normalize_price_board_dataframe()`
+- **Adapter:** `vnbroker_adapter.py` → `_normalize_price_board_dataframe()`
   - Multiplies price-board price fields × 1000
   - Applied centrally before DataFrame return
 - **Scope:** Only VCI/realtime price board (historical data already correct)
 - **Fallback:** Detects if price looks off and auto-scales
 
 **Files Modified:**
-- `backend/portfolio/adapters/vnstock_adapter.py`
+- `backend/portfolio/adapters/vnbroker_adapter.py`
 - `backend/portfolio/tests/test_adapters.py` (normalization tests)
 
 **Validation:**

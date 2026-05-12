@@ -2,21 +2,20 @@
 Legacy backend PAT authentication.
 
 Allows the legacy Django backend to accept PAT tokens issued by core-api.
-Both services share the same PostgreSQL database, so PAT credentials can be
-looked up directly from the `identity_access_corepatcredential` table.
+PAT credentials are resolved through the canonical `identity_access` ORM.
 
-This is intentionally a transitional adapter for the SFI proxy phase.
-When core-api is fully independent, this module can be removed.
+This is intentionally a transitional adapter for the SaaS cutover phase.
+When the legacy backend is fully retired, this module can be removed.
 """
 
 import hashlib
 import hmac
 import os
 import secrets
-import uuid as _uuid
 
 from django.contrib.auth import get_user_model
-from django.db import connection
+
+from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
 
 User = get_user_model()
 
@@ -33,140 +32,98 @@ def _resolve_user_from_pat(raw_secret: str):
     """
     Validate a PAT token and return the associated Django User or None.
 
-    Queries identity_access_corepatcredential via raw SQL to avoid
-    importing core-api models into the legacy codebase.
+    Uses canonical identity_access ORM models so the legacy backend no longer
+    depends on direct SQL against SaaS tables.
     """
     raw_secret = str(raw_secret or '').strip()
     if not raw_secret.startswith(_PAT_PREFIX):
         return None
-    prefix = raw_secret[:_PREFIX_LEN]
-    expected_hash = _hash_pat_secret(raw_secret)
-
-    with connection.cursor() as cur:
-        cur.execute(
-            """
-            SELECT
-                pac.token_secret_hash,
-                pac.revoked,
-                pac.status,
-                pac.expires_at,
-                sa.tenant_id
-            FROM identity_access_corepatcredential pac
-            JOIN identity_access_coreserviceaccount sa ON sa.id = pac.service_account_id
-            WHERE pac.token_prefix = %s AND pac.revoked = FALSE
-            ORDER BY pac.created_at DESC
-            LIMIT 10
-            """,
-            [prefix],
-        )
-        rows = cur.fetchall()
-
-    matched_tenant_id = None
-    for token_hash, revoked, cred_status, expires_at, tenant_id in rows:
-        if not revoked and cred_status == 'active':
-            if hmac.compare_digest(str(token_hash or ''), expected_hash):
-                matched_tenant_id = tenant_id
-                break
-
-    if matched_tenant_id is None:
+    credential = CorePATCredential.resolve_from_raw_secret(raw_secret)
+    if credential is None:
         return None
 
-    # Resolve the tenant owner user
-    with connection.cursor() as cur:
-        cur.execute(
-            "SELECT owner_user_id FROM identity_access_coretenant WHERE id = %s",
-            [matched_tenant_id],
-        )
-        row = cur.fetchone()
-
-    if not row:
+    tenant = getattr(credential.service_account, 'tenant', None)
+    owner_user = getattr(tenant, 'owner_user', None)
+    if owner_user is None:
         return None
-    owner_user_id = row[0]
 
-    try:
-        return User.objects.get(pk=owner_user_id, is_active=True)
-    except User.DoesNotExist:
+    if not getattr(owner_user, 'is_active', False):
         return None
+    return owner_user
+
+
+def _resolve_or_create_tenant_for_user(user):
+    owner_user_id = getattr(user, 'pk', None)
+    if not owner_user_id:
+        raise ValueError('owner_user must be saved before resolving CoreTenant.')
+
+    username = str(getattr(user, 'username', '') or '').strip()
+    email = str(getattr(user, 'email', '') or '').strip()
+    email_local = email.split('@', 1)[0] if email else ''
+    display_name = username or email or f'user-{owner_user_id}'
+
+    tenant, created = CoreTenant.objects.get_or_create(
+        owner_user=user,
+        defaults={
+            'display_name': display_name,
+            'tenant_code': f'tenant-{owner_user_id}-{secrets.token_hex(4)}',
+            'plan': CoreTenant.PlanChoices.FREE,
+            'status': CoreTenant.StatusChoices.ACTIVE,
+            'features': [],
+        },
+    )
+
+    if created:
+        return tenant
+
+    update_fields = []
+    if tenant.display_name != display_name:
+        tenant.display_name = display_name
+        update_fields.append('display_name')
+    if not tenant.tenant_code:
+        tenant.tenant_code = f'tenant-{owner_user_id}-{secrets.token_hex(4)}'
+        update_fields.append('tenant_code')
+    if tenant.plan != CoreTenant.PlanChoices.FREE:
+        tenant.plan = CoreTenant.PlanChoices.FREE
+        update_fields.append('plan')
+    if tenant.status != CoreTenant.StatusChoices.ACTIVE:
+        tenant.status = CoreTenant.StatusChoices.ACTIVE
+        update_fields.append('status')
+    if update_fields:
+        tenant.save(update_fields=[*update_fields, 'updated_at'])
+    return tenant
 
 
 def _issue_pat_for_user(user, label: str = 'oauth-session') -> str:
     """
-    Issue a new PAT for a user via the shared PostgreSQL DB using raw SQL.
+    Issue a new PAT for a user through the canonical identity_access ORM.
 
     Finds or creates the CoreTenant and a default CoreServiceAccount for the
     user, then inserts a new CorePATCredential row. Returns the raw PAT secret
     (shown once only — caller must return it to the client immediately).
-
-    Uses raw SQL to avoid importing core-api models into the legacy codebase.
     """
-    user_id = int(user.pk)
-
-    with connection.cursor() as cur:
-        # 1. Resolve tenant for user
-        cur.execute(
-            "SELECT id FROM identity_access_coretenant WHERE owner_user_id = %s LIMIT 1",
-            [user_id],
+    tenant = _resolve_or_create_tenant_for_user(user)
+    service_account = (
+        CoreServiceAccount.objects
+        .filter(tenant=tenant, status=CoreServiceAccount.StatusChoices.ACTIVE)
+        .order_by('created_at', 'pk')
+        .first()
+    )
+    if service_account is None:
+        service_account = CoreServiceAccount.objects.create(
+            tenant=tenant,
+            name='default',
+            status=CoreServiceAccount.StatusChoices.ACTIVE,
+            scopes=[],
+            metadata={},
         )
-        row = cur.fetchone()
 
-        if row:
-            tenant_id = row[0]
-        else:
-            # Create a minimal tenant for first-time OAuth users
-            tenant_public_id = str(_uuid.uuid4())
-            tenant_code = f'ten_usr_{user_id}_{secrets.token_hex(4)}'
-            cur.execute(
-                """
-                INSERT INTO identity_access_coretenant
-                    (public_id, owner_user_id, tenant_code, display_name,
-                     plan, status, features, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, 'free', 'active', '[]', NOW(), NOW())
-                RETURNING id
-                """,
-                [tenant_public_id, user_id, tenant_code, user.username],
-            )
-            tenant_id = cur.fetchone()[0]
-
-        # 2. Find or create an active service account for this tenant
-        cur.execute(
-            """
-            SELECT id FROM identity_access_coreserviceaccount
-            WHERE tenant_id = %s AND status = 'active'
-            ORDER BY created_at ASC LIMIT 1
-            """,
-            [tenant_id],
-        )
-        row = cur.fetchone()
-
-        if row:
-            sa_id = row[0]
-        else:
-            sa_public_id = str(_uuid.uuid4())
-            cur.execute(
-                """
-                INSERT INTO identity_access_coreserviceaccount
-                    (public_id, tenant_id, name, status, scopes, metadata, created_at, updated_at)
-                VALUES (%s, %s, 'default', 'active', '[]', '{}', NOW(), NOW())
-                RETURNING id
-                """,
-                [sa_public_id, tenant_id],
-            )
-            sa_id = cur.fetchone()[0]
-
-        # 3. Issue a new PAT credential
-        raw_token = _PAT_PREFIX + secrets.token_urlsafe(48)
-        prefix = raw_token[:_PREFIX_LEN]
-        token_hash = _hash_pat_secret(raw_token)
-        pat_public_id = str(_uuid.uuid4())
-        cur.execute(
-            """
-            INSERT INTO identity_access_corepatcredential
-                (public_id, service_account_id, label, token_prefix, token_secret_hash,
-                 scopes, status, revoked, audit_reason, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, '[]', 'active', FALSE, '', NOW(), NOW())
-            """,
-            [pat_public_id, sa_id, label, prefix, token_hash],
-        )
+    _, raw_token = CorePATCredential.issue_for_service_account(
+        service_account=service_account,
+        scopes=[],
+        label=label,
+        audit_reason='',
+    )
 
     return raw_token
 

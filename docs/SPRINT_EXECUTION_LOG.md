@@ -108,7 +108,7 @@ Cap nhat implementation:
 - `backend/portfolio/market_data_service.py`
 	- Bo sung `threshold_source` vao refactored whale feed response + whale order payload.
 	- Them helper resolve threshold + source theo symbol/user.
-	- Dieu chinh session-window aggregate behavior de giu parity stream/vnstock fallback.
+	- Dieu chinh session-window aggregate behavior de giu parity stream/vnbroker fallback.
 - `backend/portfolio/whale_feed_helpers.py`
 	- Dieu chinh session-window aggregate behavior cho legacy path de giu source preference/fallback parity.
 
@@ -135,7 +135,7 @@ Debt scope duoc chap nhan:
 - `test_refactored_whale_feed_response_contains_scoring_contract` (threshold_source visibility)
 - `test_refactored_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db` (stream preference)
 - `test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db` (legacy stream preference)
-- `test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss` (fallback chain)
+- `test_whale_feed_aggregate_falls_back_to_vnbroker_after_stream_and_db_miss` (fallback chain)
 
 Control plan:
 - Mo hardening track song song trong Phase 1, uu tien fix trong wave dau.
@@ -222,7 +222,7 @@ Evidence da thu:
 		- 4 failures pre-existing unrelated to PR-5 window changes:
 			- test_refactored_whale_feed_response_contains_scoring_contract
 			- test_refactored_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db
-			- test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss
+			- test_whale_feed_aggregate_falls_back_to_vnbroker_after_stream_and_db_miss
 			- test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db
 		- Cac failures do voi threshold_source va source preference logic trong legacy view, khong phai from window filter implementation.
 
@@ -525,10 +525,10 @@ Next action:
 
 Cap nhat coding tiep theo (2026-04-05 khuya):
 - Da hoan tat S23-01 (external facade hardening):
-	- cap nhat `backend/portfolio/adapters/vnstock_adapter.py` voi facade moi (financial/history/listing) + timeout theo channel.
+	- cap nhat `backend/portfolio/adapters/vnbroker_adapter.py` voi facade moi (financial/history/listing) + timeout theo channel.
 	- cap nhat `backend/portfolio/market_data_service.py` de dung facade thay import provider truc tiep.
 - Da hoan tat S23-02 + S23-03 trong legacy path:
-	- loai bo `from vnstock import Vnstock` trong `backend/portfolio/views.py` cho nhom market hot-path + stock workspace flow.
+	- loai bo `from vnbroker import Vnbroker` trong `backend/portfolio/views.py` cho nhom market hot-path + stock workspace flow.
 	- thay bang adapter facade + mapping response loi tuong thich contract cu.
 
 Regression da verify:
@@ -709,7 +709,7 @@ Da thuc hien:
 	- them `portfolio/exceptions.py` de chuan hoa exception boundary cho implementation moi
 - Tao adapter layer moi:
 	- `portfolio/adapters/cache_adapter.py`
-	- `portfolio/adapters/vnstock_adapter.py`
+	- `portfolio/adapters/vnbroker_adapter.py`
 - Tao service layer moi cho market data: `portfolio/market_data_service.py`
 - Tao views layer moi cho market data: `portfolio/market_views.py`
 - Router realtime da co toggle implementation theo `ENABLE_NEW_MARKET_VIEWS`, rollback bang env flag khong can sua code nong.
@@ -729,7 +729,7 @@ Lop endpoint da dua sang implementation moi sau flag:
 
 Regression da verify:
 - Toggle route sang implementation moi cho market data pass test focused.
-- `whale-feed` implementation moi giu scoring contract va DB fallback khi vnstock unavailable.
+- `whale-feed` implementation moi giu scoring contract va DB fallback khi vnbroker unavailable.
 - `whale-feed/aggregate` implementation moi giu scope resolution, source selection va cursor validation.
 - `stock workspace overview/chart` route toggle pass + khong gay hoi quy test endpoint tong hop da co.
 
@@ -774,7 +774,7 @@ Tai lieu Sprint 22 vua cap nhat:
 Cap nhat review Sprint 21 (2026-04-05 dem):
 - Da bo sung inventory endpoint Market Data theo acceptance S21-05:
 	- `docs/SPRINT21_MARKET_DATA_ENDPOINT_INVENTORY.md`
-- Da bo sung adapter unit tests theo acceptance S21-07 (cache happy/miss + vnstock wrapper):
+- Da bo sung adapter unit tests theo acceptance S21-07 (cache happy/miss + vnbroker wrapper):
 	- `backend/portfolio/tests/test_adapters.py`
 - Da chay test: `manage.py test portfolio.tests.test_adapters` -> PASS (10 tests).
 - Da tao bao cao doi chieu trang thai S21-01..S21-12:
@@ -1289,7 +1289,7 @@ S12-07 - QA matrix backend:
 
 S12-08 - Latency check:
 - manage.py realtime_tick --sync --user-id 1 -> {status: ok, symbols: 4, published: 5}, cycle time ~1750ms tren local Redis.
-- p95 1750ms = acceptable voi local dev (co vnstock HTTP call). Redis channel layer latency thuc te <100ms.
+- p95 1750ms = acceptable voi local dev (co vnbroker HTTP call). Redis channel layer latency thuc te <100ms.
 
 S12-09 - Bug fixes trong ngay:
 - WebSocket "closed before connection established": chi close() khi readyState === OPEN.
@@ -1534,14 +1534,14 @@ Sau:
 
 Files sua: `frontend/src/pages/StockDetail.jsx`
 
-### 2. Admin Stock Workspace — KLineChart + du lieu thuc vnstock + depth live
+### 2. Admin Stock Workspace — KLineChart + du lieu thuc vnbroker + depth live
 
-Yeu cau: bieu do nen admin khong hien thi, dung klinecharts, du lieu thuc tu vnstock va Redis.
+Yeu cau: bieu do nen admin khong hien thi, dung klinecharts, du lieu thuc tu vnbroker va Redis.
 
 **2a. admin.py**
 - Them `import json`, `import threading`, `from datetime import datetime`
 - Them ham `_fetch_live_workspace_data(symbol)`:
-  - Goi `vnstock price_board` trong thread daemon, timeout 8s
+  - Goi `vnbroker price_board` trong thread daemon, timeout 8s
   - Lay ticker live: match_price, ref_price, change_value/pct, OHLV, ceiling/floor
   - Lay `bid_ask` 3 muc gia thuc tu price_board (neu co), tinh buy_total/sell_total
   - Exception safe — tra ve `{'ticker': None, 'depth': None}` neu loi
@@ -1550,7 +1550,7 @@ Yeu cau: bieu do nen admin khong hien thi, dung klinecharts, du lieu thuc tu vns
   - Merge live ticker vao overview neu lay duoc (fallback ve DB)
   - Them `chart_ohlcv_json`: serialize 180 nen OHLCV thanh JSON (timestamp ms, open/high/low/close/volume)
   - depth_panel dung du lieu that neu lay duoc, fallback _build_mock_depth_levels, them key `source`
-  - overview_display them `data_source` ('vnstock live' / 'database'), `last_date` tu live ticker
+  - overview_display them `data_source` ('vnbroker live' / 'database'), `last_date` tu live ticker
 
 **2b. workspace.html**
 - Load `klinecharts@9.8.12` tu CDN unpkg trong extrastyle block
@@ -1674,12 +1674,12 @@ Trang thai: DONE
 
 Vấn đề: `sync_stockprofile --mode all` trả về 3249 profiles nhưng `company_name=''` và `exchange=''` với phần lớn records.
 
-Nguyên nhân: `build_stock_profile_payload()` trong `services.py` chưa merge metadata từ vnstock `listing.symbols_by_exchange()`.
+Nguyên nhân: `build_stock_profile_payload()` trong `services.py` chưa merge metadata từ vnbroker `listing.symbols_by_exchange()`.
 
 Fix:
 - Thêm `_fetch_exchange_lookup(timeout=20)` trong `services.py`:
-  - Chạy `Vnstock().stock('ACB', source='VCI').listing.symbols_by_exchange()` trong daemon thread.
-  - Timeout 20 giây, bắt `BaseException` (vnstock có thể gọi `sys.exit()` khi bị VCI rate-limit).
+  - Chạy `Vnbroker().stock('ACB', source='VCI').listing.symbols_by_exchange()` trong daemon thread.
+  - Timeout 20 giây, bắt `BaseException` (vnbroker có thể gọi `sys.exit()` khi bị VCI rate-limit).
   - Trả `{}` nếu timeout/lỗi, không làm crash sync flow.
 - `build_stock_profile_payload()` gọi `_fetch_exchange_lookup()` 1 lần duy nhất rồi merge `company_name` và `exchange` vào tất cả symbol.
 - Merge symbol từ exchange_lookup nhưng không có trong group nào (đảm bảo không bỏ sót).
@@ -1694,7 +1694,7 @@ Files sua: `backend/portfolio/services.py`
 
 Vấn đề: `http://localhost:3000/admin-ops Failed to load resource: status 429`
 
-Nguyên nhân: Khi `_fetch_exchange_lookup()` cũ chỉ bắt `Exception`, vnstock gọi `sys.exit()` khiến thread thoát bất thường. Không phải rate-limit thực từ Django, mà là response 429 từ VCI bên trong vnstock không được xử lý.
+Nguyên nhân: Khi `_fetch_exchange_lookup()` cũ chỉ bắt `Exception`, vnbroker gọi `sys.exit()` khiến thread thoát bất thường. Không phải rate-limit thực từ Django, mà là response 429 từ VCI bên trong vnbroker không được xử lý.
 
 Fix:
 - `_fetch_exchange_lookup()`: đổi `except Exception` → `except BaseException` (bắt cả `SystemExit`).
@@ -1741,20 +1741,20 @@ Files sua: `frontend/src/components/DashboardRealtimePanel.jsx`
 
 ---
 
-## Session 2026-04-04 — vnstock Rate-Limit Mitigation + AI Advisory Session
+## Session 2026-04-04 — vnbroker Rate-Limit Mitigation + AI Advisory Session
 
 Trang thai: COMPLETED — tất cả tests pass, live JWT verify xong
 
 ---
 
-### 1. vnstock Rate-Limit Backoff (backend/portfolio/views.py)
+### 1. vnbroker Rate-Limit Backoff (backend/portfolio/views.py)
 
-Vấn đề: Các endpoint realtime gọi vnstock guest API theo cụm lớn → bị throttle liên tục.
+Vấn đề: Các endpoint realtime gọi vnbroker guest API theo cụm lớn → bị throttle liên tục.
 
 Thêm helpers vào `views.py`:
-- `_is_rate_limited_error(exc)` — nhận diện lỗi rate-limit từ vnstock
-- `_vnstock_rate_limit_cache_key(channel)` / `_is_vnstock_rate_limited(channel)` / `_mark_vnstock_rate_limited(channel)` — cache-based cooldown per channel (`intraday`, `price_board`, `whale`, `rvol`)
-- `_allow_vnstock_aggregate_fallback(symbols)` — chặn fan-out nếu danh sách symbol quá lớn (tránh storm yêu cầu)
+- `_is_rate_limited_error(exc)` — nhận diện lỗi rate-limit từ vnbroker
+- `_vnbroker_rate_limit_cache_key(channel)` / `_is_vnbroker_rate_limited(channel)` / `_mark_vnbroker_rate_limited(channel)` — cache-based cooldown per channel (`intraday`, `price_board`, `whale`, `rvol`)
+- `_allow_vnbroker_aggregate_fallback(symbols)` — chặn fan-out nếu danh sách symbol quá lớn (tránh storm yêu cầu)
 
 Tích hợp cooldown vào:
 - `IntradayMatchedView` — skip fallback nếu đang rate-limited, ghi cooldown khi bị lỗi
@@ -1762,10 +1762,10 @@ Tích hợp cooldown vào:
 - `WhaleFeedView` — tương tự
 - `RVOLView` — thêm short cache + backoff
 
-### 2. vnstock Rate-Limit trong tasks.py
+### 2. vnbroker Rate-Limit trong tasks.py
 
 Thêm vào `backend/portfolio/tasks.py`:
-- `VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY`
+- `VNBROKER_PRICE_BOARD_RATE_LIMIT_CACHE_KEY`
 - `_mark_price_board_rate_limited()`
 - Task `prefetch_ticker_price_board`: early-return nếu đang cooldown, ghi cooldown khi bắt lỗi rate-limit
 
@@ -1788,7 +1788,7 @@ stocks/<symbol>/ai-advisory-session/  →  stock_ai_advisory_session_api
 ```
 
 Tests thêm vào `backend/portfolio/tests/test_api_routes.py`:
-- `test_vnstock_aggregate_fallback_suppressed_large_symbol_count`
+- `test_vnbroker_aggregate_fallback_suppressed_large_symbol_count`
 - `test_stock_ai_advisory_session_get_queues_generation_when_missing`
 - `test_stock_ai_advisory_session_get_returns_latest_advisory`
 - `test_stock_ai_advisory_session_post_returns_429_when_refresh_cooldown_active`
@@ -1833,9 +1833,9 @@ Bo sung `'volume': int(...)` vao 4 ham builder:
 - `_build_aggregate_event_payload(row, ...)` — `getattr(row, 'volume', 0) or 0`
 - `_build_aggregate_event_payload_from_record(record, ...)` — `record.get('volume') or 0`
 - `_build_stream_aggregate_records(symbols, ...)` — `tick.get('volume') or 0`
-- `_build_vnstock_aggregate_records(symbols, ...)` — thu lan luot `volume / vol / matchVolume`
+- `_build_vnbroker_aggregate_records(symbols, ...)` — thu lan luot `volume / vol / matchVolume`
 
-Graceful fallback: `or 0` tren moi key — khong crash khi vnstock khong tra volume.
+Graceful fallback: `or 0` tren moi key — khong crash khi vnbroker khong tra volume.
 
 ### Phase 2 — FE: Whale Avg Price
 

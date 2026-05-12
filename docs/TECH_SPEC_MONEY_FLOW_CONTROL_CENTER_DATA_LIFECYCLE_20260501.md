@@ -23,7 +23,7 @@ Thiết kế này nhằm tạo một kiến trúc money-flow đủ bền cho b�
 | Domain | Canonical writer | Money Flow Control Center behavior |
 |---|---|---|
 | Shared service enablement, distribution, detection universe | `global_signal_policy_helpers.py` | preview/apply writer trực tiếp |
-| Raw ingest cadence, provider throttling, realtime flags, raw keep-days | `runtime_policy_helpers.py` và `RuntimeVnstockConfig` | read-only hoặc link-out cho đến khi có migration rõ ràng |
+| Raw ingest cadence, provider throttling, realtime flags, raw keep-days | `runtime_policy_helpers.py` và `RuntimeVnbrokerConfig` | read-only hoặc link-out cho đến khi có migration rõ ràng |
 | Whale governance, rollout, approval, active version | `WhaleConfig*` models + `backend/portfolio/services.py` | write-through, không duplicate field |
 | Dark-flow thresholds và domain policy | `global_signal_services_config.dark_flow_service` | preview/apply writer trực tiếp ở phase hiện tại |
 | Materialization, retention tiers, forensic policy | control-plane mới của pack này | preview/apply writer trực tiếp |
@@ -163,10 +163,10 @@ Purge raw hoặc facts chỉ được chạy khi đồng thời đúng:
 
 ### 5.3 Read-only link-out rules
 
-1. Nếu một knob còn thuộc `Data Ops` hoặc `Vnstock Config`, `Money Flow Control Center` chỉ hiển thị effective value và link-out, không thêm nút apply thứ hai.
+1. Nếu một knob còn thuộc `Data Ops` hoặc `Vnbroker Config`, `Money Flow Control Center` chỉ hiển thị effective value và link-out, không thêm nút apply thứ hai.
 2. Nếu một whale domain field còn thuộc whale mission-control, control center chỉ được write-through hoặc open flow hiện có; write-through bridge chỉ được tạo pending/draft version và không được tự Apply/Publish active version nếu thiếu explicit approval từ mission-control.
 3. UI phải gắn nhãn rõ `Nguồn chỉnh sửa chuẩn` khi hiển thị effective value từ domain khác.
-4. Nếu operator không có quyền trên `Data Ops` hoặc `Vnstock Config`, UI phải render disabled state kèm badge `Requires Data Ops permission` thay vì link chết.
+4. Nếu operator không có quyền trên `Data Ops` hoặc `Vnbroker Config`, UI phải render disabled state kèm badge `Requires Data Ops permission` thay vì link chết.
 
 ## 6. API surface guidelines
 

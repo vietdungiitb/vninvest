@@ -148,7 +148,7 @@
 □ Mọi destructive action (delete, reset) có audit log entry
 □ Bulk operations có confirmation hoặc dry-run mode
 □ Signal config changes không có immediate effect mà không có preview step
-□ vnstock-config update có changelog entry
+□ vnbroker-config update có changelog entry
 ```
 
 ---

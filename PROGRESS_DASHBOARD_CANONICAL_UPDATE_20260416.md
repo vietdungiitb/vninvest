@@ -2,7 +2,7 @@
 
 ## Addendum 2026-04-16 14:30 - Intraday runtime-provider fix verified
 
-- Da loai bo hard-code `VCI` tren duong intraday stock workspace runtime path; adapter hien doc provider tu Runtime Vnstock Config/Admin Ops va failover theo `fallback_sources`.
+- Da loai bo hard-code `VCI` tren duong intraday stock workspace runtime path; adapter hien doc provider tu Runtime Vnbroker Config/Admin Ops va failover theo `fallback_sources`.
 - Runtime verify xac nhan `VCI` dang loi cho MWG, nhung `KBS` duoc chon qua chain cau hinh va tra intraday thanh cong.
 - Redis streams khong con rong toan cuc; `MWG` da co tick moi va API `GET /api/realtime/intraday/MWG/` tra `source=stream`, `source_event_at=14:24:51`, `age_seconds=31`.
 - Da sua stream ordering trong producer de API intraday doc dung giao dich moi nhat thay vi batch cu hon trong cung mot lan push.
@@ -113,7 +113,7 @@ Data poisoning bug (same stock showing as 26,600 | 0.00 | 23.80 in different UI 
 |-------|-----------|------|--------|
 | **0** | **New Code** | `backend/portfolio/price_units.py` | ✅ 284 lines |
 | **0** | **Tests** | 40 unit tests (test_price_units_canonical.py) | ✅ PASSING |
-| **1** | **Adapter** | `backend/portfolio/adapters/vnstock_adapter.py` | ✅ +150 lines |
+| **1** | **Adapter** | `backend/portfolio/adapters/vnbroker_adapter.py` | ✅ +150 lines |
 | **1** | **Tests** | 8 integration tests (test_adapter_canonical.py) | ✅ PASSING |
 | **2** | **Services** | `backend/portfolio/services.py` (corrected constants) | ✅ FIXED |
 | **3** | **Market Data** | `backend/portfolio/market_data_service.py` (deprecated heuristic) | ✅ SAFE |
@@ -175,7 +175,7 @@ File sizes after gzip:
 
 ### Backend Files (5 modified)
 - ✅ `backend/portfolio/price_units.py` (NEW - 284 lines)
-- ✅ `backend/portfolio/adapters/vnstock_adapter.py` (+150 lines)
+- ✅ `backend/portfolio/adapters/vnbroker_adapter.py` (+150 lines)
 - ✅ `backend/portfolio/services.py` (+60 lines)
 - ✅ `backend/portfolio/market_data_service.py` (heuristic deprecated)
 - ✅ `backend/portfolio/realtime/collector.py` (scale removed)

@@ -8,12 +8,12 @@ const examples = [
   {
     id: 'overview',
     label: 'Lấy dữ liệu VNM',
-    code: `import json\nfrom pyodide.http import pyfetch\n\nresponse = await pyfetch('/api/public/vnstock-data?symbol=VNM&data_type=ohlcv&period=1M')\ndata = await response.json()\njson.dumps({\n    'symbol': data['symbol'],\n    'rows': len(data['rows']),\n    'period': data['period']\n}, ensure_ascii=False, indent=2)`
+    code: `import json\nfrom pyodide.http import pyfetch\n\nresponse = await pyfetch('/api/public/vnbroker-data?symbol=VNM&data_type=ohlcv&period=1M')\ndata = await response.json()\njson.dumps({\n    'symbol': data['symbol'],\n    'rows': len(data['rows']),\n    'period': data['period']\n}, ensure_ascii=False, indent=2)`
   },
   {
     id: 'summary',
     label: 'Tổng hợp nhanh',
-    code: `from pyodide.http import pyfetch\n\nresponse = await pyfetch('/api/public/vnstock-data?symbol=FPT&data_type=summary&period=1M')\nprint(await response.text())`
+    code: `from pyodide.http import pyfetch\n\nresponse = await pyfetch('/api/public/vnbroker-data?symbol=FPT&data_type=summary&period=1M')\nprint(await response.text())`
   }
 ];
 
@@ -67,7 +67,7 @@ export function PlaygroundPanel() {
   }
 
   return (
-    <section id="vnstock" className="container pb-16 md:pb-20">
+    <section id="vnbroker" className="container pb-16 md:pb-20">
       <div className="mb-6 space-y-3">
         <div className="badge">{t('badge')}</div>
         <h2 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">{t('title')}</h2>

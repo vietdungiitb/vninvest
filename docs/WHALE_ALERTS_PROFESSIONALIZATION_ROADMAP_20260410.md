@@ -31,7 +31,7 @@ Khoang cach lon nhat khong nam o giao dien, ma nam o 5 lop sau:
 
 - Aggregate whale signals theo tracked symbols hoac watchlist group
 - Sort theo time hoac matched value
-- Source fallback: Redis stream -> IntradayTick DB -> vnstock
+- Source fallback: Redis stream -> IntradayTick DB -> vnbroker
 - Severity / score / threshold / source hien thi tren card
 
 ### Tang B - Symbol Investigation Workspace
@@ -619,7 +619,7 @@ Nen do 3 lop KPI:
 
 ### Du lieu
 
-- vnstock intraday quality va continuity la dependency lon
+- vnbroker intraday quality va continuity la dependency lon
 - can ro retention policy cua IntradayTick de phuc vu history/replay
 
 ### Hieu nang

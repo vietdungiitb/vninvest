@@ -32,7 +32,7 @@ Whale Dashboard: frontend/src/pages/WhaleAlertsDashboard.jsx
 └── OrderFlowRadar (dark money strength/confidence)
 
 Backend APIs (backend/portfolio/views.py):
-├── WhaleFeedView (Redis→DB→vnstock fallback ✅)
+├── WhaleFeedView (Redis→DB→vnbroker fallback ✅)
 ├── RVOLView, DepthChartView, OrderFlowSignal ✅
 └── Aggregated whale campaigns
 ```
@@ -42,7 +42,7 @@ Backend APIs (backend/portfolio/views.py):
 |---------|--------|-------|
 | Live quotes overlay | ✅ Working | Holdings/P&L update realtime |
 | Whale/dark alerts | ✅ Prominent | Badges (🦈🐋), severity colors |
-| Multi-source fallback | ✅ Robust | Redis stream → IntradayTick → vnstock |
+| Multi-source fallback | ✅ Robust | Redis stream → IntradayTick → vnbroker |
 | Dark flow radar | ✅ Advanced | Strength/confidence/tick rate |
 
 ### Critical Gaps ❌ (User Priorities)

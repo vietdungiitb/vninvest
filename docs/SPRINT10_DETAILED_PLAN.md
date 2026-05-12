@@ -39,7 +39,7 @@ Deliverable:
 ### Day 2 - Collector foundation
 - Tao Celery collector task poll 5s theo tracked symbols.
 - Them proxy rotation policy + healthcheck.
-- Retry/backoff/circuit-breaker cho vnstock fetch.
+- Retry/backoff/circuit-breaker cho vnbroker fetch.
 
 Deliverable:
 - Collector logs co thong tin proxy, status, latency.
@@ -165,7 +165,7 @@ Fallback API:
 
 ## 5) Risk register (Sprint 10)
 
-Risk 1: vnstock bi throttle/block IP
+Risk 1: vnbroker bi throttle/block IP
 - Mitigation: proxy rotation + cache stale + rate limiting collector.
 
 Risk 2: WebSocket reconnect storm

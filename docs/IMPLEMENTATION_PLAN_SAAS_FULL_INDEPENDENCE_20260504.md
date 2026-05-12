@@ -244,7 +244,7 @@ curl -X POST http://localhost/api/auth/token/ \
 
 **Sub-tasks**:
 - B6.1: Stats, runtime-kpi, system-ai-settings endpoints trong `ops_audit` (1 ngày)
-- B6.2: vnstock-config CRUD + changelog (1 ngày)
+- B6.2: vnbroker-config CRUD + changelog (1 ngày)
 - B6.3: Signal admin — universe, governance, retention, jobs (1.5 ngày)
 - B6.4: Celery tasks cho prefetch, market-groups sync, intraday-universe (1 ngày)
 

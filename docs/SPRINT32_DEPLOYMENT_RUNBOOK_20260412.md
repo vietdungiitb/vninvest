@@ -35,8 +35,8 @@ python manage.py migrate portfolio --fake-initial
 python manage.py migrate portfolio zero
 
 # Run full test suite
-pytest portfolio/tests/test_runtime_vnstock_config.py \
-        portfolio/tests/test_views_vnstock_config.py \
+pytest portfolio/tests/test_runtime_vnbroker_config.py \
+        portfolio/tests/test_views_vnbroker_config.py \
         -v --tb=short
 # Expected: ALL PASS ✓
 ```
@@ -48,8 +48,8 @@ pytest portfolio/tests/test_runtime_vnstock_config.py \
 cd /path/to/staging
 
 # Switch to sprint32 branch (or create release branch)
-git checkout sprint32-vnstock-config
-git pull origin sprint32-vnstock-config
+git checkout sprint32-vnbroker-config
+git pull origin sprint32-vnbroker-config
 
 # Update requirements (if any new packages)
 pip install -r backend/requirements.txt
@@ -72,9 +72,9 @@ python manage.py migrate portfolio
 
 # Create singleton config
 python manage.py shell
->>> from portfolio.models import RuntimeVnstockConfig
->>> RuntimeVnstockConfig.get_or_create_singleton()
->>> config = RuntimeVnstockConfig.objects.get(pk=1)
+>>> from portfolio.models import RuntimeVnbrokerConfig
+>>> RuntimeVnbrokerConfig.get_or_create_singleton()
+>>> config = RuntimeVnbrokerConfig.objects.get(pk=1)
 >>> print(config.to_dict())
 # Should output default values
 
@@ -86,14 +86,14 @@ exit()
 
 ```bash
 # Test API endpoints
-curl -X GET "http://staging.vninvest.local/api/admin-ops/vnstock-config/current/" \
+curl -X GET "http://staging.vninvest.local/api/admin-ops/vnbroker-config/current/" \
   -H "Authorization: Bearer <staging-token>" \
   -H "Content-Type: application/json"
 
 # Expected response: 200 OK with max_concurrency: 12
 
 # Test admin UI
-curl -X GET "http://staging.vninvest.local/admin/portfolio/runtimevnstockconfig/" \
+curl -X GET "http://staging.vninvest.local/admin/portfolio/runtimevnbrokerconfig/" \
   -b "sessionid=<session_id>"
 
 # Should show one record
@@ -131,7 +131,7 @@ curl https://vninvest-prod.api.local/api/health/
 
 # Verify no ongoing issues
 # - Check production metrics dashboard
-# - Verify recent vnstock queries successful
+# - Verify recent vnbroker queries successful
 # - Confirm no 429 rate limit issues
 
 # Notify stakeholders
@@ -158,8 +158,8 @@ cd /path/to/production
 
 # 1. Pull latest code
 git fetch origin
-git checkout sprint32-vnstock-config
-git pull origin sprint32-vnstock-config
+git checkout sprint32-vnbroker-config
+git pull origin sprint32-vnbroker-config
 
 # 2. Update requirements
 pip install -r backend/requirements.txt
@@ -199,8 +199,8 @@ python manage.py showmigrations portfolio | tail -5
 
 # Create singleton config (safe to run multiple times)
 python manage.py shell
->>> from portfolio.models import RuntimeVnstockConfig
->>> config = RuntimeVnstockConfig.get_or_create_singleton()
+>>> from portfolio.models import RuntimeVnbrokerConfig
+>>> config = RuntimeVnbrokerConfig.get_or_create_singleton()
 >>> assert config.pk == 1
 >>> exit()
 ```
@@ -209,7 +209,7 @@ python manage.py shell
 
 ```bash
 # Verify API working
-curl -s https://vninvest-prod.api.local/api/admin-ops/vnstock-config/current/ \
+curl -s https://vninvest-prod.api.local/api/admin-ops/vnbroker-config/current/ \
   -H "Authorization: Bearer <prod-token>" | python -m json.tool
 
 # Check 200 OK response?
@@ -222,9 +222,9 @@ curl -s https://vninvest-prod.api.local/api/health/
 docker-compose -f docker-compose.prod.yml logs --tail=50 backend | grep -i error
 # Should be empty or only INFO/WARNING
 
-# Verify vnstock adapter loaded config
+# Verify vnbroker adapter loaded config
 docker-compose -f docker-compose.prod.yml logs --tail=20 backend | grep -i "config"
-# Should show "Vnstock config loaded" or similar
+# Should show "Vnbroker config loaded" or similar
 ```
 
 ### 2.6 Monitoring & Verification (30 minutes)
@@ -235,8 +235,8 @@ docker-compose -f docker-compose.prod.yml logs --tail=20 backend | grep -i "conf
 | Cache hit rate | Dashboard metrics | > 90% |
 | Error rate | APM dashboard | < 0.1% |
 | Database connections | `SELECT count(*) FROM pg_stat_activity` | < 50 |
-| Vnstock concurrency | Logs + metrics | Actually limiting to 12 |
-| Changelog working | `GET /api/admin-ops/vnstock-config/changelog/` | Returns data |
+| Vnbroker concurrency | Logs + metrics | Actually limiting to 12 |
+| Changelog working | `GET /api/admin-ops/vnbroker-config/changelog/` | Returns data |
 
 ### 2.7 Smoke Test Suite (10 minutes)
 
@@ -253,14 +253,14 @@ echo "🔍 Running smoke tests..."
 
 # Test 1: Get current config
 echo -n "Test 1: GET /current/ ... "
-response=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/admin-ops/vnstock-config/current/" \
+response=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/admin-ops/vnbroker-config/current/" \
   -H "Authorization: Bearer $TOKEN")
 status=$(echo "$response" | tail -1)
 [[ "$status" == "200" ]] && echo "✅ PASS" || echo "❌ FAIL (status: $status)"
 
 # Test 2: Update config (dry run - don't actually change)
 echo -n "Test 2: PATCH /update_config/ ... "
-response=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/api/admin-ops/vnstock-config/update_config/" \
+response=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/api/admin-ops/vnbroker-config/update_config/" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"max_concurrency": 12}')
@@ -269,13 +269,13 @@ status=$(echo "$response" | tail -1)
 
 # Test 3: Get changelog
 echo -n "Test 3: GET /changelog/ ... "
-response=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/admin-ops/vnstock-config/changelog/" \
+response=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/admin-ops/vnbroker-config/changelog/" \
   -H "Authorization: Bearer $TOKEN")
 status=$(echo "$response" | tail -1)
 [[ "$status" == "200" ]] && echo "✅ PASS" || echo "❌ FAIL (status: $status)"
 
-# Test 4: Verify vnstock queries still working
-echo -n "Test 4: Vnstock adapter working ... "
+# Test 4: Verify vnbroker queries still working
+echo -n "Test 4: Vnbroker adapter working ... "
 # Check if price_board queries succeeded in last 5 minutes
 if grep -q "price_board.*200" <(tail -100 prod-logs.txt); then
   echo "✅ PASS"
@@ -347,7 +347,7 @@ python manage.py migrate portfolio zero  # Undo migration
 ### Deployment Log Template
 
 ```markdown
-## Deployment: Sprint 32 Vnstock Runtime Config
+## Deployment: Sprint 32 Vnbroker Runtime Config
 **Date:** 2026-05-05  
 **Time:** 14:00-14:30 UTC  
 **Deployed By:** DevOps  
@@ -364,7 +364,7 @@ python manage.py migrate portfolio zero  # Undo migration
 ### Verification Checks
 - [x] API health: 200 OK
 - [x] Admin UI accessible
-- [x] Vnstock queries working
+- [x] Vnbroker queries working
 - [x] Changelog recording changes
 - [x] Performance < 100ms latency
 - [x] Cache hitting 95%
@@ -399,7 +399,7 @@ done
 ```bash
 # Daily morning health check
 - [ ] API status 200 OK
-- [ ] Vnstock queries successful
+- [ ] Vnbroker queries successful
 - [ ] Error rate normal (< 0.1%)
 - [ ] Latency normal (< 100ms)
 - [ ] Admin UI accessible

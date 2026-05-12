@@ -47,7 +47,7 @@ volume = float(tick.get('volume') or 0)
 'volume': int(volume),
 ```
 
-#### `_build_vnstock_aggregate_records(symbols, ...)`
+#### `_build_vnbroker_aggregate_records(symbols, ...)`
 ```python
 volume = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
 # ...trong record dict:
@@ -56,7 +56,7 @@ volume = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 
 
 ### Graceful fallback
 - `getattr(..., 0) or 0` / `.get(...) or 0` — đảm bảo `None` không làm crash.
-- Nếu vnstock không trả volume field → `volume = 0`, `Whale Avg Price` không hiển thị trên FE.
+- Nếu vnbroker không trả volume field → `volume = 0`, `Whale Avg Price` không hiển thị trên FE.
 
 ---
 

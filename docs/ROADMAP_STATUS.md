@@ -230,7 +230,7 @@ Tien do cap nhat:
 | WebSocket | Django Channels | — |
 | Task queue | Celery | — |
 | Message broker | Redis | — |
-| Market data | vnstock (nguồn VCI) | — |
+| Market data | vnbroker (nguồn VCI) | — |
 | ORM | Django ORM | SQLite local / PostgreSQL prod |
 | Frontend | React | — |
 | Styling | Tailwind CSS | — |
@@ -278,7 +278,7 @@ venv    : backend/.venv/
                   ┌────────────▼─────────────┐
                   │  Celery Worker           │
                   │  collect_and_publish     │
-                  │  (vnstock → compute →   │
+                  │  (vnbroker → compute →   │
                   │   Redis publish)        │
                   └──────────────────────────┘
 ```
@@ -286,7 +286,7 @@ venv    : backend/.venv/
 ### Realtime Event Flow
 
 ```
-vnstock VCI API
+vnbroker VCI API
   → Celery: collect_and_publish_realtime (mỗi 5s)
     → portfolio/realtime/collector.py  → raw quotes
     → portfolio/realtime/compute.py    → VWAP, whale detection
@@ -316,7 +316,7 @@ backend/
     consumers.py      — WebSocket consumer (JWT auth + subscribe/unsubscribe)
     tasks.py          — Celery tasks (collect_and_publish_realtime)
     realtime/
-      collector.py    — vnstock polling
+      collector.py    — vnbroker polling
       compute.py      — VWAP, whale detection
       publisher.py    — Redis fan-out
     urls.py           — Portfolio CRUD routes
@@ -441,7 +441,7 @@ frontend/src/
   "symbol": "SSI",
   "ts": "2026-04-01T09:30:05.123+07:00",
   "seq": 102934,
-  "source": "collector-vnstock-vci",
+  "source": "collector-vnbroker-vci",
   "data": {}
 }
 ```
@@ -543,7 +543,7 @@ frontend/src/
 - `npm run build` pass: 0 errors.
 
 **Hotfixes trong Sprint 13 (2026-04-02)**:
-- `services.py`: `_fetch_exchange_lookup()` — chạy vnstock trong daemon thread 20s timeout, bắt `BaseException` (vnstock có thể gọi `sys.exit()` khi bị rate-limit VCI). Sau đó `build_stock_profile_payload()` merge `company_name` + `exchange` vào tất cả symbol → 3249 profiles đầy đủ.
+- `services.py`: `_fetch_exchange_lookup()` — chạy vnbroker trong daemon thread 20s timeout, bắt `BaseException` (vnbroker có thể gọi `sys.exit()` khi bị rate-limit VCI). Sau đó `build_stock_profile_payload()` merge `company_name` + `exchange` vào tất cả symbol → 3249 profiles đầy đủ.
 - `AdminOps.jsx`: xử lý status 429 với UI riêng + retry button.
 - `DashboardRealtimePanel.jsx`: sửa JSX `/div` bị thiếu.
 - `Watchlist.jsx`: bọc fragment `<>...</>` để tránh adjacent JSX error.
@@ -562,7 +562,7 @@ frontend/src/
 - 3 advisory session tests pass (`test_stock_advisory.py`).
 
 **Hotfixes Sprint 14**:
-- Rate-limit mitigation cho vnstock VCI API: daemon thread 20s timeout + `BaseException` guard.
+- Rate-limit mitigation cho vnbroker VCI API: daemon thread 20s timeout + `BaseException` guard.
 - StockDetail.jsx: realtime quote + company profile + whale alerts lọc theo symbol.
 - Sync fallback guard: chỉ bật khi `DEBUG=True` và host != `testserver`.
 
@@ -598,7 +598,7 @@ frontend/src/
 *Chốt ngày 2026-04-04*
 
 **Backend**:
-- Aggregate whale feed (`_build_aggregate_event_payload`, `_build_aggregate_event_payload_from_record`, `_build_stream_aggregate_records`, `_build_vnstock_aggregate_records`): thêm field `volume: int` vào tất cả 4 builders, graceful fallback `or 0`.
+- Aggregate whale feed (`_build_aggregate_event_payload`, `_build_aggregate_event_payload_from_record`, `_build_stream_aggregate_records`, `_build_vnbroker_aggregate_records`): thêm field `volume: int` vào tất cả 4 builders, graceful fallback `or 0`.
 - `stock_order_flow_api`: thêm `?window=5m|15m|30m|1h` query param, `_window_map`, fallback `30m`, trả `window` + `window_minutes` trong response.
 
 **Frontend**:
@@ -694,7 +694,7 @@ python manage.py realtime_tick --sync --user-id 3
 
 1. **WebSocket logic chỉ ở một chỗ**: `frontend/src/hooks/useRealtimeFeed.js`. Page/component KHÔNG tự tạo WebSocket.
 2. **API error boundary**: `AdminOps.jsx` xử lý 401, 403, 429, 5xx riêng biệt. Tương tự các trang quan trọng.
-3. **vnstock calls**: luôn bọc trong `try/except BaseException` + thread timeout; vnstock có thể gọi `sys.exit()`.
+3. **vnbroker calls**: luôn bọc trong `try/except BaseException` + thread timeout; vnbroker có thể gọi `sys.exit()`.
 4. **Feature flags**: mọi tính năng mới có thể bật/tắt qua `settings.py` trước khi commit.
 5. **Test coverage**: mỗi endpoint mới có ít nhất 1 smoke test trong `test_api_routes.py`.
 6. **StockProfile sync**: sau khi thêm nguồn dữ liệu mới, chạy `sync_stockprofile --mode all` để đồng bộ.

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import DailyPrice, StockProfile, VnstockRuntimeConfig
+from .models import DailyPrice, StockProfile, VnbrokerRuntimeConfig
 
 
 @admin.register(StockProfile)
@@ -21,8 +21,8 @@ class DailyPriceAdmin(admin.ModelAdmin):
     ordering = ('-date', 'symbol')
 
 
-@admin.register(VnstockRuntimeConfig)
-class VnstockRuntimeConfigAdmin(admin.ModelAdmin):
+@admin.register(VnbrokerRuntimeConfig)
+class VnbrokerRuntimeConfigAdmin(admin.ModelAdmin):
     list_display = ('name', 'is_active', 'data_source', 'max_workers', 'request_delay_ms', 'max_retries', 'batch_size', 'updated_at')
     list_filter = ('is_active', 'data_source')
     readonly_fields = ('created_at', 'updated_at')

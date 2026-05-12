@@ -21,33 +21,33 @@
 
 ## 1️⃣ Unit Tests (Week 1 Friday)
 
-### Test File: `backend/portfolio/tests/test_runtime_vnstock_config.py`
+### Test File: `backend/portfolio/tests/test_runtime_vnbroker_config.py`
 
 #### 1.1 Model Tests
 
 ```python
 import pytest
-from portfolio.models import RuntimeVnstockConfig
+from portfolio.models import RuntimeVnbrokerConfig
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
-class TestRuntimeVnstockConfigModel:
-    """Test RuntimeVnstockConfig model."""
+class TestRuntimeVnbrokerConfigModel:
+    """Test RuntimeVnbrokerConfig model."""
     
     @pytest.mark.django_db
     def test_singleton_pattern_creates_once(self):
         """Singleton pk=1 created, not duplicated."""
-        config1 = RuntimeVnstockConfig.get_or_create_singleton()
-        config2 = RuntimeVnstockConfig.get_or_create_singleton()
+        config1 = RuntimeVnbrokerConfig.get_or_create_singleton()
+        config2 = RuntimeVnbrokerConfig.get_or_create_singleton()
         
         assert config1.pk == 1
         assert config2.pk == 1
-        assert RuntimeVnstockConfig.objects.count() == 1
+        assert RuntimeVnbrokerConfig.objects.count() == 1
     
     @pytest.mark.django_db
     def test_default_values_on_creation(self):
         """Singleton initialized with correct defaults."""
-        config = RuntimeVnstockConfig.get_or_create_singleton()
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
         
         assert config.max_concurrency == 12
         assert config.retry_attempts == 1
@@ -61,7 +61,7 @@ class TestRuntimeVnstockConfigModel:
     @pytest.mark.django_db
     def test_record_change_appends_changelog(self):
         """record_change() properly logs to changelog."""
-        config = RuntimeVnstockConfig.get_or_create_singleton()
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
         user = User.objects.create_user('testuser', password='test123')
         
         config.record_change(user, {
@@ -77,7 +77,7 @@ class TestRuntimeVnstockConfigModel:
     @pytest.mark.django_db
     def test_to_dict_exports_all_fields(self):
         """to_dict() returns JSON-serializable dict."""
-        config = RuntimeVnstockConfig.get_or_create_singleton()
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
         config_dict = config.to_dict()
         
         required_keys = {
@@ -91,17 +91,17 @@ class TestRuntimeVnstockConfigModel:
 #### 1.2 Serializer Tests
 
 ```python
-from portfolio.serializers import RuntimeVnstockConfigSerializer
+from portfolio.serializers import RuntimeVnbrokerConfigSerializer
 import pytest
 
-class TestRuntimeVnstockConfigSerializer:
+class TestRuntimeVnbrokerConfigSerializer:
     """Test serializer validation."""
     
     @pytest.mark.django_db
     def test_valid_serialization(self):
         """Valid config serializes without errors."""
-        config = RuntimeVnstockConfig.get_or_create_singleton()
-        serializer = RuntimeVnstockConfigSerializer(config)
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
+        serializer = RuntimeVnbrokerConfigSerializer(config)
         
         assert serializer.data['max_concurrency'] == 12
         assert serializer.data['retry_attempts'] == 1
@@ -116,7 +116,7 @@ class TestRuntimeVnstockConfigSerializer:
             'timeout_config': {},
             'enable_caching': True,
         }
-        serializer = RuntimeVnstockConfigSerializer(data=data, partial=True)
+        serializer = RuntimeVnbrokerConfigSerializer(data=data, partial=True)
         
         assert not serializer.is_valid()
         assert 'max_concurrency' in serializer.errors
@@ -127,7 +127,7 @@ class TestRuntimeVnstockConfigSerializer:
         data = {
             'timeout_config': ['price_board', 8],  # Invalid: list
         }
-        serializer = RuntimeVnstockConfigSerializer(data=data, partial=True)
+        serializer = RuntimeVnbrokerConfigSerializer(data=data, partial=True)
         
         assert not serializer.is_valid()
         assert 'timeout_config' in serializer.errors
@@ -137,7 +137,7 @@ class TestRuntimeVnstockConfigSerializer:
         data = {
             'timeout_config': {'price_board': -5},  # Invalid: negative
         }
-        serializer = RuntimeVnstockConfigSerializer(data=data, partial=True)
+        serializer = RuntimeVnbrokerConfigSerializer(data=data, partial=True)
         
         assert not serializer.is_valid()
         assert 'timeout_config' in serializer.errors
@@ -147,7 +147,7 @@ class TestRuntimeVnstockConfigSerializer:
         data = {
             'fallback_sources': ['invalid_source'],
         }
-        serializer = RuntimeVnstockConfigSerializer(data=data, partial=True)
+        serializer = RuntimeVnbrokerConfigSerializer(data=data, partial=True)
         
         assert not serializer.is_valid()
         assert 'fallback_sources' in serializer.errors
@@ -157,7 +157,7 @@ class TestRuntimeVnstockConfigSerializer:
 
 ```bash
 cd backend
-pytest portfolio/tests/test_runtime_vnstock_config.py -v --cov=portfolio.models --cov=portfolio.serializers --cov-report=term-missing
+pytest portfolio/tests/test_runtime_vnbroker_config.py -v --cov=portfolio.models --cov=portfolio.serializers --cov-report=term-missing
 
 # Expected: 100% coverage on serializer + model
 ```
@@ -166,16 +166,16 @@ pytest portfolio/tests/test_runtime_vnstock_config.py -v --cov=portfolio.models 
 
 ## 2️⃣ Integration Tests (Week 2)
 
-### Test File: `backend/portfolio/tests/test_views_vnstock_config.py`
+### Test File: `backend/portfolio/tests/test_views_vnbroker_config.py`
 
 ```python
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth.models import User
-from portfolio.models import RuntimeVnstockConfig
+from portfolio.models import RuntimeVnbrokerConfig
 
-class TestRuntimeVnstockConfigAPI(APITestCase):
-    """Integration tests for vnstock config API."""
+class TestRuntimeVnbrokerConfigAPI(APITestCase):
+    """Integration tests for vnbroker config API."""
     
     def setUp(self):
         self.admin_user = User.objects.create_superuser(
@@ -188,7 +188,7 @@ class TestRuntimeVnstockConfigAPI(APITestCase):
     
     def test_get_current_returns_200_with_config(self):
         """GET /current/ returns 200 with current config."""
-        response = self.client.get('/api/admin-ops/vnstock-config/current/')
+        response = self.client.get('/api/admin-ops/vnbroker-config/current/')
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['max_concurrency'] == 12
@@ -198,7 +198,7 @@ class TestRuntimeVnstockConfigAPI(APITestCase):
         """PATCH /update_config/ accepts partial updates."""
         data = {'max_concurrency': 20}
         response = self.client.patch(
-            '/api/admin-ops/vnstock-config/update_config/',
+            '/api/admin-ops/vnbroker-config/update_config/',
             data,
             format='json'
         )
@@ -208,17 +208,17 @@ class TestRuntimeVnstockConfigAPI(APITestCase):
         assert response.data['config']['max_concurrency'] == 20
         
         # Verify saved to DB
-        config = RuntimeVnstockConfig.objects.get(pk=1)
+        config = RuntimeVnbrokerConfig.objects.get(pk=1)
         assert config.max_concurrency == 20
     
     def test_patch_update_records_changelog(self):
         """PATCH /update_config/ records changes in changelog."""
         response = self.client.patch(
-            '/api/admin-ops/vnstock-config/update_config/',
+            '/api/admin-ops/vnbroker-config/update_config/',
             {'max_concurrency': 25}
         )
         
-        config = RuntimeVnstockConfig.objects.get(pk=1)
+        config = RuntimeVnbrokerConfig.objects.get(pk=1)
         assert len(config.changelog) == 1
         entry = config.changelog[0]
         assert entry['user'] == 'admin'
@@ -227,7 +227,7 @@ class TestRuntimeVnstockConfigAPI(APITestCase):
     def test_patch_invalid_data_returns_400(self):
         """PATCH with invalid data returns 400 with errors."""
         response = self.client.patch(
-            '/api/admin-ops/vnstock-config/update_config/',
+            '/api/admin-ops/vnbroker-config/update_config/',
             {'max_concurrency': 100}  # > 50
         )
         
@@ -238,13 +238,13 @@ class TestRuntimeVnstockConfigAPI(APITestCase):
     def test_post_reset_to_defaults(self):
         """POST /reset_to_defaults/ resets config + logs reset."""
         # First modify
-        config = RuntimeVnstockConfig.get_or_create_singleton()
+        config = RuntimeVnbrokerConfig.get_or_create_singleton()
         config.max_concurrency = 30
         config.save()
         
         # Then reset
         response = self.client.post(
-            '/api/admin-ops/vnstock-config/reset_to_defaults/'
+            '/api/admin-ops/vnbroker-config/reset_to_defaults/'
         )
         
         assert response.status_code == status.HTTP_200_OK
@@ -259,17 +259,17 @@ class TestRuntimeVnstockConfigAPI(APITestCase):
         """GET /changelog/ returns full change history."""
         # Make some changes
         self.client.patch(
-            '/api/admin-ops/vnstock-config/update_config/',
+            '/api/admin-ops/vnbroker-config/update_config/',
             {'max_concurrency': 20}
         )
         self.client.patch(
-            '/api/admin-ops/vnstock-config/update_config/',
+            '/api/admin-ops/vnbroker-config/update_config/',
             {'retry_attempts': 2}
         )
         
         # Get changelog
         response = self.client.get(
-            '/api/admin-ops/vnstock-config/changelog/'
+            '/api/admin-ops/vnbroker-config/changelog/'
         )
         
         assert response.status_code == status.HTTP_200_OK
@@ -279,14 +279,14 @@ class TestRuntimeVnstockConfigAPI(APITestCase):
     def test_401_without_authentication(self):
         """Unauthenticated requests return 401."""
         self.client.force_authenticate(user=None)
-        response = self.client.get('/api/admin-ops/vnstock-config/current/')
+        response = self.client.get('/api/admin-ops/vnbroker-config/current/')
         
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_403_with_non_admin_user(self):
         """Non-admin users get 403."""
         self.client.force_authenticate(user=self.regular_user)
-        response = self.client.get('/api/admin-ops/vnstock-config/current/')
+        response = self.client.get('/api/admin-ops/vnbroker-config/current/')
         
         assert response.status_code == status.HTTP_403_FORBIDDEN
 ```
@@ -294,7 +294,7 @@ class TestRuntimeVnstockConfigAPI(APITestCase):
 #### **Run integration tests:**
 
 ```bash
-pytest portfolio/tests/test_views_vnstock_config.py -v --cov=portfolio.views --cov-report=term
+pytest portfolio/tests/test_views_vnbroker_config.py -v --cov=portfolio.views --cov-report=term
 
 # Expected: all 10 tests pass
 ```
@@ -303,12 +303,12 @@ pytest portfolio/tests/test_views_vnstock_config.py -v --cov=portfolio.views --c
 
 ## 3️⃣ Frontend Component Tests (Week 3)
 
-### Test File: `frontend/src/components/__tests__/VnstockConfigPanel.test.jsx`
+### Test File: `frontend/src/components/__tests__/VnbrokerConfigPanel.test.jsx`
 
 ```javascript
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import VnstockConfigPanel from '../AdminOps/VnstockConfigPanel';
+import VnbrokerConfigPanel from '../AdminOps/VnbrokerConfigPanel';
 
 // Mock API
 jest.mock('../../api/admin-ops', () => ({
@@ -317,9 +317,9 @@ jest.mock('../../api/admin-ops', () => ({
   },
 }));
 
-describe('VnstockConfigPanel', () => {
+describe('VnbrokerConfigPanel', () => {
   it('loads and displays current configuration', async () => {
-    render(<VnstockConfigPanel />);
+    render(<VnbrokerConfigPanel />);
     
     await waitFor(() => {
       expect(screen.getByDisplayValue('12')).toBeInTheDocument();  // max_concurrency
@@ -327,7 +327,7 @@ describe('VnstockConfigPanel', () => {
   });
   
   it('updates max_concurrency when form changes', async () => {
-    render(<VnstockConfigPanel />);
+    render(<VnbrokerConfigPanel />);
     
     const input = await screen.findByDisplayValue('12');
     await userEvent.clear(input);
@@ -337,7 +337,7 @@ describe('VnstockConfigPanel', () => {
   });
   
   it('validates invalid concurrency (> 50)', async () => {
-    render(<VnstockConfigPanel />);
+    render(<VnbrokerConfigPanel />);
     
     const input = await screen.findByDisplayValue('12');
     await userEvent.clear(input);
@@ -353,7 +353,7 @@ describe('VnstockConfigPanel', () => {
     const mockSave = jest.fn().mockResolvedValue({ success: true });
     // ... setup mock API
     
-    render(<VnstockConfigPanel />);
+    render(<VnbrokerConfigPanel />);
     
     const input = await screen.findByDisplayValue('12');
     await userEvent.clear(input);
@@ -368,7 +368,7 @@ describe('VnstockConfigPanel', () => {
   });
   
   it('shows changelog on expand button', async () => {
-    render(<VnstockConfigPanel />);
+    render(<VnbrokerConfigPanel />);
     
     const expandBtn = screen.getByRole('button', { name: /Xem/i });
     await userEvent.click(expandBtn);
@@ -379,7 +379,7 @@ describe('VnstockConfigPanel', () => {
   });
   
   it('resets to defaults on confirmation', async () => {
-    render(<VnstockConfigPanel />);
+    render(<VnbrokerConfigPanel />);
     
     const resetBtn = screen.getByRole('button', { name: /Reset Defaults/i });
     
@@ -399,7 +399,7 @@ describe('VnstockConfigPanel', () => {
 
 ```bash
 cd frontend
-npm test -- VnstockConfigPanel.test.jsx --coverage
+npm test -- VnbrokerConfigPanel.test.jsx --coverage
 
 # Expected: all 6 tests pass
 ```
@@ -415,7 +415,7 @@ npm test -- VnstockConfigPanel.test.jsx --coverage
 ```gherkin
 Given:
   - Admin is logged in
-  - AdminOps → Vnstock Config tab is visible
+  - AdminOps → Vnbroker Config tab is visible
   - Current max_concurrency = 12
 
 When:
@@ -426,7 +426,7 @@ When:
 Then:
   ✅ Success message appears
   ✅ Form still shows "20"
-  ✅ GET /api/admin-ops/vnstock-config/current/ returns max_concurrency: 20
+  ✅ GET /api/admin-ops/vnbroker-config/current/ returns max_concurrency: 20
   ✅ Updated_by = "admin"
   ✅ Changelog has 1 entry
 ```
@@ -450,11 +450,11 @@ Given:
 When:
   1. Update price_board timeout to "12"
   2. Save config
-  3. Watch vnstock logs for next price_board call
+  3. Watch vnbroker logs for next price_board call
 
 Then:
   ✅ Timeout value changes to 12 in timeout_config
-  ✅ vnstock adapter calls price_board with timeout=12s
+  ✅ vnbroker adapter calls price_board with timeout=12s
   ✅ Slow responses (< 12s) no longer timeout
 ```
 
@@ -475,7 +475,7 @@ Given:
   - Current market_open_interval = 35s
 
 When:
-  1. Simulate upstream 429 response (e.g., mock vnstock API)
+  1. Simulate upstream 429 response (e.g., mock vnbroker API)
   2. Monitor prefetch task for next 2 minutes
   3. Watch effective interval adjustments
 
@@ -524,7 +524,7 @@ Then:
 
 ```bash
 # Measure API response time
-ab -n 100 -c 10 http://localhost:8000/api/admin-ops/vnstock-config/current/
+ab -n 100 -c 10 http://localhost:8000/api/admin-ops/vnbroker-config/current/
 
 # Expected: < 100ms (mostly DB query +GETREASON cache lookup)
 ```
@@ -534,15 +534,15 @@ ab -n 100 -c 10 http://localhost:8000/api/admin-ops/vnstock-config/current/
 ```python
 # Measure config reload time
 import time
-from portfolio.models import RuntimeVnstockConfig
-from portfolio.adapters.vnstock_adapter import VnstockConfigManager
+from portfolio.models import RuntimeVnbrokerConfig
+from portfolio.adapters.vnbroker_adapter import VnbrokerConfigManager
 
-config = RuntimeVnstockConfig.get_or_create_singleton()
+config = RuntimeVnbrokerConfig.get_or_create_singleton()
 config.max_concurrency = 30
 config.save()
 
 start = time.time()
-new_val = VnstockConfigManager.get_current_config()['max_concurrency']
+new_val = VnbrokerConfigManager.get_current_config()['max_concurrency']
 elapsed = time.time() - start
 
 print(f"Config change reflected in {elapsed*1000:.2f}ms")
@@ -608,13 +608,13 @@ print(f"Config change reflected in {elapsed*1000:.2f}ms")
 ```bash
 # Unit + Integration tests
 cd backend
-pytest portfolio/tests/test_runtime_vnstock_config.py \
-        portfolio/tests/test_views_vnstock_config.py \
+pytest portfolio/tests/test_runtime_vnbroker_config.py \
+        portfolio/tests/test_views_vnbroker_config.py \
         -v --cov=portfolio --cov-report=html
 
 # Frontend tests
 cd frontend
-npm test -- VnstockConfigPanel.test.jsx --coverage
+npm test -- VnbrokerConfigPanel.test.jsx --coverage
 
 # Expected: 95%+ coverage, 100% test pass rate
 ```

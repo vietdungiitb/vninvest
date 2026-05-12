@@ -48,7 +48,7 @@
 - UI có tái sinh writer thứ hai qua form hoặc action button nào không?
 - list lớn có dùng `PaginationBar` không?
 - text mới có qua i18n tiếng Việt đầy đủ dấu không?
-- link-out tới Data Ops/Vnstock có permission-gated và có disabled state khi thiếu quyền không?
+- link-out tới Data Ops/Vnbroker có permission-gated và có disabled state khi thiếu quyền không?
 
 ### G. Governance and evidence completeness
 

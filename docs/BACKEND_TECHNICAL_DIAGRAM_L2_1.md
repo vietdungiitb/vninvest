@@ -56,7 +56,7 @@ flowchart TB
     V11 --> SV[services.py]
     AN --> DB
     SV --> DB
-    SV --> MKT[vnstock]
+    SV --> MKT[vnbroker]
 ```
 
 ## 3) Stock-management API map (level 2.1)
@@ -86,7 +86,7 @@ flowchart TB
     W9 --> PRC[fetch_and_save_daily_prices]
     W10 --> DB
     W11 --> DB
-    SRV --> MKT[vnstock]
+    SRV --> MKT[vnbroker]
     PRC --> MKT
 ```
 
@@ -98,7 +98,7 @@ sequenceDiagram
     participant FE as Frontend
     participant API as /api/admin-sync/stockprofile/
     participant CMD as sync_stockprofile command
-    participant VS as vnstock
+    participant VS as vnbroker
     participant DB as Database
 
     FE->>API: POST stockprofile sync

@@ -834,7 +834,7 @@ function FinancialMetricsPanel({ financials, loading, selectedYear, onYearChange
 
   const years = financials?.years || [];
   if (!years.length) {
-    const isUpstreamUnavailable = financials?.source === 'vnstock_unavailable';
+    const isUpstreamUnavailable = financials?.source === 'vnbroker_unavailable';
     return (
       <section className="card-section p-4 xl:col-span-3">
         <p className="text-label pb-2.5 border-b border-slate-800">{t('stockDetail.financialMetricsYearly')}</p>

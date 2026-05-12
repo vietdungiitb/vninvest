@@ -97,7 +97,7 @@ Dau ra bat buoc:
 
 Nguyen tac coding:
 - Service layer: business logic.
-- Adapter layer: external provider access (vnstock, third-party APIs).
+- Adapter layer: external provider access (vnbroker, third-party APIs).
 - Views/API layer: auth + orchestration, khong nhan logic nang.
 - Frontend: page/container + reusable components + API clients + i18n.
 
@@ -108,7 +108,7 @@ Buoc thuc hien:
 4. Lap lai voi slice 2..N.
 
 Rang buoc quan trong:
-- Khong them direct provider calls ngoai adapter (vd: vnstock).
+- Khong them direct provider calls ngoai adapter (vd: vnbroker).
 - Tranh fat-file: canh bao >= 700 lines, chan merge >= 1000 lines neu khong co allowlist.
 
 ### Giai doan 4 - Verification (Test Pyramid)
@@ -172,7 +172,7 @@ Backend/Core:
 - Celery + Redis cho asynchronous/background processing.
 - Redis Streams/pubsub cho realtime ticker/events fanout.
 - Pandas vectorized transforms cho khau xu ly du lieu khoi luong lon.
-- Adapter architecture cho provider abstraction (vnstock wrapper).
+- Adapter architecture cho provider abstraction (vnbroker wrapper).
 
 Frontend:
 - React architecture theo page + component + api client.

@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('portfolio', '0038_runtimevnstockconfig'),
+        ('portfolio', '0038_runtimevnbrokerconfig'),
     ]
 
     operations = [

@@ -6,12 +6,12 @@ Phuong phap: doc code + doi chieu route/service/test + tong hop rui ro van hanh
 
 ## 1) Executive Summary
 
-Ket luan: Nen tang backend tot, nhieu thanh phan da co dinh huong kien truc dung (adapters, cache, mission-control, test regression). Tuy nhien, rui ro van hanh va maintainability van cao do mot so endpoint quan trong con dong trong views.py rat lon va phu thuoc nguon du lieu ben ngoai (vnstock) ngay trong HTTP path.
+Ket luan: Nen tang backend tot, nhieu thanh phan da co dinh huong kien truc dung (adapters, cache, mission-control, test regression). Tuy nhien, rui ro van hanh va maintainability van cao do mot so endpoint quan trong con dong trong views.py rat lon va phu thuoc nguon du lieu ben ngoai (vnbroker) ngay trong HTTP path.
 
 Muc do san sang scale: 8.6/10
 
 3 uu tien cao nhat 30 ngay toi:
-1. Co lap external dependency (vnstock) qua 1 duong vao duy nhat va chuan hoa fallback.
+1. Co lap external dependency (vnbroker) qua 1 duong vao duy nhat va chuan hoa fallback.
 2. Giam do phuc tap HTTP layer (tach theo domain + service facade + feature flag rollout).
 3. Bo sung observability/co che rollback dua tren metric thay vi rollout theo cam tinh.
 
@@ -28,15 +28,15 @@ Tac dong:
 - Kho review, kho regression-safe refactor.
 - Tang nguy co side effects khi sua nhanh production issue.
 
-### 2.2 Coupling voi vnstock da giam mot phan, nhung chua dong bo
+### 2.2 Coupling voi vnbroker da giam mot phan, nhung chua dong bo
 
 Diem tich cuc:
-- Da co adapter layer: `portfolio/adapters/vnstock_adapter.py`.
+- Da co adapter layer: `portfolio/adapters/vnbroker_adapter.py`.
 - Da co cache/backoff helper: `portfolio/adapters/cache_adapter.py`.
 - Da co test adapter: `portfolio/tests/test_adapters.py`.
 
 Van de ton tai:
-- Nhieu call `from vnstock import Vnstock` van xuat hien truc tiep trong `portfolio/views.py` (nhieu diem: 694, 1081, 1179, 1319, 1460, 1605, 1957, 2054, 3095, 3164, 3235...).
+- Nhieu call `from vnbroker import Vnbroker` van xuat hien truc tiep trong `portfolio/views.py` (nhieu diem: 694, 1081, 1179, 1319, 1460, 1605, 1957, 2054, 3095, 3164, 3235...).
 - Nghia la duong di adapter chua la "single choke point" cho external IO.
 
 Tac dong:
@@ -83,7 +83,7 @@ Y nghia:
 | Priority | Issue | Xac suat | Tac dong | Ket luan |
 |---|---|---:|---:|---|
 | P0 | views.py qua lon + mixed concerns | High | High | Can tach theo domain co feature flag |
-| P0 | vnstock call truc tiep trong handler | High | High | Can chot 1 adapter/facade duy nhat |
+| P0 | vnbroker call truc tiep trong handler | High | High | Can chot 1 adapter/facade duy nhat |
 | P1 | Validation contract khong dong nhat | Medium | High | Chuan hoa request schema theo endpoint |
 | P1 | Domain threshold hardcoded phan tan | Medium | Medium | Central config + runtime tuning |
 | P1 | Quan sat he thong con thieu (trace/metric) | Medium | Medium | Them telemetry cho external calls |
@@ -93,15 +93,15 @@ Y nghia:
 ### Week 1 - Stabilize External IO (P0)
 
 Muc tieu:
-- 100% call vnstock trong HTTP path di qua adapter/facade.
+- 100% call vnbroker trong HTTP path di qua adapter/facade.
 
 Viec can lam:
 1. Tao facade duy nhat cho market data external (co timeout/retry/backoff/error mapping).
-2. Refactor cac endpoint market hot-path de dung facade thay vi import vnstock truc tiep.
-3. Chuan hoa ma loi external (`vnstock_timeout`, `vnstock_rate_limited`, `vnstock_unavailable`).
+2. Refactor cac endpoint market hot-path de dung facade thay vi import vnbroker truc tiep.
+3. Chuan hoa ma loi external (`vnbroker_timeout`, `vnbroker_rate_limited`, `vnbroker_unavailable`).
 
 Definition of Done:
-1. Khong con `from vnstock import Vnstock` trong `portfolio/views.py`.
+1. Khong con `from vnbroker import Vnbroker` trong `portfolio/views.py`.
 2. Test adapter/fallback pass tren CI.
 3. 5xx do external provider giam ro rang tren moi truong staging.
 
@@ -155,7 +155,7 @@ Definition of Done:
 Can bo sung truoc khi chot target cuoi:
 1. API latency: p50/p95/p99 cho 6 endpoint market hot-path.
 2. Ty le loi 4xx/5xx theo endpoint.
-3. Ty le fallback (stream -> db -> vnstock).
+3. Ty le fallback (stream -> db -> vnbroker).
 4. Celery queue depth + lead time theo task group.
 5. Redis memory trend + eviction count.
 

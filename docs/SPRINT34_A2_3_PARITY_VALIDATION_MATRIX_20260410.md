@@ -4,7 +4,7 @@
 
 **Sprint:** 34  
 **Task:** A2.3 — Complete source parity matrix sign-off  
-**Acceptance Criteria:** "Matrix signed off" - validate contract field consistency across redis_stream, intraday_tick_db, vnstock fallback  
+**Acceptance Criteria:** "Matrix signed off" - validate contract field consistency across redis_stream, intraday_tick_db, vnbroker fallback  
 
 ## Executive Summary
 
@@ -12,7 +12,7 @@ This document establishes the comprehensive validation matrix for A2.3 source pa
 
 1. **redis_stream** (primary real-time source)
 2. **intraday_tick_db** (fallback database source)
-3. **vnstock** (fallback external API)
+3. **vnbroker** (fallback external API)
 
 ---
 
@@ -248,7 +248,7 @@ python backend/manage.py test portfolio.tests.test_order_flow_source_parity.Test
 
 | Issue | Mitigation | Status |
 |-------|-----------|--------|
-| vnstock rate limiting may delay fallback | Use mock vnstock in tests; staging will validate real behavior | Test covered |
+| vnbroker rate limiting may delay fallback | Use mock vnbroker in tests; staging will validate real behavior | Test covered |
 | Cursor encoding edge cases (special chars) | Base64 encoding validated in test_invalid_cursor_raises_explicit_error | Test covered |
 | Large event count (>1000) pagination performance | Tests use 25 events; staging benchmark separate | Out of scope |
 
@@ -263,7 +263,7 @@ python backend/manage.py test portfolio.tests.test_order_flow_source_parity.Test
 
 2. **Short-term (1-2 days):**
    - Staging deployment of Sprint 34 code
-   - Validate against real data sources (vnstock live, production DB)
+   - Validate against real data sources (vnbroker live, production DB)
    - Update matrix with staging evidence
 
 3. **Gate G2 Closure (1 day):**

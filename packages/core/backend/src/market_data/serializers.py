@@ -3,7 +3,7 @@ Market Data domain serializers.
 """
 from rest_framework import serializers
 
-from .models import DailyPrice, StockProfile, VnstockRuntimeConfig
+from .models import DailyPrice, StockProfile, VnbrokerRuntimeConfig
 
 
 class StockProfileSerializer(serializers.ModelSerializer):

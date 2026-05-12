@@ -26,7 +26,7 @@ export function Footer() {
           <div className="mb-3 font-semibold text-white">{t('home')}</div>
           <div className="grid gap-2">
             <Link href={localeHref(pathname, '/chart')}>{t('chart')}</Link>
-            <Link href={localeHref(pathname, '/vnstock')}>{t('vnstock')}</Link>
+            <Link href={localeHref(pathname, '/vnbroker')}>{t('vnbroker')}</Link>
             <Link href={localeHref(pathname, '/pricing')}>{t('pricing')}</Link>
             <Link href={localeHref(pathname, '/blog')}>{t('blog')}</Link>
           </div>
@@ -35,7 +35,7 @@ export function Footer() {
           <div className="mb-3 font-semibold text-white">{t('legal')}</div>
           <div className="grid gap-2">
             <Link href={localeHref(pathname, '/legal')}>{t('legal')}</Link>
-            <a href="https://github.com/vietdungiitb/vnstockcharts" target="_blank" rel="noreferrer">
+            <a href="https://github.com/vietdungiitb/vnbrokercharts" target="_blank" rel="noreferrer">
               GitHub
             </a>
           </div>

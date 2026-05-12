@@ -57,7 +57,7 @@ This audit documents the completion of Phases 2-6 of the canonical price unit st
    - Previous declaration (VND) caused backend to apply wrong scaling throughout
    - This single constant correction cascades through entire market data service
 
-3. **Lines 57-75:** UPDATED `_resolve_vnstock_price_unit()` helper
+3. **Lines 57-75:** UPDATED `_resolve_vnbroker_price_unit()` helper
    - Now checks adapter's `price_unit_canonical` seal FIRST
    - Falls back to legacy `price_unit` attribute for backward compatibility
    - Added docstring explaining seal contract from adapter
@@ -103,7 +103,7 @@ The single constant correction (`_SYSTEM_PRICE_UNIT = 'THOUSAND_VND'`) fixed the
        """DEPRECATED: Heuristic price scale detection.
        
        REASON DEPRECATED:
-       - Adapter (vnstock_adapter.py) now guarantees all prices in canonical THOUSAND_VND
+       - Adapter (vnbroker_adapter.py) now guarantees all prices in canonical THOUSAND_VND
        - No heuristic detection needed anymore
        - This function is kept for backward compatibility but always returns 1.0
        
@@ -415,7 +415,7 @@ The build folder is ready to be deployed.
    - Logging enhanced
    - ~12 lines of changes
 
-5. ✅ [backend/portfolio/adapters/vnstock_adapter.py](backend/portfolio/adapters/vnstock_adapter.py)
+5. ✅ [backend/portfolio/adapters/vnbroker_adapter.py](backend/portfolio/adapters/vnbroker_adapter.py)
    - (Already completed in Phase 1)
    - ~150 lines added
 
@@ -457,7 +457,7 @@ Date:   2025-04-16
     - Created: backend/portfolio/price_units.py (284 lines)
     - Created: backend/tests/test_price_units_canonical.py (340 lines, 40 tests ✅)
     - Created: backend/tests/test_adapter_canonical.py (190 lines, 8 tests ✅)
-    - Modified: backend/portfolio/adapters/vnstock_adapter.py (+150 lines)
+    - Modified: backend/portfolio/adapters/vnbroker_adapter.py (+150 lines)
     - Total: 48 tests passing
 ```
 
@@ -524,7 +524,7 @@ Same stock symbol (MBB) displayed inconsistently:
 
 **Implementation Flow:**
 ```
-vnstock_adapter (KBS/VCI) 
+vnbroker_adapter (KBS/VCI) 
   ↓ [_ensure_quote_prices_canonical_thousand_vnd()]
   → THOUSAND_VND canonical (sealed with attrs)
   ↓ [fetch_price_board/depth/intraday_dataframe()]

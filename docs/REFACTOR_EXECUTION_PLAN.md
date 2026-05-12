@@ -33,7 +33,7 @@ Chốt measurement contract, feature flag, cấu trúc module và baseline metri
 
 ## 3. Phase 1: Refactor Market Data
 ### Code scope
-- `backend/portfolio/adapters/vnstock_adapter.py`
+- `backend/portfolio/adapters/vnbroker_adapter.py`
 - `backend/portfolio/adapters/cache_adapter.py`
 - `backend/portfolio/services/market_data_service.py`
 - `backend/portfolio/market_views.py`

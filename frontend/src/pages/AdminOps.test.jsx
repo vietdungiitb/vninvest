@@ -7,8 +7,8 @@ import {
   getAdminAuditLog,
   getAdminOpsStats,
   getAdminPrefetchTimePolicy,
-  getAdminVnstockConfigChangelog,
-  getAdminVnstockConfigCurrent,
+  getAdminVnbrokerConfigChangelog,
+  getAdminVnbrokerConfigCurrent,
   getSecuritiesGroups,
 } from '../api/client';
 import { useI18n } from '../context/LangContext';
@@ -17,8 +17,8 @@ jest.mock('../api/client', () => ({
   getAdminAuditLog: jest.fn(),
   getAdminOpsStats: jest.fn(),
   getAdminPrefetchTimePolicy: jest.fn(),
-  getAdminVnstockConfigChangelog: jest.fn(),
-  getAdminVnstockConfigCurrent: jest.fn(),
+  getAdminVnbrokerConfigChangelog: jest.fn(),
+  getAdminVnbrokerConfigCurrent: jest.fn(),
   getSecuritiesGroups: jest.fn(),
 }));
 
@@ -62,8 +62,8 @@ describe('AdminOps legacy writer link-out', () => {
         },
       },
     });
-    getAdminVnstockConfigCurrent.mockResolvedValue({ data: { settings: {} } });
-    getAdminVnstockConfigChangelog.mockResolvedValue({ data: { results: [] } });
+    getAdminVnbrokerConfigCurrent.mockResolvedValue({ data: { settings: {} } });
+    getAdminVnbrokerConfigChangelog.mockResolvedValue({ data: { results: [] } });
     getSecuritiesGroups.mockResolvedValue({ data: [] });
     getAdminAuditLog.mockResolvedValue({ data: { results: [] } });
   });
@@ -73,7 +73,7 @@ describe('AdminOps legacy writer link-out', () => {
   });
 
   it('locks the legacy writer link-out when upstream permissions are missing', async () => {
-    getAdminOpsStats.mockResolvedValue({ data: buildStatsPayload({ vnstock_config_write: false, intraday_side_backfill_apply: false }) });
+    getAdminOpsStats.mockResolvedValue({ data: buildStatsPayload({ vnbroker_config_write: false, intraday_side_backfill_apply: false }) });
 
     render(
       <MemoryRouter initialEntries={['/admin-ops']}>
@@ -88,7 +88,7 @@ describe('AdminOps legacy writer link-out', () => {
   });
 
   it('opens the legacy writer link-out when upstream permissions are present', async () => {
-    getAdminOpsStats.mockResolvedValue({ data: buildStatsPayload({ vnstock_config_write: true, intraday_side_backfill_apply: true }) });
+    getAdminOpsStats.mockResolvedValue({ data: buildStatsPayload({ vnbroker_config_write: true, intraday_side_backfill_apply: true }) });
 
     render(
       <MemoryRouter initialEntries={['/admin-ops']}>
@@ -103,7 +103,7 @@ describe('AdminOps legacy writer link-out', () => {
   });
 
   it('renders recent activity feed when audit events are available', async () => {
-    getAdminOpsStats.mockResolvedValue({ data: buildStatsPayload({ vnstock_config_write: false, intraday_side_backfill_apply: false }) });
+    getAdminOpsStats.mockResolvedValue({ data: buildStatsPayload({ vnbroker_config_write: false, intraday_side_backfill_apply: false }) });
     getAdminAuditLog.mockResolvedValue({
       data: {
         results: [

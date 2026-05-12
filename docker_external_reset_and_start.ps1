@@ -116,8 +116,8 @@ if (-not $SkipSessionCloseBootstrap) {
 
     if ($backendReady) {
         $bootstrapScript = @'
-from portfolio.tasks_prefetch import offpeak_vnstock_ingest
-result = offpeak_vnstock_ingest.run(days=7, max_symbols=200, trigger='dev_reset_bootstrap')
+from portfolio.tasks_prefetch import offpeak_vnbroker_ingest
+result = offpeak_vnbroker_ingest.run(days=7, max_symbols=200, trigger='dev_reset_bootstrap')
 print(result)
 '@
 

@@ -12,7 +12,7 @@ He thong da co khung pipeline kha day du (detect -> store -> websocket -> merge 
 Tuy nhien, hien tai ton tai 4 rui ro can uu tien, trong do co 2 rui ro muc do High:
 
 1. Dark flow advisory dang bi "lam phang" severity do matched_value bi gan bang threshold thay vi bien do su kien thuc te.
-2. Aggregate cursor cho stream/vnstock co nguy co phan trang khong on dinh do id synthetic thay doi theo moi request.
+2. Aggregate cursor cho stream/vnbroker co nguy co phan trang khong on dinh do id synthetic thay doi theo moi request.
 3. Realtime whale detection co the phat duplicate event cho cung mot trade khi runtime config co nhieu threshold.
 4. Realtime threshold helper chua dung chinh sach fallback an toan va chua support symbol override cho user-specific publish.
 
@@ -34,21 +34,21 @@ De xuat nang cap:
 - Khong dung threshold ratio cua whale matched order cho dark_flow.
 - Luu them truong "signal_strength"/"signal_weight" vao merge metadata de truy vet.
 
-### F2 - High - Cursor aggregate khong on dinh voi stream/vnstock records
+### F2 - High - Cursor aggregate khong on dinh voi stream/vnbroker records
 
 Bang chung code:
 - backend/portfolio/market_data_service.py:2172 tao stream records voi synthetic_id bat dau tu 1 moi request.
-- backend/portfolio/market_data_service.py:2206 tao vnstock records voi synthetic_id bat dau tu 1 moi request.
+- backend/portfolio/market_data_service.py:2206 tao vnbroker records voi synthetic_id bat dau tu 1 moi request.
 - backend/portfolio/market_data_service.py:2297 va backend/portfolio/market_data_service.py:2339 dung id lam tie-breaker/cursor.
 
 Tac dong:
 - next_cursor cua page truoc co the khong tuong thich voi page sau neu id synthetic bi tao lai.
-- Nguy co duplicate/missing event khi client phan trang trong nguon redis_stream/vnstock.
+- Nguy co duplicate/missing event khi client phan trang trong nguon redis_stream/vnbroker.
 
 De xuat nang cap:
 - Dung event_id deterministic (symbol + ts + side + matched_value) thay cho synthetic_id trong cursor.
 - Hoac bo tie-breaker id synthetic, thay bang hash key on dinh.
-- Bo sung regression test cho pagination stream source va vnstock source.
+- Bo sung regression test cho pagination stream source va vnbroker source.
 
 ### F3 - Medium - Co the emit duplicate whale events tren cung mot trade
 
@@ -87,7 +87,7 @@ Quan sat nhanh:
 - Da co test cho advisory merge metadata va threshold_source (test_whale_advisory_task.py).
 - Chua thay test rieng cho:
   - dark_flow severity mapping thong qua generate_whale_advisory_task.
-  - aggregate pagination on stream/vnstock khi co cursor.
+  - aggregate pagination on stream/vnbroker khi co cursor.
   - duplicate threshold emission trong detect_whale_signals.
 
 ## Benchmark Quoc Te (Tom tat so sanh nang luc)
@@ -112,7 +112,7 @@ Muc dich phan nay la de quy doi ke hoach fix/nang cap theo nang luc ma cac nen t
 - Diem manh pho bien:
   - Contract on dinh, pagination tin cay, provenance ro rang.
 - Khoang cach hien tai:
-  - Cursor aggregate voi stream/vnstock con nguy co khong on dinh (F2).
+  - Cursor aggregate voi stream/vnbroker con nguy co khong on dinh (F2).
 
 ### Nhom retail decision UX (TradingView, Koyfin overlays)
 - Diem manh pho bien:
@@ -134,7 +134,7 @@ Muc tieu: sua loi anh huong truc tiep den tinh dung/sai cua tin hieu.
 - Ket qua mong doi:
   - Severity distribution co do gian, khong bi don vao info.
 
-2. Fix F2 - cursor deterministic cho aggregate stream/vnstock
+2. Fix F2 - cursor deterministic cho aggregate stream/vnbroker
 - Cong viec:
   - Thay synthetic id bang event key on dinh.
   - Chuan hoa next_cursor tie-breaker bang truong deterministic.
@@ -145,7 +145,7 @@ Muc tieu: sua loi anh huong truc tiep den tinh dung/sai cua tin hieu.
 3. Hardening regression tests
 - Bo sung test cho:
   - dark_flow severity mapping -> advisory output.
-  - stream/vnstock cursor consistency.
+  - stream/vnbroker cursor consistency.
   - single trade khong phat nhieu event do multi-threshold.
 
 4. KPI pha 0 (go/no-go)
@@ -214,7 +214,7 @@ Ly do:
 
 1. A1 - Deterministic event identity
 - Scope:
-  - Chuan hoa event_id cho stream + vnstock + db fallback.
+  - Chuan hoa event_id cho stream + vnbroker + db fallback.
   - Dung event key on dinh cho cursor tie-break.
 - Acceptance criteria:
   - Paging 5 trang lien tiep khong duplicate/missing event.
@@ -225,7 +225,7 @@ Ly do:
   - Chot contract response nhat quan giua moi source.
   - next_cursor null/khong-null phai dung theo has_more.
 - Acceptance criteria:
-  - Contract test pass cho redis_stream, intraday_tick_db, vnstock.
+  - Contract test pass cho redis_stream, intraday_tick_db, vnbroker.
   - Khong co field optional thay doi bat thuong giua 2 lan goi lien tiep.
 
 3. A3 - Threshold policy unification
@@ -425,7 +425,7 @@ Huong dan su dung nhanh:
 ### Epic A - Data Integrity
 
 1. Ticket A1.1 - Standardize deterministic event_id across sources
-- Mo ta: Chuan hoa event_id cho redis_stream, vnstock fallback, intraday_tick_db.
+- Mo ta: Chuan hoa event_id cho redis_stream, vnbroker fallback, intraday_tick_db.
 - Output:
   - Event key spec doc.
   - Event id generator map theo source.

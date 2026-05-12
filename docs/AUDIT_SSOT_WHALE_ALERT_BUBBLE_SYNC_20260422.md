@@ -44,7 +44,7 @@ Ket luan audit:
 - Neu thieu `ref_price` thi tra ve danh sach orders rong.
 
 ### 3.3 Backend path (Alert)
-- Whale feed endpoint dang dung pipeline fallback: Redis stream -> IntradayTick DB -> vnstock.
+- Whale feed endpoint dang dung pipeline fallback: Redis stream -> IntradayTick DB -> vnbroker.
 - Alert co the ton tai khi stream co du lieu, ngay ca khi bubble endpoint khong du dieu kien.
 
 ### 3.4 Root cause tong hop
@@ -91,7 +91,7 @@ Tra ve event list da chuan hoa:
 ### 5.3 Source selection policy
 - Tier 1: Redis stream (neu fresh).
 - Tier 2: IntradayTick DB.
-- Tier 3: vnstock fallback.
+- Tier 3: vnbroker fallback.
 - Tat ca tier deu normalize ve cung contract truoc khi tra output.
 
 ---
@@ -202,7 +202,7 @@ Metric moi de bat buoc theo doi:
 - `whale_ssot_alert_bubble_event_count_delta` (theo symbol/window).
 - `whale_ssot_degraded_mode_total`.
 - `whale_ssot_missing_ref_price_total`.
-- `whale_ssot_source_distribution` (stream/db/vnstock).
+- `whale_ssot_source_distribution` (stream/db/vnbroker).
 
 Canh bao:
 - Neu `event_count_delta != 0` lien tuc 3 chu ky poll -> raise warning.

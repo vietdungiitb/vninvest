@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { VNStockChart, WhaleBubbleOverlay } from '@/vendor/react-stockcharts/dist/index.js';
-import type { OHLCVBar } from 'vnstockcharts';
+import { VNBrokerChart, WhaleBubbleOverlay } from '@/vendor/react-stockcharts/dist/index.js';
+import type { OHLCVBar } from 'vnbrokercharts';
 import { ALLOWED_SYMBOLS, type AllowedSymbol, normalizeTimeframe } from '@/lib/validation';
 import { fetchChartFeed } from '@/lib/api';
 import type { ChartFeed } from '@/lib/chartFeed';
@@ -138,7 +138,7 @@ export function ChartDemo() {
                 {error}
               </div>
             ) : (
-              <VNStockChart
+              <VNBrokerChart
                 adapter={noopAdapter as never}
                 data={bars}
                 symbol={symbol}
@@ -148,7 +148,7 @@ export function ChartDemo() {
                 style={{ width: '100%', height: '100%' }}
               >
                 <WhaleBubbleOverlay events={whaleEvents} threshold={5_000_000_000} />
-              </VNStockChart>
+              </VNBrokerChart>
             )}
           </div>
         </div>

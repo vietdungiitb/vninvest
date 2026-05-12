@@ -25,9 +25,9 @@
 - SITE-4: route handlers + relay layer
 
 ### Giai đoạn sản phẩm
-- SITE-5: `/chart` live demo bằng `vnstockcharts`
+- SITE-5: `/chart` live demo bằng `vnbrokercharts`
 - SITE-6: `/chart/docs` và `/chart/embed`
-- SITE-7: `/vnstock` và `/vnstock/playground`
+- SITE-7: `/vnbroker` và `/vnbroker/playground`
 
 ### Giai đoạn hoàn thiện
 - SITE-8: blog MDX + ISR
@@ -45,7 +45,7 @@
 **Phạm vi**:
 - tạo `packages/opencore-site`
 - tạo `package.json`, `tsconfig.json`, `next.config.ts`, `Dockerfile`
-- thêm `next-intl`, MDX, Pyodide loader, `vnstockcharts` dependency
+- thêm `next-intl`, MDX, Pyodide loader, `vnbrokercharts` dependency
 - thêm workflow `.github/workflows/opencore-site.yml`
 
 **Đầu ra**:
@@ -112,7 +112,7 @@
 
 **Phạm vi**:
 - `/api/bars/[symbol]/route.ts`
-- `/api/public/vnstock-data/route.ts`
+- `/api/public/vnbroker-data/route.ts`
 - symbol whitelist
 - rate limit middleware/helper
 - cache headers
@@ -131,17 +131,17 @@
 
 ### SITE-5 — `/chart` live demo
 
-**Mục tiêu**: render VNStockCharts live demo bằng `vnstockcharts`.
+**Mục tiêu**: render VNBrokerCharts live demo bằng `vnbrokercharts`.
 
 **Phạm vi**:
 - `ChartDemo.tsx`
 - symbol picker
-- `VNStockChart` integration
+- `VNBrokerChart` integration
 - whale bubble overlay nếu có dữ liệu
 - polling refresh
 
 **Đầu ra**:
-- `/chart` hiển thị đúng chart engine của `vnstockcharts`
+- `/chart` hiển thị đúng chart engine của `vnbrokercharts`
 - không dùng KLineCharts, ECharts, Recharts hoặc Chart.js
 - phù hợp viewport mobile/desktop
 
@@ -162,7 +162,7 @@
 - embed form and preview
 
 **Đầu ra**:
-- trang docs có code sample chính xác theo API thật của `vnstockcharts`
+- trang docs có code sample chính xác theo API thật của `vnbrokercharts`
 - embed generator copy-paste được
 
 **Validation**:
@@ -171,9 +171,9 @@
 
 ---
 
-### SITE-7 — `/vnstock` và Pyodide playground
+### SITE-7 — `/vnbroker` và Pyodide playground
 
-**Mục tiêu**: giới thiệu vnstock library và playground chạy Python trên browser.
+**Mục tiêu**: giới thiệu vnbroker library và playground chạy Python trên browser.
 
 **Phạm vi**:
 - library overview page
@@ -279,8 +279,8 @@
 ## 4. Definition of done for the whole pack
 
 - About site chạy được trên local và production domain.
-- `/chart` dùng `vnstockcharts`.
-- `/vnstock/playground` dùng Pyodide browser-only.
+- `/chart` dùng `vnbrokercharts`.
+- `/vnbroker/playground` dùng Pyodide browser-only.
 - Tất cả text mới có VI/EN.
 - API guardrails chặn symbol lạ và rate limit đúng.
 - Public pages có SEO, sitemap, robots, OG.

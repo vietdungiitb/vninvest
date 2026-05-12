@@ -11,12 +11,12 @@ Thay thế logic kiểm tra service cũ bằng Native Celery Inspect API.
   3. Kiểm tra kết nối Redis (`django_redis.get_redis_connection`).
   4. Kiểm tra sức khỏe database Postgres (`django.db.connection.ensure_connection`).
 
-## 2. Native VNStock Adapter
+## 2. Native VNBroker Adapter
 Module mới để lấy dữ liệu bảng giá/lịch sử từ các nguồn bên thứ ba (KBS, VCI) mà không cần qua legacy DB.
 
-### File: `market_data/vnstock_adapter.py`
+### File: `market_data/vnbroker_adapter.py`
 - **Hàm chính**: `fetch_price_board_snapshot(symbols: list[str]) -> list[dict]`
-- **Cấu hình**: Lấy từ `market_data.models.VnstockRuntimeConfig`.
+- **Cấu hình**: Lấy từ `market_data.models.VnbrokerRuntimeConfig`.
 - **Error Handling**: Implement circuit breaker và retry logic để đảm bảo tính ổn định khi gọi API bên ngoài.
 
 ## 3. Native Data Lifecycle
@@ -24,8 +24,8 @@ Quản lý vòng đời dữ liệu trực tiếp trên Core Models.
 
 ### Task: `data_ingest.tasks.fetch_and_upsert_price_board`
 - **Flow**:
-  1. Đọc `VnstockRuntimeConfig` hiện tại.
-  2. Gọi `vnstock_adapter.fetch_price_board_snapshot`.
+  1. Đọc `VnbrokerRuntimeConfig` hiện tại.
+  2. Gọi `vnbroker_adapter.fetch_price_board_snapshot`.
   3. Map và Upsert vào `market_serving.models.SymbolSnapshot`.
   4. Ghi log vào `data_ingest.models.IngestRun` để audit.
 

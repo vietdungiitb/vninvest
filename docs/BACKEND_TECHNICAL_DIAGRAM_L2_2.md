@@ -56,7 +56,7 @@ flowchart TB
         B2[Collector Worker\nIntraday polling 5s + proxy rotation]
         B3[EOD Worker\nDaily price sync]
         B4[Snapshot Worker\n15:30 NAV/TWR]
-        MK[vnstock Provider]
+        MK[vnbroker Provider]
     end
 
     S2 --> C1
@@ -93,7 +93,7 @@ sequenceDiagram
     autonumber
     participant BEAT as Celery Beat
     participant COL as Collector Worker
-    participant VS as vnstock
+    participant VS as vnbroker
     participant ENG as Intraday Pandas Engine
     participant R as Redis Pub/Sub
     participant CH as Django Channels

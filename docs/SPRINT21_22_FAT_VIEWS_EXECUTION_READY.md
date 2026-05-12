@@ -76,7 +76,7 @@ Tai lieu van hanh de dong Sprint 21:
 | S21-03 | Tao `portfolio/exceptions.py` va chuan hoa exception map | Backend Engineer | 0.5d | S21-02 | Module exception dung chung | Co `ExternalSystemException` va `BusinessLogicRuleException`; views map duoc sang HTTP theo design doc |
 | S21-04 | Tao dashboard baseline va alert rules | DevOps | 1d | S21-01 | Dashboard Grafana/APM | Theo doi duoc p95, 5xx, throttle, cache hit/miss; alert test thu thanh cong 1 lan |
 | S21-05 | Lap inventory endpoint Market Data trong `views.py` | Backend Engineer | 0.5d | S21-02 | Bang mapping endpoint | Co danh sach endpoint cu, serializer, query params, auth rule, cache behavior |
-| S21-06 | Implement `adapters/vnstock_adapter.py` | Backend Engineer | 1.5d | S21-03, S21-05 | Adapter goi provider | Tat ca network/retry/rate-limit parsing cua Market Data muc tieu khong con nam truc tiep trong fat view |
+| S21-06 | Implement `adapters/vnbroker_adapter.py` | Backend Engineer | 1.5d | S21-03, S21-05 | Adapter goi provider | Tat ca network/retry/rate-limit parsing cua Market Data muc tieu khong con nam truc tiep trong fat view |
 | S21-07 | Implement `adapters/cache_adapter.py` | Backend Engineer | 0.5d | S21-03, S21-05 | Cache adapter | Cache get/set duoc dong goi thanh mot boundary rieng, co test happy path va miss path |
 | S21-08 | Implement `services/market_data_service.py` | Backend Engineer | 1.5d | S21-06, S21-07 | Service Market Data | Business logic chinh da duoc dua vao service; view moi chi con parse/auth/serialize |
 | S21-09 | Implement `market_views.py` va router toggle | Backend Engineer | 1d | S21-08 | View moi sau flag | Endpoint contract giu nguyen; bat/tat duoc bang `ENABLE_NEW_MARKET_VIEWS` ma khong sua code nong |

@@ -17,6 +17,7 @@ _CORE_APPS = frozenset({
     'market_serving',
     'signal_intelligence',
     'commercial',
+    'tenant_lifecycle',
     'ops_audit',
     'data_ingest',
     'advisory',

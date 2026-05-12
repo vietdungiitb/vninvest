@@ -14,6 +14,35 @@ QUEUE_NAMES = (
 
 
 QUEUE_DOMAIN_MATRIX = {
+    'commercial_lifecycle': {
+        'queue': 'celery',
+        'task_routes': (
+            'commercial.tasks.flush_quota_counters',
+            'commercial.tasks.generate_monthly_invoices',
+            'commercial.tasks.check_overdue_invoices',
+            'commercial.tasks.send_quota_warning',
+        ),
+        'periodic_tasks': (
+            'flush-quota-counters',
+            'generate-monthly-invoices',
+            'check-overdue-invoices',
+        ),
+    },
+    'tenant_lifecycle': {
+        'queue': 'celery',
+        'task_routes': (
+            'tenant_lifecycle.tasks.auto_expire_trials',
+            'tenant_lifecycle.tasks.auto_suspend_quota_overflow',
+            'tenant_lifecycle.tasks.send_trial_expiry_warning',
+            'tenant_lifecycle.tasks.auto_deprovision_stale',
+        ),
+        'periodic_tasks': (
+            'auto-expire-trials',
+            'auto-suspend-quota-overflow',
+            'send-trial-expiry-warning',
+            'auto-deprovision-stale',
+        ),
+    },
     'market_serving_realtime': {
         'queue': 'realtime_prefetch',
         'task_routes': (
@@ -51,10 +80,12 @@ QUEUE_DOMAIN_MATRIX = {
         'queue': 'enrichment_offhours',
         'task_routes': (
             'enrich_*',
+            'market_serving.materializers.materialize_pre_open_snapshots',
         ),
         'periodic_tasks': (
             'enrich_history_bars',
             'enrich_fundamentals',
+            'materialize-pre-open-snapshots-20m',
         ),
     },
     'manual_operations': {

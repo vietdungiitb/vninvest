@@ -58,7 +58,7 @@ Hệ thống VNInvest hiện đang ở trạng thái **hybrid không ổn địn
 
 1. Không thay đổi chart engine (KLineChart giữ nguyên).
 2. Không thay đổi selected-session semantics trong whale route.
-3. Không thay đổi vnstock provider logic (giữ nguyên KBS/VCI adapter).
+3. Không thay đổi vnbroker provider logic (giữ nguyên KBS/VCI adapter).
 4. Không build mobile app hoặc OpenCore public SDK.
 5. Không refactor AI prompt logic ngoài di cư domain advisory.
 
@@ -330,7 +330,7 @@ docker compose logs core-beat --tail=20
 
 **Files cần tạo**:
 - `models.py` — `IngestJob`, `IngestRun`, `MarketFeedEvent`
-- `vnstock_feed.py` — Wrapper vnstock (clone từ legacy `adapters/vnstock_adapter.py`)
+- `vnbroker_feed.py` — Wrapper vnbroker (clone từ legacy `adapters/vnbroker_adapter.py`)
 - `tasks.py` — `fetch_and_upsert_price_board`
 - `apps.py`, `migrations/`
 
@@ -375,7 +375,7 @@ curl -sf -H "Authorization: Bearer $PAT" \
 3. `signal_intelligence` — UnifiedAlert + OrderFlowEvent + ForensicWindow
 4. `advisory` — AdvisoryRecord + TokenBudget + SystemAISettings
 5. `user_workspace` — Portfolio + Transaction + Watchlist
-6. `market_data` — DailyPrice + StockProfile + VnstockRuntimeConfig
+6. `market_data` — DailyPrice + StockProfile + VnbrokerRuntimeConfig
 
 ### Quy tắc chung cho mỗi domain migration
 
@@ -457,10 +457,10 @@ python manage.py migrate_userprofiles_to_core --execute
 **Legacy models cần migrate**:
 - `portfolio.DailyPrice` → `market_data.DailyPrice`
 - `portfolio.StockProfile` → `market_data.StockProfile`
-- `portfolio.RuntimeVnstockConfig` → `market_data.VnstockRuntimeConfig`
+- `portfolio.RuntimeVnbrokerConfig` → `market_data.VnbrokerRuntimeConfig`
 
 **Legacy service files cần migrate**:
-- `portfolio/adapters/vnstock_adapter.py` → `market_data/adapters/vnstock.py`
+- `portfolio/adapters/vnbroker_adapter.py` → `market_data/adapters/vnbroker.py`
 - `portfolio/market_data_service.py` → `market_data/service.py`
 
 **Celery tasks cần migrate**:

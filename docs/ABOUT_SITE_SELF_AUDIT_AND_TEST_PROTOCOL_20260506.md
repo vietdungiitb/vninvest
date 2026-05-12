@@ -39,9 +39,9 @@
 
 ---
 
-### A2 — VNStockCharts demo integrity
+### A2 — VNBrokerCharts demo integrity
 
-**Goal**: `/chart` phải render bằng `vnstockcharts`.
+**Goal**: `/chart` phải render bằng `vnbrokercharts`.
 
 **Steps**:
 1. Mở `/chart`.
@@ -50,7 +50,7 @@
 4. Confirm chart layer, whale overlay, and summary cards.
 
 **Expected**:
-- component render đến từ `vnstockcharts`
+- component render đến từ `vnbrokercharts`
 - symbol đổi thì data đổi
 - không có KLineCharts/ECharts/Recharts surface
 
@@ -87,7 +87,7 @@
 **Goal**: playground chạy code trong browser, không có server-side execution.
 
 **Steps**:
-1. Mở `/vnstock/playground`.
+1. Mở `/vnbroker/playground`.
 2. Chạy mẫu code fetch dữ liệu.
 3. Kiểm output.
 4. Kiểm network tab xem chỉ đi qua relay same-origin.

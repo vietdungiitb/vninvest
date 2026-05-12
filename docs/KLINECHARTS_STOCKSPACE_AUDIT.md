@@ -26,7 +26,7 @@ Layout: Header → KLineChart (520px) + Panels (Tape/Depth/Whale/OrderFlow/Finan
 ## 4. Tóm Tắt Cải Tiến (Polish UX)
 ### Cao (1-2 days):
 1. **Tooltip VN**: 'T/M/C/Đ/T/KL' → 'Thời Gian/Mở/Cao/Thấp/Đóng/KLGD'
-2. **Intraday TF**: +1m/5m/15m/1h (vnstock)
+2. **Intraday TF**: +1m/5m/15m/1h (vnbroker)
 3. **Realtime Candle**: `applyMoreData` live ticks
 4. **Splitter Drag**: `separator.dragEnabled: true` + hover highlight
 

@@ -243,9 +243,9 @@ Thanh ngang ngay dưới header card, hiện trạng thái chiến thuật đang
 Hiện tại `VALID_INTERVALS = {'1D', '1W'}`. Để hỗ trợ intraday cần:
 
 1. **Nguồn dữ liệu giá OHLC intraday:**  
-   `fetch_history_dataframe` trong `vnstock_adapter.py` hỗ trợ interval `'1'` (1 phút), `'5'`, `'15'`, `'30'`, `'60'` (1 giờ). Mapping cần làm:
+   `fetch_history_dataframe` trong `vnbroker_adapter.py` hỗ trợ interval `'1'` (1 phút), `'5'`, `'15'`, `'30'`, `'60'` (1 giờ). Mapping cần làm:
    ```python
-   INTERVAL_VNSTOCK_MAP = {
+   INTERVAL_VNBROKER_MAP = {
        '1D': '1D', '1W': '1W',
        '1h': '60', '30m': '30', '15m': '15',
    }
@@ -340,7 +340,7 @@ Bước 3 (song song):
 
 Bước 4 (backend):
   - views_dark_money_history.py: thêm 1h support
-  - vnstock_adapter.py: kiểm tra interval '60' có hoạt động không
+  - vnbroker_adapter.py: kiểm tra interval '60' có hoạt động không
   - Mở rộng sang 30m/15m sau khi 1h ổn định
 
 Bước 5:
@@ -359,7 +359,7 @@ Bước 5:
 | `frontend/src/i18n/vi.js` | Thêm 4 keys |
 | `frontend/src/i18n/en.js` | Thêm 4 keys |
 | `backend/portfolio/views_dark_money_history.py` | Thêm intraday intervals |
-| `backend/portfolio/adapters/vnstock_adapter.py` | Verify interval mapping |
+| `backend/portfolio/adapters/vnbroker_adapter.py` | Verify interval mapping |
 
 ---
 

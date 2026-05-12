@@ -5,7 +5,7 @@ This document outlines the strategy to resolve the "Watchlist Gate" and logic du
 ## 1. Business Objective & Scope (Nghiệp vụ)
 The current AI Advisory system is limited to the user's specific watchlist, creating a "blind spot" for market-wide whale movements.
 - **Goal**: Transition from a reactive watchlist-only tool to a proactive **Market Discovery Hub**.
-- **Key Feature**: "Market Discovery Mode" to reveal large money flows across the entire VNStock universe.
+- **Key Feature**: "Market Discovery Mode" to reveal large money flows across the entire VNBroker universe.
 - **Core Principle**: Unify logic into a Single Source of Truth (SSOT) to ensure consistency between alerts and advisories.
 
 ## 2. Implementation Phases

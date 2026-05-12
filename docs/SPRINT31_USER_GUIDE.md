@@ -78,7 +78,7 @@ GET /api/realtime/whale-feed/aggregate/?window=1h&amp;sort=matched_value
 Response includes:
 + window echo-back in filters
 + deterministic cursor per window  
-+ source_mix counts (stream/db/vnstock)
++ source_mix counts (stream/db/vnbroker)
 ```
 
 ---
@@ -134,7 +134,7 @@ Metrics exposed:
 ├── freshness_median/p95
 ├── dedup_hit_ratio  
 ├── snapshot_recovery_ratio
-├── source_mix_ratio (stream/db/vnstock)
+├── source_mix_ratio (stream/db/vnbroker)
 └── health_summary
 ```
 

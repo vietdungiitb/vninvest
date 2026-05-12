@@ -8,7 +8,7 @@
 ## 1. Review stance
 
 Review phải trả lời bốn câu hỏi trước:
-1. Có đúng là `vnstockcharts` được dùng cho `/chart` không?
+1. Có đúng là `vnbrokercharts` được dùng cho `/chart` không?
 2. Có route nào public còn fetch trực tiếp backend từ client không?
 3. Có text user-facing nào chưa đi qua i18n tiếng Việt đầy đủ dấu không?
 4. Có config/security drift nào làm site public kém an toàn không?
@@ -27,7 +27,7 @@ Nếu một trong bốn câu này không trả lời được bằng diff hoặc
 
 ### 2.2 Immutable guardrails
 - `frontend/src/components/WhaleBubbleChart.jsx` không được sửa vì project này.
-- `vnstockcharts` là dependency nguồn, không copy chart logic vào about site.
+- `vnbrokercharts` là dependency nguồn, không copy chart logic vào about site.
 - Pyodide code phải ở browser, không có server runner.
 
 ### 2.3 Public surface
@@ -35,12 +35,12 @@ Nếu một trong bốn câu này không trả lời được bằng diff hoặc
 - `/chart`
 - `/chart/docs`
 - `/chart/embed`
-- `/vnstock`
-- `/vnstock/playground`
+- `/vnbroker`
+- `/vnbroker/playground`
 - `/blog`
 - `/legal`
 - `/api/bars/[symbol]`
-- `/api/public/vnstock-data`
+- `/api/public/vnbroker-data`
 
 ---
 
@@ -49,7 +49,7 @@ Nếu một trong bốn câu này không trả lời được bằng diff hoặc
 ### Functionality
 - [ ] Locale default là VI
 - [ ] EN locale route hoạt động
-- [ ] `ChartDemo` sử dụng `VNStockChart`
+- [ ] `ChartDemo` sử dụng `VNBrokerChart`
 - [ ] `PlaygroundPanel` render chạy được
 - [ ] Blog pages render MDX đúng
 - [ ] Legal page render đúng
@@ -59,7 +59,7 @@ Nếu một trong bốn câu này không trả lời được bằng diff hoặc
 - [ ] Relay response có cache headers
 - [ ] Invalid symbol trả 4xx
 - [ ] Rate limit trả 429 khi vượt ngưỡng
-- [ ] Chart payload match `vnstockcharts` adapter contract
+- [ ] Chart payload match `vnbrokercharts` adapter contract
 
 ### Security
 - [ ] Không có direct fetch từ browser tới backend host
@@ -94,7 +94,7 @@ Nếu một trong bốn câu này không trả lời được bằng diff hoặc
 ## 5. Stop-ship findings
 
 Bất kỳ finding nào dưới đây là stop-ship:
-- `/chart` không dùng `vnstockcharts`
+- `/chart` không dùng `vnbrokercharts`
 - client fetch trực tiếp backend host
 - thiếu i18n cho UI public
 - thiếu whitelist hoặc rate limit

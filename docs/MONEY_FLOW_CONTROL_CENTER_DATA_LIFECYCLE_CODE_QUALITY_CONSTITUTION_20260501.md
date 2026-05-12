@@ -184,7 +184,7 @@ How to verify:
 ### S11 - Link-out chết vì thiếu quyền upstream
 
 What can go wrong:
-- operator không có quyền Data Ops/Vnstock vẫn thấy link-out có thể click, dẫn thẳng tới 403 và làm workflow đứt gãy.
+- operator không có quyền Data Ops/Vnbroker vẫn thấy link-out có thể click, dẫn thẳng tới 403 và làm workflow đứt gãy.
 
 Where to inspect:
 - control-center IA,

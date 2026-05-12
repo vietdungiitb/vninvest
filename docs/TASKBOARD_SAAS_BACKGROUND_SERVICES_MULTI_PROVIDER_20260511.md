@@ -67,11 +67,11 @@ DoD: Có log truy vết provider decision mỗi chu kỳ
 Owner: Backend  
 DoD: API có auth, entitlement, quota gate
 
-- [ ] `SBMP-P3.2` Queue manual_on_demand + priority rules
+- [x] `SBMP-P3.2` Queue manual_on_demand + priority rules
 Owner: Platform  
-DoD: Manual jobs không ảnh hưởng realtime queues
+DoD: Manual jobs không ảnh hưởng realtime queues; priority tiers Team > Pro > Community
 
-- [ ] `SBMP-P3.3` Add manual job status endpoint + retry policy
+- [x] `SBMP-P3.3` Add manual job status endpoint + retry policy
 Owner: Backend  
 DoD: Người dùng xem được trạng thái và ETA job
 
@@ -79,15 +79,15 @@ DoD: Người dùng xem được trạng thái và ETA job
 
 ## P4 — Offhours Enrichment
 
-- [ ] `SBMP-P4.1` Build enrichment pipelines (history/fundamentals/news)
+- [x] `SBMP-P4.1` Build enrichment pipelines (history/fundamentals/news)
 Owner: Data Team  
 DoD: Jobs ngoài giờ hoàn thành đầy đủ theo checklist
 
-- [ ] `SBMP-P4.2` Materialize pre-open snapshots
+- [x] `SBMP-P4.2` Materialize pre-open snapshots
 Owner: Market Serving  
 DoD: Snapshot completeness >= 99.5% trước pre-open + 20m
 
-- [ ] `SBMP-P4.3` Dedupe/upsert canonical facts
+- [x] `SBMP-P4.3` Dedupe/upsert canonical facts
 Owner: Data Team  
 DoD: Duplicate rate dưới ngưỡng chấp nhận
 

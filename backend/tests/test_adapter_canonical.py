@@ -1,5 +1,5 @@
 """
-Tests for vnstock_adapter canonical price unit enforcement.
+Tests for vnbroker_adapter canonical price unit enforcement.
 
 Verifies that all adapter outputs guarantee THOUSAND_VND canonical prices.
 """
@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
 import pandas as pd
-from portfolio.adapters.vnstock_adapter import (
+from portfolio.adapters.vnbroker_adapter import (
     _normalize_price_board_dataframe,
     _ensure_quote_prices_canonical_thousand_vnd,
     _price_board_dataframe_is_parseable,

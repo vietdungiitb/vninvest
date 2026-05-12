@@ -15,9 +15,9 @@ Hiện đại hóa phân hệ Admin-Ops, loại bỏ phụ thuộc vào legacy b
 - Sửa lỗi import trong `backend/portfolio/views_admin_runtime.py` để các yêu cầu bridge không bị lỗi 500.
 
 ### Phase 2: Native Prefetch & Data Ingest
-- Triển khai `market_data.vnstock_adapter` để lấy dữ liệu từ các nguồn chính thống thay vì legacy DB.
+- Triển khai `market_data.vnbroker_adapter` để lấy dữ liệu từ các nguồn chính thống thay vì legacy DB.
 - Refactor `data_ingest.tasks.fetch_and_upsert_price_board` để sử dụng adapter mới.
-- Cập nhật cấu hình runtime trong `VnstockRuntimeConfig` để điều khiển quá trình prefetch.
+- Cập nhật cấu hình runtime trong `VnbrokerRuntimeConfig` để điều khiển quá trình prefetch.
 
 ### Phase 3: Native Service Monitoring
 - Cập nhật `AdminOpsRuntimeKPIView` để sử dụng Celery Control API giám sát `core-worker` và `core-beat`.
@@ -30,7 +30,7 @@ Hiện đại hóa phân hệ Admin-Ops, loại bỏ phụ thuộc vào legacy b
 - `backend/portfolio/views_admin_runtime.py` (Fix legacy bridge)
 - `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` (Refactor to native)
 - `packages/core/backend/src/data_ingest/tasks.py` (Refactor prefetch logic)
-- `packages/core/backend/src/market_data/vnstock_adapter.py` [NEW] (Adapter lấy dữ liệu)
+- `packages/core/backend/src/market_data/vnbroker_adapter.py` [NEW] (Adapter lấy dữ liệu)
 
 ## 5. Kế hoạch xác minh
 - Chạy unit tests cho `admin_ops` app.

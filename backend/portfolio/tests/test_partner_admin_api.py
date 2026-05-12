@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from portfolio.models import CorePATCredential, CoreServiceAccount, CoreTenant, UserConfig
+from portfolio.partner_tenant_context import resolve_partner_tenant_context
 from portfolio.opencore_revenue import DPIInvoice, DPIRevenuePlan, DPISubscription
 from portfolio.quota_service import VN_TZ
 
@@ -43,9 +44,10 @@ class PartnerAdminApiTests(APITestCase):
         self.assertEqual(list_response.data['data'][0]['id'], existing.public_id)
         self.assertEqual(list_response.data['data'][0]['tenant_id'], f'ten_usr_{self.user.id}')
         self.assertIn('X-Core-Request-Id', list_response)
+        resolve_partner_tenant_context(self.user)
         tenant = CoreTenant.objects.get(owner_user=self.user)
         self.assertEqual(tenant.public_id, f'ten_usr_{self.user.id}')
-        self.assertEqual(tenant.plan_code, 'pro')
+        self.assertEqual(tenant.plan, 'pro')
 
         missing_key_response = self.client.post(
             '/api/core/v1/partner/service-accounts/',
@@ -97,7 +99,7 @@ class PartnerAdminApiTests(APITestCase):
         self.assertEqual(response.data['plan_lifecycle']['plan_source'], 'system_default')
         self.assertEqual(response.data['plan_lifecycle']['lifecycle_state'], 'system_default')
         self.assertIsNone(response.data['billing_account_id'])
-        self.assertEqual(response.data['default_environment'], CoreTenant.EnvironmentChoices.PROD)
+        self.assertEqual(response.data['default_environment'], 'prod')
         self.assertIn('created_at', response.data)
         self.assertIn('updated_at', response.data)
         self.assertIn('X-Core-Request-Id', response)

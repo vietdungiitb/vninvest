@@ -233,7 +233,7 @@ Owner: Frontend Lead
 Required AI skill: `Expert React Frontend Engineer`  
 Estimate: 3h  
 Dependency: FE-6.3, FE-6.4  
-DoD: operator không còn thấy hai nút apply cho cùng một business meaning; các surface upstream được gắn nhãn link-out/read-only rõ ràng và link-out phải permission-gated khi thiếu quyền Data Ops/Vnstock.  
+DoD: operator không còn thấy hai nút apply cho cùng một business meaning; các surface upstream được gắn nhãn link-out/read-only rõ ràng và link-out phải permission-gated khi thiếu quyền Data Ops/Vnbroker.  
 Test gate: UX smoke + permission smoke + build.  
 Evidence: before/after navigation map + screenshots + disabled-state proof.
 

@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=64, unique=True)),
-                ('source', models.CharField(choices=[('vnstock_price_board', 'vnstock Price Board'), ('vnstock_intraday', 'vnstock Intraday'), ('legacy_sync', 'Legacy DB Sync'), ('manual', 'Manual Trigger')], max_length=32)),
+                ('source', models.CharField(choices=[('vnbroker_price_board', 'vnbroker Price Board'), ('vnbroker_intraday', 'vnbroker Intraday'), ('legacy_sync', 'Legacy DB Sync'), ('manual', 'Manual Trigger')], max_length=32)),
                 ('status', models.CharField(choices=[('active', 'Active'), ('paused', 'Paused'), ('disabled', 'Disabled')], default='active', max_length=16)),
                 ('schedule_seconds', models.PositiveIntegerField(default=60)),
                 ('config', models.JSONField(blank=True, default=dict)),

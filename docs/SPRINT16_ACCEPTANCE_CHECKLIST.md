@@ -20,8 +20,8 @@
 - [x] `volume = float(tick.get('volume') or 0)` — parse từ tick dict
 - [x] `'volume': int(volume)` trong record dict
 
-### S16-04: Builder `_build_vnstock_aggregate_records`
-- [x] `volume = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)` — thử nhiều key vnstock
+### S16-04: Builder `_build_vnbroker_aggregate_records`
+- [x] `volume = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)` — thử nhiều key vnbroker
 - [x] `'volume': int(volume)` trong record dict
 
 **Phase 1 Gate**: ✅ `manage.py test portfolio.tests.test_api_routes` — 45/45 PASS (subset)

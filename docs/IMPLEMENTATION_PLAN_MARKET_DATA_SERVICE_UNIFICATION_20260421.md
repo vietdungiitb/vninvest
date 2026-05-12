@@ -416,7 +416,7 @@ logger.info("mdsu.get_latest_snapshot", extra={
 
 ## 13. SSOT Integration Map
 
-- Domain SSOT: `vnstock adapter` (provider) + custom `MarketDataService` (computed/cached layer).
+- Domain SSOT: `vnbroker adapter` (provider) + custom `MarketDataService` (computed/cached layer).
 - Canonical call-sites sau MDSU: chỉ duy nhất `MarketDataService.*` trong business modules.
 - Các luồng cũ cần retire: 13 call-site direct `DailyPrice.objects.*` trong 7 module nghiệp vụ (danh sách đầy đủ ở Taskboard).
 - Không tạo parallel pipeline: MDSU là cổng duy nhất — mọi module đều đi qua.

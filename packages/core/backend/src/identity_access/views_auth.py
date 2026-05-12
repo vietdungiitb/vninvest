@@ -15,6 +15,10 @@ from rest_framework.response import Response
 
 from .authentication import CorePATAuthentication
 from .models import CorePATCredential, CoreTenant
+from .permissions import IsTenantActive
+
+
+TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 
 
 _DEFAULT_USER_CONFIG = {
@@ -325,7 +329,7 @@ def refresh_token_view(request):
 
 @api_view(['GET'])
 @authentication_classes([CorePATAuthentication])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes(TENANT_PERMISSION_CLASSES)
 def profile_view(request):
     """
     GET /core/v1/auth/profile
@@ -399,7 +403,7 @@ def capabilities_view(request):
 
 @api_view(['GET', 'PUT'])
 @authentication_classes([CorePATAuthentication])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes(TENANT_PERMISSION_CLASSES)
 def user_config_view(request):
     user = request.user
     try:
@@ -428,7 +432,7 @@ def user_config_view(request):
 
 @api_view(['POST'])
 @authentication_classes([CorePATAuthentication])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes(TENANT_PERMISSION_CLASSES)
 def logout_view(request):
     """
     POST /core/v1/auth/logout

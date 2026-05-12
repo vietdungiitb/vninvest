@@ -55,7 +55,7 @@ backend: POST /api/stock-management/stocks/{symbol}/news/ai-summary/
     ↓
 backend views_stock_news.py::stock_news_ai_summary_api()
     ↓
-Fetches news items via vnstock API
+Fetches news items via vnbroker API
     ↓
 generate_portfolio_digest(provider, model, api_key, symbols, news_context_by_symbol, user)
     ↓
@@ -70,7 +70,7 @@ Response: {summary, full, item_count, ai_provider, ai_model, generated_at, news_
 - **WhaleAdvisory**: Owns advisory session (side: BUY/SELL/HOLD, latest buy/sell values)
 - **AIAdvisoryComponentRecord**: Individual indicator analysis (3 per advisory)
 - **AIAdvisoryExecutiveSummary**: 18-22 bullet point synthesis (one per regenerate action)
-- **StockNews items**: From vnstock API (not stored in DB, cached in Redis)
+- **StockNews items**: From vnbroker API (not stored in DB, cached in Redis)
 
 ---
 

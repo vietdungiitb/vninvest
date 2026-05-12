@@ -29,7 +29,7 @@ Scope: A1 + A2 + B1
 
 ## 3) Remaining for final KPI sign-off
 
-1. Source parity measurement across redis_stream, intraday_tick_db, vnstock fallback.
+1. Source parity measurement across redis_stream, intraday_tick_db, vnbroker fallback.
 2. Manual severity sample validation (>=30 events) and review notes.
 3. Before/after KPI summary approved by PM + QA + DevOps.
 

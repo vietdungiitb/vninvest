@@ -92,7 +92,7 @@ Cung cấp mọi thông tin cần thiết về một mã chứng khoán cụ th�
 ### 🛠️ Quản trị & Vận hành (Admin Ops)
 Dành cho người quản trị để đảm bảo hệ thống luôn hoạt động ổn định và chính xác.
 *   **System Health**: Kiểm tra tình trạng kết nối Redis, Celery, và luồng WebSocket.
-*   **Data Sync**: Công cụ đồng bộ hồ sơ cổ phiếu và dữ liệu lịch sử từ các nguồn uy tín (vnstock).
+*   **Data Sync**: Công cụ đồng bộ hồ sơ cổ phiếu và dữ liệu lịch sử từ các nguồn uy tín (vnbroker).
 *   **Prefetch Control**: Quản lý bộ nhớ đệm (Cache) để tối ưu tốc độ truy xuất dữ liệu dưới 50ms.
 
 ---

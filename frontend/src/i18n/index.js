@@ -100,7 +100,7 @@ export function formatQuoteInteger(value) {
 
 /**
  * Chuẩn hóa hiển thị giá chứng khoán VN.
- * Input : giá raw từ vnstock (đơn vị nghìn đồng, ví dụ 78.7)
+ * Input : giá raw từ vnbroker (đơn vị nghìn đồng, ví dụ 78.7)
  * Output: "78.700 VNĐ" (vi-VN) / "78,700 VNĐ" (en-US)
  * Không có số thập phân — làm tròn về VNĐ nguyên.
  */

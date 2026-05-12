@@ -4,7 +4,7 @@
 - [x] Phân tích và Audit lỗi Admin-Ops.
 - [x] Tạo tài liệu kế hoạch (Implementation Plan).
 - [x] Fix lỗi legacy bridge (ImportError).
-- [x] Triển khai `vnstock_adapter` native.
+- [x] Triển khai `vnbroker_adapter` native.
 - [x] Refactor `fetch_and_upsert_price_board` sang native.
 - [x] Refactor `AdminOpsRuntimeKPIView` (Celery monitoring) - Đồng bộ UI.
 - [x] Chuyển đổi `Warm Now` sang native task.
@@ -23,7 +23,7 @@
 - [x] **Task 1.2**: Đảm bảo view không crash khi import.
 
 ### Sprint 2: Native Data Ingest (Prefetch)
-- [x] **Task 2.1**: Hoàn thiện `packages/core/backend/src/market_data/vnstock_adapter.py`.
+- [x] **Task 2.1**: Hoàn thiện `packages/core/backend/src/market_data/vnbroker_adapter.py`.
 - [x] **Task 2.2**: Cập nhật `data_ingest/tasks.py` sử dụng adapter mới.
 - [x] **Task 2.3**: Triển khai `sync_market_groups` native.
 

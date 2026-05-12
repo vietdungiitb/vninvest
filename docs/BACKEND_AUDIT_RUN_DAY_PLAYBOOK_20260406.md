@@ -41,7 +41,7 @@ python manage.py shell -c "from django.conf import settings; print({'ENABLE_NEW_
 python manage.py test portfolio.tests.test_adapters portfolio.tests.test_api_routes
 
 # Evidence scan for direct provider import in legacy file
-rg "from vnstock import Vnstock" portfolio/views.py
+rg "from vnbroker import Vnbroker" portfolio/views.py
 ```
 
 ## 4) Pass criteria trong ngay

@@ -18,7 +18,7 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
     SM-P2.3: Fetch current price board and upsert into SymbolSnapshot.
 
     Phase 0-2 uses legacy_readonly DB as data source (same as materialize_symbol_snapshot).
-    Phase 3+ will switch to direct vnstock adapter call.
+    Phase 3+ will switch to direct vnbroker adapter call.
 
     This task creates an IngestRun record for observability.
     """
@@ -40,10 +40,10 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
             state=IngestRun.StateChoices.RUNNING,
         ) if job else None
 
-        from market_data.vnstock_adapter import warm_up_symbols
+        from market_data.vnbroker_adapter import warm_up_symbols
         from market_data.models import StockProfile
 
-        # SM-P2.3 Native: Fetch price board from vnstock adapter.
+        # SM-P2.3 Native: Fetch price board from vnbroker adapter.
         # We take the top 50 symbols from StockProfile if no specific job/universe is defined.
         symbols = list(StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE).values_list('symbol', flat=True)[:50])
 
@@ -81,10 +81,10 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
 @shared_task(bind=True, max_retries=2)
 def sync_market_groups(self):
     """
-    Native: Đồng bộ danh sách symbol niêm yết từ vnstock.
+    Native: Đồng bộ danh sách symbol niêm yết từ vnbroker.
     Cập nhật hoặc tạo mới StockProfile.
     """
-    from market_data.vnstock_adapter import fetch_listing_symbols
+    from market_data.vnbroker_adapter import fetch_listing_symbols
     from market_data.models import StockProfile
     
     symbols_data = fetch_listing_symbols()

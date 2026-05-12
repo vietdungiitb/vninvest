@@ -23,7 +23,7 @@ const PRODUCT_ICONS = {
       </defs>
     </svg>
   ),
-  vnstock: (
+  vnbroker: (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
       <rect width="28" height="28" rx="8" fill="url(#gs)" />
       <path d="M8 20v-4m4 4v-8m4 8v-5m4 5v-10" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
@@ -61,13 +61,13 @@ const PRODUCT_CARDS = [
     external: true,
   },
   {
-    id: 'vnstock' as const,
+    id: 'vnbroker' as const,
     accent: 'text-cyan-200',
-    titleKey: 'vnstockTitle' as const,
-    textKey: 'vnstockText' as const,
-    metricKey: 'vnstockMetric' as const,
-    ctaKey: 'vnstockCta' as const,
-    ctaHref: '/vnstock',
+    titleKey: 'vnbrokerTitle' as const,
+    textKey: 'vnbrokerText' as const,
+    metricKey: 'vnbrokerMetric' as const,
+    ctaKey: 'vnbrokerCta' as const,
+    ctaHref: '/vnbroker',
     external: false,
   },
   {

@@ -35,7 +35,7 @@ Company Profile, News & Sentiment Analysis
 Admin Ops
 
 System Health Monitoring (Redis, Celery, WebSocket)
-Data Sync (vnstock), Prefetch Cache Management
+Data Sync (vnbroker), Prefetch Cache Management
 Điểm mạnh hiện tại: Tập trung vào thị trường VN, Whale Detection độc quyền, AI context-aware, Realtime data.
 
 Hạn chế: Chưa có Multi-Asset (Crypto/Forex/Commodity), Compliance/Security enterprise-grade, Mobile App, Internationalization.
