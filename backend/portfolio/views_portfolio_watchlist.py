@@ -21,7 +21,7 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 # Core models (AUTHORITY)
 try:
     from user_workspace.models import Portfolio, Watchlist, WatchlistItem
-except ImportError:
+except (ImportError, RuntimeError):
     from .models import Portfolio, WatchlistGroup as Watchlist, WatchlistItem  # noqa: F401 - fallback
 
 from .analytics import (

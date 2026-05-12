@@ -17,8 +17,9 @@ if os.path.exists(_core_backend_src) and _core_backend_src not in sys.path:
 # Core models (AUTHORITY)
 try:
     from user_workspace.models import Portfolio, Watchlist, PriceAlert, WatchlistItem
-except ImportError as e:
+except (ImportError, RuntimeError):
     # Fallback to legacy models if core not available (dev environment fallback)
+    # RuntimeError: Models not in INSTALLED_APPS (dev environment)
     from .models import Portfolio, WatchlistGroup as Watchlist, WatchlistItem, PriceAlertRule as PriceAlert  # noqa: F401
 
 # Legacy models (remaining)

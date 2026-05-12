@@ -77,7 +77,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 # Core models (AUTHORITY)
 try:
     from user_workspace.models import Portfolio, Watchlist, PriceAlert, WatchlistItem
-except ImportError:
+except (ImportError, RuntimeError):
     from .models import Portfolio, WatchlistGroup as Watchlist, WatchlistItem, PriceAlertRule as PriceAlert  # noqa: F401
 
 # Legacy models (remaining)
