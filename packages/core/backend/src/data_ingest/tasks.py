@@ -3,6 +3,8 @@ data_ingest Celery tasks.
 
 fetch_and_upsert_price_board: fetches price board data and upserts into market_serving.SymbolSnapshot.
 backfill_daily_prices: parallel multi-provider OHLCV backfill into DailyPrice.
+send_email_verification_token: async email send for email verification (registration).
+send_password_reset_email: async email send for password reset.
 """
 import logging
 import time
@@ -11,6 +13,8 @@ from datetime import date
 from typing import Optional
 
 from celery import shared_task
+from django.conf import settings as django_settings
+from django.core.mail import send_mail
 from django.utils.timezone import now
 
 logger = logging.getLogger(__name__)
@@ -304,3 +308,90 @@ def backfill_daily_prices(self, days: int = 365, symbols: list = None, max_worke
         'failed': all_failed,
         'providers': providers,
     }
+
+
+# ---------------------------------------------------------------------------
+# Email tasks (C3 Email Onboarding Implementation)
+# ---------------------------------------------------------------------------
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_email_verification_token(self, email: str, token: str, frontend_url: str = None) -> dict:
+    """
+    Async email send for email verification (registration flow).
+    
+    Called by: identity_access.views_auth.register_view
+    
+    Args:
+        email: recipient email address
+        token: verification token (raw, not hashed)
+        frontend_url: optional frontend base URL (defaults to FRONTEND_URL env or http://localhost)
+    
+    Returns:
+        dict with 'status' and 'error' keys
+    """
+    if not frontend_url:
+        frontend_url = django_settings.FRONTEND_URL if hasattr(django_settings, 'FRONTEND_URL') else 'http://localhost'
+    
+    verify_url = f'{frontend_url}/verify-email?token={token}'
+    
+    try:
+        send_mail(
+            subject='Xác minh địa chỉ email VNInvest',
+            message=f'Nhấp vào liên kết sau để kích hoạt tài khoản của bạn:\n{verify_url}',
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        logger.info(f'Email verification sent to {email}')
+        return {'status': 'sent', 'email': email}
+    
+    except Exception as exc:
+        logger.warning(f'Email verification send failed for {email}: {exc}. Retrying...')
+        # Retry with exponential backoff
+        try:
+            raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+        except Exception as retry_exc:
+            logger.error(f'Email verification retry exhausted for {email}: {retry_exc}')
+            return {'status': 'failed', 'email': email, 'error': str(retry_exc)}
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_password_reset_email(self, email: str, token: str, frontend_url: str = None) -> dict:
+    """
+    Async email send for password reset flow.
+    
+    Called by: identity_access.views_auth.password_reset_request_view
+    
+    Args:
+        email: recipient email address
+        token: reset token (raw, not hashed)
+        frontend_url: optional frontend base URL (defaults to FRONTEND_URL env or http://localhost)
+    
+    Returns:
+        dict with 'status' and 'error' keys
+    """
+    if not frontend_url:
+        frontend_url = django_settings.FRONTEND_URL if hasattr(django_settings, 'FRONTEND_URL') else 'http://localhost'
+    
+    reset_url = f'{frontend_url}/reset-password?token={token}'
+    
+    try:
+        send_mail(
+            subject='Đặt lại mật khẩu VNInvest',
+            message=f'Nhấp vào liên kết sau để đặt lại mật khẩu:\n{reset_url}\n\nLinh kết hết hạn sau 1 giờ.',
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        logger.info(f'Password reset email sent to {email}')
+        return {'status': 'sent', 'email': email}
+    
+    except Exception as exc:
+        logger.warning(f'Password reset email send failed for {email}: {exc}. Retrying...')
+        # Retry with exponential backoff
+        try:
+            raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+        except Exception as retry_exc:
+            logger.error(f'Password reset email retry exhausted for {email}: {retry_exc}')
+            return {'status': 'failed', 'email': email, 'error': str(retry_exc)}

@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from .authentication import CorePATAuthentication
 from .models import CorePATCredential, CoreTenant, PasswordResetToken
 from .permissions import IsTenantActive
+from data_ingest.tasks import send_email_verification_token, send_password_reset_email
 
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
@@ -455,7 +456,6 @@ import hashlib
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 from django.conf import settings as django_settings
 from django.utils import timezone
 
@@ -531,18 +531,8 @@ def register_view(request):
     }
 
     frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost')
-    verify_url = f'{frontend_url}/verify-email?token={token}'
-    try:
-        send_mail(
-            subject='Xác minh địa chỉ email VNInvest',
-            message=f'Nhấp vào liên kết sau để kích hoạt tài khoản của bạn:\n{verify_url}',
-            from_email=django_settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-    except Exception as e:  # noqa: BLE001
-        # If email fails, log but still return success (do NOT activate user).
-        logger.error(f'Email verification send failed for {email}: {e}')
+    # Send email asynchronously via Celery (C3 fix)
+    send_email_verification_token.delay(email=email, token=token, frontend_url=frontend_url)
 
     return Response(
         {'detail': 'Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản.'},
@@ -606,18 +596,8 @@ def password_reset_request_view(request):
         token_obj, raw_token = PasswordResetToken.generate_and_save(email=email, hours=1)
         
         frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost')
-        reset_url = f'{frontend_url}/reset-password?token={raw_token}'
-        try:
-            send_mail(
-                subject='Đặt lại mật khẩu VNInvest',
-                message=f'Nhấp vào liên kết sau để đặt lại mật khẩu:\n{reset_url}\n\nLinh kết hết hạn sau 1 giờ.',
-                from_email=django_settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,  # Changed to fail_silently=False per C1 design
-            )
-        except Exception as e:  # noqa: BLE001
-            # Log email failure but don't block response
-            logger.warning(f'Password reset email failed for {email}: {e}')
+        # Send email asynchronously via Celery (C3 fix)
+        send_password_reset_email.delay(email=email, token=raw_token, frontend_url=frontend_url)
 
     return Response(
         {'detail': 'Nếu email tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.'},

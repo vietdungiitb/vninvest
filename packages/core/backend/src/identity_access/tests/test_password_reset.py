@@ -229,7 +229,7 @@ class PasswordResetViewTests(APITestCase):
 
     def test_password_reset_request_creates_db_token(self):
         """Test: password_reset_request_view creates PasswordResetToken in DB."""
-        with patch('identity_access.views_auth.send_mail') as mock_send:
+        with patch('identity_access.views_auth.send_password_reset_email') as mock_send:
             response = self.client.post(
                 '/api/auth/password-reset/',
                 {'email': self.user_email},
@@ -243,8 +243,8 @@ class PasswordResetViewTests(APITestCase):
         self.assertFalse(token_obj.used)
         self.assertIsNone(token_obj.used_at)
 
-        # Verify email was attempted
-        mock_send.assert_called_once()
+        # Verify async task was called
+        mock_send.delay.assert_called_once()
 
     def test_password_reset_request_no_user_enumeration(self):
         """Test: password_reset_request returns 200 for nonexistent email (OWASP A01)."""
@@ -378,7 +378,7 @@ class PasswordResetViewTests(APITestCase):
     def test_password_reset_flow_end_to_end(self):
         """Test: Complete password reset flow (request → confirm)."""
         # Step 1: Request reset
-        with patch('identity_access.views_auth.send_mail') as mock_send:
+        with patch('identity_access.views_auth.send_password_reset_email') as mock_send:
             response = self.client.post(
                 '/api/auth/password-reset/',
                 {'email': self.user_email},
@@ -386,16 +386,12 @@ class PasswordResetViewTests(APITestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        mock_send.assert_called_once()
+        mock_send.delay.assert_called_once()
 
-        # Extract raw_token from email (mock call)
-        call_args = mock_send.call_args
-        email_body = call_args[1]['message']
-        # Parse token from email body (format: "?token=<raw_token>")
-        import re
-        match = re.search(r'token=([a-zA-Z0-9._-]+)', email_body)
-        self.assertIsNotNone(match)
-        raw_token = match.group(1)
+        # Extract raw_token from async task call
+        call_args = mock_send.delay.call_args
+        raw_token = call_args[1]['token']  # keyword argument
+        self.assertIsNotNone(raw_token)
 
         # Step 2: Confirm reset
         new_password = 'CompleteFlow123!'
