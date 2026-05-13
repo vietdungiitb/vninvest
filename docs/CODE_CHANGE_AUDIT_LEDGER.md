@@ -1,3 +1,46 @@
+# 2026-05-14 — Phase 1 Critical Fix C2: Exception Handler Fixes ✅
+
+Status: Completed. All silent exception handlers replaced with proper logging.
+
+What changed:
+- `packages/core/backend/src/identity_access/views_auth.py` (line 543)
+  - Email verification failure: `except Exception: pass` → `logger.error()`
+  - Impact: Email send errors now traceable; registration flow unaffected
+
+- `packages/core/backend/src/market_serving/views.py`
+  - Added logger import
+  - Lines 58, 69: SymbolSnapshot cache operations → logger.warning on failure
+  - Lines 108, 119: SessionFacts cache operations → logger.warning on failure
+  - Impact: Cache failures logged without blocking API responses
+
+- `packages/core/backend/src/advisory/views.py` (line 88)
+  - Added logger import
+  - Audit record write failure: `except Exception: pass` → `logger.error()`
+  - Impact: Audit failures logged without blocking manual trigger flows
+
+- `packages/core/backend/src/data_ingest/tasks.py` (line 90)
+  - DailyPrice row parsing: `except Exception: continue` → `logger.debug() + continue`
+  - Impact: Malformed rows logged for debugging; backfill continues unaffected
+
+Validation evidence:
+- ✅ C1 tests still pass: 18/18 (identity_access.tests.test_password_reset)
+- ✅ Docker rebuild successful
+- ✅ Container started and healthy
+- ✅ No breaking changes to API contracts
+
+Files modified:
+- identity_access/views_auth.py (email logging added)
+- market_serving/views.py (cache logging added, logger import added)
+- advisory/views.py (audit logging added, logger import added)
+- data_ingest/tasks.py (parse error logging added)
+
+Residual note:
+- Email delivery still synchronous (C3 will make async via Celery task)
+- FRONTEND_URL env var fallback still 'http://localhost' (C4 will enforce)
+- WebSocket symbol parameter not yet sanitized (C5 will address)
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C1: DB-Backed Password Reset Tokens ✅
 
 Status: Completed. Test suite: 18/18 passed.

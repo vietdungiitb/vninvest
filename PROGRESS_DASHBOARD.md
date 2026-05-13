@@ -1,3 +1,46 @@
+# 2026-05-14 — Phase 1 Critical Fix C2: Exception Handler Fixes ✅
+
+Status: Completed. All 6 files audited, 4 files updated with proper logging.
+
+Completed today:
+- **Identity Access**: Email verification logging
+  - Changed: `except Exception: pass` → logger.error() with email context
+  - File: `views_auth.py` line 543
+  
+- **Market Serving**: Cache operation logging (4 locations)
+  - Added: logging import
+  - Changed: silent cache exceptions → logger.warning with operation context
+  - Files: `views.py` lines 58, 69, 108, 119
+  - Impact: Cache failures now visible for debugging
+  
+- **Advisory**: Audit logging
+  - Added: logging import
+  - Changed: `except Exception: pass` → logger.error()
+  - File: `views.py` line 88
+  - Impact: Audit write failures logged without blocking manual triggers
+  
+- **Data Ingest**: Backfill parsing logging
+  - Changed: silent row skip → logger.debug() + continue
+  - File: `tasks.py` line 90
+  - Impact: Malformed rows traceable in backfill operations
+
+Validation:
+- ✅ Docker rebuild: success
+- ✅ Container start: healthy
+- ✅ C1 tests: 18/18 still passing
+- ✅ No API contract changes
+- ✅ Logging improvements only (pure observability)
+
+Impact:
+- Email failures now visible for debugging
+- Cache failures logged without blocking responses
+- Audit failures logged without blocking operations
+- Data parsing errors logged for backfill debugging
+
+Next: C3 Email Onboarding Implementation (async Celery tasks)
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C1: DB-Backed Password Reset ✅
 
 Status: Completed. Tất cả 18 tests pass, models + views + comprehensive test suite delivered.
