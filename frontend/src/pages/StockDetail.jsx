@@ -1637,7 +1637,7 @@ export default function StockDetail() {
       try {
         const response = await getStockPriceChart(normalizedSymbol, activePeriod, activeTimeframe);
         if (!cancelled) {
-          setChartData(response.data.points || []);
+          setChartData(response.data.results || []);
           setTechnical(response.data.technical || null);
         }
       } catch (err) {
@@ -1827,10 +1827,10 @@ export default function StockDetail() {
     resolvedRealtimeQuote.reference_price ?? resolvedRealtimeQuote.prev_price,
   );
   const referencePrice = liveReferencePrice ?? finiteNumberOrNull(overview?.reference_price) ?? null;
-  const liveCeilingPrice = finiteNumberOrNull(resolvedRealtimeQuote.ceiling_price);
-  const ceilingPrice = liveCeilingPrice ?? finiteNumberOrNull(overview?.ceiling_price) ?? null;
-  const liveFloorPrice = finiteNumberOrNull(resolvedRealtimeQuote.floor_price);
-  const floorPrice = liveFloorPrice ?? finiteNumberOrNull(overview?.floor_price) ?? null;
+  const liveCeilingPrice = finiteNumberOrNull(resolvedRealtimeQuote.ceiling);
+  const ceilingPrice = liveCeilingPrice ?? finiteNumberOrNull(overview?.ceiling) ?? null;
+  const liveFloorPrice = finiteNumberOrNull(resolvedRealtimeQuote.floor);
+  const floorPrice = liveFloorPrice ?? finiteNumberOrNull(overview?.floor) ?? null;
   const liveAveragePrice = finiteNumberOrNull(resolvedRealtimeQuote.average_price);
   const averagePrice = liveAveragePrice ?? finiteNumberOrNull(overview?.average_price) ?? null;
 
@@ -1929,7 +1929,7 @@ export default function StockDetail() {
       getStockPriceChart(normalizedSymbol, activePeriod, activeTimeframe),
     ]);
     setOverview(overviewResponse.data);
-    setChartData(chartResponse.data.points || []);
+    setChartData(chartResponse.data.results || []);
     setTechnical(chartResponse.data.technical || null);
   };
 

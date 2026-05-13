@@ -98,11 +98,11 @@ def materialize_symbol_snapshot_from_vnbroker():
     """
     Drop-in replacement for materialize_symbol_snapshot() after legacy decommission.
     
-    Reads from vnbroker native API instead of legacy DB.
+    Reads price from DailyPrice (canonical), prev-close for ceiling/floor.
     Writes same SymbolSnapshot contract (no downstream changes needed).
     """
     from market_serving.models import SymbolSnapshot
-    from market_data.models import StockProfile
+    from market_data.models import StockProfile, DailyPrice
     
     try:
         symbols = list(
@@ -115,29 +115,56 @@ def materialize_symbol_snapshot_from_vnbroker():
             logger.warning("No active symbols found for vnbroker fetch")
             return {'status': 'ok', 'upserted': 0, 'source': 'vnbroker_native'}
         
-        tickers = fetch_realtime_tickers_from_vnbroker(symbols)
-        
+        today = date.today()
+        yesterday = today - timedelta(days=1)
         count = 0
-        for ticker in tickers:
-            SymbolSnapshot.objects.update_or_create(
-                symbol=ticker['symbol'],
-                session_date=date.today(),
-                defaults={
-                    'price': Decimal(str(ticker['price'])),
-                    'price_change': Decimal(str(ticker['price_change'])),
-                    'price_change_pct': Decimal(str(ticker['price_change_pct'])),
-                    'volume': ticker['volume'],
-                    'reference_price': Decimal(str(ticker['reference_price'])) if ticker['reference_price'] else None,
-                    'ceiling': Decimal(str(ticker['ceiling'])) if ticker['ceiling'] else None,
-                    'floor': Decimal(str(ticker['floor'])) if ticker['floor'] else None,
-                    'market_status': ticker['market_status'],
-                    'source': 'vnbroker_native',
-                    'stale': False,
-                },
-            )
-            count += 1
         
-        logger.info(f"materialize_symbol_snapshot (vnbroker): upserted {count} snapshots")
+        for symbol in symbols:
+            try:
+                # Get today's close from DailyPrice (canonical)
+                today_price = DailyPrice.objects.filter(
+                    symbol=symbol, date=today
+                ).first()
+                
+                if not today_price:
+                    logger.debug(f"No DailyPrice found for {symbol} today")
+                    continue
+                
+                # Get yesterday's close for reference/ceiling/floor
+                yesterday_price = DailyPrice.objects.filter(
+                    symbol=symbol, date=yesterday
+                ).first()
+                
+                reference_price = yesterday_price.close if yesterday_price else today_price.close
+                price_change = today_price.close - reference_price if reference_price else Decimal('0')
+                price_change_pct = (price_change / reference_price * Decimal('100')) if reference_price and reference_price != 0 else Decimal('0')
+                
+                # Calculate ceiling/floor
+                ceiling = reference_price * Decimal('1.07') if reference_price else None
+                floor = reference_price * Decimal('0.93') if reference_price else None
+                
+                SymbolSnapshot.objects.update_or_create(
+                    symbol=symbol,
+                    session_date=today,
+                    defaults={
+                        'price': today_price.close,
+                        'price_change': price_change,
+                        'price_change_pct': price_change_pct,
+                        'volume': today_price.volume,
+                        'reference_price': reference_price,
+                        'ceiling': ceiling,
+                        'floor': floor,
+                        'market_status': 'open',
+                        'source': 'vnbroker_native',
+                        'stale': False,
+                    },
+                )
+                count += 1
+            except Exception as e:
+                logger.warning(f"Failed to materialize {symbol}: {e}")
+                continue
+        
+        logger.info(f"materialize_symbol_snapshot (vnbroker): upserted {count} snapshots from DailyPrice")
         return {'status': 'ok', 'upserted': count, 'source': 'vnbroker_native'}
     
     except Exception as e:
