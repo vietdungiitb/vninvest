@@ -66,6 +66,16 @@ class Transaction(models.Model):
         related_name='transactions',
         verbose_name='Danh mục',
     )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='transactions',
+        null=True,
+        blank=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant owner. Set from portfolio.tenant or directly.',
+        db_index=True,
+    )
     symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
     transaction_type = models.CharField(
         max_length=10,
@@ -252,6 +262,16 @@ class SubAccount(models.Model):
         on_delete=models.CASCADE,
         related_name='core_sub_accounts',
         verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='sub_accounts',
+        null=True,
+        blank=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant owner. Set from portfolio.tenant or user primary tenant.',
+        db_index=True,
     )
     portfolio = models.ForeignKey(
         Portfolio,
