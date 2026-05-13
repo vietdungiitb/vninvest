@@ -34,8 +34,11 @@ class RealtimeTickerView(APIView):
         return Response({
             'symbol': snap.symbol,
             'price': str(snap.price),
+            'current_price': str(snap.price),
             'price_change': str(snap.price_change),
+            'change_value': str(snap.price_change),
             'price_change_pct': str(snap.price_change_pct),
+            'change_pct': float(snap.price_change_pct),
             'volume': snap.volume,
             'market_status': snap.market_status,
             'stale': snap.stale,
@@ -58,15 +61,22 @@ class RealtimeTickerListView(APIView):
             qs = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
         else:
             qs = SymbolSnapshot.objects.filter(session_date=today).order_by('symbol')[:self._MAX_SYMBOLS]
-        return Response([{
-            'symbol': s.symbol,
-            'price': str(s.price),
-            'price_change': str(s.price_change),
-            'price_change_pct': str(s.price_change_pct),
-            'volume': s.volume,
-            'market_status': s.market_status,
-            'stale': s.stale,
-        } for s in qs])
+        # Return as dict keyed by symbol so frontend can do Object.values(tickersMap)
+        result = {}
+        for s in qs:
+            result[s.symbol] = {
+                'symbol': s.symbol,
+                'price': str(s.price),
+                'current_price': str(s.price),
+                'price_change': str(s.price_change),
+                'change_value': str(s.price_change),
+                'price_change_pct': str(s.price_change_pct),
+                'change_pct': float(s.price_change_pct),
+                'volume': s.volume,
+                'market_status': s.market_status,
+                'stale': s.stale,
+            }
+        return Response(result)
 
 
 class RealtimeIntradayView(APIView):

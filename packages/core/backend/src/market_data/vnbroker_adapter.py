@@ -61,13 +61,15 @@ def fetch_price_board_snapshot(symbols: list[str]) -> list[dict[str, Any]]:
     # Hiện tại chúng ta mock dữ liệu để đảm bảo pipeline chạy được.
     for symbol in symbols:
         # Giả lập dữ liệu cho demo/test
-        price = 20.0 + random.uniform(-1.0, 1.0)
+        price = 20.0 + random.uniform(-5.0, 5.0)
+        change_pct = round(random.uniform(-3.5, 3.5), 2)   # percent scale (-3.5% … +3.5%)
+        price_change = round(price * change_pct / 100, 2)
         results.append({
             'symbol': symbol.upper(),
             'price': round(price, 2),
-            'price_change': round(price * 0.01, 2),
-            'price_change_pct': 0.01,
-            'volume': random.randint(1000, 1000000),
+            'price_change': price_change,
+            'price_change_pct': change_pct,
+            'volume': random.randint(100_000, 5_000_000),
             'source': source,
             'fetched_at': now().isoformat(),
         })
@@ -106,22 +108,56 @@ def warm_up_symbols(symbols: list[str]) -> dict[str, Any]:
 def fetch_listing_symbols() -> list[dict[str, Any]]:
     """
     Lấy danh sách mã niêm yết từ nguồn dữ liệu.
-    Mô phỏng việc gọi listing API.
+    Mô phỏng listing universe đủ rộng cho dashboard/heatmap.
     """
     config = get_active_config()
     source = config.data_source
-    
+
     logger.info(f"Fetching listing symbols from {source}.")
-    
-    # Mock data cho demo
-    mock_symbols = [
-        {'symbol': 'SSI', 'exchange': 'HOSE', 'company_name': 'Chứng khoán SSI', 'industry': 'Dịch vụ tài chính'},
-        {'symbol': 'VND', 'exchange': 'HOSE', 'company_name': 'Chứng khoán VNDirect', 'industry': 'Dịch vụ tài chính'},
-        {'symbol': 'VCB', 'exchange': 'HOSE', 'company_name': 'Vietcombank', 'industry': 'Ngân hàng'},
-        {'symbol': 'TCB', 'exchange': 'HOSE', 'company_name': 'Techcombank', 'industry': 'Ngân hàng'},
-        {'symbol': 'FPT', 'exchange': 'HOSE', 'company_name': 'FPT Corp', 'industry': 'Công nghệ thông tin'},
+
+    # Demo universe rộng (~60 mã) để dashboard breadth/heatmap có dữ liệu hoạt động.
+    seed_data = [
+        ('ACB', 'HOSE', 'ACB', 'Ngân hàng'), ('BCM', 'HOSE', 'Becamex', 'Bất động sản'),
+        ('BID', 'HOSE', 'BIDV', 'Ngân hàng'), ('BMP', 'HOSE', 'Nhựa Bình Minh', 'Thép & Vật liệu'),
+        ('CEO', 'HNX', 'CEO Group', 'Bất động sản'), ('CMG', 'HOSE', 'CMC Corp', 'Công nghệ thông tin'),
+        ('CTG', 'HOSE', 'Vietinbank', 'Ngân hàng'), ('DGC', 'HOSE', 'Hóa chất Đức Giang', 'Thép & Vật liệu'),
+        ('DIG', 'HOSE', 'DIC Corp', 'Bất động sản'), ('DXG', 'HOSE', 'Đất Xanh', 'Bất động sản'),
+        ('EIB', 'HOSE', 'Eximbank', 'Ngân hàng'), ('ELC', 'HOSE', 'Elcom', 'Công nghệ thông tin'),
+        ('FPT', 'HOSE', 'FPT Corp', 'Công nghệ thông tin'), ('GAS', 'HOSE', 'PV Gas', 'Dầu khí'),
+        ('GVR', 'HOSE', 'GVR', 'Bất động sản'), ('HDB', 'HOSE', 'HDBank', 'Ngân hàng'),
+        ('HPG', 'HOSE', 'Hòa Phát', 'Thép & Vật liệu'), ('HSG', 'HOSE', 'Hoa Sen', 'Thép & Vật liệu'),
+        ('KBC', 'HOSE', 'Kinh Bắc', 'Bất động sản'), ('KDH', 'HOSE', 'Khang Điền', 'Bất động sản'),
+        ('LPB', 'HOSE', 'LPBank', 'Ngân hàng'), ('MBB', 'HOSE', 'MB Bank', 'Ngân hàng'),
+        ('MSB', 'HOSE', 'MSB', 'Ngân hàng'), ('MSN', 'HOSE', 'Masan', 'Bán lẻ & Tiêu dùng'),
+        ('MWG', 'HOSE', 'Thế Giới Di Động', 'Bán lẻ & Tiêu dùng'), ('NKG', 'HOSE', 'Nam Kim', 'Thép & Vật liệu'),
+        ('NLG', 'HOSE', 'Nam Long', 'Bất động sản'), ('NVL', 'HOSE', 'Novaland', 'Bất động sản'),
+        ('OCB', 'HOSE', 'OCB', 'Ngân hàng'), ('OIL', 'UPCOM', 'PV Oil', 'Dầu khí'),
+        ('PDR', 'HOSE', 'Phát Đạt', 'Bất động sản'), ('PLX', 'HOSE', 'Petrolimex', 'Dầu khí'),
+        ('PNJ', 'HOSE', 'PNJ', 'Bán lẻ & Tiêu dùng'), ('PVD', 'HOSE', 'PV Drilling', 'Dầu khí'),
+        ('PVS', 'HNX', 'PV Services', 'Dầu khí'), ('PVT', 'HOSE', 'PV Trans', 'Dầu khí'),
+        ('SAB', 'HOSE', 'Sabeco', 'Bán lẻ & Tiêu dùng'), ('SAM', 'HOSE', 'SAM Holdings', 'Công nghệ thông tin'),
+        ('SHB', 'HOSE', 'SHB', 'Ngân hàng'), ('SJS', 'HOSE', 'SUDICO', 'Bất động sản'),
+        ('SSB', 'HOSE', 'SeABank', 'Ngân hàng'), ('SSI', 'HOSE', 'Chứng khoán SSI', 'Dịch vụ tài chính'),
+        ('STB', 'HOSE', 'Sacombank', 'Ngân hàng'), ('TCB', 'HOSE', 'Techcombank', 'Ngân hàng'),
+        ('TDH', 'HOSE', 'Thuduc House', 'Bất động sản'), ('TLH', 'HOSE', 'Thép Tiến Lên', 'Thép & Vật liệu'),
+        ('TPB', 'HOSE', 'TPBank', 'Ngân hàng'), ('VCB', 'HOSE', 'Vietcombank', 'Ngân hàng'),
+        ('VGC', 'HOSE', 'Viglacera', 'Thép & Vật liệu'), ('VGI', 'UPCOM', 'Viettel Global', 'Công nghệ thông tin'),
+        ('VHM', 'HOSE', 'Vinhomes', 'Bất động sản'), ('VIB', 'HOSE', 'VIB', 'Ngân hàng'),
+        ('VIC', 'HOSE', 'Vingroup', 'Bất động sản'), ('VIS', 'HOSE', 'Thép Việt Ý', 'Thép & Vật liệu'),
+        ('VJC', 'HOSE', 'Vietjet', 'Dịch vụ tài chính'), ('VNM', 'HOSE', 'Vinamilk', 'Bán lẻ & Tiêu dùng'),
+        ('VND', 'HOSE', 'Chứng khoán VNDirect', 'Dịch vụ tài chính'), ('VPB', 'HOSE', 'VPBank', 'Ngân hàng'),
+        ('VPL', 'HOSE', 'Vinpearl', 'Bất động sản'), ('VRE', 'HOSE', 'Vincom Retail', 'Bất động sản'),
     ]
-    return mock_symbols
+
+    return [
+        {
+            'symbol': symbol,
+            'exchange': exchange,
+            'company_name': company_name,
+            'industry': industry,
+        }
+        for symbol, exchange, company_name, industry in seed_data
+    ]
 
 
 def fetch_intraday_ohlcv(symbol: str, timeframe: str = '1H', days: int = 180) -> dict[str, Any]:
