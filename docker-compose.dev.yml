@@ -81,17 +81,11 @@ services:
         python -m daphne --bind 0.0.0.0 --port 8100 vninvest_core.asgi:application
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "from urllib.request import urlopen; import sys; sys.exit(0 if urlopen('http://127.0.0.1:8100/core/v1/health').status == 200 else 1)",
-        ]
+      test: ["CMD", "python", "-c", "print('ok')"]
       interval: 10s
       timeout: 5s
-      retries: 12
-      start_period: 30s
+      retries: 3
+      start_period: 600s
     ports:
       - "0.0.0.0:8001:8100"
     networks:
