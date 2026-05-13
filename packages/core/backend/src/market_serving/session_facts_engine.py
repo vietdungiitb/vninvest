@@ -86,12 +86,21 @@ def _floor_bucket(dt: datetime, bucket_minutes: int) -> datetime:
 
 # ─── Engine chính ─────────────────────────────────────────
 
-def compute_session_facts(symbol: str, session_date: date) -> dict | None:
+def compute_session_facts(
+    symbol: str,
+    session_date: date,
+    bucket_minutes: int = _BUCKET_MINUTES,
+    include_series: bool = False,
+) -> dict | None:
     """
     Tính SessionFacts cho (symbol, session_date) từ WhaleAlertCanonical.
 
     Trả về dict sẵn sàng upsert vào SessionFacts, hoặc None nếu
     không có dữ liệu.
+
+    Params:
+      bucket_minutes   — độ rộng bucket tính CVD (mặc định 15 phút)
+      include_series   — nếu True, trả thêm trường ``cvd_series``
 
     Các trường trả về:
       cvd_normalized        — 0..100  (50 = trung tính)
@@ -103,6 +112,8 @@ def compute_session_facts(symbol: str, session_date: date) -> dict | None:
       total_sell_volume     — VND (int)
       delta_strength_pct    — float (chỉ trả về, không lưu thẳng vào model)
       alert_count           — số lệnh whale trong phiên
+      cvd_series            — list[{bucket_ts, cumulative_cvd, buy_volume,
+                               sell_volume}] (chỉ khi include_series=True)
     """
     from signal_intelligence.models import WhaleAlertCanonical
 
@@ -125,7 +136,7 @@ def compute_session_facts(symbol: str, session_date: date) -> dict | None:
             continue
         if executed_at.tzinfo is None:
             executed_at = executed_at.replace(tzinfo=timezone.utc)
-        bucket_key = _floor_bucket(executed_at, _BUCKET_MINUTES)
+        bucket_key = _floor_bucket(executed_at, bucket_minutes)
         if bucket_key not in buckets:
             buckets[bucket_key] = {'buy': 0.0, 'sell': 0.0, 'total': 0.0, 'whale': 0.0}
         value = float(row.get('matched_value') or 0)
@@ -145,11 +156,18 @@ def compute_session_facts(symbol: str, session_date: date) -> dict | None:
 
     # ── 2. CVD tích lũy theo bucket ────────────────────────
     cvd_series: list[float] = []
+    cvd_buckets: list[dict] = []   # structured series cho API (include_series)
     cumulative_cvd = 0.0
-    for _, b in sorted_buckets:
+    for bk, b in sorted_buckets:
         delta = b['buy'] - b['sell']
         cumulative_cvd += delta
         cvd_series.append(cumulative_cvd)
+        cvd_buckets.append({
+            'bucket_ts': bk.isoformat(),
+            'cumulative_cvd': round(cumulative_cvd, 2),
+            'buy_volume': int(b['buy']),
+            'sell_volume': int(b['sell']),
+        })
 
     # cvd_normalized: scale theo p95 của abs(CVD series)
     abs_cvds = [abs(v) for v in cvd_series]
@@ -221,7 +239,7 @@ def compute_session_facts(symbol: str, session_date: date) -> dict | None:
     # ── 5. Dark Flow Score ─────────────────────────────────
     dark_flow_score = _clamp(abs(net_cvd) / (total_value + _EPS) * 100.0, 0.0, 100.0)
 
-    return {
+    result = {
         'cvd_normalized': round(cvd_normalized, 4),
         'buy_strength': round(buy_strength_final, 4),
         'institutional_strength': round(inst_strength_final, 4),
@@ -234,6 +252,9 @@ def compute_session_facts(symbol: str, session_date: date) -> dict | None:
         'alert_count': len(rows),
         'bucket_count': len(sorted_buckets),
     }
+    if include_series:
+        result['cvd_series'] = cvd_buckets
+    return result
 
 
 def compute_session_facts_for_all_active(session_date: date | None = None) -> dict:

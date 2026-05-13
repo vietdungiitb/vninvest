@@ -108,7 +108,14 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
         <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-200">{t('whaleAlertsDashboard.cvd30m')}</p>
-            <span className="text-[11px] text-slate-500">{t('whaleAlertsDashboard.bucketsCount', { count: chartData.length })}</span>
+            <div className="flex items-center gap-2">
+              {orderFlowData?._cvd_source === 'whale-ssot' && (
+                <span className="rounded border border-cyan-700/40 bg-cyan-950/50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-cyan-400">
+                  Whale SSOT
+                </span>
+              )}
+              <span className="text-[11px] text-slate-500">{t('whaleAlertsDashboard.bucketsCount', { count: chartData.length })}</span>
+            </div>
           </div>
           <div className="h-56">
             {chartData.length === 0 ? (

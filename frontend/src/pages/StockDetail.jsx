@@ -18,6 +18,7 @@ import {
   postStockAIAdvisoryObservabilityEvent,
   refreshStockAIAdvisorySession,
   generateStockAIAdvisoryComponents,
+  getSessionFactsCvd,
   getStockOrderFlow,
   getStockPriceChart,
   getStockWorkspaceOverview,
@@ -1558,8 +1559,19 @@ export default function StockDetail() {
     if (!normalizedSymbol) return;
     if (!silent) setOrderFlowLoading(true);
     try {
-      const response = await getStockOrderFlow(normalizedSymbol, orderFlowWindow);
-      setOrderFlowData(response?.data || null);
+      // Fetch song song: order-flow (signals/dark_flow/tick_rate) + CVD SSOT
+      const [orderFlowResp, cvdResp] = await Promise.allSettled([
+        getStockOrderFlow(normalizedSymbol, orderFlowWindow),
+        getSessionFactsCvd(normalizedSymbol, orderFlowWindow),
+      ]);
+      const base = orderFlowResp.status === 'fulfilled' ? (orderFlowResp.value?.data || null) : null;
+      const cvdData = cvdResp.status === 'fulfilled' ? cvdResp.value?.data : null;
+      // Override cvd_series bằng nguồn SSOT (WhaleAlertCanonical) nếu có
+      setOrderFlowData(base ? {
+        ...base,
+        cvd_series: cvdData?.cvd_series ?? base.cvd_series,
+        _cvd_source: cvdData ? 'whale-ssot' : 'intraday-tick',
+      } : null);
     } catch (err) {
       if (isRequestCanceled(err)) {
         return;

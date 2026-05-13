@@ -491,7 +491,23 @@ export const getSectorBreadth = (symbol) =>
   apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
 export const getWhaleFeed = (symbol) =>
   apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
-export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate, includeBaseline } = {}) =>
+/**
+ * Lấy SessionFacts (CVD, Strength, Dark Flow) cho một symbol.
+ * Endpoint: GET /api/market/session-facts/<symbol>/
+ * Tự động compute on-demand nếu chưa có dữ liệu hôm nay.
+ */
+export const getSessionFacts = (symbol) =>
+apiClient.get(`/market/session-facts/${encodeURIComponent(symbol)}/`);
+
+/**
+ * Lấy chuỗi CVD theo bucket từ SSOT duy nhất (WhaleAlertCanonical).
+ * Endpoint: GET /api/market/session-facts/<symbol>/cvd/?window=<5m|15m|30m|1h>
+ * Thay thế cvd_series từ IntradayTick cho OrderFlowRadarPanel.
+ */
+export const getSessionFactsCvd = (symbol, window = '15m') =>
+  apiClient.get(`/market/session-facts/${encodeURIComponent(symbol)}/cvd/`, {
+    params: { window },
+  });export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate, includeBaseline } = {}) =>
   apiClient.get(`/portfolio/whale/analytics/${encodeURIComponent(symbol)}/`, {
     params: {
       timeframe,
