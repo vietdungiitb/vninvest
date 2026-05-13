@@ -173,6 +173,8 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ],
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
+    # A5 Fix: Custom exception handler for standard error envelopes (Constitution R4)
+    'EXCEPTION_HANDLER': 'vninvest_core.exceptions.core_api_exception_handler',
 }
 
 CORS_ALLOW_ALL_ORIGINS = False

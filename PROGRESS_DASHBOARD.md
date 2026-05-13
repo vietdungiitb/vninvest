@@ -1,3 +1,46 @@
+# 2026-05-13 — Phase 2 Slice 1 (A4-A5): HTTP Status Codes + Standard Error Envelope ✅
+
+Status: COMPLETE (2026-05-13T15:30:00Z)  
+Tests: 16/16 A4-A5 specific + 49/49 integration suite PASS  
+Ready for: `git add && git commit && git push origin dev`
+
+## Slice 1 Summary
+
+**Constitutional Requirements Met:**
+- ✅ **R3 (HTTP Status Code Semantics)**: 201 Created (register), 200 OK (password-reset), 400 Bad Request (validation), 409 Conflict (duplicate)
+- ✅ **R4 (Standard Error Envelope)**: All errors now return {detail, code, timestamp, request_id, field_errors}
+
+**Implementation Executed:**
+
+1. **vninvest_core/exceptions.py** (NEW, 230+ lines):
+   - StandardErrorEnvelope class with ISO8601 timestamps and auto-generated request_id (req_* prefix)
+   - 7 exception subclasses (ValidationErrorException, ConflictErrorException, NotFoundErrorException, etc.)
+   - core_api_exception_handler() for DRF integration
+
+2. **vninvest_core/settings.py** (MODIFIED):
+   - Registered custom exception handler in REST_FRAMEWORK config
+
+3. **identity_access/views_auth.py** (MODIFIED):
+   - register_view: Raises exceptions instead of returning Response objects
+   - password_reset_confirm_view: Raises exceptions for validation errors
+
+4. **vninvest_core/tests/test_status_codes_and_errors.py** (NEW, 300+ lines):
+   - 16 comprehensive tests for A4 and A5
+
+**Test Results:**
+- A4-A5 Specific: 16/16 tests PASS (2.141s)
+- Integration Suite: 49/49 tests PASS (3.057s, no regressions)
+
+**Files Modified:**
+- vninvest_core/exceptions.py (NEW)
+- vninvest_core/settings.py (MODIFIED)
+- identity_access/views_auth.py (MODIFIED)
+- vninvest_core/tests/test_status_codes_and_errors.py (NEW)
+
+**Next Phase:** Slice 2 (B1 Rate Limiting) — 2-3 hours
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C5: WebSocket Symbol Sanitization ✅
 
 Status: Completed. WebSocket receive() method now logs all exceptions; symbol sanitization validated.

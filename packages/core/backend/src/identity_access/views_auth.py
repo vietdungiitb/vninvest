@@ -21,6 +21,10 @@ from .authentication import CorePATAuthentication
 from .models import CorePATCredential, CoreTenant, PasswordResetToken
 from .permissions import IsTenantActive
 from data_ingest.tasks import send_email_verification_token, send_password_reset_email
+from vninvest_core.exceptions import (
+    ValidationErrorException,
+    ConflictErrorException,
+)
 
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
@@ -485,6 +489,8 @@ def register_view(request):
     SFI-B2.2: POST /api/auth/register/
     Body: { "username", "email", "password", "first_name"?, "last_name"? }
     Creates user + sends verification email.
+    
+    A4-A5 Fix: Uses standard error envelope via exceptions.
     """
     username = str(request.data.get('username', '') or '').strip()
     email = str(request.data.get('email', '') or '').strip().lower()
@@ -493,27 +499,23 @@ def register_view(request):
     last_name = str(request.data.get('last_name', '') or '').strip()
 
     if not username or not email or not password:
-        return Response(
-            {'detail': 'username, email, and password are required.'},
-            status=status.HTTP_400_BAD_REQUEST,
+        raise ValidationErrorException(
+            detail='username, email, and password are required.',
         )
 
     if len(password) < 8:
-        return Response(
-            {'detail': 'Password must be at least 8 characters.'},
-            status=status.HTTP_400_BAD_REQUEST,
+        raise ValidationErrorException(
+            detail='Password must be at least 8 characters.',
         )
 
     if User.objects.filter(username=username).exists():
-        return Response(
-            {'detail': 'Username already taken.'},
-            status=status.HTTP_409_CONFLICT,
+        raise ConflictErrorException(
+            detail='Username already taken.',
         )
 
     if User.objects.filter(email=email).exists():
-        return Response(
-            {'detail': 'Email already registered.'},
-            status=status.HTTP_409_CONFLICT,
+        raise ConflictErrorException(
+            detail='Email already registered.',
         )
 
     user = User.objects.create_user(
@@ -616,30 +618,36 @@ def password_reset_confirm_view(request):
     Sets new password for user identified by token.
     
     C1 Fix: Uses PasswordResetToken model to verify token and mark as used.
+    A4-A5 Fix: Uses standard error envelope via exceptions.
     """
     token = str(request.data.get('token', '') or '').strip()
     new_password = str(request.data.get('password', '') or '')
 
     if not token or not new_password:
-        return Response({'detail': 'token and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(
+            detail='token and password are required.',
+        )
 
     if len(new_password) < 8:
-        return Response({'detail': 'Password phải có ít nhất 8 ký tự.'}, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(
+            detail='Password phải có ít nhất 8 ký tự.',
+        )
 
     # Verify token from DB and mark as used
     try:
         reset_token = PasswordResetToken.verify_and_mark_used(token)
     except ValueError as e:
-        return Response(
-            {'detail': str(e)},
-            status=status.HTTP_400_BAD_REQUEST,
+        raise ValidationErrorException(
+            detail=str(e),
         )
 
     # Find user by email from the reset token
     try:
         user = User.objects.get(email=reset_token.email, is_active=True)
     except User.DoesNotExist:
-        return Response({'detail': 'Tài khoản không tồn tại hoặc bị vô hiệu hóa.'}, status=status.HTTP_404_NOT_FOUND)
+        raise ValidationErrorException(
+            detail='Tài khoản không tồn tại hoặc bị vô hiệu hóa.',
+        )
 
     user.set_password(new_password)
     user.save(update_fields=['password', 'updated_at'] if hasattr(user, 'updated_at') else ['password'])
