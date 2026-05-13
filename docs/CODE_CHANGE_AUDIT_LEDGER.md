@@ -1,3 +1,62 @@
+# 2026-05-14 — Phase 1 Critical Fix C4: Environment Validation (Required Env Vars) ✅
+
+Status: Completed. Required environment variables now validated at startup.
+
+What changed:
+- `packages/core/backend/src/vninvest_core/env_validation.py` (NEW)
+  - `get_required_env()`: Fails fast if required var missing (with description)
+  - `get_optional_env()`: Gets optional var with fallback default
+  - `validate_production_settings()`: Enforces production requirements at startup
+  - `get_frontend_url()`: Returns validated FRONTEND_URL (required in production, defaults to localhost:3000 in dev)
+
+- `packages/core/backend/src/vninvest_core/settings.py`
+  - Added import: `from .env_validation import validate_production_settings, get_frontend_url`
+  - Added call: `validate_production_settings(DEBUG)` after existing checks
+  - Updated FRONTEND_URL: `FRONTEND_URL = get_frontend_url(DEBUG)` (was removed previously)
+  - Now FRONTEND_URL is guaranteed to be set in production (or startup fails)
+
+- `packages/core/backend/src/identity_access/views_auth.py`
+  - Added import: `from django.conf import settings`
+  - `register_view()`: Changed from `os.environ.get('FRONTEND_URL', 'http://localhost')` to `settings.FRONTEND_URL`
+  - `password_reset_request_view()`: Changed from `os.environ.get('FRONTEND_URL', 'http://localhost')` to `settings.FRONTEND_URL`
+  - Email task calls now pass validated FRONTEND_URL from settings
+
+- `packages/core/backend/src/data_ingest/tasks.py`
+  - `send_email_verification_token()`: Changed from `hasattr(django_settings, 'FRONTEND_URL') else 'http://localhost'` to direct `django_settings.FRONTEND_URL`
+  - `send_password_reset_email()`: Changed from `hasattr(django_settings, 'FRONTEND_URL') else 'http://localhost'` to direct `django_settings.FRONTEND_URL`
+  - Updated docstrings: FRONTEND_URL is required in production
+
+- `packages/core/backend/src/vninvest_core/tests/test_env_validation.py` (NEW)
+  - GetRequiredEnvTests: 5 tests (returns value, strips whitespace, raises if missing, raises if empty, includes description)
+  - GetOptionalEnvTests: 3 tests (returns value, returns default, strips whitespace)
+  - ValidateProductionSettingsTests: 2 tests (skips in dev, requires vars in prod)
+  - GetFrontendUrlTests: 4 tests (dev defaults, dev uses env if set, prod requires env, strips trailing slash)
+
+Validation evidence:
+- ✅ 14 environment validation tests pass (new test suite)
+- ✅ 18 C1 password reset tests still pass (no regressions)
+- ✅ Docker rebuild successful
+- ✅ Container startup healthy
+- ✅ Email tasks now guaranteed valid FRONTEND_URL (no 'http://localhost' fallback in production)
+
+Files modified:
+- vninvest_core/env_validation.py (+90 lines, new module)
+- vninvest_core/settings.py (added import, validation call, FRONTEND_URL setting)
+- identity_access/views_auth.py (use settings.FRONTEND_URL instead of os.environ.get)
+- data_ingest/tasks.py (use django_settings.FRONTEND_URL directly, no fallback)
+- vninvest_core/tests/test_env_validation.py (+175 lines, new tests)
+
+Impact:
+- Production deployment now fails immediately if FRONTEND_URL not set (fail-fast)
+- No more 'http://localhost' used in production (email links will never use default)
+- Centralized environment validation for consistency
+- All required vars validated in one place (settings.py)
+
+Residual note:
+- WebSocket symbol parameter not yet sanitized (C5 will address)
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C3: Email Onboarding (Async Celery Tasks) ✅
 
 Status: Completed. Async email delivery implemented with automatic retry logic.

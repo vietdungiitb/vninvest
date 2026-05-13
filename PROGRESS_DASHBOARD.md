@@ -1,3 +1,55 @@
+# 2026-05-14 — Phase 1 Critical Fix C4: Environment Validation ✅
+
+Status: Completed. Required environment variables now enforced at startup.
+
+Completed today:
+- **Environment Validation Module** (vninvest_core/env_validation.py):
+  - `get_required_env()`: Raises ImproperlyConfigured if var missing (with description)
+  - `get_optional_env()`: Optional var with fallback default
+  - `validate_production_settings()`: Enforces all production requirements at startup
+  - `get_frontend_url()`: Returns validated FRONTEND_URL (required in prod, localhost:3000 in dev)
+
+- **Settings Integration** (vninvest_core/settings.py):
+  - Added validation call: `validate_production_settings(DEBUG)`
+  - Added FRONTEND_URL setting: `FRONTEND_URL = get_frontend_url(DEBUG)`
+  - Production startup now fails if FRONTEND_URL not set
+
+- **Views Refactoring** (identity_access/views_auth.py):
+  - `register_view`: Uses `settings.FRONTEND_URL` (validated at startup)
+  - `password_reset_request_view`: Uses `settings.FRONTEND_URL` (validated at startup)
+  - Removed os.environ.get fallbacks
+
+- **Celery Tasks Update** (data_ingest/tasks.py):
+  - `send_email_verification_token`: Uses `django_settings.FRONTEND_URL` directly (no fallback)
+  - `send_password_reset_email`: Uses `django_settings.FRONTEND_URL` directly (no fallback)
+  - Email tasks guaranteed valid FRONTEND_URL
+
+- **Test Coverage** (vninvest_core/tests/test_env_validation.py):
+  - 14 comprehensive tests: dev vs prod modes, missing var handling, defaults
+
+Validation:
+- ✅ Docker rebuild: successful
+- ✅ Container startup: healthy
+- ✅ C4 tests: 14/14 passing
+- ✅ C1 tests: 18/18 still passing (no regressions)
+
+Impact:
+- **Production Safety**: Fails immediately if FRONTEND_URL missing (no silent misconfiguration)
+- **Email Reliability**: Email tasks guaranteed valid FRONTEND_URL
+- **Zero Hardcoded Defaults**: No 'http://localhost' used in production
+- **Centralized Validation**: All required vars enforced in one place (settings.py)
+
+Benefits:
+- Production deployments will fail explicitly if misconfigured
+- Email links will never accidentally use default/localhost URLs
+- Easier debugging: clear error messages on missing env vars
+- Consistent across all components (views, tasks, Celery)
+
+Remaining Work:
+- C5: WebSocket Error Handling (sanitize symbol parameters)
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C3: Email Onboarding (Async Celery) ✅
 
 Status: Completed. All email operations now async with automatic retry logic.
