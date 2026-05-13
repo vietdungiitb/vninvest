@@ -11,6 +11,7 @@ import os
 import logging
 from django.contrib.auth import authenticate
 from django.conf import settings
+from django.core.cache import cache
 from rest_framework import permissions, status
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ from data_ingest.tasks import send_email_verification_token, send_password_reset
 from vninvest_core.exceptions import (
     ValidationErrorException,
     ConflictErrorException,
+    RateLimitErrorException,
 )
 
 
@@ -264,7 +266,21 @@ def login_view(request):
     POST /core/v1/auth/login
     Body: { "username": "...", "password": "..." }
     Returns: { "token": "<raw_pat>", "token_prefix": "...", "tenant": {...} }
+    
+    B1 Fix: Rate limited to 5 requests per minute per IP (per Checklist H2, brute-force protection).
+    Manual cache-based rate limiting to return proper 429 status (not 403 from django-ratelimit).
     """
+    # Rate limit per IP (5 requests per minute per IP address)
+    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
+    cache_key = f'ratelimit:login:{client_ip}'
+    count = cache.get(cache_key, 0)
+    if count >= 5:
+        raise RateLimitErrorException(
+            detail='Too many login attempts from this IP address. Please try again in 1 minute.',
+            code='login_rate_limit_exceeded',
+        )
+    cache.set(cache_key, count + 1, 60)
+    
     username = request.data.get('username', '').strip()
     password = request.data.get('password', '')
 
@@ -491,7 +507,20 @@ def register_view(request):
     Creates user + sends verification email.
     
     A4-A5 Fix: Uses standard error envelope via exceptions.
+    B1 Fix: Rate limited to 3 requests per minute per IP (per Checklist H2).
+    Manual cache-based rate limiting to return proper 429 status.
     """
+    # Rate limit per IP (3 requests per minute per IP address)
+    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
+    cache_key = f'ratelimit:register:{client_ip}'
+    count = cache.get(cache_key, 0)
+    if count >= 3:
+        raise RateLimitErrorException(
+            detail='Too many registration attempts from this IP address. Please try again in 1 minute.',
+            code='register_rate_limit_exceeded',
+        )
+    cache.set(cache_key, count + 1, 60)
+    
     username = str(request.data.get('username', '') or '').strip()
     email = str(request.data.get('email', '') or '').strip().lower()
     password = str(request.data.get('password', '') or '')
@@ -587,10 +616,21 @@ def password_reset_request_view(request):
     
     C1 Fix: Uses PasswordResetToken model (DB-backed) instead of in-memory store.
     Tokens now persist across application restarts.
+    B1 Fix: Rate limited to 3 requests per minute per EMAIL (per Checklist H2, OWASP A01 enumeration protection).
     """
     email = str(request.data.get('email', '') or '').strip().lower()
     if not email:
         return Response({'detail': 'email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Rate limit per email (3 requests per minute per email address)
+    cache_key = f'ratelimit:password-reset-email:{email}'
+    count = cache.get(cache_key, 0)
+    if count >= 3:
+        raise RateLimitErrorException(
+            detail='Too many password reset requests for this email address. Please try again in 1 minute.',
+            code='password_reset_rate_limit_exceeded',
+        )
+    cache.set(cache_key, count + 1, 60)
 
     # Always return 200 to avoid user enumeration (OWASP A01).
     user = User.objects.filter(email=email, is_active=True).first()
