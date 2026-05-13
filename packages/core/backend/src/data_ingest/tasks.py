@@ -325,13 +325,14 @@ def send_email_verification_token(self, email: str, token: str, frontend_url: st
     Args:
         email: recipient email address
         token: verification token (raw, not hashed)
-        frontend_url: optional frontend base URL (defaults to FRONTEND_URL env or http://localhost)
+        frontend_url: optional frontend base URL (defaults to settings.FRONTEND_URL which is required in production)
     
     Returns:
         dict with 'status' and 'error' keys
     """
     if not frontend_url:
-        frontend_url = django_settings.FRONTEND_URL if hasattr(django_settings, 'FRONTEND_URL') else 'http://localhost'
+        # C4 Fix: FRONTEND_URL is always available in settings (required in production)
+        frontend_url = django_settings.FRONTEND_URL
     
     verify_url = f'{frontend_url}/verify-email?token={token}'
     
@@ -366,13 +367,14 @@ def send_password_reset_email(self, email: str, token: str, frontend_url: str = 
     Args:
         email: recipient email address
         token: reset token (raw, not hashed)
-        frontend_url: optional frontend base URL (defaults to FRONTEND_URL env or http://localhost)
+        frontend_url: optional frontend base URL (defaults to settings.FRONTEND_URL which is required in production)
     
     Returns:
         dict with 'status' and 'error' keys
     """
     if not frontend_url:
-        frontend_url = django_settings.FRONTEND_URL if hasattr(django_settings, 'FRONTEND_URL') else 'http://localhost'
+        # C4 Fix: FRONTEND_URL is always available in settings (required in production)
+        frontend_url = django_settings.FRONTEND_URL
     
     reset_url = f'{frontend_url}/reset-password?token={token}'
     

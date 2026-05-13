@@ -10,6 +10,7 @@ import os
 
 import logging
 from django.contrib.auth import authenticate
+from django.conf import settings
 from rest_framework import permissions, status
 
 logger = logging.getLogger(__name__)
@@ -530,9 +531,9 @@ def register_view(request):
         'expires_at': timezone.now() + timedelta(hours=_TOKEN_TTL_HOURS),
     }
 
-    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost')
+    # C4 Fix: Use validated FRONTEND_URL from settings (required in production)
     # Send email asynchronously via Celery (C3 fix)
-    send_email_verification_token.delay(email=email, token=token, frontend_url=frontend_url)
+    send_email_verification_token.delay(email=email, token=token, frontend_url=settings.FRONTEND_URL)
 
     return Response(
         {'detail': 'Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản.'},
@@ -595,9 +596,9 @@ def password_reset_request_view(request):
         # Generate and save token in DB (survives restart)
         token_obj, raw_token = PasswordResetToken.generate_and_save(email=email, hours=1)
         
-        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost')
+        # C4 Fix: Use validated FRONTEND_URL from settings (required in production)
         # Send email asynchronously via Celery (C3 fix)
-        send_password_reset_email.delay(email=email, token=raw_token, frontend_url=frontend_url)
+        send_password_reset_email.delay(email=email, token=raw_token, frontend_url=settings.FRONTEND_URL)
 
     return Response(
         {'detail': 'Nếu email tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.'},

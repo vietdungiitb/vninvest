@@ -9,6 +9,8 @@ import os
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
+from .env_validation import validate_production_settings, get_frontend_url
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _secret_key_default = 'dev-only-insecure-key-replace-in-production'
@@ -35,6 +37,9 @@ if not DEBUG:
             "CORE_PAT_PEPPER must be set in production for secure PAT hashing."
         )
     del _pat_pepper
+
+# C4 Fix: Validate all required environment variables in production
+validate_production_settings(DEBUG)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -135,6 +140,9 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'false').lower() in ('1', 'true'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@vninvest.local')
+
+# C4 Fix: FRONTEND_URL — required in production, defaults to localhost:3000 in dev
+FRONTEND_URL = get_frontend_url(DEBUG)
 
 # SFI-B5: AI Advisory configuration — all credentials from env; never hardcoded.
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
