@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'corsheaders',
     'django_celery_beat',
     # SFI-B7: WebSocket support
@@ -175,6 +176,16 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
     # A5 Fix: Custom exception handler for standard error envelopes (Constitution R4)
     'EXCEPTION_HANDLER': 'vninvest_core.exceptions.core_api_exception_handler',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'VNInvest Core API',
+    'DESCRIPTION': 'OpenAPI schema cho VNInvest Core — market data, signals, advisory.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SORT_OPERATIONS': False,
 }
 
 CORS_ALLOW_ALL_ORIGINS = False

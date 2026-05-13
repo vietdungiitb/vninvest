@@ -3,6 +3,8 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
 from . import views_health
 
 from user_workspace.legacy_views import (
@@ -21,6 +23,9 @@ urlpatterns = [
     path('', include('django_prometheus.urls')),
     path('core/v1/health', views_health.health, name='core_health'),
     path('core/v1/capability-bootstrap', views_health.capability_bootstrap, name='core_capability_bootstrap'),
+    # OpenAPI schema + Swagger UI (chỉ DEBUG hoặc internal)
+    path('core/v1/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('core/v1/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('core/v1/', include(('identity_access.urls', 'identity_access'), namespace='identity_access')),
     path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner'), namespace='identity_access_partner')),
     path('core/v1/', include(('market_serving.urls', 'market_serving'), namespace='market_serving')),

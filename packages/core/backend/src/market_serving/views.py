@@ -3,9 +3,12 @@ import json
 import logging
 
 from django.core.cache import cache
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +80,21 @@ class SymbolSnapshotDetailView(generics.RetrieveAPIView):
         return Response(data)
 
 
+class MarketDataThrottle(UserRateThrottle):
+    """60 req/min per authenticated user — market data endpoints."""
+    rate = '60/min'
+
+
 class SessionFactsListView(generics.ListAPIView):
+    """
+    GET /api/market/session-facts/
+
+    Danh sách SessionFacts (CVD + Strength) cho toàn bộ hoặc một symbol.
+    Hỗ trợ filter ?symbol=VCB. Trả về cursor-paginated list.
+    """
     serializer_class = SessionFactsSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [MarketDataThrottle]
     pagination_class = SnapshotCursorPagination
 
     def get_queryset(self):
@@ -90,6 +105,28 @@ class SessionFactsListView(generics.ListAPIView):
         return qs
 
 
+@extend_schema(
+    summary='Lấy SessionFacts (CVD + Strength) cho một symbol',
+    description=(
+        'Trả về SessionFacts cho phiên giao dịch hiện tại hoặc gần nhất. '
+        'Nếu chưa có dữ liệu hôm nay, tự động compute on-demand từ WhaleAlertCanonical. '
+        'Cache Redis TTL 30 giây. Xác thực bắt buộc.'
+    ),
+    parameters=[
+        OpenApiParameter(
+            name='symbol',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.PATH,
+            description='Mã chứng khoán, ví dụ VCB, VPB, HPG.',
+            required=True,
+        )
+    ],
+    responses={
+        200: SessionFactsSerializer,
+        401: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SessionFactsDetailView(generics.RetrieveAPIView):
     """
     GET /api/market/session-facts/<symbol>/
@@ -102,6 +139,7 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
     """
     serializer_class = SessionFactsSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [MarketDataThrottle]
 
     def _compute_on_demand(self, symbol: str):
         """Trigger engine tính ngay nếu chưa có dữ liệu hôm nay."""
