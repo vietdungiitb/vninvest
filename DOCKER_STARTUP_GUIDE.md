@@ -73,9 +73,38 @@ curl http://localhost:8001/health/
 # Redis
 docker exec vninvest-dev-redis redis-cli ping
 
-# PostgreSQL
+# PostgreSQL - verify both vninvest and core_db databases
 docker exec -it vninvest-dev-db psql -U postgres -d vninvest -c "SELECT 1"
+docker exec -it vninvest-dev-db psql -U postgres -d core_db -c "SELECT 1"
 ```
+
+### 4a. Dual Database Setup (core_db & vninvest)
+
+As of P2-T01, the system uses **two PostgreSQL databases**:
+
+- **vninvest**: Legacy schema, used by backend (port 8000)
+- **core_db**: Core SaaS schema, exclusively used by core-api (port 8001)
+
+**Verification:**
+```powershell
+# List all databases
+docker exec vninvest-dev-db psql -U postgres -l | grep -E "core_db|vninvest"
+
+# Should show:
+#  core_db    | postgres | UTF8     | C       | C            | 
+#  vninvest   | postgres | UTF8     | C       | C            |
+
+# Verify core-api is connected to core_db
+docker exec vninvest-dev-core-api python /app/src/manage.py shell -c \
+  "from django.db import connections; print('Connected to:', connections.databases['default']['NAME'])"
+
+# Should output: Connected to: core_db
+```
+
+**Data Initialization:**
+- `core_db` is auto-created by Docker entrypoint script (`init-core-db.sql`)
+- Core tables (identity_access, commercial, user_workspace, etc.) are created via Django migrations
+- Historical data from vninvest is optionally copied via `scripts/copy_core_tables.sh` for testing/validation
 
 ### 5. Setup Admin User & Test Auth
 
@@ -140,6 +169,49 @@ Common issues:
 - Database migrations pending
 - Redis not ready
 - Port already in use
+
+### Issue: Core-API Cannot Connect to core_db
+
+**Symptoms**: Core-API logs show `DatabaseError` or `FATAL: database "core_db" does not exist`
+
+**Root Cause**: Docker entrypoint script did not auto-create core_db on first stack start
+
+**Solution**:
+```powershell
+# Manual database creation
+docker exec vninvest-dev-db psql -U postgres -c "CREATE DATABASE core_db;"
+
+# Verify
+docker exec vninvest-dev-db psql -U postgres -l | grep core_db
+
+# Restart core-api container
+docker compose -f docker-compose.dev.yml restart core-api
+```
+
+**Prevention**: For next fresh stack:
+1. Ensure `scripts/init-core-db.sql` is mounted in `docker-compose.dev.yml` db service volumes
+2. Verify mount path is `/docker-entrypoint-initdb.d/01-init-core-db.sql` (leading 01- ensures execution order)
+3. Tear down and rebuild with `docker compose down -v` before next `up -d --build`
+
+### Issue: core_db Tables Empty or Missing Data
+
+**Scenario**: Migrations ran but tables have no data from vninvest
+
+**Optional Data Copy** (for dev/testing):
+```powershell
+# Copy historical data from vninvest to core_db (pg_dump approach)
+docker cp scripts/copy_core_tables.sh vninvest-dev-db:/tmp/copy_core_tables.sh
+docker exec vninvest-dev-db bash /tmp/copy_core_tables.sh
+
+# Verify copy succeeded
+docker exec vninvest-dev-db psql -U postgres -d core_db -c \
+  "SELECT COUNT(*) as total_records FROM 
+   (SELECT COUNT(*) as c FROM user_workspace_portfolio
+    UNION ALL SELECT COUNT(*) FROM user_workspace_watchlist
+    UNION ALL SELECT COUNT(*) FROM signal_intelligence_whalealertcanonical) t"
+```
+
+**Note**: Production deploys do NOT copy legacy data; core_db starts fresh per tenant isolation design.
 
 ### Clean Up Everything
 
