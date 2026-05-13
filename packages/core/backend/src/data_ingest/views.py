@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
+from vninvest_core.pagination import StandardPageNumberPagination
 from .models import IngestJob, IngestRun
 from .serializers import (
     IngestJobSerializer,
@@ -37,11 +38,11 @@ class IngestJobViewSet(viewsets.ReadOnlyModelViewSet):
     Read-only viewset for ingest jobs.
     Only admin users can view job configurations.
     """
-    queryset = IngestJob.objects.all()
+    queryset = IngestJob.objects.all().order_by('name')
     serializer_class = IngestJobSerializer
     permission_classes = [IsAdminUser]
+    pagination_class = StandardPageNumberPagination
     filterset_fields = ['source', 'status']
-    ordering = ['name']
 
 
 class IngestRunViewSet(viewsets.ReadOnlyModelViewSet):
@@ -49,16 +50,14 @@ class IngestRunViewSet(viewsets.ReadOnlyModelViewSet):
     Read-only viewset for ingest runs (execution history).
     Provides pagination and filtering for audit/monitoring.
     """
-    queryset = IngestRun.objects.select_related('job').order_by('-started_at')
     serializer_class = IngestRunSerializer
     permission_classes = [IsAdminUser]
+    pagination_class = StandardPageNumberPagination
     filterset_fields = ['job', 'state']
-    ordering = ['-started_at']
-    pagination_class = None  # Use global default (StandardPageNumberPagination)
 
     def get_queryset(self):
-        # Limit to last 100 runs for performance
-        return super().get_queryset()[:100]
+        # Limit to last 100 runs for performance, ordered by most recent first
+        return IngestRun.objects.select_related('job').order_by('-started_at')[:100]
 
 
 class DataIngestAdminViewSet(viewsets.ViewSet):
