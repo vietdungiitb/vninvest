@@ -86,24 +86,66 @@ class TrackedSymbolsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        bridged_response = legacy_bridge_response(
-            request,
-            '/api/stock-management/tracked-symbols/',
-            unavailable_message='Legacy tracked-symbol bridge hiện không khả dụng.',
+        from user_workspace.models import WatchlistItem
+
+        items = (
+            WatchlistItem.objects
+            .filter(watchlist__user=request.user)
+            .order_by('-added_at', '-pk')
         )
-        if bridged_response is not None and bridged_response.status_code < 500:
-            return bridged_response
-        return Response([])
+        seen_symbols = set()
+        payload = []
+        for item in items:
+            symbol = str(item.symbol or '').upper().strip()
+            if not symbol or symbol in seen_symbols:
+                continue
+            seen_symbols.add(symbol)
+            payload.append(
+                {
+                    'id': item.pk,
+                    'symbol': symbol,
+                    'note': item.note or '',
+                }
+            )
+        return Response(payload)
 
     def post(self, request):
-        bridged_response = legacy_bridge_response(
-            request,
-            '/api/stock-management/tracked-symbols/',
-            unavailable_message='Legacy tracked-symbol bridge hiện không khả dụng.',
+        from user_workspace.models import Watchlist, WatchlistItem
+
+        raw_symbol = request.data.get('symbol') or request.data.get('ticker') or request.data.get('code')
+        symbol = str(raw_symbol or '').upper().strip()
+        if not symbol:
+            return Response({'detail': 'symbol là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        watchlist = (
+            Watchlist.objects
+            .filter(user=request.user)
+            .order_by('-is_default', 'name', 'pk')
+            .first()
         )
-        if bridged_response is not None:
-            return bridged_response
-        return Response({'detail': 'Feature not yet available in SaaS.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        if watchlist is None:
+            tenant = getattr(request.user, 'core_tenant', None)
+            watchlist = Watchlist.objects.create(
+                user=request.user,
+                tenant=tenant,
+                name='Danh mục theo dõi',
+                description='Tạo tự động cho tracked symbols.',
+                is_default=True,
+            )
+
+        item, created = WatchlistItem.objects.get_or_create(
+            watchlist=watchlist,
+            symbol=symbol,
+            defaults={'note': str(request.data.get('note') or '')[:255]},
+        )
+        return Response(
+            {
+                'id': item.pk,
+                'symbol': item.symbol,
+                'note': item.note or '',
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
 
 class IntradayPricesView(APIView):

@@ -27,12 +27,37 @@ class StockManagementTechnicalsView(APIView):
 
     _MAX_SYMBOLS = 50
 
-    def get(self, request):
+    def _parse_symbols(self, request):
+        query_symbols = str(request.query_params.get('symbols', '') or '').strip()
+        body_symbols = request.data.get('symbols') if hasattr(request, 'data') else None
+
+        if isinstance(body_symbols, list):
+            raw = [str(item or '').strip() for item in body_symbols]
+        elif isinstance(body_symbols, str) and body_symbols.strip():
+            raw = [item.strip() for item in body_symbols.split(',')]
+        elif query_symbols:
+            raw = [item.strip() for item in query_symbols.split(',')]
+        else:
+            raw = []
+
+        symbols = []
+        seen = set()
+        for item in raw:
+            symbol = item.upper()
+            if not symbol or symbol in seen:
+                continue
+            seen.add(symbol)
+            symbols.append(symbol)
+            if len(symbols) >= self._MAX_SYMBOLS:
+                break
+        return symbols
+
+    def _build_response(self, symbols):
         from market_serving.models import SymbolSnapshot
-        symbols_raw = request.query_params.get('symbols', '')
-        if not symbols_raw:
+
+        if not symbols:
             return Response({'results': []})
-        symbols = [s.strip().upper() for s in symbols_raw.split(',') if s.strip()][:self._MAX_SYMBOLS]
+
         today = date.today()
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
         snap_map = {s.symbol: s for s in snaps}
@@ -48,6 +73,14 @@ class StockManagementTechnicalsView(APIView):
                 'stale': snap.stale if snap else True,
             })
         return Response({'results': results})
+
+    def get(self, request):
+        symbols = self._parse_symbols(request)
+        return self._build_response(symbols)
+
+    def post(self, request):
+        symbols = self._parse_symbols(request)
+        return self._build_response(symbols)
 
 
 class StockManagementDetailView(APIView):

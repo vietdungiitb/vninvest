@@ -1,3 +1,83 @@
+# 2026-05-13 — Remove Legacy Bridge Runtime Dependency + Fix 500/405 API Regressions ✅
+
+Status: Completed. Frontend-reported failures for tracked-symbols, technicals bulk, and whale-feed endpoints are fixed.
+
+What changed:
+- `packages/core/backend/src/vninvest_core/utils/legacy_bridge.py`
+  - Added `legacy_bridge_response(...)` compatibility helper that always returns `None` in SaaS mode.
+  - Purpose: prevent runtime `NameError` while preserving existing native/stub fallback behavior.
+
+- `packages/core/backend/src/market_data/legacy_views.py`
+  - Added import for compatibility helper (`legacy_bridge_response`) to stabilize legacy-compat call sites.
+
+- `packages/core/backend/src/market_serving/legacy_views.py`
+  - Added import for compatibility helper (`legacy_bridge_response`) to stabilize whale aggregate scope resolution paths.
+
+- `packages/core/backend/src/market_data/views.py`
+  - Replaced bridge-dependent `TrackedSymbolsView` with native watchlist-backed implementation:
+    - `GET /api/stock-management/tracked-symbols/` now returns deduped symbols from `WatchlistItem`.
+    - `POST /api/stock-management/tracked-symbols/` now upserts symbol into default watchlist (auto-create when needed).
+
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+  - Added `POST` support for `/api/stock-management/technicals/bulk/` with symbol parsing from body/query.
+  - Kept `GET` behavior unchanged; both verbs now return unified payload structure.
+
+- `packages/core/backend/src/signal_intelligence/views.py`
+  - Added `WhaleAlertCursorPagination` (`ordering='-executed_at'`).
+  - Updated `WhaleFeedAggregateView.pagination_class` to avoid `FieldError` on non-existent `triggered_at` field.
+
+Validation evidence:
+- Runtime refresh:
+  - `docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build core-api frontend`
+  - `docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --force-recreate core-api`
+- Authenticated gateway smoke test (`http://127.0.0.1/api/...`):
+  - `GET /api/stock-management/tracked-symbols/` -> 200
+  - `POST /api/stock-management/technicals/bulk/` -> 200
+  - `GET /api/realtime/whale-feed/aggregate/?sort=ts&window=session&limit=6` -> 200
+  - `GET /api/signals/whale-feed/?symbol=VCB&limit=10` -> 200
+
+Residual notes:
+- Remaining legacy-compat endpoints may still call bridge helper, but helper is now deterministic no-op in SaaS mode and no longer causes 500.
+
+---
+
+# 2026-05-13 — Hardening Redis Backlog + API Smoke E2E (Post SaaS-Only Cutover) ✅
+
+Status: Completed for queue-hardening. Legacy unregistered-task spam source was isolated and neutralized.
+
+What changed:
+- `docker-compose.dev.yml`
+  - Hardened `core-beat` command to use isolated tmp beat schedule state:
+    - from: `python -m celery -A vninvest_core beat --loglevel=INFO`
+    - to:   `python -m celery -A vninvest_core beat --loglevel=INFO --schedule /tmp/core-celerybeat-schedule`
+  - Purpose: prevent replay of polluted persisted schedule file in bind mount (`packages/core/backend/celerybeat-schedule*`) that still contained legacy periodic task entries.
+
+Validation evidence:
+- Source isolation:
+  - `redis-cli CLIENT LIST` showed `LPUSH` publisher on `172.18.0.3`.
+  - `docker network inspect vninvest-dev_vninvest_network` mapped `172.18.0.3` to `vninvest-dev-core-beat`.
+- Queue state:
+  - `LLEN realtime_prefetch = 0`
+  - `LLEN celery = 0`
+  - `LLEN analytics_heavy = 0`
+  - `LLEN manual_on_demand = 0`
+- Post-hardening log check:
+  - No new `Received unregistered task 'portfolio.tasks.schedule_realtime_prefetch_shards'` entries after `core-beat` restart.
+
+API smoke test (gateway, authenticated PAT):
+- ✅ `GET /api/realtime/tickers/?symbols=VCB,SSI,TCB,FPT,VND` -> 200
+- ✅ `GET /api/realtime/unified-alerts/?symbol=VCB&limit=10` -> 200
+- ❌ `GET /api/signals/whale-feed/?symbol=VCB&limit=10` -> 500
+  - Observed runtime errors:
+    - `NameError: legacy_bridge_response is not defined` in `market_data/views.py` and `market_serving/legacy_views.py`
+    - `FieldError: Cannot resolve keyword 'triggered_at'` for whale feed ordering
+
+Residual risk notes:
+- Queue backlog hardening is successful, but whale-feed API still has app-level regression unrelated to Redis backlog.
+- This endpoint should be fixed in a separate slice before claiming full dashboard E2E pass.
+
+---
+
 # 2026-05-13 — SaaS-Only Runtime Cutover (Remove Legacy Services) ✅
 
 Status: Completed. Dev runtime is now SaaS-core only; legacy backend worker/beat services have been removed from compose and orphan containers deleted.

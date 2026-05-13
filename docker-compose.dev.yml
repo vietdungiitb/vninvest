@@ -329,7 +329,7 @@ services:
       - >-
         apt-get update && apt-get install -y git &&
         pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core beat --loglevel=INFO
+        python -m celery -A vninvest_core beat --loglevel=INFO --schedule /tmp/core-celerybeat-schedule
     restart: unless-stopped
     depends_on:
       core-api:

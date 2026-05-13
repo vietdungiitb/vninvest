@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-12 19:35:49`
+Generated at: `2026-05-13 09:53:58`
 
 ## Summary
 
-- Total modules: 1066
-- Python modules: 566
+- Total modules: 1082
+- Python modules: 582
 - JS/TS modules: 500
-- Total classes: 903
-- Total functions: 2893
-- Total top-level variables: 4551
+- Total classes: 961
+- Total functions: 2888
+- Total top-level variables: 4573
 
 ## Python Modules
 
@@ -36,6 +36,10 @@ Generated at: `2026-05-12 19:35:49`
 
 - Top-level variables:
   - `plans`
+
+### `backend/cleanup_bad_migrations.py`
+
+- No parseable top-level symbols found
 
 ### `backend/config/__init__.py`
 
@@ -62,7 +66,7 @@ Generated at: `2026-05-12 19:35:49`
 - Functions:
   - `_derive_cache_redis_url`, `_env_bool`, `_env_float`, `_env_int`, `_get_throttle_rate`, `_redis_url_with_db`
 - Top-level variables:
-  - `ADVISORY_AUTO_GENERATION_BATCH_SIZE`, `ADVISORY_AUTO_GENERATION_ENABLED`, `ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `AUTH_PASSWORD_VALIDATORS`, `BASE_DIR`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYER_CAPACITY`, `CHANNEL_LAYER_EXPIRY`, `CHANNEL_LAYER_GROUP_EXPIRY`, `CHANNEL_LAYER_TICKER_CAPACITY`, `CORE_BACKEND_SRC`, `CORS_ALLOWED_ORIGINS`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS`, `ENABLE_NEW_MARKET_VIEWS`, `ENABLE_NEW_TRADING_VIEWS`, `ENABLE_REALTIME_CONNECTION_MANAGER`, `FEATURE_FLAGS`, `FRONTEND_BASE_URL`, `GOOGLE_OAUTH_REDIRECT_URI`, `HOLISTIC_ADVISORY_V1_COHORT_MODE`, `HOLISTIC_ADVISORY_V1_COHORT_USERNAMES`, `HOLISTIC_ADVISORY_V1_ENABLED`, `HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD`, `INSTALLED_APPS`, `INTRADAY_STALE_MAX_SECONDS_DEFAULT`, `INTRADAY_STALE_MAX_SECONDS_VN30`, `INTRADAY_TICK_KEEP_DAYS`, `LANGUAGE_CODE`, `LOGGING`, `MARKET_OBSERVABILITY_ENABLED`, `MARKET_OBSERVABILITY_LATENCY_WINDOW`, `MARKET_VIEWS_CANARY_PERCENT`, `MIDDLEWARE`, `MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND`, `MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_BASELINE_MINUTES`, `MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES`, `MISSION_CONTROL_ANOMALY_MIN_ADVISORIES`, `MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS`, `MISSION_CONTROL_ANOMALY_MONITOR_ENABLED`, `MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS`, `MISSION_CONTROL_ANOMALY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS`, `OFFPEAK_VNBROKER_INGEST_CRON_HOUR`, `OFFPEAK_VNBROKER_INGEST_CRON_MINUTE`, `OFFPEAK_VNBROKER_INGEST_DAYS`, `OFFPEAK_VNBROKER_INGEST_ENABLED`, `OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS`, `ONBOARDING_TRIAL_APPLY_ON_SIGNUP`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES`, `OPENCLAW_API_KEY`, `OPENCLAW_BASE_URL`, `OPENCLAW_MODEL`, `OPEN_CORE_QUOTA_CAPS_BY_TIER`, `OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED`, `ORDER_FLOW_DETECTION_ENABLED`, `ORDER_FLOW_DETECTION_INTERVAL_SECONDS`, `PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS`, `PORTFOLIO_NEWS_DIGEST_BATCH_SIZE`, `PORTFOLIO_NEWS_DIGEST_ENABLED`, `REALTIME_BROADCAST_DEGRADE_BATCH_THRESHOLD`, `REALTIME_BROADCAST_DEGRADE_ENABLED`, `REALTIME_BROADCAST_DEGRADE_PENDING_THRESHOLD`, `REALTIME_BROADCAST_FORCE_INTERVAL_S`, `REALTIME_BROADCAST_MIN_CHANGE_PCT`, `REALTIME_CHANNEL_LAYER`, `REALTIME_DEFAULT_WHALE_THRESHOLD`, `REALTIME_ENABLED`, `REALTIME_INTRADAY_POLL_ENABLED`, `REALTIME_INTRADAY_POLL_SYMBOL_LIMIT`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_ENABLED`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_SECONDS`, `REALTIME_REDIS_URL`, `REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED`, `REALTIME_STREAM_PENDING_RECLAIM_ENABLED`, `REALTIME_TICKER_CACHE_ONLY`, `REALTIME_WS_AUTH_CACHE_ENABLED`, `REALTIME_WS_AUTH_CACHE_TTL_SECONDS`, `REALTIME_WS_PLAN_CACHE_ENABLED`, `REST_FRAMEWORK`, `REVERSAL_DETECTION_ENABLED`, `REVERSAL_DETECTION_INTERVAL_SECONDS`, `ROOT_URLCONF`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_HSTS_SECONDS`, `SECURE_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SENTIMENT_SYNC_ENABLED`, `SENTIMENT_SYNC_INTERVAL_MINUTES`, `SESSION_COOKIE_SECURE`, `SIGNAL_VERIFICATION_ENABLED`, `STARTER_PORTFOLIOS_CANARY_PERCENT`, `STARTER_PORTFOLIOS_ENABLED`, `STATIC_ROOT`, `STATIC_URL`, `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED`, `STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE`, `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`, `STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `STOCK_PROFILE_SYNC_ENABLED`, `STREAM_BLOCK_MS`, `STREAM_CONSUMER_BATCH`, `STREAM_CONSUMER_INTERVAL`, `STREAM_MAX_LEN`, `STREAM_MAX_LEN_HARD_CAP`, `STREAM_PENDING_RECLAIM_BATCH`, `STREAM_PENDING_RECLAIM_IDLE_MS`, `STREAM_REDIS_URL`, `STREAM_SNAPSHOT_TTL`, `STREAM_STALE_AFTER_SECONDS`, `SYSTEM_EMAIL_FALLBACK_ENABLED`, `SYSTEM_EMAIL_FALLBACK_FROM_EMAIL`, `SYSTEM_EMAIL_FALLBACK_FROM_NAME`, `SYSTEM_EMAIL_FALLBACK_HOST`, `SYSTEM_EMAIL_FALLBACK_PASSWORD`, `SYSTEM_EMAIL_FALLBACK_PORT`, `SYSTEM_EMAIL_FALLBACK_REPLY_TO`, `SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS`, `SYSTEM_EMAIL_FALLBACK_USERNAME`, `SYSTEM_EMAIL_FALLBACK_USE_SSL`, `SYSTEM_EMAIL_FALLBACK_USE_TLS`, `TEMPLATES`, `TICKER_CACHE_MISS_ALLOW_DEGRADED`, `TICKER_CACHE_MISS_STATUS_CODE`, `TICKER_FRESHNESS_SECONDS`, `TICKER_PREFETCH_BATCH_SIZE_COLD`, `TICKER_PREFETCH_BATCH_SIZE_HOT`, `TICKER_PREFETCH_BATCH_SIZE_WARM`, `TICKER_PREFETCH_COLD_INTERVAL_SECONDS`, `TICKER_PREFETCH_COLD_SHARDS`, `TICKER_PREFETCH_EMERGENCY_DISABLE_COLD`, `TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER`, `TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED`, `TICKER_PREFETCH_HOT_INTERVAL_SECONDS`, `TICKER_PREFETCH_HOT_LIMIT`, `TICKER_PREFETCH_HOT_SHARDS`, `TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED`, `TICKER_PREFETCH_WARM_INTERVAL_SECONDS`, `TICKER_PREFETCH_WARM_LIMIT`, `TICKER_PREFETCH_WARM_SHARDS`, `TICKER_STALE_SERVE_SECONDS`, `TICKER_UNIVERSE_REFRESH_SECONDS`, `TICKER_UNIVERSE_SYMBOL_LIMIT`, `TICKER_UPSTREAM_HARD_CAP_PER_MINUTE`, `TICKER_UPSTREAM_SOFT_CAP_PER_MINUTE`, `TICKER_UPSTREAM_WARNING_CAP_PER_MINUTE`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `USE_X_FORWARDED_PORT`, `VNBROKER_BOOTSTRAP_LOG_SUPPRESS_ENABLED`, `VNBROKER_CLIENT_CACHE_ENABLED`, `VNBROKER_CLIENT_CACHE_MAXSIZE`, `VNBROKER_CLIENT_CACHE_TTL_SECONDS`, `VNBROKER_PROVIDER_CACHE_ENABLED`, `VNBROKER_PROVIDER_CACHE_TTL_SECONDS`, `WATCHLIST_INDICATORS_ENABLED`, `WATCHLIST_SYNC_DAYS`, `WATCHLIST_SYNC_ENABLED`, `WATCHLIST_SYNC_MINUTES`, `WHALE_ADVISORY_COOLDOWN_SECONDS`, `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `WHALE_ALERT_DETECTION_ENABLED`, `WHALE_ALERT_DETECTION_INTERVAL_SECONDS`, `WHALE_SCORE_PROFILE`, `WSGI_APPLICATION`, `X_FRAME_OPTIONS`, `_CACHE_REDIS_URL`, `_OPENCORE_ENABLED`, `_REALTIME_ENABLED_FLAG`, `_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS`, `_secret_key_env`
+  - `ADVISORY_AUTO_GENERATION_BATCH_SIZE`, `ADVISORY_AUTO_GENERATION_ENABLED`, `ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `AUTH_PASSWORD_VALIDATORS`, `BASE_DIR`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYER_CAPACITY`, `CHANNEL_LAYER_EXPIRY`, `CHANNEL_LAYER_GROUP_EXPIRY`, `CHANNEL_LAYER_TICKER_CAPACITY`, `CORE_BACKEND_SRC`, `CORS_ALLOWED_ORIGINS`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS`, `ENABLE_NEW_MARKET_VIEWS`, `ENABLE_NEW_TRADING_VIEWS`, `ENABLE_REALTIME_CONNECTION_MANAGER`, `FEATURE_FLAGS`, `FRONTEND_BASE_URL`, `GOOGLE_OAUTH_REDIRECT_URI`, `HOLISTIC_ADVISORY_V1_COHORT_MODE`, `HOLISTIC_ADVISORY_V1_COHORT_USERNAMES`, `HOLISTIC_ADVISORY_V1_ENABLED`, `HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD`, `INSTALLED_APPS`, `INTRADAY_STALE_MAX_SECONDS_DEFAULT`, `INTRADAY_STALE_MAX_SECONDS_VN30`, `INTRADAY_TICK_KEEP_DAYS`, `LANGUAGE_CODE`, `LOGGING`, `MARKET_OBSERVABILITY_ENABLED`, `MARKET_OBSERVABILITY_LATENCY_WINDOW`, `MARKET_VIEWS_CANARY_PERCENT`, `MIDDLEWARE`, `MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND`, `MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_BASELINE_MINUTES`, `MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES`, `MISSION_CONTROL_ANOMALY_MIN_ADVISORIES`, `MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS`, `MISSION_CONTROL_ANOMALY_MONITOR_ENABLED`, `MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS`, `MISSION_CONTROL_ANOMALY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS`, `OFFPEAK_VNBROKER_INGEST_CRON_HOUR`, `OFFPEAK_VNBROKER_INGEST_CRON_MINUTE`, `OFFPEAK_VNBROKER_INGEST_DAYS`, `OFFPEAK_VNBROKER_INGEST_ENABLED`, `OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS`, `ONBOARDING_TRIAL_APPLY_ON_SIGNUP`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES`, `OPENCLAW_API_KEY`, `OPENCLAW_BASE_URL`, `OPENCLAW_MODEL`, `OPEN_CORE_QUOTA_CAPS_BY_TIER`, `OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED`, `ORDER_FLOW_DETECTION_ENABLED`, `ORDER_FLOW_DETECTION_INTERVAL_SECONDS`, `PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS`, `PORTFOLIO_NEWS_DIGEST_BATCH_SIZE`, `PORTFOLIO_NEWS_DIGEST_ENABLED`, `REALTIME_BROADCAST_DEGRADE_BATCH_THRESHOLD`, `REALTIME_BROADCAST_DEGRADE_ENABLED`, `REALTIME_BROADCAST_DEGRADE_PENDING_THRESHOLD`, `REALTIME_BROADCAST_FORCE_INTERVAL_S`, `REALTIME_BROADCAST_MIN_CHANGE_PCT`, `REALTIME_CHANNEL_LAYER`, `REALTIME_DEFAULT_WHALE_THRESHOLD`, `REALTIME_ENABLED`, `REALTIME_INTRADAY_POLL_ENABLED`, `REALTIME_INTRADAY_POLL_SYMBOL_LIMIT`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_ENABLED`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_SECONDS`, `REALTIME_REDIS_URL`, `REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED`, `REALTIME_STREAM_PENDING_RECLAIM_ENABLED`, `REALTIME_TICKER_CACHE_ONLY`, `REALTIME_WS_AUTH_CACHE_ENABLED`, `REALTIME_WS_AUTH_CACHE_TTL_SECONDS`, `REALTIME_WS_PLAN_CACHE_ENABLED`, `REST_FRAMEWORK`, `REVERSAL_DETECTION_ENABLED`, `REVERSAL_DETECTION_INTERVAL_SECONDS`, `ROOT_URLCONF`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_HSTS_SECONDS`, `SECURE_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SENTIMENT_SYNC_ENABLED`, `SENTIMENT_SYNC_INTERVAL_MINUTES`, `SESSION_COOKIE_SECURE`, `SIGNAL_VERIFICATION_ENABLED`, `STARTER_PORTFOLIOS_CANARY_PERCENT`, `STARTER_PORTFOLIOS_ENABLED`, `STATIC_ROOT`, `STATIC_URL`, `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED`, `STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE`, `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`, `STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `STOCK_PROFILE_SYNC_ENABLED`, `STREAM_BLOCK_MS`, `STREAM_CONSUMER_BATCH`, `STREAM_CONSUMER_INTERVAL`, `STREAM_MAX_LEN`, `STREAM_MAX_LEN_HARD_CAP`, `STREAM_PENDING_RECLAIM_BATCH`, `STREAM_PENDING_RECLAIM_IDLE_MS`, `STREAM_REDIS_URL`, `STREAM_SNAPSHOT_TTL`, `STREAM_STALE_AFTER_SECONDS`, `SYSTEM_EMAIL_FALLBACK_ENABLED`, `SYSTEM_EMAIL_FALLBACK_FROM_EMAIL`, `SYSTEM_EMAIL_FALLBACK_FROM_NAME`, `SYSTEM_EMAIL_FALLBACK_HOST`, `SYSTEM_EMAIL_FALLBACK_PASSWORD`, `SYSTEM_EMAIL_FALLBACK_PORT`, `SYSTEM_EMAIL_FALLBACK_REPLY_TO`, `SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS`, `SYSTEM_EMAIL_FALLBACK_USERNAME`, `SYSTEM_EMAIL_FALLBACK_USE_SSL`, `SYSTEM_EMAIL_FALLBACK_USE_TLS`, `TEMPLATES`, `TICKER_CACHE_MISS_ALLOW_DEGRADED`, `TICKER_CACHE_MISS_STATUS_CODE`, `TICKER_FRESHNESS_SECONDS`, `TICKER_PREFETCH_BATCH_SIZE_COLD`, `TICKER_PREFETCH_BATCH_SIZE_HOT`, `TICKER_PREFETCH_BATCH_SIZE_WARM`, `TICKER_PREFETCH_COLD_INTERVAL_SECONDS`, `TICKER_PREFETCH_COLD_SHARDS`, `TICKER_PREFETCH_EMERGENCY_DISABLE_COLD`, `TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER`, `TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED`, `TICKER_PREFETCH_HOT_INTERVAL_SECONDS`, `TICKER_PREFETCH_HOT_LIMIT`, `TICKER_PREFETCH_HOT_SHARDS`, `TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED`, `TICKER_PREFETCH_WARM_INTERVAL_SECONDS`, `TICKER_PREFETCH_WARM_LIMIT`, `TICKER_PREFETCH_WARM_SHARDS`, `TICKER_STALE_SERVE_SECONDS`, `TICKER_UNIVERSE_REFRESH_SECONDS`, `TICKER_UNIVERSE_SYMBOL_LIMIT`, `TICKER_UPSTREAM_HARD_CAP_PER_MINUTE`, `TICKER_UPSTREAM_SOFT_CAP_PER_MINUTE`, `TICKER_UPSTREAM_WARNING_CAP_PER_MINUTE`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `USE_X_FORWARDED_PORT`, `VNBROKER_BOOTSTRAP_LOG_SUPPRESS_ENABLED`, `VNBROKER_CLIENT_CACHE_ENABLED`, `VNBROKER_CLIENT_CACHE_MAXSIZE`, `VNBROKER_CLIENT_CACHE_TTL_SECONDS`, `VNBROKER_PROVIDER_CACHE_ENABLED`, `VNBROKER_PROVIDER_CACHE_TTL_SECONDS`, `WATCHLIST_INDICATORS_ENABLED`, `WATCHLIST_SYNC_DAYS`, `WATCHLIST_SYNC_ENABLED`, `WATCHLIST_SYNC_MINUTES`, `WHALE_ADVISORY_COOLDOWN_SECONDS`, `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `WHALE_ALERT_DETECTION_ENABLED`, `WHALE_ALERT_DETECTION_INTERVAL_SECONDS`, `WHALE_SCORE_PROFILE`, `WSGI_APPLICATION`, `X_FRAME_OPTIONS`, `_CACHE_REDIS_URL`, `_OPENCORE_ENABLED`, `_REALTIME_ENABLED_FLAG`, `_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS`, `_core_apps`, `_secret_key_env`
 
 ### `backend/config/urls.py`
 
@@ -95,10 +99,22 @@ Generated at: `2026-05-12 19:35:49`
 - Top-level variables:
   - `cutoff`, `factory`, `raw_ticks`, `request`, `response`, `user`
 
+### `backend/fix_migrations.py`
+
+- No parseable top-level symbols found
+
+### `backend/fix_migrations_all.py`
+
+- No parseable top-level symbols found
+
 ### `backend/manage.py`
 
 - Functions:
   - `main`
+
+### `backend/nuke_migrations.py`
+
+- No parseable top-level symbols found
 
 ### `backend/portfolio/__init__.py`
 
@@ -133,8 +149,6 @@ Generated at: `2026-05-12 19:35:49`
   - `MarketGroupSyncLogAdmin` -> methods: `duration_display`, `has_add_permission`, `has_change_permission`
   - `OnboardingPlanPolicyAdmin` -> methods: `activate_selected_policy`, `save_model`
   - `PlanAssignmentLogAdmin` -> methods: `has_add_permission`, `has_change_permission`
-  - `PortfolioAdmin` -> methods: `subaccount_count`
-  - `PriceAlertRuleAdmin`
   - `RuntimeVnbrokerConfigAdmin` -> methods: `has_add_permission`
   - `ScreenerRuleAdmin`
   - `ScreenerScheduleConfigAdmin`
@@ -155,9 +169,6 @@ Generated at: `2026-05-12 19:35:49`
   - `TransactionInline`
   - `UserAlertHistoryAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`
   - `UserConfigAdmin` -> methods: `change_view`, `get_urls`, `resend_verification_email_to_selected_users`, `resend_verification_view`, `save_model`, `verification_status`
-  - `WatchlistGroupAdmin` -> methods: `item_count`
-  - `WatchlistItemAdmin`
-  - `WatchlistItemInline`
   - `WhaleAdvisoryAdmin` -> methods: `has_add_permission`, `has_view_permission`
   - `WhaleConfigApprovalAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`, `save_model`
   - `WhaleConfigAuditLogAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`
@@ -181,6 +192,8 @@ Generated at: `2026-05-12 19:35:49`
 
 - Functions:
   - `_build_side_stats`, `_empty_side_stats`, `_to_float`, `build_symbol_ai_context`, `render_concise_context_for_prompt`, `render_context_for_prompt`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/ai_options.py`
 
@@ -548,9 +561,7 @@ Generated at: `2026-05-12 19:35:49`
   - `OnboardingPlanPolicy` -> methods: `__str__`, `clean`
   - `OrderFlowSignal` -> methods: `__str__`
   - `PlanAssignmentLog` -> methods: `__str__`
-  - `Portfolio` -> methods: `__str__`
   - `PortfolioNewsDigest` -> methods: `__str__`
-  - `PriceAlertRule` -> methods: `__str__`
   - `RuntimeVnbrokerConfig` -> methods: `__str__`, `append_changelog`, `clean`, `default_fallback_sources`, `default_source_config`, `default_timeout_config`, `get_or_create_singleton`, `to_runtime_dict`
   - `ScreenerRule` -> methods: `__str__`
   - `SecuritiesGroup` -> methods: `__str__`
@@ -572,8 +583,6 @@ Generated at: `2026-05-12 19:35:49`
   - `Transaction` -> methods: `__str__`, `total_value`
   - `UserConfig` -> methods: `__str__`, `ai_api_key_configured`, `get_ai_api_key`, `get_effective_ai_model`, `set_ai_api_key`
   - `UserPlanLifecycle` -> methods: `__str__`
-  - `WatchlistGroup` -> methods: `__str__`
-  - `WatchlistItem` -> methods: `__str__`
   - `WhaleAdvisory` -> methods: `__str__`
   - `WhaleAlertEvent` -> methods: `__str__`
   - `WhaleConfigApproval` -> methods: `__str__`, `clean`, `save`
@@ -882,7 +891,7 @@ Generated at: `2026-05-12 19:35:49`
   - `MarketIntradayQuerySerializer`
   - `MarketStockChartQuerySerializer`
   - `PortfolioSerializer` -> methods: `get_subaccount_count`, `get_transaction_count`
-  - `PriceAlertRuleSerializer` -> methods: `validate_cooldown_seconds`, `validate_symbol`
+  - `PriceAlertRuleSerializer` -> methods: `validate_price_threshold`, `validate_symbol`
   - `RuntimeVnbrokerConfigSerializer` -> methods: `validate`, `validate_fallback_sources`, `validate_price_board_source`, `validate_source_config`, `validate_timeout_config`
   - `ScreenerRuleSerializer`
   - `SecuritiesGroupCreateSerializer`
@@ -910,6 +919,8 @@ Generated at: `2026-05-12 19:35:49`
   - `WatchlistItemSerializer` -> methods: `validate_symbol`
   - `WatchlistItemWithPriceSerializer`
   - `WhaleAdvisorySerializer` -> methods: `get_symbol`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/services.py`
 
@@ -934,6 +945,8 @@ Generated at: `2026-05-12 19:35:49`
 
 - Functions:
   - `deliver_dark_flow_signal`, `deliver_whale_alert_event`, `resolve_signal_audience`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/services_global_signal_universe.py`
 
@@ -941,6 +954,8 @@ Generated at: `2026-05-12 19:35:49`
   - `GlobalSignalUniverseResolver` -> methods: `_coerce_group_ids`, `_coerce_symbols`, `_normalize_config`, `_tier_shards`, `build_snapshot`, `from_prefetch_runtime_settings`, `load_system_policy`
 - Functions:
   - `_build_symbol_count_map`, `_compute_heat_score`, `_normalized_symbol_set`, `_stable_shard_id`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/services_global_whale_alerts.py`
 
@@ -1017,12 +1032,14 @@ Generated at: `2026-05-12 19:35:49`
 - Functions:
   - `provision_starter_portfolios_for_user`, `should_provision_starter_portfolios_for_user`
 - Top-level variables:
-  - `STARTER_PORTFOLIO_TEMPLATES`, `STARTER_SUBACCOUNT_TEMPLATES`, `STARTER_TEMPLATE_VERSION`
+  - `STARTER_PORTFOLIO_TEMPLATES`, `STARTER_SUBACCOUNT_TEMPLATES`, `STARTER_TEMPLATE_VERSION`, `_core_backend_src`
 
 ### `backend/portfolio/stock_workspace_helpers.py`
 
 - Functions:
   - `_build_stock_workspace_overview`, `_compute_ema`, `_compute_macd_hist`, `_compute_rsi`, `_compute_stock_workspace_technical`, `_get_exchange_price_band`, `_safe_round`, `_technical_bias_meta`, `_to_float`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/system_settings.py`
 
@@ -1092,14 +1109,14 @@ Generated at: `2026-05-12 19:35:49`
 - Functions:
   - `_generate_news_digest_for_user`, `generate_all_portfolio_news_digests_task`, `generate_stock_news_ai_summary_task`
 - Top-level variables:
-  - `logger`
+  - `_core_backend_src`, `logger`
 
 ### `backend/portfolio/tasks_order_flow.py`
 
 - Functions:
   - `_cache_latest_order_flow_signal`, `_classify_order_flow_signal_severity`, `_latest_order_flow_signal_cache_key`, `_persist_order_flow_signal`, `_resolve_dark_flow_runtime_settings`, `_resolve_order_flow_symbols`, `detect_and_store_order_flow`, `detect_whale_reversal`, `distribute_order_flow_signal`
 - Top-level variables:
-  - `DARK_FLOW_DISTRIBUTION_MIN_STRENGTH`, `ORDER_FLOW_COOLDOWN_SECONDS`, `ORDER_FLOW_LATEST_SIGNAL_CACHE_PREFIX`, `ORDER_FLOW_MAX_SYMBOLS`, `REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY`, `logger`
+  - `DARK_FLOW_DISTRIBUTION_MIN_STRENGTH`, `ORDER_FLOW_COOLDOWN_SECONDS`, `ORDER_FLOW_LATEST_SIGNAL_CACHE_PREFIX`, `ORDER_FLOW_MAX_SYMBOLS`, `REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY`, `_core_backend_src`, `logger`
 
 ### `backend/portfolio/tasks_prefetch.py`
 
@@ -1139,7 +1156,7 @@ Generated at: `2026-05-12 19:35:49`
 - Functions:
   - `_chunked`, `heatmap_static_cache_key`, `sync_stock_profiles_from_snapshot`
 - Top-level variables:
-  - `_HEATMAP_CHUNK_SIZE`, `_HEATMAP_STATIC_TTL`, `logger`
+  - `_HEATMAP_CHUNK_SIZE`, `_HEATMAP_STATIC_TTL`, `_core_backend_src`, `logger`
 
 ### `backend/portfolio/tasks_symbol_engagement.py`
 
@@ -1152,6 +1169,8 @@ Generated at: `2026-05-12 19:35:49`
 
 - Functions:
   - `sync_all_watch_assets`, `sync_user_watch_assets`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/tasks_telegram.py`
 
@@ -1294,10 +1313,7 @@ Generated at: `2026-05-12 19:35:49`
 
 ### `backend/portfolio/telegram_service.py`
 
-- Functions:
-  - `_bot_api`, `_handle_mute`, `_handle_portfolio`, `_handle_start`, `_handle_stock`, `edit_message_text`, `format_whale_alert_message`, `generate_deeplink_token`, `get_deeplink_url`, `get_signal_severity`, `mask_symbol`, `process_webhook_update`, `send_message`, `validate_deeplink_token`
-- Top-level variables:
-  - `_BOT_TOKEN`, `_BOT_USERNAME`, `_CRITICAL_THRESHOLD_VND`, `_DEEPLINK_CACHE_PREFIX`, `_DEEPLINK_TOKEN_TTL_SECONDS`, `_HIGH_THRESHOLD_VND`, `logger`
+- No parseable top-level symbols found
 
 ### `backend/portfolio/tests/__init__.py`
 
@@ -1971,6 +1987,8 @@ Generated at: `2026-05-12 19:35:49`
 
 - Classes:
   - `TradingService` -> methods: `create_portfolio`, `create_sub_account`, `create_transaction`, `portfolio_queryset_for_user`, `sub_account_queryset_for_user`, `transaction_queryset_for_sub_account`, `transaction_queryset_for_user`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/trading_views.py`
 
@@ -2013,13 +2031,15 @@ Generated at: `2026-05-12 19:35:49`
 
 - Functions:
   - `_build_group_response`, `_build_price_alert_rule_row`, `_price_alert_is_triggered`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/views.py`
 
 - Functions:
   - `_resolve_first_create_threshold_vnd`
 - Top-level variables:
-  - `logger`
+  - `_core_backend_src`, `logger`
 
 ### `backend/portfolio/views_admin_runtime.py`
 
@@ -2074,6 +2094,8 @@ Generated at: `2026-05-12 19:35:49`
   - `PortfolioTechnicalView` -> methods: `get`
 - Functions:
   - `_build_symbol_technicals`, `_normalize_symbol_list`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/views_backtest.py`
 
@@ -2110,7 +2132,7 @@ Generated at: `2026-05-12 19:35:49`
 - Functions:
   - `_build_dark_flow`, `_build_stale_positions`, `_build_whale_exposure`, `_coerce_float`, `_coerce_int`, `_coerce_iso_datetime`, `_resolve_dashboard_portfolio`, `dashboard_aggregated_risk_api`
 - Top-level variables:
-  - `MAX_TOP_SYMBOLS`, `RISK_LOOKBACK_DAYS`, `logger`
+  - `MAX_TOP_SYMBOLS`, `RISK_LOOKBACK_DAYS`, `_core_backend_src`, `logger`
 
 ### `backend/portfolio/views_notifications.py`
 
@@ -2156,6 +2178,8 @@ Generated at: `2026-05-12 19:35:49`
   - `WatchlistSyncView` -> methods: `post`
 - Functions:
   - `_acquire_sync_cooldown`, `_sync_cooldown_seconds_for_user`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/views_realtime_aggregate_campaigns.py`
 
@@ -2245,7 +2269,7 @@ Generated at: `2026-05-12 19:35:49`
 - Functions:
   - `_parse_tracked_symbol_threshold_million`
 - Top-level variables:
-  - `logger`
+  - `_core_backend_src`, `logger`
 
 ### `backend/portfolio/views_stock_news.py`
 
@@ -2268,6 +2292,8 @@ Generated at: `2026-05-12 19:35:49`
   - `StockWorkspaceOverviewView` -> methods: `get`
 - Functions:
   - `_legacy_views_module`
+- Top-level variables:
+  - `_core_backend_src`
 
 ### `backend/portfolio/views_whale_analytics.py`
 
@@ -2323,7 +2349,7 @@ Generated at: `2026-05-12 19:35:49`
 - Functions:
   - `_allow_vnbroker_aggregate_fallback`, `_build_aggregate_event_payload`, `_build_aggregate_event_payload_from_record`, `_build_stream_aggregate_records`, `_build_tick_timestamp`, `_build_vnbroker_aggregate_records`, `_build_whale_order_payload`, `_cache_get`, `_cache_set`, `_classify_signal_size`, `_dataframe_has_threshold_hits`, `_decode_whale_feed_cursor`, `_encode_whale_feed_cursor`, `_get_user_symbol_threshold_overrides_vnd`, `_get_user_whale_threshold_vnd`, `_is_event_timestamp_in_window`, `_is_rate_limited_error`, `_is_tick_row_in_window`, `_is_vnbroker_rate_limited`, `_mark_vnbroker_rate_limited`, `_normalize_aggregate_event_records`, `_normalize_signal_side`, `_parse_aggregate_window`, `_parse_cursor_datetime`, `_parse_cursor_matched_value`, `_resolve_user_whale_threshold_vnd`, `_resolve_whale_feed_symbols`, `_vnbroker_rate_limit_cache_key`, `_window_start_datetime`
 - Top-level variables:
-  - `WHALE_AGGREGATE_WINDOW_OPTIONS`, `logger`
+  - `WHALE_AGGREGATE_WINDOW_OPTIONS`, `_core_backend_src`, `logger`
 
 ### `backend/portfolio/whale_scoring.py`
 
@@ -2331,6 +2357,11 @@ Generated at: `2026-05-12 19:35:49`
   - `_aggression_bonus_for_side`, `_clamp`, `_normalize_weights`, `_resolve_scoring_profile`, `_safe_cache_get`, `calculate_display_score`, `calculate_event_score`, `classify_severity`, `resolve_whale_score_config`
 - Top-level variables:
   - `_CACHE_KEY`, `_DEFAULT_SCORE_CONFIG`, `_PROFILE_DEFAULTS`
+
+### `backend/setup_dev_auth.py`
+
+- Top-level variables:
+  - `_core_backend_src`, `status`
 
 ### `backend/support/__init__.py`
 
@@ -2509,6 +2540,13 @@ Generated at: `2026-05-12 19:35:49`
 
 - Functions:
   - `main`
+
+### `packages/core/backend/scripts/migrate_legacy_portfolio_complete.py`
+
+- Classes:
+  - `MigrationExecutor` -> methods: `__init__`, `_get_user_tenant`, `_migrate_portfolios`, `_migrate_pricealerts`, `_migrate_watchlists`, `_print_summary`, `_validate_migration`, `run`
+- Top-level variables:
+  - `backend_dir`, `src_dir`
 
 ### `packages/core/backend/src/advisory/__init__.py`
 
@@ -2863,7 +2901,6 @@ Generated at: `2026-05-12 19:35:49`
   - `PriceAlertsView` -> methods: `get`, `post`
   - `PriceAlertTriggerView` -> methods: `post`
   - `StockManagementGroupsView` -> methods: `get`
-  - `StockManagementLegacyBridgeView` -> methods: `_bridge`, `delete`, `get`, `patch`, `post`, `put`
   - `StockManagementSeedView` -> methods: `post`
   - `StockManagementSyncView` -> methods: `post`
   - `TrackedSymbolBulkThresholdView` -> methods: `post`
@@ -2879,6 +2916,11 @@ Generated at: `2026-05-12 19:35:49`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/market_data/migrations/0002_intradaybar_intradaytick_and_more.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/market_data/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -2887,6 +2929,8 @@ Generated at: `2026-05-12 19:35:49`
 
 - Classes:
   - `DailyPrice` -> methods: `__str__`
+  - `IntradayBar` -> methods: `__str__`
+  - `IntradayTick` -> methods: `__str__`
   - `StockProfile` -> methods: `__str__`
   - `VnbrokerRuntimeConfig` -> methods: `__str__`
 
@@ -2901,6 +2945,32 @@ Generated at: `2026-05-12 19:35:49`
   - `DailyPriceSerializer`
   - `StockProfileSerializer`
 
+### `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+
+- Classes:
+  - `StockManagementAdvisoryCompDetailView` -> methods: `delete`, `get`
+  - `StockManagementAdvisoryCompRefreshView` -> methods: `post`
+  - `StockManagementAdvisoryCompRestoreView` -> methods: `post`
+  - `StockManagementAdvisoryCompToggleView` -> methods: `post`
+  - `StockManagementAIAdvisoryComponentsDeletedView` -> methods: `get`
+  - `StockManagementAIAdvisoryComponentsGenerateView` -> methods: `post`
+  - `StockManagementAIAdvisoryObservabilityView` -> methods: `get`
+  - `StockManagementAIAdvisorySessionView` -> methods: `get`
+  - `StockManagementAIAdvisorySummaryDetailView` -> methods: `delete`
+  - `StockManagementAIAdvisorySummaryRegenerateView` -> methods: `post`
+  - `StockManagementChartView` -> methods: `get`
+  - `StockManagementDetailView` -> methods: `get`
+  - `StockManagementFinancialsView` -> methods: `get`
+  - `StockManagementGroupDetailView` -> methods: `delete`, `get`, `put`
+  - `StockManagementGroupItemsView` -> methods: `get`
+  - `StockManagementItemDetailView` -> methods: `delete`, `get`
+  - `StockManagementNewsAISummaryView` -> methods: `get`
+  - `StockManagementNewsView` -> methods: `get`
+  - `StockManagementOrderFlowView` -> methods: `get`
+  - `StockManagementOverviewView` -> methods: `get`
+  - `StockManagementPortfolioNewsDigestView` -> methods: `get`
+  - `StockManagementTechnicalsView` -> methods: `_build_response`, `_parse_symbols`, `get`, `post`
+
 ### `packages/core/backend/src/market_data/urls.py`
 
 - Top-level variables:
@@ -2910,6 +2980,8 @@ Generated at: `2026-05-12 19:35:49`
 
 - Classes:
   - `DailyPriceListView` -> methods: `get`
+  - `IntradayPricesView` -> methods: `get`
+  - `IntradayTapeView` -> methods: `get`
   - `StockProfileDetailView` -> methods: `get`
   - `StockProfileListView` -> methods: `get`
   - `TrackedSymbolsView` -> methods: `get`, `post`
@@ -2919,7 +2991,7 @@ Generated at: `2026-05-12 19:35:49`
 - Classes:
   - `VnbrokerAdapterError`
 - Functions:
-  - `fetch_listing_symbols`, `fetch_price_board_snapshot`, `get_active_config`, `warm_up_symbols`
+  - `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `get_active_config`, `warm_up_symbols`
 - Top-level variables:
   - `logger`
 
@@ -2947,7 +3019,6 @@ Generated at: `2026-05-12 19:35:49`
 ### `packages/core/backend/src/market_serving/legacy_views.py`
 
 - Classes:
-  - `RealtimeLegacyBridgeView` -> methods: `_bridge`, `get`
   - `RealtimeUnifiedAlertsView` -> methods: `_apply_cursor`, `_apply_window_filter`, `_build_next_cursor`, `_compute_priority_rank`, `_decode_cursor`, `_normalize_severity`, `_normalize_symbols`, `_parse_boolean_flag`, `_parse_limit`, `_parse_severity_min`, `_parse_watchlist_group_ids`, `_parse_window`, `_resolve_scope`, `_safe_parse_ts`, `_sanitize_item`, `_serialize_alerts`, `get`
   - `RealtimeWhaleCampaignsView` -> methods: `_apply_campaign_cursor`, `_build_campaign_next_cursor`, `_build_campaign_response`, `_decode_campaign_cursor`, `_group_events_into_campaigns`, `_parse_campaign_limit`, `_parse_campaign_sort`, `_resolve_campaign_gap_minutes`, `get`
   - `RealtimeWhaleFeedAggregateView` -> methods: `_apply_whale_window_filter`, `_build_entitlements`, `_build_next_cursor`, `_build_response`, `_classify_signal_size`, `_cursor_datetime`, `_decode_cursor`, `_extract_tracked_symbols`, `_has_explicit_scope`, `_parse_sort`, `_resolve_scope`, `_resolve_tracked_symbols`, `_resolve_watchlist_symbols`, `_serialize_whale_record`, `get`
@@ -2977,6 +3048,19 @@ Generated at: `2026-05-12 19:35:49`
 - Classes:
   - `SessionFacts` -> methods: `__str__`
   - `SymbolSnapshot` -> methods: `__str__`
+
+### `packages/core/backend/src/market_serving/native_views.py`
+
+- Classes:
+  - `RealtimeBreadthView` -> methods: `get`
+  - `RealtimeDepthChartView` -> methods: `get`
+  - `RealtimeIntradayView` -> methods: `get`
+  - `RealtimePriceBoardView` -> methods: `get`
+  - `RealtimeRvolView` -> methods: `get`
+  - `RealtimeSymbolInvestigationView` -> methods: `get`
+  - `RealtimeTickerListView` -> methods: `get`
+  - `RealtimeTickerView` -> methods: `get`
+  - `RealtimeWhaleFeedView` -> methods: `get`
 
 ### `packages/core/backend/src/market_serving/serializers.py`
 
@@ -3207,6 +3291,7 @@ Generated at: `2026-05-12 19:35:49`
 - Classes:
   - `OrderFlowEventListView` -> methods: `get_queryset`
   - `UnifiedAlertListView` -> methods: `get_queryset`
+  - `WhaleAlertCursorPagination`
   - `WhaleFeedAggregateView` -> methods: `get_queryset`
 
 ### `packages/core/backend/src/tenant_lifecycle/__init__.py`
@@ -3337,6 +3422,25 @@ Generated at: `2026-05-12 19:35:49`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/user_workspace/migrations/0004_add_tenant_fk_and_pricealert.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/user_workspace/migrations/0005_backfill_portfolio_tenant.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `backfill_portfolio_tenant`, `reverse_backfill_portfolio_tenant`
+
+### `packages/core/backend/src/user_workspace/migrations/0006_backfill_watchlist_tenant.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `backfill_watchlist_tenant`, `reverse_backfill_watchlist_tenant`
+
 ### `packages/core/backend/src/user_workspace/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -3347,10 +3451,36 @@ Generated at: `2026-05-12 19:35:49`
   - `AccountSnapshot` -> methods: `__str__`, `nav`
   - `DNSECredential` -> methods: `__str__`, `get_client_id`, `get_client_secret`, `has_credentials`, `set_client_id`, `set_client_secret`
   - `Portfolio` -> methods: `__str__`
+  - `PriceAlert` -> methods: `__str__`
   - `SubAccount` -> methods: `__str__`
   - `Transaction` -> methods: `__str__`
   - `Watchlist` -> methods: `__str__`
   - `WatchlistItem` -> methods: `__str__`
+
+### `packages/core/backend/src/user_workspace/portfolio_analytics_views.py`
+
+- Classes:
+  - `PortfolioAIAdvisoryAutoRefreshInfoView` -> methods: `get`
+  - `PortfolioAIAdvisoryCanonicalView` -> methods: `get`
+  - `PortfolioAIAdvisoryCurrentView` -> methods: `get`
+  - `PortfolioAIAdvisoryRefreshView` -> methods: `post`
+  - `PortfolioAICommandCenterTestView` -> methods: `post`
+  - `PortfolioAICommandCenterView` -> methods: `get`
+  - `PortfolioAllocationView` -> methods: `get`
+  - `PortfolioAnalyticsView` -> methods: `get`
+  - `PortfolioChartView` -> methods: `get`
+  - `PortfolioEquityCurveView` -> methods: `get`
+  - `PortfolioHoldingsView` -> methods: `get`
+  - `PortfolioMarketDiscoveryHubView` -> methods: `get`
+  - `PortfolioScreenerRuleDetailView` -> methods: `delete`, `get`, `put`
+  - `PortfolioScreenerRuleRunView` -> methods: `post`
+  - `PortfolioSummaryView` -> methods: `get`
+  - `PortfolioSyncView` -> methods: `post`
+  - `PortfolioTechnicalsView` -> methods: `get`
+  - `PortfolioWhaleAnalyticsView` -> methods: `get`
+  - `PortfolioWhaleBacktestStatsView` -> methods: `get`
+- Functions:
+  - `_compute_holdings`, `_get_user_portfolio`
 
 ### `packages/core/backend/src/user_workspace/serializers.py`
 
@@ -3368,6 +3498,14 @@ Generated at: `2026-05-12 19:35:49`
   - `reconcile_all_dnse_transactions_task`, `reconcile_dnse_transactions_task`, `sync_all_dnse_balances_task`, `sync_dnse_accounts_task`, `sync_dnse_balances_task`
 - Top-level variables:
   - `logger`
+
+### `packages/core/backend/src/user_workspace/tests.py`
+
+- Classes:
+  - `PortfolioIsolationTest` -> methods: `setUp`, `test_portfolio_bulk_query_efficiency_with_tenant_scope`, `test_portfolio_cascade_delete_on_tenant_deprovisioning`, `test_portfolio_query_isolation_single_tenant`
+  - `PriceAlertIsolationTest` -> methods: `setUp`, `test_pricealert_bulk_active_query_with_tenant_scope`, `test_pricealert_cascade_delete_on_tenant_deprovisioning`, `test_pricealert_cross_tenant_isolation`
+  - `TenantDataIsolationBoundaryTest` -> methods: `setUp`, `test_multi_tenant_user_isolation`, `test_portfolio_without_tenant_assignment_fails_isolation_query`
+  - `WatchlistIsolationTest` -> methods: `setUp`, `test_watchlist_cross_tenant_isolation`, `test_watchlist_item_cascade_delete_on_tenant_deprovisioning`
 
 ### `packages/core/backend/src/user_workspace/urls.py`
 
@@ -3525,13 +3663,6 @@ Generated at: `2026-05-12 19:35:49`
 - Top-level variables:
   - `_CORE_APPS`
 
-### `packages/core/backend/src/vninvest_core/legacy_http_bridge.py`
-
-- Functions:
-  - `_normalized_bridge_payload`, `build_legacy_bridge_headers`, `legacy_bridge_enabled`, `legacy_bridge_response`
-- Top-level variables:
-  - `LEGACY_HTTP_BRIDGE_TIMEOUT`
-
 ### `packages/core/backend/src/vninvest_core/management/__init__.py`
 
 - No parseable top-level symbols found
@@ -3600,6 +3731,11 @@ Generated at: `2026-05-12 19:35:49`
 
 - Functions:
   - `_build_fernet`, `decrypt_string`, `encrypt_string`, `hash_with_pepper`
+
+### `packages/core/backend/src/vninvest_core/utils/legacy_bridge.py`
+
+- Functions:
+  - `legacy_bridge_response`
 
 ### `packages/core/backend/src/vninvest_core/utils/legacy_stubs.py`
 
@@ -3696,9 +3832,17 @@ Generated at: `2026-05-12 19:35:49`
 ### `packages/core/backend/tests/test_market_data_api_routes.py`
 
 - Classes:
+  - `IntradayApiRouteTests` -> methods: `setUp`, `test_intraday_prices_bridges_to_legacy_chart`, `test_intraday_prices_graceful_degradation`, `test_intraday_prices_requires_auth`, `test_intraday_prices_route_resolves`, `test_intraday_tape_bridges_to_legacy_intraday`, `test_intraday_tape_graceful_degradation`, `test_intraday_tape_requires_auth`, `test_intraday_tape_route_resolves`, `test_symbol_is_uppercased_prices`, `test_symbol_is_uppercased_tape`
   - `MarketDataApiRouteTests` -> methods: `setUp`, `test_daily_price_route_is_native`, `test_stock_profile_routes_are_native`
 - Top-level variables:
   - `_src_dir`
+
+### `packages/core/backend/tests/test_market_data_intraday_native.py`
+
+- Classes:
+  - `IntradayModelTests` -> methods: `setUp`, `test_create_intraday_bar`, `test_create_intraday_tick`, `test_intraday_bar_unique_constraint`, `test_query_intraday_bars_by_symbol_and_timeframe`, `test_query_intraday_ticks_by_symbol_and_timestamp_range`
+  - `IntradayNativeViewTests` -> methods: `setUp`, `setUpTestData`, `test_intraday_prices_auth_required`, `test_intraday_prices_nonexistent_symbol`, `test_intraday_prices_returns_correct_schema`, `test_intraday_prices_route_resolves`, `test_intraday_prices_success`, `test_intraday_prices_with_days_param`, `test_intraday_prices_with_timeframe_param`, `test_intraday_tape_auth_required`, `test_intraday_tape_cache_first_pattern`, `test_intraday_tape_nonexistent_symbol`, `test_intraday_tape_returns_correct_schema`, `test_intraday_tape_route_resolves`, `test_intraday_tape_success`, `test_intraday_tape_with_page_size_param`
+  - `VnbrokerAdapterPhase2Tests` -> methods: `setUp`, `test_fetch_intraday_ohlcv_returns_dict`, `test_fetch_intraday_ohlcv_with_days_filter`, `test_fetch_intraday_tape_returns_dict`
 
 ### `packages/core/backend/tests/test_market_serving.py`
 
@@ -3862,6 +4006,11 @@ Generated at: `2026-05-12 19:35:49`
   - `_coerce_bool`, `_hash_password`, `_identity_flags`, `_normalize_role_keys`, `_now_isoformat`, `_strip_secret_fields`
 - Top-level variables:
   - `ROLE_KEYS`
+
+### `scripts/diagnose_auth_issue.py`
+
+- Top-level variables:
+  - `authed`
 
 ### `scripts/migrate_portfolios_to_core.py`
 
@@ -4683,9 +4832,9 @@ Generated at: `2026-05-12 19:35:49`
 ### `frontend/src/pages/admin/tenant/TenantPATs.jsx`
 
 - Functions:
-  - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleIssue`, `handleRevoke`, `handleRotate`, `loadData`, `normalizeCommaList`, `resolveErrorMessage`
+  - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleBulkRevoke`, `handleCopyToken`, `handleIssue`, `handleRevoke`, `handleRotate`, `loadData`, `normalizeCommaList`, `resolveErrorMessage`, `toggleSelectAll`, `toggleTokenSelection`
 - Top-level variables:
-  - `activeCount`, `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `nextServiceAccounts`, `nextTokens`, `response`, `rotating`, `rotatingCount`, `serviceAccount`, `serviceAccountMap`
+  - `activeCount`, `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `confirmed`, `isSelected`, `newSelected`, `nextServiceAccounts`, `nextTokens`, `response`, `rotating`, `rotatingCount`, `serviceAccount`, `serviceAccountMap`, `tokenIdsList`, `totalPages`
 
 ### `frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx`
 

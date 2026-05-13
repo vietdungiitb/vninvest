@@ -6,6 +6,10 @@ from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from .serializers import OrderFlowEventSerializer, UnifiedAlertSerializer, WhaleAlertCanonicalSerializer
 
 
+class WhaleAlertCursorPagination(AlertCursorPagination):
+    ordering = '-executed_at'
+
+
 class UnifiedAlertListView(generics.ListAPIView):
     serializer_class = UnifiedAlertSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -31,7 +35,7 @@ class UnifiedAlertListView(generics.ListAPIView):
 class WhaleFeedAggregateView(generics.ListAPIView):
     serializer_class = WhaleAlertCanonicalSerializer
     permission_classes = [permissions.IsAuthenticated]
-    pagination_class = AlertCursorPagination
+    pagination_class = WhaleAlertCursorPagination
 
     def get_queryset(self):
         qs = WhaleAlertCanonical.objects.select_related('alert').order_by('-executed_at')

@@ -1,3 +1,50 @@
+# 2026-05-13 — Fix Frontend 500/405 Errors (Tracked Symbols, Technicals Bulk, Whale Feed) ✅
+
+Status: Completed. Reported console errors are resolved on gateway API paths.
+
+Completed today:
+- Removed runtime dependency on missing `legacy_bridge_response` implementation by introducing SaaS-safe compatibility helper.
+- Migrated tracked-symbols behavior to native watchlist-backed handling in `market_data/views.py`.
+- Added `POST` support to `/api/stock-management/technicals/bulk/` for frontend contract compatibility.
+- Fixed whale-feed cursor pagination ordering from `triggered_at` to `executed_at` for canonical whale model.
+- Recreated `core-api` container to guarantee module reload after patching.
+
+Smoke result (authenticated through `http://127.0.0.1/api/...`):
+- PASS: `/api/stock-management/tracked-symbols/` (200)
+- PASS: `/api/stock-management/technicals/bulk/` with POST (200)
+- PASS: `/api/realtime/whale-feed/aggregate/?sort=ts&window=session&limit=6` (200)
+- PASS: `/api/signals/whale-feed/?symbol=VCB&limit=10` (200)
+
+Operational note:
+- Legacy bridge call sites now degrade safely to native/stub behavior and no longer throw `NameError`.
+
+---
+
+# 2026-05-13 — Queue Hardening + API Smoke (Post Cutover) ✅
+
+Status: Queue hardening completed. Legacy backlog warning source is neutralized.
+
+Completed today:
+- Traced legacy unregistered-task publisher to `core-beat` (via Redis client IP mapping).
+- Hardened `core-beat` to use `/tmp/core-celerybeat-schedule` and restarted service.
+- Verified broker queues are clean (`realtime_prefetch`, `celery`, `analytics_heavy`, `manual_on_demand` all zero pending).
+- Confirmed no new `portfolio.tasks.schedule_realtime_prefetch_shards` unregistered-task warnings after hardening.
+- Executed authenticated API smoke test via gateway.
+
+Smoke result:
+- PASS: `/api/realtime/tickers` (200)
+- PASS: `/api/realtime/unified-alerts` (200)
+- FAIL: `/api/signals/whale-feed` (500)
+  - Runtime traceback indicates existing app bugs:
+    - `legacy_bridge_response` NameError
+    - whale-feed ordering by missing `triggered_at` field
+
+Operational note:
+- Redis/celery backlog issue is resolved.
+- Whale-feed endpoint requires follow-up fix slice to complete full dashboard E2E pass.
+
+---
+
 # 2026-05-13 — SaaS-Only Dev Runtime (Legacy Services Removed) ✅
 
 Status: Completed. Dev stack now runs on SaaS core services only.
