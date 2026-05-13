@@ -21,6 +21,7 @@ services:
       POSTGRES_PASSWORD: devpassword
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-core-db.sql:/docker-entrypoint-initdb.d/01-init-core-db.sql:ro
     ports:
       # Expose port 5432 lΩn host d? backend local (hybrid mode) ho?c stack khßc connect du?c.
       # C≤ th? set DEV_BIND_HOST=0.0.0.0 khi c?n cross-stack qua host.docker.internal.
@@ -70,7 +71,7 @@ services:
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
+      CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/core_db
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
       LEGACY_BACKEND_URL: ${LEGACY_BACKEND_URL:?LEGACY_BACKEND_URL must be set in compose.dev.env}
