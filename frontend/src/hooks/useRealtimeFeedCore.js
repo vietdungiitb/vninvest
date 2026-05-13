@@ -39,6 +39,59 @@ function isValidQuotePrice(value) {
   return Number.isFinite(numeric) && numeric > 0;
 }
 
+function toFiniteNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function resolveImpliedChangePct({ currentPrice, prevPrice, changeValue }) {
+  const normalizedCurrent = toFiniteNumber(currentPrice);
+  const normalizedPrev = toFiniteNumber(prevPrice);
+  const normalizedChange = toFiniteNumber(changeValue);
+
+  if (Number.isFinite(normalizedCurrent) && Number.isFinite(normalizedPrev) && normalizedPrev > 0) {
+    return ((normalizedCurrent - normalizedPrev) / normalizedPrev) * 100;
+  }
+
+  if (Number.isFinite(normalizedCurrent) && normalizedCurrent > 0 && Number.isFinite(normalizedChange)) {
+    return (normalizedChange / normalizedCurrent) * 100;
+  }
+
+  return null;
+}
+
+function normalizeChangePct(rawChangePct, { currentPrice, prevPrice, changeValue }) {
+  const normalizedRaw = toFiniteNumber(rawChangePct);
+  if (!Number.isFinite(normalizedRaw)) {
+    return null;
+  }
+
+  const impliedPct = resolveImpliedChangePct({
+    currentPrice,
+    prevPrice,
+    changeValue,
+  });
+
+  if (!Number.isFinite(impliedPct)) {
+    return normalizedRaw;
+  }
+
+  // Some feeds publish fraction units (0.01 => 1.00%) while others publish percent directly.
+  // For small-magnitude values, choose the unit that best matches the implied pct from prices.
+  if (Math.abs(normalizedRaw) <= 1) {
+    const asPercent = normalizedRaw;
+    const asFraction = normalizedRaw * 100;
+    const distancePercent = Math.abs(asPercent - impliedPct);
+    const distanceFraction = Math.abs(asFraction - impliedPct);
+
+    if (distanceFraction + 0.05 < distancePercent) {
+      return asFraction;
+    }
+  }
+
+  return normalizedRaw;
+}
+
 function mergeQuote(prev, update) {
   const eventTimestamp = update.last_date ?? update.ts;
   const eventAgeSeconds = eventTimestamp
@@ -53,13 +106,21 @@ function mergeQuote(prev, update) {
     ? Number(update.current_price)
     : (isValidQuotePrice(update.price) ? Number(update.price) : prev.current_price);
 
+  const nextPrevPrice = update.prev_price ?? prev.prev_price;
+  const nextChangeValue = update.change_value ?? prev.change_value;
+  const nextChangePct = normalizeChangePct(update.change_pct ?? prev.change_pct, {
+    currentPrice: nextCurrentPrice,
+    prevPrice: nextPrevPrice,
+    changeValue: nextChangeValue,
+  });
+
   return {
     ...prev,
     symbol: normalizeSymbol(update.symbol ?? prev.symbol),
     current_price: nextCurrentPrice,
-    prev_price: update.prev_price ?? prev.prev_price,
-    change_value: update.change_value ?? prev.change_value,
-    change_pct: update.change_pct ?? prev.change_pct,
+    prev_price: nextPrevPrice,
+    change_value: nextChangeValue,
+    change_pct: nextChangePct,
     open_price: update.open_price ?? prev.open_price,
     high_price: update.high_price ?? prev.high_price,
     low_price: update.low_price ?? prev.low_price,

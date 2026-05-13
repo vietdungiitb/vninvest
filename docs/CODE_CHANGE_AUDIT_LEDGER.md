@@ -1,3 +1,28 @@
+# 2026-05-13 — Fix Sai Đơn Vị % Hiển Thị (0.01% vs 1.00%) ✅
+
+Status: Completed. Fixed frontend normalization for mixed `change_pct` units to prevent incorrect `0.01%` display when source value is fraction-scale.
+
+What changed:
+- `frontend/src/hooks/useRealtimeFeedCore.js`
+  - Added unit-aware normalization for `change_pct` in merge path:
+    - `toFiniteNumber(...)`
+    - `resolveImpliedChangePct(...)`
+    - `normalizeChangePct(...)`
+  - `mergeQuote(...)` now derives canonical `change_pct` using `current_price`, `prev_price`, `change_value`.
+  - If incoming value is small-magnitude and better matches fraction semantics, it is converted (`0.01 -> 1.00`).
+
+Validation evidence:
+- Static check:
+  - `get_errors frontend/src/hooks/useRealtimeFeedCore.js` -> no errors.
+
+Operational note:
+- This fix is centralized at quote merge layer, so all consumers (heatmap, popup, realtime tables) receive a canonical percent value.
+
+Residual risk note:
+- If upstream omits both `prev_price` and `change_value`, heuristic falls back to raw `change_pct`.
+
+---
+
 # 2026-05-13 — Remove Legacy Bridge Runtime Dependency + Fix 500/405 API Regressions ✅
 
 Status: Completed. Frontend-reported failures for tracked-symbols, technicals bulk, and whale-feed endpoints are fixed.

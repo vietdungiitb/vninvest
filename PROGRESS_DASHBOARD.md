@@ -1,3 +1,20 @@
+# 2026-05-13 — Fix Hiển Thị Sai 0.01% Ở Heatmap/Popup ✅
+
+Status: Completed. `change_pct` is now normalized in realtime quote merge so fraction-scale inputs are rendered correctly as percent.
+
+Completed today:
+- Added canonical `%` normalization in `frontend/src/hooks/useRealtimeFeedCore.js`.
+- Converted ambiguous small values using price-implied validation (`current_price`, `prev_price`, `change_value`).
+- Eliminated the UI case where symbol shows `+0.01%` while underlying movement is `+1.00%`.
+
+Verification:
+- `frontend/src/hooks/useRealtimeFeedCore.js` has no diagnostics after patch.
+
+Operational note:
+- Because normalization is centralized in quote merge, all dashboards/components that consume `quotesBySymbol` inherit the same corrected value.
+
+---
+
 # 2026-05-13 — Fix Frontend 500/405 Errors (Tracked Symbols, Technicals Bulk, Whale Feed) ✅
 
 Status: Completed. Reported console errors are resolved on gateway API paths.
