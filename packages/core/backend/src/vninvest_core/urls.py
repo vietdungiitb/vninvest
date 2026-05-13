@@ -32,6 +32,7 @@ urlpatterns = [
     path('core/v1/', include(('advisory.urls', 'advisory'), namespace='advisory')),
     path('core/v1/', include(('user_workspace.urls', 'user_workspace'), namespace='user_workspace')),
     path('core/v1/', include(('market_data.urls', 'market_data'), namespace='market_data')),
+    path('core/v1/', include(('data_ingest.urls', 'data_ingest'), namespace='data_ingest')),
     # Native public bootstrap routes owned by core-api domain apps.
     path('api/', include(('commercial.public_urls', 'commercial_public'), namespace='commercial_public')),
     path('api/', include(('market_data.public_urls', 'market_data_public'), namespace='market_data_public')),

@@ -238,6 +238,73 @@ def sync_market_groups(self):
     return {'status': 'ok', 'upserted': upserted}
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
+    """
+    Daily price ingestion task (P3-T01 core-worker topology).
+    
+    Fetches and upserts daily OHLCV data for specified symbols (default: last N days for all active).
+    Wrapper around backfill_daily_prices with monitoring/observability.
+    
+    Called by: 
+      - django-celery-beat schedule (daily at 17:00 VN time after market close)
+      - Manual admin trigger endpoint (P3-T02)
+    
+    Args:
+        days: number of days to backfill (default 1 for same-day or previous day catch-up)
+        symbols: specific symbol list; None = all active StockProfile
+    
+    Returns:
+        dict with 'status', 'upserted', 'failed', 'providers' keys
+    """
+    from data_ingest.models import IngestJob, IngestRun
+    from django.utils.timezone import now
+    
+    job = None
+    run = None
+    
+    try:
+        # Create observability record for this ingest run
+        run = IngestRun.objects.create(
+            job=job,
+            state=IngestRun.StateChoices.RUNNING,
+        )
+        
+        logger.info(f'ingest_daily_prices starting: days={days}, symbols={len(symbols) if symbols else "all"}')
+        
+        # Call the main backfill task (handles provider round-robin and threading)
+        result = backfill_daily_prices.apply_async(
+            args=[days, symbols],
+            countdown=0,
+        ).get(timeout=3600)  # 1 hour timeout for backfill
+        
+        upserted = result.get('upserted', 0)
+        failed = result.get('failed', [])
+        
+        if run:
+            run.state = IngestRun.StateChoices.SUCCESS
+            run.rows_upserted = upserted
+            run.finished_at = now()
+            run.save(update_fields=['state', 'rows_upserted', 'finished_at'])
+        
+        logger.info(
+            f'ingest_daily_prices completed: upserted={upserted}, failed={len(failed)}, '
+            f'providers={result.get("providers")}'
+        )
+        return result
+    
+    except Exception as exc:
+        logger.error(f'ingest_daily_prices failed: {exc}', exc_info=True)
+        if run:
+            run.state = IngestRun.StateChoices.FAILED
+            run.error_message = str(exc)[:500]
+            run.finished_at = now()
+            run.save(update_fields=['state', 'error_message', 'finished_at'])
+        
+        # Retry with exponential backoff (60s, 120s, 240s)
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
 def backfill_daily_prices(self, days: int = 365, symbols: list = None, max_workers: int = None):
     """
