@@ -118,11 +118,14 @@ def materialize_symbol_snapshot_from_vnbroker():
             logger.warning("No active symbols found for vnbroker fetch")
             return {'status': 'ok', 'upserted': 0, 'source': 'vnbroker_native'}
         
+        import time as _time
+
         today = date.today()
         yesterday = today - timedelta(days=1)
         count = 0
 
         # Pre-fetch live prices via SSOT adapter (không gọi VciQuote trực tiếp)
+        # Delay 0.35s giữa các symbol để tránh 429 Too Many Requests từ VCI.
         from market_data.vnbroker_adapter import fetch_realtime_price
         live_prices: dict[str, dict] = {}
         for sym in symbols:
@@ -132,6 +135,7 @@ def materialize_symbol_snapshot_from_vnbroker():
                     'close': Decimal(str(live['close'])),
                     'volume': int(live['volume']),
                 }
+            _time.sleep(0.35)
         logger.info('live_prices fetched via adapter: %d/%d', len(live_prices), len(symbols))
 
         for symbol in symbols:

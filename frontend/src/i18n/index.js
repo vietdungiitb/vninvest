@@ -68,14 +68,19 @@ export function formatCurrency(value, locale, currency = 'VND', options = {}) {
 
 const QUOTE_LOCALE_TAG = 'en-US';
 
+/**
+ * Định dạng giá chứng khoán theo đơn vị nghìn VNĐ.
+ * Backend lưu raw VND (vd: 27750), hiển thị chia 1000 → "27.75"
+ */
 export function formatQuotePrice(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }
+  const inThousands = Number(value) / 1000;
   return new Intl.NumberFormat(QUOTE_LOCALE_TAG, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number(value));
+  }).format(inThousands);
 }
 
 export function formatQuoteVolume(value) {
