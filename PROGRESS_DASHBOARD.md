@@ -1,3 +1,26 @@
+# 2026-05-13 — SaaS Full Independence Cutover (C1–C7) ✅ PRODUCTION APPROVED
+
+**Status**: ✅ **PRODUCTION LIVE** — All routes native (core-api:8100 only); backend:8000 decommissioned  
+**Decision**: Gate F (shadow run) skipped — greenfield deployment, no end-user data  
+**Gate G**: Tech Lead approval granted — SaaS model authorized for frontend development  
+
+**Scope**: Migrate 46 frontend routes from legacy bridge (backend:8000) to native core-api:8100 implementation
+
+**Summary**:
+- **C1** (Queue Routing): realtime_prefetch domain configured for price-board tasks ✅
+- **C2** (Realtime Views): 9 native views (ticker, whale-feed, breadth, rvol, etc.) — bridge removed ✅
+- **C3** (Stock-Mgmt Views): 21 native views (technicals, overview, chart, order-flow, advisory delegation) — bridge removed ✅  
+- **C4** (Portfolio Analytics): 16 native views (holdings aggregation, NAV curve, allocation, P&L) — real computation ✅
+- **C5** (Auth Verify): Already native (no changes) ✅
+- **C6** (Misc Stubs): Already stubbed (no changes) ✅
+- **C7** (Decommission): legacy_http_bridge.py deleted; bridge classes removed; backend services commented ✅
+- **Evidence**: `CUT-C1-C7-EXECUTION-EVIDENCE-20260513.md`  
+- **Approval**: `GATE-G-PRODUCTION-APPROVAL-SAAS-CUTOVER-20260513.md`
+
+**Next Phase**: Frontend developers start coding against core-api:8100 immediately (46 routes available)
+
+---
+
 # 2026-05-12 — SaaS Market Data API Phase 2: Native IntradayBar + IntradayTick Models ✅ 100% COMPLETE
 
 **Status**: SAAS-MIGRATION Market Data Phase 2 completed. Replaced Phase 1 bridge with native models and Redis caching.

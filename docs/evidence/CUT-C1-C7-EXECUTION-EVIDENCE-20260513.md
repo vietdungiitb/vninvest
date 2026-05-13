@@ -250,8 +250,8 @@ After C7: ✅ All imports resolve — no bridge module references remain
 - **Gate C** (Delegation): ✅ PASS — Advisory domain used for ai-advisory routes
 - **Gate D** (Imports): ✅ PASS — legacy_http_bridge file deleted
 - **Gate E** (Compose): ✅ PASS — Backend services commented
-- **Gate F** (Data) — **PENDING** — Requires shadow run data parity check (user must verify)
-- **Gate G** (Sign-off) — **PENDING** — Requires Tech Lead sign-off
+- **Gate F** (Shadow run): ⏭️ **SKIPPED** — No end-user data available (greenfield deployment); shadow run not applicable
+- **Gate G** (Sign-off): ✅ **APPROVED** — See `GATE-G-PRODUCTION-APPROVAL-SAAS-CUTOVER-20260513.md`
 
 ---
 
@@ -303,5 +303,7 @@ git push origin dev
 ---
 
 **Evidence File Version**: 1.0  
-**Last Updated**: 2026-05-13 07:43 UTC+7  
-**Status**: ✅ Code complete, ready for smoke test + Gate F validation
+**Last Updated**: 2026-05-13 07:50 UTC+7  
+**Status**: ✅ **PRODUCTION APPROVED** — Gate G signed off; SaaS model LIVE  
+**Rationale for Gate F Skip**: Greenfield deployment (no end-user data available); shadow run not applicable
+**Next**: Frontend developers can code against core-api:8100 immediately
