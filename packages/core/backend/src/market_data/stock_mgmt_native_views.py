@@ -115,16 +115,41 @@ class StockManagementOverviewView(APIView):
         except StockProfile.DoesNotExist:
             raise NotFound(f'Stock not found: {symbol}')
         snap = SymbolSnapshot.objects.filter(symbol=symbol).order_by('-fetched_at').first()
+
+        # 52-week high/low from DailyPrice (last 365 days)
+        from datetime import date as _date, timedelta
+        from django.db.models import Max, Min
+        _today = _date.today()
+        _52w_ago = _today - timedelta(days=365)
+        week52 = DailyPrice.objects.filter(
+            symbol=symbol, date__gte=_52w_ago, date__lte=_today,
+        ).aggregate(week52_high=Max('high'), week52_low=Min('low'))
+
         return Response({
             'symbol': symbol,
             'company_name': profile.company_name,
             'exchange': profile.exchange,
             'industry': profile.industry,
             'outstanding_shares': profile.outstanding_shares,
+            # Price fields
             'price': str(snap.price) if snap else None,
+            'current_price': str(snap.price) if snap else None,
             'price_change': str(snap.price_change) if snap else None,
+            'change_value': str(snap.price_change) if snap else None,
             'price_change_pct': str(snap.price_change_pct) if snap else None,
+            'change_pct': float(snap.price_change_pct) if snap else None,
             'volume': snap.volume if snap else None,
+            # Session OHLC
+            'high_price': str(snap.high) if snap and snap.high else None,
+            'low_price': str(snap.low) if snap and snap.low else None,
+            'open_price': str(snap.open) if snap and snap.open else None,
+            # Reference / bands
+            'reference_price': str(snap.reference_price) if snap and snap.reference_price else None,
+            'ceiling': str(snap.ceiling) if snap and snap.ceiling else None,
+            'floor': str(snap.floor) if snap and snap.floor else None,
+            # 52-week range
+            'week52_high': str(week52['week52_high']) if week52['week52_high'] else None,
+            'week52_low': str(week52['week52_low']) if week52['week52_low'] else None,
             'stale': snap.stale if snap else True,
         })
 

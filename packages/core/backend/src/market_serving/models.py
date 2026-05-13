@@ -38,6 +38,9 @@ class SymbolSnapshot(models.Model):
     reference_price = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Previous close price (nền giá)")
     ceiling = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Price ceiling (trần = reference * 1.07)")
     floor = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Price floor (sàn = reference * 0.93)")
+    open = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Session open price (giá mở cửa phiên)")
+    high = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Session high price (giá cao nhất phiên)")
+    low = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Session low price (giá thấp nhất phiên)")
     market_status = models.CharField(
         max_length=16,
         choices=MarketStatusChoices.choices,

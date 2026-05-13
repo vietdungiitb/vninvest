@@ -154,9 +154,15 @@ def materialize_symbol_snapshot_from_vnbroker():
                 if live:
                     live_close = live['close']
                     live_volume = live['volume']
+                    live_open = Decimal(str(live.get('open') or live['close']))
+                    live_high = Decimal(str(live.get('high') or live['close']))
+                    live_low = Decimal(str(live.get('low') or live['close']))
                 elif today_db_price:
                     live_close = today_db_price.close
                     live_volume = today_db_price.volume
+                    live_open = today_db_price.open if today_db_price.open else today_db_price.close
+                    live_high = today_db_price.high if today_db_price.high else today_db_price.close
+                    live_low = today_db_price.low if today_db_price.low else today_db_price.close
                 else:
                     logger.debug(f"No price data for {symbol} today — skipping")
                     continue
@@ -187,6 +193,9 @@ def materialize_symbol_snapshot_from_vnbroker():
                         'reference_price': reference_price,
                         'ceiling': ceiling,
                         'floor': floor,
+                        'open': live_open,
+                        'high': live_high,
+                        'low': live_low,
                         'market_status': 'open',
                         'source': 'vnbroker_native',
                         'stale': False,

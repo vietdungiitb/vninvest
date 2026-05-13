@@ -77,6 +77,9 @@ class RealtimeTickerListView(APIView):
                 'reference_price': str(s.reference_price) if s.reference_price else None,
                 'ceiling': str(s.ceiling) if s.ceiling else None,
                 'floor': str(s.floor) if s.floor else None,
+                'high_price': str(s.high) if s.high else None,
+                'low_price': str(s.low) if s.low else None,
+                'open_price': str(s.open) if s.open else None,
                 'market_status': s.market_status,
                 'stale': s.stale,
             }
