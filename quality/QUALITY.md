@@ -178,8 +178,39 @@ How to verify:
 4. Không đánh dấu slice complete nếu chưa có evidence template và ledger/progress sync.
 5. Nếu contract backend chưa rõ, dừng ở plan/adapter contract thay vì hard-code workaround trong UI.
 6. Không thêm heatmap hoặc marker layer trực tiếp vào chart khi chưa khóa `Flow View Model`.
-7. Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.
+7. Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.8. **Tuyệt đối cấm gọi vnbroker API trực tiếp** (`VciQuote`, `Vnbroker()`, v.v.) từ bất kỳ module nào ngoài `market_data/vnbroker_adapter.py` — mọi vi phạm là blocker không thể merge.
 
+## 5a. VnBroker Data Access — SSOT Hard Rules
+
+> Áp dụng cho mọi session AI/developer chạm dữ liệu thị trường.
+
+| Rule | Nội dung |
+|------|----------|
+| **SSOT-1** | `packages/core/backend/src/market_data/vnbroker_adapter.py` là **cổng duy nhất** vào vnbroker. |
+| **SSOT-2** | Cấm `from vnbroker.explorer.vci.quote import Quote` ngoài `vnbroker_adapter.py`. |
+| **SSOT-3** | Cấm `from vnbroker import Vnbroker` ngoài `vnbroker_adapter.py`. |
+| **SSOT-4** | Mọi fetch hàm mới từ vnbroker phải được thêm vào `vnbroker_adapter.py` trước, sau đó caller mới import. |
+| **SSOT-5** | Mock/random data trong adapter bị cấm tuyệt đối trên production path — chỉ dùng trong test với `@patch`. |
+| **SSOT-6** | Fallback DB (DailyPrice khi vnbroker fail) phải nằm **trong** adapter, không nằm ở caller. |
+| **SSOT-7** | `materialize_symbol_snapshot_from_vnbroker()` và mọi Celery task giá chỉ được import từ `market_data.vnbroker_adapter`. |
+
+**Hàm SSOT hiện tại:**
+
+```python
+from market_data.vnbroker_adapter import (
+    fetch_realtime_price,        # giá live hôm nay
+    fetch_daily_history,         # lịch sử OHLCV ngày
+    fetch_price_board_snapshot,  # snapshot bảng giá nhiều symbol
+    fetch_intraday_tape,         # tape intraday
+    fetch_listing_symbols,       # danh sách mã niêm yết
+)
+```
+
+**Dấu hiệu vi phạm cần block ngay:**
+
+- `grep -r "from vnbroker" packages/core/backend/src --include="*.py" | grep -v vnbroker_adapter`
+- `grep -r "VciQuote" packages/core/backend/src --include="*.py" | grep -v vnbroker_adapter`
+- `grep -r "random.uniform\|random.randint" packages/core/backend/src/market_data/vnbroker_adapter.py`
 ## 6. The Human Gate
 
 Những điểm sau cần human/final auditor quyết định cuối:

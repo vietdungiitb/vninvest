@@ -253,3 +253,19 @@ Template chuẩn nằm tại:
 6. Error response phải dùng đúng khung chuẩn (detail/code/timestamp/request_id/field_errors).
 7. Endpoint tenant-scoped bắt buộc có filter tenant ở query layer và test chặn cross-tenant access.
 8. Mọi exception khỏi hard rule phải có ticket, owner, expiry; quá hạn thì block merge.
+
+## 11. Hard constraints for VnBroker data access (SSOT)
+
+1. **`market_data/vnbroker_adapter.py` là SSOT duy nhất** cho mọi truy cập dữ liệu thị trường từ vnbroker — bao gồm giá realtime, lịch sử OHLCV, intraday tape, và snapshot bảng giá.
+2. **Tuyệt đối cấm import trực tiếp** `vnbroker.explorer.vci.quote.Quote`, `Vnbroker()`, hoặc bất kỳ class/module nội bộ nào của thư viện `vnbroker` từ ngoài `vnbroker_adapter.py`. Mọi caller phải dùng hàm public của adapter.
+3. **Các hàm SSOT trong `market_data/vnbroker_adapter.py`** hiện tại bao gồm:
+   - `fetch_realtime_price(symbol)` — giá live hôm nay (close/open/high/low/volume)
+   - `fetch_daily_history(symbol, days)` — lịch sử OHLCV ngày
+   - `fetch_price_board_snapshot(symbols)` — snapshot bảng giá cho nhiều symbol
+   - `fetch_intraday_tape(symbol, page_size)` — tape giao dịch intraday
+   - `fetch_listing_symbols()` — danh sách mã niêm yết
+4. **`market_serving/vnbroker_materializer.py`** và mọi Celery task chạm dữ liệu giá phải import từ `market_data.vnbroker_adapter`, không gọi vnbroker API trực tiếp.
+5. **Mock/random data** trong adapter bị cấm tuyệt đối trong production path — chỉ được dùng trong test fixtures với decorator `@patch`.
+6. **Fallback logic** (DailyPrice DB khi vnbroker fail) phải nằm trong adapter, không nằm ở caller.
+7. **Mọi PR thêm hàm fetch mới từ vnbroker** phải đặt vào `vnbroker_adapter.py` và có ít nhất một unit test với mock.
+8. Mọi exception khỏi hard rule phải có ticket, owner, expiry; quá hạn thì block merge.

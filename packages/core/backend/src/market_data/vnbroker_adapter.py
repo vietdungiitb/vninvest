@@ -159,39 +159,68 @@ def get_active_config() -> VnbrokerRuntimeConfig:
         )
         return _FallbackConfig()
 
+def fetch_realtime_price(symbol: str) -> dict[str, Any] | None:
+    """
+    Lấy giá realtime (live bar hôm nay) cho một symbol qua VCI.
+    SSOT cho tất cả live-price reads — không gọi VciQuote trực tiếp ngoài hàm này.
+
+    Trả về dict với keys: symbol, close, open, high, low, volume, fetched_at
+    hoặc None nếu vnbroker không trả dữ liệu.
+    """
+    from datetime import date as dt_date
+    symbol_upper = symbol.strip().upper()
+    today = dt_date.today()
+    try:
+        from vnbroker.explorer.vci.quote import Quote as VciQuote
+        q = VciQuote(symbol=symbol_upper)
+        df = q.history(
+            start=today.isoformat(),
+            end=today.isoformat(),
+            interval='1D',
+            show_log=False,
+        )
+        if df is None or df.empty:
+            return None
+        row = df.iloc[0]
+        return {
+            'symbol': symbol_upper,
+            'close': float(row['close']),
+            'open': float(row.get('open') or row['close']),
+            'high': float(row.get('high') or row['close']),
+            'low': float(row.get('low') or row['close']),
+            'volume': int(row.get('volume') or 0),
+            'fetched_at': now().isoformat(),
+        }
+    except Exception as exc:
+        logger.warning('fetch_realtime_price VCI failed for %s: %s', symbol_upper, exc)
+        return None
+
+
 def fetch_price_board_snapshot(symbols: list[str]) -> list[dict[str, Any]]:
     """
-    Lấy dữ liệu snapshot bảng giá cho danh sách symbol.
-    Logic này mô phỏng việc gọi API từ các nguồn (VCI/KBS).
-    Trong thực tế, nó sẽ tích hợp thư viện vnbroker hoặc gọi REST API.
+    Lấy snapshot giá realtime cho danh sách symbol qua vnbroker (VCI).
+    Tất cả calls qua fetch_realtime_price để đảm bảo SSOT.
     """
     config = get_active_config()
-    source = config.data_source
-    
-    logger.info(f"Fetching price board from {source} for {len(symbols)} symbols.")
-    
-    # Giả lập delay và jitter dựa trên config
-    if config.request_delay_ms > 0:
-        time.sleep(config.request_delay_ms / 1000.0)
-    
+    source = getattr(config, 'data_source', 'VCI')
+    logger.info('Fetching price board snapshot from %s for %d symbols.', source, len(symbols))
+
     results = []
-    # Đây là nơi code gọi API thực tế sẽ nằm. 
-    # Hiện tại chúng ta mock dữ liệu để đảm bảo pipeline chạy được.
     for symbol in symbols:
-        # Giả lập dữ liệu cho demo/test
-        price = 20.0 + random.uniform(-5.0, 5.0)
-        change_pct = round(random.uniform(-3.5, 3.5), 2)   # percent scale (-3.5% … +3.5%)
-        price_change = round(price * change_pct / 100, 2)
+        live = fetch_realtime_price(symbol)
+        if live is None:
+            logger.debug('fetch_price_board_snapshot: no live data for %s — skipped', symbol)
+            continue
         results.append({
-            'symbol': symbol.upper(),
-            'price': round(price, 2),
-            'price_change': price_change,
-            'price_change_pct': change_pct,
-            'volume': random.randint(100_000, 5_000_000),
+            'symbol': live['symbol'],
+            'price': live['close'],
+            'price_change': 0.0,       # caller (materializer) computes delta vs reference
+            'price_change_pct': 0.0,
+            'volume': live['volume'],
             'source': source,
-            'fetched_at': now().isoformat(),
+            'fetched_at': live['fetched_at'],
         })
-        
+
     return results
 
 def fetch_daily_history(symbol: str, days: int = 365) -> list[dict[str, Any]]:

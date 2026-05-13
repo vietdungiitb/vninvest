@@ -282,7 +282,7 @@ function governanceDeltaSeverityClass(level) {
   return 'border-slate-700 bg-slate-900/60 text-slate-300';
 }
 
-function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange, onSessionChange, flowData = null, whaleSignals = [] }) {
+const KLineChartComponent = React.memo(function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange, onSessionChange, flowData = null, whaleSignals = [] }) {
   return (
     <KLineChartPanel
       data={data}
@@ -297,7 +297,7 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
       whaleSignals={whaleSignals}
     />
   );
-}
+});
 
 function IntradayMatchedPanel({ symbol, liveVolume }) {
   const STALE_RESYNC_RETRY_MS = 3000;
@@ -1058,6 +1058,18 @@ export default function StockDetail() {
 
     return symbolAlerts;
   }, [symbolAlerts, whaleAnalyticsData, whaleFeedData]);
+
+  const handleKlineSessionChange = useCallback((session) => {
+    setSelectedKlineSession(session ? { ...session, symbol: normalizedSymbol } : null);
+  }, [normalizedSymbol]);
+
+  const handleKlineTimeframeChange = useCallback(({ timeframe, days }) => {
+    setSelectedKlineSession(null);
+    setActiveTimeframe(timeframe);
+    if (Number.isFinite(days)) {
+      setActivePeriod(days);
+    }
+  }, []);
 
   useEffect(() => {
     setSelectedKlineSession(null);
@@ -2621,23 +2633,15 @@ export default function StockDetail() {
                   {t('stockDetail.noChartData')}
                 </div>
               ) : (
-                <KLineChartComponent
+<KLineChartComponent
                   data={chartData}
                   activePeriod={activePeriod}
                   activeTimeframe={activeTimeframe}
                   onPeriodChange={setActivePeriod}
-                  onTimeframeChange={({ timeframe, days }) => {
-                    setSelectedKlineSession(null);
-                    setActiveTimeframe(timeframe);
-                    if (Number.isFinite(days)) {
-                      setActivePeriod(days);
-                    }
-                  }}
+                  onTimeframeChange={handleKlineTimeframeChange}
                   onVisibleRangeChange={setChartVisibleRange}
                   onActiveIndicatorsChange={setChartActiveIndicators}
-                  onSessionChange={(session) => {
-                    setSelectedKlineSession(session ? { ...session, symbol: normalizedSymbol } : null);
-                  }}
+                  onSessionChange={handleKlineSessionChange}
                   flowData={whaleAnalyticsData?.flow || null}
                   whaleSignals={whaleSignalsForChart}
                 />

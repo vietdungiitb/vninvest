@@ -20,8 +20,11 @@ function normalizeChartTimeframe(timeframe) {
     '2H': '2H',
     '4H': '4H',
     D: 'D',
+    '1D': '1D',
     W: 'W',
+    '1W': '1W',
     M: 'M',
+    '1MO': '1MO',
     Y: 'Y',
   };
   return aliasMap[upperValue] || '1H';

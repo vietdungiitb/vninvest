@@ -6,92 +6,95 @@ instead of legacy portfolio_tickersessionclose table.
 
 This maintains the same SymbolSnapshot write contract.
 """
-from decimal import Decimal
+from decimal import Decimal, ROUND_FLOOR, ROUND_CEILING
 from datetime import date, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
 
 
+def _hose_tick_size(price: Decimal) -> Decimal:
+    """
+    HoSE bước giá (tick size) theo quy định sàn HOSE:
+      < 10,000 VND  → 10 VND
+      10,000–49,999 → 50 VND
+      ≥ 50,000      → 100 VND
+    Dùng để làm tròn Trần/Sàn theo chuẩn thị trường.
+    """
+    if price < Decimal('10000'):
+        return Decimal('10')
+    elif price < Decimal('50000'):
+        return Decimal('50')
+    else:
+        return Decimal('100')
+
+
+def _round_ceiling_price(raw: Decimal) -> Decimal:
+    """Làm tròn Trần: ROUND_FLOOR về bước giá gần nhất (không được vượt giới hạn +7%)."""
+    tick = _hose_tick_size(raw)
+    return (raw / tick).to_integral_value(rounding=ROUND_FLOOR) * tick
+
+
+def _round_floor_price(raw: Decimal) -> Decimal:
+    """Làm tròn Sàn: ROUND_CEILING về bước giá gần nhất (không được dưới giới hạn -7%)."""
+    tick = _hose_tick_size(raw)
+    return (raw / tick).to_integral_value(rounding=ROUND_CEILING) * tick
+
+
 def fetch_realtime_tickers_from_vnbroker(symbols: list[str]) -> list[dict]:
     """
-    Fetch realtime ticker data from vnbroker native API.
-    
+    Fetch realtime ticker data for a list of symbols.
+    Delegates to market_data.vnbroker_adapter.fetch_realtime_price (SSOT).
+
     Returns list of dicts with keys:
     - symbol, price, price_change, price_change_pct, volume
     - reference_price (prev close), ceiling, floor (calculated)
     - market_status, fetched_at
-    
-    POST-LEGACY ONLY: This replaces legacy portfolio_tickersessionclose reads.
     """
-    try:
-        from vnbroker.explorer.vci.quote import Quote as VciQuote
-        
-        tickers = []
-        for symbol in symbols:
-            try:
-                q = VciQuote(symbol=symbol.upper())
-                # Get today's OHLCV + prev close
-                df = q.history(
-                    start=date.today().isoformat(),
-                    end=date.today().isoformat(),
-                    interval='1D',
-                    show_log=False,
-                )
-                if df is None or df.empty:
-                    logger.warning(f"vnbroker returned empty data for {symbol}")
-                    continue
-                
-                row = df.iloc[0]
-                close = float(row.get('close', 0))
-                volume = int(row.get('volume', 0))
-                
-                # Get prev close for reference/ceiling/floor calculation
-                yesterday = date.today() - timedelta(days=1)
-                df_prev = q.history(
-                    start=yesterday.isoformat(),
-                    end=yesterday.isoformat(),
-                    interval='1D',
-                    show_log=False,
-                )
-                
-                prev_close = None
-                if df_prev is not None and not df_prev.empty:
-                    prev_close = float(df_prev.iloc[0].get('close', 0))
-                
-                # Calculate price change from prev close
-                price_change = 0
-                price_change_pct = 0
-                if prev_close and prev_close > 0:
-                    price_change = close - prev_close
-                    price_change_pct = (price_change / prev_close) * 100
-                
-                # Calculate ceiling/floor
-                reference_price = prev_close if prev_close else close
-                ceiling = reference_price * Decimal('1.07') if reference_price else None
-                floor = reference_price * Decimal('0.93') if reference_price else None
-                
-                tickers.append({
-                    'symbol': symbol.upper(),
-                    'price': close,
-                    'price_change': price_change,
-                    'price_change_pct': price_change_pct,
-                    'volume': volume,
-                    'reference_price': prev_close,
-                    'ceiling': float(ceiling) if ceiling else None,
-                    'floor': float(floor) if floor else None,
-                    'market_status': 'closed',  # VCI only has daily data
-                    'source': 'vnbroker_native',
-                })
-            except Exception as e:
-                logger.warning(f"vnbroker fetch failed for {symbol}: {e}")
+    from market_data.vnbroker_adapter import fetch_realtime_price
+    from datetime import date
+    tickers = []
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    for symbol in symbols:
+        try:
+            live = fetch_realtime_price(symbol)
+            if live is None:
+                logger.warning('fetch_realtime_tickers: no data for %s', symbol)
                 continue
-        
-        return tickers
-    
-    except ImportError:
-        logger.error("vnbroker library not available for realtime ticker fetch")
-        return []
+
+            close = Decimal(str(live['close']))
+            volume = int(live['volume'])
+
+            # Reference price: yesterday's canonical close from DB
+            from market_data.models import DailyPrice
+            yesterday_price = DailyPrice.objects.filter(symbol=symbol.upper(), date=yesterday).first()
+            ref_dec = yesterday_price.close if yesterday_price else close
+
+            price_change = close - ref_dec
+            price_change_pct = (price_change / ref_dec * Decimal('100')) if ref_dec != 0 else Decimal('0')
+            ceiling = _round_ceiling_price(ref_dec * Decimal('1.07'))
+            floor = _round_floor_price(ref_dec * Decimal('0.93'))
+
+            tickers.append({
+                'symbol': symbol.upper(),
+                'price': float(close),
+                'price_change': float(price_change),
+                'price_change_pct': float(price_change_pct),
+                'volume': volume,
+                'reference_price': float(ref_dec),
+                'ceiling': float(ceiling),
+                'floor': float(floor),
+                'market_status': 'open',
+                'source': 'vnbroker_native',
+                'fetched_at': live['fetched_at'],
+            })
+        except Exception as e:
+            logger.warning('fetch_realtime_tickers failed for %s: %s', symbol, e)
+            continue
+
+    return tickers
 
 
 def materialize_symbol_snapshot_from_vnbroker():
@@ -118,39 +121,65 @@ def materialize_symbol_snapshot_from_vnbroker():
         today = date.today()
         yesterday = today - timedelta(days=1)
         count = 0
-        
+
+        # Pre-fetch live prices via SSOT adapter (không gọi VciQuote trực tiếp)
+        from market_data.vnbroker_adapter import fetch_realtime_price
+        live_prices: dict[str, dict] = {}
+        for sym in symbols:
+            live = fetch_realtime_price(sym)
+            if live is not None:
+                live_prices[sym] = {
+                    'close': Decimal(str(live['close'])),
+                    'volume': int(live['volume']),
+                }
+        logger.info('live_prices fetched via adapter: %d/%d', len(live_prices), len(symbols))
+
         for symbol in symbols:
             try:
-                # Get today's close from DailyPrice (canonical)
-                today_price = DailyPrice.objects.filter(
-                    symbol=symbol, date=today
-                ).first()
-                
-                if not today_price:
-                    logger.debug(f"No DailyPrice found for {symbol} today")
-                    continue
-                
-                # Get yesterday's close for reference/ceiling/floor
+                # Reference price: yesterday's canonical close (for ceiling/floor)
                 yesterday_price = DailyPrice.objects.filter(
                     symbol=symbol, date=yesterday
                 ).first()
-                
-                reference_price = yesterday_price.close if yesterday_price else today_price.close
-                price_change = today_price.close - reference_price if reference_price else Decimal('0')
-                price_change_pct = (price_change / reference_price * Decimal('100')) if reference_price and reference_price != 0 else Decimal('0')
-                
-                # Calculate ceiling/floor
-                ceiling = reference_price * Decimal('1.07') if reference_price else None
-                floor = reference_price * Decimal('0.93') if reference_price else None
-                
+                # Today's DailyPrice used only as fallback if vnbroker fetch failed
+                today_db_price = DailyPrice.objects.filter(
+                    symbol=symbol, date=today
+                ).first()
+
+                # Live price: prefer vnbroker realtime, fall back to DB snapshot
+                live = live_prices.get(symbol)
+                if live:
+                    live_close = live['close']
+                    live_volume = live['volume']
+                elif today_db_price:
+                    live_close = today_db_price.close
+                    live_volume = today_db_price.volume
+                else:
+                    logger.debug(f"No price data for {symbol} today — skipping")
+                    continue
+
+                # Reference price for change/ceiling/floor calculations
+                if yesterday_price:
+                    reference_price = yesterday_price.close
+                elif today_db_price:
+                    reference_price = today_db_price.close
+                else:
+                    reference_price = live_close
+
+                price_change = live_close - reference_price
+                price_change_pct = (price_change / reference_price * Decimal('100')) if reference_price != 0 else Decimal('0')
+
+                # Calculate ceiling/floor (HoSE bước giá rounding)
+                ceiling = _round_ceiling_price(reference_price * Decimal('1.07'))
+                floor = _round_floor_price(reference_price * Decimal('0.93'))
+
                 SymbolSnapshot.objects.update_or_create(
                     symbol=symbol,
                     session_date=today,
                     defaults={
-                        'price': today_price.close,
+                        'price': live_close,
                         'price_change': price_change,
                         'price_change_pct': price_change_pct,
-                        'volume': today_price.volume,
+                        'volume': live_volume,
                         'reference_price': reference_price,
                         'ceiling': ceiling,
                         'floor': floor,
@@ -163,8 +192,8 @@ def materialize_symbol_snapshot_from_vnbroker():
             except Exception as e:
                 logger.warning(f"Failed to materialize {symbol}: {e}")
                 continue
-        
-        logger.info(f"materialize_symbol_snapshot (vnbroker): upserted {count} snapshots from DailyPrice")
+
+        logger.info(f"materialize_symbol_snapshot (vnbroker): upserted {count} snapshots (live={len(live_prices)})")
         return {'status': 'ok', 'upserted': count, 'source': 'vnbroker_native'}
     
     except Exception as e:
