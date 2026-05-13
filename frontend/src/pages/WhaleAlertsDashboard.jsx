@@ -48,7 +48,7 @@ export default function WhaleAlertsDashboard() {
   const [chartData, setChartData] = useState([]);
   const [loadingChart, setLoadingChart] = useState(true);
   const [activePeriod, setActivePeriod] = useState(180);
-  const [activeTimeframe, setActiveTimeframe] = useState('1H');
+  const [activeTimeframe, setActiveTimeframe] = useState('1D');
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
   const [bubbleTimeframe, setBubbleTimeframe] = useState('session');
   const [selectedSession, setSelectedSession] = useState(null);

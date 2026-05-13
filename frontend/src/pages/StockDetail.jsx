@@ -964,7 +964,7 @@ export default function StockDetail() {
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingChart, setLoadingChart] = useState(true);
   const [activePeriod, setActivePeriod] = useState(180);
-  const [activeTimeframe, setActiveTimeframe] = useState('1H');
+  const [activeTimeframe, setActiveTimeframe] = useState('1D');
   const [error, setError] = useState('');
   const [whaleFeedData, setWhaleFeedData] = useState(null);
   const [whaleFeedLoading, setWhaleFeedLoading] = useState(true);

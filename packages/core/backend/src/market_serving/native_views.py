@@ -74,6 +74,9 @@ class RealtimeTickerListView(APIView):
                 'price_change_pct': str(s.price_change_pct),
                 'change_pct': float(s.price_change_pct),
                 'volume': s.volume,
+                'reference_price': str(s.reference_price) if s.reference_price else None,
+                'ceiling': str(s.ceiling) if s.ceiling else None,
+                'floor': str(s.floor) if s.floor else None,
                 'market_status': s.market_status,
                 'stale': s.stale,
             }

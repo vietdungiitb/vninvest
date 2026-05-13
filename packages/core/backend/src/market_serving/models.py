@@ -35,6 +35,9 @@ class SymbolSnapshot(models.Model):
     price_change = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     price_change_pct = models.DecimalField(max_digits=10, decimal_places=4, default=0)
     volume = models.BigIntegerField(default=0)
+    reference_price = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Previous close price (nền giá)")
+    ceiling = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Price ceiling (trần = reference * 1.07)")
+    floor = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, help_text="Price floor (sàn = reference * 0.93)")
     market_status = models.CharField(
         max_length=16,
         choices=MarketStatusChoices.choices,

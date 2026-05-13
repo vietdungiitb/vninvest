@@ -64,6 +64,27 @@ def materialize_symbol_snapshot(self):
         count = 0
         for row in rows:
             symbol, last_price, total_volume, price_change_pct, price_change_value, session_date, fetched_at = row
+            
+            # Calculate ceiling/floor from reference price (prev close)
+            # If legacy has prev_close_price, use it; otherwise get from previous day's DailyPrice
+            reference_price = None
+            ceiling = None
+            floor = None
+            
+            try:
+                # Try to get previous close from DailyPrice (one day before session_date)
+                from datetime import timedelta
+                prev_date = session_date - timedelta(days=1)
+                from market_data.models import DailyPrice
+                prev_daily = DailyPrice.objects.filter(symbol=symbol, date=prev_date).first()
+                if prev_daily:
+                    reference_price = prev_daily.close
+                    # VN market limit: +7% ceiling, -7% floor
+                    ceiling = reference_price * Decimal('1.07')
+                    floor = reference_price * Decimal('0.93')
+            except Exception as e:
+                logger.debug(f'Could not calculate ceiling/floor for {symbol}: {e}')
+            
             SymbolSnapshot.objects.update_or_create(
                 symbol=symbol,
                 session_date=session_date,
@@ -72,6 +93,9 @@ def materialize_symbol_snapshot(self):
                     'price_change': price_change_value,
                     'price_change_pct': price_change_pct,
                     'volume': total_volume,
+                    'reference_price': reference_price,
+                    'ceiling': ceiling,
+                    'floor': floor,
                     'fetched_at': fetched_at or now(),
                     'stale': False,
                     'source': 'legacy_sync',
