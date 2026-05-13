@@ -177,13 +177,27 @@ def materialize_pre_open_snapshots(
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def materialize_session_facts(self):
     """
-    PLACEHOLDER: SessionFacts (whale flow, strength) will be computed by signal_intelligence domain.
-    
-    Current: NOOP - legacy DB removed
-    Next phase: Integrate vnbroker whale data feeds
+    Tính SessionFacts từ WhaleAlertCanonical dùng công thức chuẩn quốc tế:
+      - CVD (Cumulative Volume Delta) normalized 0-100
+      - Buy Strength & Institutional Strength (0-99.5, sigmoid)
+      - Delta Strength % (|net_cvd| / total × 100)
+      - Dark Flow Score (absorption proxy)
+
+    Chạy mỗi 5 phút qua celery beat (market_serving.materializers.materialize_session_facts).
+    Data source: signal_intelligence.WhaleAlertCanonical
     """
-    logger.info("materialize_session_facts: skipped (legacy DB removed, awaiting signal_intelligence)")
-    return {'status': 'skipped', 'reason': 'legacy_db_removed', 'next_phase': 'signal_intelligence_domain'}
+    from market_serving.session_facts_engine import compute_session_facts_for_all_active
+
+    try:
+        result = compute_session_facts_for_all_active()
+        logger.info(
+            'materialize_session_facts: %s',
+            result,
+        )
+        return result
+    except Exception as exc:
+        logger.error('materialize_session_facts failed: %s', exc)
+        raise self.retry(exc=exc)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=120)

@@ -91,15 +91,61 @@ class SessionFactsListView(generics.ListAPIView):
 
 
 class SessionFactsDetailView(generics.RetrieveAPIView):
-    """SM-P2.4: Adds Redis cache layer with 30s TTL."""
+    """
+    GET /api/market/session-facts/<symbol>/
+
+    Trả về SessionFacts cho symbol theo phiên gần nhất.
+    Nếu chưa có dữ liệu cho hôm nay, tự động compute on-demand từ
+    WhaleAlertCanonical trước khi trả về.
+
+    Cache TTL: 30 s (Redis).
+    """
     serializer_class = SessionFactsSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def _compute_on_demand(self, symbol: str):
+        """Trigger engine tính ngay nếu chưa có dữ liệu hôm nay."""
+        from django.utils.timezone import now as _now
+        from market_serving.session_facts_engine import compute_session_facts
+
+        today = _now().date()
+        result = compute_session_facts(symbol, today)
+        if result is None:
+            return None
+
+        obj, _ = SessionFacts.objects.update_or_create(
+            symbol=symbol,
+            session_date=today,
+            defaults={
+                'cvd_normalized': result['cvd_normalized'],
+                'buy_strength': result['buy_strength'],
+                'institutional_strength': result['institutional_strength'],
+                'whale_net_flow': result['whale_net_flow'],
+                'dark_flow_score': result['dark_flow_score'],
+                'total_buy_volume': result['total_buy_volume'],
+                'total_sell_volume': result['total_sell_volume'],
+                'source': SessionFacts.SourceChoices.COMPUTED,
+                'stale': False,
+            },
+        )
+        return obj
+
     def get_object(self):
+        from django.utils.timezone import now as _now
+
         symbol = self.kwargs['symbol'].upper()
-        obj = SessionFacts.objects.filter(symbol=symbol).order_by('-session_date').first()
-        if not obj:
-            raise NotFound(f'No session facts found for {symbol}')
+        today = _now().date()
+
+        # Ưu tiên dữ liệu hôm nay
+        obj = SessionFacts.objects.filter(symbol=symbol, session_date=today).first()
+        if obj is None:
+            # Thử compute on-demand từ WhaleAlertCanonical
+            obj = self._compute_on_demand(symbol)
+        if obj is None:
+            # Fallback: phiên gần nhất bất kỳ
+            obj = SessionFacts.objects.filter(symbol=symbol).order_by('-session_date').first()
+        if obj is None:
+            raise NotFound(f'Không có dữ liệu SessionFacts cho {symbol}')
         return obj
 
     def retrieve(self, request, *args, **kwargs):
@@ -113,7 +159,7 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
             logger.warning(f'SessionFacts cache get failed: {e}')
             cached = None
         if cached is not None:
-            data = cached
+            data = dict(cached)
             data['_source'] = 'cache-hit'
             return Response(data)
 
