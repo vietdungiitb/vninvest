@@ -1858,3 +1858,1613 @@ This 7-week implementation plan replaces the fragmented Admin-Ops system with a 
 3. Assign resources
 4. Begin Phase 1 (Week 1)
 5. Daily standups to track progress
+
+---
+
+---
+
+# SUPPLEMENT A — GAP ANALYSIS & DESIGN ENHANCEMENTS
+**Ngày bổ sung**: 2026-05-13  
+**Tác giả**: Audit AI Session  
+**Lý do**: Kế hoạch gốc thiếu 3 nhóm thiết kế quan trọng; Admin-Ops hiện tại có 6 điểm vượt trội cần kế thừa; đề xuất thêm kiến trúc matrix scraping đa provider.
+
+---
+
+## SUPPLEMENT A.1 — NHỮNG ĐIỂM ADMIN-OPS ĐANG LÀM TỐT HƠN (PHẢI KẾ THỪA)
+
+### A.1.1 Domain Config Schemas — Typed, không phải Generic Blob
+
+Admin-Ops hiện quản lý **4 domain config schema** hoàn toàn khác nhau với validation rules riêng. SOC **không được** flatten thành generic `config_json` blob mà phải giữ nguyên tính typed này.
+
+#### Domain 1: VNBroker Config Schema
+
+```python
+# backend/service_ops/domain_configs/vnbroker_config.py
+
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional
+
+VNBROKER_ALLOWED_SOURCES = frozenset({'VCI', 'KBS', 'TCBS', 'SSI', 'MSI'})
+
+@dataclass
+class VnbrokerTimeoutConfig:
+    price_board: int = 8
+    intraday: int = 8
+    financial_ratio: int = 10
+    history: int = 15
+    listing: int = 15
+    general: int = 10
+    
+    def validate(self):
+        for field_name, val in self.__dict__.items():
+            if not isinstance(val, int) or val < 1:
+                raise ValueError(f"timeout {field_name} must be >= 1 second")
+
+@dataclass
+class VnbrokerDomainConfig:
+    source_priority: List[str] = field(default_factory=lambda: ['VCI'])
+    retry_backoff_seconds: float = 0.5
+    rate_limit_cooldown_seconds: int = 30
+    fallback_sources: List[str] = field(default_factory=lambda: ['VCI'])
+    timeout_config: VnbrokerTimeoutConfig = field(default_factory=VnbrokerTimeoutConfig)
+    enable_caching: bool = True
+    enable_rate_limit_detection: bool = True
+    enable_concurrent_limit: bool = True
+    changelog: List[Dict] = field(default_factory=list)
+    
+    def validate(self):
+        unknown = set(self.source_priority) - VNBROKER_ALLOWED_SOURCES
+        if unknown:
+            raise ValueError(f"Unknown sources: {unknown}. Allowed: {VNBROKER_ALLOWED_SOURCES}")
+        if self.retry_backoff_seconds < 0:
+            raise ValueError("retry_backoff_seconds must be >= 0")
+        self.timeout_config.validate()
+    
+    @classmethod
+    def from_json(cls, data: dict) -> 'VnbrokerDomainConfig':
+        timeout = VnbrokerTimeoutConfig(**data.pop('timeout_config', {}))
+        return cls(timeout_config=timeout, **data)
+    
+    def to_json(self) -> dict:
+        d = self.__dict__.copy()
+        d['timeout_config'] = self.timeout_config.__dict__
+        return d
+
+# Rulebook for frontend validation
+VNBROKER_RULEBOOK = {
+    'source_priority': {'type': 'array<str>', 'allowed': list(VNBROKER_ALLOWED_SOURCES)},
+    'retry_backoff_seconds': {'type': 'float', 'min': 0},
+    'rate_limit_cooldown_seconds': {'type': 'int', 'min': 5},
+    'timeout_config': {
+        'price_board': {'type': 'int', 'min': 1, 'max': 60},
+        'intraday': {'type': 'int', 'min': 1, 'max': 60},
+    },
+    'recommended': VnbrokerDomainConfig().to_json(),
+}
+```
+
+#### Domain 2: Prefetch Time Policy Schema
+
+```python
+# backend/service_ops/domain_configs/prefetch_time_policy.py
+
+@dataclass
+class PrefetchProfile:
+    query_enabled: bool = True
+    interval_seconds: int = 35
+    batch_size: int = 20
+    symbol_limit: int = 40
+    max_retries: int = 4
+    
+    def validate(self):
+        assert self.interval_seconds >= 1, "interval_seconds >= 1"
+        assert self.batch_size >= 1, "batch_size >= 1"
+        assert self.max_retries >= 0, "max_retries >= 0"
+
+PREFETCH_PROFILE_KEYS = [
+    'pre_open', 'market_open', 'lunch_break', 'pre_close', 'post_close', 'offhours'
+]
+
+@dataclass
+class PrefetchMarketConfig:
+    open_time: str = '09:00'
+    close_time: str = '15:00'
+    pre_open_minutes: int = 30
+    post_close_minutes: int = 30
+    holiday_dates: List[str] = field(default_factory=list)
+    lunch_break_enabled: bool = True
+    lunch_start: str = '11:30'
+    lunch_end: str = '13:00'
+    weekend_mode: str = 'offhours'
+
+@dataclass
+class PrefetchTimePolicyConfig:
+    timezone: str = 'Asia/Ho_Chi_Minh'
+    market_code: str = 'VN_STOCK'
+    market: PrefetchMarketConfig = field(default_factory=PrefetchMarketConfig)
+    profiles: Dict[str, PrefetchProfile] = field(default_factory=lambda: {
+        k: PrefetchProfile() for k in PREFETCH_PROFILE_KEYS
+    })
+    jitter_percent: float = 15.0
+    cooldown_multiplier_on_429: float = 2.0
+    max_interval_seconds: int = 1800
+    
+    def validate(self):
+        missing = set(PREFETCH_PROFILE_KEYS) - set(self.profiles.keys())
+        if missing:
+            raise ValueError(f"Missing profiles: {missing}")
+        for name, profile in self.profiles.items():
+            profile.validate()
+        assert 0 <= self.jitter_percent <= 50, "jitter_percent must be 0-50"
+
+# Rulebook for frontend validation
+PREFETCH_TIME_POLICY_RULEBOOK = {
+    'profiles': {
+        'interval_seconds_min': 1,
+        'batch_size_min': 1,
+        'symbol_limit_min': 0,
+        'max_retries_min': 0,
+    },
+    'jitter_percent': {'min': 0, 'max': 50},
+    'cooldown_multiplier_on_429': {'min': 1.0},
+    'max_interval_seconds': {'min': 60},
+}
+```
+
+#### Domain 3: Signal Services Schema
+
+```python
+# backend/service_ops/domain_configs/signal_services_config.py
+
+@dataclass
+class WhaleServiceConfig:
+    enabled: bool = True
+    default_threshold_vnd: int = 500_000_000
+    cooldown_seconds: int = 120
+    
+    def validate(self):
+        assert self.default_threshold_vnd >= 1_000_000, "threshold must be >= 1M VND"
+        assert self.cooldown_seconds >= 0
+
+@dataclass
+class DarkFlowServiceConfig:
+    enabled: bool = True
+    window_seconds: int = 300
+    warning_strength: int = 40
+    urgent_strength: int = 70
+    cooldown_seconds: int = 300
+    
+    def validate(self):
+        assert 0 <= self.warning_strength < self.urgent_strength <= 100
+        assert self.window_seconds >= 30
+
+@dataclass
+class SignalDistributionConfig:
+    websocket_enabled: bool = True
+    history_enabled: bool = True
+    fanout_batch_size: int = 200
+
+@dataclass
+class SignalServicesDomainConfig:
+    enabled: bool = True
+    whale_service: WhaleServiceConfig = field(default_factory=WhaleServiceConfig)
+    dark_flow_service: DarkFlowServiceConfig = field(default_factory=DarkFlowServiceConfig)
+    distribution: SignalDistributionConfig = field(default_factory=SignalDistributionConfig)
+    
+    def validate(self):
+        self.whale_service.validate()
+        self.dark_flow_service.validate()
+```
+
+#### Domain 4: Screener Config Schema
+
+```python
+# backend/service_ops/domain_configs/screener_config.py
+
+import re
+
+VALID_CRON_PATTERN = re.compile(
+    r'^(\*|[0-9,\-/]+)\s+(\*|[0-9,\-/]+)\s+(\*|[0-9,\-/]+)\s+(\*|[0-9,\-/]+)\s+(\*|[0-9,\-/]+)$'
+)
+
+@dataclass
+class ScreenerDomainConfig:
+    cron_expression: str = '*/5 * * * *'
+    is_user_custom_screener_enabled: bool = True
+    
+    def validate(self):
+        if not VALID_CRON_PATTERN.match(self.cron_expression.strip()):
+            raise ValueError(f"Invalid cron expression: {self.cron_expression}")
+```
+
+#### Integrate vào ServiceDefinition
+
+```python
+# backend/service_ops/models.py
+
+DOMAIN_CONFIG_CLASSES = {
+    'vnbroker': VnbrokerDomainConfig,
+    'realtime_prefetch': PrefetchTimePolicyConfig,
+    'signal_intelligence': SignalServicesDomainConfig,
+    'screener': ScreenerDomainConfig,
+}
+
+class ServiceDefinition(models.Model):
+    ...
+    domain = models.CharField(max_length=64)
+    config_json = models.JSONField(default=dict)
+    
+    def get_typed_config(self):
+        """Return validated typed config object for this domain"""
+        cls = DOMAIN_CONFIG_CLASSES.get(self.domain)
+        if cls is None:
+            return self.config_json  # Generic fallback
+        return cls.from_json(self.config_json.copy())
+    
+    def set_typed_config(self, typed_config):
+        """Validate then save typed config"""
+        typed_config.validate()
+        self.config_json = typed_config.to_json()
+```
+
+---
+
+### A.1.2 Signal Governance / Ownership Matrix — Phải giữ nguyên
+
+Admin-Ops hiện tại có **Ownership Matrix** trả về trong mỗi response, điều khiển write-guards trong frontend. SOC **phải kế thừa** mechanism này, không đơn giản hoá thành `enabled=True/False`.
+
+```python
+# backend/service_ops/ownership.py
+
+from enum import Enum
+
+class OwnershipStatus(str, Enum):
+    NATIVE_WRITE = 'native-write'           # SOC owns fully, can write
+    BRIDGE_WRITE = 'bridge-write'           # SOC routes write through legacy bridge
+    READ_PREVIEW = 'read-preview'           # SOC read-only, legacy owns write
+    GUARDED_WRITE = 'guarded-write'         # SOC owns with additional approval gate
+    BRIDGE_PREVIEW = 'bridge-preview'       # Read from bridge, preview only
+
+WRITABLE_STATUSES = frozenset({
+    OwnershipStatus.NATIVE_WRITE,
+    OwnershipStatus.BRIDGE_WRITE,
+    OwnershipStatus.GUARDED_WRITE,
+})
+
+@dataclass
+class DomainOwnershipEntry:
+    owner: str
+    status: OwnershipStatus
+    notes: str = ''
+
+@dataclass  
+class ServiceOwnershipMatrix:
+    """Attached to each ServiceDefinition response; frontend reads this to enable/disable write controls"""
+    surface: str
+    mode: str  # e.g., 'native-read-preview', 'native-read-legacy-write-through'
+    domains: Dict[str, DomainOwnershipEntry] = field(default_factory=dict)
+    compatibility: Dict[str, DomainOwnershipEntry] = field(default_factory=dict)
+    deprecation_notes: List[str] = field(default_factory=list)
+    
+    def is_domain_writable(self, domain_key: str) -> bool:
+        entry = self.domains.get(domain_key)
+        if entry is None:
+            return True  # Unknown domain: allow by default
+        return entry.status in WRITABLE_STATUSES
+    
+    def get_write_block_reason(self, domain_key: str) -> Optional[str]:
+        entry = self.domains.get(domain_key)
+        if entry is None or entry.status in WRITABLE_STATUSES:
+            return None
+        return (
+            f"Domain '{domain_key}' bị khóa write: "
+            f"owner={entry.owner}, status={entry.status}. {entry.notes}"
+        )
+    
+    def to_response_dict(self) -> dict:
+        return {
+            'surface': self.surface,
+            'mode': self.mode,
+            'domains': {
+                k: {'owner': v.owner, 'status': v.status, 'notes': v.notes}
+                for k, v in self.domains.items()
+            },
+            'deprecation_notes': self.deprecation_notes,
+        }
+```
+
+#### Ownership Matrix mặc định cho từng domain
+
+```python
+# Per-domain ownership SSOT
+SIGNAL_INTELLIGENCE_OWNERSHIP = ServiceOwnershipMatrix(
+    surface='signal_control_center',
+    mode='native-read-legacy-write-through',
+    domains={
+        'services_config': DomainOwnershipEntry(
+            owner='legacy-global-signal-policy', status=OwnershipStatus.BRIDGE_WRITE,
+            notes='Signal config write goes through legacy SSOT bridge'
+        ),
+        'universe_policy': DomainOwnershipEntry(
+            owner='legacy-global-signal-policy', status=OwnershipStatus.BRIDGE_WRITE,
+        ),
+        'retention_policy': DomainOwnershipEntry(
+            owner='data-ops-runtime-policy', status=OwnershipStatus.READ_PREVIEW,
+            notes='Retention owned by Data Ops; Signal Center read-only preview'
+        ),
+        'materialization_preview': DomainOwnershipEntry(
+            owner='core-market-serving', status=OwnershipStatus.NATIVE_WRITE,
+        ),
+        'jobs': DomainOwnershipEntry(
+            owner='core-admin-ops', status=OwnershipStatus.GUARDED_WRITE,
+        ),
+        'whale_governance': DomainOwnershipEntry(
+            owner='whale-mission-control', status=OwnershipStatus.BRIDGE_PREVIEW,
+            notes='Whale policy via pending/draft bridge; requires mission-control approval'
+        ),
+    },
+    deprecation_notes=[
+        'Signal policy writer vẫn thuộc legacy global-signal SSOT; SOC ở slice này chỉ mở native read-side và preview an toàn.',
+        'raw_intraday_keep_days vẫn do Data Ops runtime owner quyết định.',
+    ]
+)
+
+VNBROKER_OWNERSHIP = ServiceOwnershipMatrix(
+    surface='data_ops_center',
+    mode='native-write',
+    domains={
+        'vnbroker_config': DomainOwnershipEntry(owner='core-admin-ops', status=OwnershipStatus.NATIVE_WRITE),
+        'benchmark': DomainOwnershipEntry(owner='core-admin-ops', status=OwnershipStatus.NATIVE_WRITE),
+        'changelog': DomainOwnershipEntry(owner='core-admin-ops', status=OwnershipStatus.NATIVE_WRITE),
+    }
+)
+```
+
+---
+
+### A.1.3 Preview Endpoints — Phải có diff + impact trước khi apply
+
+Admin-Ops có 5 preview endpoints với semantic "xem trước thay đổi". SOC phải giữ pattern này:
+
+```python
+# backend/service_ops/views/preview_mixin.py
+
+class ConfigPreviewMixin:
+    """
+    Mixin cho mọi config update endpoint.
+    GET ?preview=1 → trả về diff + impacted_count + warnings, không apply
+    POST/PUT → apply thật
+    """
+    
+    def get_config_diff(self, current_config, proposed_config) -> dict:
+        """Return human-readable diff between current and proposed config"""
+        diff = {}
+        for key in set(list(current_config.keys()) + list(proposed_config.keys())):
+            old_val = current_config.get(key)
+            new_val = proposed_config.get(key)
+            if old_val != new_val:
+                diff[key] = {'from': old_val, 'to': new_val}
+        return diff
+    
+    def estimate_impact(self, service_id, proposed_config) -> dict:
+        """Estimate how many symbols/tasks will be affected by this config change"""
+        # Domain-specific impact calculation
+        from signal_intelligence.models import WhaleAlertCanonical
+        from market_serving.models import SymbolSnapshot
+        
+        if service_id == 'signal_whale_detection':
+            new_threshold = proposed_config.get('default_threshold_vnd', 500_000_000)
+            affected = WhaleAlertCanonical.objects.filter(
+                amount_vnd__lt=new_threshold
+            ).count()
+            return {
+                'signals_would_be_suppressed': affected,
+                'warning': f'{affected} historical signals below new threshold' if affected else None
+            }
+        
+        return {'estimated_symbols': SymbolSnapshot.objects.count()}
+```
+
+---
+
+## SUPPLEMENT A.2 — SYMBOL UNIVERSE MATRIX: KIẾN TRÚC SONG SONG ĐA PROVIDER
+
+### A.2.1 Vấn đề hiện tại
+
+Hiện tại prefetch shard logic chạy theo shard tuyến tính:
+- Shard 1: VCI → symbols 1-50
+- Shard 2: VCI → symbols 51-100
+- Không có provider awareness, không có fallback assignment, không có dedup guarantee
+
+**Hậu quả**: Khi VCI rate-limit (429), toàn bộ queue bị block. Không tận dụng được KBS/TCBS/SSI song song.
+
+### A.2.2 Symbol Universe Matrix Design
+
+```
+Khái niệm: ma trận (SymbolGroup × Provider) với state machine per cell
+
+             VCI    KBS    TCBS   SSI
+            ──────────────────────────
+Group A (G1) [DONE] [    ] [    ] [    ]  ← VCI đã lấy xong, các cột khác trống
+Group B (G2) [FAIL] [DONE] [    ] [    ]  ← VCI thất bại, KBS lấy xong
+Group C (G3) [    ] [    ] [WORK] [    ]  ← TCBS đang lấy
+Group D (G4) [WORK] [    ] [    ] [    ]  ← VCI đang lấy
+Group E (G5) [PEND] [PEND] [    ] [    ]  ← Chờ assignment
+...
+```
+
+**Rules**:
+1. Mỗi row (SymbolGroup) chỉ cần **một cell DONE** là xong — không cần tất cả providers lấy xong
+2. Một cell được **claim trước khi scrape** (optimistic lock với TTL)
+3. Nếu cell FAIL, coordinator assign row đó sang provider khác
+4. Coordinator track **provider load** để balance
+
+### A.2.3 Database Models
+
+```python
+# backend/service_ops/models_matrix.py
+
+from django.db import models
+import uuid
+from django.utils import timezone
+from datetime import timedelta
+
+class ScrapeMatrix(models.Model):
+    """
+    Một scrape cycle — ma trận đầy đủ cho một lần chạy.
+    Mỗi cycle có nhiều ScrapeMatrixCell (rows × providers).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    
+    DATA_TYPE_CHOICES = [
+        ('realtime_price', 'Giá realtime'),
+        ('ohlcv_daily', 'OHLCV ngày'),
+        ('intraday_tape', 'Tape intraday'),
+        ('financial_ratio', 'Chỉ số tài chính'),
+        ('price_board_snapshot', 'Bảng giá snapshot'),
+    ]
+    data_type = models.CharField(max_length=64, choices=DATA_TYPE_CHOICES)
+    
+    TIER_CHOICES = [('hot', 'Hot'), ('warm', 'Warm'), ('cold', 'Cold')]
+    tier = models.CharField(max_length=16, choices=TIER_CHOICES, default='hot')
+    
+    # Trạng thái cycle
+    STATUS_CHOICES = [
+        ('planning', 'Đang lên kế hoạch'),
+        ('in_progress', 'Đang chạy'),
+        ('completed', 'Hoàn thành'),
+        ('partial', 'Hoàn thành một phần'),
+        ('failed', 'Thất bại'),
+    ]
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default='planning')
+    
+    # Thống kê
+    total_symbols = models.IntegerField(default=0)
+    completed_symbols = models.IntegerField(default=0)
+    failed_symbols = models.IntegerField(default=0)
+    
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Metadata
+    triggered_by = models.CharField(max_length=64, default='scheduled')
+    session_label = models.CharField(max_length=128, blank=True)  # e.g., 'market_open_2026-05-13'
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['data_type', 'tier', '-started_at']),
+            models.Index(fields=['status']),
+        ]
+        ordering = ['-started_at']
+    
+    def completion_rate(self) -> float:
+        if self.total_symbols == 0:
+            return 0.0
+        return self.completed_symbols / self.total_symbols
+    
+    def is_done(self) -> bool:
+        """True khi tất cả symbols đã có ít nhất một cell DONE"""
+        return self.cells.filter(
+            status__in=['pending', 'claimed', 'in_progress']
+        ).count() == 0
+
+
+class ScrapeMatrixCell(models.Model):
+    """
+    Một ô trong ma trận: (ScrapeMatrix, SymbolGroup, Provider).
+    State machine: pending → claimed → in_progress → done / failed → reassigned
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    matrix = models.ForeignKey(ScrapeMatrix, on_delete=models.CASCADE, related_name='cells')
+    
+    # Định danh ô
+    group_key = models.CharField(max_length=64)           # e.g., 'hot_0', 'hot_1', 'warm_vn30'
+    symbols = models.JSONField()                           # ['VCB', 'VPB', 'TCB', ...] (≤50 symbols)
+    symbol_count = models.IntegerField()
+    
+    PROVIDER_CHOICES = [
+        ('VCI', 'VCI'), ('KBS', 'KBS'), ('TCBS', 'TCBS'), ('SSI', 'SSI'), ('MSI', 'MSI'),
+    ]
+    provider = models.CharField(max_length=16, choices=PROVIDER_CHOICES)
+    
+    # Priority: lower = higher priority
+    priority = models.IntegerField(default=100)
+    
+    # State machine
+    STATUS_CHOICES = [
+        ('pending', 'Chờ'),
+        ('claimed', 'Đã nhận'),
+        ('in_progress', 'Đang lấy'),
+        ('done', 'Xong'),
+        ('failed', 'Lỗi'),
+        ('reassigned', 'Đã chuyển provider'),
+        ('skipped', 'Bỏ qua (row đã done bởi provider khác)'),
+    ]
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default='pending')
+    
+    # Claim info (optimistic lock)
+    claimed_by_worker = models.CharField(max_length=256, null=True, blank=True)
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    claim_ttl_seconds = models.IntegerField(default=30)        # Claim hết hạn sau N giây
+    last_heartbeat_at = models.DateTimeField(null=True, blank=True)
+    
+    # Execution
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    duration_seconds = models.FloatField(null=True, blank=True)
+    
+    # Results
+    fetched_count = models.IntegerField(default=0)
+    failed_symbol_list = models.JSONField(default=list)       # Symbols that failed
+    error_message = models.TextField(blank=True)
+    retry_count = models.IntegerField(default=0)
+    
+    # Reassignment tracking
+    previous_provider = models.CharField(max_length=16, blank=True)
+    reassignment_reason = models.CharField(max_length=256, blank=True)
+    
+    class Meta:
+        unique_together = [['matrix', 'group_key', 'provider']]
+        indexes = [
+            models.Index(fields=['matrix', 'status', 'priority']),
+            models.Index(fields=['claimed_by_worker', 'status']),
+            models.Index(fields=['claim_ttl_seconds', 'claimed_at']),
+        ]
+    
+    def is_claim_expired(self) -> bool:
+        if self.claimed_at is None:
+            return False
+        deadline = self.claimed_at + timedelta(seconds=self.claim_ttl_seconds)
+        # Extend by heartbeat
+        if self.last_heartbeat_at and self.last_heartbeat_at > self.claimed_at:
+            deadline = self.last_heartbeat_at + timedelta(seconds=self.claim_ttl_seconds)
+        return timezone.now() > deadline
+    
+    @classmethod
+    def try_claim(cls, cell_id: str, worker_id: str) -> bool:
+        """
+        Atomic claim: chỉ thành công nếu cell vẫn pending.
+        Sử dụng select_for_update để tránh race condition.
+        """
+        from django.db import transaction
+        with transaction.atomic():
+            cell = cls.objects.select_for_update().filter(
+                id=cell_id, status='pending'
+            ).first()
+            if cell is None:
+                return False
+            cell.status = 'claimed'
+            cell.claimed_by_worker = worker_id
+            cell.claimed_at = timezone.now()
+            cell.save(update_fields=['status', 'claimed_by_worker', 'claimed_at'])
+            return True
+
+
+class SymbolGroupConfig(models.Model):
+    """
+    Cấu hình nhóm symbol: quy tắc phân nhóm, provider affinity, và tier assignment.
+    """
+    group_key = models.CharField(max_length=64, unique=True)
+    display_name = models.CharField(max_length=128)
+    
+    TIER_CHOICES = [('hot', 'Hot'), ('warm', 'Warm'), ('cold', 'Cold')]
+    tier = models.CharField(max_length=16, choices=TIER_CHOICES)
+    
+    # Danh sách symbol
+    symbols = models.JSONField()
+    symbol_count = models.IntegerField()
+    
+    # Provider affinity (providers phù hợp nhất cho group này)
+    preferred_providers = models.JSONField(default=list)      # ['VCI', 'KBS']
+    fallback_providers = models.JSONField(default=list)       # ['TCBS', 'SSI']
+    
+    # Rate limit hints
+    max_concurrent_per_provider = models.IntegerField(default=2)
+    
+    updated_at = models.DateTimeField(auto_now=True)
+```
+
+### A.2.4 Matrix Coordinator
+
+```python
+# backend/service_ops/matrix_coordinator.py
+
+from celery import shared_task
+from django.db import transaction
+from .models_matrix import ScrapeMatrix, ScrapeMatrixCell, SymbolGroupConfig
+import uuid
+
+class MatrixCoordinator:
+    """
+    Điều phối một scrape cycle:
+    1. Tạo ScrapeMatrix
+    2. Phân cell cho providers (assignment algorithm)
+    3. Dispatch Celery tasks
+    4. Monitor + reassign failed cells
+    5. Mark cycle complete
+    """
+    
+    def __init__(self, data_type: str, tier: str = 'hot'):
+        self.data_type = data_type
+        self.tier = tier
+    
+    def build_matrix(self, session_label: str = '') -> ScrapeMatrix:
+        """
+        Bước 1: Tạo matrix mới từ SymbolGroupConfig.
+        Mỗi group được assign cho một primary provider.
+        """
+        groups = SymbolGroupConfig.objects.filter(tier=self.tier)
+        matrix = ScrapeMatrix.objects.create(
+            data_type=self.data_type,
+            tier=self.tier,
+            total_symbols=sum(g.symbol_count for g in groups),
+            session_label=session_label or f'{self.data_type}_{self.tier}_{uuid.uuid4().hex[:8]}',
+        )
+        
+        cells_to_create = []
+        for i, group in enumerate(groups):
+            # Primary provider = preferred_providers[0] (nếu có) hoặc VCI mặc định
+            primary_provider = (
+                group.preferred_providers[0]
+                if group.preferred_providers else 'VCI'
+            )
+            cells_to_create.append(ScrapeMatrixCell(
+                matrix=matrix,
+                group_key=group.group_key,
+                symbols=group.symbols,
+                symbol_count=group.symbol_count,
+                provider=primary_provider,
+                priority=i,  # priority theo thứ tự tier sort
+                status='pending',
+            ))
+        
+        ScrapeMatrixCell.objects.bulk_create(cells_to_create)
+        return matrix
+    
+    def dispatch_all(self, matrix: ScrapeMatrix):
+        """
+        Bước 2: Dispatch Celery tasks cho tất cả pending cells.
+        Tôn trọng provider concurrency limits.
+        """
+        pending_cells = matrix.cells.filter(status='pending').order_by('priority')
+        
+        provider_dispatch_count = {}
+        MAX_CONCURRENT_PER_PROVIDER = 4
+        
+        for cell in pending_cells:
+            count = provider_dispatch_count.get(cell.provider, 0)
+            if count >= MAX_CONCURRENT_PER_PROVIDER:
+                continue  # Skip: provider đã đạt giới hạn concurrent
+            
+            scrape_cell_task.delay(str(cell.id))
+            provider_dispatch_count[cell.provider] = count + 1
+    
+    def reassign_failed_cells(self, matrix: ScrapeMatrix):
+        """
+        Bước 3: Với các cell FAILED hoặc claim expired, 
+        assign lại sang fallback provider.
+        """
+        # Thu hồi expired claims
+        for cell in matrix.cells.filter(status='claimed'):
+            if cell.is_claim_expired():
+                cell.status = 'pending'
+                cell.claimed_by_worker = None
+                cell.claimed_at = None
+                cell.save(update_fields=['status', 'claimed_by_worker', 'claimed_at'])
+        
+        failed_cells = matrix.cells.filter(status='failed')
+        for cell in failed_cells:
+            group_config = SymbolGroupConfig.objects.filter(
+                group_key=cell.group_key
+            ).first()
+            
+            if group_config is None:
+                continue
+            
+            # Tìm fallback provider chưa thử
+            tried_providers = {cell.provider, cell.previous_provider}
+            fallbacks = [
+                p for p in group_config.fallback_providers
+                if p not in tried_providers
+            ]
+            
+            if not fallbacks:
+                # Không còn provider nào → đánh dấu permanent failure
+                continue
+            
+            next_provider = fallbacks[0]
+            
+            # Tạo cell mới với provider mới
+            ScrapeMatrixCell.objects.create(
+                matrix=matrix,
+                group_key=cell.group_key,
+                symbols=cell.symbols,
+                symbol_count=cell.symbol_count,
+                provider=next_provider,
+                priority=cell.priority,
+                previous_provider=cell.provider,
+                reassignment_reason=f'Primary {cell.provider} failed: {cell.error_message[:100]}',
+                status='pending',
+            )
+            
+            # Đánh dấu cell cũ là reassigned
+            cell.status = 'reassigned'
+            cell.save(update_fields=['status'])
+    
+    def check_completion(self, matrix: ScrapeMatrix) -> bool:
+        """
+        Bước 4: Kiểm tra xem tất cả row đã có ít nhất một cell DONE chưa.
+        Nếu có row chưa done → partial.
+        """
+        done_groups = set(
+            matrix.cells.filter(status='done').values_list('group_key', flat=True)
+        )
+        all_groups = set(
+            SymbolGroupConfig.objects.filter(tier=self.tier).values_list('group_key', flat=True)
+        )
+        
+        undone = all_groups - done_groups
+        
+        if not undone:
+            matrix.status = 'completed'
+            matrix.completed_at = timezone.now()
+            matrix.save(update_fields=['status', 'completed_at'])
+            return True
+        
+        # Check nếu tất cả undone groups đều đã failed hết providers
+        has_hope = matrix.cells.filter(
+            group_key__in=undone,
+            status__in=['pending', 'claimed', 'in_progress']
+        ).exists()
+        
+        if not has_hope:
+            matrix.status = 'partial'
+            matrix.completed_at = timezone.now()
+            matrix.save(update_fields=['status', 'completed_at'])
+        
+        return False
+
+
+@shared_task(
+    name='service_ops.scrape_cell_task',
+    bind=True,
+    max_retries=3,
+    soft_time_limit=25,
+    time_limit=30,
+)
+def scrape_cell_task(self, cell_id: str):
+    """
+    Worker task: nhận một cell, claim, scrape, report.
+    """
+    from market_data.vnbroker_adapter import (
+        fetch_realtime_price, fetch_price_board_snapshot
+    )
+    
+    worker_id = self.request.hostname
+    
+    # Claim cell
+    claimed = ScrapeMatrixCell.try_claim(cell_id, worker_id)
+    if not claimed:
+        # Cell đã được claim bởi worker khác → skip
+        return {'skipped': True, 'reason': 'already_claimed'}
+    
+    cell = ScrapeMatrixCell.objects.get(id=cell_id)
+    cell.status = 'in_progress'
+    cell.started_at = timezone.now()
+    cell.save(update_fields=['status', 'started_at'])
+    
+    try:
+        # Kiểm tra xem row đã done bởi provider khác chưa
+        already_done = ScrapeMatrixCell.objects.filter(
+            matrix=cell.matrix,
+            group_key=cell.group_key,
+            status='done',
+        ).exclude(id=cell.id).exists()
+        
+        if already_done:
+            cell.status = 'skipped'
+            cell.save(update_fields=['status'])
+            return {'skipped': True, 'reason': 'row_already_done_by_another_provider'}
+        
+        # Gọi SSOT adapter
+        if cell.matrix.data_type == 'realtime_price':
+            results = fetch_price_board_snapshot(cell.symbols)
+        elif cell.matrix.data_type == 'intraday_tape':
+            results = {s: fetch_realtime_price(s) for s in cell.symbols}
+        else:
+            raise NotImplementedError(f"data_type={cell.matrix.data_type}")
+        
+        # Heartbeat trong khi scrape
+        cell.last_heartbeat_at = timezone.now()
+        cell.save(update_fields=['last_heartbeat_at'])
+        
+        # Đánh dấu done
+        cell.status = 'done'
+        cell.fetched_count = len(results)
+        cell.completed_at = timezone.now()
+        cell.duration_seconds = (cell.completed_at - cell.started_at).total_seconds()
+        cell.save(update_fields=['status', 'fetched_count', 'completed_at', 'duration_seconds'])
+        
+        # Update matrix counter
+        ScrapeMatrix.objects.filter(id=cell.matrix_id).update(
+            completed_symbols=models.F('completed_symbols') + cell.fetched_count
+        )
+        
+        return {'done': True, 'fetched': cell.fetched_count}
+    
+    except Exception as exc:
+        cell.status = 'failed'
+        cell.error_message = str(exc)[:500]
+        cell.retry_count += 1
+        cell.save(update_fields=['status', 'error_message', 'retry_count'])
+        
+        ScrapeMatrix.objects.filter(id=cell.matrix_id).update(
+            failed_symbols=models.F('failed_symbols') + cell.symbol_count
+        )
+        
+        raise  # Let Celery handle retry
+
+
+@shared_task(name='service_ops.run_scrape_cycle')
+def run_scrape_cycle(data_type: str, tier: str = 'hot', session_label: str = ''):
+    """
+    Entry point: tạo cycle, build matrix, dispatch.
+    Được gọi bởi Celery Beat theo schedule.
+    """
+    coordinator = MatrixCoordinator(data_type=data_type, tier=tier)
+    matrix = coordinator.build_matrix(session_label=session_label)
+    matrix.status = 'in_progress'
+    matrix.started_at = timezone.now()
+    matrix.save(update_fields=['status', 'started_at'])
+    
+    coordinator.dispatch_all(matrix)
+    return {'matrix_id': str(matrix.id), 'total_symbols': matrix.total_symbols}
+
+
+@shared_task(name='service_ops.monitor_scrape_cycle')
+def monitor_scrape_cycle(matrix_id: str):
+    """
+    Monitor task chạy mỗi 15 giây: reassign failed cells + check completion.
+    """
+    try:
+        matrix = ScrapeMatrix.objects.get(id=matrix_id)
+    except ScrapeMatrix.DoesNotExist:
+        return
+    
+    if matrix.status in ('completed', 'partial', 'failed'):
+        return  # Cycle đã kết thúc
+    
+    coordinator = MatrixCoordinator(data_type=matrix.data_type, tier=matrix.tier)
+    coordinator.reassign_failed_cells(matrix)
+    
+    # Dispatch lại pending cells mới (từ reassignment)
+    new_pending = matrix.cells.filter(status='pending')
+    for cell in new_pending:
+        scrape_cell_task.delay(str(cell.id))
+    
+    coordinator.check_completion(matrix)
+```
+
+### A.2.5 REST Endpoints cho Matrix Dashboard
+
+```python
+# backend/service_ops/views/matrix_views.py
+
+class ScrapeMatrixViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ScrapeMatrix.objects.all()
+    serializer_class = ScrapeMatrixSerializer
+    filterset_fields = ['data_type', 'tier', 'status']
+    ordering = ['-started_at']
+    
+    @action(detail=False, methods=['post'])
+    def trigger_cycle(self, request):
+        """POST /api/soc/matrix/trigger_cycle/"""
+        data_type = request.data.get('data_type', 'realtime_price')
+        tier = request.data.get('tier', 'hot')
+        
+        task = run_scrape_cycle.delay(data_type=data_type, tier=tier)
+        return Response({'task_id': task.id, 'status': 'dispatched'}, status=202)
+    
+    @action(detail=True, methods=['get'])
+    def cell_heatmap(self, request, pk=None):
+        """GET /api/soc/matrix/{id}/cell_heatmap/ — Matrix visualization data"""
+        matrix = self.get_object()
+        cells = matrix.cells.values(
+            'group_key', 'provider', 'status', 'fetched_count',
+            'duration_seconds', 'retry_count'
+        )
+        return Response({
+            'matrix_id': str(matrix.id),
+            'data_type': matrix.data_type,
+            'completion_rate': matrix.completion_rate(),
+            'cells': list(cells),
+        })
+    
+    @action(detail=True, methods=['get'])
+    def progress(self, request, pk=None):
+        """GET /api/soc/matrix/{id}/progress/ — Live progress polling"""
+        matrix = self.get_object()
+        return Response({
+            'status': matrix.status,
+            'total_symbols': matrix.total_symbols,
+            'completed_symbols': matrix.completed_symbols,
+            'failed_symbols': matrix.failed_symbols,
+            'completion_pct': round(matrix.completion_rate() * 100, 1),
+            'elapsed_seconds': (
+                (timezone.now() - matrix.started_at).total_seconds()
+                if matrix.started_at else None
+            ),
+        })
+```
+
+---
+
+## SUPPLEMENT A.3 — BACKEND API DESIGN CHI TIẾT (PER SERVICE DOMAIN)
+
+### A.3.1 URL Structure chuẩn hóa
+
+```python
+# packages/core/backend/src/vninvest_core/contracts/soc/urls.py
+
+from django.urls import path, include
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+router.register(r'services', ServiceDefinitionViewSet, basename='soc-service')
+router.register(r'health', ServiceHealthViewSet, basename='soc-health')
+router.register(r'runs', ServiceRunViewSet, basename='soc-run')
+router.register(r'config', ServiceConfigViewSet, basename='soc-config')
+router.register(r'matrix', ScrapeMatrixViewSet, basename='soc-matrix')
+
+urlpatterns = [
+    path('', include(router.urls)),
+    
+    # Domain-specific endpoints (preserve Admin-Ops semantic)
+    path('domains/vnbroker/', include('service_ops.domain_urls.vnbroker')),
+    path('domains/prefetch/', include('service_ops.domain_urls.prefetch')),
+    path('domains/signals/', include('service_ops.domain_urls.signals')),
+    path('domains/screener/', include('service_ops.domain_urls.screener')),
+    
+    # Matrix scraping
+    path('matrix/', include('service_ops.domain_urls.matrix')),
+    
+    # Operator views
+    path('operator/overview/', OperatorOverviewView.as_view(), name='soc-operator-overview'),
+    path('operator/health/', OperatorHealthView.as_view(), name='soc-operator-health'),
+]
+
+# In core urls.py: path('api/soc/', include('vninvest_core.contracts.soc.urls'))
+```
+
+### A.3.2 VNBroker Domain Endpoints
+
+```
+GET  /api/soc/domains/vnbroker/config/current/         → typed VnbrokerDomainConfig + ownership
+PUT  /api/soc/domains/vnbroker/config/update/          → validate + save + changelog entry
+POST /api/soc/domains/vnbroker/config/reset/           → reset to defaults
+GET  /api/soc/domains/vnbroker/config/changelog/       → cursor-paginated audit log
+GET  /api/soc/domains/vnbroker/benchmark/latest/       → latest benchmark report
+POST /api/soc/domains/vnbroker/benchmark/run/          → trigger async benchmark task
+GET  /api/soc/domains/vnbroker/config/preview/         → diff vs current + impact estimate
+```
+
+**Response contract mẫu cho `config/current/`**:
+```json
+{
+  "ok": true,
+  "domain": "vnbroker",
+  "config": {
+    "source_priority": ["VCI"],
+    "retry_backoff_seconds": 0.5,
+    "rate_limit_cooldown_seconds": 30,
+    "fallback_sources": ["VCI"],
+    "timeout_config": {
+      "price_board": 8,
+      "intraday": 8,
+      "history": 15
+    },
+    "enable_caching": true
+  },
+  "ownership": {
+    "surface": "data_ops_center",
+    "mode": "native-write",
+    "domains": {
+      "vnbroker_config": {"owner": "core-admin-ops", "status": "native-write"}
+    }
+  },
+  "rulebook": {
+    "source_priority": {"allowed": ["VCI", "KBS", "TCBS", "SSI", "MSI"]},
+    "timeout_config": {"price_board": {"min": 1, "max": 60}}
+  },
+  "version": 7,
+  "updated_at": "2026-05-13T08:00:00Z"
+}
+```
+
+### A.3.3 Prefetch Domain Endpoints
+
+```
+GET  /api/soc/domains/prefetch/time-policy/            → PrefetchTimePolicyConfig + 6 profiles
+PUT  /api/soc/domains/prefetch/time-policy/            → validate all profiles + save
+GET  /api/soc/domains/prefetch/time-policy/preview/    → diff + affected schedule count
+POST /api/soc/domains/prefetch/warm/                   → trigger warm task với symbols list
+GET  /api/soc/domains/prefetch/runtime-settings/       → current runtime settings snapshot
+PUT  /api/soc/domains/prefetch/runtime-settings/       → update runtime settings
+POST /api/soc/domains/prefetch/intraday-universe/warm-now/  → warm intraday universe
+```
+
+### A.3.4 Signal Intelligence Domain Endpoints
+
+```
+GET  /api/soc/domains/signals/summary/                 → lifecycle + materialization lag + ownership
+GET  /api/soc/domains/signals/config/                  → SignalServicesDomainConfig + ownership matrix
+GET  /api/soc/domains/signals/config/preview/          → diff + impact (thresholds → N signals suppressed)
+PUT  /api/soc/domains/signals/config/                  → [GUARDED] validate + bridge-write to legacy SSOT
+GET  /api/soc/domains/signals/universe/preview/        → preview detection universe (total symbols)
+POST /api/soc/domains/signals/universe/apply/          → [GUARDED] apply universe via bridge
+GET  /api/soc/domains/signals/materialization/preview/ → materialization forecast + impacted_counts
+GET  /api/soc/domains/signals/retention/preview/       → retention preview + estimated freed storage
+GET  /api/soc/domains/signals/events/recent/           → recent events với symbol_filter + cursor
+GET  /api/soc/domains/signals/jobs/                    → IngestRun list với cursor pagination
+POST /api/soc/domains/signals/jobs/run/                → [GUARDED] manual trigger
+POST /api/soc/domains/signals/jobs/{id}/retry/         → [GUARDED] retry failed job
+GET  /api/soc/domains/signals/whale-governance/        → whale mission-control bridge preview
+```
+
+### A.3.5 Screener Domain Endpoints
+
+```
+GET  /api/soc/domains/screener/config/                 → ScreenerDomainConfig
+PUT  /api/soc/domains/screener/config/                 → update cron + enabled flag
+GET  /api/soc/domains/screener/rules/                  → list GlobalScreenerRule
+POST /api/soc/domains/screener/rules/                  → create rule
+PUT  /api/soc/domains/screener/rules/{id}/             → update rule
+DELETE /api/soc/domains/screener/rules/{id}/           → delete rule
+POST /api/soc/domains/screener/run-manual/             → trigger manual screener run
+```
+
+---
+
+## SUPPLEMENT A.4 — FRONTEND COMPONENT DESIGN (TAILWIND DARK THEME)
+
+### A.4.1 Design System — Phải nhất quán với Admin-Ops hiện tại
+
+**Màu sắc chuẩn**:
+```
+Background:     bg-slate-950       #020617
+Card:           bg-slate-950/70    với border-slate-800
+Surface light:  bg-slate-900/70
+Text primary:   text-slate-100
+Text secondary: text-slate-400
+Text muted:     text-slate-500
+
+Status colors:
+  Healthy/Done:   text-emerald-300  bg-emerald-500/10  border-emerald-500/40
+  Degraded/Warn:  text-amber-300    bg-amber-500/10    border-amber-500/40
+  Unhealthy/Fail: text-rose-300     bg-rose-500/10     border-rose-500/40
+  Running:        text-sky-300      bg-sky-500/10      border-sky-500/40
+  Pending:        text-slate-300    bg-slate-900       border-slate-700
+  
+Ownership badges:
+  Owner:          text-cyan-200     bg-cyan-500/10     border-cyan-500/30
+  Mode:           text-violet-200   bg-violet-500/10   border-violet-500/30
+  Status:         text-slate-300    bg-slate-900       border-slate-700
+```
+
+### A.4.2 Component Library cho SOC
+
+#### Component 1: `ServiceHealthCard.jsx`
+```jsx
+// frontend/src/components/soc/ServiceHealthCard.jsx
+
+import { useI18n } from '../../context/LangContext';
+
+const STATUS_STYLES = {
+  healthy:   'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+  degraded:  'border-amber-500/40   bg-amber-500/10   text-amber-300',
+  unhealthy: 'border-rose-500/40    bg-rose-500/10    text-rose-300',
+  running:   'border-sky-500/40     bg-sky-500/10     text-sky-300',
+  unknown:   'border-slate-700      bg-slate-900      text-slate-300',
+};
+
+export default function ServiceHealthCard({ service }) {
+  const { t } = useI18n();
+  const status = service.latest_health?.status ?? 'unknown';
+  const lastRun = service.latest_run?.started_at;
+  const failures = service.latest_health?.consecutive_failures ?? 0;
+  
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 hover:border-slate-600 transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-100">{service.name}</p>
+          <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-slate-500">{service.domain}</p>
+        </div>
+        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${STATUS_STYLES[status]}`}>
+          {t(`soc.status.${status}`, { defaultValue: status })}
+        </span>
+      </div>
+      
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-2.5">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+            {t('soc.lastRun', { defaultValue: 'Lần chạy gần nhất' })}
+          </p>
+          <p className="mt-1 text-xs text-slate-300">
+            {lastRun ? new Date(lastRun).toLocaleString('vi-VN') : '—'}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-2.5">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+            {t('soc.consecutiveFailures', { defaultValue: 'Lỗi liên tiếp' })}
+          </p>
+          <p className={`mt-1 text-xs font-semibold ${failures > 0 ? 'text-rose-300' : 'text-slate-300'}`}>
+            {failures}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+#### Component 2: `OwnershipBadgeRow.jsx`
+```jsx
+// frontend/src/components/soc/OwnershipBadgeRow.jsx
+// Kế thừa BoundaryPanel logic từ Admin-Ops
+
+export default function OwnershipBadgeRow({ ownership, domainKey }) {
+  const { t } = useI18n();
+  if (!ownership || !domainKey) return null;
+  
+  const entry = ownership?.domains?.[domainKey];
+  if (!entry) return null;
+  
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
+      <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-cyan-200">
+        {entry.owner}
+      </span>
+      <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-violet-200">
+        {ownership.mode}
+      </span>
+      <span className={`rounded-full border px-2.5 py-1 ${
+        ['native-write', 'bridge-write', 'guarded-write'].includes(entry.status)
+          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+          : 'border-slate-700 bg-slate-900 text-slate-300'
+      }`}>
+        {entry.status}
+      </span>
+    </div>
+  );
+}
+```
+
+#### Component 3: `WriteGuardBanner.jsx`
+```jsx
+// frontend/src/components/soc/WriteGuardBanner.jsx
+// Kế thừa write-guard banner từ SignalControlCenter
+
+const WRITABLE_STATUSES = new Set(['canonical', 'native-write', 'bridge-write', 'guarded-write']);
+
+export function isOwnershipWritable(status) {
+  if (!status) return true;
+  return WRITABLE_STATUSES.has(String(status).trim().toLowerCase());
+}
+
+export default function WriteGuardBanner({ ownership, domainKeys = [], t }) {
+  const blockedReasons = domainKeys
+    .map((key) => {
+      const entry = ownership?.domains?.[key];
+      if (!entry || isOwnershipWritable(entry.status)) return null;
+      return t(`soc.writeGuard.${key}`, {
+        defaultValue: `Thao tác write đang bị khóa — ${key} thuộc ${entry.owner} (${entry.status})`,
+      });
+    })
+    .filter(Boolean);
+  
+  if (blockedReasons.length === 0) return null;
+  
+  return (
+    <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
+      <p className="text-sm font-semibold text-amber-300">
+        {t('soc.writeGuardTitle', { defaultValue: 'Write bị khóa có chủ đích' })}
+      </p>
+      <ul className="mt-2 space-y-1">
+        {blockedReasons.map((r, i) => (
+          <li key={i} className="text-xs text-amber-200/80">{r}</li>
+        ))}
+      </ul>
+      {ownership?.deprecation_notes?.map((note, i) => (
+        <p key={i} className="mt-2 text-[11px] text-slate-400">{note}</p>
+      ))}
+    </div>
+  );
+}
+```
+
+#### Component 4: `ConfigPreviewModal.jsx`
+```jsx
+// frontend/src/components/soc/ConfigPreviewModal.jsx
+// Hiển thị diff + impact trước khi apply — giữ semantic Admin-Ops
+
+export default function ConfigPreviewModal({ isOpen, onClose, onConfirm, diff, impact, warnings }) {
+  const { t } = useI18n();
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-950 p-6 shadow-2xl">
+        <h3 className="text-base font-semibold text-slate-100">
+          {t('soc.previewTitle', { defaultValue: 'Xem trước thay đổi config' })}
+        </h3>
+        
+        {/* Diff section */}
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            {t('soc.diff', { defaultValue: 'Thay đổi' })}
+          </p>
+          <div className="mt-2 space-y-1 rounded-xl border border-slate-800 bg-slate-900 p-3">
+            {Object.entries(diff || {}).map(([key, change]) => (
+              <div key={key} className="flex items-center gap-3 text-xs">
+                <span className="w-40 truncate text-slate-400">{key}</span>
+                <span className="text-rose-300 line-through">{String(change.from)}</span>
+                <span className="text-slate-500">→</span>
+                <span className="text-emerald-300">{String(change.to)}</span>
+              </div>
+            ))}
+            {Object.keys(diff || {}).length === 0 && (
+              <p className="text-xs text-slate-500">{t('soc.noDiff', { defaultValue: 'Không có thay đổi' })}</p>
+            )}
+          </div>
+        </div>
+        
+        {/* Impact section */}
+        {impact && (
+          <div className="mt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              {t('soc.impact', { defaultValue: 'Tác động ước tính' })}
+            </p>
+            <pre className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-3 text-xs text-slate-300 whitespace-pre-wrap">
+              {JSON.stringify(impact, null, 2)}
+            </pre>
+          </div>
+        )}
+        
+        {/* Warnings */}
+        {warnings?.length > 0 && (
+          <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+            {warnings.map((w, i) => (
+              <p key={i} className="text-xs text-amber-200">{w}</p>
+            ))}
+          </div>
+        )}
+        
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+          >
+            {t('common.cancel', { defaultValue: 'Hủy' })}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+          >
+            {t('soc.applyConfig', { defaultValue: 'Áp dụng' })}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+#### Component 5: `MatrixScrapeMonitor.jsx`
+```jsx
+// frontend/src/components/soc/MatrixScrapeMonitor.jsx
+// Visualize scrape matrix heatmap — tính năng mới hoàn toàn
+
+export default function MatrixScrapeMonitor({ matrixId }) {
+  const { t } = useI18n();
+  const [heatmap, setHeatmap] = useState(null);
+  const [progress, setProgress] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (!matrixId) return;
+    
+    const fetchAll = async () => {
+      const [hmRes, prRes] = await Promise.all([
+        fetch(`/api/soc/matrix/${matrixId}/cell_heatmap/`),
+        fetch(`/api/soc/matrix/${matrixId}/progress/`),
+      ]);
+      setHeatmap(await hmRes.json());
+      setProgress(await prRes.json());
+      setLoading(false);
+    };
+    
+    fetchAll();
+    // Poll mỗi 5 giây khi đang in_progress
+    const timer = setInterval(fetchAll, 5000);
+    return () => clearInterval(timer);
+  }, [matrixId]);
+  
+  const STATUS_COLORS = {
+    pending:    'bg-slate-800',
+    claimed:    'bg-sky-900',
+    in_progress:'bg-sky-500/50 animate-pulse',
+    done:       'bg-emerald-500/70',
+    failed:     'bg-rose-500/70',
+    reassigned: 'bg-amber-500/40',
+    skipped:    'bg-slate-700',
+  };
+  
+  // Group cells by group_key → row; provider → column
+  const providers = [...new Set(heatmap?.cells?.map((c) => c.provider) || [])];
+  const groups = [...new Set(heatmap?.cells?.map((c) => c.group_key) || [])];
+  const cellMap = {};
+  heatmap?.cells?.forEach((c) => { cellMap[`${c.group_key}__${c.provider}`] = c; });
+  
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-6">
+        <p className="text-sm text-slate-400">{t('soc.loading', { defaultValue: 'Đang tải...' })}</p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-100">
+          {t('soc.matrixMonitorTitle', { defaultValue: 'Ma trận scraping song song' })}
+        </h3>
+        <div className="flex items-center gap-4 text-xs text-slate-400">
+          <span>{progress?.completion_pct ?? 0}% hoàn thành</span>
+          <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+            progress?.status === 'completed'  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300' :
+            progress?.status === 'in_progress'? 'border-sky-500/40 bg-sky-500/10 text-sky-300' :
+            progress?.status === 'partial'    ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' :
+            'border-slate-700 bg-slate-900 text-slate-300'
+          }`}>
+            {progress?.status}
+          </span>
+        </div>
+      </div>
+      
+      {/* Progress bar */}
+      <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+        <div
+          className="h-full rounded-full bg-indigo-500 transition-all duration-300"
+          style={{ width: `${progress?.completion_pct ?? 0}%` }}
+        />
+      </div>
+      
+      {/* Matrix heatmap */}
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr>
+              <th className="py-1 pr-3 text-left text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                {t('soc.symbolGroup', { defaultValue: 'Nhóm symbol' })}
+              </th>
+              {providers.map((p) => (
+                <th key={p} className="px-2 py-1 text-center text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                  {p}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) => (
+              <tr key={group} className="border-t border-slate-800/50">
+                <td className="py-1.5 pr-3 font-mono text-slate-400">{group}</td>
+                {providers.map((p) => {
+                  const cell = cellMap[`${group}__${p}`];
+                  const status = cell?.status ?? 'empty';
+                  return (
+                    <td key={p} className="px-2 py-1.5 text-center">
+                      <div
+                        className={`mx-auto h-5 w-16 rounded ${STATUS_COLORS[status] || 'bg-slate-900'} cursor-pointer`}
+                        title={cell ? `${status} · ${cell.fetched_count ?? 0} symbols · ${cell.duration_seconds?.toFixed(1) ?? '—'}s` : 'Không có cell'}
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Legend */}
+      <div className="mt-4 flex flex-wrap gap-3">
+        {Object.entries(STATUS_COLORS).map(([s, cls]) => (
+          <div key={s} className="flex items-center gap-1.5">
+            <div className={`h-3 w-5 rounded ${cls.replace(' animate-pulse', '')}`} />
+            <span className="text-[11px] text-slate-500">{s}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+#### Component 6: `SOCDomainTabs.jsx`
+```jsx
+// frontend/src/components/soc/SOCDomainTabs.jsx
+// Container chính thay AdminOps.jsx — 5 domain tabs
+
+import { useState } from 'react';
+import { useI18n } from '../../context/LangContext';
+import DataOpsDomainPanel from './DataOpsDomainPanel';
+import SignalIntelligenceDomainPanel from './SignalIntelligenceDomainPanel';
+import PrefetchDomainPanel from './PrefetchDomainPanel';
+import ScreenerDomainPanel from './ScreenerDomainPanel';
+import MatrixScrapePanel from './MatrixScrapePanel';
+import ServiceRegistryPanel from './ServiceRegistryPanel';
+
+const TABS = [
+  { key: 'overview',  labelKey: 'soc.tabOverview',  defaultLabel: 'Tổng quan' },
+  { key: 'signals',   labelKey: 'soc.tabSignals',   defaultLabel: 'Trung tâm tín hiệu' },
+  { key: 'dataops',   labelKey: 'soc.tabDataOps',   defaultLabel: 'Data Ops' },
+  { key: 'prefetch',  labelKey: 'soc.tabPrefetch',  defaultLabel: 'Prefetch' },
+  { key: 'screener',  labelKey: 'soc.tabScreener',  defaultLabel: 'Bộ lọc' },
+  { key: 'matrix',    labelKey: 'soc.tabMatrix',    defaultLabel: 'Ma trận scraping' },
+];
+
+export default function SOCDomainTabs() {
+  const { t } = useI18n();
+  const [activeTab, setActiveTab] = useState('overview');
+  
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-xl font-bold text-slate-100">
+          {t('soc.pageTitle', { defaultValue: 'Trung tâm vận hành dịch vụ (SOC)' })}
+        </h1>
+        <p className="mt-1 text-sm text-slate-400">
+          {t('soc.pageSubtitle', { defaultValue: 'Quản lý và giám sát toàn bộ dịch vụ nền' })}
+        </p>
+      </div>
+      
+      {/* Tab bar */}
+      <div className="flex gap-1 rounded-2xl border border-slate-800 bg-slate-900/50 p-1">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+              activeTab === tab.key
+                ? 'bg-slate-800 text-slate-100'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {t(tab.labelKey, { defaultValue: tab.defaultLabel })}
+          </button>
+        ))}
+      </div>
+      
+      {/* Tab content */}
+      <div>
+        {activeTab === 'overview'  && <ServiceRegistryPanel />}
+        {activeTab === 'signals'   && <SignalIntelligenceDomainPanel />}
+        {activeTab === 'dataops'   && <DataOpsDomainPanel />}
+        {activeTab === 'prefetch'  && <PrefetchDomainPanel />}
+        {activeTab === 'screener'  && <ScreenerDomainPanel />}
+        {activeTab === 'matrix'    && <MatrixScrapePanel />}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## SUPPLEMENT A.5 — I18N KEY MAPPING
+
+```javascript
+// Thêm vào frontend/src/i18n/vi.js (hoặc tương đương)
+
+const socKeys = {
+  // General
+  'soc.pageTitle': 'Trung tâm vận hành dịch vụ (SOC)',
+  'soc.pageSubtitle': 'Quản lý và giám sát toàn bộ dịch vụ nền',
+  'soc.loading': 'Đang tải...',
+  'soc.noDiff': 'Không có thay đổi',
+  
+  // Tabs
+  'soc.tabOverview': 'Tổng quan',
+  'soc.tabSignals': 'Trung tâm tín hiệu',
+  'soc.tabDataOps': 'Data Ops',
+  'soc.tabPrefetch': 'Prefetch',
+  'soc.tabScreener': 'Bộ lọc toàn thị trường',
+  'soc.tabMatrix': 'Ma trận scraping',
+  
+  // Status
+  'soc.status.healthy': 'Khỏe mạnh',
+  'soc.status.degraded': 'Suy giảm',
+  'soc.status.unhealthy': 'Lỗi',
+  'soc.status.running': 'Đang chạy',
+  'soc.status.unknown': 'Không xác định',
+  'soc.status.done': 'Hoàn thành',
+  'soc.status.pending': 'Chờ',
+  'soc.status.failed': 'Thất bại',
+  'soc.status.reassigned': 'Đã chuyển provider',
+  
+  // Config
+  'soc.applyConfig': 'Áp dụng cấu hình',
+  'soc.previewTitle': 'Xem trước thay đổi config',
+  'soc.diff': 'Thay đổi',
+  'soc.impact': 'Tác động ước tính',
+  
+  // Matrix
+  'soc.matrixMonitorTitle': 'Ma trận scraping song song',
+  'soc.symbolGroup': 'Nhóm symbol',
+  'soc.provider': 'Nhà cung cấp dữ liệu',
+  'soc.triggerCycle': 'Chạy chu kỳ mới',
+  
+  // Write guard
+  'soc.writeGuardTitle': 'Thao tác write bị khóa có chủ đích',
+  
+  // Fields
+  'soc.lastRun': 'Lần chạy gần nhất',
+  'soc.consecutiveFailures': 'Lỗi liên tiếp',
+  'soc.slaUptime': 'Độ ổn định SLA',
+  'soc.circuitBreaker': 'Circuit breaker',
+};
+```
+
+---
+
+## SUPPLEMENT A.6 — REVISED TIMELINE
+
+Bổ sung 3 sub-phase mới vào kế hoạch gốc:
+
+| Phase mới | Nội dung | Tuần | Điều kiện | DoD |
+|-----------|----------|------|-----------|-----|
+| **1.6** | Implement `DOMAIN_CONFIG_CLASSES` + typed schema validation cho 4 domains | Tuần 1 | Sau Phase 1.2 | `get_typed_config()` trả đúng dataclass cho từng domain; `validate()` reject bad data |
+| **1.7** | Implement `ServiceOwnershipMatrix` + tích hợp vào tất cả domain views | Tuần 2 | Sau Phase 1.3 | Mọi domain response có field `ownership`; `is_domain_writable()` pass/block đúng |
+| **2.5** | Tạo `ScrapeMatrix` + `ScrapeMatrixCell` models + `MatrixCoordinator` | Tuần 2-3 | Song song Phase 2 | `run_scrape_cycle` tạo matrix, dispatch tasks; dedup hoạt động; `cell_heatmap` API OK |
+| **4.1** | Build 6 SOC components (Tailwind dark, i18n đầy đủ) | Tuần 4 | Sau Phase 3.2 | Tất cả components render đúng; `WriteGuardBanner` hiện khi ownership không writable; `MatrixScrapeMonitor` poll và update |
+| **4.2** | Migrate `SignalControlCenter` sang domain panel mới (kế thừa ownership matrix) | Tuần 4-5 | Sau Phase 4.1 | Browser smoke: tab tín hiệu render đúng; write guard banner đúng; không mất ownership logic |
+
+---
+
+## SUPPLEMENT A.7 — REVISED SUCCESS METRICS
+
+| Tiêu chí | Admin-Ops cũ | SOC target | Ghi chú |
+|----------|--------------|------------|---------|
+| API Endpoints | 27 | 35–40 (tăng, vì thêm matrix) | Thêm chất lượng, không cắt giảm domain coverage |
+| Config Locations | 6+ | 1 SSOT (`ServiceConfig`) | Vẫn typed per domain |
+| Typed config validation | Partial (inline) | 4 domain dataclass | Validate trước khi save |
+| Ownership matrix coverage | 100% (signal domain) | 100% (tất cả 4 domains) | Mở rộng từ signal sang vnbroker/prefetch/screener |
+| Write guard trong UI | ✅ (signals only) | ✅ (tất cả domains) | Kế thừa `WRITABLE_STATUSES` pattern |
+| Parallel scraping | ❌ (shard sequential) | ✅ (matrix, N providers song song) | Cell claim dedup; reassignment on failure |
+| Scraping throughput | 1x (VCI only) | 2–4x (multi-provider parallel) | Tuỳ provider availability |
+| Dedup guarantee | ❌ (không có) | ✅ (atomic claim + skip-if-done-by-other) | `try_claim()` select_for_update |
+| Config diff preview | ✅ (partial) | ✅ (diff + impact estimate) | Mọi update endpoint có `?preview=1` |
+| i18n coverage | ✅ 100% | ✅ 100% | `soc.*` key namespace |
+| UI design consistency | ✅ Tailwind dark | ✅ Tailwind dark (giữ nguyên) | Không dùng Ant Design |

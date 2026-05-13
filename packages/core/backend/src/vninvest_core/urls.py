@@ -47,6 +47,7 @@ urlpatterns = [
     path('api/', include(('identity_access.api_urls', 'identity_access_api'), namespace='identity_access_api')),
     path('api/', include(('market_data.urls', 'market_data_api'), namespace='market_data_api')),
     path('api/admin-ops/', include(('vninvest_core.contracts.admin_ops.urls', 'admin_ops'), namespace='admin_ops')),
+    path('api/soc/', include(('service_ops.urls', 'service_ops'), namespace='service_ops')),
 
     # Stock Management — Native Compat (High priority)
     path('api/stock-management/groups/', SecuritiesGroupListCreateView.as_view(), name='legacy-stock-management-group-list'),

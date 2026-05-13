@@ -1,0 +1,99 @@
+"""
+SOC Serializers — DRF model serializers cho 6 core models.
+"""
+from rest_framework import serializers
+
+from .models import (
+    ServiceDefinition,
+    ServiceConfig,
+    ServiceHealth,
+    ServiceRunLog,
+    OwnershipRecord,
+    ConfigChangeAudit,
+)
+
+
+class ServiceDefinitionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceDefinition
+        fields = [
+            'id', 'service_key', 'name', 'domain',
+            'description', 'owner_team', 'tags',
+            'is_active', 'is_deprecated', 'deprecation_note',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ServiceConfigSerializer(serializers.ModelSerializer):
+    service_key = serializers.SlugRelatedField(
+        source='service', slug_field='service_key', read_only=True,
+    )
+
+    class Meta:
+        model = ServiceConfig
+        fields = [
+            'id', 'service', 'service_key', 'config_schema_version',
+            'config_payload', 'applied_by', 'applied_at',
+            'change_reason', 'is_current',
+        ]
+        read_only_fields = ['id', 'applied_at', 'applied_by']
+
+
+class ServiceHealthSerializer(serializers.ModelSerializer):
+    service_key = serializers.SlugRelatedField(
+        source='service', slug_field='service_key', read_only=True,
+    )
+
+    class Meta:
+        model = ServiceHealth
+        fields = [
+            'id', 'service', 'service_key', 'status',
+            'last_check_at', 'last_success_at',
+            'consecutive_failures', 'avg_response_ms', 'detail',
+        ]
+        read_only_fields = ['id', 'last_check_at']
+
+
+class ServiceRunLogSerializer(serializers.ModelSerializer):
+    service_key = serializers.SlugRelatedField(
+        source='service', slug_field='service_key', read_only=True,
+    )
+
+    class Meta:
+        model = ServiceRunLog
+        fields = [
+            'id', 'service', 'service_key', 'celery_task_id',
+            'status', 'started_at', 'finished_at', 'duration_seconds',
+            'input_summary', 'output_summary', 'error_detail',
+        ]
+        read_only_fields = ['id', 'started_at']
+
+
+class OwnershipRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OwnershipRecord
+        fields = [
+            'id', 'domain', 'owner_team', 'write_mode',
+            'write_surface', 'locked_fields', 'compatibility_domains',
+            'deprecation_notes', 'updated_at',
+        ]
+        read_only_fields = ['id', 'updated_at']
+
+
+class ConfigChangeAuditSerializer(serializers.ModelSerializer):
+    service_key = serializers.SlugRelatedField(
+        source='service', slug_field='service_key', read_only=True,
+    )
+
+    class Meta:
+        model = ConfigChangeAudit
+        fields = [
+            'id', 'service', 'service_key', 'action',
+            'actor', 'actor_ip',
+            'before_snapshot', 'after_snapshot',
+            'change_summary', 'timestamp', 'request_id',
+        ]
+        read_only_fields = [
+            'id', 'actor', 'actor_ip', 'timestamp', 'request_id',
+        ]

@@ -1,6 +1,30 @@
 import React from 'react';
 import { useI18n } from '../context/LangContext';
 
+// ── Giờ phiên giao dịch HOSE (UTC+7) ──────────────────────
+const SESSION_WINDOWS = {
+  session: null,         // Cả phiên — không filter
+  morning: { startH: 9, startM: 0, endH: 11, endM: 30 },
+  afternoon: { startH: 13, startM: 0, endH: 14, endM: 45 },
+};
+
+function inSessionWindow(tsRaw, windowKey) {
+  if (windowKey === 'session' || !tsRaw) return true;
+  const w = SESSION_WINDOWS[windowKey];
+  if (!w) return true;
+  let d;
+  try { d = new Date(tsRaw); } catch { return true; }
+  if (Number.isNaN(d.getTime())) return true;
+  // Chuyển sang UTC+7
+  const vn = new Date(d.getTime() + 7 * 3600 * 1000);
+  const h = vn.getUTCHours();
+  const m = vn.getUTCMinutes();
+  const totalMin = h * 60 + m;
+  const startMin = w.startH * 60 + w.startM;
+  const endMin = w.endH * 60 + w.endM;
+  return totalMin >= startMin && totalMin <= endMin;
+}
+
 function fmtBil(v) {
   if (v == null) return '—';
   const n = Number(v);
@@ -157,6 +181,24 @@ export function WhaleFeedPanel({
   const [internalLoading, setInternalLoading] = React.useState(true);
   const prevCountRef = React.useRef(0);
   const feedViewportStyle = { scrollbarGutter: 'stable' };
+
+  // ── Session window state ──────────────────────────────────
+  const [sessionWindow, setSessionWindow] = React.useState('session');
+
+  // ── SessionFacts (CVD / Strength) ────────────────────────
+  const [sessionFacts, setSessionFacts] = React.useState(null);
+  React.useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getSessionFacts } = await import('../api/client');
+        const resp = await getSessionFacts(symbol);
+        if (!cancelled) setSessionFacts(resp.data);
+      } catch { /* silent — fallback: strip hidden when unavailable */ }
+    })();
+    return () => { cancelled = true; };
+  }, [symbol]);
   
   const isControlled = typeof onRefresh === 'function' || controlledLoading !== undefined || feedData !== null;
 
@@ -191,8 +233,10 @@ export function WhaleFeedPanel({
   const orders = activeData?.whale_orders || [];
   const handleRefresh = typeof onRefresh === 'function' ? onRefresh : fetch;
   const realtimeItems = React.useMemo(
-    () => (realtimeAlerts || []).slice(0, 3),
-    [realtimeAlerts],
+    () => (realtimeAlerts || [])
+      .filter((a) => inSessionWindow(a.ts, sessionWindow))
+      .slice(0, 3),
+    [realtimeAlerts, sessionWindow],
   );
   const realtimeEventKeys = React.useMemo(() => {
     const keys = new Set();
@@ -216,8 +260,10 @@ export function WhaleFeedPanel({
   }, [orders]);
 
   const dedupedOrders = React.useMemo(
-    () => dedupedHistoryOrders.filter((order) => !realtimeEventKeys.has(buildFeedEventKey({ ...order, alert_kind: 'whale_alert' }))),
-    [dedupedHistoryOrders, realtimeEventKeys],
+    () => dedupedHistoryOrders
+      .filter((order) => !realtimeEventKeys.has(buildFeedEventKey({ ...order, alert_kind: 'whale_alert' })))
+      .filter((order) => inSessionWindow(order.ts || order.raw_ts, sessionWindow)),
+    [dedupedHistoryOrders, realtimeEventKeys, sessionWindow],
   );
 
   const sourceMeta = React.useMemo(() => {
@@ -258,6 +304,90 @@ export function WhaleFeedPanel({
           ↻
         </button>
       </div>
+
+      {/* ── Nút lọc phiên giao dịch ──────────────────────── */}
+      <div className="mt-3 flex items-center gap-1.5">
+        {[
+          { key: 'session', label: t('whaleAlertsDashboard.sessionWindowAll') },
+          { key: 'morning', label: t('whaleAlertsDashboard.sessionWindowMorning') },
+          { key: 'afternoon', label: t('whaleAlertsDashboard.sessionWindowAfternoon') },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setSessionWindow(key)}
+            className={`rounded-full px-3 py-1 text-[10px] font-semibold transition-colors ${
+              sessionWindow === key
+                ? 'bg-cyan-600 text-white'
+                : 'border border-slate-700 bg-slate-900 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="ml-1 text-[9px] text-slate-600">
+          {t('whaleAlertsDashboard.sessionWindowHint')}
+        </span>
+      </div>
+
+      {/* ── CVD / Strength mini-strip ─────────────────────── */}
+      {sessionFacts && (
+        <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+            {t('whaleAlertsDashboard.sessionFactsLabel')}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {/* CVD bar */}
+            <div className="flex min-w-[120px] flex-1 flex-col gap-0.5">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-slate-400">{t('whaleAlertsDashboard.cvdLabel2')}</span>
+                <span className={`font-semibold ${
+                  sessionFacts.cvd_normalized > 55 ? 'text-emerald-400'
+                  : sessionFacts.cvd_normalized < 45 ? 'text-rose-400'
+                  : 'text-slate-300'
+                }`}>
+                  {sessionFacts.cvd_normalized != null ? sessionFacts.cvd_normalized.toFixed(1) : '—'}
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    sessionFacts.cvd_normalized > 55 ? 'bg-emerald-500'
+                    : sessionFacts.cvd_normalized < 45 ? 'bg-rose-500'
+                    : 'bg-slate-500'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(0, sessionFacts.cvd_normalized ?? 50))}%` }}
+                />
+              </div>
+              <p className="text-[9px] text-slate-600">
+                {sessionFacts.cvd_normalized > 55
+                  ? t('whaleAlertsDashboard.cvdBuy')
+                  : sessionFacts.cvd_normalized < 45
+                  ? t('whaleAlertsDashboard.cvdSell')
+                  : t('whaleAlertsDashboard.cvdNeutral')}
+              </p>
+            </div>
+            {/* Metrics chips */}
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded border border-emerald-800/50 bg-emerald-950/40 px-2 py-0.5 text-[10px] text-emerald-300">
+                {t('whaleAlertsDashboard.buyStrengthShort')} {sessionFacts.buy_strength != null ? sessionFacts.buy_strength.toFixed(1) : '—'}
+              </span>
+              <span className="rounded border border-violet-800/50 bg-violet-950/40 px-2 py-0.5 text-[10px] text-violet-300">
+                {t('whaleAlertsDashboard.instStrengthShort')} {sessionFacts.institutional_strength != null ? sessionFacts.institutional_strength.toFixed(1) : '—'}
+              </span>
+              <span className={`rounded border px-2 py-0.5 text-[10px] ${
+                Math.abs(sessionFacts.delta_strength_pct ?? 0) > 15
+                  ? 'border-amber-700/50 bg-amber-950/40 text-amber-300'
+                  : 'border-slate-700 bg-slate-900 text-slate-400'
+              }`}>
+                Δ {sessionFacts.delta_strength_pct != null ? sessionFacts.delta_strength_pct.toFixed(1) : '—'}%
+              </span>
+              <span className="rounded border border-rose-800/50 bg-rose-950/40 px-2 py-0.5 text-[10px] text-rose-300">
+                {t('whaleAlertsDashboard.darkFlowShort')} {sessionFacts.dark_flow_score != null ? sessionFacts.dark_flow_score.toFixed(1) : '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
       {loading ? (
         <div className={`panel-scrollbar mt-3 min-h-0 ${feedHeightClass} overflow-y-scroll overscroll-contain pr-1`} style={feedViewportStyle}>
           <div className="space-y-2">
