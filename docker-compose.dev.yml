@@ -78,10 +78,11 @@ services:
         apt-get update && apt-get install -y git &&
         pip install -r requirements.txt -q &&
         python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput --clear &&
         python -m daphne --bind 0.0.0.0 --port 8100 vninvest_core.asgi:application
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "print('ok')"]
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8100/core/v1/health', timeout=2).getcode()==200 else 1)"]
       interval: 10s
       timeout: 5s
       retries: 3

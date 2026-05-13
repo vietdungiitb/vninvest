@@ -1,3 +1,31 @@
+# 2026-05-13 — Fix Lỗi Django Admin Mất CSS/JS ✅
+
+Status: Completed for source-level fix. Admin static assets are now served by Django in dev runtime.
+
+Completed today:
+- Added `collectstatic --noinput --clear` to `core-api` startup in `docker-compose.dev.yml`.
+- Replaced `core-api` healthcheck with HTTP probe `/core/v1/health` to avoid false-positive healthy state.
+- Enabled static serving path in `vninvest_core/urls.py` for DEBUG mode so `/static/admin/*` resolves under daphne.
+
+Operational note:
+- During `core-api` recreate, gateway can return temporary 502 while dependency install is in progress.
+
+---
+
+# 2026-05-13 — Fallback An Toàn Khi Thiếu prev_price/change_value ✅
+
+Status: Completed. Realtime merge path now prevents wrong `%` rendering for ambiguous small `change_pct` payloads.
+
+Completed today:
+- Added per-symbol percent unit memory (`change_pct_unit`) in quote merge state.
+- Reused historical unit when new ticks do not provide `prev_price` and `change_value`.
+- Added ambiguity-safe fallback: keep previous trusted `change_pct` instead of showing a potentially wrong converted value.
+
+Verification:
+- `frontend/src/hooks/useRealtimeFeedCore.js` diagnostics: clean.
+
+---
+
 # 2026-05-13 — Fix Hiển Thị Sai 0.01% Ở Heatmap/Popup ✅
 
 Status: Completed. `change_pct` is now normalized in realtime quote merge so fraction-scale inputs are rendered correctly as percent.

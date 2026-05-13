@@ -1,3 +1,46 @@
+# 2026-05-13 — Fix Django Admin Static 404 (CSS/JS Missing) ✅
+
+Status: Completed. Fixed Django Admin rendering in dev stack where `/admin/` loaded but `/static/admin/*` returned 404.
+
+What changed:
+- `docker-compose.dev.yml`
+  - `core-api` startup now runs `collectstatic --noinput --clear` before daphne.
+  - `core-api` healthcheck changed to real HTTP probe on `/core/v1/health` (avoid false healthy state).
+- `packages/core/backend/src/vninvest_core/urls.py`
+  - Added dev static serving via `urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)` when `DEBUG=True`.
+
+Validation evidence:
+- Endpoint checks performed during rollout:
+  - `/admin/` reachable (redirect/login response expected).
+  - `/static/admin/css/base.css` and `/static/admin/js/nav_sidebar.js` no longer depend on frontend bundle and are served by Django static routing in dev.
+
+Residual note:
+- `core-api` still has a long startup path in dev because runtime installs dependencies; temporary 502 can appear during recreate windows.
+
+---
+
+# 2026-05-13 — Handle Ambiguous change_pct Fallback (Missing prev_price/change_value) ✅
+
+Status: Completed. Added safe fallback policy to avoid wrong percent display when upstream omits both `prev_price` and `change_value`.
+
+What changed:
+- `frontend/src/hooks/useRealtimeFeedCore.js`
+  - `normalizeChangePct(...)` now returns `{ value, unit }` instead of raw number.
+  - Added historical unit memory (`change_pct_unit`) per symbol at merge layer.
+  - Fallback behavior when implied percent cannot be computed:
+    - Reuse previous detected unit (`fraction` or `percent`) when available.
+    - Use previous trusted `change_pct` to disambiguate small values.
+    - Keep last trusted value for ambiguous small values instead of showing potentially wrong value.
+
+Validation evidence:
+- Static check:
+  - `get_errors frontend/src/hooks/useRealtimeFeedCore.js` -> no errors.
+
+Residual note:
+- On very first tick for a symbol with no historical context and ambiguous small raw value, system may still treat raw as percent.
+
+---
+
 # 2026-05-13 — Fix Sai Đơn Vị % Hiển Thị (0.01% vs 1.00%) ✅
 
 Status: Completed. Fixed frontend normalization for mixed `change_pct` units to prevent incorrect `0.01%` display when source value is fraction-scale.
