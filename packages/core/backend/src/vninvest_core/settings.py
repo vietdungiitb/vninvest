@@ -319,6 +319,18 @@ CELERY_BEAT_SCHEDULE = {
         'kwargs': {'days': 365},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('daily-backfill-prices-1700', 'enrichment_offhours')},
     },
+
+    # === P3-T03: Daily ingest_daily_prices (shadow run) ===
+    # Wrapper around backfill_daily_prices with observability/monitoring.
+    # Disabled by default; enable during shadow run (3-day parity testing).
+    # Once parity is confirmed, remove 'daily-backfill-prices-1700' and keep this one.
+    'ingest-daily-prices-1705': {
+        'task': 'data_ingest.tasks.ingest_daily_prices',
+        'schedule': crontab(hour=10, minute=10),  # 17:10 ICT = 10:10 UTC (staggered 5m after backfill)
+        'kwargs': {'days': 1},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-daily-prices-1705', 'enrichment_offhours')},
+        'enabled': False,  # Disabled by default for P3-T03 (enable during shadow run)
+    },
 }
 
 LOGGING = {
