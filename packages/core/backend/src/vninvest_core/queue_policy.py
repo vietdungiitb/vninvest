@@ -85,11 +85,15 @@ QUEUE_DOMAIN_MATRIX = {
         'task_routes': (
             'enrich_*',
             'market_serving.materializers.materialize_pre_open_snapshots',
+            # Daily OHLCV backfill after market close
+            'data_ingest.tasks.backfill_daily_prices',
         ),
         'periodic_tasks': (
             'enrich_history_bars',
             'enrich_fundamentals',
             'materialize-pre-open-snapshots-20m',
+            # Daily price backfill at 17:00 ICT (after HOSE close)
+            'daily-backfill-prices-1700',
         ),
     },
     'manual_operations': {

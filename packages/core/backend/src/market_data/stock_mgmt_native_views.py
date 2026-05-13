@@ -140,10 +140,32 @@ class StockManagementChartView(APIView):
         qs = DailyPrice.objects.filter(symbol=symbol).order_by('-date')
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
+
+        # ?days=N → compute date_from automatically when date_from is absent
+        days_param = request.query_params.get('days')
+        if not date_from and days_param:
+            try:
+                from datetime import date as _date, timedelta
+                date_from = (_date.today() - timedelta(days=int(days_param))).isoformat()
+            except (ValueError, TypeError):
+                pass
+
         if date_from:
             qs = qs.filter(date__gte=date_from)
         if date_to:
             qs = qs.filter(date__lte=date_to)
+
+        # Intraday timeframes — DailyPrice only stores daily bars
+        timeframe = request.query_params.get('timeframe', 'D')
+        _INTRADAY_TF = {'1m', '5m', '15m', '30m', '1h', '1H', '2h', '2H', '4h', '4H'}
+        if timeframe in _INTRADAY_TF:
+            return Response({
+                'symbol': symbol,
+                'timeframe': timeframe,
+                'results': [],
+                'note': 'intraday_not_available_in_native',
+            })
+
         try:
             page = max(1, int(request.query_params.get('page', 1)))
         except ValueError:
@@ -219,11 +241,30 @@ class StockManagementAIAdvisorySessionView(APIView):
 
     def get(self, request, symbol):
         from advisory.views import AdvisoryLatestView
-        return AdvisoryLatestView.as_view()(request, symbol=symbol.upper())
+        django_request = getattr(request, '_request', request)
+        response = AdvisoryLatestView.as_view()(django_request, symbol=symbol.upper())
+        if getattr(response, 'status_code', None) == status.HTTP_404_NOT_FOUND:
+            normalized_symbol = symbol.upper()
+            return Response({
+                'ok': False,
+                'queued': False,
+                'symbol': normalized_symbol,
+                'contract': request.query_params.get('contract', 'v1'),
+                'include_benchmarks': str(request.query_params.get('include_benchmarks', '')).lower() in {'1', 'true', 'yes'},
+                'reason': 'no_advisory_data',
+                'message': f'Chưa có dữ liệu tư vấn AI cho mã {normalized_symbol}.',
+                'advisory': None,
+                'aggregate': None,
+                'components': [],
+                'deleted_components': [],
+                'executive_summary': None,
+                'executive_summaries': [],
+            }, status=status.HTTP_200_OK)
+        return response
 
 
 class StockManagementAIAdvisoryObservabilityView(APIView):
-    """GET /api/stock-management/stocks/<symbol>/ai-advisory-observability/"""
+    """GET/POST /api/stock-management/stocks/<symbol>/ai-advisory-observability/"""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
@@ -233,6 +274,13 @@ class StockManagementAIAdvisoryObservabilityView(APIView):
             'note': 'observability_not_available_in_native',
         })
 
+    def post(self, request, symbol):
+        # Accept telemetry events from the frontend advisory observer; no-op store for now.
+        return Response({
+            'symbol': symbol.upper(),
+            'received': True,
+        }, status=status.HTTP_201_CREATED)
+
 
 class StockManagementAIAdvisoryComponentsGenerateView(APIView):
     """POST /api/stock-management/stocks/<symbol>/ai-advisory-components/generate/"""
@@ -240,7 +288,8 @@ class StockManagementAIAdvisoryComponentsGenerateView(APIView):
 
     def post(self, request, symbol):
         from advisory.views import AdvisoryRefreshView
-        return AdvisoryRefreshView.as_view()(request, symbol=symbol.upper())
+        django_request = getattr(request, '_request', request)
+        return AdvisoryRefreshView.as_view()(django_request, symbol=symbol.upper())
 
 
 class StockManagementAIAdvisoryComponentsDeletedView(APIView):
@@ -358,3 +407,97 @@ class StockManagementItemDetailView(APIView):
 
     def delete(self, request, item_id):
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def post(self, request, symbol):
+        """POST /api/stock-management/stocks/<symbol>/ai-advisory-observability/
+        
+        Accepts telemetry data from frontend for audit logging.
+        Returns 201 CREATED with log_id.
+        """
+        try:
+            from portfolio.models import AdvisoryAggregateAuditLog
+        except ImportError:
+            # Fallback if portfolio models not available
+            return Response(
+                {
+                    'ok': False,
+                    'message': 'Audit log model not available',
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        
+        normalized_symbol = str(symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response(
+                {'ok': False, 'message': 'Symbol khong hop le.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        payload = request.data if isinstance(request.data, dict) else {}
+        telemetry = payload.get('telemetry') if isinstance(payload.get('telemetry'), dict) else {}
+        
+        event_type = str(payload.get('event_type') or 'frontend_retry_telemetry').strip()[:80]
+        outcome = str(payload.get('outcome') or '').strip()[:60]
+        client_ts = str(payload.get('client_ts') or '').strip()[:64]
+        
+        def _safe_non_negative_int(value, default=0):
+            try:
+                parsed = int(value)
+                return parsed if parsed >= 0 else default
+            except (TypeError, ValueError):
+                return default
+        
+        scheduled_count = _safe_non_negative_int(telemetry.get('scheduled_count', 0))
+        recovered_count = _safe_non_negative_int(telemetry.get('recovered_count', 0))
+        failed_count = _safe_non_negative_int(telemetry.get('failed_count', 0))
+        last_reason = str(telemetry.get('last_reason') or '').strip()[:120]
+        
+        metadata_payload = {
+            'event_type': event_type,
+            'outcome': outcome,
+            'telemetry': {
+                'scheduled_count': scheduled_count,
+                'recovered_count': recovered_count,
+                'failed_count': failed_count,
+                'last_reason': last_reason,
+                'last_event_at': str(telemetry.get('last_event_at') or '').strip()[:64],
+            },
+            'client_ts': client_ts,
+        }
+        
+        try:
+            audit_log = AdvisoryAggregateAuditLog.objects.create(
+                user=request.user,
+                symbol=normalized_symbol,
+                before_state_json={},
+                after_state_json={
+                    'operation': 'frontend_retry_telemetry',
+                    'outcome': outcome,
+                    'event_type': event_type,
+                },
+                reason=AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH,
+                actor=AdvisoryAggregateAuditLog.ActorChoices.USER,
+                actor_id=str(request.user.id),
+                metadata_json=metadata_payload,
+            )
+            
+            return Response(
+                {
+                    'ok': True,
+                    'symbol': normalized_symbol,
+                    'log_id': audit_log.id,
+                    'message': 'Telemetry recorded.',
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Failed to record observability telemetry for {normalized_symbol}: {str(e)}')
+            return Response(
+                {
+                    'ok': False,
+                    'message': 'Failed to record telemetry',
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

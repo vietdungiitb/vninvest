@@ -1,8 +1,13 @@
 import logging
 import time
 import random
+import json
 from typing import Any, Optional
+
+import pandas as pd
 import httpx
+from django.core.cache import cache
+from django.conf import settings
 from django.db.utils import ProgrammingError, OperationalError
 from django.utils import timezone
 from django.utils.timezone import now
@@ -13,6 +18,119 @@ logger = logging.getLogger(__name__)
 class VnbrokerAdapterError(Exception):
     """Base error for vnbroker adapter."""
     pass
+
+
+_INTRADAY_FALLBACK_SOURCES = ('KBS', 'VCI', 'TCBS', 'SSI', 'MSI')
+
+
+def _build_intraday_source_candidates(preferred_source: str | None) -> list[str]:
+    candidates: list[str] = []
+    for source in [preferred_source, *_INTRADAY_FALLBACK_SOURCES]:
+        source_code = str(source or '').strip().upper()
+        if source_code and source_code not in candidates:
+            candidates.append(source_code)
+    return candidates
+
+
+def _normalize_intraday_trade_rows(frame: pd.DataFrame, symbol_upper: str) -> list[dict[str, Any]]:
+    if frame is None or frame.empty:
+        return []
+
+    normalized_rows: list[dict[str, Any]] = []
+    ordered_frame = frame.copy()
+    if 'time' in ordered_frame.columns:
+        ordered_frame = ordered_frame.sort_values('time')
+
+    for row in ordered_frame.to_dict('records'):
+        timestamp_value = row.get('time') or row.get('timestamp') or row.get('datetime')
+        timestamp = pd.to_datetime(timestamp_value, errors='coerce')
+        if pd.isna(timestamp):
+            continue
+
+        match_type = str(row.get('match_type') or row.get('side') or '').strip().lower()
+        if match_type.startswith('buy'):
+            side = 'buy'
+        elif match_type.startswith('sell'):
+            side = 'sell'
+        else:
+            side = 'unknown'
+
+        normalized_rows.append({
+            'timestamp': timestamp.isoformat(),
+            'time': timestamp.strftime('%H:%M:%S'),
+            'price': float(row.get('price') or 0),
+            'volume': int(row.get('volume') or 0),
+            'side': side,
+            'match_type': row.get('match_type') or 'NormalMatch',
+        })
+
+    return normalized_rows
+
+
+def _publish_intraday_stream(symbol_upper: str, trades: list[dict[str, Any]]) -> None:
+    if not trades:
+        return
+
+    try:
+        import redis
+
+        redis_client = redis.from_url(getattr(settings, 'REDIS_URL', 'redis://localhost:6379/1'))
+        stream_key = f'vninvest:ticks:{symbol_upper}'
+        for trade in trades:
+            redis_client.xadd(stream_key, {
+                'symbol': symbol_upper,
+                'timestamp': trade['timestamp'],
+                'time': trade['time'],
+                'price': str(trade['price']),
+                'volume': str(trade['volume']),
+                'side': trade['side'],
+                'match_type': trade['match_type'],
+            }, maxlen=500, approximate=True)
+    except Exception as exc:
+        logger.warning('Failed to publish intraday stream for %s: %s', symbol_upper, exc)
+
+
+def _fetch_intraday_frame(symbol: str, page_size: int = 50) -> tuple[pd.DataFrame, str | None]:
+    from vnbroker import Vnbroker
+
+    symbol_upper = symbol.upper()
+    config = get_active_config()
+    preferred_source = getattr(config, 'data_source', None)
+
+    last_error: Exception | None = None
+    for source in _build_intraday_source_candidates(preferred_source):
+        try:
+            client = Vnbroker().stock(symbol=symbol_upper, source=source)
+            frame = client.quote.intraday(symbol=symbol_upper, page_size=page_size)
+            if frame is not None and not frame.empty:
+                return frame, source
+        except Exception as exc:
+            last_error = exc
+            logger.warning('Intraday fetch failed for %s via %s: %s', symbol_upper, source, exc)
+
+    if last_error:
+        logger.info('Intraday fetch exhausted all sources for %s: %s', symbol_upper, last_error)
+    return pd.DataFrame(), None
+
+
+def warm_up_intraday_symbols(symbols: list[str], page_size: int = 50) -> dict[str, Any]:
+    warmed = 0
+    sources: list[str] = []
+
+    for symbol in symbols:
+        result = fetch_intraday_tape(symbol, page_size=page_size)
+        if result.get('trades'):
+            warmed += 1
+            source = result.get('source')
+            if source and source not in sources:
+                sources.append(source)
+
+    return {
+        'status': 'ok',
+        'warmed_up_count': warmed,
+        'symbols_count': len(symbols),
+        'sources': sources,
+    }
 
 def get_active_config() -> VnbrokerRuntimeConfig:
     """Lấy cấu hình đang hoạt động hoặc tạo mặc định."""
@@ -75,6 +193,52 @@ def fetch_price_board_snapshot(symbols: list[str]) -> list[dict[str, Any]]:
         })
         
     return results
+
+def fetch_daily_history(symbol: str, days: int = 365) -> list[dict[str, Any]]:
+    """
+    Lấy lịch sử giá ngày (OHLCV) cho một symbol qua VCI.
+    Trả về list dict chuẩn hoá để ghi vào DailyPrice.
+    """
+    from datetime import timedelta, date as dt_date
+
+    symbol_upper = symbol.upper()
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=days)
+
+    try:
+        from vnbroker.explorer.vci.quote import Quote as VciQuote
+        q = VciQuote(symbol=symbol_upper)
+        df = q.history(
+            start=start_date.isoformat(),
+            end=end_date.isoformat(),
+            interval='1D',
+            show_log=False,
+        )
+    except Exception as exc:
+        logger.warning('fetch_daily_history VCI failed for %s: %s', symbol_upper, exc)
+        return []
+
+    if df is None or df.empty:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for _, row in df.iterrows():
+        try:
+            trade_date = pd.to_datetime(row['time']).date() if not isinstance(row['time'], dt_date) else row['time']
+            rows.append({
+                'symbol': symbol_upper,
+                'date': trade_date,
+                'open': float(row['open']),
+                'high': float(row['high']),
+                'low': float(row['low']),
+                'close': float(row['close']),
+                'volume': int(row['volume']),
+            })
+        except Exception:
+            continue
+
+    return rows
+
 
 def warm_up_symbols(symbols: list[str]) -> dict[str, Any]:
     """
@@ -207,10 +371,6 @@ def fetch_intraday_tape(symbol: str, page_size: int = 50) -> dict[str, Any]:
     Note: Cache is keyed by symbol only. For different page_sizes,
     the cached result will contain whatever was cached first.
     """
-    import json
-    from django.core.cache import cache
-    from .models import IntradayTick
-    
     symbol_upper = symbol.upper()
     cache_key = f'intraday_tape:{symbol_upper}'
     
@@ -218,37 +378,29 @@ def fetch_intraday_tape(symbol: str, page_size: int = 50) -> dict[str, Any]:
     cached = cache.get(cache_key)
     if cached:
         logger.debug(f"Cache HIT for {cache_key}")
-        cached_data = json.loads(cached)
+        cached_data = cached if isinstance(cached, dict) else json.loads(cached)
         # If cached data has more items than requested page_size,
         # return the last page_size items (most recent)
         if len(cached_data['trades']) > page_size:
             cached_data['trades'] = cached_data['trades'][-page_size:]
         return cached_data
     
-    # Cache miss — query DB (latest page_size ticks)
-    logger.debug(f"Cache MISS for {cache_key} — querying DB")
-    ticks = IntradayTick.objects.filter(
-        symbol=symbol_upper
-    ).order_by('-timestamp')[:page_size]
-    
-    # Build result with reverse order (chronological)
-    tick_list = [
-        {
-            'timestamp': tick.timestamp.isoformat(),
-            'price': float(tick.price),
-            'volume': tick.volume,
-            'side': tick.side.lower(),
-            'match_type': tick.match_type or 'NormalMatch',
-        }
-        for tick in reversed(list(ticks))
-    ]
-    
+    # Cache miss — query native vnbroker and persist the response in Redis.
+    logger.debug(f"Cache MISS for {cache_key} — fetching native intraday frame")
+    frame, source = _fetch_intraday_frame(symbol_upper, page_size=page_size)
+    trade_list = _normalize_intraday_trade_rows(frame, symbol_upper)
     result = {
         'symbol': symbol_upper,
-        'trades': tick_list,
+        'trades': trade_list,
+        'total': len(trade_list),
+        'source': source or 'native',
+        'stale': False,
+        'fetched_at': now().isoformat(),
     }
+
+    _publish_intraday_stream(symbol_upper, trade_list)
     
     # Cache for 5 minutes (300 seconds)
-    cache.set(cache_key, json.dumps(result, default=str), timeout=300)
+    cache.set(cache_key, result, timeout=300)
     
     return result

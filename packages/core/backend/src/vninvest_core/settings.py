@@ -300,6 +300,15 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60.0,
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-price-board-60s', 'realtime_prefetch')},
     },
+
+    # === Daily OHLCV backfill — after HOSE close (17:00 ICT = UTC+7) ===
+    # Upserts 365 days of daily candles for all tracked symbols via VCI+KBS parallel.
+    'daily-backfill-prices-1700': {
+        'task': 'data_ingest.tasks.backfill_daily_prices',
+        'schedule': crontab(hour=10, minute=5),  # 17:05 ICT (UTC+7) = 10:05 UTC
+        'kwargs': {'days': 365},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('daily-backfill-prices-1700', 'enrichment_offhours')},
+    },
 }
 
 LOGGING = {

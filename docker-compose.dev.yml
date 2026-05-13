@@ -4,6 +4,13 @@
 
 name: vninvest-dev
 
+x-core-build: &core-build
+  context: ./packages/core/backend
+  dockerfile: Dockerfile
+  args:
+    PYTHON_VERSION: "3.13"
+    VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+
 services:
   db:
     container_name: vninvest-dev-db
@@ -54,10 +61,9 @@ services:
 
   core-api:
     container_name: vninvest-dev-core-api
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
@@ -67,19 +73,9 @@ services:
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
-      PYTHONPATH: /workspace/src
       LEGACY_BACKEND_URL: ${LEGACY_BACKEND_URL:?LEGACY_BACKEND_URL must be set in compose.dev.env}
       LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput --clear &&
-        python -m daphne --bind 0.0.0.0 --port 8100 vninvest_core.asgi:application
+    command: ["api"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8100/core/v1/health', timeout=2).getcode()==200 else 1)"]
@@ -96,31 +92,23 @@ services:
 
   core-worker:
     container_name: vninvest-dev-core-worker
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      PYTHONPATH: /workspace/src
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
       CELERY_QUEUES: celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand
+      CELERY_CONCURRENCY: "2"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=2 --queues="$${CELERY_QUEUES}" --without-heartbeat --without-gossip --without-mingle
+    command: ["worker"]
     restart: unless-stopped
     depends_on:
       core-api:
@@ -132,30 +120,23 @@ services:
 
   core-worker-realtime-prefetch:
     container_name: vninvest-dev-core-worker-realtime-prefetch
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      PYTHONPATH: /workspace/src
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_QUEUES: realtime_prefetch
+      CELERY_CONCURRENCY: "4"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=4 --queues=realtime_prefetch --without-heartbeat --without-gossip --without-mingle
+    command: ["worker"]
     restart: unless-stopped
     depends_on:
       core-api:
@@ -167,30 +148,23 @@ services:
 
   core-worker-analytics:
     container_name: vninvest-dev-core-worker-analytics
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      PYTHONPATH: /workspace/src
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_QUEUES: analytics_heavy
+      CELERY_CONCURRENCY: "4"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=4 --queues=analytics_heavy --without-heartbeat --without-gossip --without-mingle
+    command: ["worker"]
     restart: unless-stopped
     depends_on:
       core-api:
@@ -202,30 +176,23 @@ services:
 
   core-worker-realtime-stream:
     container_name: vninvest-dev-core-worker-realtime-stream
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      PYTHONPATH: /workspace/src
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_QUEUES: realtime_stream
+      CELERY_CONCURRENCY: "4"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=4 --queues=realtime_stream --without-heartbeat --without-gossip --without-mingle
+    command: ["worker"]
     restart: unless-stopped
     depends_on:
       core-api:
@@ -237,30 +204,23 @@ services:
 
   core-worker-enrichment:
     container_name: vninvest-dev-core-worker-enrichment
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      PYTHONPATH: /workspace/src
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_QUEUES: enrichment_offhours
+      CELERY_CONCURRENCY: "6"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=6 --queues=enrichment_offhours --without-heartbeat --without-gossip --without-mingle
+    command: ["worker"]
     restart: unless-stopped
     depends_on:
       core-api:
@@ -272,30 +232,23 @@ services:
 
   core-worker-manual:
     container_name: vninvest-dev-core-worker-manual
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      PYTHONPATH: /workspace/src
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_QUEUES: manual_on_demand
+      CELERY_CONCURRENCY: "3"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core worker --loglevel=INFO --concurrency=3 --queues=manual_on_demand --without-heartbeat --without-gossip --without-mingle
+    command: ["worker"]
     restart: unless-stopped
     depends_on:
       core-api:
@@ -307,36 +260,27 @@ services:
 
   core-beat:
     container_name: vninvest-dev-core-beat
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ./packages/core/backend:/workspace
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
     environment:
       CORE_ENV: development
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      PYTHONPATH: /workspace/src
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core beat --loglevel=INFO --schedule /tmp/core-celerybeat-schedule
+    command: ["beat"]
     restart: unless-stopped
     depends_on:
       core-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python manage.py check_scheduler_queue_drift --warn-only"]
+      test: ["CMD-SHELL", "python src/manage.py check_scheduler_queue_drift --warn-only"]
       interval: 5m
       timeout: 30s
       retries: 3

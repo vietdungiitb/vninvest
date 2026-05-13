@@ -20,7 +20,6 @@ from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from vninvest_core.utils.legacy_bridge import legacy_bridge_response
 
 
 # ---------------------------------------------------------------------------
@@ -235,15 +234,6 @@ class RealtimeUnifiedAlertsView(APIView):
         page_items = deduped[:limit]
         next_cursor = self._build_next_cursor(page_items[-1], window=window, severity_min=severity_min) if has_more and page_items else None
         results = [self._sanitize_item(item) for item in page_items]
-
-        if not results:
-            bridged_response = legacy_bridge_response(
-                request,
-                request.path,
-                unavailable_message='Legacy unified-alerts bridge hiện không khả dụng.',
-            )
-            if bridged_response is not None:
-                return bridged_response
 
         return Response({
             'results': results,
@@ -547,14 +537,6 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
                     )
                 )
 
-            bridged_response = legacy_bridge_response(
-                request,
-                request.path,
-                unavailable_message='Legacy whale aggregate bridge hiện không khả dụng.',
-            )
-            if bridged_response is not None:
-                return bridged_response
-
             return Response(
                 self._build_response(
                     results=[],
@@ -598,15 +580,6 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
         page_rows_with_probe = list(queryset[:limit + 1])
         has_more = len(page_rows_with_probe) > limit
         page_rows = page_rows_with_probe[:limit]
-
-        if not page_rows and scope != 'tracked':
-            bridged_response = legacy_bridge_response(
-                request,
-                request.path,
-                unavailable_message='Legacy whale aggregate bridge hiện không khả dụng.',
-            )
-            if bridged_response is not None:
-                return bridged_response
 
         results = [self._serialize_whale_record(row, now=now) for row in page_rows]
         next_cursor = None
@@ -1013,14 +986,6 @@ class RealtimeWhaleCampaignsView(RealtimeWhaleFeedAggregateView):
                     )
                 )
 
-            bridged_response = legacy_bridge_response(
-                request,
-                request.path,
-                unavailable_message='Legacy whale campaigns bridge hiện không khả dụng.',
-            )
-            if bridged_response is not None:
-                return bridged_response
-
             return Response(
                 self._build_campaign_response(
                     results=[],
@@ -1047,14 +1012,6 @@ class RealtimeWhaleCampaignsView(RealtimeWhaleFeedAggregateView):
         queryset = self._apply_whale_window_filter(queryset, window, now).order_by('-executed_at', '-alert_id')
 
         page_rows = list(queryset[:aggregate_limit])
-        if not page_rows and scope != 'tracked':
-            bridged_response = legacy_bridge_response(
-                request,
-                request.path,
-                unavailable_message='Legacy whale campaigns bridge hiện không khả dụng.',
-            )
-            if bridged_response is not None:
-                return bridged_response
 
         events = [self._serialize_whale_record(row, now=now) for row in page_rows]
         campaigns = self._group_events_into_campaigns(events, max_gap_minutes=max_gap_minutes)

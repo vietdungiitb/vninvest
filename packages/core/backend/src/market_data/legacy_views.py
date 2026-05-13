@@ -20,7 +20,6 @@ from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from vninvest_core.utils.legacy_bridge import legacy_bridge_response
 
 
 # ---------------------------------------------------------------------------
@@ -127,24 +126,6 @@ def _build_stock_management_group_payload(watchlist, index: int):
     }
 
 
-def _legacy_bridge_or_none_on_unavailable(request, legacy_path: str, *, unavailable_message: str):
-    bridged_response = legacy_bridge_response(
-        request,
-        legacy_path,
-        unavailable_message=unavailable_message,
-    )
-    if bridged_response is None:
-        return None
-    response_payload = getattr(bridged_response, 'data', None)
-    if (
-        bridged_response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        and isinstance(response_payload, dict)
-        and response_payload.get('status') == 'bridge_unavailable'
-    ):
-        return None
-    return bridged_response
-
-
 # ---------------------------------------------------------------------------
 # Stock-management stubs (not yet migrated to core)
 # ---------------------------------------------------------------------------
@@ -155,14 +136,6 @@ class StockManagementGroupsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        bridged_response = _legacy_bridge_or_none_on_unavailable(
-            request,
-            request.path,
-            unavailable_message='Legacy securities-group bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
-
         from user_workspace.models import Watchlist
 
         watchlists = list(Watchlist.objects.filter(user=request.user).prefetch_related('items'))
@@ -182,14 +155,6 @@ class StockManagementSeedView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        bridged_response = _legacy_bridge_or_none_on_unavailable(
-            request,
-            request.path,
-            unavailable_message='Legacy securities-seed bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
-
         from user_workspace.models import Watchlist, WatchlistItem
 
         created_groups = []
@@ -255,13 +220,6 @@ class StockManagementSyncView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        bridged_response = legacy_bridge_response(
-            request,
-            request.path,
-            unavailable_message='Legacy securities-sync bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
@@ -273,23 +231,9 @@ class TrackedSymbolsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        bridged_response = legacy_bridge_response(
-            request,
-            '/api/stock-management/tracked-symbols/',
-            unavailable_message='Legacy tracked-symbol bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None and bridged_response.status_code < 500:
-            return bridged_response
         return _empty_list()
 
     def post(self, request):
-        bridged_response = legacy_bridge_response(
-            request,
-            '/api/stock-management/tracked-symbols/',
-            unavailable_message='Legacy tracked-symbol bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
@@ -298,23 +242,9 @@ class TrackedSymbolDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk):
-        bridged_response = legacy_bridge_response(
-            request,
-            f'/api/stock-management/tracked-symbols/{pk}/',
-            unavailable_message='Legacy tracked-symbol detail bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, pk):
-        bridged_response = legacy_bridge_response(
-            request,
-            f'/api/stock-management/tracked-symbols/{pk}/',
-            unavailable_message='Legacy tracked-symbol detail bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -323,13 +253,6 @@ class TrackedSymbolBulkThresholdView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        bridged_response = legacy_bridge_response(
-            request,
-            '/api/stock-management/tracked-symbols/bulk-threshold/',
-            unavailable_message='Legacy tracked-symbol bulk bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
@@ -339,23 +262,9 @@ class PriceAlertsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        bridged_response = _legacy_bridge_or_none_on_unavailable(
-            request,
-            '/api/stock-management/price-alerts/',
-            unavailable_message='Legacy price-alert bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return _empty_list()
 
     def post(self, request):
-        bridged_response = legacy_bridge_response(
-            request,
-            '/api/stock-management/price-alerts/',
-            unavailable_message='Legacy price-alert bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
@@ -364,23 +273,9 @@ class PriceAlertDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk):
-        bridged_response = legacy_bridge_response(
-            request,
-            f'/api/stock-management/price-alerts/{pk}/',
-            unavailable_message='Legacy price-alert detail bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, pk):
-        bridged_response = legacy_bridge_response(
-            request,
-            f'/api/stock-management/price-alerts/{pk}/',
-            unavailable_message='Legacy price-alert detail bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -389,13 +284,6 @@ class PriceAlertTriggerView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        bridged_response = legacy_bridge_response(
-            request,
-            f'/api/stock-management/price-alerts/{pk}/mark-triggered/',
-            unavailable_message='Legacy price-alert trigger bridge hiện không khả dụng.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
