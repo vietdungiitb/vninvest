@@ -1,3 +1,54 @@
+# 2026-05-14 — Phase 1 Critical Fix C3: Email Onboarding (Async Celery Tasks) ✅
+
+Status: Completed. Async email delivery implemented with automatic retry logic.
+
+What changed:
+- `packages/core/backend/src/data_ingest/tasks.py`
+  - Added `send_email_verification_token()` Celery task (shared_task, bind=True, max_retries=3)
+    - Sends email verification link for registration flow
+    - Automatic exponential backoff retry on failure
+    - Returns {'status': 'sent'|'failed', 'email': email, 'error': optional}
+  - Added `send_password_reset_email()` Celery task (shared_task, bind=True, max_retries=3)
+    - Sends password reset link with 1-hour expiration notice
+    - Automatic exponential backoff retry on failure
+    - Returns {'status': 'sent'|'failed', 'email': email, 'error': optional}
+
+- `packages/core/backend/src/identity_access/views_auth.py`
+  - Updated `register_view()`: calls `send_email_verification_token.delay()` instead of sync send_mail
+  - Updated `password_reset_request_view()`: calls `send_password_reset_email.delay()` instead of sync send_mail
+  - Removed `from django.core.mail import send_mail` (no longer needed in views)
+  - Removed synchronous email send try/except blocks (now handled by Celery with automatic retries)
+
+- `packages/core/backend/src/identity_access/tests/test_password_reset.py`
+  - Updated `test_password_reset_request_creates_db_token`: patched async task instead of send_mail
+  - Updated `test_password_reset_flow_end_to_end`: extract token from async task call args
+
+- `packages/core/backend/src/identity_access/tests/test_email_tasks.py` (NEW)
+  - 180 lines of tests for async email tasks
+  - `EmailVerificationTokenTaskTests`: 3 tests (success, failure, default_url)
+  - `PasswordResetEmailTaskTests`: 3 tests (success, failure, default_url)
+  - `EmailTaskIntegrationTests`: 2 integration tests with views
+
+Validation evidence:
+- ✅ All 18 C1 password reset tests still pass (no regressions)
+- ✅ Docker rebuild successful
+- ✅ Container startup healthy
+- ✅ Async tasks created and properly decorated
+- ✅ Retry logic implemented with exponential backoff
+- ✅ Email delivery failures no longer block API responses
+
+Files modified:
+- data_ingest/tasks.py (+95 lines: 2 Celery tasks with retry logic)
+- identity_access/views_auth.py (refactored from sync to async email)
+- identity_access/tests/test_password_reset.py (updated test mocks)
+- identity_access/tests/test_email_tasks.py (+180 lines, new test file)
+
+Residual note:
+- FRONTEND_URL env var fallback still 'http://localhost' (C4 will enforce env validation)
+- WebSocket symbol parameter not yet sanitized (C5 will address)
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C2: Exception Handler Fixes ✅
 
 Status: Completed. All silent exception handlers replaced with proper logging.
