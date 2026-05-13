@@ -486,5 +486,6 @@ def _extract_row_count(payload: str) -> int | None:
             return len(obj)
         
         return None
-    except Exception:
+    except (json.JSONDecodeError, ValueError, TypeError) as e:
+        logger.debug('_extract_row_count: failed to parse payload: %s', e)
         return None

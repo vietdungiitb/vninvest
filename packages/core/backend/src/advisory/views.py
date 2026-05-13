@@ -7,6 +7,7 @@ Endpoints:
   GET  /core/v1/advisory/history/<symbol>/  — paginated AdvisoryRecord history
 """
 import logging
+import re
 from calendar import monthrange
 from datetime import date as _date, timedelta
 
@@ -25,6 +26,18 @@ from ops_audit.models import AuditEvent
 
 from .models import AdvisoryRecord, AdvisorySession
 from .serializers import AdvisoryRecordSerializer
+
+
+_SYMBOL_RE = re.compile(r'^[A-Z0-9]{2,10}$')
+
+
+def _validate_symbol(symbol: str) -> str:
+    """Normalize to uppercase and validate VN stock symbol format."""
+    symbol = symbol.strip().upper()
+    if not _SYMBOL_RE.match(symbol):
+        from rest_framework.exceptions import ValidationError
+        raise ValidationError({'symbol': ['Mã chứng khoán không hợp lệ. Chỉ chấp nhận 2–10 ký tự chữ và số.']})
+    return symbol
 
 
 _MANUAL_TRIGGER_PLAN_LIMITS = {
@@ -98,7 +111,7 @@ class AdvisoryLatestView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
-        symbol = symbol.upper()
+        symbol = _validate_symbol(symbol)
         session_date = request.query_params.get('date') or str(_date.today())
         advisory = (
             AdvisoryRecord.objects
@@ -124,7 +137,7 @@ class AdvisoryRefreshView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, symbol):
-        symbol = symbol.upper()
+        symbol = _validate_symbol(symbol)
         session_date = str(_date.today())
         session_date_obj = _date.today()
         tenant = _get_tenant(request.user)
@@ -347,7 +360,7 @@ class AdvisoryHistoryView(APIView):
     _PAGE_SIZE = 20
 
     def get(self, request, symbol):
-        symbol = symbol.upper()
+        symbol = _validate_symbol(symbol)
         qs = (
             AdvisoryRecord.objects
             .filter(symbol=symbol, status='generated')

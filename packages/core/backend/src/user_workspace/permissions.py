@@ -4,8 +4,11 @@ Permissions module for user_workspace domain.
 TenantScopePermission ensures request.user has active tenant and attaches
 request.tenant for use in views.
 """
+import logging
 from typing import Optional
 from rest_framework.permissions import BasePermission
+
+logger = logging.getLogger(__name__)
 
 
 class TenantScopePermission(BasePermission):
@@ -60,7 +63,10 @@ def _resolve_tenant(user) -> Optional['CoreTenant']:
         
         if member:
             return member.tenant
-    except Exception:
-        pass  # identity_access not loaded
+    except ImportError:
+        # identity_access not installed in this environment
+        pass
+    except Exception as e:
+        logger.warning('_resolve_tenant failed for user=%s: %s', getattr(user, 'id', None), e)
     
     return None

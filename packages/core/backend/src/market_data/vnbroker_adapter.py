@@ -263,13 +263,9 @@ def fetch_daily_history(symbol: str, days: int = 365) -> list[dict[str, Any]]:
                 'close': float(row['close']),
                 'volume': int(row['volume']),
             })
-        except Exception:
+        except (KeyError, TypeError, ValueError) as e:
+            logger.debug('Skipping malformed OHLCV row for %s: %s', symbol_upper, e)
             continue
-
-    return rows
-
-
-def warm_up_symbols(symbols: list[str]) -> dict[str, Any]:
     """
     Kích hoạt warmup cho danh sách symbol.
     Native version tập trung vào việc cập nhật SymbolSnapshot.

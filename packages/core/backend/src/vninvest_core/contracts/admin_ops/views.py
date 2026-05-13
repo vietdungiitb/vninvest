@@ -323,11 +323,9 @@ def _get_celery_active_queues() -> list[str]:
             for q in worker_queues:
                 queues.add(q.get('name'))
         return sorted(list(queues))
-    except Exception:
+    except Exception as e:
+        logger.debug('_get_celery_active_queues: Celery inspect failed: %s', e)
         return []
-
-
-def _now_iso() -> str:
     return timezone.now().isoformat()
 
 
@@ -360,7 +358,8 @@ def _legacy_admin_bridge_headers(request) -> dict[str, str]:
     request_host = ''
     try:
         request_host = str(request.get_host() or '').strip()
-    except Exception:
+    except Exception as e:
+        logger.debug('_legacy_admin_bridge_headers: get_host() failed: %s', e)
         request_host = str(request.META.get('HTTP_HOST') or '').strip()
     if request_host:
         # Preserve the user-facing host so legacy ALLOWED_HOSTS remains aligned with ingress.
@@ -433,11 +432,9 @@ def _probe_cache_health() -> bool | None:
         probe_key = f'admin-ops:probe:{timezone.now().timestamp()}'
         cache.set(probe_key, 'ok', timeout=5)
         return cache.get(probe_key) == 'ok'
-    except Exception:
+    except Exception as e:
+        logger.warning('_probe_cache_health: cache probe failed: %s', e)
         return None
-
-
-def _channel_layer_type() -> str:
     channel_layer = getattr(settings, 'CHANNEL_LAYERS', {}).get('default', {})
     return str(channel_layer.get('BACKEND') or 'unconfigured')
 
@@ -460,8 +457,9 @@ def _record_audit_event(*, actor, action: str, resource_type: str, resource_id: 
             resource_id=resource_id,
             metadata=metadata or {},
         )
-    except Exception:
+    except Exception as e:
         # Audit capture must not break admin flows.
+        logger.warning('_record_audit_event failed: action=%s resource=%s/%s: %s', action, resource_type, resource_id, e)
         return
 
 

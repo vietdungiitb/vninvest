@@ -123,9 +123,13 @@ def register_tenant_view(request):
     # Enqueue welcome email (async, non-critical)
     try:
         _enqueue_welcome_email(user, tenant)
-    except Exception:
+    except Exception as e:
         # Log but don't fail the registration if email enqueue fails
-        pass
+        import logging as _logging
+        _logging.getLogger(__name__).error(
+            'Welcome email enqueue failed for user=%s tenant=%s: %s',
+            user.id, tenant.tenant_code, e, exc_info=True,
+        )
 
     # Return created tenant
     result_serializer = CoreTenantSerializer(tenant)

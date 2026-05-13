@@ -12,6 +12,7 @@ migrated, replace the stub with the real core view.
 import base64
 import hashlib
 import json
+import logging
 from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
@@ -20,6 +21,8 @@ from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -396,9 +399,9 @@ class RealtimeUnifiedAlertsView(APIView):
             ts = str(payload.get('ts') or '')
             window = str(payload.get('window') or '')
             severity_min = str(payload.get('severity_min') or '')
-        except Exception:
+        except (ValueError, KeyError, TypeError, json.JSONDecodeError) as e:
+            logger.debug('_decode_cursor (alerts) failed to parse cursor: %s', e)
             return None
-        if priority_rank < 1 or priority_rank > 8:
             return None
         if not event_id or not ts or not window or not severity_min:
             return None
@@ -485,7 +488,8 @@ class RealtimeUnifiedAlertsView(APIView):
             if timezone.is_naive(parsed):
                 return timezone.make_aware(parsed, timezone.get_current_timezone())
             return parsed
-        except Exception:
+        except (ValueError, TypeError) as e:
+            logger.debug('_safe_parse_ts failed to parse %r: %s', ts_raw, e)
             return timezone.datetime.min.replace(tzinfo=timezone.utc)
 
 
@@ -714,9 +718,9 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
         try:
             padded = str(raw_cursor) + '=' * (-len(str(raw_cursor)) % 4)
             payload = json.loads(base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8'))
-        except Exception:
+        except (ValueError, json.JSONDecodeError) as e:
+            logger.debug('_decode_cursor (whale-feed) failed to parse cursor: %s', e)
             return None
-        if not isinstance(payload, dict):
             return None
 
         if sort == 'matched_value':
@@ -1258,9 +1262,9 @@ class RealtimeWhaleCampaignsView(RealtimeWhaleFeedAggregateView):
                 continue
             try:
                 ts_value = datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
-            except Exception:
+            except (ValueError, TypeError) as e:
+                logger.debug('_cluster_events ts parse failed for ts_raw=%r: %s', ts_raw, e)
                 continue
-            if timezone.is_naive(ts_value):
                 ts_value = timezone.make_aware(ts_value, timezone.get_current_timezone())
             normalized_events.append({
                 'event': event,

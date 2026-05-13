@@ -3,10 +3,13 @@ RequestTraceMiddleware — injects X-Request-ID into every request/response.
 
 ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 """
+import logging
 import time
 import uuid
 
 from .models import AuditEvent
+
+logger = logging.getLogger(__name__)
 
 
 class RequestTraceMiddleware:
@@ -57,5 +60,6 @@ class RequestTraceMiddleware:
                     'duration_ms': duration_ms,
                 },
             )
-        except Exception:
+        except Exception as e:
+            logger.warning('RequestTraceMiddleware: audit event write failed for %s %s: %s', getattr(request, 'method', ''), path, e)
             return
