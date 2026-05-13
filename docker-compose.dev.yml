@@ -74,8 +74,6 @@ services:
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/core_db
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
-      LEGACY_BACKEND_URL: ${LEGACY_BACKEND_URL:?LEGACY_BACKEND_URL must be set in compose.dev.env}
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
     command: ["api"]
     restart: unless-stopped
     healthcheck:
@@ -108,7 +106,6 @@ services:
       CELERY_CONCURRENCY: "2"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -136,7 +133,6 @@ services:
       CELERY_CONCURRENCY: "4"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -164,7 +160,6 @@ services:
       CELERY_CONCURRENCY: "4"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -192,7 +187,6 @@ services:
       CELERY_CONCURRENCY: "4"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -220,7 +214,6 @@ services:
       CELERY_CONCURRENCY: "6"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -248,7 +241,6 @@ services:
       CELERY_CONCURRENCY: "3"
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -274,7 +266,6 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/3
       CORE_DATABASE_URL: postgres://postgres:devpassword@db:5432/vninvest
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
-      LEGACY_DATABASE_URL: ${LEGACY_DATABASE_URL:?LEGACY_DATABASE_URL must be set in compose.dev.env}
     command: ["beat"]
     restart: unless-stopped
     depends_on:
