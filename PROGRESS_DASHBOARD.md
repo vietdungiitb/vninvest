@@ -1,3 +1,105 @@
+# 2026-05-13 — OpenAPI Standardization Full Handoff + Staticfiles Untrack ✅
+
+Status: Completed. Da chot policy mandatory va ban giao day du goi thuc thi backend/frontend/test/audit.
+
+Completed today:
+- Staticfiles governance:
+  - Added ignore rule: `packages/core/backend/src/staticfiles/` in `.gitignore`
+  - Removed staticfiles path from Git index (cached-only), keep local files.
+- Policy hardening:
+  - Promoted `docs/CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md` to mandatory enforced status.
+  - Updated `AGENTS.md` with OpenAPI read-first pack + hard constraints.
+  - Updated `.github/pull_request_template.md` with OpenAPI mandatory gate.
+- Delivered full handoff package:
+  - `docs/CORE_API_OPENAPI_STANDARDIZATION_HANDOFF_MASTER_20260513.md`
+  - `docs/IMPLEMENTATION_PLAN_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/TECH_SPEC_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/TASKBOARD_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/CORE_API_OPENAPI_STANDARDIZATION_TRACEABILITY_MATRIX_20260513.md`
+  - `docs/CORE_API_OPENAPI_STANDARDIZATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260513.md`
+  - `docs/RUN_CODE_REVIEW_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/RUN_INTEGRATION_TESTS_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/RUN_SPEC_AUDIT_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/CORE_API_OPENAPI_STANDARDIZATION_EXECUTION_EVIDENCE_TEMPLATE_20260513.md`
+- Updated discoverability references in Core API indexes and remediation/checklist docs.
+
+Validation:
+- Markdown diagnostics on touched policy/docs files: clean.
+- `.gitignore` updated and staticfiles path no longer intended for tracking going forward.
+
+Residual note:
+- Untracking staticfiles from index may produce large staged diff in this slice; this is expected per requested policy change.
+
+---
+
+# 2026-05-13 — Core API OpenAPI Governance Constitution + PR Gate ✅
+
+Status: Completed. Da chuyen ke hoach thanh bo quy dinh cung de ap dung ngay cho API governance.
+
+Completed today:
+- Tao moi 2 tai lieu governance:
+  - `docs/CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md`
+  - `docs/CORE_API_OPENAPI_PR_GATE_CHECKLIST_20260513.md`
+- Tich hop vao bo tai lieu hien co:
+  - `docs/CORE_API_DOCUMENT_INDEX_NAVIGATION_20260513.md`
+  - `docs/CORE_API_AUDIT_DOCUMENTATION_INDEX_20260513.md`
+  - `docs/CORE_API_REMEDIATION_PROPOSAL_20260513.md`
+  - `docs/CORE_API_FIX_CHECKLIST_20260513.md`
+
+Outcome:
+- Co bo hard rules 12 diem cho thiet ke ham OpenAPI.
+- Co checklist gate merge de dung truc tiep trong PR review.
+- Ke hoach remediation mo rong tu 4 tuan -> 6 tuan (them 2 tuan governance/CI rollout).
+
+Validation:
+- Kiem tra doc consistency giua index, remediation, checklist va governance docs: pass.
+- Khong thay doi code runtime trong slice nay.
+
+---
+
+# 2026-05-13 — SaaS Single-Path Runtime (No Parallel Legacy Bridge) ✅
+
+Status: Completed.
+
+Completed today:
+- Removed all active `legacy_bridge_response(...)` branches from SaaS runtime shim views:
+  - `packages/core/backend/src/market_data/legacy_views.py`
+  - `packages/core/backend/src/market_serving/legacy_views.py`
+- Standardized behavior to one mechanism only:
+  - Native core data path when available.
+  - Explicit SaaS stub/empty responses when feature is not yet native.
+
+Verification:
+- Static diagnostics on touched files: clean (`get_errors` shows no issues).
+- Workspace search confirms no remaining bridge callsite in `packages/core/backend/src/**` (except helper definition).
+
+Operational note:
+- Core DB still has no `market_data_dailyprice` rows, so `stocks/<symbol>/chart/` remains empty until native ingest/backfill is executed.
+
+---
+
+# 2026-05-13 — Native Intraday Tape Restored for Stock Detail ✅
+
+Status: Completed. The stock detail intraday panel now has a native source path again.
+
+Completed today:
+- Replaced the empty core `realtime/intraday/<symbol>/` stub with native `vnbroker` intraday fetch + Redis cache hydration.
+- Normalized intraday ticks to the frontend contract (`trades`, `time`, `price`, `volume`, `side`, `match_type`).
+- Added a native intraday warm-up task and wired the admin warm-now action to it.
+
+Validation:
+- `get_errors` on `market_data/vnbroker_adapter.py`, `market_serving/native_views.py`, `data_ingest/tasks.py`, and `vninvest_core/contracts/admin_ops/views.py` returned no errors.
+- Direct `vnbroker` probe for `VRE` returned a non-empty DataFrame.
+
+Live verification completed:
+- Dev backend rebuilt with `docker compose --env-file compose.dev.env -f docker-compose.dev.yml up -d --build core-api core-worker core-beat`.
+- Authenticated smoke on `/api/realtime/intraday/VRE/?page_size=20` returned `200` with `20` trades (`source=KBS`).
+- Redis stream evidence confirmed in runtime DB index used by core (`REDIS_URL=redis://redis:6379/3`):
+  - `redis-cli -n 3 XLEN vninvest:ticks:VRE` -> `20` after cache-miss fetch.
+
+Residual note:
+- Runtime still logs an initial VCI fetch failure and then falls back to KBS successfully when runtime config table is unavailable.
+
 # 2026-05-13 — Fix Lỗi Django Admin Mất CSS/JS ✅
 
 Status: Completed for source-level fix. Admin static assets are now served by Django in dev runtime.
@@ -4476,6 +4578,7 @@ Validation:
 - PASSED: browser fetch proof tren `/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1` voi token moi cua `testpro` da tra `200` thay vi `403 feature_locked`.
 - PASSED: browser proof `/ai-advisory/shell?symbol=BCM&ts=1777707400` khong con hien error `403`; advisory session card render voi `Contract: v1`.
 - PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+- PASSED: live gateway proof tren `/api/stock-management/stocks/VRE/ai-advisory-session/?contract=v2&include_benchmarks=1` voi PAT hop le tra `200` va payload `no_advisory_data` thay vi `404`.
 
 # ✅ AUDIT FILE LIST (2026-05-02at)
 - frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to the host core stub)

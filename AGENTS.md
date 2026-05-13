@@ -114,6 +114,22 @@ Trước mọi thay đổi liên quan `SaaS Full Independence`, `Option B`, `pro
 10. `docs/RUN_INTEGRATION_TESTS_SAAS_FULL_INDEPENDENCE_20260504.md`
 11. `docs/RUN_SPEC_AUDIT_SAAS_FULL_INDEPENDENCE_20260504.md`
 
+Trước mọi thay đổi liên quan `OpenAPI`, `API contract`, `serializer schema`, `response envelope`, `status code semantics`, `rate limit`, `tenant isolation`, hoặc chuẩn hóa endpoint trong `core-api`, đọc theo thứ tự:
+
+1. `docs/CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md`
+2. `docs/CORE_API_OPENAPI_PR_GATE_CHECKLIST_20260513.md`
+3. `docs/CORE_API_REMEDIATION_PROPOSAL_20260513.md`
+4. `docs/CORE_API_FIX_CHECKLIST_20260513.md`
+5. `docs/CORE_API_OPENAPI_STANDARDIZATION_HANDOFF_MASTER_20260513.md`
+6. `docs/IMPLEMENTATION_PLAN_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+7. `docs/TECH_SPEC_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+8. `docs/TASKBOARD_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+9. `docs/CORE_API_OPENAPI_STANDARDIZATION_TRACEABILITY_MATRIX_20260513.md`
+10. `docs/CORE_API_OPENAPI_STANDARDIZATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260513.md`
+11. `docs/RUN_CODE_REVIEW_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+12. `docs/RUN_INTEGRATION_TESTS_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+13. `docs/RUN_SPEC_AUDIT_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+
 ## 3. Hard constraints for this feature pack
 
 1. `whale-alerts/:symbol` phải dùng KLineChart làm surface trung tâm.
@@ -226,3 +242,14 @@ Template chuẩn nằm tại:
 8. **`legacy_proxy.py` không được log request body** — chỉ log method + path + status code.
 9. **WebSocket symbol parameter phải được sanitize** trước khi dùng làm Redis channel key.
 10. **LEGACY_BACKEND_URL phải là biến môi trường** — không hardcode trong source.
+
+## 10. Hard constraints for OpenAPI standardization
+
+1. `docs/CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md` là SSOT bắt buộc cho thiết kế endpoint OpenAPI.
+2. Mọi PR chạm API contract phải pass đầy đủ `docs/CORE_API_OPENAPI_PR_GATE_CHECKLIST_20260513.md`.
+3. Không merge nếu thiếu cập nhật OpenAPI metadata tương ứng khi thay đổi request/response contract.
+4. Không merge nếu endpoint list không có pagination hoặc endpoint auth không có rate limit policy.
+5. Tuyệt đối cấm `except: pass` và `except Exception: pass` trong API path.
+6. Error response phải dùng đúng khung chuẩn (detail/code/timestamp/request_id/field_errors).
+7. Endpoint tenant-scoped bắt buộc có filter tenant ở query layer và test chặn cross-tenant access.
+8. Mọi exception khỏi hard rule phải có ticket, owner, expiry; quá hạn thì block merge.

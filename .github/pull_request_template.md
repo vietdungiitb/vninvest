@@ -32,3 +32,13 @@ Neu co tac dong OpenCore, bat buoc tick day du checklist OC-19 ben duoi.
 ## Ghi chu reviewer
 
 - Neu checklist khong day du: PR OpenCore = NO-GO.
+
+## OpenAPI Mandatory Gate (Core API)
+
+- [ ] PR co tac dong OpenAPI contract (request/response/status/error/auth/rate-limit/tenant)
+- [ ] Da doc va tuan thu `docs/CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md`
+- [ ] Da tick day du `docs/CORE_API_OPENAPI_PR_GATE_CHECKLIST_20260513.md`
+- [ ] Da cap nhat OpenAPI metadata neu co doi contract
+- [ ] Da bo sung test toi thieu theo constitution
+
+Neu mot trong cac muc tren khong dat: PR API = NO-GO.

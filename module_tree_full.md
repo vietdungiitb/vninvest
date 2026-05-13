@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-13 10:59:30`
+Generated at: `2026-05-13 14:47:24`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-13 10:59:30`
 - Python modules: 582
 - JS/TS modules: 500
 - Total classes: 961
-- Total functions: 2893
-- Total top-level variables: 4591
+- Total functions: 2903
+- Total top-level variables: 4595
 
 ## Python Modules
 
@@ -2708,9 +2708,9 @@ Generated at: `2026-05-13 10:59:30`
 ### `packages/core/backend/src/data_ingest/tasks.py`
 
 - Functions:
-  - `fetch_and_upsert_price_board`, `sync_market_groups`
+  - `_fetch_and_upsert_bucket`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `sync_market_groups`, `warm_intraday_universe`
 - Top-level variables:
-  - `logger`
+  - `_HISTORY_PROVIDERS`, `logger`
 
 ### `packages/core/backend/src/identity_access/__init__.py`
 
@@ -2907,7 +2907,7 @@ Generated at: `2026-05-13 10:59:30`
   - `TrackedSymbolDetailView` -> methods: `delete`, `patch`
   - `TrackedSymbolsView` -> methods: `get`, `post`
 - Functions:
-  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`, `_legacy_bridge_or_none_on_unavailable`
+  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`
 - Top-level variables:
   - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`
 
@@ -2954,7 +2954,7 @@ Generated at: `2026-05-13 10:59:30`
   - `StockManagementAdvisoryCompToggleView` -> methods: `post`
   - `StockManagementAIAdvisoryComponentsDeletedView` -> methods: `get`
   - `StockManagementAIAdvisoryComponentsGenerateView` -> methods: `post`
-  - `StockManagementAIAdvisoryObservabilityView` -> methods: `get`
+  - `StockManagementAIAdvisoryObservabilityView` -> methods: `get`, `post`
   - `StockManagementAIAdvisorySessionView` -> methods: `get`
   - `StockManagementAIAdvisorySummaryDetailView` -> methods: `delete`
   - `StockManagementAIAdvisorySummaryRegenerateView` -> methods: `post`
@@ -2963,7 +2963,7 @@ Generated at: `2026-05-13 10:59:30`
   - `StockManagementFinancialsView` -> methods: `get`
   - `StockManagementGroupDetailView` -> methods: `delete`, `get`, `put`
   - `StockManagementGroupItemsView` -> methods: `get`
-  - `StockManagementItemDetailView` -> methods: `delete`, `get`
+  - `StockManagementItemDetailView` -> methods: `delete`, `get`, `post`
   - `StockManagementNewsAISummaryView` -> methods: `get`
   - `StockManagementNewsView` -> methods: `get`
   - `StockManagementOrderFlowView` -> methods: `get`
@@ -2991,9 +2991,9 @@ Generated at: `2026-05-13 10:59:30`
 - Classes:
   - `VnbrokerAdapterError`
 - Functions:
-  - `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `get_active_config`, `warm_up_symbols`
+  - `_build_intraday_source_candidates`, `_fetch_intraday_frame`, `_normalize_intraday_trade_rows`, `_publish_intraday_stream`, `fetch_daily_history`, `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `get_active_config`, `warm_up_intraday_symbols`, `warm_up_symbols`
 - Top-level variables:
-  - `logger`
+  - `_INTRADAY_FALLBACK_SOURCES`, `logger`
 
 ### `packages/core/backend/src/market_serving/__init__.py`
 
@@ -3061,6 +3061,10 @@ Generated at: `2026-05-13 10:59:30`
   - `RealtimeTickerListView` -> methods: `get`
   - `RealtimeTickerView` -> methods: `get`
   - `RealtimeWhaleFeedView` -> methods: `get`
+- Functions:
+  - `_normalize_trade`
+- Top-level variables:
+  - `_INTRADAY_SIDE_MAP`
 
 ### `packages/core/backend/src/market_serving/serializers.py`
 
@@ -3292,7 +3296,11 @@ Generated at: `2026-05-13 10:59:30`
   - `OrderFlowEventListView` -> methods: `get_queryset`
   - `UnifiedAlertListView` -> methods: `get_queryset`
   - `WhaleAlertCursorPagination`
-  - `WhaleFeedAggregateView` -> methods: `get_queryset`
+  - `WhaleFeedAggregateView` -> methods: `get`
+- Functions:
+  - `_whale_size_class`
+- Top-level variables:
+  - `_WHALE_SIDE_MAP`
 
 ### `packages/core/backend/src/tenant_lifecycle/__init__.py`
 

@@ -1,3 +1,155 @@
+# 2026-05-13 — OpenAPI Mandatory Rollout + Full Handoff Package + Staticfiles Untrack ✅
+
+Status: Completed.
+
+What changed:
+- Git tracking policy update:
+  - `.gitignore`: added `packages/core/backend/src/staticfiles/`
+  - Untracked cached path: `packages/core/backend/src/staticfiles/` (local files preserved)
+- OpenAPI mandatory enforcement:
+  - `docs/CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md` set to mandatory enforced
+  - `AGENTS.md` updated with OpenAPI read-first and hard constraints
+  - `.github/pull_request_template.md` updated with OpenAPI mandatory gate
+- Full execution handoff package delivered:
+  - `docs/CORE_API_OPENAPI_STANDARDIZATION_HANDOFF_MASTER_20260513.md`
+  - `docs/IMPLEMENTATION_PLAN_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/TECH_SPEC_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/TASKBOARD_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/CORE_API_OPENAPI_STANDARDIZATION_TRACEABILITY_MATRIX_20260513.md`
+  - `docs/CORE_API_OPENAPI_STANDARDIZATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260513.md`
+  - `docs/RUN_CODE_REVIEW_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/RUN_INTEGRATION_TESTS_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/RUN_SPEC_AUDIT_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
+  - `docs/CORE_API_OPENAPI_STANDARDIZATION_EXECUTION_EVIDENCE_TEMPLATE_20260513.md`
+- Reference updates:
+  - `docs/CORE_API_DOCUMENT_INDEX_NAVIGATION_20260513.md`
+  - `docs/CORE_API_AUDIT_DOCUMENTATION_INDEX_20260513.md`
+  - `docs/CORE_API_REMEDIATION_PROPOSAL_20260513.md`
+  - `docs/CORE_API_FIX_CHECKLIST_20260513.md`
+
+Validation evidence:
+- Touched markdown and policy files report no diagnostics.
+- Constitution and PR gate now enforce mandatory policy language.
+- Handoff package includes backend/frontend/test/audit execution tracks.
+
+Residual note:
+- Staticfiles untrack operation intentionally creates broad index removal for generated assets; this is governance-driven and expected.
+
+---
+
+# 2026-05-13 — Core API OpenAPI Governance Constitution + PR Gate ✅
+
+Status: Completed.
+
+What changed:
+- Added hard-rule constitution for OpenAPI function design:
+  - `docs/CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md`
+- Added mandatory PR gate checklist for API changes:
+  - `docs/CORE_API_OPENAPI_PR_GATE_CHECKLIST_20260513.md`
+- Updated navigation and audit indexes:
+  - `docs/CORE_API_DOCUMENT_INDEX_NAVIGATION_20260513.md`
+  - `docs/CORE_API_AUDIT_DOCUMENTATION_INDEX_20260513.md`
+- Updated execution documents to include governance rollout:
+  - `docs/CORE_API_REMEDIATION_PROPOSAL_20260513.md`
+  - `docs/CORE_API_FIX_CHECKLIST_20260513.md`
+- Updated central progress tracker:
+  - `PROGRESS_DASHBOARD.md`
+
+Validation evidence:
+- Cross-document references verified.
+- Governance package now discoverable from both index documents.
+- No runtime code touched in this slice.
+
+Residual note:
+- CI workflow scripts referenced in constitution/checklist are governance requirements; implementation should be scheduled in the next execution slice.
+
+---
+
+# 2026-05-13 — Parallel DailyPrice Backfill + Docker Immutable Runtime ✅
+
+Status: Completed. Commit `a1087fc8` on `dev`.
+
+What changed:
+- `packages/core/backend/src/data_ingest/tasks.py`
+  - Added `_HISTORY_PROVIDERS = ['vci', 'kbs']` provider registry.
+  - Added `_fetch_and_upsert_bucket(symbols, provider, days, inter_symbol_delay)` thread worker.
+  - Rewrote `backfill_daily_prices` to use `ThreadPoolExecutor` with round-robin symbol distribution.
+  - Benchmark: 60 symbols × 365 days → 13.32s, 4.5 sym/s, 21,898 rows, 1 failed (VIS — no data).
+- `packages/core/backend/src/market_data/vnbroker_adapter.py`
+  - Added `fetch_daily_history(symbol, days)` for single-symbol VCI daily OHLCV fetch.
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+  - Added `post()` handler to `StockManagementAIAdvisoryObservabilityView` → returns HTTP 201.
+- `packages/core/backend/src/vninvest_core/settings.py`
+  - Added `daily-backfill-prices-1700` beat entry: `crontab(hour=10, minute=5)` (17:05 ICT).
+- `packages/core/backend/src/vninvest_core/queue_policy.py`
+  - Added `backfill_daily_prices` to `offhours_enrichment` task_routes.
+  - Added `daily-backfill-prices-1700` to `offhours_enrichment` periodic_tasks.
+- `docker-compose.dev.yml`
+  - Refactored to immutable image via YAML anchor `x-core-build` (no runtime apt/pip installs).
+  - All 8 core services share image `vninvest-dev-core-runtime`.
+
+Validation evidence:
+- POST `/api/stock-management/stocks/VHM/ai-advisory-observability/` → 201 ✅
+- GET `/api/stock-management/stocks/VHM/chart/?days=30` → 200, 20 candles ✅
+- `core-api` healthy in ~15s (vs previously hanging indefinitely) ✅
+- `django.conf.settings.CELERY_BEAT_SCHEDULE['daily-backfill-prices-1700']` confirmed in running container ✅
+- DailyPrice total: 15,548 rows, 59 distinct symbols ✅
+
+---
+
+# 2026-05-13 — SaaS Single-Path: Remove Legacy Bridge Call Paths ✅
+
+Status: Completed. Runtime shim views in `packages/core` no longer execute any legacy bridge branch.
+
+What changed:
+- `packages/core/backend/src/market_data/legacy_views.py`
+  - Removed `legacy_bridge_response` import.
+  - Removed `_legacy_bridge_or_none_on_unavailable(...)` helper.
+  - Removed all `legacy_bridge_response(...)` call branches from stock-management shim endpoints.
+  - Kept explicit SaaS-native behavior only: native watchlist/group logic or deterministic stub responses.
+- `packages/core/backend/src/market_serving/legacy_views.py`
+  - Removed `legacy_bridge_response` import.
+  - Removed all bridge fallback branches in unified-alerts, whale aggregate, and whale campaigns responses.
+  - Kept canonical core event-store flow only.
+
+Validation evidence:
+- `grep legacy_bridge_response(` under `packages/core/backend/src/**/*.py` now matches only helper definition file.
+- `get_errors` on modified files returned no errors.
+
+Residual note:
+- `vninvest_core/utils/legacy_bridge.py` helper file remains in tree for compatibility history, but has no active callsite in `packages/core` runtime paths.
+
+# 2026-05-13 — Fix Native Intraday Tape for Stock Detail ✅
+
+Status: Completed. The core native realtime intraday path now returns real trades instead of the empty stub, and the admin warm-now action now warms intraday cache instead of only price-board snapshots.
+
+What changed:
+- `packages/core/backend/src/market_data/vnbroker_adapter.py`
+  - Added native intraday fetch/normalize helpers backed by `vnbroker`.
+  - `fetch_intraday_tape()` now fetches from a native intraday source on cache miss, stores the payload in Redis cache, and returns `trades`, `total`, `source`, `stale`, and `fetched_at`.
+  - Added `warm_up_intraday_symbols()` to prefill intraday cache for active symbols.
+- `packages/core/backend/src/market_serving/native_views.py`
+  - `RealtimeIntradayView` now returns real intraday `trades` and mirrors them into `bars` for backward compatibility.
+- `packages/core/backend/src/data_ingest/tasks.py`
+  - Added `warm_intraday_universe` Celery task to warm intraday cache for the active symbol universe.
+- `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py`
+  - `intraday-universe/warm-now/` now triggers the intraday warm-up task instead of price-board warming.
+
+Validation evidence:
+- Static diagnostics:
+  - `get_errors` on the 4 touched backend files returned no errors.
+- Runtime probe:
+  - Native `vnbroker` intraday fetch for `VRE` returned a non-empty DataFrame with buy/sell tick rows.
+
+Validation commands and outcomes:
+- `docker compose --env-file compose.dev.env -f docker-compose.dev.yml up -d --build core-api core-worker core-beat` -> backend services rebuilt and healthy.
+- `docker exec vninvest-dev-core-api python manage.py shell -c "... c.get('/api/realtime/intraday/VRE/?page_size=20') ..."` -> `200`, `total=20`, `source=KBS`, payload contains non-empty `trades`.
+- `docker exec vninvest-dev-core-api python manage.py shell -c "from django.conf import settings; print(settings.REDIS_URL)"` -> `redis://redis:6379/3`.
+- `docker exec vninvest-dev-redis redis-cli -n 3 XLEN vninvest:ticks:VRE` -> `20` after forcing cache miss (`cache.delete('intraday_tape:VRE')`) and calling endpoint again.
+
+Residual note:
+- Runtime fallback still logs one failed `VCI` source attempt before succeeding with `KBS` when runtime config table is unavailable; functional path remains healthy.
+
 # 2026-05-13 — Fix Django Admin Static 404 (CSS/JS Missing) ✅
 
 Status: Completed. Fixed Django Admin rendering in dev stack where `/admin/` loaded but `/static/admin/*` returned 404.
@@ -7423,6 +7575,7 @@ Validation:
 - PASSED: `get_errors` clean tren `packages/web/src/pages/signals/ShellAiAdvisoryPage.js` va `packages/web/scripts/check-shell.mjs`.
 - PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them query-driven symbol routing va control doi ma advisory.
 - PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+- PASSED: live gateway proof cho `/api/stock-management/stocks/VRE/ai-advisory-session/?contract=v2&include_benchmarks=1` voi PAT hop le tra `200` va payload `ok=false`, `queued=false`, `reason='no_advisory_data'` thay vi `404`.
 
 Residual note:
 - Slice nay chi mo symbol routing tren `ai-advisory` shell; no van doc cung endpoint `ai-advisory-session` v2 va khong giai quyet navigation/query-state cho cac route shell khac.

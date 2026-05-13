@@ -25,6 +25,7 @@ packages/core/backend/celerybeat-schedule
 packages/core/backend/celerybeat-schedule-shm
 packages/core/backend/celerybeat-schedule-wal
 backend/staticfiles/
+packages/core/backend/src/staticfiles/
 backend/mediafiles/
 backend/*.log
 
