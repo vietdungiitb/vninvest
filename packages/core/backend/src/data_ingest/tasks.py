@@ -260,7 +260,16 @@ def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
     from data_ingest.models import IngestJob, IngestRun
     from django.utils.timezone import now
     
-    job = None
+    # Get or create the IngestJob for daily price ingestion
+    job, created = IngestJob.objects.get_or_create(
+        name='daily-price-ingest',
+        defaults={
+            'source': IngestJob.SourceChoices.VNBROKER_PRICE_BOARD,
+            'status': IngestJob.StatusChoices.ACTIVE,
+            'schedule_seconds': 86400,  # 24 hours
+        }
+    )
+    
     run = None
     
     try:
@@ -270,7 +279,7 @@ def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
             state=IngestRun.StateChoices.RUNNING,
         )
         
-        logger.info(f'ingest_daily_prices starting: days={days}, symbols={len(symbols) if symbols else "all"}')
+        logger.info(f'ingest_daily_prices starting: days={days}, symbols={len(symbols) if symbols else "all"}, run_id={run.id}')
         
         # Call the main backfill task (handles provider round-robin and threading)
         result = backfill_daily_prices.apply_async(
@@ -288,7 +297,7 @@ def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
             run.save(update_fields=['state', 'rows_upserted', 'finished_at'])
         
         logger.info(
-            f'ingest_daily_prices completed: upserted={upserted}, failed={len(failed)}, '
+            f'ingest_daily_prices completed: run_id={run.id if run else "none"}, upserted={upserted}, failed={len(failed)}, '
             f'providers={result.get("providers")}'
         )
         return result
@@ -299,6 +308,7 @@ def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
             run.state = IngestRun.StateChoices.FAILED
             run.error_message = str(exc)[:500]
             run.finished_at = now()
+            run.save(update_fields=['state', 'error_message', 'finished_at'])
             run.save(update_fields=['state', 'error_message', 'finished_at'])
         
         # Retry with exponential backoff (60s, 120s, 240s)
