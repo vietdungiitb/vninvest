@@ -1,4 +1,6 @@
 from rest_framework import generics, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from vninvest_core.pagination import AlertCursorPagination, OrderFlowCursorPagination
 
@@ -32,20 +34,64 @@ class UnifiedAlertListView(generics.ListAPIView):
         return qs
 
 
-class WhaleFeedAggregateView(generics.ListAPIView):
-    serializer_class = WhaleAlertCanonicalSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    pagination_class = WhaleAlertCursorPagination
+_WHALE_SIDE_MAP = {'B': 'BUY', 'S': 'SELL', 'BUY': 'BUY', 'SELL': 'SELL'}
 
-    def get_queryset(self):
+
+def _whale_size_class(matched_value) -> str:
+    v = float(matched_value or 0)
+    if v >= 5_000_000_000:
+        return 'whale'
+    if v >= 1_000_000_000:
+        return 'shark'
+    return 'normal'
+
+
+class WhaleFeedAggregateView(APIView):
+    """GET /api/signals/whale-feed/?symbol=VCB — flat whale order list with summary.
+
+    Returns a contract-stable shape for frontend consumption:
+    {
+      "symbol": "VCB",
+      "whale_orders": [{ts, price, volume, matched_value, side, size_class}, ...],
+      "summary": {buy_value, sell_value}
+    }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        symbol = request.query_params.get('symbol', '').upper()
+        session_date = request.query_params.get('session_date')
+
         qs = WhaleAlertCanonical.objects.select_related('alert').order_by('-executed_at')
-        symbol = self.request.query_params.get('symbol')
-        session_date = self.request.query_params.get('session_date')
         if symbol:
-            qs = qs.filter(symbol=symbol.upper())
+            qs = qs.filter(symbol=symbol)
         if session_date:
             qs = qs.filter(session_date=session_date)
-        return qs
+        qs = qs[:200]
+
+        whale_orders = [
+            {
+                'ts': item.executed_at.isoformat(),
+                'price': float(item.price),
+                'volume': item.volume,
+                'matched_value': float(item.matched_value),
+                'side': _WHALE_SIDE_MAP.get(str(item.side).upper(), item.side),
+                'size_class': _whale_size_class(item.matched_value),
+            }
+            for item in qs
+        ]
+
+        buy_value = sum(o['matched_value'] for o in whale_orders if o['side'] == 'BUY')
+        sell_value = sum(o['matched_value'] for o in whale_orders if o['side'] == 'SELL')
+
+        return Response({
+            'symbol': symbol,
+            'whale_orders': whale_orders,
+            'summary': {
+                'buy_value': buy_value,
+                'sell_value': sell_value,
+            },
+        })
 
 
 class OrderFlowEventListView(generics.ListAPIView):

@@ -8,13 +8,16 @@ Endpoints:
 """
 import os
 
+import logging
 from django.contrib.auth import authenticate
 from rest_framework import permissions, status
+
+logger = logging.getLogger(__name__)
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 
 from .authentication import CorePATAuthentication
-from .models import CorePATCredential, CoreTenant
+from .models import CorePATCredential, CoreTenant, PasswordResetToken
 from .permissions import IsTenantActive
 
 
@@ -458,9 +461,9 @@ from django.utils import timezone
 
 User = get_user_model()
 
-# In-memory token store for dev/test. In production, replace with DB-backed model.
+# In-memory token store for email verification (dev/test). Email tokens remain in-memory.
+# Password reset tokens are now persisted in PasswordResetToken model (C1 fix).
 _EMAIL_VERIFY_TOKENS: dict[str, dict] = {}   # token → {user_id, expires_at}
-_PASSWORD_RESET_TOKENS: dict[str, dict] = {}  # token → {user_id, expires_at}
 
 _TOKEN_TTL_HOURS = 24
 
@@ -588,6 +591,9 @@ def password_reset_request_view(request):
     SFI-B2.4a: POST /api/auth/password-reset/
     Body: { "email": "..." }
     Sends password reset link to email (if account exists).
+    
+    C1 Fix: Uses PasswordResetToken model (DB-backed) instead of in-memory store.
+    Tokens now persist across application restarts.
     """
     email = str(request.data.get('email', '') or '').strip().lower()
     if not email:
@@ -596,23 +602,22 @@ def password_reset_request_view(request):
     # Always return 200 to avoid user enumeration (OWASP A01).
     user = User.objects.filter(email=email, is_active=True).first()
     if user:
-        token = _make_token()
-        _PASSWORD_RESET_TOKENS[token] = {
-            'user_id': user.pk,
-            'expires_at': timezone.now() + timedelta(hours=1),
-        }
+        # Generate and save token in DB (survives restart)
+        token_obj, raw_token = PasswordResetToken.generate_and_save(email=email, hours=1)
+        
         frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost')
-        reset_url = f'{frontend_url}/reset-password?token={token}'
+        reset_url = f'{frontend_url}/reset-password?token={raw_token}'
         try:
             send_mail(
                 subject='Đặt lại mật khẩu VNInvest',
                 message=f'Nhấp vào liên kết sau để đặt lại mật khẩu:\n{reset_url}\n\nLinh kết hết hạn sau 1 giờ.',
                 from_email=django_settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
-                fail_silently=True,
+                fail_silently=False,  # Changed to fail_silently=False per C1 design
             )
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001
+            # Log email failure but don't block response
+            logger.warning(f'Password reset email failed for {email}: {e}')
 
     return Response(
         {'detail': 'Nếu email tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.'},
@@ -628,6 +633,8 @@ def password_reset_confirm_view(request):
     SFI-B2.4b: POST /api/auth/password-reset/confirm/
     Body: { "token": "...", "password": "..." }
     Sets new password for user identified by token.
+    
+    C1 Fix: Uses PasswordResetToken model to verify token and mark as used.
     """
     token = str(request.data.get('token', '') or '').strip()
     new_password = str(request.data.get('password', '') or '')
@@ -638,21 +645,22 @@ def password_reset_confirm_view(request):
     if len(new_password) < 8:
         return Response({'detail': 'Password phải có ít nhất 8 ký tự.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    entry = _PASSWORD_RESET_TOKENS.get(token)
-    if entry is None or _token_expired(entry):
-        _PASSWORD_RESET_TOKENS.pop(token, None)
+    # Verify token from DB and mark as used
+    try:
+        reset_token = PasswordResetToken.verify_and_mark_used(token)
+    except ValueError as e:
         return Response(
-            {'detail': 'Token không hợp lệ hoặc đã hết hạn.'},
+            {'detail': str(e)},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # Find user by email from the reset token
     try:
-        user = User.objects.get(pk=entry['user_id'], is_active=True)
+        user = User.objects.get(email=reset_token.email, is_active=True)
     except User.DoesNotExist:
         return Response({'detail': 'Tài khoản không tồn tại hoặc bị vô hiệu hóa.'}, status=status.HTTP_404_NOT_FOUND)
 
     user.set_password(new_password)
-    user.save(update_fields=['password'])
-    del _PASSWORD_RESET_TOKENS[token]
+    user.save(update_fields=['password', 'updated_at'] if hasattr(user, 'updated_at') else ['password'])
 
     return Response({'detail': 'Mật khẩu đã được đặt lại thành công.'}, status=status.HTTP_200_OK)

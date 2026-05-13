@@ -1,3 +1,59 @@
+# 2026-05-14 — Phase 1 Critical Fix C1: DB-Backed Password Reset Tokens ✅
+
+Status: Completed. Test suite: 18/18 passed.
+
+What changed:
+- `packages/core/backend/src/identity_access/models.py`
+  - Added `PasswordResetToken` model (lines 503-620):
+    - Fields: `email` (indexed), `token_hash` (unique, indexed), `created_at`, `expires_at`, `used`, `used_at`
+    - Properties: `is_expired`, `is_valid`
+    - Classmethods: `generate_and_save(email, hours=1)`, `verify_and_mark_used(raw_token)`, `cleanup_expired()`
+    - HMAC-SHA256 token hashing with pepper (vninvest_core.settings.SECRET_KEY)
+  - Removed in-memory `_PASSWORD_RESET_TOKENS` dict (was at line 463)
+  - Migration: `0005_passwordresettoken.py` (applies cleanly)
+
+- `packages/core/backend/src/identity_access/views_auth.py`
+  - Updated `password_reset_request_view` (lines 586-620):
+    - Now calls `PasswordResetToken.generate_and_save(email)` instead of in-memory storage
+    - Changed `fail_silently=True` → `False` (C2 prep: fail-fast exception handling)
+    - Added logger import and exception logging
+  - Updated `password_reset_confirm_view` (lines 626-658):
+    - Now calls `PasswordResetToken.verify_and_mark_used(token)` instead of dict lookup
+    - Handles ValueError exceptions (invalid/expired/used tokens)
+    - Looks up User by `token_obj.email` instead of `entry['user_id']`
+  - Removed `_token_expired()` helper function
+
+- `packages/core/backend/src/identity_access/tests/test_password_reset.py` (NEW)
+  - `PasswordResetTokenModelTests`: 10 tests covering:
+    - Token generation, persistence, expiration, validation
+    - Mark-used lifecycle, reuse prevention, cleanup
+  - `PasswordResetViewTests`: 8 tests covering:
+    - Request/confirm flow (request → email → confirm)
+    - Error cases: invalid, expired, already-used, short password
+    - User enumeration prevention (OWASP A01)
+
+Validation evidence:
+- ✅ 18/18 tests passed (`test_password_reset.py` all green)
+- ✅ Model tests verified: token persists across sessions, hash uniqueness enforced, cleanup only expired
+- ✅ View tests verified: request creates DB token, confirm marks used, reuse blocked, errors caught
+- ✅ Email send now tracked and logged (previously fail_silently swallowed errors)
+- ✅ Docker rebuild required; migration applied successfully
+- ✅ Database schema: `identity_access_passwordresettoken` table created with correct indexes
+
+Files modified:
+- `packages/core/backend/src/identity_access/models.py` (added PasswordResetToken class, 120 lines)
+- `packages/core/backend/src/identity_access/views_auth.py` (updated 2 views, removed _PASSWORD_RESET_TOKENS dict)
+- `packages/core/backend/src/identity_access/tests/test_password_reset.py` (new, 423 lines)
+
+Residual risks:
+- Email delivery still synchronous (C2 will make async via Celery task)
+- FRONTEND_URL env var fallback still 'http://localhost' (C4 will enforce env validation)
+- WebSocket symbol parameter not yet sanitized (C5 will address)
+
+Next in Phase 1: C2 Exception Handler Fixes (swallow-exception audit in 6 files)
+
+---
+
 # 2026-05-13 — OpenAPI Mandatory Rollout + Full Handoff Package + Staticfiles Untrack ✅
 
 Status: Completed.

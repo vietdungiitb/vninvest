@@ -13,6 +13,7 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from market_data import vnbroker_adapter
 from .models import SymbolSnapshot
 
 
@@ -79,19 +80,37 @@ class RealtimeTickerListView(APIView):
         return Response(result)
 
 
+_INTRADAY_SIDE_MAP = {'B': 'BUY', 'S': 'SELL', 'BUY': 'BUY', 'SELL': 'SELL'}
+
+
+def _normalize_trade(t: dict) -> dict:
+    return {
+        'time': t.get('ts') or t.get('time') or t.get('datetime', ''),
+        'price': float(t.get('price', 0)),
+        'volume': int(t.get('volume', 0)),
+        'side': _INTRADAY_SIDE_MAP.get(str(t.get('side', '')).upper(), 'NO'),
+    }
+
+
 class RealtimeIntradayView(APIView):
     """GET /api/realtime/intraday/<symbol>/ — intraday bars for symbol."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        # IntradayBar model is not yet implemented in market_serving.
-        # Return empty list with stale flag — graceful degradation.
+        page_size = int(request.query_params.get('page_size', 50))
+        data = vnbroker_adapter.fetch_intraday_tape(symbol, page_size=page_size)
+        raw_trades = data.get('trades') or []
+        trades = [_normalize_trade(t) for t in raw_trades]
+
         return Response({
             'symbol': symbol,
-            'bars': [],
-            'stale': True,
-            'note': 'intraday_not_available_in_native',
+            'trades': trades,
+            'bars': trades,
+            'total': len(trades),
+            'source': data.get('source', 'native'),
+            'stale': bool(data.get('stale', False)),
+            'fetched_at': data.get('fetched_at'),
         })
 
 

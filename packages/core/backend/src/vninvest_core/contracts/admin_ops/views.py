@@ -2267,11 +2267,10 @@ class AdminOpsIntradayUniverseWarmNowView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        from data_ingest.tasks import fetch_and_upsert_price_board
+        from data_ingest.tasks import warm_intraday_universe
         
-        # SM-P4 Native: Trigger native warming task.
-        # This replaces the legacy bridge and uses the new vnbroker_adapter logic.
-        task_result = fetch_and_upsert_price_board.delay()
+        # SM-P4 Native: Trigger native intraday cache warm-up.
+        task_result = warm_intraday_universe.delay()
         
         return Response(
             {

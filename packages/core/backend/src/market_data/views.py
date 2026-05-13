@@ -23,6 +23,13 @@ class StockProfileListView(APIView):
 
     def get(self, request):
         qs = StockProfile.objects.filter(status='active').order_by('symbol')
+        search = request.query_params.get('search') or request.query_params.get('q')
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(symbol__icontains=search) |
+                Q(company_name__icontains=search)
+            )
         exchange = request.query_params.get('exchange')
         if exchange:
             qs = qs.filter(exchange=exchange.upper())

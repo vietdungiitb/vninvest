@@ -1,3 +1,40 @@
+# 2026-05-14 — Phase 1 Critical Fix C1: DB-Backed Password Reset ✅
+
+Status: Completed. Tất cả 18 tests pass, models + views + comprehensive test suite delivered.
+
+Completed today:
+- **Model Implementation**: `PasswordResetToken` (120 lines)
+  - HMAC-SHA256 hashing with pepper (SECRET_KEY)
+  - Token generation, validation, mark-used lifecycle
+  - Cleanup utility for expired tokens
+  - Migration `0005_passwordresettoken.py` applied successfully
+  
+- **Views Update**: `password_reset_request_view` + `password_reset_confirm_view`
+  - Replaced in-memory `_PASSWORD_RESET_TOKENS` dict with DB persistence
+  - Changed `fail_silently=True` → `False` (exception logging enabled)
+  - Token reuse prevention enforced
+  - OWASP A01 user enumeration protection maintained
+
+- **Test Suite**: 18 comprehensive tests in `test_password_reset.py`
+  - Model layer: token generation, persistence, expiration, cleanup (10 tests)
+  - API layer: request → confirm flow, error handling, end-to-end (8 tests)
+  - All tests green ✅
+
+Validation:
+- Docker rebuilt; migration applied; test DB synchronized
+- Password tokens now survive application restarts (DB persistence)
+- Email error tracking improved (no more silent fail_silently)
+- Schema: `identity_access_passwordresettoken` table with unique token_hash index
+
+Impact:
+- Users no longer lose password reset tokens on backend restart
+- Email failures now logged for debugging (C2 will add async Celery task)
+- Token lifecycle fully auditable (created_at, used_at, expires_at)
+
+Next: C2 Exception Handler Fixes (6 files, swallow-exception patterns)
+
+---
+
 # 2026-05-13 — OpenAPI Standardization Full Handoff + Staticfiles Untrack ✅
 
 Status: Completed. Da chot policy mandatory va ban giao day du goi thuc thi backend/frontend/test/audit.

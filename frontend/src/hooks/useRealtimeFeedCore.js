@@ -60,10 +60,13 @@ function resolveImpliedChangePct({ currentPrice, prevPrice, changeValue }) {
   return null;
 }
 
-function normalizeChangePct(rawChangePct, { currentPrice, prevPrice, changeValue }) {
+function normalizeChangePct(rawChangePct, { currentPrice, prevPrice, changeValue, previousPct, previousUnit }) {
   const normalizedRaw = toFiniteNumber(rawChangePct);
   if (!Number.isFinite(normalizedRaw)) {
-    return null;
+    return {
+      value: null,
+      unit: previousUnit || null,
+    };
   }
 
   const impliedPct = resolveImpliedChangePct({
@@ -73,7 +76,46 @@ function normalizeChangePct(rawChangePct, { currentPrice, prevPrice, changeValue
   });
 
   if (!Number.isFinite(impliedPct)) {
-    return normalizedRaw;
+    if (previousUnit === 'fraction' && Math.abs(normalizedRaw) <= 1.5) {
+      return {
+        value: normalizedRaw * 100,
+        unit: 'fraction',
+      };
+    }
+
+    if (previousUnit === 'percent') {
+      return {
+        value: normalizedRaw,
+        unit: 'percent',
+      };
+    }
+
+    if (Math.abs(normalizedRaw) <= 1) {
+      const normalizedPreviousPct = toFiniteNumber(previousPct);
+      if (Number.isFinite(normalizedPreviousPct)) {
+        const distancePercent = Math.abs(normalizedRaw - normalizedPreviousPct);
+        const distanceFraction = Math.abs((normalizedRaw * 100) - normalizedPreviousPct);
+        if (distanceFraction + 0.05 < distancePercent) {
+          return {
+            value: normalizedRaw * 100,
+            unit: 'fraction',
+          };
+        }
+      }
+
+      // Ambiguous small value with no reliable context: keep last trusted pct instead of showing a wrong value.
+      if (Number.isFinite(normalizedPreviousPct)) {
+        return {
+          value: normalizedPreviousPct,
+          unit: previousUnit || null,
+        };
+      }
+    }
+
+    return {
+      value: normalizedRaw,
+      unit: 'percent',
+    };
   }
 
   // Some feeds publish fraction units (0.01 => 1.00%) while others publish percent directly.
@@ -85,11 +127,17 @@ function normalizeChangePct(rawChangePct, { currentPrice, prevPrice, changeValue
     const distanceFraction = Math.abs(asFraction - impliedPct);
 
     if (distanceFraction + 0.05 < distancePercent) {
-      return asFraction;
+      return {
+        value: asFraction,
+        unit: 'fraction',
+      };
     }
   }
 
-  return normalizedRaw;
+  return {
+    value: normalizedRaw,
+    unit: 'percent',
+  };
 }
 
 function mergeQuote(prev, update) {
@@ -108,11 +156,15 @@ function mergeQuote(prev, update) {
 
   const nextPrevPrice = update.prev_price ?? prev.prev_price;
   const nextChangeValue = update.change_value ?? prev.change_value;
-  const nextChangePct = normalizeChangePct(update.change_pct ?? prev.change_pct, {
+  const normalizedChange = normalizeChangePct(update.change_pct ?? prev.change_pct, {
     currentPrice: nextCurrentPrice,
     prevPrice: nextPrevPrice,
     changeValue: nextChangeValue,
+    previousPct: prev.change_pct,
+    previousUnit: prev.change_pct_unit,
   });
+  const nextChangePct = normalizedChange.value;
+  const nextChangePctUnit = normalizedChange.unit;
 
   return {
     ...prev,
@@ -121,6 +173,7 @@ function mergeQuote(prev, update) {
     prev_price: nextPrevPrice,
     change_value: nextChangeValue,
     change_pct: nextChangePct,
+    change_pct_unit: nextChangePctUnit,
     open_price: update.open_price ?? prev.open_price,
     high_price: update.high_price ?? prev.high_price,
     low_price: update.low_price ?? prev.low_price,

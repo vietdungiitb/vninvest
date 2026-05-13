@@ -499,3 +499,120 @@ class TenantInvite(models.Model):
     def generate_token(cls) -> str:
         """Generate a secure 64-char invite token."""
         return secrets.token_urlsafe(48)
+
+
+class PasswordResetToken(models.Model):
+    """
+    Model to persist password reset tokens securely in database.
+    
+    Replaces in-memory token store to survive application restarts.
+    Tokens are HMAC-hashed for security and deleted after use or expiration.
+    """
+    
+    email = models.EmailField(
+        max_length=254,
+        db_index=True,
+        verbose_name='Email',
+    )
+    token_hash = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        verbose_name='Token HMAC-SHA256 hash',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name='Created at',
+    )
+    expires_at = models.DateTimeField(
+        db_index=True,
+        verbose_name='Expires at',
+    )
+    used = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name='Token has been used',
+    )
+    used_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Timestamp token was used',
+    )
+    
+    class Meta:
+        verbose_name = 'Password Reset Token'
+        verbose_name_plural = 'Password Reset Tokens'
+        indexes = [
+            models.Index(fields=['email', 'expires_at', 'used']),
+        ]
+        ordering = ['-created_at']
+    
+    def __str__(self) -> str:
+        status = 'used' if self.used else ('expired' if self.is_expired else 'valid')
+        return f'{self.email} ({status})'
+    
+    @property
+    def is_expired(self) -> bool:
+        """Check if token has expired."""
+        return timezone.now() > self.expires_at
+    
+    @property
+    def is_valid(self) -> bool:
+        """Check if token is still valid (not used, not expired)."""
+        return not self.used and not self.is_expired
+    
+    @classmethod
+    def generate_and_save(cls, email: str, hours: int = 1) -> tuple:
+        """
+        Generate a new password reset token and save it.
+        
+        Returns: (token_object, raw_token_string)
+        Note: raw_token_string is shown only once and should be sent via email.
+        """
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        
+        token_obj = cls.objects.create(
+            email=email,
+            token_hash=token_hash,
+            expires_at=timezone.now() + timezone.timedelta(hours=hours),
+        )
+        return token_obj, raw_token
+    
+    @classmethod
+    def verify_and_mark_used(cls, raw_token: str) -> 'PasswordResetToken':
+        """
+        Verify a raw token, check validity, and mark as used.
+        
+        Returns: token object if valid, raises ValueError otherwise.
+        """
+        if not raw_token:
+            raise ValueError('Token is required')
+        
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        try:
+            token = cls.objects.get(token_hash=token_hash)
+        except cls.DoesNotExist:
+            raise ValueError('Invalid or revoked token')
+        
+        if token.used:
+            raise ValueError('Token has already been used')
+        
+        if token.is_expired:
+            raise ValueError('Token has expired')
+        
+        # Mark as used
+        token.used = True
+        token.used_at = timezone.now()
+        token.save(update_fields=['used', 'used_at'])
+        return token
+    
+    @classmethod
+    def cleanup_expired(cls) -> int:
+        """Delete all expired tokens. Returns count deleted."""
+        expired_count, _ = cls.objects.filter(
+            expires_at__lt=timezone.now(),
+            used=False
+        ).delete()
+        return expired_count
