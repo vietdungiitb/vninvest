@@ -89,6 +89,105 @@ class DailyPriceListView(APIView):
         })
 
 
+class StockChartView(APIView):
+    """
+    Native stock chart endpoint for frontend consumption.
+    
+    GET /api/stock-management/stocks/{symbol}/chart/?days=180&timeframe=1H
+    
+    Returns OHLCV daily price data in the format expected by frontend KLineChartPanel.
+    For intraday timeframes, returns empty points (intraday not yet in core_db).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, symbol):
+        from datetime import timedelta, datetime, time
+        
+        symbol = symbol.upper()
+        
+        # Validate input
+        try:
+            days = max(1, min(int(request.query_params.get('days', 180)), 3650))
+        except (TypeError, ValueError):
+            days = 180
+        
+        timeframe = str(request.query_params.get('timeframe', '1H')).strip().upper()
+        
+        # For intraday frames, return empty (not yet available in core_db)
+        intraday_frames = ('1M', '5M', '15M', '1H', '2H', '4H')
+        if timeframe in intraday_frames:
+            return Response({
+                'symbol': symbol,
+                'days': days,
+                'timeframe': timeframe,
+                'interval': timeframe.lower(),
+                'start_date': timezone.now().date().isoformat(),
+                'end_date': timezone.now().date().isoformat(),
+                'points': [],
+                'technical': {
+                    'change_percent': None,
+                    'rsi_14': None,
+                    'macd': None,
+                    'macd_signal': None,
+                    'atr_14': None,
+                    'volatility_20': None,
+                    'volume_ratio': None,
+                },
+            })
+        
+        # Daily/weekly/monthly frames: query DailyPrice
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days)
+        
+        qs = (
+            DailyPrice.objects
+            .filter(symbol=symbol, date__range=[start_date, end_date])
+            .order_by('date')
+        )
+        
+        # Serialize to OHLCV points
+        points = []
+        for row in qs:
+            points.append({
+                'date': datetime.combine(row.date, time.min).isoformat(),
+                'open': float(row.open_price) if row.open_price is not None else None,
+                'high': float(row.high_price) if row.high_price is not None else None,
+                'low': float(row.low_price) if row.low_price is not None else None,
+                'close': float(row.close_price) if row.close_price is not None else None,
+                'volume': int(row.volume) if row.volume is not None else None,
+            })
+        
+        # Basic technical indicators (placeholder)
+        technical = {
+            'change_percent': None,
+            'rsi_14': None,
+            'macd': None,
+            'macd_signal': None,
+            'atr_14': None,
+            'volatility_20': None,
+            'volume_ratio': None,
+        }
+        
+        if points:
+            first_close = points[0].get('close')
+            last_close = points[-1].get('close')
+            if first_close and last_close:
+                technical['change_percent'] = round(
+                    ((last_close - first_close) / first_close) * 100, 2
+                )
+        
+        return Response({
+            'symbol': symbol,
+            'days': days,
+            'timeframe': timeframe,
+            'interval': timeframe.lower(),
+            'start_date': start_date.isoformat(),
+            'end_date': end_date.isoformat(),
+            'points': points,
+            'technical': technical,
+        })
+
+
 class TrackedSymbolsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
