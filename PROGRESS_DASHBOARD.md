@@ -1,3 +1,63 @@
+# 2026-05-14 — Phase 1 Critical Fix C5: WebSocket Symbol Sanitization ✅
+
+Status: Completed. WebSocket receive() method now logs all exceptions; symbol sanitization validated.
+
+Completed today:
+- **WebSocket Consumer Logging** (signal_intelligence/consumers.py):
+  - Updated `receive()` method with proper exception handling
+  - Changed from silent `except (json.JSONDecodeError, Exception): pass`
+  - Now uses three separate handlers:
+    - `json.JSONDecodeError`: `logger.warning()` with context
+    - `Exception`: `logger.error()` with traceback
+    - Unknown message types: `logger.debug()` for discoverability
+  - Symbol sanitization already in place (tested and validated)
+
+- **Comprehensive Test Suite** (signal_intelligence/tests/test_websocket_consumer.py):
+  - SymbolSanitizationTests: 18 tests
+    - Valid inputs: uppercase, lowercase, mixed, alphanumeric
+    - Special char removal: - _ . : * / spaces (prevents Redis injection)
+    - Invalid inputs: empty, None, only special chars, > 20 chars
+    - Edge cases: exactly 20 chars (valid), 1 char (valid), 21 chars (invalid)
+  - MarketTickerConsumerTests: 5 tests
+    - Symbol sanitization before group_name creation
+    - Group_name safe from Redis injection
+    - Validation rejects invalid/empty inputs
+    - Max length enforcement (20 chars)
+    - Alphanumeric preservation
+
+Validation:
+- ✅ Docker rebuild: successful
+- ✅ Container startup: healthy
+- ✅ C5 tests: 23/23 passing (18 sanitization + 5 consumer)
+- ✅ C1 tests: 18/18 still passing (no regressions)
+- ✅ Total Phase 1: 59/59 tests passing
+
+Impact:
+- **WebSocket Reliability**: All failures now logged (no silent catch-alls)
+- **Security**: Redis channel key injection prevention validated
+- **Debuggability**: WebSocket issues traceable via logs
+- **Completeness**: All Phase 1 critical fixes (C1-C5) now done
+
+Benefits:
+- WebSocket errors visible in logs (no mysterious failures)
+- Symbol sanitization prevents Redis key injection attacks
+- Group name format 'market_{SANITIZED_SYMBOL}' guaranteed safe
+- All exceptional conditions logged appropriately
+
+Phase 1 Summary:
+- **C1**: Password Reset Tokens (DB persistence) ✅
+- **C2**: Exception Handler Fixes (proper logging) ✅
+- **C3**: Email Onboarding (async Celery) ✅
+- **C4**: Environment Validation (required env vars) ✅
+- **C5**: WebSocket Symbol Sanitization (proper logging) ✅
+
+Remaining Work:
+- Code Review Audit per RUN_CODE_REVIEW_CORE_API_OPENAPI_STANDARDIZATION_20260513.md
+- Integration Test Protocol per RUN_INTEGRATION_TESTS_CORE_API_OPENAPI_STANDARDIZATION_20260513.md
+- Spec Audit (Council of Three)
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C4: Environment Validation ✅
 
 Status: Completed. Required environment variables now enforced at startup.
@@ -45,9 +105,6 @@ Benefits:
 - Easier debugging: clear error messages on missing env vars
 - Consistent across all components (views, tasks, Celery)
 
-Remaining Work:
-- C5: WebSocket Error Handling (sanitize symbol parameters)
-
 ---
 
 # 2026-05-14 — Phase 1 Critical Fix C3: Email Onboarding (Async Celery) ✅
@@ -91,10 +148,6 @@ Benefits:
 - Automatic failure recovery via exponential backoff
 - All email operations logged for debugging
 - User experience: instant feedback, no waiting
-
-Remaining Work:
-- C4: Environment Validation (enforce required env vars)
-- C5: WebSocket Error Handling (sanitize symbol parameters)
 
 ---
 

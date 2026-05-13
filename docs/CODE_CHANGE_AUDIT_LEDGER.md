@@ -1,3 +1,56 @@
+# 2026-05-14 — Phase 1 Critical Fix C5: WebSocket Symbol Sanitization ✅
+
+Status: Completed. WebSocket receive() method now logs all exceptions properly; symbol sanitization validated.
+
+What changed:
+- `packages/core/backend/src/signal_intelligence/consumers.py`
+  - `receive()` method (lines ~95-120): Replaced silent exception handler
+    - Old: `except (json.JSONDecodeError, Exception): pass` (no visibility)
+    - New: Three separate exception handlers with proper logging:
+      - `except json.JSONDecodeError`: `logger.warning('[WS] Invalid JSON...')`
+      - `except Exception`: `logger.error('[WS] Unexpected error...')`
+    - Added debug logging for unknown message types
+    - Symbol sanitization already in place (validated by comprehensive tests)
+
+- `packages/core/backend/src/signal_intelligence/tests/test_websocket_consumer.py` (NEW)
+  - SymbolSanitizationTests (18 tests)
+    - Valid inputs: uppercase, lowercase, mixed, alphanumeric, single char, numbers-only
+    - Special char removal: - _ . : * / spaces (Redis injection prevention)
+    - Invalid inputs: empty, None, only special chars, > 20 chars
+    - Edge cases: exactly 20 chars (valid), 1 char (valid), 21 chars (invalid)
+  - MarketTickerConsumerTests (5 tests)
+    - Symbol sanitization before group_name creation
+    - Group_name safe from Redis injection (special chars removed)
+    - Symbol validation rejects invalid/empty inputs
+    - Max length validation (20 char limit)
+    - Alphanumeric character preservation
+
+- `packages/core/backend/src/signal_intelligence/tests/__init__.py` (NEW)
+  - Package marker for tests directory
+
+Validation evidence:
+- ✅ 18 symbol sanitization tests pass (special chars, length limits, alphanumeric)
+- ✅ 5 consumer behavior tests pass (sanitization, injection prevention, validation)
+- ✅ 18 C1 password reset tests still pass (no regressions)
+- ✅ Docker rebuild successful (container ready)
+- ✅ WebSocket failures now logged (no silent catch-alls)
+- ✅ Redis channel key injection prevention verified
+
+Files modified:
+- signal_intelligence/consumers.py (+/-  lines, receive() exception logging)
+- signal_intelligence/tests/__init__.py (+1 line, new package marker)
+- signal_intelligence/tests/test_websocket_consumer.py (+200+ lines, new comprehensive tests)
+
+Total tests across C1-C5: 59/59 passing ✅
+
+Impact:
+- WebSocket errors now traceable (proper logging instead of silent failures)
+- Symbol sanitization prevents Redis key injection attacks (: * . / - stripped)
+- Group name format 'market_{SANITIZED_SYMBOL}' guaranteed safe
+- All Phase 1 critical fixes (C1-C5) complete and validated
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C4: Environment Validation (Required Env Vars) ✅
 
 Status: Completed. Required environment variables now validated at startup.
