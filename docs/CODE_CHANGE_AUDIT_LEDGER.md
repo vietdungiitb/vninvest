@@ -1,3 +1,42 @@
+# 2026-05-13 — SaaS-Only Runtime Cutover (Remove Legacy Services) ✅
+
+Status: Completed. Dev runtime is now SaaS-core only; legacy backend worker/beat services have been removed from compose and orphan containers deleted.
+
+What changed:
+- `docker-compose.dev.yml`
+  - Removed active legacy services:
+    - `backend-worker-manual`
+    - `backend-prefetch-worker`
+    - `backend-beat`
+  - Kept legacy blocks only as commented historical reference where already documented.
+  - Switched `core-beat` command from DB scheduler to SaaS-native beat schedule:
+    - from: `python -m celery -A vninvest_core beat --scheduler django_celery_beat.schedulers:DatabaseScheduler`
+    - to:   `python -m celery -A vninvest_core beat --loglevel=INFO`
+
+- `packages/core/backend/src/market_data/vnbroker_adapter.py`
+  - Added bootstrap-safe fallback when runtime config table is unavailable:
+    - catches `ProgrammingError`/`OperationalError` from `django.db.utils`
+    - returns fallback config (`data_source=VCI`, `request_delay_ms=0`)
+  - This prevents SaaS ingest bootstrap from hard-failing when `market_data_vnbrokerruntimeconfig` is absent in dev DB.
+
+Validation evidence:
+- Runtime rebuild:
+  - `docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build --remove-orphans`
+- Legacy containers removed:
+  - removed: `vninvest-dev-backend-beat`, `vninvest-dev-backend-worker-manual`, `vninvest-dev-backend-prefetch-worker`, `vninvest-dev-backend-legacy`, `vninvest-dev-backend-worker`
+- Active services now SaaS-only:
+  - `core-api`, `core-beat`, `core-worker*`, `db`, `redis`, `frontend`, `mailpit`
+- Data bootstrap checks:
+  - `active_profiles = 5`
+  - `SymbolSnapshot total = 7`, `session_date max = 2026-05-13`
+  - Latest rows include `SSI`, `TCB`, `VCB`, `FPT`, `VND` for current day
+
+Residual notes:
+- `schedule_realtime_prefetch_shards` legacy messages may still appear briefly if old broker backlog exists; queue was purged and no legacy service remains to republish.
+- `snapshots_today` depends on task ordering (`sync_market_groups` must run before `fetch_and_upsert_price_board`).
+
+---
+
 # SaaS Intraday Native Phase 2: IntradayBar + IntradayTick Models ✅
 
 **Date**: 2026-05-12 | **Feature**: SAAS-MIGRATION Market Data Phase 2  

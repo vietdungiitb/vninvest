@@ -1,3 +1,28 @@
+# 2026-05-13 — SaaS-Only Dev Runtime (Legacy Services Removed) ✅
+
+Status: Completed. Dev stack now runs on SaaS core services only.
+
+Completed today:
+- Removed legacy runtime services from `docker-compose.dev.yml`:
+  - `backend-worker-manual`
+  - `backend-prefetch-worker`
+  - `backend-beat`
+- Switched `core-beat` to SaaS-native scheduler mode (no `django_celery_beat` database scheduler).
+- Rebuilt with `--remove-orphans`; confirmed legacy containers were deleted from runtime.
+- Added bootstrap fallback in `market_data/vnbroker_adapter.py` to avoid hard failure when `market_data_vnbrokerruntimeconfig` table is missing.
+
+Runtime verification:
+- Active containers: `core-api`, `core-beat`, `core-worker*`, `db`, `redis`, `frontend`, `mailpit`
+- Legacy backend containers: not running
+- Data bootstrap:
+  - `active_profiles = 5`
+  - `SymbolSnapshot` includes current-day rows (`session_date = 2026-05-13`)
+
+Operational note:
+- Any short-lived legacy queue warnings after cutover are backlog artifacts. No legacy publisher service remains in compose.
+
+---
+
 # 2026-05-13 — SaaS Full Independence Cutover (C1–C7) ✅ PRODUCTION APPROVED
 
 **Status**: ✅ **PRODUCTION LIVE** — All routes native (core-api:8100 only); backend:8000 decommissioned  

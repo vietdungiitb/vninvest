@@ -21,6 +21,9 @@ backend/db.sqlite3-journal
 backend/celerybeat-schedule
 backend/celerybeat-schedule-shm
 backend/celerybeat-schedule-wal
+packages/core/backend/celerybeat-schedule
+packages/core/backend/celerybeat-schedule-shm
+packages/core/backend/celerybeat-schedule-wal
 backend/staticfiles/
 backend/mediafiles/
 backend/*.log

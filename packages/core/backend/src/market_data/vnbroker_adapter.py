@@ -3,6 +3,7 @@ import time
 import random
 from typing import Any, Optional
 import httpx
+from django.db.utils import ProgrammingError, OperationalError
 from django.utils import timezone
 from django.utils.timezone import now
 from .models import VnbrokerRuntimeConfig
@@ -15,18 +16,30 @@ class VnbrokerAdapterError(Exception):
 
 def get_active_config() -> VnbrokerRuntimeConfig:
     """Lấy cấu hình đang hoạt động hoặc tạo mặc định."""
-    config = VnbrokerRuntimeConfig.objects.filter(is_active=True).first()
-    if not config:
-        config, _ = VnbrokerRuntimeConfig.objects.get_or_create(
-            name='Default Config',
-            defaults={
-                'is_active': True,
-                'data_source': VnbrokerRuntimeConfig.SourceChoices.VCI,
-                'max_workers': 4,
-                'batch_size': 50,
-            }
+    try:
+        config = VnbrokerRuntimeConfig.objects.filter(is_active=True).first()
+        if not config:
+            config, _ = VnbrokerRuntimeConfig.objects.get_or_create(
+                name='Default Config',
+                defaults={
+                    'is_active': True,
+                    'data_source': VnbrokerRuntimeConfig.SourceChoices.VCI,
+                    'max_workers': 4,
+                    'batch_size': 50,
+                }
+            )
+        return config
+    except (ProgrammingError, OperationalError):
+        # Fallback for early bootstrap when DB migration for runtime config is missing.
+        # This keeps ingest pipeline alive in dev and SaaS cutover smoke runs.
+        class _FallbackConfig:
+            data_source = VnbrokerRuntimeConfig.SourceChoices.VCI
+            request_delay_ms = 0
+
+        logger.warning(
+            "VnbrokerRuntimeConfig table unavailable; using fallback runtime config."
         )
-    return config
+        return _FallbackConfig()
 
 def fetch_price_board_snapshot(symbols: list[str]) -> list[dict[str, Any]]:
     """

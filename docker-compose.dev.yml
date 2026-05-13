@@ -329,7 +329,7 @@ services:
       - >-
         apt-get update && apt-get install -y git &&
         pip install -r requirements.txt -q &&
-        python -m celery -A vninvest_core beat --loglevel=INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+        python -m celery -A vninvest_core beat --loglevel=INFO
     restart: unless-stopped
     depends_on:
       core-api:
@@ -435,131 +435,8 @@ services:
   #   mem_limit: 512m
   #   cpus: 0.5
 
-  backend-worker-manual:
-    container_name: vninvest-dev-backend-worker-manual
-    image: python:3.11-slim
-    working_dir: /app
-    volumes:
-      - ./backend:/app
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings
-      DJANGO_DEBUG: "true"
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      DB_ENGINE: postgres
-      POSTGRES_DB: vninvest
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: devpassword
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CACHE_REDIS_URL: redis://redis:6379/2
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A config worker --loglevel=INFO --concurrency=2 --queues=manual_on_demand --without-heartbeat --without-gossip --without-mingle --max-tasks-per-child=100
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - vninvest_network
-    mem_limit: 512m
-    cpus: 0.5
-
-  backend-prefetch-worker:
-    container_name: vninvest-dev-backend-prefetch-worker
-    image: python:3.11-slim
-    working_dir: /app
-    volumes:
-      - ./backend:/app
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings
-      DJANGO_DEBUG: "true"
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      DB_ENGINE: postgres
-      POSTGRES_DB: vninvest
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: devpassword
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CACHE_REDIS_URL: redis://redis:6379/2
-      REALTIME_PREFETCH_ENABLED: "true"
-      REALTIME_PREFETCH_INTERVAL_SECONDS: "3"
-      OFFPEAK_VNBROKER_INGEST_ENABLED: "true"
-      VNBROKER_PROVIDER_CACHE_ENABLED: "true"
-      VNBROKER_CLIENT_CACHE_ENABLED: "true"
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A config worker --loglevel=INFO --concurrency=2 --queues=realtime_prefetch --without-heartbeat --without-gossip --without-mingle --max-tasks-per-child=100
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - vninvest_network
-    mem_limit: 512m
-    cpus: 0.5
-
-  # Legacy beat scheduler for realtime prefetch and offpeak ingest
-  backend-beat:
-    container_name: vninvest-dev-backend-beat
-    image: python:3.11-slim
-    working_dir: /app
-    volumes:
-      - ./backend:/app
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings
-      DJANGO_DEBUG: "true"
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      DB_ENGINE: postgres
-      POSTGRES_DB: vninvest
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: devpassword
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CACHE_REDIS_URL: redis://redis:6379/2
-      REALTIME_PREFETCH_ENABLED: "true"
-      OFFPEAK_VNBROKER_INGEST_ENABLED: "true"
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python manage.py migrate --noinput &&
-        python -m celery -A config beat --loglevel=INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - vninvest_network
-    mem_limit: 256m
-    cpus: 0.25
+  # SFI-B8: Legacy worker/beat services removed from dev stack.
+  # Runtime is SaaS-core only (core-api/core-workers/core-beat).
 
   frontend:
     container_name: vninvest-dev-frontend
