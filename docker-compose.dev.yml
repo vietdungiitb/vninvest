@@ -352,90 +352,94 @@ services:
 
   # SFI-B1: Legacy backend hidden behind core-api proxy.
   # No ports exposed to the host. Single entry point is now core-api.
-  backend:
-    container_name: vninvest-dev-backend-legacy
-    image: python:3.11-slim
-    working_dir: /app
-    volumes:
-      - ./backend:/app
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings
-      DJANGO_DEBUG: "true"
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,10.0.2.2,testserver,backend}
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      DB_ENGINE: postgres
-      POSTGRES_DB: vninvest
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: devpassword
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CACHE_REDIS_URL: redis://redis:6379/2
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python manage.py migrate --noinput &&
-        python manage.py runserver 0.0.0.0:8000
-    restart: unless-stopped
-    networks:
-      - vninvest_network
-    mem_limit: 512m
-    cpus: 0.5
+  # C7: DECOMMISSIONED — backend:8000 and backend-worker no longer needed
+  # All realtime/stock-mgmt/portfolio routes now served natively by core-api:8100
+  # Keeping commented services as reference; delete after verification cutover.
+  #
+  # backend:
+  #   container_name: vninvest-dev-backend-legacy
+  #   image: python:3.11-slim
+  #   working_dir: /app
+  #   volumes:
+  #     - ./backend:/app
+  #   environment:
+  #     DJANGO_SETTINGS_MODULE: config.settings
+  #     DJANGO_DEBUG: "true"
+  #     DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
+  #     DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,10.0.2.2,testserver,backend}
+  #     VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+  #     DB_ENGINE: postgres
+  #     POSTGRES_DB: vninvest
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: devpassword
+  #     POSTGRES_HOST: db
+  #     POSTGRES_PORT: "5432"
+  #     REDIS_URL: redis://redis:6379/1
+  #     CELERY_BROKER_URL: redis://redis:6379/1
+  #     CACHE_REDIS_URL: redis://redis:6379/2
+  #   entrypoint: []
+  #   command:
+  #     - sh
+  #     - -c
+  #     - >-
+  #       apt-get update && apt-get install -y git &&
+  #       pip install -r requirements.txt -q &&
+  #       python manage.py migrate --noinput &&
+  #       python manage.py runserver 0.0.0.0:8000
+  #   restart: unless-stopped
+  #   networks:
+  #     - vninvest_network
+  #   mem_limit: 512m
+  #   cpus: 0.5
 
-  # Realtime prefetch worker for market data ingest
-  # Executes legacy backend tasks (schedule_realtime_prefetch_shards, offpeak_vnbroker_ingest)
-  # Syncs ticker data to Redis cache (ticker:{symbol}) and TickerSessionClose table
-  backend-worker:
-    container_name: vninvest-dev-backend-worker
-    image: python:3.11-slim
-    working_dir: /app
-    volumes:
-      - ./backend:/app
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings
-      DJANGO_DEBUG: "true"
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-      DB_ENGINE: postgres
-      POSTGRES_DB: vninvest
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: devpassword
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CACHE_REDIS_URL: redis://redis:6379/2
-      # Realtime prefetch config
-      REALTIME_PREFETCH_ENABLED: "true"
-      REALTIME_PREFETCH_INTERVAL_SECONDS: "3"
-      OFFPEAK_VNBROKER_INGEST_ENABLED: "true"
-      # vnbroker runtime settings
-      VNBROKER_PROVIDER_CACHE_ENABLED: "true"
-      VNBROKER_CLIENT_CACHE_ENABLED: "true"
-    entrypoint: []
-    command:
-      - sh
-      - -c
-      - >-
-        apt-get update && apt-get install -y git &&
-        pip install -r requirements.txt -q &&
-        python -m celery -A config worker --loglevel=INFO --concurrency=2 --queues=celery,realtime_prefetch --without-heartbeat --without-gossip --without-mingle --max-tasks-per-child=100
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - vninvest_network
-    mem_limit: 512m
-    cpus: 0.5
+  # # Realtime prefetch worker for market data ingest
+  # # Executes legacy backend tasks (schedule_realtime_prefetch_shards, offpeak_vnbroker_ingest)
+  # # Syncs ticker data to Redis cache (ticker:{symbol}) and TickerSessionClose table
+  # backend-worker:
+  #   container_name: vninvest-dev-backend-worker
+  #   image: python:3.11-slim
+  #   working_dir: /app
+  #   volumes:
+  #     - ./backend:/app
+  #   environment:
+  #     DJANGO_SETTINGS_MODULE: config.settings
+  #     DJANGO_DEBUG: "true"
+  #     DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
+  #     VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+  #     DB_ENGINE: postgres
+  #     POSTGRES_DB: vninvest
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: devpassword
+  #     POSTGRES_HOST: db
+  #     POSTGRES_PORT: "5432"
+  #     REDIS_URL: redis://redis:6379/1
+  #     CELERY_BROKER_URL: redis://redis:6379/1
+  #     CACHE_REDIS_URL: redis://redis:6379/2
+  #     # Realtime prefetch config
+  #     REALTIME_PREFETCH_ENABLED: "true"
+  #     REALTIME_PREFETCH_INTERVAL_SECONDS: "3"
+  #     OFFPEAK_VNBROKER_INGEST_ENABLED: "true"
+  #     # vnbroker runtime settings
+  #     VNBROKER_PROVIDER_CACHE_ENABLED: "true"
+  #     VNBROKER_CLIENT_CACHE_ENABLED: "true"
+  #   entrypoint: []
+  #   command:
+  #     - sh
+  #     - -c
+  #     - >-
+  #       apt-get update && apt-get install -y git &&
+  #       pip install -r requirements.txt -q &&
+  #       python -m celery -A config worker --loglevel=INFO --concurrency=2 --queues=celery,realtime_prefetch --without-heartbeat --without-gossip --without-mingle --max-tasks-per-child=100
+  #   restart: unless-stopped
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - vninvest_network
+  #   mem_limit: 512m
+  #   cpus: 0.5
 
   backend-worker-manual:
     container_name: vninvest-dev-backend-worker-manual

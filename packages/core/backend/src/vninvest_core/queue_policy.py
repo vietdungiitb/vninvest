@@ -48,12 +48,16 @@ QUEUE_DOMAIN_MATRIX = {
         'task_routes': (
             'market_serving.materializers.materialize_symbol_snapshot',
             'market_serving.materializers.materialize_session_facts',
+            # C1: native ingest task
+            'data_ingest.tasks.fetch_and_upsert_price_board',
         ),
         'periodic_tasks': (
             'materialize-symbol-snapshot-60s',
             'materialize-session-facts-5m',
             'materialize-symbol-snapshot-30s',
             'materialize-bucket-facts-5m',
+            # C1: native ingest — fetch price board every 60s
+            'ingest-price-board-60s',
         ),
     },
     'market_serving_analytics': {

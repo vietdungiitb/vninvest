@@ -21,8 +21,6 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from vninvest_core.legacy_http_bridge import legacy_bridge_response
-
 
 # ---------------------------------------------------------------------------
 # Helpers

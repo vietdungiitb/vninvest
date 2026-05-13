@@ -292,6 +292,14 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'ops_audit.tasks.daily_db_backup',
         'schedule': crontab(hour=2, minute=0),
     },
+
+    # === C1: Native ingest — price board every 60s ===
+    # Replaces legacy-worker as sole SymbolSnapshot update source.
+    'ingest-price-board-60s': {
+        'task': 'data_ingest.tasks.fetch_and_upsert_price_board',
+        'schedule': 60.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-price-board-60s', 'realtime_prefetch')},
+    },
 }
 
 LOGGING = {

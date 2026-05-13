@@ -21,8 +21,6 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from vninvest_core.legacy_http_bridge import legacy_bridge_response
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -132,23 +130,6 @@ def _build_stock_management_group_payload(watchlist, index: int):
 # Stock-management stubs (not yet migrated to core)
 # ---------------------------------------------------------------------------
 
-
-class RealtimeLegacyBridgeView(APIView):
-    """Bridge remaining realtime compat paths to the legacy backend."""
-    permission_classes = [permissions.IsAuthenticated]
-
-    def _bridge(self, request):
-        return legacy_bridge_response(
-            request,
-            request.path,
-            unavailable_message='Legacy realtime bridge hiện không khả dụng.',
-        )
-
-    def get(self, request, **kwargs):
-        bridged_response = self._bridge(request)
-        if bridged_response is not None:
-            return bridged_response
-        return Response([])
 
 
 

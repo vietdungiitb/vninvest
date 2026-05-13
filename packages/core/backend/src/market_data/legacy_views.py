@@ -21,8 +21,6 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from vninvest_core.legacy_http_bridge import legacy_bridge_response
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -266,47 +264,6 @@ class StockManagementSyncView(APIView):
         return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-
-class StockManagementLegacyBridgeView(APIView):
-    """Bridge remaining stock-management compat paths to the legacy backend."""
-    permission_classes = [permissions.IsAuthenticated]
-
-    def _bridge(self, request):
-        return legacy_bridge_response(
-            request,
-            request.path,
-            unavailable_message='Legacy stock-management bridge hiện không khả dụng.',
-        )
-
-    def get(self, request, **kwargs):
-        bridged_response = self._bridge(request)
-        if bridged_response is not None:
-            return bridged_response
-        return Response([])
-
-    def post(self, request, **kwargs):
-        bridged_response = self._bridge(request)
-        if bridged_response is not None:
-            return bridged_response
-        return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-    def patch(self, request, **kwargs):
-        bridged_response = self._bridge(request)
-        if bridged_response is not None:
-            return bridged_response
-        return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-    def put(self, request, **kwargs):
-        bridged_response = self._bridge(request)
-        if bridged_response is not None:
-            return bridged_response
-        return Response({"detail": "Feature not yet available in SaaS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-    def delete(self, request, **kwargs):
-        bridged_response = self._bridge(request)
-        if bridged_response is not None:
-            return bridged_response
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 
