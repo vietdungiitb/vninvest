@@ -1,10 +1,13 @@
 import hashlib
 import json
+import logging
 
 from django.core.cache import cache
 from rest_framework import generics, permissions
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
+
+logger = logging.getLogger(__name__)
 
 from vninvest_core.pagination import SnapshotCursorPagination
 
@@ -55,7 +58,8 @@ class SymbolSnapshotDetailView(generics.RetrieveAPIView):
 
         try:
             cached = cache.get(cache_key)
-        except Exception:
+        except Exception as e:
+            logger.warning(f'SymbolSnapshot cache get failed: {e}')
             cached = None
         if cached is not None:
             data = cached
@@ -66,8 +70,8 @@ class SymbolSnapshotDetailView(generics.RetrieveAPIView):
         data = serializer.data
         try:
             cache.set(cache_key, dict(data), timeout=_SNAPSHOT_TTL)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f'SymbolSnapshot cache set failed: {e}')
         data = dict(data)
         data['_source'] = 'db-read'
         return Response(data)
@@ -105,7 +109,8 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
 
         try:
             cached = cache.get(cache_key)
-        except Exception:
+        except Exception as e:
+            logger.warning(f'SessionFacts cache get failed: {e}')
             cached = None
         if cached is not None:
             data = cached
@@ -116,8 +121,8 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
         data = dict(serializer.data)
         try:
             cache.set(cache_key, data, timeout=_SESSION_FACTS_TTL)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f'SessionFacts cache set failed: {e}')
         data['_source'] = 'db-read'
         return Response(data)
 

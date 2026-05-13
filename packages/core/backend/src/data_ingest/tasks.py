@@ -87,7 +87,9 @@ def _fetch_and_upsert_bucket(
                         volume=int(row['volume']),
                         source=f'vnbroker_{provider}',
                     ))
-                except Exception:
+                except Exception as exc:
+                    # Skip malformed rows but log for debugging
+                    logger.debug(f'DailyPrice parse error for {symbol} row: {exc}')
                     continue
 
             if objs:

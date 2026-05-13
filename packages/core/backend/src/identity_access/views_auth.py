@@ -540,9 +540,9 @@ def register_view(request):
             recipient_list=[email],
             fail_silently=False,
         )
-    except Exception:  # noqa: BLE001
-        # If email fails, still return success but do NOT activate user.
-        pass
+    except Exception as e:  # noqa: BLE001
+        # If email fails, log but still return success (do NOT activate user).
+        logger.error(f'Email verification send failed for {email}: {e}')
 
     return Response(
         {'detail': 'Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản.'},

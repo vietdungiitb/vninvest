@@ -6,6 +6,7 @@ Endpoints:
   POST /core/v1/advisory/refresh/<symbol>/  — request advisory generation
   GET  /core/v1/advisory/history/<symbol>/  — paginated AdvisoryRecord history
 """
+import logging
 from calendar import monthrange
 from datetime import date as _date, timedelta
 
@@ -15,6 +16,8 @@ from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+logger = logging.getLogger(__name__)
 
 from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
@@ -85,9 +88,9 @@ def _record_manual_trigger_audit(*, request, tenant: CoreTenant | None, symbol: 
             resource_id=f'{symbol}:{session_date.isoformat()}',
             metadata=metadata,
         )
-    except Exception:
-        # Audit must not block manual trigger flows.
-        pass
+    except Exception as e:
+        # Audit must not block manual trigger flows, but log the failure.
+        logger.error(f'Audit log write failed: {e}')
 
 
 class AdvisoryLatestView(APIView):
