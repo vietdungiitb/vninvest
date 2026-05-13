@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Snapshot đóng cửa phiên',
                 'verbose_name_plural': 'Snapshot đóng cửa phiên',
                 'ordering': ['-session_date', 'symbol'],
-                'indexes': [models.Index(fields=['market_code', 'session_date'], name='portfolio_ti_market__cf6ff0_idx'), models.Index(fields=['symbol', 'session_date'], name='portfolio_ti_symbol__f849f1_idx')],
+                'indexes': [models.Index(fields=['market_code', 'session_date']), models.Index(fields=['symbol', 'session_date'])],
                 'unique_together': {('symbol', 'market_code', 'session_date')},
             },
         ),

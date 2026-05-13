@@ -30,16 +30,7 @@ class Migration(migrations.Migration):
             new_name='portfolio_o_event_i_8459f9_idx',
             old_name='idx_ofs_event_id',
         ),
-        migrations.RenameIndex(
-            model_name='tickersessionclose',
-            new_name='portfolio_t_market__2ec19a_idx',
-            old_name='portfolio_ti_market__cf6ff0_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='tickersessionclose',
-            new_name='portfolio_t_symbol_f3e3e8_idx',
-            old_name='portfolio_ti_symbol__f849f1_idx',
-        ),
+
         migrations.AlterField(
             model_name='advisoryaggregateauditlog',
             name='reason',
