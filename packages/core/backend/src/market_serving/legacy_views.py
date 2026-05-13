@@ -678,16 +678,16 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
         return self._normalize_symbols(queryset.values_list('symbol', flat=True))
 
     def _resolve_tracked_symbols(self, request):
-        bridged_response = legacy_bridge_response(
-            request,
-            '/api/stock-management/tracked-symbols/',
-            unavailable_message='Legacy tracked-symbol bridge hiện không khả dụng.',
+        from user_workspace.models import WatchlistItem
+        user = request.user
+        if not user or not user.is_authenticated:
+            return []
+        symbols = (
+            WatchlistItem.objects
+            .filter(watchlist__user=user)
+            .values_list('symbol', flat=True)
         )
-        if bridged_response is None:
-            return []
-        if int(getattr(bridged_response, 'status_code', 0) or 0) >= status.HTTP_400_BAD_REQUEST:
-            return []
-        return self._extract_tracked_symbols(getattr(bridged_response, 'data', None))
+        return self._normalize_symbols(symbols)
 
     def _extract_tracked_symbols(self, payload):
         if isinstance(payload, list):

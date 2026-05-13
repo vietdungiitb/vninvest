@@ -17,6 +17,6 @@ def run_signal_detection_job(self, domain: str = 'all', symbol: str = None):
     if domain in {'all', 'whale'}:
         materialize_whale_feed_aggregate.delay(symbol=symbol)
     if domain in {'all', 'dark_flow'}:
-        materialize_unified_alerts.delay(symbol=symbol)
+        materialize_unified_alerts.delay()
         
     return {'status': 'accepted', 'domain': domain, 'symbol': symbol}
