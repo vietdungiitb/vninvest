@@ -93,14 +93,27 @@ class MarketTickerConsumer(AsyncWebsocketConsumer):
         logger.info('[WS] Disconnected: symbol=%s code=%s', getattr(self, 'symbol', '?'), close_code)
 
     async def receive(self, text_data=None, bytes_data=None):
-        # Clients can send ping; respond with pong.
-        if text_data:
-            try:
-                msg = json.loads(text_data)
-                if msg.get('type') == 'ping':
-                    await self.send(text_data=json.dumps({'type': 'pong'}))
-            except (json.JSONDecodeError, Exception):  # noqa: BLE001
-                pass
+        """
+        Handle incoming WebSocket messages.
+        
+        Currently only supports ping/pong heartbeat messages.
+        C5 Fix: Proper exception logging instead of silent catch-all.
+        """
+        if not text_data:
+            return
+        
+        try:
+            msg = json.loads(text_data)
+            msg_type = msg.get('type')
+            
+            if msg_type == 'ping':
+                await self.send(text_data=json.dumps({'type': 'pong'}))
+            else:
+                logger.debug('[WS] Unknown message type from %s: %s', self.user.username if hasattr(self, 'user') else '?', msg_type)
+        except json.JSONDecodeError as exc:
+            logger.warning('[WS] Invalid JSON from %s: %s', self.user.username if hasattr(self, 'user') else '?', exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.error('[WS] Unexpected error in receive for %s: %s', self.user.username if hasattr(self, 'user') else '?', exc)
 
     async def market_update(self, event):
         """Handle market_update messages from Redis channel layer."""
