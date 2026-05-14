@@ -30,6 +30,7 @@ import AdminCoreBilling from './pages/AdminCoreBilling';
 import AdminCoreJobs from './pages/AdminCoreJobs';
 import AdminCoreAuditTrace from './pages/AdminCoreAuditTrace';
 import AdminCrawlControl from './pages/AdminCrawlControl';
+import SOCPage from './pages/SOCPage';
 import Screener from './pages/Screener';
 import UserConfig from './pages/UserConfig';
 import TenantAdminHome from './pages/admin/tenant/TenantAdminHome';
@@ -311,6 +312,7 @@ export default function App() {
                   />
                   <Route path="tenant-admin" element={<Navigate to="/tenant-admin/home" replace />} />
                   <Route path="screener" element={<Screener />} />
+                  <Route path="operations-center" element={<SOCPage />} />
                   <Route path="portfolios" element={<PortfoliosShellHost />} />
                   <Route
                     path="settings"
