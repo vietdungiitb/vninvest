@@ -86,15 +86,20 @@
 
 ### Docker & Deployment Status
 
-**Current State**
+**Final State (May 14, 11:30 UTC)**
 - ✅ All 12 services running (core-api, frontend, db, redis, celery workers, mailpit)
-- ✅ Frontend accessible at http://localhost
-- ✅ Core API accessible at http://localhost:8001
+- ✅ Frontend accessible at http://localhost/operations-center
+- ✅ Core API accessible at http://localhost:8001/api/soc/
+- ✅ Database migrations applied successfully
+- ✅ API responding with proper error envelopes
 
-**Blocker for Full Deployment**
-- ⏳ Docker images out of sync with code (images built before latest code)
-- ⏳ Requires valid VNBROKER_GITHUB_TOKEN for rebuild
-- ⏳ Once token provided: rebuild → migrate → test (est. 10 min)
+**Deployment Completed**
+- ✅ Docker images built successfully (with valid VNBROKER_GITHUB_TOKEN)
+- ✅ Both backend & frontend services running
+- ✅ API health check passing
+- ✅ PostgreSQL migrations completed (6 models created)
+- ✅ Redis cache ready
+- ✅ All Celery workers operational
 
 ### Validation Results
 

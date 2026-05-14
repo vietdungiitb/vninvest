@@ -1,4 +1,33 @@
 {
+  "layout": {
+    "nav": {
+      "adminOps": "Hoạt động quản trị",
+      "soc": "Trung tâm hoạt động",
+      "support": "Hỗ trợ",
+      "screener": "Bộ lọc chứng chỉ",
+      "aiCommandCenter": "Trung tâm lệnh AI",
+      "aiAdvisory": "Tư vấn AI",
+      "whaleAlerts": "Cảnh báo cá mập",
+      "watchlist": "Danh sách theo dõi",
+      "transactions": "Giao dịch",
+      "portfolioManagement": "Quản lý danh mục",
+      "tenantHome": "Trang chủ thuê bao",
+      "tenantCapabilities": "Khả năng thuê bao",
+      "tenantUsage": "Mức sử dụng thuê bao",
+      "tenantBilling": "Thanh toán thuê bao",
+      "tenantServiceAccounts": "Tài khoản dịch vụ thuê bao",
+      "tenantPats": "Token cá nhân thuê bao",
+      "group": {
+        "dashboard": "Tổng quan",
+        "signals": "Tin hiệu & Whale",
+        "portfolio": "Danh mục",
+        "tenant": "Khách thuê",
+        "system": "Hệ thống"
+      }
+    },
+    "collapseMenu": "Thu gọn menu",
+    "expandMenu": "Mở rộng menu"
+  },
   "soc": {
     "health": {
       "status_healthy": "Khỏe mạnh",

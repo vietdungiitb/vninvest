@@ -69,6 +69,7 @@ export default function TopNav() {
   const tenantSurfaceEnabled = capabilitySnapshot?.surfaces?.tenant_admin?.enabled;
   const canNavigateTo = (route, fallback) => (hasCapabilityMenus ? visibleRoutes.has(route) : fallback);
   const canReadAdminOps = canNavigateTo('/admin-ops', ability.can('read', 'AdminOps'));
+  const canReadSOC = canNavigateTo('/operations-center', ability.can('read', 'ServiceOpsCenter'));
   const canReadTenantHome = canNavigateTo('/tenant-admin/home', ability.can('read', 'TenantAdminHome'));
   const canReadTenantCapabilities = canNavigateTo('/tenant-admin/capabilities', ability.can('read', 'TenantCapabilityView'));
   const canReadTenantUsage = canNavigateTo('/tenant-admin/usage', ability.can('read', 'TenantUsageView'));
@@ -92,8 +93,13 @@ export default function TopNav() {
     { to: '/support', label: t('layout.nav.support') },
     { to: '/screener', label: t('layout.nav.screener') },
     { to: '/settings/ai', label: t('layout.nav.aiCommandCenter') },
+    { to: '/operations-center', label: t('layout.nav.soc') },
     { to: '/admin-ops', label: t('layout.nav.adminOps') },
-  ].filter((item) => item.to !== '/admin-ops' || canReadAdminOps);
+  ].filter((item) => {
+    if (item.to === '/admin-ops') return canReadAdminOps;
+    if (item.to === '/operations-center') return canReadSOC;
+    return true;
+  });
 
   const tenantItems = [
     { to: '/tenant-admin/home', label: t('layout.nav.tenantHome'), visible: canReadTenantHome },
