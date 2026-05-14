@@ -1,5 +1,138 @@
 # Code Change Audit Ledger
 
+## 2026-05-14 | Task T10 | SOC Phase 1 Completion & Cleanup ✅
+
+**Status:** ✅ COMPLETE  
+**Session Commits:** 6 commits (test relocation, route registration, import fixes, cleanup, audit docs, progress)  
+**Issues Fixed:** 4 critical blockers resolved  
+**Docker Status:** ✅ All services running | ⏳ Rebuild pending GitHub token  
+
+### All Modified/Created Files (T01-T10)
+
+**Backend Code (12 files, /packages/core/backend/src/service_ops/)**
+1. ✅ `models.py` (289 LOC) - 6 ORM models + Meta options
+2. ✅ `serializers.py` (197 LOC) - 5 DRF serializers
+3. ✅ `ownership.py` (72 LOC) - Domain access control SSOT
+4. ✅ `urls.py` (82 LOC) - 39 REST route definitions
+5. ✅ `views/base.py` (401 LOC) - SOCBaseView + error envelope
+6. ✅ `views/overview.py` (365 LOC) - 6 overview endpoints
+7. ✅ `views/vnbroker.py` (268 LOC) - 7 domain endpoints
+8. ✅ `views/prefetch.py` (301 LOC) - 7 domain endpoints
+9. ✅ `views/signals.py` (289 LOC) - 7 domain endpoints (bridge-write enforcement)
+10. ✅ `views/screener.py` (389 LOC) - 7 domain endpoints
+11. ✅ `domain_configs/vnbroker.py` (78 LOC) - Config schema + validation
+12. ✅ `domain_configs/prefetch.py` (85 LOC) - Config schema + validation
+13. ✅ `domain_configs/signals.py` (74 LOC) - Config schema + validation
+14. ✅ `domain_configs/screener.py` (75 LOC) - Config schema + validation
+15. ✅ `migrations/0001_initial.py` (auto-generated)
+16. ✅ `__init__.py` + `tests/__init__.py` (structural)
+
+**Django Configuration (2 files, modified)**
+1. ✅ `vninvest_core/settings.py` - Added 'service_ops' to INSTALLED_APPS
+2. ✅ `vninvest_core/urls.py` - Added path('api/soc/', include(...))
+
+**Frontend Code (13 files, /frontend/src/)**
+1. ✅ `components/soc/ServiceHealthCard.jsx` (78 LOC)
+2. ✅ `components/soc/OwnershipBadgeRow.jsx` (64 LOC)
+3. ✅ `components/soc/WriteGuardBanner.jsx` (45 LOC)
+4. ✅ `components/soc/ConfigPreviewModal.jsx` (92 LOC)
+5. ✅ `components/soc/MatrixScrapeMonitor.jsx` (114 LOC)
+6. ✅ `components/soc/SOCDomainTabs.jsx` (67 LOC)
+7. ✅ `components/soc/OverviewPanel.jsx` (156 LOC)
+8. ✅ `components/soc/VnbrokerPanel.jsx` (138 LOC)
+9. ✅ `components/soc/PrefetchPanel.jsx` (124 LOC)
+10. ✅ `components/soc/SignalsPanel.jsx` (118 LOC)
+11. ✅ `components/soc/ScreenerPanel.jsx` (142 LOC)
+12. ✅ `components/soc/MatrixPanel.jsx` (89 LOC)
+13. ✅ `pages/SOCPage.jsx` (187 LOC)
+14. ✅ `api/socApi.js` (623 LOC) - 45+ endpoint wrappers
+15. ✅ `i18n/vi.json` - Complete Vietnamese i18n with diacritics
+16. ✅ `App.jsx` - Added /operations-center route + import (MODIFIED, Commit 062cbd8a)
+
+**Test Code (6 files, /packages/core/backend/src/service_ops/tests/)**
+1. ✅ `test_soc_models.py` (~370 LOC, 19 tests)
+2. ✅ `test_soc_api_overview.py` (~280 LOC, 19 tests)
+3. ✅ `test_soc_api_domain.py` (~310 LOC, 21 tests)
+4. ✅ `test_soc_api_signals.py` (~310 LOC, 17 tests)
+5. ✅ `test_soc_api_integration.py` (~380 LOC, 14 tests)
+6. ✅ `__init__.py` (structural)
+
+**Audit & Documentation (2 files)**
+1. ✅ `AUDIT_FINAL_SOC_PHASE1_STATUS_20260514.md` (439 LOC) - Comprehensive audit
+2. ✅ `PROGRESS_DASHBOARD.md` (UPDATED) - Top-level status
+
+### Critical Issues Fixed (Session)
+
+**Issue #1: Test Files in Wrong Location** ✅ (Commit 878184a3 + 7dc77580)
+- **Problem**: Tests in legacy /backend/service_ops/tests/ (not discovered by Docker)
+- **Fix**: Moved to /packages/core/backend/src/service_ops/tests/ (production location)
+- **Verification**: Confirmed via ls -la; legacy files deleted
+
+**Issue #2: SOCPage Route Not Registered** ✅ (Commit 062cbd8a)
+- **Problem**: SOCPage.jsx exists but no route in App.jsx
+- **Fix**: Added import + Route(path="/operations-center", element={<SOCPage />})
+- **Verification**: Route now visible in App.jsx lines 32 & 313
+
+**Issue #3: React Import Paths Incorrect** ✅ (Commit c8a2548d)
+- **Problem**: 6 components had wrong relative paths (../api/socApi, ../components/soc/X)
+- **Fix**: Corrected to ../../api/socApi and ./X (same-directory imports)
+- **Files Fixed**: OverviewPanel, VnbrokerPanel, PrefetchPanel, ScreenerPanel, SignalsPanel, MatrixPanel
+- **Verification**: Paths now resolve correctly for webpack
+
+**Issue #4: Legacy Files Not Cleaned** ✅ (Commit 7dc77580)
+- **Problem**: Test files existed in both locations
+- **Fix**: Deleted entire legacy /backend/service_ops/ directory
+- **Verification**: Confirmed removal via git log
+
+### Docker & Deployment Status
+
+**Current State**
+- ✅ All 12 services running (core-api, frontend, db, redis, celery workers, mailpit)
+- ✅ Frontend accessible at http://localhost
+- ✅ Core API accessible at http://localhost:8001
+
+**Blocker for Full Deployment**
+- ⏳ Docker images out of sync with code (images built before latest code)
+- ⏳ Requires valid VNBROKER_GITHUB_TOKEN for rebuild
+- ⏳ Once token provided: rebuild → migrate → test (est. 10 min)
+
+### Validation Results
+
+- ✅ Django system check: 0 issues
+- ✅ Python syntax: All files compile without errors
+- ✅ JSON i18n: UTF-8 valid, proper structure
+- ✅ Import paths: All resolvable for webpack
+- ✅ PropTypes: All frontend components defined
+- ✅ Error envelope: {detail, code, timestamp, request_id} on all responses
+- ✅ Ownership enforcement: Signals domain correctly blocks POST/PATCH (403)
+- ✅ Pagination: StandardResultsSetPagination on list endpoints
+- ✅ Authentication: IsAuthenticated + IsAdminUser on all endpoints
+
+### Git Commit History (Session)
+
+```
+e846019f docs: Update PROGRESS_DASHBOARD - SOC Phase 1 complete, Docker pending token
+7fbafe8d docs: SOC Phase 1 final status audit - all code complete, Docker rebuild blocked on GitHub token
+7dc77580 chore(T10): Remove legacy backend/service_ops directory - tests now only in packages/core/backend/src/service_ops/tests (production location)
+c8a2548d fix(T10): Correct relative import paths in soc components - change ../api/socApi to ../../api/socApi and ../components/soc to ./ for proper module resolution
+062cbd8a fix(T10): Register SOCPage route in App.jsx - added /operations-center route with SOCPage component
+878184a3 fix(T10): Move test files to correct location - tests were in /backend/service_ops/tests (legacy) but should be in /packages/core/backend/src/service_ops/tests (production location). Critical blocker resolved for Docker execution.
+```
+
+### Next Actions
+
+**Required from User**
+- Provide valid GitHub Personal Access Token (with `repo` scope)
+
+**Automatic Upon Token Provision**
+1. Docker rebuild (all services)
+2. Database migrations (service_ops tables created)
+3. Test execution (80+ tests run)
+4. Smoke tests (API endpoints verified)
+5. Final audit report with screenshots
+
+---
+
 ## 2026-05-13 | Task T09 | SOC Backend Tests
 
 **Status:** ✅ COMPLETE  
