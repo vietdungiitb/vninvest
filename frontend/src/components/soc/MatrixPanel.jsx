@@ -3,7 +3,7 @@
  */
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { MatrixScrapeMonitor } from '../components/soc/MatrixScrapeMonitor';
+import { MatrixScrapeMonitor } from './MatrixScrapeMonitor';
 
 const MatrixPanel = ({ t }) => {
   const [cycleId] = useState('current'); // Placeholder; in real implementation, fetch active cycle ID

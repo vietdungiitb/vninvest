@@ -3,9 +3,9 @@
  */
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { socApi } from '../api/socApi';
-import { ConfigPreviewModal } from '../components/soc/ConfigPreviewModal';
-import { WriteGuardBanner } from '../components/soc/WriteGuardBanner';
+import { socApi } from '../../api/socApi';
+import { ConfigPreviewModal } from './ConfigPreviewModal';
+import { WriteGuardBanner } from './WriteGuardBanner';
 
 const VnbrokerPanel = ({ t }) => {
   const [config, setConfig] = useState(null);

@@ -4,8 +4,8 @@
  */
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { socApi } from '../api/socApi';
-import { WriteGuardBanner } from '../components/soc/WriteGuardBanner';
+import { socApi } from '../../api/socApi';
+import { WriteGuardBanner } from './WriteGuardBanner';
 
 const SignalsPanel = ({ t }) => {
   const [config, setConfig] = useState(null);

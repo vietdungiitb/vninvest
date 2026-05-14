@@ -3,7 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { socApi } from '../api/socApi';
+import { socApi } from '../../api/socApi';
 
 const PrefetchPanel = ({ t }) => {
   const [config, setConfig] = useState(null);

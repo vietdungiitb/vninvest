@@ -1,10 +1,10 @@
 /**
- * OverviewPanel.jsx — Service overview with health grid and config version
+ * OverviewPanel.jsx — Service overview with health grid and config status
  */
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { socApi } from '../api/socApi';
-import { ServiceHealthCard } from '../components/soc/ServiceHealthCard';
+import { socApi } from '../../api/socApi';
+import { ServiceHealthCard } from './ServiceHealthCard';
 
 const OverviewPanel = ({ t, services }) => {
   const [serviceDetails, setServiceDetails] = useState([]);
