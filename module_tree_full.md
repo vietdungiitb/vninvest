@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-13 14:47:24`
+Generated at: `2026-05-14 14:33:39`
 
 ## Summary
 
-- Total modules: 1082
-- Python modules: 582
-- JS/TS modules: 500
-- Total classes: 961
-- Total functions: 2903
-- Total top-level variables: 4595
+- Total modules: 1153
+- Python modules: 639
+- JS/TS modules: 514
+- Total classes: 1121
+- Total functions: 2965
+- Total top-level variables: 4696
 
 ## Python Modules
 
@@ -66,7 +66,7 @@ Generated at: `2026-05-13 14:47:24`
 - Functions:
   - `_derive_cache_redis_url`, `_env_bool`, `_env_float`, `_env_int`, `_get_throttle_rate`, `_redis_url_with_db`
 - Top-level variables:
-  - `ADVISORY_AUTO_GENERATION_BATCH_SIZE`, `ADVISORY_AUTO_GENERATION_ENABLED`, `ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `AUTH_PASSWORD_VALIDATORS`, `BASE_DIR`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYER_CAPACITY`, `CHANNEL_LAYER_EXPIRY`, `CHANNEL_LAYER_GROUP_EXPIRY`, `CHANNEL_LAYER_TICKER_CAPACITY`, `CORE_BACKEND_SRC`, `CORS_ALLOWED_ORIGINS`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS`, `ENABLE_NEW_MARKET_VIEWS`, `ENABLE_NEW_TRADING_VIEWS`, `ENABLE_REALTIME_CONNECTION_MANAGER`, `FEATURE_FLAGS`, `FRONTEND_BASE_URL`, `GOOGLE_OAUTH_REDIRECT_URI`, `HOLISTIC_ADVISORY_V1_COHORT_MODE`, `HOLISTIC_ADVISORY_V1_COHORT_USERNAMES`, `HOLISTIC_ADVISORY_V1_ENABLED`, `HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD`, `INSTALLED_APPS`, `INTRADAY_STALE_MAX_SECONDS_DEFAULT`, `INTRADAY_STALE_MAX_SECONDS_VN30`, `INTRADAY_TICK_KEEP_DAYS`, `LANGUAGE_CODE`, `LOGGING`, `MARKET_OBSERVABILITY_ENABLED`, `MARKET_OBSERVABILITY_LATENCY_WINDOW`, `MARKET_VIEWS_CANARY_PERCENT`, `MIDDLEWARE`, `MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND`, `MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_BASELINE_MINUTES`, `MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES`, `MISSION_CONTROL_ANOMALY_MIN_ADVISORIES`, `MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS`, `MISSION_CONTROL_ANOMALY_MONITOR_ENABLED`, `MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS`, `MISSION_CONTROL_ANOMALY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS`, `OFFPEAK_VNBROKER_INGEST_CRON_HOUR`, `OFFPEAK_VNBROKER_INGEST_CRON_MINUTE`, `OFFPEAK_VNBROKER_INGEST_DAYS`, `OFFPEAK_VNBROKER_INGEST_ENABLED`, `OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS`, `ONBOARDING_TRIAL_APPLY_ON_SIGNUP`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES`, `OPENCLAW_API_KEY`, `OPENCLAW_BASE_URL`, `OPENCLAW_MODEL`, `OPEN_CORE_QUOTA_CAPS_BY_TIER`, `OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED`, `ORDER_FLOW_DETECTION_ENABLED`, `ORDER_FLOW_DETECTION_INTERVAL_SECONDS`, `PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS`, `PORTFOLIO_NEWS_DIGEST_BATCH_SIZE`, `PORTFOLIO_NEWS_DIGEST_ENABLED`, `REALTIME_BROADCAST_DEGRADE_BATCH_THRESHOLD`, `REALTIME_BROADCAST_DEGRADE_ENABLED`, `REALTIME_BROADCAST_DEGRADE_PENDING_THRESHOLD`, `REALTIME_BROADCAST_FORCE_INTERVAL_S`, `REALTIME_BROADCAST_MIN_CHANGE_PCT`, `REALTIME_CHANNEL_LAYER`, `REALTIME_DEFAULT_WHALE_THRESHOLD`, `REALTIME_ENABLED`, `REALTIME_INTRADAY_POLL_ENABLED`, `REALTIME_INTRADAY_POLL_SYMBOL_LIMIT`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_ENABLED`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_SECONDS`, `REALTIME_REDIS_URL`, `REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED`, `REALTIME_STREAM_PENDING_RECLAIM_ENABLED`, `REALTIME_TICKER_CACHE_ONLY`, `REALTIME_WS_AUTH_CACHE_ENABLED`, `REALTIME_WS_AUTH_CACHE_TTL_SECONDS`, `REALTIME_WS_PLAN_CACHE_ENABLED`, `REST_FRAMEWORK`, `REVERSAL_DETECTION_ENABLED`, `REVERSAL_DETECTION_INTERVAL_SECONDS`, `ROOT_URLCONF`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_HSTS_SECONDS`, `SECURE_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SENTIMENT_SYNC_ENABLED`, `SENTIMENT_SYNC_INTERVAL_MINUTES`, `SESSION_COOKIE_SECURE`, `SIGNAL_VERIFICATION_ENABLED`, `STARTER_PORTFOLIOS_CANARY_PERCENT`, `STARTER_PORTFOLIOS_ENABLED`, `STATIC_ROOT`, `STATIC_URL`, `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED`, `STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE`, `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`, `STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `STOCK_PROFILE_SYNC_ENABLED`, `STREAM_BLOCK_MS`, `STREAM_CONSUMER_BATCH`, `STREAM_CONSUMER_INTERVAL`, `STREAM_MAX_LEN`, `STREAM_MAX_LEN_HARD_CAP`, `STREAM_PENDING_RECLAIM_BATCH`, `STREAM_PENDING_RECLAIM_IDLE_MS`, `STREAM_REDIS_URL`, `STREAM_SNAPSHOT_TTL`, `STREAM_STALE_AFTER_SECONDS`, `SYSTEM_EMAIL_FALLBACK_ENABLED`, `SYSTEM_EMAIL_FALLBACK_FROM_EMAIL`, `SYSTEM_EMAIL_FALLBACK_FROM_NAME`, `SYSTEM_EMAIL_FALLBACK_HOST`, `SYSTEM_EMAIL_FALLBACK_PASSWORD`, `SYSTEM_EMAIL_FALLBACK_PORT`, `SYSTEM_EMAIL_FALLBACK_REPLY_TO`, `SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS`, `SYSTEM_EMAIL_FALLBACK_USERNAME`, `SYSTEM_EMAIL_FALLBACK_USE_SSL`, `SYSTEM_EMAIL_FALLBACK_USE_TLS`, `TEMPLATES`, `TICKER_CACHE_MISS_ALLOW_DEGRADED`, `TICKER_CACHE_MISS_STATUS_CODE`, `TICKER_FRESHNESS_SECONDS`, `TICKER_PREFETCH_BATCH_SIZE_COLD`, `TICKER_PREFETCH_BATCH_SIZE_HOT`, `TICKER_PREFETCH_BATCH_SIZE_WARM`, `TICKER_PREFETCH_COLD_INTERVAL_SECONDS`, `TICKER_PREFETCH_COLD_SHARDS`, `TICKER_PREFETCH_EMERGENCY_DISABLE_COLD`, `TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER`, `TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED`, `TICKER_PREFETCH_HOT_INTERVAL_SECONDS`, `TICKER_PREFETCH_HOT_LIMIT`, `TICKER_PREFETCH_HOT_SHARDS`, `TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED`, `TICKER_PREFETCH_WARM_INTERVAL_SECONDS`, `TICKER_PREFETCH_WARM_LIMIT`, `TICKER_PREFETCH_WARM_SHARDS`, `TICKER_STALE_SERVE_SECONDS`, `TICKER_UNIVERSE_REFRESH_SECONDS`, `TICKER_UNIVERSE_SYMBOL_LIMIT`, `TICKER_UPSTREAM_HARD_CAP_PER_MINUTE`, `TICKER_UPSTREAM_SOFT_CAP_PER_MINUTE`, `TICKER_UPSTREAM_WARNING_CAP_PER_MINUTE`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `USE_X_FORWARDED_PORT`, `VNBROKER_BOOTSTRAP_LOG_SUPPRESS_ENABLED`, `VNBROKER_CLIENT_CACHE_ENABLED`, `VNBROKER_CLIENT_CACHE_MAXSIZE`, `VNBROKER_CLIENT_CACHE_TTL_SECONDS`, `VNBROKER_PROVIDER_CACHE_ENABLED`, `VNBROKER_PROVIDER_CACHE_TTL_SECONDS`, `WATCHLIST_INDICATORS_ENABLED`, `WATCHLIST_SYNC_DAYS`, `WATCHLIST_SYNC_ENABLED`, `WATCHLIST_SYNC_MINUTES`, `WHALE_ADVISORY_COOLDOWN_SECONDS`, `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `WHALE_ALERT_DETECTION_ENABLED`, `WHALE_ALERT_DETECTION_INTERVAL_SECONDS`, `WHALE_SCORE_PROFILE`, `WSGI_APPLICATION`, `X_FRAME_OPTIONS`, `_CACHE_REDIS_URL`, `_OPENCORE_ENABLED`, `_REALTIME_ENABLED_FLAG`, `_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS`, `_core_apps`, `_secret_key_env`
+  - `ADVISORY_AUTO_GENERATION_BATCH_SIZE`, `ADVISORY_AUTO_GENERATION_ENABLED`, `ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `AUTH_PASSWORD_VALIDATORS`, `BASE_DIR`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYER_CAPACITY`, `CHANNEL_LAYER_EXPIRY`, `CHANNEL_LAYER_GROUP_EXPIRY`, `CHANNEL_LAYER_TICKER_CAPACITY`, `CORE_BACKEND_SRC`, `CORS_ALLOWED_ORIGINS`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS`, `ENABLE_NEW_MARKET_VIEWS`, `ENABLE_NEW_TRADING_VIEWS`, `ENABLE_REALTIME_CONNECTION_MANAGER`, `FEATURE_FLAGS`, `FRONTEND_BASE_URL`, `GOOGLE_OAUTH_REDIRECT_URI`, `HOLISTIC_ADVISORY_V1_COHORT_MODE`, `HOLISTIC_ADVISORY_V1_COHORT_USERNAMES`, `HOLISTIC_ADVISORY_V1_ENABLED`, `HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD`, `INSTALLED_APPS`, `INTRADAY_STALE_MAX_SECONDS_DEFAULT`, `INTRADAY_STALE_MAX_SECONDS_VN30`, `INTRADAY_TICK_KEEP_DAYS`, `LANGUAGE_CODE`, `LOGGING`, `MARKET_OBSERVABILITY_ENABLED`, `MARKET_OBSERVABILITY_LATENCY_WINDOW`, `MARKET_VIEWS_CANARY_PERCENT`, `MIDDLEWARE`, `MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND`, `MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_BASELINE_MINUTES`, `MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES`, `MISSION_CONTROL_ANOMALY_MIN_ADVISORIES`, `MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS`, `MISSION_CONTROL_ANOMALY_MONITOR_ENABLED`, `MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS`, `MISSION_CONTROL_ANOMALY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS`, `OFFPEAK_VNBROKER_INGEST_CRON_HOUR`, `OFFPEAK_VNBROKER_INGEST_CRON_MINUTE`, `OFFPEAK_VNBROKER_INGEST_DAYS`, `OFFPEAK_VNBROKER_INGEST_ENABLED`, `OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS`, `ONBOARDING_TRIAL_APPLY_ON_SIGNUP`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES`, `OPENCLAW_API_KEY`, `OPENCLAW_BASE_URL`, `OPENCLAW_MODEL`, `OPEN_CORE_QUOTA_CAPS_BY_TIER`, `OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED`, `ORDER_FLOW_DETECTION_ENABLED`, `ORDER_FLOW_DETECTION_INTERVAL_SECONDS`, `PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS`, `PORTFOLIO_NEWS_DIGEST_BATCH_SIZE`, `PORTFOLIO_NEWS_DIGEST_ENABLED`, `REALTIME_BROADCAST_DEGRADE_BATCH_THRESHOLD`, `REALTIME_BROADCAST_DEGRADE_ENABLED`, `REALTIME_BROADCAST_DEGRADE_PENDING_THRESHOLD`, `REALTIME_BROADCAST_FORCE_INTERVAL_S`, `REALTIME_BROADCAST_MIN_CHANGE_PCT`, `REALTIME_CHANNEL_LAYER`, `REALTIME_DEFAULT_WHALE_THRESHOLD`, `REALTIME_ENABLED`, `REALTIME_INTRADAY_POLL_ENABLED`, `REALTIME_INTRADAY_POLL_SYMBOL_LIMIT`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_ENABLED`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_SECONDS`, `REALTIME_REDIS_URL`, `REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED`, `REALTIME_STREAM_PENDING_RECLAIM_ENABLED`, `REALTIME_TICKER_CACHE_ONLY`, `REALTIME_WS_AUTH_CACHE_ENABLED`, `REALTIME_WS_AUTH_CACHE_TTL_SECONDS`, `REALTIME_WS_PLAN_CACHE_ENABLED`, `REST_FRAMEWORK`, `REVERSAL_DETECTION_ENABLED`, `REVERSAL_DETECTION_INTERVAL_SECONDS`, `ROOT_URLCONF`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_HSTS_SECONDS`, `SECURE_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SENTIMENT_SYNC_ENABLED`, `SENTIMENT_SYNC_INTERVAL_MINUTES`, `SESSION_COOKIE_SECURE`, `SIGNAL_VERIFICATION_ENABLED`, `STARTER_PORTFOLIOS_CANARY_PERCENT`, `STARTER_PORTFOLIOS_ENABLED`, `STATIC_ROOT`, `STATIC_URL`, `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED`, `STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE`, `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`, `STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `STOCK_PROFILE_SYNC_ENABLED`, `STREAM_BLOCK_MS`, `STREAM_CONSUMER_BATCH`, `STREAM_CONSUMER_INTERVAL`, `STREAM_MAX_LEN`, `STREAM_MAX_LEN_HARD_CAP`, `STREAM_PENDING_RECLAIM_BATCH`, `STREAM_PENDING_RECLAIM_IDLE_MS`, `STREAM_REDIS_URL`, `STREAM_SNAPSHOT_TTL`, `STREAM_STALE_AFTER_SECONDS`, `SYSTEM_EMAIL_FALLBACK_ENABLED`, `SYSTEM_EMAIL_FALLBACK_FROM_EMAIL`, `SYSTEM_EMAIL_FALLBACK_FROM_NAME`, `SYSTEM_EMAIL_FALLBACK_HOST`, `SYSTEM_EMAIL_FALLBACK_PASSWORD`, `SYSTEM_EMAIL_FALLBACK_PORT`, `SYSTEM_EMAIL_FALLBACK_REPLY_TO`, `SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS`, `SYSTEM_EMAIL_FALLBACK_USERNAME`, `SYSTEM_EMAIL_FALLBACK_USE_SSL`, `SYSTEM_EMAIL_FALLBACK_USE_TLS`, `TEMPLATES`, `TICKER_CACHE_MISS_ALLOW_DEGRADED`, `TICKER_CACHE_MISS_STATUS_CODE`, `TICKER_FRESHNESS_SECONDS`, `TICKER_PREFETCH_BATCH_SIZE_COLD`, `TICKER_PREFETCH_BATCH_SIZE_HOT`, `TICKER_PREFETCH_BATCH_SIZE_WARM`, `TICKER_PREFETCH_COLD_INTERVAL_SECONDS`, `TICKER_PREFETCH_COLD_SHARDS`, `TICKER_PREFETCH_EMERGENCY_DISABLE_COLD`, `TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER`, `TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED`, `TICKER_PREFETCH_HOT_INTERVAL_SECONDS`, `TICKER_PREFETCH_HOT_LIMIT`, `TICKER_PREFETCH_HOT_SHARDS`, `TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED`, `TICKER_PREFETCH_WARM_INTERVAL_SECONDS`, `TICKER_PREFETCH_WARM_LIMIT`, `TICKER_PREFETCH_WARM_SHARDS`, `TICKER_STALE_SERVE_SECONDS`, `TICKER_UNIVERSE_REFRESH_SECONDS`, `TICKER_UNIVERSE_SYMBOL_LIMIT`, `TICKER_UPSTREAM_HARD_CAP_PER_MINUTE`, `TICKER_UPSTREAM_SOFT_CAP_PER_MINUTE`, `TICKER_UPSTREAM_WARNING_CAP_PER_MINUTE`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `USE_X_FORWARDED_PORT`, `VNBROKER_BOOTSTRAP_LOG_SUPPRESS_ENABLED`, `VNBROKER_CLIENT_CACHE_ENABLED`, `VNBROKER_CLIENT_CACHE_MAXSIZE`, `VNBROKER_CLIENT_CACHE_TTL_SECONDS`, `VNBROKER_PROVIDER_CACHE_ENABLED`, `VNBROKER_PROVIDER_CACHE_TTL_SECONDS`, `WATCHLIST_INDICATORS_ENABLED`, `WATCHLIST_SYNC_DAYS`, `WATCHLIST_SYNC_ENABLED`, `WATCHLIST_SYNC_MINUTES`, `WHALE_ADVISORY_COOLDOWN_SECONDS`, `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `WHALE_ALERT_DETECTION_ENABLED`, `WHALE_ALERT_DETECTION_INTERVAL_SECONDS`, `WHALE_SCORE_PROFILE`, `WSGI_APPLICATION`, `X_FRAME_OPTIONS`, `_CACHE_REDIS_URL`, `_OPENCORE_ENABLED`, `_REALTIME_ENABLED_FLAG`, `_core_apps`, `_secret_key_env`
 
 ### `backend/config/urls.py`
 
@@ -2606,9 +2606,14 @@ Generated at: `2026-05-13 14:47:24`
   - `AdvisoryLatestView` -> methods: `get`
   - `AdvisoryRefreshView` -> methods: `post`
 - Functions:
-  - `_get_tenant`, `_manual_trigger_period`, `_manual_trigger_priority`, `_manual_trigger_quota_limit`, `_record_manual_trigger_audit`
+  - `_get_tenant`, `_manual_trigger_period`, `_manual_trigger_priority`, `_manual_trigger_quota_limit`, `_record_manual_trigger_audit`, `_validate_symbol`
 - Top-level variables:
-  - `_MANUAL_TRIGGER_BLOCKED_STATUSES`, `_MANUAL_TRIGGER_PLAN_LIMITS`, `_MANUAL_TRIGGER_PRIORITY`
+  - `_MANUAL_TRIGGER_BLOCKED_STATUSES`, `_MANUAL_TRIGGER_PLAN_LIMITS`, `_MANUAL_TRIGGER_PRIORITY`, `_SYMBOL_RE`, `logger`
+
+### `packages/core/backend/src/check_shadow_run.py`
+
+- Top-level variables:
+  - `latest_date`, `recent_runs`, `total_count`
 
 ### `packages/core/backend/src/commercial/__init__.py`
 
@@ -2705,12 +2710,35 @@ Generated at: `2026-05-13 14:47:24`
   - `IngestJob` -> methods: `__str__`
   - `IngestRun` -> methods: `__str__`
 
+### `packages/core/backend/src/data_ingest/serializers.py`
+
+- Classes:
+  - `IngestJobSerializer` -> methods: `get_last_run`
+  - `IngestRunSerializer`
+  - `IngestTriggerResponseSerializer`
+  - `TriggerIngestRequestSerializer` -> methods: `validate_symbols`
+
 ### `packages/core/backend/src/data_ingest/tasks.py`
 
 - Functions:
-  - `_fetch_and_upsert_bucket`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `sync_market_groups`, `warm_intraday_universe`
+  - `_fetch_and_upsert_bucket`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
 - Top-level variables:
   - `_HISTORY_PROVIDERS`, `logger`
+
+### `packages/core/backend/src/data_ingest/urls.py`
+
+- Top-level variables:
+  - `router`, `urlpatterns`
+
+### `packages/core/backend/src/data_ingest/views.py`
+
+- Classes:
+  - `DataIngestAdminViewSet` -> methods: `task_status`, `trigger_daily_prices`, `trigger_price_board`
+  - `IngestAdminThrottle`
+  - `IngestJobViewSet`
+  - `IngestRunViewSet` -> methods: `get_queryset`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/identity_access/__init__.py`
 
@@ -2752,7 +2780,7 @@ Generated at: `2026-05-13 14:47:24`
 - Functions:
   - `_get_tenant`
 - Top-level variables:
-  - `TENANT_PERMISSION_CLASSES`
+  - `TENANT_PERMISSION_CLASSES`, `logger`
 
 ### `packages/core/backend/src/identity_access/management/__init__.py`
 
@@ -2807,6 +2835,7 @@ Generated at: `2026-05-13 14:47:24`
   - `CorePATCredential` -> methods: `__str__`, `effective_status`, `issue_for_service_account`, `resolve_from_raw_secret`, `revoke_pat`, `save`
   - `CoreServiceAccount` -> methods: `__str__`, `clean`, `save`
   - `CoreTenant` -> methods: `__str__`, `save`, `tenant_id`
+  - `PasswordResetToken` -> methods: `__str__`, `cleanup_expired`, `generate_and_save`, `is_expired`, `is_valid`, `verify_and_mark_used`
   - `TenantInvite` -> methods: `__str__`, `generate_token`, `is_expired`, `save`
   - `TenantMember` -> methods: `__str__`, `save`
   - `UserProfile` -> methods: `__str__`
@@ -2851,6 +2880,28 @@ Generated at: `2026-05-13 14:47:24`
   - `TenantMemberListView` -> methods: `get`
   - `TenantMemberRemoveView` -> methods: `delete`
 
+### `packages/core/backend/src/identity_access/tests/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py`
+
+- Classes:
+  - `ServiceOpsCenterCapabilityTests` -> methods: `setUp`, `test_capability_bootstrap_includes_operations_center_route`, `test_internal_admin_includes_service_ops_center_ability`, `test_internal_admin_navigation_includes_operations_center_route`
+
+### `packages/core/backend/src/identity_access/tests/test_email_tasks.py`
+
+- Classes:
+  - `EmailTaskIntegrationTests` -> methods: `setUp`, `test_password_reset_view_calls_async_task`, `test_register_view_calls_async_task`
+  - `EmailVerificationTokenTaskTests` -> methods: `setUp`, `test_send_email_verification_token_default_frontend_url`, `test_send_email_verification_token_failure`, `test_send_email_verification_token_success`
+  - `PasswordResetEmailTaskTests` -> methods: `setUp`, `test_send_password_reset_email_default_frontend_url`, `test_send_password_reset_email_failure`, `test_send_password_reset_email_success`
+
+### `packages/core/backend/src/identity_access/tests/test_password_reset.py`
+
+- Classes:
+  - `PasswordResetTokenModelTests` -> methods: `setUp`, `test_cleanup_expired`, `test_generate_and_save_creates_token`, `test_is_expired_property`, `test_is_valid_property`, `test_token_hash_uniqueness`, `test_token_persists_across_sessions`, `test_verify_and_mark_used_already_used`, `test_verify_and_mark_used_expired`, `test_verify_and_mark_used_invalid_token`, `test_verify_and_mark_used_success`
+  - `PasswordResetViewTests` -> methods: `setUp`, `test_password_reset_confirm_already_used`, `test_password_reset_confirm_expired_token`, `test_password_reset_confirm_invalid_token`, `test_password_reset_confirm_short_password`, `test_password_reset_confirm_success`, `test_password_reset_flow_end_to_end`, `test_password_reset_request_creates_db_token`, `test_password_reset_request_no_user_enumeration`
+
 ### `packages/core/backend/src/identity_access/urls.py`
 
 - Top-level variables:
@@ -2875,7 +2926,7 @@ Generated at: `2026-05-13 14:47:24`
 - Functions:
   - `_build_abilities`, `_build_auth_payload`, `_build_capabilities_payload`, `_build_entitlements`, `_build_navigation`, `_build_target`, `_current_user_config`, `_make_token`, `_normalize_user_config_payload`, `_service_account_payload`, `_tenant_payload`, `_token_expired`, `_user_payload`, `capabilities_view`, `login_view`, `logout_view`, `password_reset_confirm_view`, `password_reset_request_view`, `profile_view`, `refresh_token_view`, `register_view`, `user_config_view`, `verify_email_view`
 - Top-level variables:
-  - `TENANT_PERMISSION_CLASSES`, `User`, `_DEFAULT_USER_CONFIG`, `_EMAIL_VERIFY_TOKENS`, `_PASSWORD_RESET_TOKENS`, `_TOKEN_TTL_HOURS`, `_USER_CONFIG_STORE`
+  - `TENANT_PERMISSION_CLASSES`, `User`, `_DEFAULT_USER_CONFIG`, `_EMAIL_VERIFY_TOKENS`, `_TOKEN_TTL_HOURS`, `_USER_CONFIG_STORE`, `logger`
 
 ### `packages/core/backend/src/market_data/__init__.py`
 
@@ -2982,6 +3033,7 @@ Generated at: `2026-05-13 14:47:24`
   - `DailyPriceListView` -> methods: `get`
   - `IntradayPricesView` -> methods: `get`
   - `IntradayTapeView` -> methods: `get`
+  - `StockChartView` -> methods: `get`
   - `StockProfileDetailView` -> methods: `get`
   - `StockProfileListView` -> methods: `get`
   - `TrackedSymbolsView` -> methods: `get`, `post`
@@ -2991,7 +3043,7 @@ Generated at: `2026-05-13 14:47:24`
 - Classes:
   - `VnbrokerAdapterError`
 - Functions:
-  - `_build_intraday_source_candidates`, `_fetch_intraday_frame`, `_normalize_intraday_trade_rows`, `_publish_intraday_stream`, `fetch_daily_history`, `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `get_active_config`, `warm_up_intraday_symbols`, `warm_up_symbols`
+  - `_build_intraday_source_candidates`, `_fetch_intraday_frame`, `_normalize_intraday_trade_rows`, `_publish_intraday_stream`, `fetch_daily_history`, `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `fetch_realtime_price`, `get_active_config`, `warm_up_intraday_symbols`
 - Top-level variables:
   - `_INTRADAY_FALLBACK_SOURCES`, `logger`
 
@@ -3025,16 +3077,21 @@ Generated at: `2026-05-13 14:47:24`
 - Functions:
   - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`
 - Top-level variables:
-  - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`
+  - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`, `logger`
 
 ### `packages/core/backend/src/market_serving/materializers.py`
 
 - Functions:
-  - `_fetch_from_legacy`, `_get_legacy_db_url`, `backfill_symbol_snapshots`, `materialize_pre_open_snapshots`, `materialize_session_facts`, `materialize_symbol_snapshot`, `materialize_unified_alerts`
+  - `materialize_pre_open_snapshots`, `materialize_session_facts`, `materialize_symbol_snapshot`, `materialize_unified_alerts`
 - Top-level variables:
   - `logger`
 
 ### `packages/core/backend/src/market_serving/migrations/0001_initial.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/market_serving/migrations/0002_add_high_low_open_to_symbol_snapshot.py`
 
 - Classes:
   - `Migration`
@@ -3066,11 +3123,25 @@ Generated at: `2026-05-13 14:47:24`
 - Top-level variables:
   - `_INTRADAY_SIDE_MAP`
 
+### `packages/core/backend/src/market_serving/realtime_prefetch.py`
+
+- Functions:
+  - `_acquire_lock`, `_build_universe_snapshot`, `_collect_universe_symbols`, `_get_topology`, `_increment_prefetch_metric`, `_read_int_env`, `_safe_cache_delete`, `_snapshot_is_stale`, `_stable_shard_id`, `prefetch_realtime_ticker_shard`, `schedule_realtime_prefetch_shards`
+- Top-level variables:
+  - `DEFAULT_COLD_INTERVAL_SECONDS`, `DEFAULT_COLD_SHARDS`, `DEFAULT_HOT_INTERVAL_SECONDS`, `DEFAULT_HOT_SHARDS`, `DEFAULT_UNIVERSE_REFRESH_SECONDS`, `DEFAULT_WARM_INTERVAL_SECONDS`, `DEFAULT_WARM_SHARDS`, `PREFETCH_METRIC_CACHE_PREFIX`, `REALTIME_PREFETCH_QUEUE`, `REALTIME_SHARD_CACHE_PREFIX`, `REALTIME_SHARD_LAST_ENQUEUE_PREFIX`, `REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY`, `__all__`, `logger`
+
 ### `packages/core/backend/src/market_serving/serializers.py`
 
 - Classes:
-  - `SessionFactsSerializer`
+  - `SessionFactsSerializer` -> methods: `get_delta_strength_pct`
   - `SymbolSnapshotSerializer`
+
+### `packages/core/backend/src/market_serving/session_facts_engine.py`
+
+- Functions:
+  - `_clamp`, `_floor_bucket`, `_percentile`, `_sigmoid`, `compute_session_facts`, `compute_session_facts_for_all_active`
+- Top-level variables:
+  - `_BASELINE_WINDOW`, `_BUCKET_MINUTES`, `_EPS`, `_WHALE_THRESHOLD_VND`, `logger`
 
 ### `packages/core/backend/src/market_serving/tasks.py`
 
@@ -3085,14 +3156,23 @@ Generated at: `2026-05-13 14:47:24`
 ### `packages/core/backend/src/market_serving/views.py`
 
 - Classes:
-  - `SessionFactsDetailView` -> methods: `get_object`, `retrieve`
+  - `MarketDataThrottle`
+  - `SessionFactsCvdView` -> methods: `get`
+  - `SessionFactsDetailView` -> methods: `_compute_on_demand`, `get_object`, `retrieve`
   - `SessionFactsListView` -> methods: `get_queryset`
   - `SymbolSnapshotDetailView` -> methods: `get_object`, `retrieve`
   - `SymbolSnapshotListView` -> methods: `get_queryset`
 - Functions:
   - `_session_facts_cache_key`, `_snapshot_cache_key`
 - Top-level variables:
-  - `_SESSION_FACTS_TTL`, `_SNAPSHOT_TTL`
+  - `_CVD_SERIES_CACHE_TTL`, `_SESSION_FACTS_TTL`, `_SNAPSHOT_TTL`, `_WINDOW_TO_BUCKET_MINUTES`, `logger`
+
+### `packages/core/backend/src/market_serving/vnbroker_materializer.py`
+
+- Functions:
+  - `_hose_tick_size`, `_round_ceiling_price`, `_round_floor_price`, `fetch_realtime_tickers_from_vnbroker`, `materialize_symbol_snapshot_from_vnbroker`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/ops_audit/__init__.py`
 
@@ -3114,6 +3194,8 @@ Generated at: `2026-05-13 14:47:24`
 
 - Classes:
   - `RequestTraceMiddleware` -> methods: `__call__`, `__init__`, `_record_access_event`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/ops_audit/middleware_shadow_run.py`
 
@@ -3192,6 +3274,227 @@ Generated at: `2026-05-13 14:47:24`
   - `ParityPhaseCheckpointSignOffView` -> methods: `sign_off`
   - `ParityReportListView` -> methods: `get_queryset`
   - `ParityStatusView` -> methods: `get`
+
+### `packages/core/backend/src/run_p3_shadow_test.py`
+
+- Top-level variables:
+  - `active_symbols`, `price_counts`, `recent_runs`
+
+### `packages/core/backend/src/service_ops/__init__.py`
+
+- Top-level variables:
+  - `default_app_config`
+
+### `packages/core/backend/src/service_ops/apps.py`
+
+- Classes:
+  - `ServiceOpsConfig`
+
+### `packages/core/backend/src/service_ops/domain_configs/__init__.py`
+
+- Top-level variables:
+  - `__all__`
+
+### `packages/core/backend/src/service_ops/domain_configs/prefetch.py`
+
+- Classes:
+  - `PrefetchTimePolicyConfig` -> methods: `from_dict`, `get_interval_for_profile`, `to_dict`, `validate`
+- Top-level variables:
+  - `VALID_PROFILES`
+
+### `packages/core/backend/src/service_ops/domain_configs/screener.py`
+
+- Classes:
+  - `ScreenerDomainConfig` -> methods: `from_dict`, `to_dict`, `validate`
+- Top-level variables:
+  - `VALID_RULE_TYPES`
+
+### `packages/core/backend/src/service_ops/domain_configs/signals.py`
+
+- Classes:
+  - `SignalServicesDomainConfig` -> methods: `from_dict`, `to_dict`, `validate`
+
+### `packages/core/backend/src/service_ops/domain_configs/vnbroker.py`
+
+- Classes:
+  - `VnbrokerDomainConfig` -> methods: `from_dict`, `to_dict`, `validate`
+
+### `packages/core/backend/src/service_ops/migrations/0001_initial.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/service_ops/migrations/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/service_ops/models.py`
+
+- Classes:
+  - `ConfigChangeAudit` -> methods: `__str__`
+  - `OwnershipRecord` -> methods: `__str__`, `get_write_block_reason`, `is_writable`
+  - `ServiceConfig` -> methods: `__str__`, `save`
+  - `ServiceDefinition` -> methods: `__str__`
+  - `ServiceHealth` -> methods: `__str__`
+  - `ServiceRunLog` -> methods: `__str__`
+
+### `packages/core/backend/src/service_ops/ownership.py`
+
+- Classes:
+  - `ServiceOwnershipMatrix` -> methods: `__init__`, `all_domains`, `get_domain_ownership`, `get_write_block_reason`, `is_domain_writable`, `to_response_dict`
+- Functions:
+  - `build_ownership_matrix_from_db`, `get_ownership_matrix`
+- Top-level variables:
+  - `DEFAULT_DOMAIN_OWNERSHIP`, `WRITABLE_MODES`, `_default_matrix`
+
+### `packages/core/backend/src/service_ops/serializers.py`
+
+- Classes:
+  - `ConfigChangeAuditSerializer`
+  - `OwnershipRecordSerializer`
+  - `ServiceConfigSerializer`
+  - `ServiceDefinitionSerializer`
+  - `ServiceHealthSerializer`
+  - `ServiceRunLogSerializer`
+
+### `packages/core/backend/src/service_ops/tests/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+
+- Classes:
+  - `ConfigApplyValidationTestCase` -> methods: `setUp`, `test_apply_invalid_config_returns_error`, `test_apply_non_admin_returns_403`, `test_apply_unauthenticated_returns_401`, `test_error_response_has_proper_envelope`
+  - `OwnershipEnforcementTestCase` -> methods: `setUp`, `test_bridge_write_apply_blocked`, `test_native_write_service_allows_apply`, `test_read_only_get_returns_success`
+  - `PrefetchConfigApiTestCase` -> methods: `setUp`, `test_apply_prefetch_config`, `test_get_prefetch_cache_status`, `test_get_prefetch_config`, `test_get_prefetch_profiles`, `test_purge_prefetch_cache`
+  - `ScreenerConfigApiTestCase` -> methods: `setUp`, `test_apply_screener_config`, `test_get_screener_alerts`, `test_get_screener_config`, `test_get_screener_results`, `test_get_screener_rules`, `test_manual_scan`
+  - `VnbrokerConfigApiTestCase` -> methods: `setUp`, `test_apply_config_creates_audit_log`, `test_apply_vnbroker_config`, `test_get_vnbroker_config`, `test_get_vnbroker_health`, `test_get_vnbroker_metrics`, `test_get_vnbroker_providers`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/service_ops/tests/test_soc_api_integration.py`
+
+- Classes:
+  - `ConfigApplyEndToEndTestCase` -> methods: `setUp`, `test_apply_config_workflow`, `test_audit_log_contains_before_after`, `test_version_increments_on_apply`
+  - `ErrorHandlingIntegrationTestCase` -> methods: `setUp`, `test_all_errors_have_proper_envelope`, `test_invalid_json_returns_400`, `test_missing_config_field_returns_error`, `test_nonexistent_service_returns_404`
+  - `MultiDomainWorkflowTestCase` -> methods: `setUp`, `test_apply_bridge_write_fails`, `test_apply_native_write_succeeds`, `test_get_all_services_succeeds`, `test_get_detail_per_service`
+  - `PaginationIntegrationTestCase` -> methods: `setUp`, `test_audit_pagination`, `test_history_pagination`, `test_overview_list_pagination`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/service_ops/tests/test_soc_api_overview.py`
+
+- Classes:
+  - `SOCDetailEndpointsTestCase` -> methods: `setUp`, `test_detail_endpoint_includes_current_config`, `test_detail_endpoint_includes_ownership`
+  - `SOCOverviewApiTestCase` -> methods: `setUp`, `test_error_response_envelope`, `test_overview_audit_endpoint`, `test_overview_config_endpoint`, `test_overview_detail_endpoint`, `test_overview_detail_not_found`, `test_overview_health_endpoint`, `test_overview_history_endpoint`, `test_overview_list_endpoint`, `test_overview_list_has_pagination`, `test_overview_requires_admin_permissions`, `test_overview_requires_authentication`
+  - `SOCVersionHistoryTestCase` -> methods: `setUp`, `test_history_ordered_by_version`, `test_history_shows_all_versions`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/service_ops/tests/test_soc_api_signals.py`
+
+- Classes:
+  - `SignalsApiReadOnlyTestCase` -> methods: `setUp`, `test_get_dark_pool_detection_succeeds`, `test_get_screener_detection_succeeds`, `test_get_signal_config_succeeds`, `test_get_signal_metrics_succeeds`, `test_get_signal_ownership_succeeds`, `test_get_signal_retention_succeeds`, `test_get_whale_detection_succeeds`, `test_patch_signal_config_returns_403`, `test_post_signal_config_returns_403`
+  - `SignalsBridgeWriteEnforcementTestCase` -> methods: `setUp`, `test_all_post_endpoints_return_403`, `test_error_message_indicates_bridge_write`
+  - `SignalsPutDeleteBlockedTestCase` -> methods: `setUp`, `test_delete_signals_config_blocked`, `test_put_signals_config_blocked`
+  - `SignalsReadOnlyValidationTestCase` -> methods: `setUp`, `test_signals_get_includes_config_structure`, `test_signals_ownership_shows_write_surface`
+  - `SignalsWithoutAuthenticationTestCase` -> methods: `setUp`, `test_non_admin_get_returns_403`, `test_unauthenticated_get_returns_401`, `test_unauthenticated_post_returns_401`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/service_ops/tests/test_soc_models.py`
+
+- Classes:
+  - `ConfigChangeAuditModelTestCase` -> methods: `setUp`, `test_config_change_audit_creation`, `test_config_change_audit_diff_calculation`
+  - `ConfigVersioningIntegrationTestCase` -> methods: `setUp`, `test_audit_log_on_config_change`, `test_config_version_history`
+  - `OwnershipIntegrationTestCase` -> methods: `setUp`, `test_bridge_write_service_disallows_apply`, `test_native_write_service_allows_apply`
+  - `OwnershipRecordModelTestCase` -> methods: `test_ownership_record_creation`, `test_ownership_record_modes`
+  - `ServiceConfigModelTestCase` -> methods: `setUp`, `test_service_config_applied_timestamp`, `test_service_config_auto_versioning`, `test_service_config_creation`
+  - `ServiceDefinitionModelTestCase` -> methods: `setUp`, `test_config_schema_validation`, `test_service_creation`, `test_service_str_representation`
+  - `ServiceHealthModelTestCase` -> methods: `setUp`, `test_service_health_creation`, `test_service_health_status_choices`
+  - `ServiceRunLogModelTestCase` -> methods: `test_service_run_log_creation`, `test_service_run_log_failed_status`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/service_ops/urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
+
+### `packages/core/backend/src/service_ops/views/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/service_ops/views/base.py`
+
+- Classes:
+  - `SOCBaseView` -> methods: `error_response`, `get_paginated_response`, `get_request_id`, `paginate_queryset`
+
+### `packages/core/backend/src/service_ops/views/mixins.py`
+
+- Classes:
+  - `ConfigApplyMixin` -> methods: `apply_config`
+
+### `packages/core/backend/src/service_ops/views/overview.py`
+
+- Classes:
+  - `HealthStatusView` -> methods: `get`
+  - `ServiceConfigHistoryView` -> methods: `get`
+  - `ServiceDetailView`
+  - `ServiceListView`
+  - `ServiceOwnershipView` -> methods: `get`
+  - `ServiceRunLogsView` -> methods: `get`
+  - `SOCHealthSummaryView` -> methods: `get`
+  - `SOCOverviewView` -> methods: `get`
+  - `SOCOwnershipMatrixView` -> methods: `get`
+  - `SOCRecentRunsView` -> methods: `get`
+  - `SOCServiceDetailView` -> methods: `get`
+  - `SOCServiceListView` -> methods: `get`
+
+### `packages/core/backend/src/service_ops/views/prefetch.py`
+
+- Classes:
+  - `PrefetchCacheStatusView` -> methods: `get`
+  - `PrefetchConfigView` -> methods: `get`, `post`
+  - `PrefetchProfilesView` -> methods: `get`
+  - `PrefetchPurgeCacheView` -> methods: `post`
+  - `PrefetchTaskScheduleView` -> methods: `get`
+  - `PrefetchUniverseGroupsView` -> methods: `get`
+
+### `packages/core/backend/src/service_ops/views/screener.py`
+
+- Classes:
+  - `ScreenerAlertHistoryView` -> methods: `get`
+  - `ScreenerConfigView` -> methods: `get`, `post`
+  - `ScreenerManualScanView` -> methods: `post`
+  - `ScreenerResultsView` -> methods: `get`
+  - `ScreenerRulesView` -> methods: `get`, `post`
+
+### `packages/core/backend/src/service_ops/views/signals.py`
+
+- Classes:
+  - `SignalsConfigPreviewView` -> methods: `post`
+  - `SignalsConfigView` -> methods: `get`
+  - `SignalsDarkPoolRecentView` -> methods: `get`
+  - `SignalsDarkPoolView` -> methods: `get`
+  - `SignalsOwnershipView` -> methods: `get`
+  - `SignalsPerformanceMetricsView` -> methods: `get`
+  - `SignalsRetentionPolicyView` -> methods: `get`
+  - `SignalsScreenerRecentView` -> methods: `get`
+  - `SignalsScreenerView` -> methods: `get`
+  - `SignalsWhaleRecentView` -> methods: `get`
+  - `SignalsWhaleTestView` -> methods: `post`
+  - `SignalsWhaleView` -> methods: `get`
+
+### `packages/core/backend/src/service_ops/views/vnbroker.py`
+
+- Classes:
+  - `VnbrokerCircuitBreakerView` -> methods: `get`
+  - `VnbrokerConfigPreviewView` -> methods: `post`
+  - `VnbrokerConfigView` -> methods: `get`, `post`
+  - `VnbrokerHealthView` -> methods: `get`
+  - `VnbrokerProvidersView` -> methods: `get`
+  - `VnbrokerTestConnectionView` -> methods: `post`
 
 ### `packages/core/backend/src/signal_intelligence/__init__.py`
 
@@ -3284,6 +3587,16 @@ Generated at: `2026-05-13 14:47:24`
   - `_compare_json_structure`, `_compare_responses`, `_compare_structure_recursive`, `_compute_payload_hash`, `_extract_row_count`, `_make_core_shadow_request`, `shadow_run_daily_parity_report`, `shadow_run_parity_check_task`
 - Top-level variables:
   - `logger`
+
+### `packages/core/backend/src/signal_intelligence/tests/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/signal_intelligence/tests/test_websocket_consumer.py`
+
+- Classes:
+  - `MarketTickerConsumerTests` -> methods: `test_consume_sanitizes_symbol_from_url_kwargs`, `test_group_name_construction_uses_sanitized_symbol`, `test_symbol_sanitization_preserves_alphanumeric`, `test_symbol_validation_accepts_max_length`, `test_symbol_validation_rejects_long_symbols`
+  - `SymbolSanitizationTests` -> methods: `test_sanitize_symbol_alphanumeric`, `test_sanitize_symbol_asterisks_removed`, `test_sanitize_symbol_colons_removed`, `test_sanitize_symbol_dots_removed`, `test_sanitize_symbol_empty_string`, `test_sanitize_symbol_max_length`, `test_sanitize_symbol_none`, `test_sanitize_symbol_numbers_only`, `test_sanitize_symbol_only_special_chars`, `test_sanitize_symbol_redis_injection_attempt`, `test_sanitize_symbol_single_char`, `test_sanitize_symbol_slashes_removed`, `test_sanitize_symbol_spaces_removed`, `test_sanitize_symbol_special_chars_removed`, `test_sanitize_symbol_too_long`, `test_sanitize_symbol_valid_lowercase`, `test_sanitize_symbol_valid_mixed`, `test_sanitize_symbol_valid_uppercase`
 
 ### `packages/core/backend/src/signal_intelligence/urls.py`
 
@@ -3449,6 +3762,18 @@ Generated at: `2026-05-13 14:47:24`
 - Functions:
   - `backfill_watchlist_tenant`, `reverse_backfill_watchlist_tenant`
 
+### `packages/core/backend/src/user_workspace/migrations/0007_add_tenant_fk_transaction_subaccount.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/user_workspace/migrations/0008_backfill_transaction_subaccount_tenant.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `backfill_subaccount_tenant`, `backfill_transaction_tenant`, `reverse_backfill`
+
 ### `packages/core/backend/src/user_workspace/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -3464,6 +3789,15 @@ Generated at: `2026-05-13 14:47:24`
   - `Transaction` -> methods: `__str__`
   - `Watchlist` -> methods: `__str__`
   - `WatchlistItem` -> methods: `__str__`
+
+### `packages/core/backend/src/user_workspace/permissions.py`
+
+- Classes:
+  - `TenantScopePermission` -> methods: `has_permission`
+- Functions:
+  - `_resolve_tenant`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/user_workspace/portfolio_analytics_views.py`
 
@@ -3584,6 +3918,13 @@ Generated at: `2026-05-13 14:47:24`
 - Top-level variables:
   - `app`
 
+### `packages/core/backend/src/vninvest_core/compat_views.py`
+
+- Classes:
+  - `LegacyStockManagementProxyView` -> methods: `forward_request`, `get`, `get_legacy_backend_url`
+- Top-level variables:
+  - `logger`
+
 ### `packages/core/backend/src/vninvest_core/contracts/__init__.py`
 
 - Top-level variables:
@@ -3632,7 +3973,7 @@ Generated at: `2026-05-13 14:47:24`
   - `AdminOpsVnbrokerConfigCurrentView` -> methods: `get`, `patch`
   - `AdminOpsVnbrokerConfigResetView` -> methods: `post`
 - Functions:
-  - `_append_vnbroker_changelog`, `_build_config_changes`, `_build_market_observability_snapshot`, `_build_prefetch_health_snapshot`, `_build_prefetch_runtime_settings`, `_build_prefetch_time_policy`, `_build_signal_domain_summary`, `_build_signal_freshness_snapshot`, `_build_signal_materialization_preview_contract`, `_build_signal_preview_contract`, `_build_signal_retention_preview`, `_build_signal_summary_snapshot`, `_build_signal_universe_snapshot`, `_build_signal_whale_governance_snapshot`, `_build_stats_snapshot`, `_calc_p95`, `_channel_layer_type`, `_coerce_signal_retention_policy`, `_coerce_signal_services_config`, `_coerce_signal_universe_policy`, `_deep_merge_dict`, `_derive_ai_provider`, `_get_celery_active_queues`, `_get_or_create_active_ai_settings`, `_get_or_create_active_vnbroker_config`, `_is_celery_alive`, `_latest_signal_run`, `_legacy_admin_bridge_enabled`, `_legacy_admin_bridge_headers`, `_legacy_admin_bridge_response`, `_legacy_backend_url`, `_normalize_signal_recent_events`, `_normalize_symbol_list`, `_normalized_bridge_payload`, `_now_iso`, `_parse_positive_int`, `_parse_signal_materialization_request`, `_probe_cache_health`, `_record_audit_event`, `_serialize_signal_run`, `_serialize_system_ai_settings`, `_serialize_vnbroker_rulebook`, `_serialize_vnbroker_settings`, `_signal_freshness_state`, `_signal_ownership_snapshot`, `_signal_portfolio_symbols`, `_signal_retention_policy`, `_signal_run_queryset`, `_signal_services_config`, `_signal_universe_policy`, `_signal_watchlist_symbols`, `_signal_write_guard`, `_source_counts`, `_validate_governance_thresholds`, `_validate_vnbroker_payload`, `_vnbroker_extra`
+  - `_append_vnbroker_changelog`, `_build_config_changes`, `_build_market_observability_snapshot`, `_build_prefetch_health_snapshot`, `_build_prefetch_runtime_settings`, `_build_prefetch_time_policy`, `_build_signal_domain_summary`, `_build_signal_freshness_snapshot`, `_build_signal_materialization_preview_contract`, `_build_signal_preview_contract`, `_build_signal_retention_preview`, `_build_signal_summary_snapshot`, `_build_signal_universe_snapshot`, `_build_signal_whale_governance_snapshot`, `_build_stats_snapshot`, `_calc_p95`, `_coerce_signal_retention_policy`, `_coerce_signal_services_config`, `_coerce_signal_universe_policy`, `_deep_merge_dict`, `_derive_ai_provider`, `_get_celery_active_queues`, `_get_or_create_active_ai_settings`, `_get_or_create_active_vnbroker_config`, `_is_celery_alive`, `_latest_signal_run`, `_legacy_admin_bridge_enabled`, `_legacy_admin_bridge_headers`, `_legacy_admin_bridge_response`, `_legacy_backend_url`, `_normalize_signal_recent_events`, `_normalize_symbol_list`, `_normalized_bridge_payload`, `_now_iso`, `_parse_positive_int`, `_parse_signal_materialization_request`, `_probe_cache_health`, `_record_audit_event`, `_serialize_signal_run`, `_serialize_system_ai_settings`, `_serialize_vnbroker_rulebook`, `_serialize_vnbroker_settings`, `_signal_freshness_state`, `_signal_ownership_snapshot`, `_signal_portfolio_symbols`, `_signal_retention_policy`, `_signal_run_queryset`, `_signal_services_config`, `_signal_universe_policy`, `_signal_watchlist_symbols`, `_signal_write_guard`, `_source_counts`, `_validate_governance_thresholds`, `_validate_vnbroker_payload`, `_vnbroker_extra`
 - Top-level variables:
   - `DEFAULT_GOVERNANCE_DELTA_RULEBOOK`, `DEFAULT_GOVERNANCE_DELTA_THRESHOLDS`, `DEFAULT_PREFETCH_RUNTIME_RULEBOOK`, `DEFAULT_PREFETCH_RUNTIME_SETTINGS`, `DEFAULT_PREFETCH_TIME_POLICY`, `DEFAULT_PREFETCH_TIME_POLICY_RULEBOOK`, `DEFAULT_SIGNAL_OWNERSHIP`, `DEFAULT_SIGNAL_RETENTION_POLICY`, `DEFAULT_SIGNAL_SERVICES_CONFIG`, `DEFAULT_SIGNAL_UNIVERSE_POLICY`, `DEFAULT_VNBROKER_EXTRA`, `DEFAULT_VNBROKER_TIMEOUT_CONFIG`, `LEGACY_ADMIN_BRIDGE_TIMEOUT`, `LEGACY_BRIDGE_REQUIRED_MESSAGE`, `SIGNAL_CONFIG_WRITE_BLOCK_MESSAGE`, `SIGNAL_JOB_WRITE_BLOCK_MESSAGE`, `VNBROKER_ALLOWED_SOURCES`, `logger`
 
@@ -3671,6 +4012,26 @@ Generated at: `2026-05-13 14:47:24`
 - Top-level variables:
   - `_CORE_APPS`
 
+### `packages/core/backend/src/vninvest_core/env_validation.py`
+
+- Functions:
+  - `get_frontend_url`, `get_optional_env`, `get_required_env`, `validate_production_settings`
+
+### `packages/core/backend/src/vninvest_core/exceptions.py`
+
+- Classes:
+  - `AuthenticationErrorException`
+  - `ConflictErrorException`
+  - `CoreAPIException` -> methods: `__init__`, `get_envelope`
+  - `InternalErrorException`
+  - `NotFoundErrorException`
+  - `PermissionErrorException`
+  - `RateLimitErrorException`
+  - `StandardErrorEnvelope` -> methods: `__init__`, `to_dict`, `to_response`
+  - `ValidationErrorException`
+- Functions:
+  - `core_api_exception_handler`
+
 ### `packages/core/backend/src/vninvest_core/management/__init__.py`
 
 - No parseable top-level symbols found
@@ -3708,6 +4069,7 @@ Generated at: `2026-05-13 14:47:24`
   - `CoreCursorPagination`
   - `OrderFlowCursorPagination`
   - `SnapshotCursorPagination`
+  - `StandardPageNumberPagination` -> methods: `get_paginated_response`
 
 ### `packages/core/backend/src/vninvest_core/queue_policy.py`
 
@@ -3719,12 +4081,86 @@ Generated at: `2026-05-13 14:47:24`
 ### `packages/core/backend/src/vninvest_core/settings.py`
 
 - Top-level variables:
-  - `ADVISORY_TOKEN_BUDGET`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `BASE_DIR`, `CACHES`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_ROUTES`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYERS`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DATABASE_ROUTERS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST_USER`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `INSTALLED_APPS`, `LANGUAGE_CODE`, `LEGACY_BACKEND_URL`, `LOGGING`, `MIDDLEWARE`, `OPENAI_API_KEY`, `OPENAI_DEFAULT_MODEL`, `REDIS_URL`, `REST_FRAMEWORK`, `ROOT_URLCONF`, `SECRET_KEY`, `SECURE_PROXY_SSL_HEADER`, `STATIC_ROOT`, `STATIC_URL`, `TEMPLATES`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `WSGI_APPLICATION`, `_allowed_hosts_raw`, `_cors_origins_default`, `_cors_origins_raw`, `_csrf_trusted_origins_default`, `_csrf_trusted_origins_raw`, `_legacy_db_url`, `_redis_url`, `_secret_key_default`, `_sentry_dsn`
+  - `ADVISORY_TOKEN_BUDGET`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `BASE_DIR`, `CACHES`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_ROUTES`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYERS`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DATABASE_ROUTERS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST_USER`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `FRONTEND_URL`, `INSTALLED_APPS`, `LANGUAGE_CODE`, `LEGACY_BACKEND_URL`, `LOGGING`, `MIDDLEWARE`, `OPENAI_API_KEY`, `OPENAI_DEFAULT_MODEL`, `REDIS_URL`, `REST_FRAMEWORK`, `ROOT_URLCONF`, `SECRET_KEY`, `SECURE_PROXY_SSL_HEADER`, `SPECTACULAR_SETTINGS`, `STATIC_ROOT`, `STATIC_URL`, `TEMPLATES`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `WSGI_APPLICATION`, `_allowed_hosts_raw`, `_cors_origins_default`, `_cors_origins_raw`, `_csrf_trusted_origins_default`, `_csrf_trusted_origins_raw`, `_legacy_db_url`, `_redis_url`, `_secret_key_default`, `_sentry_dsn`
 
 ### `packages/core/backend/src/vninvest_core/stub_heartbeat.py`
 
 - Functions:
   - `_health_file`, `_health_max_age_seconds`, `_now_isoformat`, `run_healthcheck`, `write_heartbeat`
+
+### `packages/core/backend/src/vninvest_core/tests/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/vninvest_core/tests/test_env_validation.py`
+
+- Classes:
+  - `GetFrontendUrlTests` -> methods: `test_get_frontend_url_dev_returns_localhost`, `test_get_frontend_url_dev_uses_env_if_set`, `test_get_frontend_url_prod_requires_env`, `test_get_frontend_url_strips_trailing_slash`
+  - `GetOptionalEnvTests` -> methods: `test_get_optional_env_returns_default`, `test_get_optional_env_returns_value`, `test_get_optional_env_strips_whitespace`
+  - `GetRequiredEnvTests` -> methods: `test_get_required_env_includes_description`, `test_get_required_env_raises_if_empty`, `test_get_required_env_raises_if_missing`, `test_get_required_env_returns_value`, `test_get_required_env_strips_whitespace`
+  - `ValidateProductionSettingsTests` -> methods: `test_validate_production_settings_requires_frontend_url`, `test_validate_production_settings_skips_in_dev`
+
+### `packages/core/backend/src/vninvest_core/tests/test_exception_handling.py`
+
+- Classes:
+  - `DatabaseExceptionHandlingTests` -> methods: `setUp`, `test_duplicate_registration_returns_conflict_or_bad_request`, `test_endpoint_with_nonexistent_resource_returns_proper_error`
+  - `ExceptionContextTests` -> methods: `setUp`, `test_request_id_in_error_response`, `test_request_id_unique_per_request`
+  - `ExceptionEdgeCasesTests` -> methods: `setUp`, `test_exception_with_none_values`, `test_exception_with_special_characters`, `test_exception_with_very_long_input`
+  - `ExceptionEnvelopeFormatTests` -> methods: `setUp`, `test_envelope_on_401_unauthorized`, `test_envelope_on_rate_limit_error`, `test_envelope_on_validation_error`
+  - `ExceptionLoggingTests` -> methods: `setUp`, `test_rate_limit_exception_returns_429`, `test_validation_exception_returns_proper_response`
+  - `NoSilentFailureTests` -> methods: `setUp`, `test_all_auth_endpoints_return_error_not_500`, `test_invalid_requests_dont_return_500`
+  - `SignalPropagationTests` -> methods: `setUp`, `test_exception_handler_invoked_on_auth_error`, `test_exception_handler_invoked_on_validation_error`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/vninvest_core/tests/test_exception_handling_a6.py`
+
+- Classes:
+  - `A61_StandardErrorEnvelopeFormatTests` -> methods: `setUp`, `test_rate_limit_error_has_proper_envelope`, `test_validation_error_has_proper_envelope`
+  - `A62_ProperHttpSemanticsTests` -> methods: `setUp`, `test_missing_required_fields_returns_400_not_500`, `test_password_reset_returns_proper_response`, `test_validation_error_returns_400_not_500`
+  - `A63_RequestIdCaptureTests` -> methods: `setUp`, `test_request_id_present_on_error_responses`, `test_request_ids_are_unique`
+  - `A64_NoSilentFailuresTests` -> methods: `setUp`, `test_all_invalid_auth_requests_return_4xx_not_500`, `test_none_values_dont_cause_500`, `test_special_characters_handled`
+  - `A65_RateLimitErrorEnvelopeTests` -> methods: `setUp`, `test_login_rate_limit_429_with_envelope`, `test_register_rate_limit_429_with_envelope`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/vninvest_core/tests/test_rate_limiting.py`
+
+- Classes:
+  - `RateLimitDecoratorComplianceTests` -> methods: `test_checklist_h2_login_rate_limit`, `test_checklist_h2_password_reset_rate_limit`, `test_checklist_h2_register_rate_limit`
+  - `RateLimitLoginEndpointTests` -> methods: `setUp`, `test_login_rate_limit_error_envelope`, `test_login_sixth_request_rate_limited`, `test_login_within_limit`
+  - `RateLimitPasswordResetEndpointTests` -> methods: `setUp`, `test_password_reset_different_emails_independent_limits`, `test_password_reset_fourth_request_rate_limited`, `test_password_reset_rate_limit_error_envelope`, `test_password_reset_within_limit`
+  - `RateLimitRegisterEndpointTests` -> methods: `setUp`, `test_register_fourth_request_rate_limited`, `test_register_rate_limit_error_envelope`, `test_register_within_limit`
+  - `RateLimitWindowExpiryTests` -> methods: `setUp`, `test_password_reset_limit_expires_after_window`, `test_register_limit_expires_after_window`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/vninvest_core/tests/test_status_codes_and_errors.py`
+
+- Classes:
+  - `ErrorEnvelopeConsistencyTests` -> methods: `setUp`, `test_error_envelope_has_iso8601_timestamp`, `test_error_envelope_has_request_id`, `test_success_response_preserves_envelope_compatibility`, `test_validation_error_has_standard_envelope`
+  - `StandardErrorEnvelopeTests` -> methods: `test_envelope_creation_with_defaults`, `test_envelope_to_dict`, `test_envelope_to_response`, `test_envelope_with_field_errors`
+  - `StatusCodeSemanticsTests` -> methods: `setUp`, `test_duplicate_email_returns_409_conflict`, `test_duplicate_username_returns_409_conflict`, `test_invalid_register_returns_400_bad_request`, `test_password_reset_confirm_invalid_token_returns_400_bad_request`, `test_password_reset_confirm_valid_token_returns_200_ok`, `test_password_reset_nonexistent_email_returns_200_ok`, `test_password_reset_request_returns_200_ok`, `test_register_returns_201_created`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/vninvest_core/tests/test_tenant_isolation_b3.py`
+
+- Classes:
+  - `B31_TransactionTenantIsolationTests` -> methods: `setUp`, `test_tenant_1_and_tenant_2_transactions_are_separate`, `test_transaction_cannot_exist_without_portfolio`, `test_transaction_model_has_portfolio_relation`, `test_user_cannot_query_other_tenant_transactions_via_portfolio`
+  - `B32_PortfolioTenantIsolationTests` -> methods: `setUp`, `test_portfolio_list_shows_only_own_portfolios`, `test_portfolio_model_has_tenant_and_user_fks`, `test_portfolio_retrieve_access_control`
+  - `B33_WatchlistTenantIsolationTests` -> methods: `setUp`, `test_watchlist_list_shows_only_own_watchlists`, `test_watchlist_model_has_user_and_tenant_fks`, `test_watchlist_retrieve_access_control`
+  - `B34_CommercialTenantIsolationTests` -> methods: `setUp`, `test_invoice_scoped_to_tenant`, `test_quota_record_scoped_to_tenant`, `test_subscription_scoped_to_tenant`
+  - `B35_TenantFilteringAtQueryLayer` -> methods: `setUp`, `test_query_filters_by_portfolio_user`, `test_query_filters_by_tenant_explicit_fk`, `test_query_never_returns_other_tenant_data`
+  - `B36_NoLeakageThroughQueryLayer` -> methods: `setUp`, `test_portfolio_query_by_tenant_no_other_tenant_data`, `test_transaction_query_by_user_no_other_tenant_data`, `test_watchlist_query_by_tenant_no_other_tenant_data`
+  - `TenantIsolationSetupMixin` -> methods: `setUp_multi_tenant`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/vninvest_core/tests/test_user_workspace_tenant_isolation.py`
+
+- Classes:
+  - `UserWorkspaceTenantIsolationTests` -> methods: `setUp`, `setUpTestData`, `test_T01_portfolio_isolation_user1_cannot_see_user2_portfolio`, `test_T02_portfolio_filter_by_tenant_a`, `test_T03_portfolio_filter_by_tenant_b`, `test_T04_transaction_filtered_by_portfolio_tenant`, `test_T05_transaction_cross_tenant_access_returns_404`, `test_T06_user3_sees_only_tenant_a_when_scoped`, `test_T07_watchlist_filtered_by_tenant`, `test_T08_watchlist_item_not_accessible_cross_tenant`, `test_T09_subaccount_filtered_by_tenant`, `test_T10_subaccount_cross_tenant_blocked`, `test_T11_portfolio_list_pagination_format`, `test_T12_transaction_list_pagination_with_filter`, `test_T13_401_returns_standard_envelope`, `test_T14_404_returns_standard_envelope`, `test_T15_400_field_errors_in_envelope`, `test_T16_create_portfolio_sets_tenant`, `test_T17_create_transaction_inherits_portfolio_tenant`, `test_T18_database_query_isolation`
 
 ### `packages/core/backend/src/vninvest_core/urls.py`
 
@@ -3948,6 +4384,20 @@ Generated at: `2026-05-13 14:47:24`
   - `CheckSchedulerQueueDriftTestCase` -> methods: `setUp`, `test_drift_detected_with_warn_only`, `test_drift_detected_without_warn_only_exits`, `test_ignores_unknown_tasks`, `test_multiple_drifts_detected`, `test_no_drift_detected`, `test_queue_policy_ssot_is_shared_by_commands`
   - `SyncSchedulerQueuesTestCase` -> methods: `setUp`, `test_sync_ignores_unknown_tasks`, `test_sync_multiple_tasks`, `test_sync_single_task`, `test_sync_with_correct_queue_no_update`
 
+### `packages/core/backend/tests/test_session_facts_api.py`
+
+- Classes:
+  - `SessionFactsDetailHappyPathTests` -> methods: `setUp`, `test_delta_strength_pct_computed_correctly`, `test_delta_strength_pct_zero_when_no_volume`, `test_detail_has_required_fields`, `test_detail_returns_200`, `test_detail_source_header_present`, `test_detail_symbol_uppercased`
+  - `SessionFactsListHappyPathTests` -> methods: `setUp`, `test_list_filter_by_symbol`, `test_list_filter_symbol_uppercased`, `test_list_returns_200`
+  - `SessionFactsNotFoundTests` -> methods: `setUp`, `test_detail_404_error_envelope_has_standard_fields`, `test_detail_404_when_no_data_and_compute_returns_none`
+  - `SessionFactsOpenApiMetadataTests` -> methods: `test_detail_view_has_extend_schema`
+  - `SessionFactsThrottleTests` -> methods: `test_detail_view_has_market_data_throttle`, `test_list_view_has_market_data_throttle`, `test_throttle_rate_is_60_per_min`
+  - `SessionFactsUnauthorizedTests` -> methods: `setUp`, `test_detail_401_when_unauthenticated`, `test_list_401_when_unauthenticated`
+- Functions:
+  - `_make_facts`
+- Top-level variables:
+  - `_src_dir`
+
 ### `packages/core/backend/tests/test_signal_intelligence_api_routes.py`
 
 - Classes:
@@ -4097,7 +4547,7 @@ Generated at: `2026-05-13 14:47:24`
 ### `frontend/src/api/client.js`
 
 - Functions:
-  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminAuditLog`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnbrokerBenchmarkLatest`, `getAdminVnbrokerConfigChangelog`, `getAdminVnbrokerConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDNSEConfig`, `getDNSETokenStatus`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `normalizeTenantPatWritePayload`, `normalizeTenantServiceAccountWritePayload`, `placeDNSEOrder`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnbrokerConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnbrokerBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncDNSEAccounts`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnbrokerConfig`, `updateDNSEConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
+  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminAuditLog`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnbrokerBenchmarkLatest`, `getAdminVnbrokerConfigChangelog`, `getAdminVnbrokerConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDNSEConfig`, `getDNSETokenStatus`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getSessionFacts`, `getSessionFactsCvd`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `normalizeTenantPatWritePayload`, `normalizeTenantServiceAccountWritePayload`, `placeDNSEOrder`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnbrokerConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnbrokerBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncDNSEAccounts`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnbrokerConfig`, `updateDNSEConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
 - Top-level variables:
   - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `REQUEST_TIMEOUT_MS`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `rawRows`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `requestUrl`, `response`, `rows`, `scopes`, `status`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
@@ -4109,6 +4559,13 @@ Generated at: `2026-05-13 14:47:24`
 
 - Top-level variables:
   - `axiosModule`, `getUnifiedAlerts`, `mockApiClient`, `mockGet`
+
+### `frontend/src/api/socApi.js`
+
+- Functions:
+  - `handleResponse`
+- Top-level variables:
+  - `BASE_URL`, `errorData`, `resp`, `socApi`
 
 ### `frontend/src/api/support.js`
 
@@ -4508,6 +4965,78 @@ Generated at: `2026-05-13 14:47:24`
 - Top-level variables:
   - `SidebarTickerRow`, `currentPrice`, `filteredSymbols`, `freshnessSeconds`, `industry`, `industryOptions`, `isDown`, `isUp`, `next`, `normalizedTrackedSymbols`, `pct`, `quotesBySymbol`, `realtimeFeed`, `safeItems`, `set`, `symbol`, `symbolIndustryMap`, `symbols`, `timer`
 
+### `frontend/src/components/soc/ConfigPreviewModal.jsx`
+
+- Functions:
+  - `ConfigPreviewModal`, `getChangedKeys`
+- Top-level variables:
+  - `allKeys`, `changed`, `changedKeys`
+
+### `frontend/src/components/soc/MatrixPanel.jsx`
+
+- Functions:
+  - `MatrixPanel`
+
+### `frontend/src/components/soc/MatrixScrapeMonitor.jsx`
+
+- Functions:
+  - `MatrixScrapeMonitor`, `getStatusColor`, `pollMatrix`
+- Top-level variables:
+  - `colors`, `data`, `done`, `failed`, `interval`, `pending`, `resp`, `total`
+
+### `frontend/src/components/soc/OverviewPanel.jsx`
+
+- Functions:
+  - `OverviewPanel`, `fetchDetails`
+- Top-level variables:
+  - `details`
+
+### `frontend/src/components/soc/OwnershipBadgeRow.jsx`
+
+- Functions:
+  - `OwnershipBadgeRow`
+- Top-level variables:
+  - `MODE_COLORS`, `canApply`, `colors`
+
+### `frontend/src/components/soc/PrefetchPanel.jsx`
+
+- Functions:
+  - `PrefetchPanel`, `fetchData`, `handlePurgeCache`
+
+### `frontend/src/components/soc/ScreenerPanel.jsx`
+
+- Functions:
+  - `ScreenerPanel`, `fetchData`, `handleManualScan`
+
+### `frontend/src/components/soc/ServiceHealthCard.jsx`
+
+- Functions:
+  - `ServiceHealthCard`
+- Top-level variables:
+  - `STATUS_COLORS`, `colors`
+
+### `frontend/src/components/soc/SignalsPanel.jsx`
+
+- Functions:
+  - `SignalsPanel`, `fetchData`
+
+### `frontend/src/components/soc/SOCDomainTabs.jsx`
+
+- Functions:
+  - `SOCDomainTabs`
+- Top-level variables:
+  - `domains`
+
+### `frontend/src/components/soc/VnbrokerPanel.jsx`
+
+- Functions:
+  - `VnbrokerPanel`, `fetchData`, `handleApply`
+
+### `frontend/src/components/soc/WriteGuardBanner.jsx`
+
+- Functions:
+  - `WriteGuardBanner`
+
 ### `frontend/src/components/StatCard.jsx`
 
 - Functions:
@@ -4583,7 +5112,7 @@ Generated at: `2026-05-13 14:47:24`
 - Functions:
   - `NavGroup`, `canNavigateTo`, `groupLinkClass`, `handleOutsideClick`
 - Top-level variables:
-  - `canReadAdminOps`, `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `capabilityMenus`, `hasCapabilityMenus`, `portfolioItems`, `ref`, `signalItems`, `systemItems`, `tenantItems`, `tenantSurfaceEnabled`, `visibleRoutes`
+  - `canReadAdminOps`, `canReadSOC`, `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `capabilityMenus`, `hasCapabilityMenus`, `portfolioItems`, `ref`, `signalItems`, `systemItems`, `tenantItems`, `tenantSurfaceEnabled`, `visibleRoutes`
 
 ### `frontend/src/components/UnifiedAlertBar.jsx`
 
@@ -4661,9 +5190,9 @@ Generated at: `2026-05-13 14:47:24`
 ### `frontend/src/components/WhaleFeedPanel.jsx`
 
 - Functions:
-  - `AlertFeedCard`, `WhaleFeedPanel`, `buildFeedEventKey`, `fmtBil`, `fmtPrice`, `fmtVol`, `normalizeEventTimestamp`, `severityLabel`, `severityTone`, `sizeClassEmoji`
+  - `AlertFeedCard`, `WhaleFeedPanel`, `buildFeedEventKey`, `fmtBil`, `fmtPrice`, `fmtVol`, `inSessionWindow`, `normalizeEventTimestamp`, `severityLabel`, `severityTone`, `sizeClassEmoji`
 - Top-level variables:
-  - `activeData`, `alertKind`, `count`, `dedupedHistoryOrders`, `dedupedOrders`, `eventId`, `feedViewportStyle`, `fetch`, `handleRefresh`, `isBig`, `isBuy`, `isControlled`, `isDarkFlow`, `key`, `keys`, `loading`, `matchedValue`, `n`, `normalizedSeverity`, `orders`, `parsed`, `prevCountRef`, `realtimeEventKeys`, `realtimeItems`, `resp`, `roundedMatchedValue`, `seen`, `severity`, `severityClass`, `side`, `sourceMeta`, `src`, `timestamp`, `unique`
+  - `SESSION_WINDOWS`, `activeData`, `alertKind`, `cancelled`, `count`, `d`, `dedupedHistoryOrders`, `dedupedOrders`, `endMin`, `eventId`, `feedViewportStyle`, `fetch`, `h`, `handleRefresh`, `isBig`, `isBuy`, `isControlled`, `isDarkFlow`, `key`, `keys`, `loading`, `m`, `matchedValue`, `n`, `normalizedSeverity`, `orders`, `parsed`, `prevCountRef`, `realtimeEventKeys`, `realtimeItems`, `resp`, `roundedMatchedValue`, `seen`, `severity`, `severityClass`, `side`, `sourceMeta`, `src`, `startMin`, `timestamp`, `totalMin`, `unique`, `vn`, `w`
 
 ### `frontend/src/context/AbilityContext.js`
 
@@ -4804,7 +5333,7 @@ Generated at: `2026-05-13 14:47:24`
 - Functions:
   - `createTranslator`, `formatCurrency`, `formatDate`, `formatDateTime`, `formatNumber`, `formatPriceVND`, `formatQuoteInteger`, `formatQuotePrice`, `formatQuoteVolume`, `formatTime`, `getLocaleTag`, `getNestedValue`, `normalizeLocale`
 - Top-level variables:
-  - `DEFAULT_LOCALE`, `QUOTE_LOCALE_TAG`, `date`, `defaultValue`, `dictionaries`, `dictionary`, `fallbackDictionary`, `hasDefaultValue`, `localeTags`, `normalized`, `normalizedLocale`, `template`, `vnd`
+  - `DEFAULT_LOCALE`, `QUOTE_LOCALE_TAG`, `date`, `defaultValue`, `dictionaries`, `dictionary`, `fallbackDictionary`, `hasDefaultValue`, `inThousands`, `localeTags`, `normalized`, `normalizedLocale`, `template`, `vnd`
 
 ### `frontend/src/i18n/vi.js`
 
@@ -5062,12 +5591,19 @@ Generated at: `2026-05-13 14:47:24`
 - Top-level variables:
   - `bootstrapLoader`
 
+### `frontend/src/pages/SOCPage.jsx`
+
+- Functions:
+  - `SOCPage`, `fetchServices`, `handleDomainChange`
+- Top-level variables:
+  - `activeDomain`, `data`, `panels`
+
 ### `frontend/src/pages/StockDetail.jsx`
 
 - Functions:
-  - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `KLineChartComponent`, `MetricRow`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_normalizeAdvisoryPromptConfig`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `formatChartAxis`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleToggleComponentInclude`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `loadPromptConfig`, `persistPromptConfig`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `run`, `runRefresh`, `shouldSuppressTransportError`, `showWorkspaceMessage`
+  - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `MetricRow`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_normalizeAdvisoryPromptConfig`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `formatChartAxis`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleToggleComponentInclude`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `loadPromptConfig`, `persistPromptConfig`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `run`, `runRefresh`, `shouldSuppressTransportError`, `showWorkspaceMessage`
 - Top-level variables:
-  - `ADVISORY_INVALIDATION_EVENT`, `STALE_RESYNC_RETRY_MS`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryParams`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chartPerformance`, `chartWindowHint`, `close`, `conflictState`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `events`, `fallback`, `fallbackFromTs`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `flattenedSnapshotOrders`, `floorPrice`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `height`, `id`, `inFlightRef`, `incomingTrades`, `interval`, `intervalId`, `isTransientEmpty`, `isUpstreamUnavailable`, `key`, `lastClose`, `latest`, `latestDeltaVsBaseline`, `latestVol`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveVolume`, `map`, `marketGroups`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `message`, `min`, `next`, `nextComponents`, `nextDeletedComponents`, `nextSummaries`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `row`, `rows`, `selectedSessionMaterialization`, `selectedSessionReadPath`, `selectedTradeDate`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `snapshotOrders`, `sortedTrades`, `source`, `sourceGroupId`, `status`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickerData`, `timer`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `vol`, `warning`, `warningSuffix`, `watchlistMemberships`, `whaleSignalsForChart`, `width`, `withinRange`, `x`, `y`, `years`
+  - `ADVISORY_INVALIDATION_EVENT`, `KLineChartComponent`, `STALE_RESYNC_RETRY_MS`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryParams`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `base`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chartPerformance`, `chartWindowHint`, `close`, `conflictState`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `cvdData`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `events`, `fallback`, `fallbackFromTs`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `flattenedSnapshotOrders`, `floorPrice`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `handleKlineSessionChange`, `handleKlineTimeframeChange`, `height`, `id`, `inFlightRef`, `incomingTrades`, `interval`, `intervalId`, `isTransientEmpty`, `isUpstreamUnavailable`, `key`, `lastClose`, `latest`, `latestDeltaVsBaseline`, `latestVol`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveVolume`, `map`, `marketGroups`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `message`, `min`, `next`, `nextComponents`, `nextDeletedComponents`, `nextSummaries`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `row`, `rows`, `selectedSessionMaterialization`, `selectedSessionReadPath`, `selectedTradeDate`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `snapshotOrders`, `sortedTrades`, `source`, `sourceGroupId`, `status`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickerData`, `timer`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `vol`, `warning`, `warningSuffix`, `watchlistMemberships`, `whaleSignalsForChart`, `width`, `withinRange`, `x`, `y`, `years`
 
 ### `frontend/src/pages/stockDetailAdvisoryUtils.js`
 

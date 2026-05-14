@@ -1,3 +1,36 @@
+# 2026-05-14 — Native Realtime Prefetch Warm Repair ✅
+
+Status: **✅ COMPLETE** | **core-api warm path now populates `SymbolSnapshot` and BCM is live**  
+Validation: **✅ direct warm call returned `ok/upserted=59`** | **✅ `GET /api/realtime/ticker/BCM/` returned a live price** | **✅ `module_tree_full.md` regenerated (1153 modules)**
+
+## Runtime Slice
+
+**What changed**
+- `data_ingest.tasks.fetch_and_upsert_price_board` now uses the native symbol snapshot materializer instead of the removed `warm_up_symbols` adapter symbol.
+- `vninvest_core.contracts.admin_ops.views._build_prefetch_health_snapshot()` now has the missing `_now_iso()` helper.
+- `module_tree_full.md` was regenerated after the backend edits.
+
+**Validation**
+- Direct container-side warm call returned `200 OK` with `result.upserted = 59` and `prefetch.healthy = true`.
+- `BCM` ticker endpoint returned a live value with `stale=false`.
+- Browser proxy still shows `502` on the sync warm route, but the backend path itself is healthy.
+
+# 2026-05-14 — Native Dev Launcher Alignment ✅
+
+Status: **✅ COMPLETE** | `start_dev.ps1` now boots the native core stack only
+Validation: **✅ `start_dev.ps1 -SkipBuild` passed** | **✅ core-api and frontend smoke checks passed** | **✅ module_tree_full.md regenerated**
+
+## Native Launcher Slice
+
+**What changed**
+- `start_dev.ps1` no longer calls legacy backend seed logic and now targets `core-api`, core workers, and `core-beat`.
+- `docker-compose.dev.yml` now keeps the dev frontend on `vninvest-dev-frontend:latest` and drops the `nginx-proxy_default` dependency for local runs.
+- `module_tree_full.md` was regenerated after the launcher/compose changes.
+
+**Validation**
+- `start_dev.ps1 -SkipBuild` was run once during verification, then cleaned up and rerun successfully after the dev-compose fix.
+- Final run returned `core-api health: OK` and `frontend health: OK`.
+
 # 2026-05-14 — SOC Phase 1 Final: Full Deployment & Audit ✅
 
 Status: **✅ DEPLOYED & RUNNING** | **⚠️ Test Suite Has Field Name Fix (Non-Critical)**  
@@ -9724,3 +9757,4 @@ Delta highlights:
 **Last Updated**: 2026-04-03 11:20  
 **Next Update**: after Redis-backed validation  
 **Target**: close Sprint 12 validation checklist
+

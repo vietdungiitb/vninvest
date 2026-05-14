@@ -143,7 +143,7 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
             state=IngestRun.StateChoices.RUNNING,
         ) if job else None
 
-        from market_data.vnbroker_adapter import warm_up_symbols
+        from market_serving.vnbroker_materializer import materialize_symbol_snapshot_from_vnbroker
         from market_data.models import StockProfile
 
         # SM-P2.3 Native: Fetch price board from vnbroker adapter.
@@ -162,8 +162,8 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
                 run.save(update_fields=['state', 'error_message', 'finished_at'])
             return {'status': 'skipped', 'reason': 'no_symbols'}
 
-        result = warm_up_symbols(symbols)
-        count = result.get('warmed_up_count', 0)
+        result = materialize_symbol_snapshot_from_vnbroker()
+        count = result.get('upserted', 0)
 
         if run:
             run.state = IngestRun.StateChoices.SUCCESS

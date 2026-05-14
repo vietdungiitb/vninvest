@@ -1,5 +1,56 @@
 # Code Change Audit Ledger
 
+## 2026-05-14 | Task T12 | Native Realtime Prefetch Warm Repair ✅
+
+**Status:** ✅ COMPLETE  
+**Session Commits:** 0 commits (working tree validation slice)  
+**Issues Fixed:** 2 runtime blockers resolved  
+**Docker Status:** ✅ core-api rebuilt | ✅ realtime ticker now returns live data
+
+### All Modified/Created Files (T12)
+
+**Backend Code (2 files, modified)**
+1. ✅ `packages/core/backend/src/data_ingest/tasks.py` - replaced stale `warm_up_symbols` import with the native `materialize_symbol_snapshot_from_vnbroker()` path so the price-board warm job upserts `SymbolSnapshot`
+2. ✅ `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` - added the missing `_now_iso()` helper used by `_build_prefetch_health_snapshot()`
+
+**Docs / Generated Output (3 files)**
+1. ✅ `module_tree_full.md` - regenerated after the backend edits (1153 modules)
+2. ✅ `PROGRESS_DASHBOARD.md` - updated runtime status
+3. ✅ `CODE_CHANGE_AUDIT_LEDGER.md` - updated current task inventory
+
+### Validation Results
+
+- ✅ Direct `docker exec` call to `fetch_and_upsert_price_board.run(...)` returned `{'status': 'ok', 'upserted': 59, 'source': 'vnbroker_native'}`
+- ✅ `GET /api/realtime/ticker/BCM/` returned `200` with `price=52100.00`, `stale=false`, `source=vnbroker_native`
+- ✅ `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1153 modules)
+- ⚠️ Browser sync call to `/api/admin-ops/prefetch/warm/?mode=sync` still returns proxy-level `502`, but the backend handler itself succeeds when called directly inside the container
+
+## 2026-05-14 | Task T11 | Native Dev Launcher Alignment & Legacy Removal ✅
+
+**Status:** ✅ COMPLETE  
+**Session Commits:** 0 commits (working tree validation slice)  
+**Issues Fixed:** 2 launcher drift blockers resolved  
+**Docker Status:** ✅ `start_dev.ps1 -SkipBuild` boots the native core stack successfully
+
+### All Modified/Created Files (T11)
+
+**Dev Launcher / Compose (3 files, modified)**
+1. ✅ `start_dev.ps1` - retargeted to core-api/core-workers, removed legacy backend seed path, updated health/smoke checks
+2. ✅ `docker-compose.dev.yml` - frontend dev image/network override for local native stack
+3. ✅ `module_tree_full.md` - regenerated after the launcher/compose changes (1152 modules)
+
+### Validation Results
+
+- ✅ start_dev.ps1 -SkipBuild completed successfully
+- ✅ `core-api` health check passed
+- ✅ frontend smoke check passed
+- ✅ `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md`
+
+### Notes
+
+- The dev launcher no longer calls legacy backend commands.
+- The frontend dev service now uses the local native image and no longer depends on `nginx-proxy_default`.
+
 ## 2026-05-14 | Task T10 | SOC Phase 1 Completion & Cleanup ✅
 
 **Status:** ✅ COMPLETE  
@@ -720,3 +771,5 @@ if User.objects.filter(username=username).exists():
 ---
 
 **Slice 1 Validation Complete.** Proceeding to Slice 2.
+
+

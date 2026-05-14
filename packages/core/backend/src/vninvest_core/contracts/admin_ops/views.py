@@ -30,6 +30,10 @@ from vninvest_core.monitoring.queue_metrics import build_scheduler_queue_metrics
 logger = logging.getLogger(__name__)
 
 
+def _now_iso() -> str:
+    return timezone.now().isoformat()
+
+
 DEFAULT_GOVERNANCE_DELTA_THRESHOLDS = {
     'warning': 2.0,
     'critical': 4.0,
