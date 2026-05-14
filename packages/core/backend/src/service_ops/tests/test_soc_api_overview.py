@@ -23,7 +23,7 @@ class SOCOverviewApiTestCase(TestCase):
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
         
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
         # Create test services
         self.service_vnbroker = ServiceDefinition.objects.create(
@@ -160,11 +160,11 @@ class SOCDetailEndpointsTestCase(TestCase):
     """Test detail retrieval endpoints"""
 
     def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
+        self.client = APIClient()
+        self.user = User.objects.create_user('admin_user', 'admin@test.com', 'testpass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
         self.service = ServiceDefinition.objects.create(
             service_key='test_service',
@@ -204,7 +204,7 @@ class SOCVersionHistoryTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
         self.service = ServiceDefinition.objects.create(
             service_key='version_test',

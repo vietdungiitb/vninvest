@@ -2,9 +2,10 @@
 test_soc_api_signals.py — Integration tests for Signal Intelligence endpoints
 Focus: Bridge-write pattern (read-only from SOC)
 """
-from django.test import TestCase, Client
+from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from rest_framework.test import APIClient
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 from service_ops.models import ServiceDefinition
 
@@ -19,7 +20,7 @@ class SignalsApiReadOnlyTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_get_signal_config_succeeds(self):
         """Test GET /api/soc/signals/config/ returns config"""
@@ -94,7 +95,7 @@ class SignalsBridgeWriteEnforcementTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_all_post_endpoints_return_403(self):
         """Test that all POST endpoints on signals return 403"""
@@ -130,7 +131,7 @@ class SignalsReadOnlyValidationTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_signals_get_includes_config_structure(self):
         """Test that GET signals/config returns expected structure"""
@@ -166,7 +167,7 @@ class SignalsPutDeleteBlockedTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_put_signals_config_blocked(self):
         """Test PUT /api/soc/signals/config/ is blocked"""

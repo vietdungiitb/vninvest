@@ -2,9 +2,10 @@
 test_soc_api_integration.py — End-to-end integration tests for SOC workflows
 Test: Apply config → Audit record → Version bump → Health check flow
 """
-from django.test import TestCase, Client
+from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from rest_framework.test import APIClient
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
 from service_ops.models import ServiceDefinition, ServiceConfig, ConfigChangeAudit
 
@@ -15,11 +16,11 @@ class ConfigApplyEndToEndTestCase(TestCase):
     """Test full config apply workflow"""
 
     def setUp(self):
-        self.client = Client()
+        self.client = APIClient()
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
         # Create services
         ServiceDefinition.objects.create(
@@ -131,11 +132,11 @@ class MultiDomainWorkflowTestCase(TestCase):
     """Test workflows across multiple domains"""
 
     def setUp(self):
-        self.client = Client()
+        self.client = APIClient()
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
         # Create multiple services
         for key, name in [('vnbroker', 'VNBroker'), ('prefetch', 'Prefetch'), ('signals', 'Signals')]:
@@ -191,11 +192,11 @@ class PaginationIntegrationTestCase(TestCase):
     """Test pagination on list and history endpoints"""
 
     def setUp(self):
-        self.client = Client()
+        self.client = APIClient()
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
         svc = ServiceDefinition.objects.create(
             service_key='test',
@@ -256,11 +257,11 @@ class ErrorHandlingIntegrationTestCase(TestCase):
     """Test error handling across endpoints"""
 
     def setUp(self):
-        self.client = Client()
+        self.client = APIClient()
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_nonexistent_service_returns_404(self):
         """Test that nonexistent service returns 404"""

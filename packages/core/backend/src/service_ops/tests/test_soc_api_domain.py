@@ -16,11 +16,11 @@ class VnbrokerConfigApiTestCase(TestCase):
     """Test VNBroker configuration endpoints"""
 
     def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
+        self.client = APIClient()
+        self.user = User.objects.create_user('domain_admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_get_vnbroker_config(self):
         """Test GET /api/soc/vnbroker/config/"""
@@ -88,7 +88,7 @@ class PrefetchConfigApiTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_get_prefetch_config(self):
         """Test GET /api/soc/prefetch/config/"""
@@ -138,7 +138,7 @@ class ScreenerConfigApiTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_get_screener_config(self):
         """Test GET /api/soc/screener/config/"""
@@ -201,7 +201,7 @@ class ConfigApplyValidationTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_apply_invalid_config_returns_error(self):
         """Test that invalid config returns error with proper envelope"""
@@ -265,7 +265,7 @@ class OwnershipEnforcementTestCase(TestCase):
         self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
         admin_group, _ = Group.objects.get_or_create(name='admin_users')
         self.user.groups.add(admin_group)
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
     def test_native_write_service_allows_apply(self):
         """Test that native-write services (vnbroker, prefetch) allow apply"""
