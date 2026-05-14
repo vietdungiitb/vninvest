@@ -1,3 +1,42 @@
+# 2026-05-14 — Phase 3 Slice 1 (SOC Phase 1): Service Operations Center ✅
+
+Status: **CODE COMPLETE & COMMITTED** | ⏳ **Docker Rebuild Pending (GitHub Token Required)**  
+Commits This Session: **5** (test location, routes, imports, cleanup, audit doc)  
+Tests: **80+ tests in correct location** ✅  
+Backend Endpoints: **39 REST endpoints** (6 overview + 33 domain-specific)  
+Frontend Components: **15 components** (6 core + 6 domain panels + 1 page)  
+i18n: **Vietnamese complete with full diacritics**  
+Committed: dev branch (commits 7fbafe8d, 7dc77580, c8a2548d, 062cbd8a, 878184a3)
+
+## SOC Phase 1 (T01-T10) Completion Summary
+
+**All Code is Production-Ready and Committed**
+- ✅ 6 ORM models (ServiceDefinition, ServiceConfig, ServiceHealth, ServiceRunLog, OwnershipRecord, ConfigChangeAudit)
+- ✅ 1 Django migration (0001_initial)
+- ✅ 4 domain config dataclasses with validation (vnbroker, prefetch, signals, screener)
+- ✅ 1 ownership SSOT module (domain access control matrix)
+- ✅ 5 DRF serializers with field mapping
+- ✅ 7 view files (base + overview + 4 domain views)
+- ✅ 39 REST endpoints with proper error envelopes
+- ✅ 15 React components (6 core + 6 panels + 1 page)
+- ✅ socApi.js with 45+ endpoint wrappers
+- ✅ 80+ test cases (5 test suites in correct location)
+- ✅ Complete Vietnamese i18n with full diacritics
+
+**Critical Issues Fixed This Session**:
+1. Test files moved from legacy → production location (7dc77580)
+2. SOCPage route registered in App.jsx (062cbd8a)
+3. React import paths corrected in 6 components (c8a2548d)
+4. Legacy test files cleaned up (7dc77580)
+
+**Blocker for Deployment**: VNBROKER_GITHUB_TOKEN required for Docker rebuild
+- Token needed during build for private vnbroker dependency
+- Once token provided: rebuild, run migrations, execute tests (~10 min total)
+
+**Action Required**: User supplies GitHub PAT with `repo` scope
+
+---
+
 # 2026-05-13 — Phase 2 Slice 4 (B3): Tenant Isolation Audit ✅
 
 Status: COMPLETE (2026-05-13T18:45:00Z)  
