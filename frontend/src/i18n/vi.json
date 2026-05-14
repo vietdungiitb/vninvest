@@ -1,0 +1,138 @@
+{
+  "soc": {
+    "health": {
+      "status_healthy": "Khỏe mạnh",
+      "status_degraded": "Suy giảm",
+      "status_critical": "Nguy cấp",
+      "last_check": "Kiểm tra lần cuối",
+      "reason": "Lý do"
+    },
+    "ownership": {
+      "mode_native_write": "Ghi bản địa",
+      "mode_bridge_write": "Cầu nối",
+      "mode_read_only": "Chỉ đọc",
+      "locked": "Bị khóa",
+      "can_apply": "Có thể áp dụng",
+      "cannot_apply": "Không thể áp dụng"
+    },
+    "writeGuard": {
+      "banner_title": "⚠️ Cảnh báo ghi dữ liệu",
+      "bridge_write_notice": "Cấu hình này được kiểm soát từ một dịch vụ khác (cầu nối). Bạn không thể thay đổi nó từ đây.",
+      "contact_owner": "Vui lòng liên hệ với chủ sở hữu dịch vụ",
+      "write_blocked": "Ghi dữ liệu bị chặn"
+    },
+    "preview": {
+      "title": "Xem trước cấu hình",
+      "before": "Trước",
+      "after": "Sau",
+      "no_changes": "Không có thay đổi",
+      "cancel": "Hủy",
+      "apply": "Áp dụng"
+    },
+    "matrix": {
+      "monitor_title": "Màn hình giám sát ma trận",
+      "loading": "Đang tải...",
+      "total": "Tổng cộng",
+      "status_done": "Hoàn thành",
+      "status_failed": "Thất bại",
+      "status_pending": "Đang chờ",
+      "status_skipped": "Bỏ qua",
+      "of": "của",
+      "complete": "hoàn thành"
+    },
+    "tabs": {
+      "overview": "Tổng quan",
+      "vnbroker": "VNBroker",
+      "prefetch": "Tải trước",
+      "signals": "Tín hiệu",
+      "screener": "Bộ lọc",
+      "matrix": "Ma trận"
+    },
+    "pages": {
+      "soc_page_title": "Trung tâm Hoạt động Dịch vụ",
+      "breadcrumb_operations": "Trung tâm hoạt động",
+      "status_loading": "Đang tải...",
+      "service_list": "Danh sách dịch vụ",
+      "service_detail": "Chi tiết dịch vụ",
+      "configuration": "Cấu hình",
+      "health_status": "Trạng thái sức khỏe",
+      "audit_log": "Nhật ký kiểm toán",
+      "version_history": "Lịch sử phiên bản"
+    },
+    "vnbroker": {
+      "title": "VNBroker",
+      "config": "Cấu hình",
+      "preview": "Xem trước",
+      "health": "Sức khỏe",
+      "test_connection": "Kiểm tra kết nối",
+      "providers": "Nhà cung cấp",
+      "circuit_breaker": "Cầu gây gián đoạn",
+      "metrics": "Số liệu",
+      "timeout_config": "Cấu hình hết thời gian chờ",
+      "max_retries": "Số lần thử tối đa",
+      "circuit_breaker_status": "Trạng thái cầu gây gián đoạn"
+    },
+    "prefetch": {
+      "title": "Tải trước",
+      "config": "Cấu hình",
+      "profiles": "Hồ sơ",
+      "cache_status": "Trạng thái bộ nhớ đệm",
+      "purge": "Xóa sạch",
+      "universe_groups": "Nhóm vũ trụ",
+      "schedule": "Lịch biểu",
+      "metrics": "Số liệu",
+      "pre_open": "Trước khi mở cửa",
+      "market_open": "Thị trường mở",
+      "lunch_break": "Giờ ăn trưa",
+      "pre_close": "Trước khi đóng cửa",
+      "post_close": "Sau khi đóng cửa",
+      "offhours": "Ngoài giờ"
+    },
+    "signals": {
+      "title": "Tín hiệu",
+      "config": "Cấu hình",
+      "ownership": "Quyền sở hữu",
+      "detection": "Phát hiện",
+      "whale_detection": "Phát hiện cá mập",
+      "dark_pool": "Nhóm tối",
+      "screener_detection": "Phát hiện bộ lọc",
+      "retention": "Giữ lại",
+      "metrics": "Số liệu",
+      "read_only_notice": "Cấu hình tín hiệu được kiểm soát bởi dịch vụ tín hiệu. Bạn không thể thay đổi nó từ đây."
+    },
+    "screener": {
+      "title": "Bộ lọc",
+      "config": "Cấu hình",
+      "rules": "Quy tắc",
+      "results": "Kết quả",
+      "alerts": "Cảnh báo",
+      "manual_scan": "Quét thủ công",
+      "metrics": "Số liệu",
+      "templates": "Mẫu",
+      "max_concurrent_scans": "Số lần quét đồng thời tối đa",
+      "rule_name": "Tên quy tắc",
+      "rule_type": "Loại quy tắc",
+      "rule_condition": "Điều kiện quy tắc"
+    },
+    "actions": {
+      "apply": "Áp dụng",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "delete": "Xóa",
+      "edit": "Chỉnh sửa",
+      "view": "Xem",
+      "refresh": "Làm mới",
+      "close": "Đóng",
+      "export": "Xuất khẩu"
+    },
+    "errors": {
+      "network_error": "Lỗi mạng",
+      "unauthorized": "Không được phép",
+      "forbidden": "Bị từ chối",
+      "not_found": "Không tìm thấy",
+      "validation_error": "Lỗi xác thực",
+      "server_error": "Lỗi máy chủ",
+      "config_apply_failed": "Cấu hình áp dụng không thành công"
+    }
+  }
+}
