@@ -13,6 +13,7 @@ from django.db import transaction
 
 from ..models import ServiceDefinition, ServiceConfig, ConfigChangeAudit
 from ..ownership import build_ownership_matrix_from_db
+from ..registry import get_registered_service
 
 
 class ConfigApplyMixin:
@@ -30,7 +31,7 @@ class ConfigApplyMixin:
         Áp dụng config cho service. Trả Response hoặc (service, config_obj).
         """
         try:
-            service = ServiceDefinition.objects.get(service_key=service_key)
+            service = get_registered_service(service_key)
         except ServiceDefinition.DoesNotExist:
             return self.error_response(
                 request,
@@ -65,6 +66,9 @@ class ConfigApplyMixin:
         # Save config transactionally
         try:
             with transaction.atomic():
+                previous_config = ServiceConfig.objects.filter(service=service, is_current=True).first()
+                previous_payload = previous_config.config_payload if previous_config is not None else None
+
                 svc_config = ServiceConfig.objects.create(
                     service=service,
                     config_schema_version='1.0',
@@ -79,7 +83,7 @@ class ConfigApplyMixin:
                     action='apply',
                     actor=getattr(request.user, 'username', 'api'),
                     actor_ip=request.META.get('REMOTE_ADDR', ''),
-                    before_snapshot={},
+                    before_snapshot=previous_payload,
                     after_snapshot=config_obj.to_dict(),
                     change_summary=request.data.get('change_reason', ''),
                     request_id=self.get_request_id(request),

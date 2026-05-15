@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-14 14:33:39`
+Generated at: `2026-05-15 14:34:53`
 
 ## Summary
 
-- Total modules: 1153
-- Python modules: 639
-- JS/TS modules: 514
-- Total classes: 1121
-- Total functions: 2965
-- Total top-level variables: 4696
+- Total modules: 1199
+- Python modules: 678
+- JS/TS modules: 521
+- Total classes: 1201
+- Total functions: 3195
+- Total top-level variables: 4762
 
 ## Python Modules
 
@@ -2721,9 +2721,25 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/data_ingest/tasks.py`
 
 - Functions:
-  - `_fetch_and_upsert_bucket`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
+  - `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_classify_daily_price_rows`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_floor_intraday_bucket`, `_hydrate_intraday_symbols`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_resolve_history_days_from_window`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
 - Top-level variables:
-  - `_HISTORY_PROVIDERS`, `logger`
+  - `_HISTORY_PROVIDERS`, `_INTRADAY_BAR_TIMEFRAMES`, `_INTRADAY_PLAN_DATASETS`, `logger`
+
+### `packages/core/backend/src/data_ingest/tests/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+
+- Classes:
+  - `DataIngestBackfillTaskTests` -> methods: `setUpTestData`, `test_backfill_daily_prices_consumes_plan_items_with_detailed_counts`, `test_fetch_and_upsert_bucket_uses_adapter_ssot`, `test_fetch_and_upsert_price_board_consumes_plan_items`, `test_fetch_and_upsert_price_board_updates_service_run_log_when_provided`, `test_ingest_daily_prices_runs_backfill_inline`, `test_ingest_daily_prices_updates_service_run_log_when_provided`, `test_warm_intraday_universe_consumes_plan_items_and_persists_rows`
+
+### `packages/core/backend/src/data_ingest/tests/test_views.py`
+
+- Classes:
+  - `DataIngestAdminViewTests` -> methods: `setUp`, `setUpTestData`, `test_trigger_daily_prices_creates_service_run_log`, `test_trigger_price_board_creates_service_run_log`
+- Top-level variables:
+  - `User`
 
 ### `packages/core/backend/src/data_ingest/urls.py`
 
@@ -2945,6 +2961,27 @@ Generated at: `2026-05-14 14:33:39`
 - Classes:
   - `MarketDataConfig`
 
+### `packages/core/backend/src/market_data/global_symbol_coverage.py`
+
+- Functions:
+  - `_build_daily_prices_payload`, `_build_intraday_payload`, `_build_missing_ranges`, `_build_requested_window`, `_build_session_facts_payload`, `_build_snapshot_payload`, `_normalize_dt`, `_normalize_requested_datasets`, `_normalize_requested_symbols`, `_resolve_daily_price_state`, `_resolve_intraday_state`, `_resolve_next_action`, `_resolve_planner_reason`, `_resolve_registry`, `_resolve_session_facts_state`, `_resolve_snapshot_state`, `_should_plan_dataset`, `_trade_date_to_datetime`, `_upsert_coverage_row`, `build_global_coverage_summary`, `build_global_planner_preview`, `build_symbol_coverage_detail`, `refresh_global_symbol_coverage`
+- Top-level variables:
+  - `DATASET_ORDER`, `FRESHNESS_ORDER`, `PLANNER_PROVIDER_CHAIN_BY_DATASET`, `PLANNER_SUPPORTED_MODES`, `TOP_GAP_ORDER`, `_DAILY_PRICE_FRESH_DAYS`, `_DAILY_PRICE_WARM_DAYS`, `_INTRADAY_FRESH_WINDOW`, `_INTRADAY_WARM_WINDOW`, `_NEXT_ACTION_BY_DATASET`, `_SESSION_FACTS_FRESH_WINDOW`, `_SESSION_FACTS_WARM_WINDOW`, `_SNAPSHOT_FRESH_WINDOW`, `_SNAPSHOT_WARM_WINDOW`
+
+### `packages/core/backend/src/market_data/global_symbol_planner.py`
+
+- Functions:
+  - `_build_parent_run_log_input`, `_format_run_id`, `_normalize_execution_mode`, `_partition_plan_items`, `create_global_planner_run`, `execute_global_planner_run`
+- Top-level variables:
+  - `SUPPORTED_EXECUTION_DATASETS`, `SUPPORTED_EXECUTION_MODES`
+
+### `packages/core/backend/src/market_data/global_symbol_registry.py`
+
+- Functions:
+  - `_build_raw_system_default_source_ref`, `_coerce_metadata`, `_get_decay_days`, `_resolve_priority_tier`, `_resolve_weight`, `_summarize_coverage`, `build_admin_group_source_ref`, `build_holding_source_ref`, `build_price_alert_source_ref`, `build_system_default_source_ref`, `build_tracked_symbol_source_ref`, `build_watchlist_source_ref`, `deactivate_global_symbol_demand`, `normalize_symbol`, `refresh_global_symbol_registry`, `sync_admin_group_symbol_set`, `sync_global_source_symbol_set`, `sync_holding_demand_for_portfolio_symbol`, `sync_price_alert_demand`, `sync_system_default_symbol_group`, `sync_tracked_symbol_demand`, `sync_watchlist_item_demand`, `upsert_global_symbol_demand`
+- Top-level variables:
+  - `FRESHNESS_RANK`, `HOT_SOURCE_TYPES`, `SYSTEM_DEFAULT_GROUP_ID_ALIASES`, `WARM_SOURCE_TYPES`
+
 ### `packages/core/backend/src/market_data/legacy_views.py`
 
 - Classes:
@@ -2972,6 +3009,11 @@ Generated at: `2026-05-14 14:33:39`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/market_data/migrations/0003_globalsymbolregistry_globalsymbolcoverage_and_more.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/market_data/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -2980,6 +3022,9 @@ Generated at: `2026-05-14 14:33:39`
 
 - Classes:
   - `DailyPrice` -> methods: `__str__`
+  - `GlobalSymbolCoverage` -> methods: `__str__`
+  - `GlobalSymbolDemandSource` -> methods: `__str__`
+  - `GlobalSymbolRegistry` -> methods: `__str__`
   - `IntradayBar` -> methods: `__str__`
   - `IntradayTick` -> methods: `__str__`
   - `StockProfile` -> methods: `__str__`
@@ -3012,15 +3057,72 @@ Generated at: `2026-05-14 14:33:39`
   - `StockManagementChartView` -> methods: `get`
   - `StockManagementDetailView` -> methods: `get`
   - `StockManagementFinancialsView` -> methods: `get`
-  - `StockManagementGroupDetailView` -> methods: `delete`, `get`, `put`
+  - `StockManagementGroupDetailView` -> methods: `delete`, `get`, `patch`
   - `StockManagementGroupItemsView` -> methods: `get`
-  - `StockManagementItemDetailView` -> methods: `delete`, `get`, `post`
-  - `StockManagementNewsAISummaryView` -> methods: `get`
+  - `StockManagementGroupsView` -> methods: `get`
+  - `StockManagementItemDetailView` -> methods: `delete`, `get`
+  - `StockManagementNewsAISummaryView` -> methods: `get`, `post`
   - `StockManagementNewsView` -> methods: `get`
   - `StockManagementOrderFlowView` -> methods: `get`
   - `StockManagementOverviewView` -> methods: `get`
   - `StockManagementPortfolioNewsDigestView` -> methods: `get`
+  - `StockManagementPriceAlertDetailView` -> methods: `delete`, `patch`
+  - `StockManagementPriceAlertsView` -> methods: `get`, `post`
+  - `StockManagementPriceAlertTriggerView` -> methods: `post`
+  - `StockManagementSeedView` -> methods: `post`
+  - `StockManagementStockListView` -> methods: `get`
+  - `StockManagementSyncView` -> methods: `post`
   - `StockManagementTechnicalsView` -> methods: `_build_response`, `_parse_symbols`, `get`, `post`
+  - `StockManagementTrackedSymbolBulkThresholdView` -> methods: `post`
+  - `StockManagementTrackedSymbolDetailView` -> methods: `delete`, `patch`
+  - `StockManagementTrackedSymbolsView` -> methods: `get`, `post`
+- Functions:
+  - `_aggregate_daily_rows`, `_build_price_change_map`, `_build_profile_map`, `_build_watchlist_membership_payload`, `_compute_chart_technical_payload`, `_compute_rsi14`, `_default_chart_technical_payload`, `_fetch_symbol_snapshot_payload`, `_get_price_alert_or_404_for_user`, `_get_table_column_names`, `_get_tracked_symbol_or_404_for_user`, `_get_watchlist_item_or_404_for_user`, `_get_watchlist_or_404_for_user`, `_group_sort_key`, `_interval_for_timeframe`, `_normalize_timeframe`, `_parse_cooldown_seconds`, `_parse_price_alert_condition`, `_parse_price_alert_target`, `_parse_tracked_symbol_threshold_million`, `_price_alerts_queryset_for_user`, `_resolve_user_tenant`, `_round_or_none`, `_serialize_price_alert_row`, `_serialize_price_point`, `_serialize_stock_management_group`, `_serialize_stock_management_item`, `_serialize_tracked_symbol_row`, `_to_float`, `_to_int`, `_tracked_symbols_queryset_for_user`, `_validate_stock_symbol`, `_watchlist_items_queryset_for_user`, `_watchlists_queryset_for_user`
+- Top-level variables:
+  - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`, `_SYSTEM_DEFAULT_SYMBOL_GROUP_IDS`
+
+### `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
+
+- Classes:
+  - `GlobalSymbolCoverageServiceTestCase` -> methods: `_ensure_registry`, `test_build_global_coverage_summary_aggregates_by_dataset`, `test_build_global_planner_preview_requires_explicit_force_refresh`, `test_build_global_planner_preview_uses_missing_only_policy`, `test_refresh_global_symbol_coverage_marks_stale_and_missing_datasets`, `test_refresh_global_symbol_coverage_populates_all_dataset_rows`
+
+### `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
+
+- Classes:
+  - `GlobalSymbolPlannerRunTests` -> methods: `_create_intraday_gaps`, `_create_registry_with_daily_gap`, `_create_snapshot_gap`, `setUpTestData`, `test_create_global_planner_run_carries_scheduler_context_and_queue`, `test_create_global_planner_run_executes_intraday_sync`, `test_create_global_planner_run_executes_price_board_snapshot_sync`, `test_create_global_planner_run_executes_sync_and_updates_audit`, `test_create_global_planner_run_queues_async_run_log`
+
+### `packages/core/backend/src/market_data/tests/test_global_symbol_registry.py`
+
+- Classes:
+  - `GlobalSymbolRegistrySignalTestCase` -> methods: `setUp`, `test_admin_group_sync_deactivates_removed_symbols`, `test_system_default_sync_canonicalizes_vn100_and_deactivates_top100_alias`, `test_transaction_signals_sync_holdings_per_portfolio_symbol`, `test_watchlist_item_signal_creates_and_decays_registry_edge`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/market_data/tests/test_intraday_prices_api.py`
+
+- Classes:
+  - `IntradayPricesApiTestCase` -> methods: `setUp`, `setUpTestData`, `test_intraday_prices_reads_db_bars_without_provider_call`, `test_intraday_prices_returns_empty_payload_when_db_missing`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/market_data/tests/test_intraday_tape_api.py`
+
+- Classes:
+  - `IntradayTapeApiTestCase` -> methods: `setUp`, `setUpTestData`, `test_intraday_tape_reads_latest_db_session_without_provider_call`, `test_intraday_tape_returns_safe_empty_payload_when_db_missing`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+
+- Classes:
+  - `StockManagementNativeApiTestCase` -> methods: `setUp`, `setUpTestData`, `test_ai_advisory_generate_routes_to_native_manual_trigger`, `test_ai_advisory_session_reads_native_advisory_record`, `test_groups_seed_detail_and_items_are_native`, `test_price_alert_endpoints_are_native`, `test_stock_chart_reads_daily_prices_with_native_envelope`, `test_stock_chart_reads_intraday_bars_from_native_core_tables`, `test_stock_chart_returns_envelope_when_no_native_candles`, `test_stock_overview_maps_native_watchlist_tracking_fields`, `test_stock_overview_prefers_native_tracked_symbol_source_group`, `test_stock_overview_returns_object_envelope_without_snapshot`, `test_stock_search_is_native_and_paginated`, `test_sync_routes_user_scope_through_global_planner`, `test_tracked_symbol_endpoints_are_native`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/market_data/tests/test_vnbroker_benchmark.py`
+
+- Classes:
+  - `VnbrokerBenchmarkTests` -> methods: `test_run_price_board_provider_benchmark_builds_cached_report`
 
 ### `packages/core/backend/src/market_data/urls.py`
 
@@ -3043,9 +3145,18 @@ Generated at: `2026-05-14 14:33:39`
 - Classes:
   - `VnbrokerAdapterError`
 - Functions:
-  - `_build_intraday_source_candidates`, `_fetch_intraday_frame`, `_normalize_intraday_trade_rows`, `_publish_intraday_stream`, `fetch_daily_history`, `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `fetch_realtime_price`, `get_active_config`, `warm_up_intraday_symbols`
+  - `_build_intraday_source_candidates`, `_build_listing_seed_rows`, `_extract_listing_records`, `_fetch_intraday_frame`, `_fetch_realtime_price_with_quote_class`, `_load_listing_adapter_class`, `_load_quote_class`, `_normalize_intraday_trade_rows`, `_normalize_listing_rows`, `_normalize_supported_source`, `_publish_intraday_stream`, `_resolve_realtime_source`, `_slice_listing_symbols`, `fetch_daily_history`, `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `fetch_realtime_price`, `fetch_symbol_group_members`, `get_active_config`, `warm_up_intraday_symbols`
 - Top-level variables:
-  - `_INTRADAY_FALLBACK_SOURCES`, `logger`
+  - `_INTRADAY_FALLBACK_SOURCES`, `_LISTING_GROUP_ALIASES`, `_LISTING_SEED_DATA`, `_SUPPORTED_PROVIDER_SOURCES`, `logger`
+
+### `packages/core/backend/src/market_data/vnbroker_benchmark.py`
+
+- Classes:
+  - `_Counter` -> methods: `merge`
+- Functions:
+  - `_benchmark_single_provider_concurrency`, `_is_rate_limited_error`, `_normalize_concurrency_levels`, `_normalize_providers`, `_normalize_runs`, `_pick_best_result`, `_run_worker_once`, `build_runtime_recommendation`, `clear_latest_price_board_benchmark_report`, `get_latest_price_board_benchmark_report`, `run_price_board_provider_benchmark`, `set_latest_price_board_benchmark_report`, `utc_now_iso`
+- Top-level variables:
+  - `BENCHMARK_CACHE_KEY`, `BENCHMARK_CACHE_TTL_SECONDS`, `DEFAULT_CONCURRENCY_LEVELS`, `DEFAULT_PROVIDERS`, `SUPPORTED_PROVIDERS`
 
 ### `packages/core/backend/src/market_serving/__init__.py`
 
@@ -3096,6 +3207,39 @@ Generated at: `2026-05-14 14:33:39`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/market_serving/migrations/0003_add_snapshot_quote_columns_and_backfill.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `_hose_tick_size`, `_round_ceiling_price`, `_round_floor_price`, `add_snapshot_quote_columns_if_missing`, `backfill_snapshot_quote_columns`
+
+### `packages/core/backend/src/market_serving/migrations/0004_add_session_facts_series_by_window.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/market_serving/migrations/0005_session_facts_bucket_table.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `backfill_session_facts_buckets`
+
+### `packages/core/backend/src/market_serving/migrations/0006_rename_sessionfactsbucket_indexes.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/market_serving/migrations/0007_sessionfactsbucket_strength_fields.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `_clamp`, `_compute_strength_map`, `_floor_bucket`, `_sigmoid`, `backfill_session_facts_bucket_strengths`
+- Top-level variables:
+  - `_BASELINE_WINDOW`, `_EPS`, `_WHALE_THRESHOLD_VND`, `_WINDOW_TO_BUCKET_MINUTES`
+
 ### `packages/core/backend/src/market_serving/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -3104,6 +3248,7 @@ Generated at: `2026-05-14 14:33:39`
 
 - Classes:
   - `SessionFacts` -> methods: `__str__`
+  - `SessionFactsBucket` -> methods: `__str__`
   - `SymbolSnapshot` -> methods: `__str__`
 
 ### `packages/core/backend/src/market_serving/native_views.py`
@@ -3119,7 +3264,7 @@ Generated at: `2026-05-14 14:33:39`
   - `RealtimeTickerView` -> methods: `get`
   - `RealtimeWhaleFeedView` -> methods: `get`
 - Functions:
-  - `_normalize_trade`
+  - `_normalize_trade`, `_serialize_intraday_tick`
 - Top-level variables:
   - `_INTRADAY_SIDE_MAP`
 
@@ -3139,14 +3284,21 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/market_serving/session_facts_engine.py`
 
 - Functions:
-  - `_clamp`, `_floor_bucket`, `_percentile`, `_sigmoid`, `compute_session_facts`, `compute_session_facts_for_all_active`
+  - `_build_bucket_rows`, `_clamp`, `_compute_session_facts_from_rows`, `_floor_bucket`, `_load_session_rows`, `_percentile`, `_sigmoid`, `compute_session_facts`, `compute_session_facts_for_all_active`
 - Top-level variables:
-  - `_BASELINE_WINDOW`, `_BUCKET_MINUTES`, `_EPS`, `_WHALE_THRESHOLD_VND`, `logger`
+  - `_BASELINE_WINDOW`, `_BUCKET_MINUTES`, `_EPS`, `_SERIES_WINDOWS_BY_LABEL`, `_WHALE_THRESHOLD_VND`, `logger`
 
 ### `packages/core/backend/src/market_serving/tasks.py`
 
 - Top-level variables:
   - `__all__`
+
+### `packages/core/backend/src/market_serving/tests/test_native_views.py`
+
+- Classes:
+  - `RealtimeIntradayViewTestCase` -> methods: `setUp`, `setUpTestData`, `test_realtime_intraday_reads_latest_db_session_without_provider_call`, `test_realtime_intraday_returns_safe_empty_payload_when_db_missing`
+- Top-level variables:
+  - `User`
 
 ### `packages/core/backend/src/market_serving/urls.py`
 
@@ -3158,21 +3310,21 @@ Generated at: `2026-05-14 14:33:39`
 - Classes:
   - `MarketDataThrottle`
   - `SessionFactsCvdView` -> methods: `get`
-  - `SessionFactsDetailView` -> methods: `_compute_on_demand`, `get_object`, `retrieve`
+  - `SessionFactsDetailView` -> methods: `get_object`, `retrieve`
   - `SessionFactsListView` -> methods: `get_queryset`
   - `SymbolSnapshotDetailView` -> methods: `get_object`, `retrieve`
   - `SymbolSnapshotListView` -> methods: `get_queryset`
 - Functions:
-  - `_session_facts_cache_key`, `_snapshot_cache_key`
+  - `_delta_strength_pct_from_facts`, `_get_materialized_session_fact_buckets`, `_get_materialized_session_facts`, `_parse_trade_date_param`, `_session_facts_cache_key`, `_snapshot_cache_key`
 - Top-level variables:
   - `_CVD_SERIES_CACHE_TTL`, `_SESSION_FACTS_TTL`, `_SNAPSHOT_TTL`, `_WINDOW_TO_BUCKET_MINUTES`, `logger`
 
 ### `packages/core/backend/src/market_serving/vnbroker_materializer.py`
 
 - Functions:
-  - `_hose_tick_size`, `_round_ceiling_price`, `_round_floor_price`, `fetch_realtime_tickers_from_vnbroker`, `materialize_symbol_snapshot_from_vnbroker`
+  - `_hose_tick_size`, `_normalize_target_symbols`, `_round_ceiling_price`, `_round_floor_price`, `fetch_realtime_tickers_from_vnbroker`, `materialize_symbol_snapshot_from_vnbroker`
 - Top-level variables:
-  - `logger`
+  - `_SNAPSHOT_COMPARE_FIELDS`, `logger`
 
 ### `packages/core/backend/src/ops_audit/__init__.py`
 
@@ -3288,12 +3440,25 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/service_ops/apps.py`
 
 - Classes:
-  - `ServiceOpsConfig`
+  - `ServiceOpsConfig` -> methods: `ready`
+
+### `packages/core/backend/src/service_ops/dataops_market_data.py`
+
+- Functions:
+  - `_get_recovery_queryset_filter`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
+- Top-level variables:
+  - `DATAOPS_MARKET_DATA_DOMAIN`, `PRIORITY_TIER_TO_QUEUE_TIER`, `QUEUE_TIER_DATASETS`, `QUEUE_TIER_EXECUTION_QUEUES`, `QUEUE_TIER_ORDER`, `RECOVERY_COVERAGE_STATES`, `RECOVERY_FRESHNESS_STATES`
 
 ### `packages/core/backend/src/service_ops/domain_configs/__init__.py`
 
 - Top-level variables:
   - `__all__`
+
+### `packages/core/backend/src/service_ops/domain_configs/market_data.py`
+
+- Classes:
+  - `MarketDataRuntimeConfig` -> methods: `from_dict`, `to_dict`, `validate`
+  - `QueueTierRuntimeConfig` -> methods: `from_dict`, `to_dict`, `validate`
 
 ### `packages/core/backend/src/service_ops/domain_configs/prefetch.py`
 
@@ -3318,8 +3483,27 @@ Generated at: `2026-05-14 14:33:39`
 
 - Classes:
   - `VnbrokerDomainConfig` -> methods: `from_dict`, `to_dict`, `validate`
+  - `VnbrokerTimeoutConfig` -> methods: `from_dict`, `to_dict`, `validate`
+- Functions:
+  - `_is_number`, `_normalize_provider_list`
+- Top-level variables:
+  - `DEFAULT_FALLBACK_PROVIDERS`, `DEFAULT_VNBROKER_PREFERRED_PROVIDER`, `SUPPORTED_VNBROKER_PROVIDERS`
+
+### `packages/core/backend/src/service_ops/matrix_coordinator.py`
+
+- Classes:
+  - `MatrixCoordinator` -> methods: `__init__`, `abort_cycle`, `create_cycle`, `get_cycle_summary`, `mark_cell_done`, `mark_cell_failed`, `mark_cell_working`, `try_claim_cell`
+- Functions:
+  - `generate_cycle_id`, `get_latest_monitor_cycle`, `normalize_provider_list`, `normalize_symbol_group_ids`
+- Top-level variables:
+  - `DEFAULT_MATRIX_PROVIDERS`, `DEFAULT_SYMBOL_GROUPS`, `SYMBOL_GROUP_ID_ALIASES`
 
 ### `packages/core/backend/src/service_ops/migrations/0001_initial.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/service_ops/migrations/0002_add_scrape_matrix_models.py`
 
 - Classes:
   - `Migration`
@@ -3333,10 +3517,17 @@ Generated at: `2026-05-14 14:33:39`
 - Classes:
   - `ConfigChangeAudit` -> methods: `__str__`
   - `OwnershipRecord` -> methods: `__str__`, `get_write_block_reason`, `is_writable`
+  - `ScrapeMatrix` -> methods: `__str__`, `progress_pct`
+  - `ScrapeMatrixCell` -> methods: `__str__`
   - `ServiceConfig` -> methods: `__str__`, `save`
   - `ServiceDefinition` -> methods: `__str__`
   - `ServiceHealth` -> methods: `__str__`
   - `ServiceRunLog` -> methods: `__str__`
+
+### `packages/core/backend/src/service_ops/operator_urls.py`
+
+- Top-level variables:
+  - `app_name`, `urlpatterns`
 
 ### `packages/core/backend/src/service_ops/ownership.py`
 
@@ -3345,17 +3536,40 @@ Generated at: `2026-05-14 14:33:39`
 - Functions:
   - `build_ownership_matrix_from_db`, `get_ownership_matrix`
 - Top-level variables:
-  - `DEFAULT_DOMAIN_OWNERSHIP`, `WRITABLE_MODES`, `_default_matrix`
+  - `DEFAULT_DOMAIN_OWNERSHIP`, `SOC_APPLY_MODES`, `WRITABLE_MODES`, `_default_matrix`
+
+### `packages/core/backend/src/service_ops/provider_catalog.py`
+
+- Functions:
+  - `build_provider_status`, `find_unsupported_provider_ids`, `get_default_provider_ids`, `get_missing_runtime_envs`, `get_supported_provider_ids`, `get_unready_provider_messages`, `list_provider_statuses`, `normalize_provider_id`, `normalize_provider_ids`
+- Top-level variables:
+  - `PROVIDERS_BY_ID`, `PROVIDER_CATALOG`
+
+### `packages/core/backend/src/service_ops/registry.py`
+
+- Functions:
+  - `_build_default_config_payloads`, `_sync_ownership_records`, `bootstrap_service_registry`, `ensure_service_registry`, `get_registered_service`, `get_service_lookup_keys`, `sync_service_registry`
+- Top-level variables:
+  - `CANONICAL_SOC_SERVICES`, `DEFAULT_SERVICE_HEALTH`, `REQUIRED_SERVICE_KEYS`, `SERVICE_KEY_ALIASES`, `SOC_DOMAIN_PRIMARY_SERVICE_KEYS`
 
 ### `packages/core/backend/src/service_ops/serializers.py`
 
 - Classes:
   - `ConfigChangeAuditSerializer`
   - `OwnershipRecordSerializer`
+  - `ScrapeMatrixCellSerializer`
+  - `ScrapeMatrixSerializer`
   - `ServiceConfigSerializer`
   - `ServiceDefinitionSerializer`
   - `ServiceHealthSerializer`
   - `ServiceRunLogSerializer`
+
+### `packages/core/backend/src/service_ops/tasks.py`
+
+- Functions:
+  - `_create_child_run_log`, `_fetch_symbols_from_provider`, `_get_latest_queue_tier_run`, `_get_symbols_for_group`, `_mark_run_log_finished`, `_mark_run_log_running`, `_probe_service_health`, `_queue_tier_due`, `create_signal_job_run_log`, `health_check_all_services`, `run_market_data_queue_tier_scheduler`, `run_scrape_cycle`, `run_signal_session_facts_materialization`, `run_signal_unified_alert_materialization`, `run_signal_whale_materialization`, `run_signals_detection_workflow`, `scrape_cell_task`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/service_ops/tests/__init__.py`
 
@@ -3364,57 +3578,81 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
 
 - Classes:
-  - `ConfigApplyValidationTestCase` -> methods: `setUp`, `test_apply_invalid_config_returns_error`, `test_apply_non_admin_returns_403`, `test_apply_unauthenticated_returns_401`, `test_error_response_has_proper_envelope`
-  - `OwnershipEnforcementTestCase` -> methods: `setUp`, `test_bridge_write_apply_blocked`, `test_native_write_service_allows_apply`, `test_read_only_get_returns_success`
-  - `PrefetchConfigApiTestCase` -> methods: `setUp`, `test_apply_prefetch_config`, `test_get_prefetch_cache_status`, `test_get_prefetch_config`, `test_get_prefetch_profiles`, `test_purge_prefetch_cache`
-  - `ScreenerConfigApiTestCase` -> methods: `setUp`, `test_apply_screener_config`, `test_get_screener_alerts`, `test_get_screener_config`, `test_get_screener_results`, `test_get_screener_rules`, `test_manual_scan`
-  - `VnbrokerConfigApiTestCase` -> methods: `setUp`, `test_apply_config_creates_audit_log`, `test_apply_vnbroker_config`, `test_get_vnbroker_config`, `test_get_vnbroker_health`, `test_get_vnbroker_metrics`, `test_get_vnbroker_providers`
+  - `DataOpsDomainApiTestCase` -> methods: `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`
+  - `MatrixDomainApiTestCase` -> methods: `test_matrix_providers_reflect_active_cycle`, `test_start_monitor_and_abort_matrix_cycle`
+  - `PrefetchDomainApiTestCase` -> methods: `test_apply_prefetch_config_updates_schedule_and_universe`, `test_prefetch_apply_alias_and_ownership_endpoint_match_contract`, `test_prefetch_warm_now_queues_run_log`, `test_profiles_cache_and_purge_endpoints_return_contract`
+  - `RegistryBootstrapTestCase` -> methods: `test_ensure_service_registry_recreates_canonical_rows`
+  - `ScreenerDomainApiTestCase` -> methods: `setUpTestData`, `test_manual_scan_creates_dispatch_run_log`, `test_results_and_history_use_runtime_signal_alerts`, `test_rules_endpoint_uses_current_screener_config`, `test_rules_run_alias_queues_manual_scan`, `test_screener_ownership_endpoint_returns_native_write_status`
+  - `SOCAdminApiTestCase` -> methods: `setUp`, `setUpTestData`
+  - `VnbrokerDomainApiTestCase` -> methods: `test_get_vnbroker_config_returns_seeded_payload`, `test_post_vnbroker_config_creates_current_config_and_audit`, `test_vnbroker_apply_alias_and_ownership_endpoint_match_contract`, `test_vnbroker_apply_audit_captures_before_and_after_snapshots`, `test_vnbroker_preview_returns_validation_envelope`
 - Top-level variables:
   - `User`
 
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_integration.py`
 
 - Classes:
-  - `ConfigApplyEndToEndTestCase` -> methods: `setUp`, `test_apply_config_workflow`, `test_audit_log_contains_before_after`, `test_version_increments_on_apply`
-  - `ErrorHandlingIntegrationTestCase` -> methods: `setUp`, `test_all_errors_have_proper_envelope`, `test_invalid_json_returns_400`, `test_missing_config_field_returns_error`, `test_nonexistent_service_returns_404`
-  - `MultiDomainWorkflowTestCase` -> methods: `setUp`, `test_apply_bridge_write_fails`, `test_apply_native_write_succeeds`, `test_get_all_services_succeeds`, `test_get_detail_per_service`
-  - `PaginationIntegrationTestCase` -> methods: `setUp`, `test_audit_pagination`, `test_history_pagination`, `test_overview_list_pagination`
+  - `ConfigApplyEndToEndTestCase` -> methods: `test_apply_vnbroker_config_keeps_single_current_version`, `test_apply_vnbroker_config_workflow_updates_config_history_and_audit`
+  - `ErrorHandlingIntegrationTestCase` -> methods: `test_invalid_json_returns_400`, `test_nonexistent_service_returns_404_with_standard_envelope`, `test_validation_error_uses_standard_error_envelope`
+  - `MultiDomainWorkflowTestCase` -> methods: `test_bridge_write_domain_remains_forbidden`, `test_native_write_domains_apply_through_alias_routes`, `test_services_list_and_detail_routes_use_primary_service_keys`
+  - `PaginationIntegrationTestCase` -> methods: `setUpTestData`, `test_history_and_audit_routes_are_paginated`, `test_service_list_pagination`
+  - `SOCIntegrationBaseTestCase` -> methods: `setUp`, `setUpTestData`
 - Top-level variables:
   - `User`
 
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_overview.py`
 
 - Classes:
-  - `SOCDetailEndpointsTestCase` -> methods: `setUp`, `test_detail_endpoint_includes_current_config`, `test_detail_endpoint_includes_ownership`
-  - `SOCOverviewApiTestCase` -> methods: `setUp`, `test_error_response_envelope`, `test_overview_audit_endpoint`, `test_overview_config_endpoint`, `test_overview_detail_endpoint`, `test_overview_detail_not_found`, `test_overview_health_endpoint`, `test_overview_history_endpoint`, `test_overview_list_endpoint`, `test_overview_list_has_pagination`, `test_overview_requires_admin_permissions`, `test_overview_requires_authentication`
-  - `SOCVersionHistoryTestCase` -> methods: `setUp`, `test_history_ordered_by_version`, `test_history_shows_all_versions`
+  - `OverviewApiBaseTestCase` -> methods: `setUp`, `setUpTestData`
+  - `OverviewAuthContractTestCase` -> methods: `test_non_admin_requests_are_forbidden_with_standard_error_envelope`, `test_unauthenticated_requests_use_standard_error_envelope`
+  - `OverviewContractTestCase` -> methods: `test_current_config_endpoint_returns_current_config`, `test_global_run_logs_and_change_audit_endpoints_are_paginated`, `test_health_status_endpoint_is_not_shadowed_by_service_routes`, `test_overview_summary_returns_health_breakdown`, `test_service_audit_and_history_endpoints_are_paginated`, `test_service_detail_includes_current_config_health_and_ownership`, `test_service_health_check_trigger_creates_queued_run_log`, `test_service_health_endpoint_returns_unknown_when_missing`, `test_service_not_found_returns_standard_error_envelope`, `test_services_list_returns_paginated_services`
 - Top-level variables:
   - `User`
 
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_signals.py`
 
 - Classes:
-  - `SignalsApiReadOnlyTestCase` -> methods: `setUp`, `test_get_dark_pool_detection_succeeds`, `test_get_screener_detection_succeeds`, `test_get_signal_config_succeeds`, `test_get_signal_metrics_succeeds`, `test_get_signal_ownership_succeeds`, `test_get_signal_retention_succeeds`, `test_get_whale_detection_succeeds`, `test_patch_signal_config_returns_403`, `test_post_signal_config_returns_403`
-  - `SignalsBridgeWriteEnforcementTestCase` -> methods: `setUp`, `test_all_post_endpoints_return_403`, `test_error_message_indicates_bridge_write`
-  - `SignalsPutDeleteBlockedTestCase` -> methods: `setUp`, `test_delete_signals_config_blocked`, `test_put_signals_config_blocked`
-  - `SignalsReadOnlyValidationTestCase` -> methods: `setUp`, `test_signals_get_includes_config_structure`, `test_signals_ownership_shows_write_surface`
-  - `SignalsWithoutAuthenticationTestCase` -> methods: `setUp`, `test_non_admin_get_returns_403`, `test_unauthenticated_get_returns_401`, `test_unauthenticated_post_returns_401`
+  - `SignalsApiBaseTestCase` -> methods: `setUp`, `setUpTestData`
+  - `SignalsApiContractTestCase` -> methods: `test_apply_alias_remains_blocked_for_bridge_write_even_with_db_override`, `test_direct_apply_methods_on_config_route_are_blocked`, `test_get_signal_config_returns_bridge_write_metadata`, `test_preview_returns_validation_envelope_without_apply_permission`, `test_retention_materialization_universe_and_job_routes_return_contract`, `test_runtime_read_endpoints_return_current_payloads`, `test_summary_aggregates_alerts_and_events_from_current_session`
+  - `SignalsAuthenticationTestCase` -> methods: `setUp`, `test_non_admin_user_is_forbidden`, `test_unauthenticated_requests_return_401`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`
+
+- Classes:
+  - `DomainConfigValidationTestCase` -> methods: `test_default_domain_configs_validate_cleanly`, `test_market_data_runtime_config_from_dict_accepts_partial_queue_overrides`, `test_market_data_runtime_config_validation_rejects_invalid_queue_settings`, `test_prefetch_validation_rejects_invalid_profile_and_intervals`, `test_screener_validation_requires_valid_rules_and_prefix`, `test_signals_validation_rejects_bad_thresholds`, `test_vnbroker_from_dict_builds_nested_timeout_schema_and_accepts_legacy_aliases`, `test_vnbroker_timeout_validation_rejects_out_of_range_values`
+
+### `packages/core/backend/src/service_ops/tests/test_soc_matrix.py`
+
+- Classes:
+  - `MatrixApiBaseTestCase` -> methods: `setUp`, `setUpTestData`
+  - `MatrixCoordinatorAtomicClaimTestCase` -> methods: `_claim_cell`, `test_try_claim_cell_allows_only_one_concurrent_winner`
+  - `MatrixCoordinatorTestCase` -> methods: `test_mark_cell_done_skips_other_cells_in_same_row`, `test_try_claim_cell_rejects_second_claim_after_first_claim`
+  - `MatrixProviderCatalogApiTestCase` -> methods: `test_monitor_returns_idle_when_only_terminal_cycle_exists`, `test_operator_canonical_provider_endpoint_matches_soc_alias`, `test_operator_canonical_start_cycle_dispatches_same_matrix_workflow`, `test_provider_gate_still_applies_when_active_cycle_exists`, `test_providers_endpoint_exposes_kbs_vci_dnse_catalog`, `test_start_cycle_allows_vci_and_kbs`, `test_start_cycle_dispatches_scrape_workflow`, `test_start_cycle_rejects_removed_or_unready_providers`
 - Top-level variables:
   - `User`
 
 ### `packages/core/backend/src/service_ops/tests/test_soc_models.py`
 
 - Classes:
-  - `ConfigChangeAuditModelTestCase` -> methods: `setUp`, `test_config_change_audit_creation`, `test_config_change_audit_diff_calculation`
-  - `ConfigVersioningIntegrationTestCase` -> methods: `setUp`, `test_audit_log_on_config_change`, `test_config_version_history`
-  - `OwnershipIntegrationTestCase` -> methods: `setUp`, `test_bridge_write_service_disallows_apply`, `test_native_write_service_allows_apply`
-  - `OwnershipRecordModelTestCase` -> methods: `test_ownership_record_creation`, `test_ownership_record_modes`
-  - `ServiceConfigModelTestCase` -> methods: `setUp`, `test_service_config_applied_timestamp`, `test_service_config_auto_versioning`, `test_service_config_creation`
-  - `ServiceDefinitionModelTestCase` -> methods: `setUp`, `test_config_schema_validation`, `test_service_creation`, `test_service_str_representation`
-  - `ServiceHealthModelTestCase` -> methods: `setUp`, `test_service_health_creation`, `test_service_health_status_choices`
-  - `ServiceRunLogModelTestCase` -> methods: `test_service_run_log_creation`, `test_service_run_log_failed_status`
-- Top-level variables:
-  - `User`
+  - `ConfigChangeAuditModelTestCase` -> methods: `setUp`, `test_config_change_audit_persists_before_and_after_snapshots`
+  - `OwnershipRecordModelTestCase` -> methods: `test_ownership_record_writability_and_block_reason`
+  - `ScrapeMatrixModelTestCase` -> methods: `test_scrape_matrix_progress_pct_and_cell_string`
+  - `ServiceConfigModelTestCase` -> methods: `setUp`, `test_applied_at_is_set_on_create`, `test_new_current_config_marks_previous_config_inactive`
+  - `ServiceDefinitionModelTestCase` -> methods: `test_service_definition_creation_and_string`
+  - `ServiceHealthModelTestCase` -> methods: `setUp`, `test_service_health_creation_and_detail`
+  - `ServiceRunLogModelTestCase` -> methods: `setUp`, `test_service_run_log_tracks_output_and_failure_detail`
+
+### `packages/core/backend/src/service_ops/tests/test_soc_ownership.py`
+
+- Classes:
+  - `ServiceOwnershipMatrixTestCase` -> methods: `test_build_ownership_matrix_from_db_allows_native_write_override`, `test_build_ownership_matrix_from_db_preserves_bridge_write_block`, `test_default_matrix_allows_native_write_and_blocks_bridge_write`, `test_to_response_dict_exposes_writer_and_locked_fields`, `test_unknown_domain_returns_explicit_block_reason`
+
+### `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+
+- Classes:
+  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
+  - `VnbrokerAdapterTaskBridgeTestCase` -> methods: `test_fetch_daily_history_uses_requested_source_quote_class`, `test_fetch_listing_symbols_uses_requested_source_listing_adapter`, `test_fetch_price_board_snapshot_passes_explicit_source`, `test_fetch_realtime_price_uses_requested_source_quote_class`, `test_fetch_symbol_group_members_uses_requested_source_group`
 
 ### `packages/core/backend/src/service_ops/urls.py`
 
@@ -3428,7 +3666,29 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/service_ops/views/base.py`
 
 - Classes:
-  - `SOCBaseView` -> methods: `error_response`, `get_paginated_response`, `get_request_id`, `paginate_queryset`
+  - `SOCBaseView` -> methods: `_stringify_error_detail`, `error_response`, `get_paginated_response`, `get_request_id`, `handle_exception`, `paginate_queryset`
+  - `SOCRegistryBootstrapMixin` -> methods: `initial`
+
+### `packages/core/backend/src/service_ops/views/dataops.py`
+
+- Classes:
+  - `DataOpsQueueTiersView` -> methods: `get`
+  - `DataOpsRuntimeConfigView` -> methods: `get`, `post`
+- Functions:
+  - `_build_market_data_ownership_payload`
+
+### `packages/core/backend/src/service_ops/views/matrix.py`
+
+- Classes:
+  - `MatrixCellListView` -> methods: `get`
+  - `MatrixCycleAbortView` -> methods: `post`
+  - `MatrixCycleDetailView` -> methods: `get`
+  - `MatrixCycleListView` -> methods: `get`
+  - `MatrixCycleStartView` -> methods: `post`
+  - `MatrixMonitorView` -> methods: `get`
+  - `MatrixProvidersView` -> methods: `get`
+- Functions:
+  - `_serialize_cells_summary`, `_serialize_cycle_detail`
 
 ### `packages/core/backend/src/service_ops/views/mixins.py`
 
@@ -3438,28 +3698,35 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/service_ops/views/overview.py`
 
 - Classes:
+  - `ChangeAuditListView` -> methods: `get`
   - `HealthStatusView` -> methods: `get`
+  - `OverviewSummaryView` -> methods: `get`
+  - `RunLogListView` -> methods: `get`
+  - `ServiceAuditView` -> methods: `get`
   - `ServiceConfigHistoryView` -> methods: `get`
-  - `ServiceDetailView`
-  - `ServiceListView`
+  - `ServiceCurrentConfigView` -> methods: `get`
+  - `ServiceDetailView` -> methods: `get`
+  - `ServiceHealthCheckTriggerView` -> methods: `post`
+  - `ServiceHealthView` -> methods: `get`
+  - `ServiceListView` -> methods: `get`
   - `ServiceOwnershipView` -> methods: `get`
   - `ServiceRunLogsView` -> methods: `get`
-  - `SOCHealthSummaryView` -> methods: `get`
-  - `SOCOverviewView` -> methods: `get`
-  - `SOCOwnershipMatrixView` -> methods: `get`
-  - `SOCRecentRunsView` -> methods: `get`
-  - `SOCServiceDetailView` -> methods: `get`
-  - `SOCServiceListView` -> methods: `get`
+- Functions:
+  - `_get_current_config`, `_get_ownership_payload`, `_get_service_or_error`, `_serialize_health`, `_serialize_service_detail`
 
 ### `packages/core/backend/src/service_ops/views/prefetch.py`
 
 - Classes:
   - `PrefetchCacheStatusView` -> methods: `get`
   - `PrefetchConfigView` -> methods: `get`, `post`
+  - `PrefetchOwnershipView` -> methods: `get`
   - `PrefetchProfilesView` -> methods: `get`
   - `PrefetchPurgeCacheView` -> methods: `post`
   - `PrefetchTaskScheduleView` -> methods: `get`
   - `PrefetchUniverseGroupsView` -> methods: `get`
+  - `PrefetchWarmNowView` -> methods: `post`
+- Functions:
+  - `_build_prefetch_ownership_payload`, `_get_prefetch_config`
 
 ### `packages/core/backend/src/service_ops/views/screener.py`
 
@@ -3467,24 +3734,39 @@ Generated at: `2026-05-14 14:33:39`
   - `ScreenerAlertHistoryView` -> methods: `get`
   - `ScreenerConfigView` -> methods: `get`, `post`
   - `ScreenerManualScanView` -> methods: `post`
+  - `ScreenerOwnershipView` -> methods: `get`
   - `ScreenerResultsView` -> methods: `get`
+  - `ScreenerRulesRunView`
   - `ScreenerRulesView` -> methods: `get`, `post`
+- Functions:
+  - `_build_screener_ownership_payload`, `_get_recent_signal_alerts`, `_get_screener_config`, `_serialize_signal_alert`
 
 ### `packages/core/backend/src/service_ops/views/signals.py`
 
 - Classes:
+  - `SignalsConfigApplyView` -> methods: `post`
   - `SignalsConfigPreviewView` -> methods: `post`
   - `SignalsConfigView` -> methods: `get`
   - `SignalsDarkPoolRecentView` -> methods: `get`
   - `SignalsDarkPoolView` -> methods: `get`
+  - `SignalsJobRunView` -> methods: `post`
+  - `SignalsJobStatusView` -> methods: `get`
+  - `SignalsMaterializationPreviewView` -> methods: `post`
+  - `SignalsMaterializationView` -> methods: `get`
   - `SignalsOwnershipView` -> methods: `get`
   - `SignalsPerformanceMetricsView` -> methods: `get`
   - `SignalsRetentionPolicyView` -> methods: `get`
+  - `SignalsRetentionPreviewView` -> methods: `post`
   - `SignalsScreenerRecentView` -> methods: `get`
   - `SignalsScreenerView` -> methods: `get`
+  - `SignalsSummaryView` -> methods: `get`
+  - `SignalsUniverseUpdateView` -> methods: `post`
+  - `SignalsUniverseView` -> methods: `get`
   - `SignalsWhaleRecentView` -> methods: `get`
   - `SignalsWhaleTestView` -> methods: `post`
   - `SignalsWhaleView` -> methods: `get`
+- Functions:
+  - `_build_bridge_write_denied_response`, `_build_materialization_execution_plan`, `_build_signals_ownership_payload`, `_compute_avg_signal_latency_ms`, `_get_latest_signal_job_run`, `_get_signals_domain_config`, `_latest_signal_session_date`, `_materializer_status`, `_serialize_recent_alert`
 
 ### `packages/core/backend/src/service_ops/views/vnbroker.py`
 
@@ -3493,8 +3775,13 @@ Generated at: `2026-05-14 14:33:39`
   - `VnbrokerConfigPreviewView` -> methods: `post`
   - `VnbrokerConfigView` -> methods: `get`, `post`
   - `VnbrokerHealthView` -> methods: `get`
+  - `VnbrokerOwnershipView` -> methods: `get`
   - `VnbrokerProvidersView` -> methods: `get`
   - `VnbrokerTestConnectionView` -> methods: `post`
+- Functions:
+  - `_build_vnbroker_ownership_payload`, `_get_active_vnbroker_provider_ids`, `_sanitize_vnbroker_config_payload`
+- Top-level variables:
+  - `DEFAULT_VNBROKER_FALLBACK_PROVIDERS`, `DEFAULT_VNBROKER_PRIMARY_PROVIDER`
 
 ### `packages/core/backend/src/signal_intelligence/__init__.py`
 
@@ -3537,7 +3824,7 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/signal_intelligence/materializers.py`
 
 - Functions:
-  - `_deterministic_uuid`, `_fetch_from_legacy`, `_get_legacy_db_url`, `_map_alert_type`, `_map_direction`, `_map_severity`, `_native_whale_detect`, `_try_legacy_whale_aggregate`, `materialize_unified_alerts`, `materialize_whale_feed_aggregate`
+  - `_map_alert_type`, `_map_direction`, `_map_severity`, `_native_whale_detect`, `materialize_unified_alerts`, `materialize_whale_feed_aggregate`
 - Top-level variables:
   - `_MAX_ALERTS_PER_RUN`, `_WHALE_VALUE_MAX_VND`, `_WHALE_VALUE_MIN_VND`, `_WHALE_VOLUME_THRESHOLD`, `logger`
 
@@ -3591,6 +3878,12 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/signal_intelligence/tests/__init__.py`
 
 - No parseable top-level symbols found
+
+### `packages/core/backend/src/signal_intelligence/tests/test_materializers.py`
+
+- Classes:
+  - `UnifiedAlertMaterializerTests` -> methods: `test_materialize_unified_alerts_creates_dark_flow_alert_from_order_flow_event`, `test_materialize_unified_alerts_is_idempotent_for_dark_flow_event`
+  - `WhaleMaterializerTests` -> methods: `test_materialize_whale_feed_aggregate_is_idempotent_for_existing_event`, `test_materialize_whale_feed_aggregate_skips_incomplete_native_facts`, `test_materialize_whale_feed_aggregate_uses_order_flow_facts_only`
 
 ### `packages/core/backend/src/signal_intelligence/tests/test_websocket_consumer.py`
 
@@ -3693,7 +3986,7 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/src/user_workspace/apps.py`
 
 - Classes:
-  - `UserWorkspaceConfig`
+  - `UserWorkspaceConfig` -> methods: `ready`
 
 ### `packages/core/backend/src/user_workspace/dnse_adapter.py`
 
@@ -3774,6 +4067,13 @@ Generated at: `2026-05-14 14:33:39`
 - Functions:
   - `backfill_subaccount_tenant`, `backfill_transaction_tenant`, `reverse_backfill`
 
+### `packages/core/backend/src/user_workspace/migrations/0009_trackedsymbol_and_price_alert_cooldown.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `backfill_tracked_symbols_from_default_watchlists`, `noop_reverse`
+
 ### `packages/core/backend/src/user_workspace/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -3786,6 +4086,7 @@ Generated at: `2026-05-14 14:33:39`
   - `Portfolio` -> methods: `__str__`
   - `PriceAlert` -> methods: `__str__`
   - `SubAccount` -> methods: `__str__`
+  - `TrackedSymbol` -> methods: `__str__`
   - `Transaction` -> methods: `__str__`
   - `Watchlist` -> methods: `__str__`
   - `WatchlistItem` -> methods: `__str__`
@@ -3822,7 +4123,7 @@ Generated at: `2026-05-14 14:33:39`
   - `PortfolioWhaleAnalyticsView` -> methods: `get`
   - `PortfolioWhaleBacktestStatsView` -> methods: `get`
 - Functions:
-  - `_compute_holdings`, `_get_user_portfolio`
+  - `_compute_holdings`, `_get_user_portfolio`, `_unwrap_django_request`
 
 ### `packages/core/backend/src/user_workspace/serializers.py`
 
@@ -3833,6 +4134,11 @@ Generated at: `2026-05-14 14:33:39`
   - `TransactionSerializer`
   - `WatchlistItemSerializer`
   - `WatchlistSerializer`
+
+### `packages/core/backend/src/user_workspace/signals.py`
+
+- Functions:
+  - `capture_previous_transaction_symbol`, `sync_price_alert_registry_on_delete`, `sync_price_alert_registry_on_save`, `sync_tracked_symbol_registry_on_delete`, `sync_tracked_symbol_registry_on_save`, `sync_transaction_registry_on_delete`, `sync_transaction_registry_on_save`, `sync_watchlist_item_registry_on_delete`, `sync_watchlist_item_registry_on_save`
 
 ### `packages/core/backend/src/user_workspace/tasks.py`
 
@@ -3973,9 +4279,9 @@ Generated at: `2026-05-14 14:33:39`
   - `AdminOpsVnbrokerConfigCurrentView` -> methods: `get`, `patch`
   - `AdminOpsVnbrokerConfigResetView` -> methods: `post`
 - Functions:
-  - `_append_vnbroker_changelog`, `_build_config_changes`, `_build_market_observability_snapshot`, `_build_prefetch_health_snapshot`, `_build_prefetch_runtime_settings`, `_build_prefetch_time_policy`, `_build_signal_domain_summary`, `_build_signal_freshness_snapshot`, `_build_signal_materialization_preview_contract`, `_build_signal_preview_contract`, `_build_signal_retention_preview`, `_build_signal_summary_snapshot`, `_build_signal_universe_snapshot`, `_build_signal_whale_governance_snapshot`, `_build_stats_snapshot`, `_calc_p95`, `_coerce_signal_retention_policy`, `_coerce_signal_services_config`, `_coerce_signal_universe_policy`, `_deep_merge_dict`, `_derive_ai_provider`, `_get_celery_active_queues`, `_get_or_create_active_ai_settings`, `_get_or_create_active_vnbroker_config`, `_is_celery_alive`, `_latest_signal_run`, `_legacy_admin_bridge_enabled`, `_legacy_admin_bridge_headers`, `_legacy_admin_bridge_response`, `_legacy_backend_url`, `_normalize_signal_recent_events`, `_normalize_symbol_list`, `_normalized_bridge_payload`, `_now_iso`, `_parse_positive_int`, `_parse_signal_materialization_request`, `_probe_cache_health`, `_record_audit_event`, `_serialize_signal_run`, `_serialize_system_ai_settings`, `_serialize_vnbroker_rulebook`, `_serialize_vnbroker_settings`, `_signal_freshness_state`, `_signal_ownership_snapshot`, `_signal_portfolio_symbols`, `_signal_retention_policy`, `_signal_run_queryset`, `_signal_services_config`, `_signal_universe_policy`, `_signal_watchlist_symbols`, `_signal_write_guard`, `_source_counts`, `_validate_governance_thresholds`, `_validate_vnbroker_payload`, `_vnbroker_extra`
+  - `_append_vnbroker_changelog`, `_build_config_changes`, `_build_market_observability_snapshot`, `_build_prefetch_health_snapshot`, `_build_prefetch_runtime_settings`, `_build_prefetch_time_policy`, `_build_signal_domain_summary`, `_build_signal_freshness_snapshot`, `_build_signal_materialization_preview_contract`, `_build_signal_preview_contract`, `_build_signal_retention_preview`, `_build_signal_summary_snapshot`, `_build_signal_universe_snapshot`, `_build_signal_whale_governance_snapshot`, `_build_stats_snapshot`, `_calc_p95`, `_coerce_signal_retention_policy`, `_coerce_signal_services_config`, `_coerce_signal_universe_policy`, `_deep_merge_dict`, `_derive_ai_provider`, `_get_celery_active_queues`, `_get_or_create_active_ai_settings`, `_get_or_create_active_vnbroker_config`, `_is_celery_alive`, `_latest_signal_run`, `_legacy_admin_bridge_enabled`, `_legacy_admin_bridge_headers`, `_legacy_admin_bridge_response`, `_legacy_backend_url`, `_normalize_signal_recent_events`, `_normalize_symbol_list`, `_normalized_bridge_payload`, `_now_iso`, `_parse_positive_int`, `_parse_signal_materialization_request`, `_probe_cache_health`, `_record_audit_event`, `_run_vnbroker_benchmark_background`, `_serialize_signal_run`, `_serialize_system_ai_settings`, `_serialize_vnbroker_rulebook`, `_serialize_vnbroker_settings`, `_signal_freshness_state`, `_signal_ownership_snapshot`, `_signal_portfolio_symbols`, `_signal_retention_policy`, `_signal_run_queryset`, `_signal_services_config`, `_signal_universe_policy`, `_signal_watchlist_symbols`, `_signal_write_guard`, `_source_counts`, `_validate_governance_thresholds`, `_validate_vnbroker_payload`, `_vnbroker_extra`
 - Top-level variables:
-  - `DEFAULT_GOVERNANCE_DELTA_RULEBOOK`, `DEFAULT_GOVERNANCE_DELTA_THRESHOLDS`, `DEFAULT_PREFETCH_RUNTIME_RULEBOOK`, `DEFAULT_PREFETCH_RUNTIME_SETTINGS`, `DEFAULT_PREFETCH_TIME_POLICY`, `DEFAULT_PREFETCH_TIME_POLICY_RULEBOOK`, `DEFAULT_SIGNAL_OWNERSHIP`, `DEFAULT_SIGNAL_RETENTION_POLICY`, `DEFAULT_SIGNAL_SERVICES_CONFIG`, `DEFAULT_SIGNAL_UNIVERSE_POLICY`, `DEFAULT_VNBROKER_EXTRA`, `DEFAULT_VNBROKER_TIMEOUT_CONFIG`, `LEGACY_ADMIN_BRIDGE_TIMEOUT`, `LEGACY_BRIDGE_REQUIRED_MESSAGE`, `SIGNAL_CONFIG_WRITE_BLOCK_MESSAGE`, `SIGNAL_JOB_WRITE_BLOCK_MESSAGE`, `VNBROKER_ALLOWED_SOURCES`, `logger`
+  - `DEFAULT_GOVERNANCE_DELTA_RULEBOOK`, `DEFAULT_GOVERNANCE_DELTA_THRESHOLDS`, `DEFAULT_PREFETCH_RUNTIME_RULEBOOK`, `DEFAULT_PREFETCH_RUNTIME_SETTINGS`, `DEFAULT_PREFETCH_TIME_POLICY`, `DEFAULT_PREFETCH_TIME_POLICY_RULEBOOK`, `DEFAULT_SIGNAL_OWNERSHIP`, `DEFAULT_SIGNAL_RETENTION_POLICY`, `DEFAULT_SIGNAL_SERVICES_CONFIG`, `DEFAULT_SIGNAL_UNIVERSE_POLICY`, `DEFAULT_VNBROKER_EXTRA`, `DEFAULT_VNBROKER_TIMEOUT_CONFIG`, `LEGACY_ADMIN_BRIDGE_TIMEOUT`, `SIGNAL_CONFIG_WRITE_BLOCK_MESSAGE`, `SIGNAL_JOB_WRITE_BLOCK_MESSAGE`, `VNBROKER_ALLOWED_SOURCES`, `_BENCHMARK_RUNNING_MAX_SECONDS`, `logger`
 
 ### `packages/core/backend/src/vninvest_core/contracts/market/__init__.py`
 
@@ -4213,14 +4519,14 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/tests/test_admin_ops_contract_api.py`
 
 - Classes:
-  - `AdminOpsContractApiTests` -> methods: `setUp`, `test_admin_ops_routes_resolve_to_native_contract_views`, `test_bridge_backed_admin_ops_routes_delegate_to_legacy_backend`, `test_bridge_backed_admin_ops_routes_fail_soft_without_bridge`, `test_prefetch_warm_async_dispatches_native_ingest_task`, `test_prefetch_warm_sync_returns_native_payload`, `test_runtime_kpi_aggregates_request_trace_snapshot`, `test_stats_returns_core_snapshot_shape`, `test_system_ai_settings_updates_governance_thresholds_and_blocks_prefetch_writers`, `test_vnbroker_config_update_reset_and_changelog_are_native`
+  - `AdminOpsContractApiTests` -> methods: `setUp`, `test_admin_ops_routes_resolve_to_native_contract_views`, `test_benchmark_latest_returns_cached_native_report`, `test_benchmark_latest_returns_native_empty_state_without_report`, `test_benchmark_routes_remain_native_even_when_legacy_bridge_is_configured`, `test_benchmark_run_dispatches_native_task`, `test_bridge_backed_admin_ops_routes_delegate_to_legacy_backend`, `test_market_groups_sync_remains_native_without_bridge`, `test_prefetch_warm_async_dispatches_native_ingest_task`, `test_prefetch_warm_sync_returns_native_payload`, `test_runtime_kpi_aggregates_request_trace_snapshot`, `test_stats_returns_core_snapshot_shape`, `test_system_ai_settings_updates_governance_thresholds_and_blocks_prefetch_writers`, `test_vnbroker_config_update_reset_and_changelog_are_native`
 - Top-level variables:
   - `_src_dir`
 
 ### `packages/core/backend/tests/test_admin_ops_signals_contract_api.py`
 
 - Classes:
-  - `AdminOpsSignalsContractApiTests` -> methods: `setUp`, `test_signal_bridge_delegates_legacy_owned_config_and_jobs`, `test_signal_events_jobs_and_guarded_writes`, `test_signal_preview_routes_return_native_contract_payloads`, `test_signal_routes_resolve_to_native_contract_views`, `test_signal_summary_and_config_return_native_payload`, `test_signal_summary_reports_bridge_write_ownership_when_legacy_bridge_enabled`
+  - `AdminOpsSignalsContractApiTests` -> methods: `setUp`, `test_signal_events_jobs_and_guarded_writes`, `test_signal_preview_routes_return_native_contract_payloads`, `test_signal_routes_resolve_to_native_contract_views`, `test_signal_routes_stay_native_when_legacy_bridge_enabled`, `test_signal_summary_and_config_return_native_payload`, `test_signal_summary_keeps_native_ownership_when_legacy_bridge_enabled`
 - Top-level variables:
   - `_src_dir`
 
@@ -4245,6 +4551,13 @@ Generated at: `2026-05-14 14:33:39`
   - `_ScanCacheClient` -> methods: `__init__`, `scan_iter`
   - `CommercialTaskScheduleTests` -> methods: `test_commercial_tasks_route_to_default_queue`
   - `CommercialTasksTests` -> methods: `setUp`, `test_check_overdue_invoices_marks_past_due_and_suspends_tenant`, `test_flush_quota_counters_writes_db_and_is_idempotent`, `test_generate_monthly_invoices_creates_rows_for_active_subscriptions`, `test_send_quota_warning_deduplicates_per_day`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_global_symbol_registry_workspace_integration.py`
+
+- Classes:
+  - `GlobalSymbolRegistryWorkspaceIntegrationTests` -> methods: `setUp`, `test_legacy_watchlist_item_paths_sync_registry`, `test_workspace_transaction_symbol_change_and_delete_resync_registry`, `test_workspace_watchlist_item_create_and_delete_sync_registry`
 - Top-level variables:
   - `_src_dir`
 
@@ -4328,7 +4641,7 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/tests/test_public_bootstrap_routes.py`
 
 - Classes:
-  - `NativePublicBootstrapRouteTests` -> methods: `setUp`, `test_public_legal_pages_route_resolves_and_returns_results_envelope`, `test_tracked_symbols_route_bridges_to_legacy_when_enabled`, `test_tracked_symbols_route_resolves_and_returns_empty_list`
+  - `NativePublicBootstrapRouteTests` -> methods: `setUp`, `test_public_legal_pages_route_resolves_and_returns_results_envelope`, `test_tracked_symbols_route_remains_native_when_legacy_url_configured`, `test_tracked_symbols_route_resolves_and_returns_empty_list`
 - Top-level variables:
   - `_src_dir`
 
@@ -4371,10 +4684,9 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/tests/test_saas14_materializers.py`
 
 - Classes:
-  - `TestBackfillNoLegacyUrl` -> methods: `test_no_legacy_url_returns_skipped`
   - `TestCursorPaginationClasses` -> methods: `test_alert_cursor_pagination_ordering`, `test_audit_cursor_pagination_page_size`, `test_core_cursor_pagination_defaults`
   - `TestMaterializePreOpenSnapshots` -> methods: `setUp`, `test_pre_open_snapshot_materializer_populates_core_snapshot`
-  - `TestMaterializeSessionFactsNoLegacyUrl` -> methods: `test_no_legacy_url_returns_skipped`
+  - `TestMaterializeSessionFactsNative` -> methods: `test_materializer_persists_bucket_strengths_for_requested_symbol`, `test_no_whale_data_returns_native_empty_result`
   - `TestMaterializeSymbolSnapshotNoLegacyUrl` -> methods: `test_no_legacy_url_returns_skipped`
   - `TestMaterializeUnifiedAlertsDedup` -> methods: `test_duplicate_event_rows_are_deduped_before_upsert`
 
@@ -4387,14 +4699,16 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/tests/test_session_facts_api.py`
 
 - Classes:
-  - `SessionFactsDetailHappyPathTests` -> methods: `setUp`, `test_delta_strength_pct_computed_correctly`, `test_delta_strength_pct_zero_when_no_volume`, `test_detail_has_required_fields`, `test_detail_returns_200`, `test_detail_source_header_present`, `test_detail_symbol_uppercased`
+  - `SessionFactsCvdApiTests` -> methods: `setUp`, `test_cvd_400_when_trade_date_is_invalid`, `test_cvd_404_when_no_materialized_data_exists`, `test_cvd_404_when_requested_trade_date_is_missing`, `test_cvd_404_when_requested_window_is_not_materialized`, `test_cvd_returns_exact_requested_trade_date`, `test_cvd_returns_materialized_series`
+  - `SessionFactsDetailHappyPathTests` -> methods: `setUp`, `test_delta_strength_pct_computed_correctly`, `test_delta_strength_pct_zero_when_no_volume`, `test_detail_has_required_fields`, `test_detail_returns_200`, `test_detail_returns_exact_requested_trade_date`, `test_detail_source_header_present`, `test_detail_symbol_uppercased`
   - `SessionFactsListHappyPathTests` -> methods: `setUp`, `test_list_filter_by_symbol`, `test_list_filter_symbol_uppercased`, `test_list_returns_200`
-  - `SessionFactsNotFoundTests` -> methods: `setUp`, `test_detail_404_error_envelope_has_standard_fields`, `test_detail_404_when_no_data_and_compute_returns_none`
+  - `SessionFactsNotFoundTests` -> methods: `setUp`, `test_detail_404_error_envelope_has_standard_fields`, `test_detail_404_when_no_materialized_data_exists`, `test_detail_404_when_requested_trade_date_is_missing`
   - `SessionFactsOpenApiMetadataTests` -> methods: `test_detail_view_has_extend_schema`
-  - `SessionFactsThrottleTests` -> methods: `test_detail_view_has_market_data_throttle`, `test_list_view_has_market_data_throttle`, `test_throttle_rate_is_60_per_min`
+  - `SessionFactsThrottleTests` -> methods: `test_cvd_view_has_market_data_throttle`, `test_detail_view_has_market_data_throttle`, `test_list_view_has_market_data_throttle`, `test_throttle_rate_is_60_per_min`
   - `SessionFactsUnauthorizedTests` -> methods: `setUp`, `test_detail_401_when_unauthenticated`, `test_list_401_when_unauthenticated`
+  - `SessionFactsValidationTests` -> methods: `setUp`, `test_detail_400_when_trade_date_is_invalid`
 - Functions:
-  - `_make_facts`
+  - `_attach_bucket_series`, `_make_facts`, `_make_series_payload`
 - Top-level variables:
   - `_src_dir`
 
@@ -4413,7 +4727,7 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/tests/test_stock_management_api_routes.py`
 
 - Classes:
-  - `StockManagementCompatApiRouteTests` -> methods: `setUp`, `test_groups_seed_sync_and_remaining_stock_routes_bridge_to_legacy`, `test_seed_populates_groups_and_groups_view_returns_renderable_shape`, `test_stock_management_compat_detail_and_price_alert_routes_bridge_to_legacy`
+  - `StockManagementCompatApiRouteTests` -> methods: `setUp`, `test_groups_seed_sync_and_remaining_stock_routes_are_native`, `test_seed_populates_groups_and_groups_view_returns_renderable_shape`, `test_stock_management_detail_and_price_alert_routes_are_native`
 - Top-level variables:
   - `_src_dir`
 
@@ -4442,6 +4756,7 @@ Generated at: `2026-05-14 14:33:39`
 ### `packages/core/backend/tests/test_user_workspace_api_routes.py`
 
 - Classes:
+  - `UserWorkspaceAdvisoryCompatRouteTests` -> methods: `_create_quota_record`, `_current_period`, `setUp`, `test_portfolio_ai_advisory_get_routes_delegate_to_native_advisory_view`, `test_portfolio_ai_advisory_refresh_route_delegates_to_native_advisory_view`
   - `UserWorkspaceApiRouteTests` -> methods: `setUp`, `test_portfolio_routes_are_native_and_return_results_envelope`, `test_watchlist_routes_are_native_and_item_delete_works`
 - Top-level variables:
   - `_src_dir`
@@ -4563,9 +4878,9 @@ Generated at: `2026-05-14 14:33:39`
 ### `frontend/src/api/socApi.js`
 
 - Functions:
-  - `handleResponse`
+  - `fetch`, `getAccessToken`, `handleResponse`, `normalizeConfigEnvelope`, `normalizeVnbrokerHealth`
 - Top-level variables:
-  - `BASE_URL`, `errorData`, `resp`, `socApi`
+  - `BASE_URL`, `accessToken`, `alertsTriggered`, `config`, `data`, `errorData`, `errorRateByStatus`, `headers`, `health`, `latency`, `query`, `resp`, `socApi`, `status`, `symbolsScanned`
 
 ### `frontend/src/api/support.js`
 
@@ -4579,33 +4894,9 @@ Generated at: `2026-05-14 14:33:39`
 - Top-level variables:
   - `debugPagesEnabled`, `hasStoredTokens`, `location`, `navigate`, `packageShellHostEnabled`
 
-### `frontend/src/components/adminops/GlobalScreenerAdminPanel.jsx`
+### `frontend/src/App.test.jsx`
 
-- Functions:
-  - `RuleToggleBadge`, `createEmptyRuleForm`, `extractApiMessage`, `fmtDateTime`, `parseRuleJson`
-- Top-level variables:
-  - `DEFAULT_RULE_JSON`, `confirmMessage`, `data`, `date`, `fieldErrors`, `handleDeleteRule`, `handleEditRule`, `handleResetRuleForm`, `handleRunManual`, `handleSaveConfig`, `handleSubmitRule`, `loadConfig`, `loadRules`, `nextConfig`, `normalized`, `parsed`, `payload`, `refreshAll`, `response`
-
-### `frontend/src/components/adminops/SignalControlCenter.jsx`
-
-- Functions:
-  - `BoundaryPanel`, `JsonPreview`, `ServiceSummaryCard`, `formatAuditWarning`, `formatDateTimeValue`, `formatNumberValue`, `formatOwnershipConstraint`, `isOwnershipWritable`, `loadInitialState`, `resolvePositiveInteger`, `statusTone`
-- Top-level variables:
-  - `DEFAULT_PAGE_SIZE`, `WRITABLE_OWNERSHIP_STATUSES`, `applyConfigToForm`, `auditWarnings`, `buildRetentionPayload`, `buildServicesPayload`, `buildUniversePayload`, `canApplyConfig`, `canApplyUniverse`, `canRetry`, `canRunSignalJobs`, `configWriteBlockedReason`, `darkFlowPolicyPanel`, `darkFlowService`, `distribution`, `eventsRes`, `fieldLabel`, `handleApplyConfig`, `handleApplyUniverse`, `handleEventsPageChange`, `handleEventsPageSizeChange`, `handleJobsPageChange`, `handleJobsPageSizeChange`, `handleLoadEvents`, `handleLoadJobs`, `handlePreviewConfig`, `handlePreviewUniverse`, `handleRetryRun`, `handleRunJob`, `jobsRes`, `jobsStatus`, `jobsWriteBlockedReason`, `lifecycle`, `loadEventsPage`, `loadJobsPage`, `loadStaticData`, `materializationPanelPayload`, `normalized`, `numeric`, `ownerLabel`, `ownershipSnapshot`, `parsed`, `rawIntradayKeepDays`, `refreshControlCenter`, `response`, `results`, `retentionPolicy`, `retentionPolicyStatus`, `retryBusy`, `runtimeKeepDays`, `servicesConfig`, `servicesConfigStatus`, `sharedLifecyclePayload`, `statusLabel`, `storageRetentionPanelPayload`, `universePolicy`, `universePolicyStatus`, `universeWriteBlockedReason`, `updateField`, `whaleGovernancePanel`, `whaleGovernanceSnapshot`, `whaleService`, `writeGuardWarnings`
-
-### `frontend/src/components/adminops/SignalControlCenter.test.jsx`
-
-- Functions:
-  - `buildConfigPayload`, `buildOwnershipPayload`, `buildSummaryPayload`, `buildWhaleGovernancePayload`, `warningMatcher`
-- Top-level variables:
-  - `jobsPageSizeSelect`, `readOnlyOwnership`, `retryButton`
-
-### `frontend/src/components/adminops/VnbrokerBenchmarkPanel.jsx`
-
-- Functions:
-  - `fmtNumber`, `parseCsvList`
-- Top-level variables:
-  - `applyRecommendation`, `estimatedRuntimeSeconds`, `isCompleted`, `isFailed`, `isRunning`, `loadLatest`, `maxWaitMs`, `newReport`, `nextReport`, `onInput`, `payload`, `pollResp`, `pollingRef`, `prevFinishedAt`, `recommendation`, `reportStatus`, `resp`, `rlA`, `rlB`, `rows`, `runBenchmark`, `startedAt`, `topRows`, `value`
+- No parseable top-level symbols found
 
 ### `frontend/src/components/advisory/ActionChecklist.jsx`
 
@@ -4771,6 +5062,28 @@ Generated at: `2026-05-14 14:33:39`
 - Top-level variables:
   - `fetchCurve`, `periods`, `res`
 
+### `frontend/src/components/FactsFirstWhaleAnalyticsTab.jsx`
+
+- Top-level variables:
+  - `TIMEFRAME_OPTIONS`, `availableSymbols`, `degradedBadgeLabel`, `isDegraded`, `isStale`, `smfi`, `sourceSymbols`, `staleReason`, `strength`, `symbols`
+
+### `frontend/src/components/FactsFirstWhaleAnalyticsTab.test.jsx`
+
+- Top-level variables:
+  - `analyticsData`
+
+### `frontend/src/components/FactsFirstWhaleBubbleChart.jsx`
+
+- Functions:
+  - `handleTimeframeChange`, `toErrorMessage`
+- Top-level variables:
+  - `bubbleOrdersForFlow`, `combinedError`, `combinedLoading`, `factsFirstFlowData`, `hasPrefetchedAnalyticsState`, `normalizedTradeDate`, `resolvedAnalyticsData`, `resolvedAnalyticsError`, `resolvedAnalyticsLoading`, `resolvedSymbol`, `timeframe`
+
+### `frontend/src/components/FactsFirstWhaleBubbleChart.test.jsx`
+
+- Top-level variables:
+  - `mockWhaleBubbleChart`, `props`
+
 ### `frontend/src/components/FinancialChart.jsx`
 
 - No parseable top-level symbols found
@@ -4814,6 +5127,13 @@ Generated at: `2026-05-14 14:33:39`
   - `playAlertTone`
 - Top-level variables:
   - `ctx`, `gain`, `hasStrongAlert`, `newsItems`, `oscillator`, `recommendationsEnabled`
+
+### `frontend/src/components/modern/FactsFirstModularPositionDeck.jsx`
+
+- Functions:
+  - `fmtNumber`, `fmtSignedPercent`, `handlePageSizeChange`, `handleTabChange`
+- Top-level variables:
+  - `FactsFirstWhaleAnalyticsTab`, `PAGE_SIZE_OPTIONS`, `activeSymbolSet`, `aiMonitorSummary`, `aiScopeTitle`, `alpha`, `alphaScore`, `bearishCount`, `bullishCount`, `color`, `counts`, `ddScore`, `filteredOverviewRows`, `filteredTechnicals`, `grade`, `hasAnalytics`, `healthStats`, `isAITab`, `isHoldingsScope`, `isOverviewTab`, `isTechnicalTab`, `maxDD`, `needsHealthStats`, `needsTechnicalsView`, `neutralCount`, `numeric`, `option`, `pagedOverviewRows`, `pagedTechnicals`, `scopeOptions`, `scopedUniverse`, `sharpe`, `sharpeScore`, `sign`, `sourceBadgeClass`, `sourceBadgeLabel`, `start`, `symbolOptions`, `symbolsCount`, `tabs`, `total`
 
 ### `frontend/src/components/modern/ModernPortfolioDigest.jsx`
 
@@ -4968,28 +5288,37 @@ Generated at: `2026-05-14 14:33:39`
 ### `frontend/src/components/soc/ConfigPreviewModal.jsx`
 
 - Functions:
-  - `ConfigPreviewModal`, `getChangedKeys`
+  - `getChangedKeys`
 - Top-level variables:
-  - `allKeys`, `changed`, `changedKeys`
+  - `ConfigPreviewModal`, `allKeys`, `changed`, `changedKeys`, `hasValidationErrors`, `validationEntries`
+
+### `frontend/src/components/soc/DataOpsPanel.jsx`
+
+- Functions:
+  - `DataOpsPanel`, `buildChangeSummary`, `buildImpactWarnings`, `handleApply`, `handlePreview`, `hasTierRuntimeChange`, `loadData`
+- Top-level variables:
+  - `CONFIG_LABEL_KEYS`, `TIER_LABEL_KEYS`, `appliedPayload`, `currentConfig`, `lastUpdated`, `nextTier`, `ownership`, `parsed`, `previousTier`, `tierNames`, `tiersPayload`, `totalSymbols`, `warnings`
 
 ### `frontend/src/components/soc/MatrixPanel.jsx`
 
 - Functions:
-  - `MatrixPanel`
+  - `MatrixPanel`, `activeCycleProviders`, `getReadyProviderIds`, `getSelectedProviders`, `getStatusLabel`, `getStatusTone`, `handleAbortCycle`, `handleCycleComplete`, `handleProviderToggle`, `handleStartCycle`, `loadMatrixContext`, `normalizeSymbolGroups`
+- Top-level variables:
+  - `ACTIVE_MATRIX_STATUSES`, `DEFAULT_MATRIX_SYMBOL_GROUPS`, `MATRIX_CELL_RETRY_DELAY_SECONDS`, `MATRIX_CELL_TASK`, `MATRIX_DATA_CONTRACT`, `MATRIX_DISPATCH_TASK`, `MATRIX_MONITOR_POLL_INTERVAL_SECONDS`, `data`, `defaultProviders`, `groupId`, `groups`, `isSelected`, `monitorProviders`, `nextStatus`, `normalizedGroups`, `providerList`, `readyProviderIds`, `statusKey`, `statusKeyByValue`, `toneByStatus`
 
 ### `frontend/src/components/soc/MatrixScrapeMonitor.jsx`
 
 - Functions:
   - `MatrixScrapeMonitor`, `getStatusColor`, `pollMatrix`
 - Top-level variables:
-  - `colors`, `data`, `done`, `failed`, `interval`, `pending`, `resp`, `total`
+  - `cell`, `cells`, `cellsByKey`, `colors`, `data`, `interval`, `isMounted`, `providerIds`, `status`, `symbolGroupIds`
 
 ### `frontend/src/components/soc/OverviewPanel.jsx`
 
 - Functions:
-  - `OverviewPanel`, `fetchDetails`
+  - `OverviewPanel`, `fetchOverview`
 - Top-level variables:
-  - `details`
+  - `healthStatus`, `nextHealthMap`, `summary`
 
 ### `frontend/src/components/soc/OwnershipBadgeRow.jsx`
 
@@ -5002,6 +5331,8 @@ Generated at: `2026-05-14 14:33:39`
 
 - Functions:
   - `PrefetchPanel`, `fetchData`, `handlePurgeCache`
+- Top-level variables:
+  - `PROFILE_FIELDS`, `profiles`
 
 ### `frontend/src/components/soc/ScreenerPanel.jsx`
 
@@ -5013,12 +5344,17 @@ Generated at: `2026-05-14 14:33:39`
 - Functions:
   - `ServiceHealthCard`
 - Top-level variables:
-  - `STATUS_COLORS`, `colors`
+  - `STATUS_COLORS`, `STATUS_TEXT_KEYS`, `colors`, `lastCheckAt`, `latency`, `status`
 
 ### `frontend/src/components/soc/SignalsPanel.jsx`
 
 - Functions:
   - `SignalsPanel`, `fetchData`
+
+### `frontend/src/components/soc/SOCComponents.test.jsx`
+
+- Top-level variables:
+  - `confirmButton`, `onConfirm`, `onCycleComplete`, `onDomainChange`, `t`, `user`
 
 ### `frontend/src/components/soc/SOCDomainTabs.jsx`
 
@@ -5030,7 +5366,9 @@ Generated at: `2026-05-14 14:33:39`
 ### `frontend/src/components/soc/VnbrokerPanel.jsx`
 
 - Functions:
-  - `VnbrokerPanel`, `fetchData`, `handleApply`
+  - `VnbrokerPanel`, `buildChangeSummary`, `fetchData`, `handleApply`, `handleOpenPreview`
+- Top-level variables:
+  - `currentConfig`, `keys`, `parsedConfig`, `preview`, `warnings`
 
 ### `frontend/src/components/soc/WriteGuardBanner.jsx`
 
@@ -5112,7 +5450,7 @@ Generated at: `2026-05-14 14:33:39`
 - Functions:
   - `NavGroup`, `canNavigateTo`, `groupLinkClass`, `handleOutsideClick`
 - Top-level variables:
-  - `canReadAdminOps`, `canReadSOC`, `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `capabilityMenus`, `hasCapabilityMenus`, `portfolioItems`, `ref`, `signalItems`, `systemItems`, `tenantItems`, `tenantSurfaceEnabled`, `visibleRoutes`
+  - `canReadSOC`, `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `capabilityMenus`, `hasCapabilityMenus`, `portfolioItems`, `ref`, `signalItems`, `systemItems`, `tenantItems`, `tenantSurfaceEnabled`, `visibleRoutes`
 
 ### `frontend/src/components/UnifiedAlertBar.jsx`
 
@@ -5283,6 +5621,17 @@ Generated at: `2026-05-14 14:33:39`
 - Top-level variables:
   - `intervalMs`, `result`
 
+### `frontend/src/hooks/useSessionFactsCvdSeries.js`
+
+- Functions:
+  - `normalizeTradeDate`
+- Top-level variables:
+  - `fetchPayloads`, `normalizedInputTradeDatesKey`, `normalizedSelectedTradeDate`, `normalizedSymbol`, `normalizedTradeDates`, `normalizedValue`, `normalizedValues`, `rejectedResponse`, `requestId`, `requestIdRef`, `requestedTradeDates`, `responses`, `sessionFactsWindow`, `successfulPayloads`, `uniqueTradeDates`
+
+### `frontend/src/hooks/useSessionFactsCvdSeries.test.js`
+
+- No parseable top-level symbols found
+
 ### `frontend/src/hooks/useTrustTelemetry.js`
 
 - Top-level variables:
@@ -5305,16 +5654,21 @@ Generated at: `2026-05-14 14:33:39`
 ### `frontend/src/hooks/useWhaleAdvisoryData.js`
 
 - Functions:
-  - `onDiscoveryUpdate`, `onInvalidated`, `useWhaleAdvisoryData`
+  - `buildFallbackSymbolStats`, `normalizeAdvisoryItem`, `onDiscoveryUpdate`, `onInvalidated`, `toList`, `useWhaleAdvisoryData`
 - Top-level variables:
-  - `ADVISORY_INVALIDATION_EVENT`, `advisories`, `advisoryResp`, `baseline`, `baselineTs`, `currentTs`, `dataItems`, `fetchData`, `fetchDataSnapshot`, `fetchWhaleStats`, `handleDeleteAdvisory`, `handleRefreshAdvisory`, `interval`, `latest`, `loadRefreshInfo`, `next`, `resp`, `success`
+  - `ADVISORY_INVALIDATION_EVENT`, `advisories`, `advisory`, `advisoryBySymbol`, `advisoryResp`, `baseline`, `baselineTs`, `candidateSymbols`, `currentTs`, `dataItems`, `fallbackSymbols`, `fetchData`, `fetchDataSnapshot`, `fetchWhaleStats`, `handleDeleteAdvisory`, `handleRefreshAdvisory`, `hasAdvisoryBackedStats`, `holdings`, `interval`, `latest`, `loadNativeSymbolUniverse`, `loadRefreshInfo`, `next`, `resp`, `responses`, `side`, `stats`, `success`, `symbol`, `symbols`, `trackedSymbols`
+
+### `frontend/src/hooks/useWhaleAdvisoryData.test.js`
+
+- Top-level variables:
+  - `mockTranslate`
 
 ### `frontend/src/hooks/useWhaleAnalyticsData.js`
 
 - Functions:
   - `createEmptyAnalyticsData`, `handleVisibilityChange`, `handleWindowFocus`
 - Top-level variables:
-  - `fetchData`, `firstRejected`, `includeBaseline`, `intervalId`, `normalizedSnapshots`, `normalizedTradeDate`, `requestId`, `requestIdRef`, `requestedTradeDates`, `requestedTradeDatesKey`, `selectedTradeDate`, `snapshot`, `snapshotRes`, `snapshotResults`, `timeframeWindow`
+  - `fetchData`, `firstRejected`, `includeBaseline`, `intervalId`, `normalizedSnapshots`, `normalizedTradeDate`, `requestId`, `requestIdRef`, `requestedTradeDates`, `requestedTradeDatesKey`, `selectedTradeDate`, `skip`, `snapshot`, `snapshotRes`, `snapshotResults`, `timeframeWindow`
 
 ### `frontend/src/hooks/useWhaleAnalyticsData.test.js`
 
@@ -5490,23 +5844,6 @@ Generated at: `2026-05-14 14:33:39`
 - Top-level variables:
   - `activeRun`, `activeRunByJobId`, `activeRunStatus`, `activeStatuses`, `canRun`, `canStop`, `entry`, `existing`, `fetchAll`, `hasActiveRun`, `interval`, `job`, `jobsData`, `map`, `normalizedStatus`, `runsData`, `sCode`, `started`
 
-### `frontend/src/pages/AdminOps.jsx`
-
-- Functions:
-  - `AccessNotice`, `KeyValueRow`, `MiniMetric`, `Pill`, `PrefetchHealthBadge`, `RolloutStatusBadge`, `SignalBadge`, `StatCard`, `StatusBadge`, `SurfaceRedirectCard`, `SyncRow`, `fmtDateTime`, `fmtNumber`, `pageBtnClass`, `parseTime`, `pollTaskStatus`, `readProfile`, `setError`, `syncBtn`, `toneClasses`, `withTimeout`
-- Top-level variables:
-  - `actionTone`, `activePrefetchPolicy`, `alerts`, `anomaly`, `backfillApplyPollTimerRef`, `canApplyBackfill`, `canOpenLegacyCrawlControl`, `canWriteVnbrokerConfig`, `cancelled`, `clearBackfillApplyPollTimer`, `clearSyncCooldownTimer`, `cloned`, `completion`, `cooldown`, `count`, `critical`, `current`, `currentCooldown`, `currentSymbol`, `d`, `dashboard`, `dataOpsSurfaceName`, `err`, `fallback`, `fieldErrors`, `governanceRulebook`, `governanceThresholds`, `groupsPayload`, `guard`, `handleApplyVnbrokerBenchmarkRecommendation`, `handlePrefetchSettingsInput`, `handlePrefetchSettingsSave`, `handlePrefetchTimePolicyInput`, `handlePrefetchTimePolicyReset`, `handlePrefetchTimePolicySave`, `handleSync`, `handleThresholdInput`, `handleThresholdSave`, `handleVnbrokerConfigInput`, `handleVnbrokerConfigReset`, `handleVnbrokerConfigSave`, `handleWarmNow`, `inCooldown`, `initial`, `intervalId`, `intervalMin`, `isoDateRegex`, `jitterMax`, `jitterMin`, `key`, `load`, `lunchBreak`, `market`, `marketOpen`, `maxHolidayDates`, `maxIntervalMin`, `methodSuffix`, `multiplierMin`, `navigate`, `nextErrors`, `normalized`, `normalizedAction`, `numericValues`, `offhours`, `parsed`, `payload`, `phaseLabel`, `policy`, `postClose`, `preClose`, `preOpen`, `prefetch`, `prefetchRulebook`, `prefetchTimePolicyRulebook`, `primary`, `profile`, `profileIntervals`, `profiles`, `propagation`, `res`, `resourceSuffix`, `resp`, `response`, `retryAfter`, `rowsProcessed`, `rowsTotal`, `runtime`, `scalarNums`, `selected`, `st`, `startSyncCooldown`, `statsRes`, `status`, `statusSuffix`, `statusValue`, `surfacePermissions`, `symbolList`, `syncCooldownTimersRef`, `task`, `taskId`, `taskLabel`, `timeRegex`, `timerId`, `tone`, `toneMap`, `tones`, `vnbrokerSettings`, `vnbrokerSurfaceName`, `warning`, `workerRows`, `workerSummary`
-
-### `frontend/src/pages/AdminOps.test.jsx`
-
-- Functions:
-  - `buildStatsPayload`
-
-### `frontend/src/pages/AdminOpsShellHost.jsx`
-
-- Top-level variables:
-  - `bootstrapLoader`
-
 ### `frontend/src/pages/AiAdvisoryShellHost.jsx`
 
 - Top-level variables:
@@ -5596,14 +5933,21 @@ Generated at: `2026-05-14 14:33:39`
 - Functions:
   - `SOCPage`, `fetchServices`, `handleDomainChange`
 - Top-level variables:
-  - `activeDomain`, `data`, `panels`
+  - `activeDomain`, `data`, `nextParams`, `pageT`, `panels`, `requestedTab`
+
+### `frontend/src/pages/SOCPage.test.jsx`
+
+- Functions:
+  - `LocationProbe`, `renderSOCPage`
+- Top-level variables:
+  - `location`, `user`
 
 ### `frontend/src/pages/StockDetail.jsx`
 
 - Functions:
-  - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `MetricRow`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_normalizeAdvisoryPromptConfig`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `formatChartAxis`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleToggleComponentInclude`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `loadPromptConfig`, `persistPromptConfig`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `run`, `runRefresh`, `shouldSuppressTransportError`, `showWorkspaceMessage`
+  - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `MetricRow`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_normalizeAdvisoryPromptConfig`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `buildFactsFirstFlowCompareSeries`, `buildKlineFactsFirstFlowData`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `formatChartAxis`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleToggleComponentInclude`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `loadPromptConfig`, `persistPromptConfig`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `run`, `runRefresh`, `shouldSuppressTransportError`, `showWorkspaceMessage`
 - Top-level variables:
-  - `ADVISORY_INVALIDATION_EVENT`, `KLineChartComponent`, `STALE_RESYNC_RETRY_MS`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryParams`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `base`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chartPerformance`, `chartWindowHint`, `close`, `conflictState`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `cvdData`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `events`, `fallback`, `fallbackFromTs`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `flattenedSnapshotOrders`, `floorPrice`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `handleKlineSessionChange`, `handleKlineTimeframeChange`, `height`, `id`, `inFlightRef`, `incomingTrades`, `interval`, `intervalId`, `isTransientEmpty`, `isUpstreamUnavailable`, `key`, `lastClose`, `latest`, `latestDeltaVsBaseline`, `latestVol`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveVolume`, `map`, `marketGroups`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `message`, `min`, `next`, `nextComponents`, `nextDeletedComponents`, `nextSummaries`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `row`, `rows`, `selectedSessionMaterialization`, `selectedSessionReadPath`, `selectedTradeDate`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `snapshotOrders`, `sortedTrades`, `source`, `sourceGroupId`, `status`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickerData`, `timer`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `vol`, `warning`, `warningSuffix`, `watchlistMemberships`, `whaleSignalsForChart`, `width`, `withinRange`, `x`, `y`, `years`
+  - `ADVISORY_INVALIDATION_EVENT`, `KLineChartComponent`, `STALE_RESYNC_RETRY_MS`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryParams`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `base`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `bucketTs`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chartPerformance`, `chartWindowHint`, `close`, `conflictState`, `contextUsage`, `cooldown`, `critical`, `cumulativeCvd`, `currentComponents`, `currentPrice`, `currentSession`, `cvdData`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `events`, `factsFirstFlowCompareSeries`, `fallback`, `fallbackFromTs`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `flattenedSnapshotOrders`, `floorPrice`, `flowViewModel`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `handleKlineSessionChange`, `handleKlineTimeframeChange`, `height`, `id`, `inFlightRef`, `incomingTrades`, `interval`, `intervalId`, `isTransientEmpty`, `isUpstreamUnavailable`, `key`, `klineFlowData`, `lastClose`, `latest`, `latestDeltaVsBaseline`, `latestVol`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveVolume`, `map`, `marketGroups`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `message`, `min`, `next`, `nextComponents`, `nextDeletedComponents`, `nextSummaries`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `qualityFlags`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `row`, `rows`, `selectedSessionMaterialization`, `selectedSessionReadPath`, `selectedTradeDate`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionContext`, `sessionDate`, `sessionPayload`, `sessionResp`, `snapshotOrders`, `sortedTrades`, `source`, `sourceGroupId`, `status`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickerData`, `timer`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `vol`, `warning`, `warningSuffix`, `watchlistMemberships`, `whaleSignalsForChart`, `width`, `withinRange`, `x`, `y`, `years`
 
 ### `frontend/src/pages/stockDetailAdvisoryUtils.js`
 
@@ -5698,7 +6042,7 @@ Generated at: `2026-05-14 14:33:39`
 - Functions:
   - `fetchChart`, `fmtBil`, `normalizeSymbol`, `symbolAlerts`, `symbolDarkFlowAlerts`
 - Top-level variables:
-  - `BUBBLE_TIMEFRAME_OPTIONS`, `MAX_CHART_FLOW_TRADE_DATES`, `advisoryParams`, `advisoryRequestIdRef`, `cancelled`, `chartAnalyticsTimeframe`, `chartHistoryTradeDates`, `conflictState`, `darkFlowItems`, `feedRequestIdRef`, `feedResp`, `fetchAdvisorySession`, `fetchFeed`, `fetchOverview`, `flattenedSnapshotOrders`, `historyTradeDates`, `id`, `liveBoardAlerts`, `lt`, `n`, `nextChartData`, `normalizedSymbol`, `overviewRequestIdRef`, `overviewResp`, `payload`, `prevWhaleRef`, `requestId`, `response`, `rt`, `selectedTradeDate`, `snapshotOrders`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `whaleItems`, `whaleSignalsForChart`
+  - `BUBBLE_TIMEFRAME_OPTIONS`, `MAX_CHART_FLOW_TRADE_DATES`, `advisoryParams`, `advisoryRequestIdRef`, `bubbleFactsFirstFlowData`, `bubbleOrdersForFlow`, `cancelled`, `chartAnalyticsTimeframe`, `chartFactsFirstFlowData`, `chartHistoryTradeDates`, `conflictState`, `darkFlowItems`, `feedRequestIdRef`, `feedResp`, `fetchAdvisorySession`, `fetchFeed`, `fetchOverview`, `flattenedSnapshotOrders`, `historyTradeDates`, `id`, `liveBoardAlerts`, `lt`, `n`, `nextChartData`, `normalizedSymbol`, `overviewRequestIdRef`, `overviewResp`, `payload`, `prevWhaleRef`, `requestId`, `response`, `rt`, `selectedTradeDate`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `whaleItems`, `whaleSignalsForChart`
 
 ### `frontend/src/pages/WhaleAlertsHub.jsx`
 
@@ -5767,6 +6111,18 @@ Generated at: `2026-05-14 14:33:39`
   - `isRequestCanceled`
 - Top-level variables:
   - `code`, `message`, `name`
+
+### `frontend/src/utils/sessionFactsFlowAdapter.js`
+
+- Functions:
+  - `buildFactsFirstFlowData`, `filterSeriesByTimeframeWindow`, `flattenBubbleOrders`, `mapSessionFactsWindowFromAnalyticsTimeframe`, `mergeSeriesByKey`, `normalizeSessionFactsSeriesItem`, `normalizeTimeframeWindow`, `resolveSeriesMinute`, `sortSeriesByTime`, `toFiniteNumber`
+- Top-level variables:
+  - `cumulativeCvd`, `cvdSeries`, `derivedWindow`, `endMs`, `explicitEndMs`, `explicitStartMs`, `factsFirstFlowCompareSeries`, `fallbackWindow`, `filteredFlowCompareSeries`, `filteredHeatmapSeries`, `filteredMarkerSeries`, `filteredSpeedSeries`, `flowViewModel`, `institutionalStrengthSeries`, `key`, `latestSessionDate`, `leftTs`, `lookup`, `lowerBound`, `minute`, `normalizedTimeframe`, `normalizedTimeframeWindow`, `numericValue`, `qualityFlags`, `referenceDate`, `rightTs`, `sessionContext`, `sessionDates`, `startMs`, `strengthSeries`, `timestampMs`, `timestampsMs`, `upperBound`
+
+### `frontend/src/utils/sessionFactsFlowAdapter.test.js`
+
+- Top-level variables:
+  - `baseFlowData`, `result`, `sessionFactPayloads`, `timeframeWindow`
 
 ### `frontend/src/utils/watchlistHelpers.js`
 
@@ -7213,12 +7569,12 @@ Generated at: `2026-05-14 14:33:39`
 - Top-level variables:
   - `shellAdapters`
 
-### `packages/web/src/pages/admin/ShellAdminOpsPage.js`
+### `packages/web/src/pages/admin/ShellOperationsCenterPage.js`
 
 - Functions:
-  - `ShellAdminOpsPage`
+  - `ShellOperationsCenterPage`
 - Top-level variables:
-  - `adminAbilities`, `adminFlags`, `adminRoutes`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`
+  - `groupFlags`, `metrics`, `operatorAbilities`, `operatorFlags`, `operatorRoutes`, `routeFlags`, `summaryCards`
 
 ### `packages/web/src/pages/coreShellPageHelpers.js`
 

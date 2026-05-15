@@ -40,7 +40,7 @@ function normalizePackageShellNavigation(navigation = {}, isAdminIdentity = fals
 
   return {
     visible_groups: visibleGroups.filter((groupId) => groupId !== 'admin'),
-    visible_routes: visibleRoutes.filter((routeId) => routeId !== 'admin-ops'),
+    visible_routes: visibleRoutes.filter((routeId) => routeId !== 'operations-center'),
   };
 }
 
@@ -51,7 +51,7 @@ function normalizePackageShellSurfaces(surfaces = {}, isAdminIdentity = false) {
 
   return {
     ...surfaces,
-    show_admin_ops: false,
+    show_operations_center: false,
   };
 }
 

@@ -7,7 +7,7 @@ import { buildLiveHoldingsOverlay } from '../../utils/dashboardRealtimeSelectors
 import { buildModernDashboardSymbolUniverse } from '../../utils/modernDashboardSymbolUniverse';
 
 import SmartStatsHeader from '../../components/modern/SmartStatsHeader';
-import ModularPositionDeck from '../../components/modern/ModularPositionDeck';
+import FactsFirstModularPositionDeck from '../../components/modern/FactsFirstModularPositionDeck';
 import PortfolioHeatmap from '../../components/PortfolioHeatmap';
 import UnifiedAlertCenter from '../../components/UnifiedAlertCenter';
 import StickyAlertBar from '../../components/StickyAlertBar';
@@ -449,7 +449,7 @@ export default function ModernDashboard() {
               </div>
 
               <div className="min-h-[420px] min-w-0 overflow-hidden">
-                <ModularPositionDeck
+                <FactsFirstModularPositionDeck
                   holdings={heatmapData.filter((h) => h.is_holding)}
                   symbolUniverse={symbolUniverse}
                   loading={loading}

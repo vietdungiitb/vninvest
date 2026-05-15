@@ -13,11 +13,31 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.utils import timezone
 
-from ..models import ServiceDefinition, ServiceConfig
+from ..models import ServiceDefinition, ServiceConfig, ServiceRunLog
+from ..ownership import build_ownership_matrix_from_db
 from ..serializers import ServiceConfigSerializer
 from ..domain_configs import PrefetchTimePolicyConfig, VALID_PROFILES
+from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
+
+
+def _get_prefetch_config() -> PrefetchTimePolicyConfig:
+    try:
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'])
+        current_config = ServiceConfig.objects.filter(service=service, is_current=True).first()
+        if current_config and isinstance(current_config.config_payload, dict):
+            return PrefetchTimePolicyConfig.from_dict(current_config.config_payload)
+    except (ServiceDefinition.DoesNotExist, ServiceConfig.DoesNotExist):
+        pass
+    return PrefetchTimePolicyConfig()
+
+
+def _build_prefetch_ownership_payload() -> dict:
+    matrix = build_ownership_matrix_from_db()
+    payload = matrix.to_response_dict('prefetch')
+    payload['write_block_reason'] = matrix.get_write_block_reason('prefetch')
+    return payload
 
 
 class PrefetchConfigView(SOCBaseView, ConfigApplyMixin):
@@ -26,7 +46,7 @@ class PrefetchConfigView(SOCBaseView, ConfigApplyMixin):
     def get(self, request):
         """GET current prefetch config."""
         try:
-            service = ServiceDefinition.objects.get(service_key='prefetch_policy')
+            service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'])
             current_config = ServiceConfig.objects.filter(
                 service=service, is_current=True
             ).first()
@@ -45,7 +65,7 @@ class PrefetchConfigView(SOCBaseView, ConfigApplyMixin):
         config_payload = request.data.get('config_payload', {})
         result = self.apply_config(
             request,
-            service_key='prefetch_policy',
+            service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'],
             domain='prefetch',
             config_payload=config_payload,
             config_class=PrefetchTimePolicyConfig,
@@ -110,16 +130,48 @@ class PrefetchPurgeCacheView(SOCBaseView):
         })
 
 
+class PrefetchWarmNowView(SOCBaseView):
+    """POST /api/soc/prefetch/warm-now/"""
+
+    def post(self, request):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'])
+        config = _get_prefetch_config()
+        run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='queued',
+            input_summary={
+                'trigger': 'warm_now',
+                'requested_by': getattr(request.user, 'username', 'api'),
+                'active_profile': config.active_profile,
+                'universe_group_ids': config.universe_group_ids,
+            },
+            output_summary={},
+        )
+        return Response({
+            'status': 'queued',
+            'run_log_id': run_log.id,
+            'active_profile': config.active_profile,
+            'groups': config.universe_group_ids,
+            'requested_at': run_log.started_at.isoformat(),
+        }, status=status.HTTP_202_ACCEPTED)
+
+
 class PrefetchUniverseGroupsView(SOCBaseView):
     """GET /api/soc/prefetch/universe-groups/"""
 
     def get(self, request):
         """Configured symbol groups."""
+        config = _get_prefetch_config()
+        groups = [
+            {
+                'id': group_id,
+                'name': group_id.replace('_', ' ').upper(),
+            }
+            for group_id in config.universe_group_ids
+        ]
         return Response({
-            'groups': [
-                {'id': 1, 'name': 'Top 100', 'symbol_count': 100},
-                {'id': 2, 'name': 'VN30', 'symbol_count': 30},
-            ],
+            'groups': groups,
+            'active_profile': config.active_profile,
         })
 
 
@@ -128,13 +180,24 @@ class PrefetchTaskScheduleView(SOCBaseView):
 
     def get(self, request):
         """Active Celery task schedule."""
+        config = _get_prefetch_config()
+        schedule = [
+            {
+                'task': f'prefetch_{profile}',
+                'interval_seconds': config.get_interval_for_profile(profile),
+                'enabled': bool(config.enabled),
+                'next_run': timezone.now().isoformat(),
+            }
+            for profile in sorted(VALID_PROFILES)
+        ]
         return Response({
-            'schedule': [
-                {
-                    'task': 'prefetch_market_open',
-                    'interval_seconds': 30,
-                    'enabled': True,
-                    'next_run': timezone.now().isoformat(),
-                },
-            ],
+            'active_profile': config.active_profile,
+            'schedule': schedule,
         })
+
+
+class PrefetchOwnershipView(SOCBaseView):
+    """GET /api/soc/prefetch/ownership/"""
+
+    def get(self, request):
+        return Response(_build_prefetch_ownership_payload())

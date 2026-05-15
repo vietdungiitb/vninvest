@@ -35,6 +35,7 @@ import {
   updateAIConfig,
 } from '../api/client';
 import { isRequestCanceled } from '../utils/requestCancellation';
+import { buildWhaleFlowViewModel } from '../utils/whaleFlowViewModel';
 import StockNewsPanel from '../components/StockNewsPanel';
 import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
 import { BubbleOrderChart } from '../components/BubbleOrderChart';
@@ -116,6 +117,86 @@ function fmtVol(v) {
 function finiteNumberOrNull(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildFactsFirstFlowCompareSeries(orderFlowData) {
+  return (Array.isArray(orderFlowData?.cvd_series) ? orderFlowData.cvd_series : [])
+    .map((item) => {
+      const bucketTs = item?.bucket_ts || null;
+      const cumulativeCvd = finiteNumberOrNull(item?.cumulative_cvd);
+      if (!bucketTs || cumulativeCvd === null) {
+        return null;
+      }
+
+      return {
+        ts: bucketTs,
+        bucket_ts: bucketTs,
+        cvd_raw: cumulativeCvd,
+        buy_strength: finiteNumberOrNull(item?.buy_strength),
+        institutional_strength: finiteNumberOrNull(item?.institutional_strength),
+        baseline: 50,
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildKlineFactsFirstFlowData({ baseFlowData, orderFlowData, bubbleOrders, selectedTradeDate, flowTimeframe }) {
+  const factsFirstFlowCompareSeries = buildFactsFirstFlowCompareSeries(orderFlowData);
+  if (!factsFirstFlowCompareSeries.length) {
+    return baseFlowData || null;
+  }
+
+  const sessionDate = orderFlowData?.session_date || selectedTradeDate || null;
+  const sessionContext = {
+    ...(baseFlowData?.session_context || {}),
+    default_trade_date: sessionDate,
+    selected_trade_date: selectedTradeDate || sessionDate,
+    latest_valid_trade_date: sessionDate,
+    quality_state: baseFlowData?.session_context?.quality_state || 'READY',
+  };
+  const qualityFlags = {
+    ...(baseFlowData?.quality_flags || {}),
+    has_flow_data: true,
+  };
+
+  const flowViewModel = buildWhaleFlowViewModel({
+    flowCompareSeries: factsFirstFlowCompareSeries,
+    heatmapSeries: Array.isArray(baseFlowData?.heatmap_series) ? baseFlowData.heatmap_series : [],
+    markerSeries: Array.isArray(baseFlowData?.marker_series) ? baseFlowData.marker_series : [],
+    bubbleOrders,
+    sessionContext,
+    qualityFlags,
+    tradeDate: sessionContext.selected_trade_date || sessionContext.default_trade_date || null,
+  });
+
+  return {
+    ...(baseFlowData || {}),
+    timeframe: flowTimeframe,
+    timeframe_window: {
+      ...(baseFlowData?.timeframe_window || {}),
+      timeframe: flowTimeframe,
+    },
+    cvd_series: factsFirstFlowCompareSeries.map((item) => ({
+      ts: item.bucket_ts,
+      bucket_ts: item.bucket_ts,
+      cvd: item.cvd_raw,
+      cumulative_cvd: item.cvd_raw,
+    })),
+    strength_series: factsFirstFlowCompareSeries.map((item) => ({
+      ts: item.bucket_ts,
+      bucket_ts: item.bucket_ts,
+      strength: item.buy_strength,
+    })),
+    institutional_strength_series: factsFirstFlowCompareSeries.map((item) => ({
+      ts: item.bucket_ts,
+      bucket_ts: item.bucket_ts,
+      strength: item.institutional_strength,
+    })),
+    flow_compare_series: factsFirstFlowCompareSeries,
+    session_context: sessionContext,
+    quality_flags: qualityFlags,
+    view_model: flowViewModel,
+  };
 }
 
 function isRealtimeQuoteScaleCompatible(candidateQuote, overview) {
@@ -1060,6 +1141,14 @@ export default function StockDetail() {
     return symbolAlerts;
   }, [symbolAlerts, whaleAnalyticsData, whaleFeedData]);
 
+  const klineFlowData = useMemo(() => buildKlineFactsFirstFlowData({
+    baseFlowData: whaleAnalyticsData?.flow || null,
+    orderFlowData,
+    bubbleOrders: whaleSignalsForChart,
+    selectedTradeDate,
+    flowTimeframe: orderFlowData?.window || orderFlowWindow,
+  }), [orderFlowData, orderFlowWindow, selectedTradeDate, whaleAnalyticsData?.flow, whaleSignalsForChart]);
+
   const handleKlineSessionChange = useCallback((session) => {
     setSelectedKlineSession(session ? { ...session, symbol: normalizedSymbol } : null);
   }, [normalizedSymbol]);
@@ -1562,14 +1651,21 @@ export default function StockDetail() {
       // Fetch song song: order-flow (signals/dark_flow/tick_rate) + CVD SSOT
       const [orderFlowResp, cvdResp] = await Promise.allSettled([
         getStockOrderFlow(normalizedSymbol, orderFlowWindow),
-        getSessionFactsCvd(normalizedSymbol, orderFlowWindow),
+        getSessionFactsCvd(normalizedSymbol, orderFlowWindow, selectedTradeDate),
       ]);
       const base = orderFlowResp.status === 'fulfilled' ? (orderFlowResp.value?.data || null) : null;
       const cvdData = cvdResp.status === 'fulfilled' ? cvdResp.value?.data : null;
-      // Override cvd_series bằng nguồn SSOT (WhaleAlertCanonical) nếu có
-      setOrderFlowData(base ? {
-        ...base,
-        cvd_series: cvdData?.cvd_series ?? base.cvd_series,
+      // Ưu tiên payload facts-first từ SessionFacts để KLine/OrderFlow dùng cùng selected-session truth.
+      setOrderFlowData(base || cvdData ? {
+        ...(base || {}),
+        symbol: normalizedSymbol,
+        session_date: cvdData?.session_date ?? base?.session_date ?? null,
+        window: cvdData?.window ?? base?.window ?? orderFlowWindow,
+        bucket_minutes: cvdData?.bucket_minutes ?? base?.bucket_minutes ?? null,
+        cvd_normalized: cvdData?.cvd_normalized ?? base?.cvd_normalized ?? null,
+        delta_strength_pct: cvdData?.delta_strength_pct ?? base?.delta_strength_pct ?? null,
+        whale_net_flow: cvdData?.whale_net_flow ?? base?.whale_net_flow ?? null,
+        cvd_series: cvdData?.cvd_series ?? base?.cvd_series ?? [],
         _cvd_source: cvdData ? 'whale-ssot' : 'intraday-tick',
       } : null);
     } catch (err) {
@@ -1583,7 +1679,7 @@ export default function StockDetail() {
     } finally {
       if (!silent) setOrderFlowLoading(false);
     }
-  }, [normalizedSymbol, orderFlowWindow]);
+  }, [normalizedSymbol, orderFlowWindow, selectedTradeDate]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -2654,7 +2750,7 @@ export default function StockDetail() {
                   onVisibleRangeChange={setChartVisibleRange}
                   onActiveIndicatorsChange={setChartActiveIndicators}
                   onSessionChange={handleKlineSessionChange}
-                  flowData={whaleAnalyticsData?.flow || null}
+                  flowData={klineFlowData}
                   whaleSignals={whaleSignalsForChart}
                 />
               )}

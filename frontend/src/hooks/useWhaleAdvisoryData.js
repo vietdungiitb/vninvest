@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
+  getCanonicalAIAdvisory,
+  getHoldings,
   getTrackedSymbols,
   getWhaleAdvisories,
   getMarketDiscoveryHub, // Need to add this to api/client
@@ -12,7 +14,69 @@ import { useI18n } from '../context/LangContext';
 
 export const ADVISORY_INVALIDATION_EVENT = 'whale_advisory_invalidated';
 
-export function useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode = false) {
+function toList(data) {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.results)) {
+    return data.results;
+  }
+
+  return [];
+}
+
+function normalizeAdvisoryItem(item) {
+  if (!item) {
+    return null;
+  }
+
+  return {
+    id: item?.advisory_id || item?.id,
+    symbol: item?.symbol,
+    side: item?.recommendation || item?.side || 'UNKNOWN',
+    ai_summary: item?.summary_text || item?.summary || '',
+    ai_detail: item?.detail_text || item?.detail || '',
+    ai_provider: item?.ai_provider || 'openclaw',
+    ai_model: item?.ai_model || 'default',
+    created_at: item?.created_at || item?.generated_at || null,
+    severity: item?.risk_level || item?.severity || null,
+    confidence: item?.confidence,
+    matched_value: item?.matched_value || 0,
+    is_discovery: item?.is_discovery || false,
+    discovery_bucket: item?.discovery_bucket || 'standard',
+    whale_intensity: item?.whale_intensity || item?.intensity || 0,
+    threshold_source: item?.threshold_source || 'user_default',
+  };
+}
+
+function buildFallbackSymbolStats(symbols, advisories = []) {
+  const advisoryBySymbol = new Map(
+    (Array.isArray(advisories) ? advisories : [])
+      .filter(Boolean)
+      .map((advisory) => [String(advisory?.symbol || '').trim().toUpperCase(), advisory]),
+  );
+
+  return Array.from(new Set((Array.isArray(symbols) ? symbols : [])
+    .map((symbol) => String(symbol || '').trim().toUpperCase())
+    .filter(Boolean)))
+    .sort()
+    .map((symbol) => {
+      const advisory = advisoryBySymbol.get(symbol) || null;
+      const side = String(advisory?.side || '').trim().toUpperCase();
+
+      return {
+        symbol,
+        whaleIntensity: Number(advisory?.whale_intensity || 0),
+        buyCount: side === 'BUY' ? 1 : 0,
+        sellCount: side === 'SELL' ? 1 : 0,
+        count: advisory ? 1 : 0,
+        isDiscovery: Boolean(advisory?.is_discovery),
+      };
+    });
+}
+
+export function useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode = false, { activePortfolioId = null } = {}) {
   const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,17 +88,52 @@ export function useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode = false) {
   const [statsLoading, setStatsLoading] = useState(false);
   const [refreshInfoMap, setRefreshInfoMap] = useState({});
 
+  const loadNativeSymbolUniverse = useCallback(async () => {
+    const [holdingsResult, trackedResult] = await Promise.allSettled([
+      activePortfolioId ? getHoldings(activePortfolioId) : Promise.resolve({ data: [] }),
+      getTrackedSymbols(),
+    ]);
+
+    const symbols = new Set();
+    const holdings = holdingsResult.status === 'fulfilled' ? toList(holdingsResult.value?.data) : [];
+    const trackedSymbols = trackedResult.status === 'fulfilled' ? toList(trackedResult.value?.data) : [];
+
+    holdings.forEach((holding) => {
+      const symbol = String(holding?.symbol || '').trim().toUpperCase();
+      if (symbol) {
+        symbols.add(symbol);
+      }
+    });
+    trackedSymbols.forEach((item) => {
+      const symbol = String(item?.symbol || '').trim().toUpperCase();
+      if (symbol) {
+        symbols.add(symbol);
+      }
+    });
+
+    return Array.from(symbols).sort();
+  }, [activePortfolioId]);
+
   const fetchWhaleStats = useCallback(async () => {
     setStatsLoading(true);
     try {
       const resp = await getWhaleAdvisorySymbolStats({ window: 'session' });
-      if (resp.data?.stats) setSymbolStats(resp.data.stats);
+      const stats = Array.isArray(resp.data?.stats) ? resp.data.stats : [];
+      if (stats.length > 0) {
+        setSymbolStats(stats);
+        return;
+      }
+
+      if (!isDiscoveryMode) {
+        const fallbackSymbols = await loadNativeSymbolUniverse();
+        setSymbolStats(buildFallbackSymbolStats(fallbackSymbols));
+      }
     } catch (err) {
       console.error('Failed to fetch whale stats:', err);
     } finally {
       setStatsLoading(false);
     }
-  }, []);
+  }, [isDiscoveryMode, loadNativeSymbolUniverse]);
   
   const fetchDataSnapshot = useCallback(async () => {
     try {
@@ -50,32 +149,43 @@ export function useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode = false) {
       const dataItems = isDiscoveryMode 
         ? (advisoryResp?.data?.discovery_signals || []) 
         : (advisoryResp?.data?.items || []);
-      
-      const advisories = dataItems.map((item) => ({
-        id: item?.advisory_id || item?.id,
-        symbol: item?.symbol,
-        side: item?.recommendation || item?.side || 'UNKNOWN',
-        ai_summary: item?.summary_text || item?.summary || '',
-        ai_detail: item?.detail_text || '',
-        ai_provider: item?.ai_provider || 'openclaw',
-        ai_model: item?.ai_model || 'default',
-        created_at: item?.created_at,
-        severity: item?.risk_level || item?.severity || null,
-        confidence: item?.confidence,
-        matched_value: item?.matched_value || 0,
-        // Phase 3 Discovery Fields
-        is_discovery: item?.is_discovery || false,
-        discovery_bucket: item?.discovery_bucket || 'standard',
-        whale_intensity: item?.whale_intensity || item?.intensity || 0,
-        threshold_source: item?.threshold_source || 'user_default',
-      }));
+
+      let advisories = dataItems
+        .map((item) => normalizeAdvisoryItem(item))
+        .filter(Boolean);
+
+      if (!isDiscoveryMode && advisories.length === 0) {
+        const candidateSymbols = await loadNativeSymbolUniverse();
+        if (candidateSymbols.length > 0) {
+          const responses = await Promise.allSettled(
+            candidateSymbols.map((symbol) => getCanonicalAIAdvisory(symbol)),
+          );
+          advisories = responses
+            .filter((response) => response.status === 'fulfilled')
+            .map((response) => normalizeAdvisoryItem(response.value?.data))
+            .filter(Boolean);
+          setSymbolStats((current) => {
+            const hasAdvisoryBackedStats = current.some((item) => (
+              Number(item?.count || 0) > 0
+              || Number(item?.buyCount || 0) > 0
+              || Number(item?.sellCount || 0) > 0
+              || Number(item?.whaleIntensity || 0) > 0
+            ));
+
+            return hasAdvisoryBackedStats
+              ? current
+              : buildFallbackSymbolStats(candidateSymbols, advisories);
+          });
+        }
+      }
+
       setItems(advisories);
       return advisories;
     } catch (err) {
       console.error('Fetch snap failed:', err);
       throw err;
     }
-  }, [watchlistOnly, isDiscoveryMode]);
+  }, [watchlistOnly, isDiscoveryMode, loadNativeSymbolUniverse]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

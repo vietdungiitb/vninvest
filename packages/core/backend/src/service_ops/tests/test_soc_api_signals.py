@@ -1,212 +1,297 @@
-"""
-test_soc_api_signals.py — Integration tests for Signal Intelligence endpoints
-Focus: Bridge-write pattern (read-only from SOC)
-"""
-from django.test import TestCase
+"""Focused SOC signals API contract tests for bridge-write and runtime summaries."""
+
+from datetime import timedelta
+from decimal import Decimal
+from unittest.mock import Mock, patch
+
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework import status
 from rest_framework.test import APIClient
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-from service_ops.models import ServiceDefinition
+
+from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
+from service_ops.models import OwnershipRecord
+from service_ops.registry import ensure_service_registry
 
 User = get_user_model()
 
 
-class SignalsApiReadOnlyTestCase(TestCase):
-    """Test that Signals endpoints are read-only"""
+class SignalsApiBaseTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        ensure_service_registry()
+        cls.user = User.objects.create_user(
+            username='soc-signals-admin',
+            email='soc-signals-admin@test.local',
+            password='pass123',
+        )
+        cls.user.is_staff = True
+        cls.user.is_superuser = True
+        cls.user.save(update_fields=['is_staff', 'is_superuser'])
+
+        now = timezone.now()
+        session_date = now.date()
+
+        cls.whale_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            title='Whale buy detected',
+            body='Large order flow detected',
+            value=Decimal('1250000000.00'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=session_date,
+            triggered_at=now - timedelta(minutes=5),
+            source_ref='signals-contract-whale',
+            metadata={'rule_name': 'whale_flow'},
+        )
+        cls.dark_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+            symbol='SSI',
+            severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            title='Dark pool trade',
+            body='Block trade detected',
+            value=Decimal('980000000.00'),
+            direction=UnifiedAlert.DirectionChoices.SELL,
+            session_date=session_date,
+            triggered_at=now - timedelta(minutes=3),
+            source_ref='signals-contract-dark',
+            metadata={'rule_name': 'dark_pool_ratio'},
+        )
+        cls.signal_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL,
+            symbol='VNM',
+            severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            title='Signal alert',
+            body='Price change threshold crossed',
+            value=Decimal('5.20'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=session_date,
+            triggered_at=now - timedelta(minutes=1),
+            source_ref='signals-contract-signal',
+            metadata={'rule_name': 'price_change_pct'},
+        )
+
+        OrderFlowEvent.objects.create(
+            symbol='VCI',
+            session_date=session_date,
+            signal_type=OrderFlowEvent.SignalTypeChoices.WHALE_BUY,
+            side=OrderFlowEvent.SideChoices.BUY,
+            strength=0.9,
+            whale_intensity=0.95,
+            source_ref='signals-event-whale',
+            unified_alert=cls.whale_alert,
+            triggered_at=now - timedelta(minutes=5),
+        )
+        OrderFlowEvent.objects.create(
+            symbol='SSI',
+            session_date=session_date,
+            signal_type=OrderFlowEvent.SignalTypeChoices.DARK_FLOW,
+            side=OrderFlowEvent.SideChoices.SELL,
+            strength=0.7,
+            whale_intensity=0.1,
+            source_ref='signals-event-dark',
+            unified_alert=cls.dark_alert,
+            triggered_at=now - timedelta(minutes=3),
+        )
+        OrderFlowEvent.objects.create(
+            symbol='VNM',
+            session_date=session_date,
+            signal_type=OrderFlowEvent.SignalTypeChoices.OTHER,
+            side=OrderFlowEvent.SideChoices.BUY,
+            strength=0.6,
+            whale_intensity=0.2,
+            source_ref='signals-event-signal',
+            unified_alert=cls.signal_alert,
+            triggered_at=now - timedelta(minutes=1),
+        )
 
     def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
+        self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
-    def test_get_signal_config_succeeds(self):
-        """Test GET /api/soc/signals/config/ returns config"""
-        response = self.client.get('/api/soc/signals/config/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_post_signal_config_returns_403(self):
-        """Test POST /api/soc/signals/config/ returns 403 (bridge-write)"""
-        payload = {
-            'config': {
-                'whale_detection': {'min_volume': 1000, 'enabled': True},
-                'retention_days': 30
-            }
-        }
+class SignalsApiContractTestCase(SignalsApiBaseTestCase):
+    def test_get_signal_config_returns_bridge_write_metadata(self):
+        response = self.client.get('/api/soc/signals/config/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['write_mode'], 'bridge-write')
+        self.assertFalse(data['can_apply'])
+        self.assertEqual(data['ownership']['mode'], 'bridge-write')
+        self.assertIn('config_payload', data)
+
+    def test_preview_returns_validation_envelope_without_apply_permission(self):
         response = self.client.post(
-            '/api/soc/signals/config/',
-            data=payload,
-            content_type='application/json'
+            '/api/soc/signals/config/preview/',
+            {
+                'config_payload': {
+                    'whale_threshold_vnd': 600000000,
+                    'dark_pool_threshold_vnd': 1200000000,
+                    'detection_task_interval_seconds': 60,
+                },
+            },
+            format='json',
         )
-        # Should return 403 Forbidden (bridge-write read-only)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    def test_patch_signal_config_returns_403(self):
-        """Test PATCH /api/soc/signals/config/ returns 403"""
-        payload = {'config': {'retention_days': 45}}
-        response = self.client.patch(
-            '/api/soc/signals/config/',
-            data=payload,
-            content_type='application/json'
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertTrue(data['valid'])
+        self.assertFalse(data['can_apply'])
+
+    def test_summary_aggregates_alerts_and_events_from_current_session(self):
+        response = self.client.get('/api/soc/signals/summary/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['active_alerts'], 3)
+        self.assertEqual(data['whale_alerts'], 1)
+        self.assertEqual(data['dark_flow_alerts'], 1)
+        self.assertEqual(data['signal_alerts'], 1)
+        self.assertEqual(data['order_flow_events'], 3)
+        self.assertEqual(data['detection_rate'], 100.0)
+        self.assertIsNotNone(data['last_triggered_at'])
+
+    def test_runtime_read_endpoints_return_current_payloads(self):
+        whale_response = self.client.get('/api/soc/signals/whale/')
+        whale_recent_response = self.client.get('/api/soc/signals/whale/recent/')
+        dark_response = self.client.get('/api/soc/signals/dark-pool/')
+        dark_recent_response = self.client.get('/api/soc/signals/dark-pool/recent/')
+        screener_response = self.client.get('/api/soc/signals/screener/')
+        screener_recent_response = self.client.get('/api/soc/signals/screener/recent/')
+        retention_response = self.client.get('/api/soc/signals/retention-policy/')
+        performance_response = self.client.get('/api/soc/signals/performance-metrics/')
+        ownership_response = self.client.get('/api/soc/signals/ownership/')
+
+        self.assertEqual(whale_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(whale_recent_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(dark_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(dark_recent_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(screener_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(screener_recent_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(retention_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(performance_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ownership_response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(whale_response.json()['active_monitors'], 1)
+        self.assertEqual(whale_recent_response.json()['total_today'], 1)
+        self.assertEqual(dark_recent_response.json()['total_today'], 1)
+        self.assertEqual(screener_response.json()['active_rules'], 1)
+        self.assertEqual(screener_recent_response.json()['total_today'], 1)
+        self.assertEqual(performance_response.json()['total_signals_processed'], 3)
+        self.assertEqual(ownership_response.json()['mode'], 'bridge-write')
+
+    def test_direct_apply_methods_on_config_route_are_blocked(self):
+        post_response = self.client.post('/api/soc/signals/config/', {}, format='json')
+        patch_response = self.client.patch('/api/soc/signals/config/', {}, format='json')
+        delete_response = self.client.delete('/api/soc/signals/config/')
+
+        self.assertEqual(post_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(patch_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(delete_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_apply_alias_remains_blocked_for_bridge_write_even_with_db_override(self):
+        OwnershipRecord.objects.update_or_create(
+            domain='signals',
+            defaults={
+                'owner_team': 'signal_intelligence',
+                'write_mode': 'bridge-write',
+                'write_surface': 'signal_intelligence',
+                'locked_fields': ['whale_threshold_vnd'],
+                'compatibility_domains': ['admin_ops'],
+            },
         )
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    def test_get_whale_detection_succeeds(self):
-        """Test GET /api/soc/signals/whale-detection/ works"""
-        response = self.client.get('/api/soc/signals/whale-detection/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_get_dark_pool_detection_succeeds(self):
-        """Test GET /api/soc/signals/dark-pool/ works"""
-        response = self.client.get('/api/soc/signals/dark-pool/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_get_screener_detection_succeeds(self):
-        """Test GET /api/soc/signals/screener-detection/ works"""
-        response = self.client.get('/api/soc/signals/screener-detection/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_get_signal_retention_succeeds(self):
-        """Test GET /api/soc/signals/retention/ works"""
-        response = self.client.get('/api/soc/signals/retention/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_get_signal_metrics_succeeds(self):
-        """Test GET /api/soc/signals/metrics/ works"""
-        response = self.client.get('/api/soc/signals/metrics/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_get_signal_ownership_succeeds(self):
-        """Test GET /api/soc/signals/ownership/ shows write surface"""
-        response = self.client.get('/api/soc/signals/ownership/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        # Should indicate bridge-write and write surface (signal_intelligence)
-        self.assertIsNotNone(data)
-
-
-class SignalsBridgeWriteEnforcementTestCase(TestCase):
-    """Test bridge-write pattern enforcement"""
-
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
-        self.client.force_authenticate(user=self.user)
-
-    def test_all_post_endpoints_return_403(self):
-        """Test that all POST endpoints on signals return 403"""
-        endpoints = [
-            '/api/soc/signals/config/',
-            '/api/soc/signals/ownership/',
-        ]
-        
-        for endpoint in endpoints:
-            response = self.client.post(endpoint)
-            # Should return 403 (or 405 if method not allowed, but 403 for ownership check)
-            self.assertIn(response.status_code, [HTTP_403_FORBIDDEN, 405])
-
-    def test_error_message_indicates_bridge_write(self):
-        """Test that 403 error message indicates bridge-write"""
-        response = self.client.post('/api/soc/signals/config/')
-        data = response.json()
-        
-        if response.status_code == HTTP_403_FORBIDDEN:
-            # Error detail should mention bridge-write or ownership
-            detail = data.get('detail', '').lower()
-            self.assertTrue(
-                'bridge' in detail or 'ownership' in detail or 'write' in detail,
-                f"Error message should mention ownership/bridge-write, got: {detail}"
-            )
-
-
-class SignalsReadOnlyValidationTestCase(TestCase):
-    """Test that signals configuration validates correctly in read-only mode"""
-
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
-        self.client.force_authenticate(user=self.user)
-
-    def test_signals_get_includes_config_structure(self):
-        """Test that GET signals/config returns expected structure"""
-        response = self.client.get('/api/soc/signals/config/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        
-        # Should have config field
-        if 'config' in data:
-            config = data['config']
-            # May include whale_detection, dark_pool_detection, etc.
-            self.assertIsInstance(config, (dict, type(None)))
-
-    def test_signals_ownership_shows_write_surface(self):
-        """Test that ownership endpoint shows write_surface"""
-        response = self.client.get('/api/soc/signals/ownership/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        
-        # Should indicate which service owns write
-        # (expected: signal_intelligence or similar)
-        self.assertIsNotNone(data)
-        # If structure has write_surface field, verify it
-        if 'write_surface' in data:
-            self.assertIsNotNone(data['write_surface'])
-
-
-class SignalsPutDeleteBlockedTestCase(TestCase):
-    """Test that PUT/DELETE are also blocked on bridge-write signals"""
-
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
-        self.client.force_authenticate(user=self.user)
-
-    def test_put_signals_config_blocked(self):
-        """Test PUT /api/soc/signals/config/ is blocked"""
-        payload = {'config': {'retention_days': 45}}
-        response = self.client.put(
-            '/api/soc/signals/config/',
-            data=payload,
-            content_type='application/json'
+        apply_response = self.client.post(
+            '/api/soc/signals/config/apply/',
+            {'config_payload': {'whale_threshold_vnd': 700000000}},
+            format='json',
         )
-        # Should be 403 or 405
-        self.assertIn(response.status_code, [HTTP_403_FORBIDDEN, 405])
+        ownership_response = self.client.get('/api/soc/signals/ownership/')
 
-    def test_delete_signals_config_blocked(self):
-        """Test DELETE /api/soc/signals/config/ is blocked"""
-        response = self.client.delete('/api/soc/signals/config/')
-        # Should be 403 or 405
-        self.assertIn(response.status_code, [HTTP_403_FORBIDDEN, 405])
+        self.assertEqual(apply_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(apply_response.json()['code'], 'OWNERSHIP_WRITE_DENIED')
+        self.assertIn('write_block_reason', apply_response.json())
+        self.assertFalse(apply_response.json()['ownership']['can_apply'])
+        self.assertEqual(ownership_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(ownership_response.json()['can_apply'])
+
+    @patch('service_ops.views.signals.run_signals_detection_workflow.delay')
+    def test_retention_materialization_universe_and_job_routes_return_contract(self, workflow_delay):
+        workflow_delay.return_value = Mock(id='signals-task-123')
+
+        retention_preview = self.client.post(
+            '/api/soc/signals/retention-policy/preview/',
+            {'config_payload': {'intraday_tick_retention_days': 5}},
+            format='json',
+        )
+        materialization = self.client.get('/api/soc/signals/materialization/')
+        materialization_preview = self.client.post(
+            '/api/soc/signals/materialization/preview/',
+            {'domain': 'whale', 'symbol': 'vci'},
+            format='json',
+        )
+        universe = self.client.get('/api/soc/signals/universe/')
+        universe_update = self.client.post(
+            '/api/soc/signals/universe/update/',
+            {'universe_group_ids': ['vn30']},
+            format='json',
+        )
+        job_run = self.client.post('/api/soc/signals/jobs/run/', {'domain': 'whale', 'symbol': 'vci'}, format='json')
+        job_status = self.client.get('/api/soc/signals/jobs/status/')
+
+        self.assertEqual(retention_preview.status_code, status.HTTP_200_OK)
+        self.assertTrue(retention_preview.json()['valid'])
+        self.assertEqual(materialization.status_code, status.HTTP_200_OK)
+        self.assertIn('services', materialization.json())
+        self.assertIn('execution_plan', materialization.json())
+        self.assertEqual(materialization_preview.status_code, status.HTTP_200_OK)
+        self.assertEqual(materialization_preview.json()['symbol'], 'VCI')
+
+        materialization_plan = {
+            item['service_key']: item for item in materialization.json()['execution_plan']
+        }
+        preview_plan = {
+            item['service_key']: item for item in materialization_preview.json()['execution_plan']
+        }
+        self.assertTrue(materialization_plan['signal_session_facts_materializer']['execution_supported'])
+        self.assertTrue(materialization_plan['signal_session_facts_materializer']['will_run'])
+        self.assertTrue(preview_plan['signal_session_facts_materializer']['execution_supported'])
+        self.assertTrue(preview_plan['signal_session_facts_materializer']['will_run'])
+        self.assertEqual(preview_plan['signal_session_facts_materializer']['symbol'], 'VCI')
+
+        self.assertEqual(universe.status_code, status.HTTP_200_OK)
+        self.assertEqual(universe_update.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(job_run.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(job_run.json()['celery_task_id'], 'signals-task-123')
+        self.assertEqual(job_status.status_code, status.HTTP_200_OK)
+        self.assertIn(job_status.json()['status'], {'idle', 'queued', 'running', 'success', 'partial', 'failed', 'skipped'})
+        self.assertEqual(job_status.json()['celery_task_id'], 'signals-task-123')
+        workflow_delay.assert_called_once()
 
 
-class SignalsWithoutAuthenticationTestCase(TestCase):
-    """Test authentication requirements on signals endpoints"""
-
+class SignalsAuthenticationTestCase(TestCase):
     def setUp(self):
-        self.client = Client()
+        self.client = APIClient()
 
-    def test_unauthenticated_get_returns_401(self):
-        """Test that unauthenticated requests return 401"""
-        response = self.client.get('/api/soc/signals/config/')
-        self.assertEqual(response.status_code, 401)
+    def test_unauthenticated_requests_return_401(self):
+        get_response = self.client.get('/api/soc/signals/config/')
+        preview_response = self.client.post('/api/soc/signals/config/preview/', {}, format='json')
 
-    def test_unauthenticated_post_returns_401(self):
-        """Test that unauthenticated POST returns 401"""
-        response = self.client.post('/api/soc/signals/config/')
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(get_response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(preview_response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_non_admin_get_returns_403(self):
-        """Test that non-admin user gets 403"""
-        user = User.objects.create_user('user', 'user@test.com', 'pass123')
-        self.client.force_login(user)
-        
-        response = self.client.get('/api/soc/signals/config/')
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+    def test_non_admin_user_is_forbidden(self):
+        user = User.objects.create_user(
+            username='soc-signals-reader',
+            email='soc-signals-reader@test.local',
+            password='pass123',
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get('/api/soc/signals/config/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

@@ -6,12 +6,12 @@ import PropTypes from 'prop-types';
 
 export const SOCDomainTabs = ({ activeDomain, onDomainChange, t }) => {
   const domains = [
-    { key: 'overview', label: t('soc.tabs.overview') },
-    { key: 'vnbroker', label: t('soc.tabs.vnbroker') },
-    { key: 'prefetch', label: t('soc.tabs.prefetch') },
-    { key: 'signals', label: t('soc.tabs.signals') },
-    { key: 'screener', label: t('soc.tabs.screener') },
-    { key: 'matrix', label: t('soc.tabs.matrix') },
+    { key: 'overview', label: t('soc.tab.overview') },
+    { key: 'signals', label: t('soc.tab.signals') },
+    { key: 'dataops', label: t('soc.tab.dataops') },
+    { key: 'prefetch', label: t('soc.tab.prefetch') },
+    { key: 'screener', label: t('soc.tab.screener') },
+    { key: 'matrix', label: t('soc.tab.matrix') },
   ];
 
   return (
@@ -35,6 +35,8 @@ export const SOCDomainTabs = ({ activeDomain, onDomainChange, t }) => {
   );
 };
 
+// NOTE: React 19 no longer runs propTypes validation at runtime.
+// PropTypes kept for documentation and IDE tooling only.
 SOCDomainTabs.propTypes = {
   activeDomain: PropTypes.string.isRequired,
   onDomainChange: PropTypes.func.isRequired,

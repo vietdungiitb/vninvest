@@ -10,10 +10,12 @@ import { RVOLChartPanel } from '../components/RVOLChartPanel';
 import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
 import WhaleAdvisoryCommandPanel from '../components/advisory/WhaleAdvisoryCommandPanel';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import useSessionFactsCvdSeries from '../hooks/useSessionFactsCvdSeries';
 import useWhaleAnalyticsData from '../hooks/useWhaleAnalyticsData';
 import { useI18n } from '../context/LangContext';
 import { resolveAdvisoryConflictState } from './stockDetailAdvisoryUtils';
 import { mapChartTimeframeToWhaleAnalyticsTimeframe, resolveChartHistoryTradeDates } from '../utils/whaleKlineAlignment';
+import { buildFactsFirstFlowData, flattenBubbleOrders } from '../utils/sessionFactsFlowAdapter';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -89,6 +91,20 @@ export default function WhaleAlertsDashboard() {
   } = useWhaleAnalyticsData(normalizedSymbol, bubbleTimeframe, selectedTradeDate, {
     includeBaseline: false,
   });
+  const {
+    payloads: chartSessionFactPayloads,
+  } = useSessionFactsCvdSeries(normalizedSymbol, chartAnalyticsTimeframe, {
+    selectedTradeDate,
+    tradeDates: chartHistoryTradeDates,
+  });
+  const {
+    payloads: bubbleSessionFactPayloads,
+    loading: bubbleSessionFactsLoading,
+    error: bubbleSessionFactsError,
+  } = useSessionFactsCvdSeries(normalizedSymbol, bubbleTimeframe, {
+    selectedTradeDate,
+    tradeDates: selectedTradeDate ? [selectedTradeDate] : [],
+  });
 
   const normalizeSymbol = (value) => String(value || '').trim().toUpperCase();
 
@@ -126,14 +142,7 @@ export default function WhaleAlertsDashboard() {
   const [companyName, setCompanyName] = useState('');
 
   const whaleSignalsForChart = useMemo(() => {
-    const snapshotOrders = chartAnalyticsData?.bubbles?.orders;
-    const flattenedSnapshotOrders = snapshotOrders
-      ? [
-        ...(Array.isArray(snapshotOrders.buy) ? snapshotOrders.buy : []),
-        ...(Array.isArray(snapshotOrders.sell) ? snapshotOrders.sell : []),
-        ...(Array.isArray(snapshotOrders.internal) ? snapshotOrders.internal : []),
-      ]
-      : [];
+    const flattenedSnapshotOrders = flattenBubbleOrders(chartAnalyticsData?.bubbles?.orders);
 
     if (flattenedSnapshotOrders.length > 0) {
       return flattenedSnapshotOrders;
@@ -145,6 +154,29 @@ export default function WhaleAlertsDashboard() {
 
     return symbolAlerts;
   }, [chartAnalyticsData, feedData, symbolAlerts]);
+  const bubbleOrdersForFlow = useMemo(() => {
+    const flattenedSnapshotOrders = flattenBubbleOrders(bubbleAnalyticsData?.bubbles?.orders);
+    if (flattenedSnapshotOrders.length > 0) {
+      return flattenedSnapshotOrders;
+    }
+
+    return whaleSignalsForChart;
+  }, [bubbleAnalyticsData, whaleSignalsForChart]);
+  const chartFactsFirstFlowData = useMemo(() => buildFactsFirstFlowData({
+    baseFlowData: chartAnalyticsData?.flow || null,
+    sessionFactPayloads: chartSessionFactPayloads,
+    bubbleOrders: whaleSignalsForChart,
+    selectedTradeDate,
+    flowTimeframe: chartAnalyticsTimeframe,
+  }), [chartAnalyticsData?.flow, chartAnalyticsTimeframe, chartSessionFactPayloads, selectedTradeDate, whaleSignalsForChart]);
+  const bubbleFactsFirstFlowData = useMemo(() => buildFactsFirstFlowData({
+    baseFlowData: bubbleAnalyticsData?.flow || null,
+    sessionFactPayloads: bubbleSessionFactPayloads,
+    bubbleOrders: bubbleOrdersForFlow,
+    selectedTradeDate,
+    flowTimeframe: bubbleTimeframe,
+    timeframeWindow: bubbleAnalyticsData?.bubbles?.timeframe_window || bubbleAnalyticsData?.flow?.timeframe_window || null,
+  }), [bubbleAnalyticsData?.bubbles?.timeframe_window, bubbleAnalyticsData?.flow, bubbleOrdersForFlow, bubbleSessionFactPayloads, bubbleTimeframe, selectedTradeDate]);
 
   const fetchFeed = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) {
@@ -406,7 +438,7 @@ export default function WhaleAlertsDashboard() {
                     }
                   }}
                   onVisibleRangeChange={setChartVisibleRange}
-                  flowData={chartAnalyticsData?.flow || null}
+                  flowData={chartFactsFirstFlowData}
                   whaleSignals={whaleSignalsForChart}
                   onSessionChange={({ tradeDate }) => {
                     setSelectedSession(tradeDate ? { symbol: normalizedSymbol, tradeDate } : null);
@@ -456,9 +488,9 @@ export default function WhaleAlertsDashboard() {
                 externalSymbol={normalizedSymbol}
                 externalTimeframe={bubbleTimeframe}
                 externalData={bubbleAnalyticsData?.bubbles || null}
-                externalFlowData={bubbleAnalyticsData?.flow || null}
-                externalLoading={whaleAnalyticsLoading}
-                externalError={whaleAnalyticsError}
+                externalFlowData={bubbleFactsFirstFlowData}
+                externalLoading={whaleAnalyticsLoading || bubbleSessionFactsLoading}
+                externalError={whaleAnalyticsError || bubbleSessionFactsError}
                 onTimeframeChange={setBubbleTimeframe}
                 onSymbolChange={() => {}}
                 isEmbedded={true}
@@ -523,7 +555,7 @@ export default function WhaleAlertsDashboard() {
             <div className="mt-3 h-[320px]">
               <CompactDarkMoneyFlow
                 symbol={normalizedSymbol}
-                flowData={chartAnalyticsData?.flow || null}
+                flowData={chartFactsFirstFlowData}
                 height={320}
                 syncTimestamp={chartVisibleRange.to_ts ? Math.floor(Number(chartVisibleRange.to_ts) / 1000) : null}
               />

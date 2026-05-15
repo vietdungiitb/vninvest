@@ -101,9 +101,13 @@ QUEUE_DOMAIN_MATRIX = {
         'task_routes': (
             'manual_*',
             'signal_intelligence.tasks.run_signal_detection_job',
+            'service_ops.run_scrape_cycle',
+            'service_ops.scrape_cell_task',
+            'service_ops.run_market_data_queue_tier_scheduler',
         ),
         'periodic_tasks': (
             'manual_refresh_task',
+            'market-data-queue-tier-scheduler-30s',
         ),
     },
 }

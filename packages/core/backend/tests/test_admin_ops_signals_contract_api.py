@@ -5,6 +5,7 @@ ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 """
 import os
 import sys
+from types import SimpleNamespace
 from unittest.mock import patch
 
 _src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -16,7 +17,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'vninvest_core.settings')
 import django
 django.setup()
 
-import httpx
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import resolve
@@ -234,48 +234,39 @@ class AdminOpsSignalsContractApiTests(TestCase):
 
         jobs_run_response = self.client.post(
             '/api/admin-ops/signals/jobs/run/',
-            {'service_domain': 'whale'},
+            {'domain': 'whale'},
             format='json',
         )
-        self.assertEqual(jobs_run_response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(jobs_run_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(jobs_run_response.data['status'], 'accepted')
 
         retry_response = self.client.post('/api/admin-ops/signals/jobs/1/retry/', {}, format='json')
-        self.assertEqual(retry_response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(retry_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(retry_response.data['status'], 'accepted')
 
     @override_settings(LEGACY_BACKEND_URL='http://legacy.internal')
-    def test_signal_summary_reports_bridge_write_ownership_when_legacy_bridge_enabled(self):
+    def test_signal_summary_keeps_native_ownership_when_legacy_bridge_enabled(self):
         response = self.client.get('/api/admin-ops/signals/summary/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['ownership']['mode'], 'native-read-legacy-write-through')
-        self.assertEqual(response.data['ownership']['domains']['services_config']['status'], 'bridge-write')
-        self.assertEqual(response.data['ownership']['domains']['jobs']['status'], 'bridge-write')
+        self.assertEqual(response.data['ownership']['mode'], 'native-read-preview')
+        self.assertEqual(response.data['ownership']['domains']['services_config']['status'], 'read-preview')
+        self.assertEqual(response.data['ownership']['domains']['jobs']['status'], 'guarded-write')
 
     @override_settings(LEGACY_BACKEND_URL='http://legacy.internal')
     @patch('vninvest_core.contracts.admin_ops.views.httpx.request')
-    def test_signal_bridge_delegates_legacy_owned_config_and_jobs(self, mock_request):
-        mock_request.side_effect = [
-            httpx.Response(200, json={'ok': True, 'services_config': {'enabled': False}, 'universe_policy': {}, 'retention_policy': {}, 'ownership': {'domains': {}}}),
-            httpx.Response(200, json={'ok': True, 'preview': {'services_config': {'enabled': False}}}),
-            httpx.Response(200, json={'ok': True, 'preview': {'counts': {'effective': 5}}}),
-            httpx.Response(200, json={'ok': True, 'applied': True}),
-            httpx.Response(200, json={'ok': True, 'count': 1, 'results': [{'id': 7}]}),
-            httpx.Response(202, json={'ok': True, 'status': 'queued', 'task_id': 'legacy-run-1'}),
-            httpx.Response(200, json={'ok': True, 'status': 'retried'}),
-            httpx.Response(200, json={'ok': True, 'saved': True}),
-        ]
+    @patch('signal_intelligence.tasks.run_signal_detection_job.delay')
+    def test_signal_routes_stay_native_when_legacy_bridge_enabled(self, delay_mock, mock_request):
+        delay_mock.side_effect = [SimpleNamespace(id='native-run-1'), SimpleNamespace(id='native-run-2')]
 
-        auth_header = 'Bearer vni_pat_bridge_test'
-
-        config_response = self.client.get('/api/admin-ops/signals/config/', HTTP_AUTHORIZATION=auth_header)
+        config_response = self.client.get('/api/admin-ops/signals/config/')
         self.assertEqual(config_response.status_code, status.HTTP_200_OK)
-        self.assertFalse(config_response.data['services_config']['enabled'])
+        self.assertTrue(config_response.data['services_config']['whale_service']['enabled'])
 
         config_preview_response = self.client.post(
             '/api/admin-ops/signals/config/preview/',
-            {'services_config': {'enabled': False}},
+            {'services_config': {'whale_service': {'default_threshold_vnd': 123}}},
             format='json',
-            HTTP_AUTHORIZATION=auth_header,
         )
         self.assertEqual(config_preview_response.status_code, status.HTTP_200_OK)
 
@@ -283,48 +274,37 @@ class AdminOpsSignalsContractApiTests(TestCase):
             '/api/admin-ops/signals/universe/preview/',
             {'admin_symbols': ['FPT']},
             format='json',
-            HTTP_AUTHORIZATION=auth_header,
         )
         self.assertEqual(universe_preview_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(universe_preview_response.data['preview']['counts']['effective'], 5)
 
         universe_apply_response = self.client.post(
             '/api/admin-ops/signals/universe/apply/',
             {'confirm': True, 'policy': {'admin_symbols': ['FPT']}},
             format='json',
-            HTTP_AUTHORIZATION=auth_header,
         )
-        self.assertEqual(universe_apply_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(universe_apply_response.status_code, status.HTTP_409_CONFLICT)
 
-        jobs_response = self.client.get('/api/admin-ops/signals/jobs/?page=1&page_size=10', HTTP_AUTHORIZATION=auth_header)
+        jobs_response = self.client.get('/api/admin-ops/signals/jobs/?page=1&page_size=10')
         self.assertEqual(jobs_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(jobs_response.data['count'], 1)
+        self.assertEqual(jobs_response.data['count'], 0)
 
         jobs_run_response = self.client.post(
             '/api/admin-ops/signals/jobs/run/',
-            {'service_domain': 'whale'},
+            {'domain': 'whale'},
             format='json',
-            HTTP_AUTHORIZATION=auth_header,
         )
-        self.assertEqual(jobs_run_response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertEqual(jobs_run_response.data['task_id'], 'legacy-run-1')
+        self.assertEqual(jobs_run_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(jobs_run_response.data['task_id'], 'native-run-1')
 
-        retry_response = self.client.post('/api/admin-ops/signals/jobs/7/retry/', {}, format='json', HTTP_AUTHORIZATION=auth_header)
+        retry_response = self.client.post('/api/admin-ops/signals/jobs/7/retry/', {}, format='json')
         self.assertEqual(retry_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(retry_response.data['task_id'], 'native-run-2')
 
         config_put_response = self.client.put(
             '/api/admin-ops/signals/config/',
             {'services_config': {'whale_service': {'enabled': False}}},
             format='json',
-            HTTP_AUTHORIZATION=auth_header,
         )
-        self.assertEqual(config_put_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(config_put_response.status_code, status.HTTP_409_CONFLICT)
 
-        self.assertEqual(mock_request.call_count, 8)
-        first_call = mock_request.call_args_list[0].kwargs
-        self.assertEqual(first_call['url'], 'http://legacy.internal/api/admin-ops/signals/config/')
-        self.assertEqual(first_call['headers']['Authorization'], auth_header)
-        self.assertEqual(first_call['headers']['Host'], 'testserver')
-        run_call = mock_request.call_args_list[5].kwargs
-        self.assertEqual(run_call['url'], 'http://legacy.internal/api/admin-ops/signals/jobs/run/')
-        self.assertEqual(run_call['json'], {'service_domain': 'whale'})
+        mock_request.assert_not_called()

@@ -133,6 +133,30 @@ import PaginationBar from '../shared/PaginationBar';
 - Neu co thay doi contract, phai cap nhat dong bo test + docs + audit ledger.
 - Neu phat hien conflict ket qua giua hai luong, phai quy ve SSOT va xoa luong non-SSOT truoc khi merge.
 
+### 7.5. Hard rules cho Global Market Data Matrix SSOT (Khong ngoai le)
+- `global symbol matrix` / `global symbol registry` la SSOT duy nhat cho du lieu thi truong dung chung toan he thong.
+- Global matrix phai la hop nhat persistent cua moi demand source hop le: system defaults, admin global groups, holdings, watchlists, tracked symbols, alerts, va cac nguon global da duoc phe duyet.
+- User khong duoc so huu ban sao market-data rieng; user chi so huu membership/metadata rieng, con gia/history/intraday/facts/snapshots phai doc tu shared global layer.
+- Watchlist/tracked/holding/alert chi la event promote demand vao global matrix; nghiem cam tao crawl silo rieng theo user/workspace.
+- `ScrapeMatrix`, queue snapshot, run-log, va moi execution state chi la lop van hanh; khong duoc dung de thay the persistent universe SSOT.
+- Mọi read path san pham phai uu tien global facts/snapshots/history/materialized data; nghiem cam per-user recrawl neu da ton tai shared facts-first path hop le.
+- Planner cao du lieu bat buoc coverage-gap/freshness-gap driven tren global registry; cam full-scan ad hoc va overwrite mu quang.
+- Symbol chi duoc ha uu tien hoac roi active crawl set khi tat ca demand source het hieu luc va decay window da qua; khong drop ngay vi mot user remove.
+- Thu tu uu tien bat buoc: dung shared SSOT truoc, tranh crawl lap sau, roi moi toi uu UX/SLA/chi phi.
+
+### 7.6. Dieu kien merge bo sung cho market-data SSOT
+- PR phai chi ro demand source nao duoc them/sua/remove khoi global matrix.
+- PR phai chi ro read path nao doc tu global registry/facts layer va khong duoc mo them per-user provider call path.
+- PR chạm ingest/planner phai co evidence `missing-only` hoac `coverage-gap` semantics; neu khong chung minh duoc thi block merge.
+- PR chạm watchlist/tracked/holding/alert behavior phai duy tri nguyen tac: user event -> global demand promotion -> shared data read path.
+
+### 7.7. Dev Runtime Refresh Hard Rule
+- `start_dev.ps1` la entrypoint chuan, bat buoc cho moi lan build/rebuild/restart dev stack trong repo nay.
+- AI phai mac dinh chay `./start_dev.ps1` sau runtime/UI/backend slices ma khong can hoi lai USER viec co dung script nay hay khong.
+- Khong duoc dung `docker compose ... up/build` truc tiep de thay the workflow dev thong thuong, vi nhu vay bo qua env bootstrap, `VNBROKER_GITHUB_TOKEN` bootstrap, health wait, scheduler drift check, va smoke checks ma `start_dev.ps1` dang so huu.
+- `./start_dev.ps1 -SkipBuild` chi duoc dung khi da co rebuild hop le truoc do va muc tieu chi la restart/up; neu co file moi, thay doi image-layer, hoac can chac chan container nhan code moi, phai dung `./start_dev.ps1` ban day du.
+- Neu buoc debug can goi `docker compose` truc tiep de forensic `start_dev.ps1` hoac drift compose, AI phai ghi ro ly do lech chuan trong audit ledger va progress dashboard.
+
 ---
 
 ## 8. Mandatory Campaign Closure Documentation

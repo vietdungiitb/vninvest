@@ -6,15 +6,16 @@ Endpoints:
   GET /core/v1/market-data/symbols/<symbol>/           — StockProfile detail
   GET /core/v1/market-data/daily-prices/<symbol>/      — DailyPrice history
 """
+from datetime import timedelta
+
 from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 
-from .models import DailyPrice, StockProfile
+from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
 from .serializers import DailyPriceSerializer, StockProfileSerializer
-from . import vnbroker_adapter
 
 
 class StockProfileListView(APIView):
@@ -269,29 +270,35 @@ class IntradayPricesView(APIView):
     def get(self, request, symbol):
         symbol = symbol.upper()
         timeframe = request.query_params.get('timeframe', '1H')
-        days = int(request.query_params.get('days', 180))
-        
-        # Query native adapter
-        data = vnbroker_adapter.fetch_intraday_ohlcv(symbol, timeframe, days)
-        
+        try:
+            days = max(1, min(int(request.query_params.get('days', 180)), 3650))
+        except (TypeError, ValueError):
+            days = 180
+
+        cutoff = timezone.now() - timedelta(days=days)
+        bars = list(
+            IntradayBar.objects.filter(symbol=symbol, timeframe=timeframe, datetime__gte=cutoff)
+            .order_by('datetime')
+        )
+
         return Response({
             'symbol': symbol,
-            'days': len(data['bars']),
+            'days': len(bars),
             'timeframe': timeframe,
             'interval': timeframe.lower(),
             'points': [
                 {
-                    'date': bar['datetime'],
-                    'open': bar['open'],
-                    'high': bar['high'],
-                    'low': bar['low'],
-                    'close': bar['close'],
-                    'volume': bar['volume'],
+                    'date': bar.datetime.isoformat(),
+                    'open': float(bar.open),
+                    'high': float(bar.high),
+                    'low': float(bar.low),
+                    'close': float(bar.close),
+                    'volume': bar.volume,
                 }
-                for bar in data['bars']
+                for bar in bars
             ],
             'technical': {},
-            'source': 'native',
+            'source': 'intraday_bar_db',
         })
 
 
@@ -308,26 +315,56 @@ class IntradayTapeView(APIView):
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        page_size = int(request.query_params.get('page_size', 50))
-        
-        # Query native adapter (Redis cache → DB fallback)
-        data = vnbroker_adapter.fetch_intraday_tape(symbol, page_size)
-        
+        try:
+            page_size = max(1, min(int(request.query_params.get('page_size', 50)), 200))
+        except (TypeError, ValueError):
+            page_size = 50
+
+        served_at = timezone.now()
+        latest_tick = (
+            IntradayTick.objects.filter(symbol=symbol)
+            .only('timestamp', 'created_at')
+            .order_by('-timestamp')
+            .first()
+        )
+        if latest_tick is None:
+            return Response({
+                'symbol': symbol,
+                'trades': [],
+                'total': 0,
+                'source': 'intraday_tick_db_missing',
+                'stale': True,
+                'fetched_at': None,
+                'source_event_at': None,
+                'served_at': served_at.isoformat(),
+                'age_seconds': None,
+            })
+
+        latest_trade_date = timezone.localdate(latest_tick.timestamp)
+        tick_rows = list(
+            IntradayTick.objects.filter(symbol=symbol, timestamp__date=latest_trade_date)
+            .order_by('-timestamp')[:page_size]
+        )
+        age_seconds = max(int((served_at - latest_tick.timestamp).total_seconds()), 0)
+
         return Response({
             'symbol': symbol,
             'trades': [
                 {
-                    'time': t['timestamp'].split('T')[1][:8],
-                    'ts': t['timestamp'],
-                    'price': t['price'],
-                    'volume': t['volume'],
-                    'side': t['side'],
-                    'match_type': t.get('match_type', 'NormalMatch'),
+                    'time': timezone.localtime(t.timestamp).strftime('%H:%M:%S'),
+                    'ts': t.timestamp.isoformat(),
+                    'price': float(t.price),
+                    'volume': t.volume,
+                    'side': t.side,
+                    'match_type': t.match_type or 'NormalMatch',
                 }
-                for t in data['trades']
+                for t in tick_rows
             ],
-            'total': len(data['trades']),
-            'source': 'native',
-            'stale': False,
-            'fetched_at': timezone.now().isoformat(),
+            'total': len(tick_rows),
+            'source': 'intraday_tick_db',
+            'stale': latest_trade_date != timezone.localdate(),
+            'fetched_at': latest_tick.created_at.isoformat() if latest_tick.created_at else latest_tick.timestamp.isoformat(),
+            'source_event_at': latest_tick.timestamp.isoformat(),
+            'served_at': served_at.isoformat(),
+            'age_seconds': age_seconds,
         })

@@ -3,11 +3,12 @@ import json
 import logging
 
 from django.core.cache import cache
+from django.utils.dateparse import parse_date
 from django.utils import timezone as dj_timezone
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import generics, permissions
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 from vninvest_core.pagination import SnapshotCursorPagination
 
-from .models import SessionFacts, SymbolSnapshot
+from .models import SessionFacts, SessionFactsBucket, SymbolSnapshot
 from .serializers import SessionFactsSerializer, SymbolSnapshotSerializer
 
 _SNAPSHOT_TTL = 15   # seconds — SM-P2.4 cache TTL for market data
@@ -29,6 +30,64 @@ def _snapshot_cache_key(symbol: str, session_date) -> str:
 
 def _session_facts_cache_key(symbol: str, session_date) -> str:
     return f'core:session_facts:{symbol.upper()}:{session_date}'
+
+
+def _parse_trade_date_param(request):
+    raw_trade_date = str(request.query_params.get('trade_date') or '').strip()
+    if not raw_trade_date:
+        return None
+
+    try:
+        parsed_trade_date = parse_date(raw_trade_date)
+    except ValueError:
+        parsed_trade_date = None
+    if parsed_trade_date is None:
+        raise ValidationError({
+            'detail': 'trade_date phải theo định dạng YYYY-MM-DD.',
+            'code': 'invalid_trade_date',
+            'field_errors': {
+                'trade_date': ['Định dạng không hợp lệ.'],
+            },
+        })
+    return parsed_trade_date
+
+
+def _get_materialized_session_facts(symbol: str, trade_date=None) -> SessionFacts | None:
+    normalized_symbol = symbol.upper()
+
+    if trade_date is not None:
+        return SessionFacts.objects.filter(symbol=normalized_symbol, session_date=trade_date).first()
+
+    today = dj_timezone.now().date()
+
+    today_facts = SessionFacts.objects.filter(symbol=normalized_symbol, session_date=today).first()
+    if today_facts is not None:
+        return today_facts
+
+    return SessionFacts.objects.filter(symbol=normalized_symbol).order_by('-session_date').first()
+
+
+def _delta_strength_pct_from_facts(obj: SessionFacts) -> float:
+    total = (obj.total_buy_volume or 0) + (obj.total_sell_volume or 0)
+    if total == 0:
+        return 0.0
+    return round((obj.whale_net_flow or 0) / total * 100.0, 4)
+
+
+def _get_materialized_session_fact_buckets(facts: SessionFacts, window: str) -> list[dict]:
+    return list(
+        SessionFactsBucket.objects
+        .filter(session_facts=facts, window=window)
+        .order_by('bucket_ts', 'pk')
+        .values(
+            'bucket_ts',
+            'cumulative_cvd',
+            'buy_strength',
+            'institutional_strength',
+            'buy_volume',
+            'sell_volume',
+        )
+    )
 
 
 class SymbolSnapshotListView(generics.ListAPIView):
@@ -110,8 +169,9 @@ class SessionFactsListView(generics.ListAPIView):
 @extend_schema(
     summary='Lấy SessionFacts (CVD + Strength) cho một symbol',
     description=(
-        'Trả về SessionFacts cho phiên giao dịch hiện tại hoặc gần nhất. '
-        'Nếu chưa có dữ liệu hôm nay, tự động compute on-demand từ WhaleAlertCanonical. '
+        'Trả về SessionFacts materialized cho phiên giao dịch hiện tại hoặc gần nhất. '
+        'Primary path chỉ đọc read model đã materialize từ WhaleAlertCanonical, '
+        'không compute on-demand trong request path. '
         'Cache Redis TTL 30 giây. Xác thực bắt buộc.'
     ),
     parameters=[
@@ -121,6 +181,13 @@ class SessionFactsListView(generics.ListAPIView):
             location=OpenApiParameter.PATH,
             description='Mã chứng khoán, ví dụ VCB, VPB, HPG.',
             required=True,
+        ),
+        OpenApiParameter(
+            name='trade_date',
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            description='Ngày phiên cần lấy theo định dạng YYYY-MM-DD. Nếu truyền, endpoint chỉ trả đúng phiên đó hoặc 404.',
+            required=False,
         )
     ],
     responses={
@@ -134,8 +201,8 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
     GET /api/market/session-facts/<symbol>/
 
     Trả về SessionFacts cho symbol theo phiên gần nhất.
-    Nếu chưa có dữ liệu cho hôm nay, tự động compute on-demand từ
-    WhaleAlertCanonical trước khi trả về.
+    Nếu truyền `trade_date`, endpoint chỉ trả đúng phiên đó hoặc 404.
+    Nếu không truyền, endpoint ưu tiên phiên hôm nay rồi fallback về phiên materialized gần nhất.
 
     Cache TTL: 30 s (Redis).
     """
@@ -143,48 +210,16 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [MarketDataThrottle]
 
-    def _compute_on_demand(self, symbol: str):
-        """Trigger engine tính ngay nếu chưa có dữ liệu hôm nay."""
-        from django.utils.timezone import now as _now
-        from market_serving.session_facts_engine import compute_session_facts
-
-        today = _now().date()
-        result = compute_session_facts(symbol, today)
-        if result is None:
-            return None
-
-        obj, _ = SessionFacts.objects.update_or_create(
-            symbol=symbol,
-            session_date=today,
-            defaults={
-                'cvd_normalized': result['cvd_normalized'],
-                'buy_strength': result['buy_strength'],
-                'institutional_strength': result['institutional_strength'],
-                'whale_net_flow': result['whale_net_flow'],
-                'dark_flow_score': result['dark_flow_score'],
-                'total_buy_volume': result['total_buy_volume'],
-                'total_sell_volume': result['total_sell_volume'],
-                'source': SessionFacts.SourceChoices.COMPUTED,
-                'stale': False,
-            },
-        )
-        return obj
-
     def get_object(self):
-        from django.utils.timezone import now as _now
-
         symbol = self.kwargs['symbol'].upper()
-        today = _now().date()
-
-        # Ưu tiên dữ liệu hôm nay
-        obj = SessionFacts.objects.filter(symbol=symbol, session_date=today).first()
+        requested_trade_date = _parse_trade_date_param(self.request)
+        obj = _get_materialized_session_facts(symbol, trade_date=requested_trade_date)
         if obj is None:
-            # Thử compute on-demand từ WhaleAlertCanonical
-            obj = self._compute_on_demand(symbol)
-        if obj is None:
-            # Fallback: phiên gần nhất bất kỳ
-            obj = SessionFacts.objects.filter(symbol=symbol).order_by('-session_date').first()
-        if obj is None:
+            if requested_trade_date is not None:
+                raise NotFound({
+                    'detail': f'Không có dữ liệu SessionFacts cho {symbol} ở phiên {requested_trade_date.isoformat()}.',
+                    'code': 'not_found',
+                })
             raise NotFound(f'Không có dữ liệu SessionFacts cho {symbol}')
         return obj
 
@@ -225,11 +260,11 @@ _CVD_SERIES_CACHE_TTL = 30   # seconds — same as SessionFacts
     summary='Lấy chuỗi CVD whale theo bucket thời gian (SSOT)',
     description=(
         'Trả về chuỗi CVD tích lũy theo bucket thời gian cho một symbol, '
-        'được tính từ nguồn SSOT duy nhất là **WhaleAlertCanonical**. '
-        'Đây là nguồn chân lý duy nhất cho CVD chart — thay thế cvd_series '
-        'từ IntradayTick (short-lived, không đáng tin cho cả phiên). '
+        'được đọc từ SessionFacts materialized từ nguồn SSOT duy nhất là '
+        '**WhaleAlertCanonical**. Đây là primary read path cho CVD chart, '
+        'không compute on-demand trong request path. '
         'Mỗi bucket trả về `bucket_ts` (ISO 8601), `cumulative_cvd` (VND), '
-        '`buy_volume`, `sell_volume`. '
+        '`buy_strength`, `institutional_strength`, `buy_volume`, `sell_volume`. '
         'Cache Redis TTL 30 giây. Xác thực bắt buộc.'
     ),
     parameters=[
@@ -247,6 +282,13 @@ _CVD_SERIES_CACHE_TTL = 30   # seconds — same as SessionFacts
             description='Độ rộng bucket: 5m | 15m (mặc định) | 30m | 1h.',
             required=False,
             enum=['5m', '15m', '30m', '1h'],
+        ),
+        OpenApiParameter(
+            name='trade_date',
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            description='Ngày phiên cần lấy theo định dạng YYYY-MM-DD. Nếu truyền, endpoint chỉ trả đúng phiên đó hoặc 404.',
+            required=False,
         ),
     ],
     responses={
@@ -267,6 +309,7 @@ _CVD_SERIES_CACHE_TTL = 30   # seconds — same as SessionFacts
                 'whale_net_flow': -500000000,
                 'cvd_series': [
                     {'bucket_ts': '2026-05-13T09:00:00+07:00', 'cumulative_cvd': -250000000.0,
+                     'buy_strength': 41.2, 'institutional_strength': 36.5,
                      'buy_volume': 0, 'sell_volume': 250000000},
                 ],
                 'bucket_count': 1,
@@ -284,11 +327,13 @@ class SessionFactsCvdView(APIView):
 
     Query params:
       window   — 5m | 15m (default) | 30m | 1h
+            trade_date — YYYY-MM-DD; nếu truyền thì khóa đúng selected session
 
     Response fields:
       symbol, session_date, window, bucket_minutes,
       cvd_normalized, delta_strength_pct, whale_net_flow,
-      cvd_series[{bucket_ts, cumulative_cvd, buy_volume, sell_volume}],
+            cvd_series[{bucket_ts, cumulative_cvd, buy_strength,
+                                    institutional_strength, buy_volume, sell_volume}],
       bucket_count, _source
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -302,9 +347,20 @@ class SessionFactsCvdView(APIView):
 
         window = str(request.query_params.get('window', '15m')).strip().lower()
         bucket_minutes = _WINDOW_TO_BUCKET_MINUTES.get(window, 15)
+        requested_trade_date = _parse_trade_date_param(request)
 
-        today = dj_timezone.now().date()
-        cache_key = f'core:cvd_series:{symbol}:{today}:{bucket_minutes}'
+        facts = _get_materialized_session_facts(symbol, trade_date=requested_trade_date)
+        if facts is None:
+            raise NotFound({
+                'detail': (
+                    f'Không có dữ liệu SessionFacts cho {symbol} ở phiên {requested_trade_date.isoformat()}.'
+                    if requested_trade_date is not None
+                    else f'Không có dữ liệu SessionFacts cho {symbol}.'
+                ),
+                'code': 'not_found',
+            })
+
+        cache_key = f'core:cvd_series:v2:{symbol}:{facts.session_date}:{bucket_minutes}'
 
         try:
             cached = cache.get(cache_key)
@@ -315,29 +371,33 @@ class SessionFactsCvdView(APIView):
         if cached is not None:
             return Response({**cached, '_source': 'cache-hit'})
 
-        from market_serving.session_facts_engine import compute_session_facts
-        result = compute_session_facts(
-            symbol, today,
-            bucket_minutes=bucket_minutes,
-            include_series=True,
-        )
-
-        if result is None:
+        bucket_rows = _get_materialized_session_fact_buckets(facts, window)
+        if not bucket_rows:
             raise NotFound({
-                'detail': f'Không có dữ liệu whale cho {symbol} hôm nay.',
+                'detail': f'Không có dữ liệu CVD materialized cho {symbol} ở window {window}.',
                 'code': 'not_found',
             })
 
         data = {
             'symbol': symbol,
-            'session_date': today.isoformat(),
+            'session_date': facts.session_date.isoformat(),
             'window': window,
             'bucket_minutes': bucket_minutes,
-            'cvd_normalized': result['cvd_normalized'],
-            'delta_strength_pct': result['delta_strength_pct'],
-            'whale_net_flow': result['whale_net_flow'],
-            'cvd_series': result.get('cvd_series', []),
-            'bucket_count': result['bucket_count'],
+            'cvd_normalized': facts.cvd_normalized,
+            'delta_strength_pct': _delta_strength_pct_from_facts(facts),
+            'whale_net_flow': facts.whale_net_flow,
+            'cvd_series': [
+                {
+                    'bucket_ts': dj_timezone.localtime(bucket_row['bucket_ts']).isoformat(),
+                    'cumulative_cvd': bucket_row['cumulative_cvd'],
+                    'buy_strength': bucket_row['buy_strength'],
+                    'institutional_strength': bucket_row['institutional_strength'],
+                    'buy_volume': bucket_row['buy_volume'],
+                    'sell_volume': bucket_row['sell_volume'],
+                }
+                for bucket_row in bucket_rows
+            ],
+            'bucket_count': len(bucket_rows),
         }
 
         try:

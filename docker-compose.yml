@@ -59,7 +59,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-saas-prod}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build core services}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-saas-prod}
     container_name: vninvest-core-api
     restart: unless-stopped
@@ -102,7 +103,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-saas-prod}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build core services}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-saas-prod}
     container_name: vninvest-core-worker
     restart: unless-stopped
@@ -130,7 +132,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-saas-prod}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build core services}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-saas-prod}
     container_name: vninvest-core-beat
     restart: unless-stopped
@@ -237,6 +240,10 @@ volumes:
   core_redis_data:
   prometheus_data:
   grafana_data:
+
+secrets:
+  vnbroker_github_token:
+    environment: VNBROKER_GITHUB_TOKEN
 
 networks:
   vninvest_network:

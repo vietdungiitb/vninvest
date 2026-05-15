@@ -94,9 +94,9 @@ export const routeCatalog = Object.freeze([
     status: "baseline",
   },
   {
-    id: "admin-ops",
-    path: "/admin/core",
-    titleKey: "routes.adminOps",
+    id: "operations-center",
+    path: "/operations-center",
+    titleKey: "layout.nav.soc",
     group: "admin",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["admin.operator.read"],

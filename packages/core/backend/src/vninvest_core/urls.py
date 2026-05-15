@@ -7,16 +7,6 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from . import views_health
 
-from user_workspace.legacy_views import (
-    SecuritiesGroupDetailView,
-    SecuritiesGroupListCreateView,
-    SecuritiesSyncView,
-    TrackedSymbolListCreateView,
-    BulkTechnicalBySymbolsView,
-    PriceAlertRuleListCreateView,
-    SecuritiesSeedView,
-)
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     # SM-P5.2: Prometheus metrics endpoint
@@ -48,15 +38,6 @@ urlpatterns = [
     path('api/', include(('market_data.urls', 'market_data_api'), namespace='market_data_api')),
     path('api/admin-ops/', include(('vninvest_core.contracts.admin_ops.urls', 'admin_ops'), namespace='admin_ops')),
     path('api/soc/', include(('service_ops.urls', 'service_ops'), namespace='service_ops')),
-
-    # Stock Management — Native Compat (High priority)
-    path('api/stock-management/groups/', SecuritiesGroupListCreateView.as_view(), name='legacy-stock-management-group-list'),
-    path('api/stock-management/groups/<int:group_id>/', SecuritiesGroupDetailView.as_view(), name='legacy-stock-management-group-detail'),
-    path('api/stock-management/tracked-symbols/', TrackedSymbolListCreateView.as_view(), name='legacy-stock-management-tracked-symbols'),
-    path('api/stock-management/technicals/bulk/', BulkTechnicalBySymbolsView.as_view(), name='legacy-stock-management-technicals-bulk'),
-    path('api/stock-management/price-alerts/', PriceAlertRuleListCreateView.as_view(), name='legacy-stock-management-price-alerts'),
-    path('api/stock-management/seed/', SecuritiesSeedView.as_view(), name='legacy-stock-management-seed'),
-    path('api/stock-management/sync/', SecuritiesSyncView.as_view(), name='legacy-stock-management-sync'),
 
 ]
 

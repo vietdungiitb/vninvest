@@ -1,4 +1,4 @@
-import { ShellAdminOpsPage } from "./admin/ShellAdminOpsPage.js";
+import { ShellOperationsCenterPage } from "./admin/ShellOperationsCenterPage.js";
 import { ShellAiAdvisoryPage } from "./signals/ShellAiAdvisoryPage.js";
 import { ShellWhaleAlertsPage } from "./signals/ShellWhaleAlertsPage.js";
 import { ShellAiCommandCenterPage } from "./system/ShellAiCommandCenterPage.js";
@@ -19,8 +19,8 @@ import { UserSettingsPage } from "./UserSettingsPage.js";
 
 export const pageRegistry = Object.freeze([
   {
-    routeId: "admin-ops",
-    component: ShellAdminOpsPage,
+    routeId: "operations-center",
+    component: ShellOperationsCenterPage,
     status: "baseline",
   },
   {

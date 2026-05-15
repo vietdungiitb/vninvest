@@ -23,8 +23,8 @@ from django.urls import resolve
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from market_serving.models import SessionFacts, SymbolSnapshot
-from market_serving.views import SessionFactsDetailView, SessionFactsListView, SymbolSnapshotDetailView, SymbolSnapshotListView
+from market_serving.models import SessionFacts, SessionFactsBucket, SymbolSnapshot
+from market_serving.views import SessionFactsCvdView, SessionFactsDetailView, SessionFactsListView, SymbolSnapshotDetailView, SymbolSnapshotListView
 
 
 class MarketServingApiRouteTests(TestCase):
@@ -50,7 +50,7 @@ class MarketServingApiRouteTests(TestCase):
 
         list_response = self.client.get('/api/market/symbol-snapshot/?symbol=VCB')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list_response.data[0]['symbol'], 'VCB')
+        self.assertEqual(list_response.data['results'][0]['symbol'], 'VCB')
 
         resolver_detail = resolve('/api/market/symbol-snapshot/VCB/')
         self.assertIs(resolver_detail.func.cls, SymbolSnapshotDetailView)
@@ -73,18 +73,41 @@ class MarketServingApiRouteTests(TestCase):
             total_sell_volume=700_000,
             source='computed',
         )
+        SessionFactsBucket.objects.create(
+            session_facts=facts,
+            symbol='FPT',
+            session_date=datetime.date(2026, 5, 8),
+            window='15m',
+            bucket_minutes=15,
+            bucket_ts=datetime.datetime.fromisoformat('2026-05-08T09:00:00+07:00'),
+            cumulative_cvd=5_000_000_000.0,
+            buy_strength=66.5,
+            institutional_strength=59.2,
+            buy_volume=800_000,
+            sell_volume=700_000,
+        )
 
         resolver = resolve('/api/market/session-facts/')
         self.assertIs(resolver.func.cls, SessionFactsListView)
 
         list_response = self.client.get('/api/market/session-facts/?symbol=FPT')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list_response.data[0]['symbol'], 'FPT')
+        self.assertEqual(list_response.data['results'][0]['symbol'], 'FPT')
 
         resolver_detail = resolve('/api/market/session-facts/FPT/')
         self.assertIs(resolver_detail.func.cls, SessionFactsDetailView)
+
+        resolver_cvd = resolve('/api/market/session-facts/FPT/cvd/')
+        self.assertIs(resolver_cvd.func.cls, SessionFactsCvdView)
 
         detail_response = self.client.get('/api/market/session-facts/FPT/')
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
         self.assertEqual(detail_response.data['symbol'], 'FPT')
         self.assertEqual(detail_response.data['_source'], 'db-read')
+
+        cvd_response = self.client.get('/api/market/session-facts/FPT/cvd/?window=15m')
+        self.assertEqual(cvd_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(cvd_response.data['symbol'], 'FPT')
+        self.assertEqual(cvd_response.data['cvd_series'][0]['buy_strength'], 66.5)
+        self.assertEqual(cvd_response.data['cvd_series'][0]['institutional_strength'], 59.2)
+        self.assertEqual(cvd_response.data['_source'], 'db-read')

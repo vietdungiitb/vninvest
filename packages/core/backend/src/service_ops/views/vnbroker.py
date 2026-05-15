@@ -9,14 +9,80 @@ POST /api/soc/vnbroker/test-connection/ — test provider connection
 GET /api/soc/vnbroker/providers/ — list configured providers
 GET /api/soc/vnbroker/circuit-breaker-status/ — circuit breaker state
 """
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 
 from ..models import ServiceDefinition, ServiceConfig, ServiceHealth
+from ..ownership import build_ownership_matrix_from_db
 from ..serializers import ServiceConfigSerializer, ServiceHealthSerializer
 from ..domain_configs import VnbrokerDomainConfig
+from ..provider_catalog import (
+    find_unsupported_provider_ids,
+    get_default_provider_ids,
+    get_supported_provider_ids,
+    get_unready_provider_messages,
+    list_provider_statuses,
+    normalize_provider_id,
+)
+from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
+
+
+DEFAULT_VNBROKER_PRIMARY_PROVIDER = 'vci'
+DEFAULT_VNBROKER_FALLBACK_PROVIDERS = [
+    provider_id
+    for provider_id in get_default_provider_ids('vnbroker')
+    if provider_id != DEFAULT_VNBROKER_PRIMARY_PROVIDER
+]
+
+
+def _sanitize_vnbroker_config_payload(payload: dict | None) -> dict:
+    config = VnbrokerDomainConfig.from_dict(payload or {})
+    data = config.to_dict()
+    supported = set(get_supported_provider_ids('vnbroker'))
+
+    preferred_provider = data.get('preferred_provider')
+    if preferred_provider not in supported:
+        preferred_provider = DEFAULT_VNBROKER_PRIMARY_PROVIDER
+
+    fallback_providers = []
+    for provider_id in data.get('fallback_providers', []):
+        if provider_id in supported and provider_id != preferred_provider and provider_id not in fallback_providers:
+            fallback_providers.append(provider_id)
+    if not fallback_providers:
+        fallback_providers = [
+            provider_id
+            for provider_id in DEFAULT_VNBROKER_FALLBACK_PROVIDERS
+            if provider_id != preferred_provider
+        ]
+
+    return {
+        **data,
+        'preferred_provider': preferred_provider,
+        'fallback_providers': fallback_providers,
+    }
+
+
+def _get_active_vnbroker_provider_ids(payload: dict) -> list[str]:
+    provider_ids = [
+        payload.get('preferred_provider', payload.get('primary_provider')),
+        *(payload.get('fallback_providers', []) or []),
+    ]
+    active_provider_ids = []
+    for provider_id in provider_ids:
+        normalized_id = normalize_provider_id(provider_id)
+        if normalized_id and normalized_id not in active_provider_ids:
+            active_provider_ids.append(normalized_id)
+    return active_provider_ids
+
+
+def _build_vnbroker_ownership_payload() -> dict:
+    matrix = build_ownership_matrix_from_db()
+    payload = matrix.to_response_dict('vnbroker')
+    payload['write_block_reason'] = matrix.get_write_block_reason('vnbroker')
+    return payload
 
 
 class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
@@ -25,21 +91,34 @@ class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
     def get(self, request):
         """GET current config."""
         try:
-            service = ServiceDefinition.objects.get(service_key='vnbroker_adapter')
+            service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
             current_config = ServiceConfig.objects.filter(
                 service=service, is_current=True
             ).first()
             if current_config:
                 serializer = ServiceConfigSerializer(current_config)
-                return Response(serializer.data)
+                data = serializer.data
+                sanitized_payload = _sanitize_vnbroker_config_payload(data.get('config_payload'))
+                data['config_payload'] = sanitized_payload
+                data['config'] = sanitized_payload
+                data['providers_catalog'] = list_provider_statuses(
+                    'vnbroker',
+                    active_provider_ids=_get_active_vnbroker_provider_ids(sanitized_payload),
+                )
+                return Response(data)
         except ServiceDefinition.DoesNotExist:
             pass
         # Return default
-        default_config = VnbrokerDomainConfig()
+        default_config = _sanitize_vnbroker_config_payload(VnbrokerDomainConfig().to_dict())
         return Response({
-            'config_payload': default_config.to_dict(),
+            'config_payload': default_config,
+            'config': default_config,
             'is_current': True,
             'applied_by': 'system',
+            'providers_catalog': list_provider_statuses(
+                'vnbroker',
+                active_provider_ids=_get_active_vnbroker_provider_ids(default_config),
+            ),
         })
 
     def post(self, request):
@@ -47,7 +126,7 @@ class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
         config_payload = request.data.get('config_payload', {})
         result = self.apply_config(
             request,
-            service_key='vnbroker_adapter',
+            service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'],
             domain='vnbroker',
             config_payload=config_payload,
             config_class=VnbrokerDomainConfig,
@@ -71,9 +150,17 @@ class VnbrokerConfigPreviewView(SOCBaseView):
             'valid': len(errors) == 0,
             'errors': errors,
             'config_payload': config_obj.to_dict(),
+            'providers_catalog': list_provider_statuses(
+                'vnbroker',
+                active_provider_ids=_get_active_vnbroker_provider_ids(config_obj.to_dict()),
+            ),
             'impact': {
-                'providers_changed': config_payload.get('primary_provider') is not None,
-                'timeout_changed': config_payload.get('connect_timeout') is not None,
+                'providers_changed': any(
+                    key in config_payload for key in ('preferred_provider', 'primary_provider', 'fallback_providers')
+                ),
+                'timeout_changed': 'timeout' in config_payload or any(
+                    key in config_payload for key in ('connect_timeout', 'read_timeout', 'write_timeout', 'pool_connections')
+                ),
             },
         })
 
@@ -83,7 +170,7 @@ class VnbrokerHealthView(SOCBaseView):
 
     def get(self, request):
         try:
-            service = ServiceDefinition.objects.get(service_key='vnbroker_adapter')
+            service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
             health = ServiceHealth.objects.get(service=service)
             serializer = ServiceHealthSerializer(health)
             return Response(serializer.data)
@@ -99,7 +186,30 @@ class VnbrokerTestConnectionView(SOCBaseView):
 
     def post(self, request):
         """Test connection to providers."""
-        provider = request.data.get('provider', 'vci')
+        provider = normalize_provider_id(request.data.get('provider', 'vci'))
+        unsupported_providers = find_unsupported_provider_ids([provider], surface='vnbroker')
+        if unsupported_providers:
+            return self.error_response(
+                request,
+                code='VNBROKER_PROVIDER_UNSUPPORTED',
+                detail=(
+                    'SOC chỉ hỗ trợ các provider KBS, VCI, DNSE. '
+                    f"Không chấp nhận: {', '.join(unsupported_providers)}."
+                ),
+                http_status=status.HTTP_400_BAD_REQUEST,
+                field_errors={'provider': unsupported_providers},
+            )
+
+        unready_provider_messages = get_unready_provider_messages([provider])
+        if unready_provider_messages:
+            return self.error_response(
+                request,
+                code='VNBROKER_PROVIDER_NOT_READY',
+                detail='; '.join(unready_provider_messages),
+                http_status=status.HTTP_400_BAD_REQUEST,
+                field_errors={'provider': unready_provider_messages},
+            )
+
         # Placeholder — in real implementation, call vnbroker_adapter
         return Response({
             'provider': provider,
@@ -115,23 +225,32 @@ class VnbrokerProvidersView(SOCBaseView):
     def get(self, request):
         """List configured providers."""
         try:
-            service = ServiceDefinition.objects.get(service_key='vnbroker_adapter')
+            service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
             current_config = ServiceConfig.objects.filter(
                 service=service, is_current=True
             ).first()
             if current_config:
-                payload = current_config.config_payload
+                payload = _sanitize_vnbroker_config_payload(current_config.config_payload)
                 return Response({
-                    'primary': payload.get('primary_provider', 'vci'),
+                    'primary': payload.get('preferred_provider', DEFAULT_VNBROKER_PRIMARY_PROVIDER),
                     'fallback': payload.get('fallback_providers', []),
                     'enabled': payload.get('enabled', True),
+                    'providers': list_provider_statuses(
+                        'vnbroker',
+                        active_provider_ids=_get_active_vnbroker_provider_ids(payload),
+                    ),
                 })
         except (ServiceDefinition.DoesNotExist, ServiceConfig.DoesNotExist):
             pass
+        default_config = _sanitize_vnbroker_config_payload(VnbrokerDomainConfig().to_dict())
         return Response({
-            'primary': 'vci',
-            'fallback': ['tcbs', 'ssi'],
+            'primary': default_config['preferred_provider'],
+            'fallback': default_config['fallback_providers'],
             'enabled': True,
+            'providers': list_provider_statuses(
+                'vnbroker',
+                active_provider_ids=_get_active_vnbroker_provider_ids(default_config),
+            ),
         })
 
 
@@ -149,12 +268,14 @@ class VnbrokerCircuitBreakerView(SOCBaseView):
                 'cooldown_seconds': 300,
             },
             'per_provider': {
-                'vci': {'status': 'closed', 'failures': 0},
-                'tcbs': {'status': 'closed', 'failures': 0},
-                'ssi': {'status': 'closed', 'failures': 0},
+                provider_id: {'status': 'closed', 'failures': 0}
+                for provider_id in get_supported_provider_ids('vnbroker')
             },
         })
 
 
-# Import timezone at top of file
-from django.utils import timezone
+class VnbrokerOwnershipView(SOCBaseView):
+    """GET /api/soc/vnbroker/ownership/"""
+
+    def get(self, request):
+        return Response(_build_vnbroker_ownership_payload())

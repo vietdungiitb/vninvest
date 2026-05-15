@@ -2,6 +2,7 @@ import logging
 import time
 import random
 import json
+from importlib import import_module
 from typing import Any, Optional
 
 import pandas as pd
@@ -15,17 +16,57 @@ from .models import VnbrokerRuntimeConfig
 
 logger = logging.getLogger(__name__)
 
+_SUPPORTED_PROVIDER_SOURCES = ('VCI', 'KBS', 'DNSE')
+
 class VnbrokerAdapterError(Exception):
     """Base error for vnbroker adapter."""
     pass
 
 
-_INTRADAY_FALLBACK_SOURCES = ('KBS', 'VCI', 'TCBS', 'SSI', 'MSI')
+_INTRADAY_FALLBACK_SOURCES = _SUPPORTED_PROVIDER_SOURCES
+_LISTING_GROUP_ALIASES = {
+    'vn30': 'VN30',
+    'vn100': 'VN100',
+    'top100': 'VN100',
+}
+_LISTING_SEED_DATA = [
+    ('ACB', 'HOSE', 'ACB', 'Ngân hàng'), ('BCM', 'HOSE', 'Becamex', 'Bất động sản'),
+    ('BID', 'HOSE', 'BIDV', 'Ngân hàng'), ('BMP', 'HOSE', 'Nhựa Bình Minh', 'Thép & Vật liệu'),
+    ('CEO', 'HNX', 'CEO Group', 'Bất động sản'), ('CMG', 'HOSE', 'CMC Corp', 'Công nghệ thông tin'),
+    ('CTG', 'HOSE', 'Vietinbank', 'Ngân hàng'), ('DGC', 'HOSE', 'Hóa chất Đức Giang', 'Thép & Vật liệu'),
+    ('DIG', 'HOSE', 'DIC Corp', 'Bất động sản'), ('DXG', 'HOSE', 'Đất Xanh', 'Bất động sản'),
+    ('EIB', 'HOSE', 'Eximbank', 'Ngân hàng'), ('ELC', 'HOSE', 'Elcom', 'Công nghệ thông tin'),
+    ('FPT', 'HOSE', 'FPT Corp', 'Công nghệ thông tin'), ('GAS', 'HOSE', 'PV Gas', 'Dầu khí'),
+    ('GVR', 'HOSE', 'GVR', 'Bất động sản'), ('HDB', 'HOSE', 'HDBank', 'Ngân hàng'),
+    ('HPG', 'HOSE', 'Hòa Phát', 'Thép & Vật liệu'), ('HSG', 'HOSE', 'Hoa Sen', 'Thép & Vật liệu'),
+    ('KBC', 'HOSE', 'Kinh Bắc', 'Bất động sản'), ('KDH', 'HOSE', 'Khang Điền', 'Bất động sản'),
+    ('LPB', 'HOSE', 'LPBank', 'Ngân hàng'), ('MBB', 'HOSE', 'MB Bank', 'Ngân hàng'),
+    ('MSB', 'HOSE', 'MSB', 'Ngân hàng'), ('MSN', 'HOSE', 'Masan', 'Bán lẻ & Tiêu dùng'),
+    ('MWG', 'HOSE', 'Thế Giới Di Động', 'Bán lẻ & Tiêu dùng'), ('NKG', 'HOSE', 'Nam Kim', 'Thép & Vật liệu'),
+    ('NLG', 'HOSE', 'Nam Long', 'Bất động sản'), ('NVL', 'HOSE', 'Novaland', 'Bất động sản'),
+    ('OCB', 'HOSE', 'OCB', 'Ngân hàng'), ('OIL', 'UPCOM', 'PV Oil', 'Dầu khí'),
+    ('PDR', 'HOSE', 'Phát Đạt', 'Bất động sản'), ('PLX', 'HOSE', 'Petrolimex', 'Dầu khí'),
+    ('PNJ', 'HOSE', 'PNJ', 'Bán lẻ & Tiêu dùng'), ('PVD', 'HOSE', 'PV Drilling', 'Dầu khí'),
+    ('PVS', 'HNX', 'PV Services', 'Dầu khí'), ('PVT', 'HOSE', 'PV Trans', 'Dầu khí'),
+    ('SAB', 'HOSE', 'Sabeco', 'Bán lẻ & Tiêu dùng'), ('SAM', 'HOSE', 'SAM Holdings', 'Công nghệ thông tin'),
+    ('SHB', 'HOSE', 'SHB', 'Ngân hàng'), ('SJS', 'HOSE', 'SUDICO', 'Bất động sản'),
+    ('SSB', 'HOSE', 'SeABank', 'Ngân hàng'), ('SSI', 'HOSE', 'Chứng khoán SSI', 'Dịch vụ tài chính'),
+    ('STB', 'HOSE', 'Sacombank', 'Ngân hàng'), ('TCB', 'HOSE', 'Techcombank', 'Ngân hàng'),
+    ('TDH', 'HOSE', 'Thuduc House', 'Bất động sản'), ('TLH', 'HOSE', 'Thép Tiến Lên', 'Thép & Vật liệu'),
+    ('TPB', 'HOSE', 'TPBank', 'Ngân hàng'), ('VCB', 'HOSE', 'Vietcombank', 'Ngân hàng'),
+    ('VGC', 'HOSE', 'Viglacera', 'Thép & Vật liệu'), ('VGI', 'UPCOM', 'Viettel Global', 'Công nghệ thông tin'),
+    ('VHM', 'HOSE', 'Vinhomes', 'Bất động sản'), ('VIB', 'HOSE', 'VIB', 'Ngân hàng'),
+    ('VIC', 'HOSE', 'Vingroup', 'Bất động sản'), ('VIS', 'HOSE', 'Thép Việt Ý', 'Thép & Vật liệu'),
+    ('VJC', 'HOSE', 'Vietjet', 'Dịch vụ tài chính'), ('VNM', 'HOSE', 'Vinamilk', 'Bán lẻ & Tiêu dùng'),
+    ('VND', 'HOSE', 'Chứng khoán VNDirect', 'Dịch vụ tài chính'), ('VPB', 'HOSE', 'VPBank', 'Ngân hàng'),
+    ('VPL', 'HOSE', 'Vinpearl', 'Bất động sản'), ('VRE', 'HOSE', 'Vincom Retail', 'Bất động sản'),
+]
 
 
 def _build_intraday_source_candidates(preferred_source: str | None) -> list[str]:
     candidates: list[str] = []
-    for source in [preferred_source, *_INTRADAY_FALLBACK_SOURCES]:
+    normalized_preferred_source = _normalize_supported_source(preferred_source, fallback_to_config=False)
+    for source in [normalized_preferred_source, *_INTRADAY_FALLBACK_SOURCES]:
         source_code = str(source or '').strip().upper()
         if source_code and source_code not in candidates:
             candidates.append(source_code)
@@ -159,55 +200,199 @@ def get_active_config() -> VnbrokerRuntimeConfig:
         )
         return _FallbackConfig()
 
-def fetch_realtime_price(symbol: str) -> dict[str, Any] | None:
-    """
-    Lấy giá realtime (live bar hôm nay) cho một symbol qua VCI.
-    SSOT cho tất cả live-price reads — không gọi VciQuote trực tiếp ngoài hàm này.
 
-    Trả về dict với keys: symbol, close, open, high, low, volume, fetched_at
+def _normalize_supported_source(source: str | None, *, fallback_to_config: bool = True) -> str:
+    normalized_source = str(source or '').strip().upper()
+    if normalized_source in _SUPPORTED_PROVIDER_SOURCES:
+        return normalized_source
+
+    if normalized_source:
+        logger.warning(
+            'Unsupported vnbroker source %s requested on native core path; '
+            'falling back to supported provider roster %s.',
+            normalized_source,
+            ', '.join(_SUPPORTED_PROVIDER_SOURCES),
+        )
+
+    if not fallback_to_config:
+        return ''
+
+    config = get_active_config()
+    configured_source = str(
+        getattr(config, 'data_source', VnbrokerRuntimeConfig.SourceChoices.VCI)
+        or VnbrokerRuntimeConfig.SourceChoices.VCI
+    ).strip().upper()
+    if configured_source in _SUPPORTED_PROVIDER_SOURCES:
+        return configured_source
+
+    if configured_source:
+        logger.warning(
+            'Configured runtime source %s is outside the supported provider roster; defaulting to VCI.',
+            configured_source,
+        )
+
+    return VnbrokerRuntimeConfig.SourceChoices.VCI
+
+
+def _resolve_realtime_source(source: str | None) -> str:
+    return _normalize_supported_source(source, fallback_to_config=True)
+
+
+def _load_quote_class(source: str):
+    normalized_source = str(source or '').strip().upper()
+    if not normalized_source:
+        raise VnbrokerAdapterError('Realtime source is required.')
+
+    module_name = f'vnbroker.explorer.{normalized_source.lower()}.quote'
+    try:
+        module = import_module(module_name)
+        quote_class = getattr(module, 'Quote')
+    except Exception as exc:
+        raise VnbrokerAdapterError(
+            f'Unsupported realtime source for vnbroker adapter: {normalized_source}'
+        ) from exc
+
+    return quote_class
+
+
+def _load_listing_adapter_class():
+    from vnbroker.api.listing import Listing as VnbrokerListing
+
+    return VnbrokerListing
+
+
+def _build_listing_seed_rows(source: str) -> list[dict[str, Any]]:
+    return [
+        {
+            'symbol': symbol,
+            'exchange': exchange,
+            'company_name': company_name,
+            'industry': industry,
+            'source': source,
+        }
+        for symbol, exchange, company_name, industry in _LISTING_SEED_DATA
+    ]
+
+
+def _extract_listing_records(rows: Any) -> list[Any]:
+    if rows is None:
+        return []
+    if isinstance(rows, pd.DataFrame):
+        return rows.to_dict('records')
+    if isinstance(rows, pd.Series):
+        return rows.tolist()
+    if isinstance(rows, tuple):
+        return list(rows)
+    if isinstance(rows, list):
+        return rows
+    return list(rows)
+
+
+def _normalize_listing_rows(rows: Any, source: str) -> list[dict[str, Any]]:
+    normalized_rows: list[dict[str, Any]] = []
+    seen_symbols: set[str] = set()
+    for item in _extract_listing_records(rows):
+        if isinstance(item, dict):
+            symbol_value = item.get('symbol') or item.get('ticker') or item.get('code') or item.get('stock_code')
+            company_name = item.get('company_name') or item.get('organ_name') or item.get('name') or item.get('short_name')
+            exchange = item.get('exchange') or item.get('board') or item.get('market') or item.get('exchange_code')
+            industry = item.get('industry') or item.get('sector') or item.get('icb_name') or item.get('category')
+        else:
+            symbol_value = item
+            company_name = None
+            exchange = None
+            industry = None
+
+        symbol = str(symbol_value or '').strip().upper()
+        if not symbol or symbol in seen_symbols:
+            continue
+
+        seen_symbols.add(symbol)
+        normalized_rows.append({
+            'symbol': symbol,
+            'exchange': exchange,
+            'company_name': company_name,
+            'industry': industry,
+            'source': source,
+        })
+
+    return normalized_rows
+
+
+def _slice_listing_symbols(symbols: list[str], symbol_group_id: str) -> list[str]:
+    group_id = str(symbol_group_id or '').strip().lower()
+    if group_id == 'vn30':
+        return symbols[:30]
+    if group_id in {'vn100', 'top100'}:
+        return symbols[:100]
+    return symbols[:50]
+
+
+def _fetch_realtime_price_with_quote_class(symbol_upper: str, source: str, quote_class) -> dict[str, Any] | None:
+    from datetime import date as dt_date
+
+    today = dt_date.today()
+    quote_client = quote_class(symbol=symbol_upper)
+    frame = quote_client.history(
+        start=today.isoformat(),
+        end=today.isoformat(),
+        interval='1D',
+        show_log=False,
+    )
+    if frame is None or frame.empty:
+        return None
+
+    row = frame.iloc[0]
+    return {
+        'symbol': symbol_upper,
+        'close': float(row['close']),
+        'open': float(row.get('open') or row['close']),
+        'high': float(row.get('high') or row['close']),
+        'low': float(row.get('low') or row['close']),
+        'volume': int(row.get('volume') or 0),
+        'fetched_at': now().isoformat(),
+        'source': source,
+    }
+
+
+def fetch_realtime_price(symbol: str, *, source: str | None = None) -> dict[str, Any] | None:
+    """
+    Lấy giá realtime (live bar hôm nay) cho một symbol qua provider được chỉ định.
+    SSOT cho tất cả live-price reads — không gọi quote class trực tiếp ngoài hàm này.
+
+    Trả về dict với keys: symbol, close, open, high, low, volume, fetched_at, source
     hoặc None nếu vnbroker không trả dữ liệu.
     """
-    from datetime import date as dt_date
     symbol_upper = symbol.strip().upper()
-    today = dt_date.today()
+    normalized_source = _resolve_realtime_source(source)
     try:
-        from vnbroker.explorer.vci.quote import Quote as VciQuote
-        q = VciQuote(symbol=symbol_upper)
-        df = q.history(
-            start=today.isoformat(),
-            end=today.isoformat(),
-            interval='1D',
-            show_log=False,
+        quote_class = _load_quote_class(normalized_source)
+        return _fetch_realtime_price_with_quote_class(symbol_upper, normalized_source, quote_class)
+    except VnbrokerAdapterError as exc:
+        logger.warning(
+            'fetch_realtime_price source resolution failed for %s via %s: %s',
+            symbol_upper,
+            normalized_source,
+            exc,
         )
-        if df is None or df.empty:
-            return None
-        row = df.iloc[0]
-        return {
-            'symbol': symbol_upper,
-            'close': float(row['close']),
-            'open': float(row.get('open') or row['close']),
-            'high': float(row.get('high') or row['close']),
-            'low': float(row.get('low') or row['close']),
-            'volume': int(row.get('volume') or 0),
-            'fetched_at': now().isoformat(),
-        }
+        return None
     except Exception as exc:
-        logger.warning('fetch_realtime_price VCI failed for %s: %s', symbol_upper, exc)
+        logger.warning('fetch_realtime_price %s failed for %s: %s', normalized_source, symbol_upper, exc)
         return None
 
 
-def fetch_price_board_snapshot(symbols: list[str]) -> list[dict[str, Any]]:
+def fetch_price_board_snapshot(symbols: list[str], *, source: str | None = None) -> list[dict[str, Any]]:
     """
-    Lấy snapshot giá realtime cho danh sách symbol qua vnbroker (VCI).
+    Lấy snapshot giá realtime cho danh sách symbol qua provider được chỉ định.
     Tất cả calls qua fetch_realtime_price để đảm bảo SSOT.
     """
-    config = get_active_config()
-    source = getattr(config, 'data_source', 'VCI')
-    logger.info('Fetching price board snapshot from %s for %d symbols.', source, len(symbols))
+    normalized_source = _resolve_realtime_source(source)
+    _load_quote_class(normalized_source)
+    logger.info('Fetching price board snapshot from %s for %d symbols.', normalized_source, len(symbols))
 
     results = []
     for symbol in symbols:
-        live = fetch_realtime_price(symbol)
+        live = fetch_realtime_price(symbol, source=normalized_source)
         if live is None:
             logger.debug('fetch_price_board_snapshot: no live data for %s — skipped', symbol)
             continue
@@ -217,34 +402,35 @@ def fetch_price_board_snapshot(symbols: list[str]) -> list[dict[str, Any]]:
             'price_change': 0.0,       # caller (materializer) computes delta vs reference
             'price_change_pct': 0.0,
             'volume': live['volume'],
-            'source': source,
+            'source': live.get('source', normalized_source),
             'fetched_at': live['fetched_at'],
         })
 
     return results
 
-def fetch_daily_history(symbol: str, days: int = 365) -> list[dict[str, Any]]:
+def fetch_daily_history(symbol: str, days: int = 365, *, source: str | None = None) -> list[dict[str, Any]]:
     """
-    Lấy lịch sử giá ngày (OHLCV) cho một symbol qua VCI.
+    Lấy lịch sử giá ngày (OHLCV) cho một symbol qua provider được chỉ định.
     Trả về list dict chuẩn hoá để ghi vào DailyPrice.
     """
     from datetime import timedelta, date as dt_date
 
-    symbol_upper = symbol.upper()
+    symbol_upper = symbol.strip().upper()
+    normalized_source = _resolve_realtime_source(source)
     end_date = timezone.now().date()
     start_date = end_date - timedelta(days=days)
 
     try:
-        from vnbroker.explorer.vci.quote import Quote as VciQuote
-        q = VciQuote(symbol=symbol_upper)
-        df = q.history(
+        quote_class = _load_quote_class(normalized_source)
+        quote_client = quote_class(symbol=symbol_upper)
+        df = quote_client.history(
             start=start_date.isoformat(),
             end=end_date.isoformat(),
             interval='1D',
             show_log=False,
         )
     except Exception as exc:
-        logger.warning('fetch_daily_history VCI failed for %s: %s', symbol_upper, exc)
+        logger.warning('fetch_daily_history %s failed for %s: %s', normalized_source, symbol_upper, exc)
         return []
 
     if df is None or df.empty:
@@ -262,91 +448,67 @@ def fetch_daily_history(symbol: str, days: int = 365) -> list[dict[str, Any]]:
                 'low': float(row['low']),
                 'close': float(row['close']),
                 'volume': int(row['volume']),
+                'source': normalized_source,
             })
-        except (KeyError, TypeError, ValueError) as e:
-            logger.debug('Skipping malformed OHLCV row for %s: %s', symbol_upper, e)
+        except (KeyError, TypeError, ValueError) as exc:
+            logger.debug('Skipping malformed OHLCV row for %s via %s: %s', symbol_upper, normalized_source, exc)
             continue
-    """
-    Kích hoạt warmup cho danh sách symbol.
-    Native version tập trung vào việc cập nhật SymbolSnapshot.
-    """
-    from market_serving.models import SymbolSnapshot
-    
-    snapshots = fetch_price_board_snapshot(symbols)
-    count = 0
-    today = now().date()
-    
-    for item in snapshots:
-        SymbolSnapshot.objects.update_or_create(
-            symbol=item['symbol'],
-            session_date=today,
-            defaults={
-                'price': item['price'],
-                'price_change': item['price_change'],
-                'price_change_pct': item['price_change_pct'],
-                'volume': item['volume'],
-                'market_status': SymbolSnapshot.MarketStatusChoices.OPEN,
-                'source': SymbolSnapshot.SourceChoices.CORE,
-                'stale': False,
-            }
-        )
-        count += 1
-        
-    return {'status': 'ok', 'warmed_up_count': count, 'source': snapshots[0]['source'] if snapshots else 'unknown'}
 
-def fetch_listing_symbols() -> list[dict[str, Any]]:
+    return rows
+
+def fetch_listing_symbols(*, source: str | None = None) -> list[dict[str, Any]]:
     """
     Lấy danh sách mã niêm yết từ nguồn dữ liệu.
-    Mô phỏng listing universe đủ rộng cho dashboard/heatmap.
+    Ưu tiên vnbroker Listing adapter theo provider được chỉ định.
+    Fallback về seed universe nếu upstream không sẵn sàng.
     """
-    config = get_active_config()
-    source = config.data_source
+    normalized_source = _resolve_realtime_source(source)
 
-    logger.info(f"Fetching listing symbols from {source}.")
+    logger.info('Fetching listing symbols from %s.', normalized_source)
 
-    # Demo universe rộng (~60 mã) để dashboard breadth/heatmap có dữ liệu hoạt động.
-    seed_data = [
-        ('ACB', 'HOSE', 'ACB', 'Ngân hàng'), ('BCM', 'HOSE', 'Becamex', 'Bất động sản'),
-        ('BID', 'HOSE', 'BIDV', 'Ngân hàng'), ('BMP', 'HOSE', 'Nhựa Bình Minh', 'Thép & Vật liệu'),
-        ('CEO', 'HNX', 'CEO Group', 'Bất động sản'), ('CMG', 'HOSE', 'CMC Corp', 'Công nghệ thông tin'),
-        ('CTG', 'HOSE', 'Vietinbank', 'Ngân hàng'), ('DGC', 'HOSE', 'Hóa chất Đức Giang', 'Thép & Vật liệu'),
-        ('DIG', 'HOSE', 'DIC Corp', 'Bất động sản'), ('DXG', 'HOSE', 'Đất Xanh', 'Bất động sản'),
-        ('EIB', 'HOSE', 'Eximbank', 'Ngân hàng'), ('ELC', 'HOSE', 'Elcom', 'Công nghệ thông tin'),
-        ('FPT', 'HOSE', 'FPT Corp', 'Công nghệ thông tin'), ('GAS', 'HOSE', 'PV Gas', 'Dầu khí'),
-        ('GVR', 'HOSE', 'GVR', 'Bất động sản'), ('HDB', 'HOSE', 'HDBank', 'Ngân hàng'),
-        ('HPG', 'HOSE', 'Hòa Phát', 'Thép & Vật liệu'), ('HSG', 'HOSE', 'Hoa Sen', 'Thép & Vật liệu'),
-        ('KBC', 'HOSE', 'Kinh Bắc', 'Bất động sản'), ('KDH', 'HOSE', 'Khang Điền', 'Bất động sản'),
-        ('LPB', 'HOSE', 'LPBank', 'Ngân hàng'), ('MBB', 'HOSE', 'MB Bank', 'Ngân hàng'),
-        ('MSB', 'HOSE', 'MSB', 'Ngân hàng'), ('MSN', 'HOSE', 'Masan', 'Bán lẻ & Tiêu dùng'),
-        ('MWG', 'HOSE', 'Thế Giới Di Động', 'Bán lẻ & Tiêu dùng'), ('NKG', 'HOSE', 'Nam Kim', 'Thép & Vật liệu'),
-        ('NLG', 'HOSE', 'Nam Long', 'Bất động sản'), ('NVL', 'HOSE', 'Novaland', 'Bất động sản'),
-        ('OCB', 'HOSE', 'OCB', 'Ngân hàng'), ('OIL', 'UPCOM', 'PV Oil', 'Dầu khí'),
-        ('PDR', 'HOSE', 'Phát Đạt', 'Bất động sản'), ('PLX', 'HOSE', 'Petrolimex', 'Dầu khí'),
-        ('PNJ', 'HOSE', 'PNJ', 'Bán lẻ & Tiêu dùng'), ('PVD', 'HOSE', 'PV Drilling', 'Dầu khí'),
-        ('PVS', 'HNX', 'PV Services', 'Dầu khí'), ('PVT', 'HOSE', 'PV Trans', 'Dầu khí'),
-        ('SAB', 'HOSE', 'Sabeco', 'Bán lẻ & Tiêu dùng'), ('SAM', 'HOSE', 'SAM Holdings', 'Công nghệ thông tin'),
-        ('SHB', 'HOSE', 'SHB', 'Ngân hàng'), ('SJS', 'HOSE', 'SUDICO', 'Bất động sản'),
-        ('SSB', 'HOSE', 'SeABank', 'Ngân hàng'), ('SSI', 'HOSE', 'Chứng khoán SSI', 'Dịch vụ tài chính'),
-        ('STB', 'HOSE', 'Sacombank', 'Ngân hàng'), ('TCB', 'HOSE', 'Techcombank', 'Ngân hàng'),
-        ('TDH', 'HOSE', 'Thuduc House', 'Bất động sản'), ('TLH', 'HOSE', 'Thép Tiến Lên', 'Thép & Vật liệu'),
-        ('TPB', 'HOSE', 'TPBank', 'Ngân hàng'), ('VCB', 'HOSE', 'Vietcombank', 'Ngân hàng'),
-        ('VGC', 'HOSE', 'Viglacera', 'Thép & Vật liệu'), ('VGI', 'UPCOM', 'Viettel Global', 'Công nghệ thông tin'),
-        ('VHM', 'HOSE', 'Vinhomes', 'Bất động sản'), ('VIB', 'HOSE', 'VIB', 'Ngân hàng'),
-        ('VIC', 'HOSE', 'Vingroup', 'Bất động sản'), ('VIS', 'HOSE', 'Thép Việt Ý', 'Thép & Vật liệu'),
-        ('VJC', 'HOSE', 'Vietjet', 'Dịch vụ tài chính'), ('VNM', 'HOSE', 'Vinamilk', 'Bán lẻ & Tiêu dùng'),
-        ('VND', 'HOSE', 'Chứng khoán VNDirect', 'Dịch vụ tài chính'), ('VPB', 'HOSE', 'VPBank', 'Ngân hàng'),
-        ('VPL', 'HOSE', 'Vinpearl', 'Bất động sản'), ('VRE', 'HOSE', 'Vincom Retail', 'Bất động sản'),
-    ]
+    try:
+        listing_class = _load_listing_adapter_class()
+        listing_client = listing_class(source=normalized_source)
+        listing_rows = _normalize_listing_rows(listing_client.all_symbols(), normalized_source)
+        if listing_rows:
+            return listing_rows
+    except Exception as exc:
+        logger.warning('fetch_listing_symbols %s failed: %s', normalized_source, exc)
 
-    return [
-        {
-            'symbol': symbol,
-            'exchange': exchange,
-            'company_name': company_name,
-            'industry': industry,
-        }
-        for symbol, exchange, company_name, industry in seed_data
-    ]
+    return _build_listing_seed_rows(normalized_source)
+
+
+def fetch_symbol_group_members(symbol_group_id: str, *, source: str | None = None) -> list[str]:
+    normalized_source = _resolve_realtime_source(source)
+    group_id = str(symbol_group_id or '').strip().lower()
+    if group_id == 'top100':
+        group_id = 'vn100'
+    group_alias = _LISTING_GROUP_ALIASES.get(group_id)
+
+    if group_alias:
+        try:
+            logger.info('Fetching symbol group %s from %s.', group_alias, normalized_source)
+            listing_class = _load_listing_adapter_class()
+            listing_client = listing_class(source=normalized_source)
+            group_symbols = _normalize_listing_rows(
+                listing_client.symbols_by_group(group=group_alias),
+                normalized_source,
+            )
+            symbols = [row['symbol'] for row in group_symbols]
+            if symbols:
+                return symbols
+        except Exception as exc:
+            logger.warning(
+                'fetch_symbol_group_members %s via %s failed: %s',
+                group_id,
+                normalized_source,
+                exc,
+            )
+
+    logger.info('Falling back to listing universe slice for %s from %s.', group_id, normalized_source)
+    listing_rows = fetch_listing_symbols(source=normalized_source)
+    listing_symbols = [row['symbol'] for row in listing_rows if row.get('symbol')]
+    return _slice_listing_symbols(listing_symbols, group_id)
 
 
 def fetch_intraday_ohlcv(symbol: str, timeframe: str = '1H', days: int = 180) -> dict[str, Any]:

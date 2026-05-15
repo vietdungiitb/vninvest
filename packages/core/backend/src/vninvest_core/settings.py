@@ -308,11 +308,26 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP['materialize-unified-alerts-2m']},
     },
     
+    # === Native SaaS realtime prefetch (replaces legacy portfolio prefetch) ===
+    'schedule-realtime-prefetch-shards': {
+        'task': 'market_serving.realtime_prefetch.schedule_realtime_prefetch_shards',
+        'schedule': 3.0,  # every 3 seconds (main scheduler)
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('schedule-realtime-prefetch-shards', 'realtime_prefetch')},
+    },
+    
     # === Ops/Admin tasks ===
     # SM-P5.5: Daily DB backup at 02:00 AM Hanoi time
     'daily-db-backup-2am': {
         'task': 'ops_audit.tasks.daily_db_backup',
         'schedule': crontab(hour=2, minute=0),
+    },
+
+    # === Market-data SSOT queue-tier scheduler ===
+    # The task runs every 30s and evaluates tier-specific runtime cadence from ServiceConfig.
+    'market-data-queue-tier-scheduler-30s': {
+        'task': 'service_ops.run_market_data_queue_tier_scheduler',
+        'schedule': 30.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('market-data-queue-tier-scheduler-30s', 'manual_on_demand')},
     },
 
     # === C1: Native ingest — price board every 60s ===

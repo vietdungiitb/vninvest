@@ -4,13 +4,25 @@
  */
 import PropTypes from 'prop-types';
 
-export const ConfigPreviewModal = ({ isOpen, before, after, onClose, onApply, t }) => {
+export const ConfigPreviewModal = ({
+  isOpen,
+  before,
+  after,
+  onClose,
+  onConfirm,
+  changeSummary = [],
+  impactWarnings = [],
+  validationErrors = null,
+  domain,
+  isSubmitting = false,
+  t,
+}) => {
   if (!isOpen) return null;
 
   const getChangedKeys = () => {
     const allKeys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
     const changed = [];
-    allKeys.forEach(key => {
+    allKeys.forEach((key) => {
       if (JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key])) {
         changed.push(key);
       }
@@ -19,11 +31,60 @@ export const ConfigPreviewModal = ({ isOpen, before, after, onClose, onApply, t 
   };
 
   const changedKeys = getChangedKeys();
+  const validationEntries = Object.entries(validationErrors || {});
+  const hasValidationErrors = validationEntries.length > 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-slate-950 border border-slate-700 rounded-lg max-w-2xl w-full max-h-96 overflow-auto p-6">
-        <h3 className="text-lg font-bold text-white mb-4">{t('soc.preview.title')}</h3>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-white">{t('soc.preview.title')}</h3>
+            <p className="mt-1 text-xs text-slate-400">
+              {t('soc.preview.domain')}: <span className="font-mono text-slate-200">{domain}</span>
+            </p>
+          </div>
+        </div>
+
+        {changeSummary.length > 0 && (
+          <div className="mb-4 rounded border border-slate-700 bg-slate-900 p-3">
+            <p className="mb-2 text-sm font-semibold text-white">{t('soc.preview.change_summary')}</p>
+            <ul className="space-y-1 text-xs text-slate-300">
+              {changeSummary.map((item) => (
+                <li key={item}>- {item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {impactWarnings.length > 0 && (
+          <div className="mb-4 rounded border border-amber-700 bg-amber-950/40 p-3">
+            <p className="mb-2 text-sm font-semibold text-amber-200">{t('soc.preview.impact_warnings')}</p>
+            <ul className="space-y-1 text-xs text-amber-100">
+              {impactWarnings.map((item) => (
+                <li key={item}>- {item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {hasValidationErrors && (
+          <div className="mb-4 rounded border border-rose-700 bg-rose-950/30 p-3">
+            <p className="mb-2 text-sm font-semibold text-rose-200">{t('soc.preview.validation_errors')}</p>
+            <div className="space-y-2 text-xs text-rose-100">
+              {validationEntries.map(([field, errors]) => (
+                <div key={field}>
+                  <p className="font-semibold text-rose-200">{field}</p>
+                  <ul className="mt-1 space-y-1">
+                    {(Array.isArray(errors) ? errors : [errors]).map((errorItem) => (
+                      <li key={`${field}-${errorItem}`}>- {errorItem}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {changedKeys.length === 0 ? (
           <p className="text-slate-400">{t('soc.preview.no_changes')}</p>
@@ -59,11 +120,11 @@ export const ConfigPreviewModal = ({ isOpen, before, after, onClose, onApply, t 
             {t('soc.preview.cancel')}
           </button>
           <button
-            onClick={onApply}
-            disabled={changedKeys.length === 0}
+            onClick={onConfirm}
+            disabled={changedKeys.length === 0 || hasValidationErrors || isSubmitting}
             className="px-4 py-2 bg-green-700 hover:bg-green-600 disabled:bg-gray-600 rounded text-white text-sm font-bold"
           >
-            {t('soc.preview.apply')}
+            {isSubmitting ? t('soc.preview.submitting') : t('soc.preview.confirm')}
           </button>
         </div>
       </div>
@@ -71,11 +132,18 @@ export const ConfigPreviewModal = ({ isOpen, before, after, onClose, onApply, t 
   );
 };
 
+// NOTE: React 19 no longer runs propTypes validation at runtime.
+// PropTypes kept for documentation and IDE tooling only.
 ConfigPreviewModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   before: PropTypes.object,
-  after: PropTypes.object,
+  after: PropTypes.object.isRequired,
   onClose: PropTypes.func.isRequired,
-  onApply: PropTypes.func.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+  changeSummary: PropTypes.arrayOf(PropTypes.string),
+  impactWarnings: PropTypes.arrayOf(PropTypes.string),
+  validationErrors: PropTypes.object,
+  domain: PropTypes.string.isRequired,
+  isSubmitting: PropTypes.bool,
   t: PropTypes.func.isRequired,
 };

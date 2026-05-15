@@ -32,8 +32,9 @@ case "${ROLE}" in
   worker)
     WORKER_QUEUES="${CELERY_QUEUES:-celery}"
     WORKER_CONCURRENCY="${CELERY_CONCURRENCY:-2}"
+    WORKER_POOL="${CELERY_POOL:-prefork}"
     echo "[entrypoint] Starting Celery worker on queue(s): ${WORKER_QUEUES}..."
-    exec celery -A vninvest_core worker --loglevel="${CELERY_LOG_LEVEL:-INFO}" --concurrency="${WORKER_CONCURRENCY}" --queues="${WORKER_QUEUES}" --without-heartbeat --without-gossip --without-mingle
+    exec celery -A vninvest_core worker --loglevel="${CELERY_LOG_LEVEL:-INFO}" --pool="${WORKER_POOL}" --concurrency="${WORKER_CONCURRENCY}" --queues="${WORKER_QUEUES}" --without-heartbeat --without-gossip --without-mingle
     ;;
   beat)
     echo "[entrypoint] Starting Celery beat..."

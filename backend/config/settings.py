@@ -412,20 +412,31 @@ OFFPEAK_VNBROKER_INGEST_DAYS = _env_int("OFFPEAK_VNBROKER_INGEST_DAYS", 5)
 OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS = _env_int("OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS", 300)
 
 CELERY_BEAT_SCHEDULE = {}
-# Realtime ticker scheduler theo universe + shard (canonical path).
-# Legacy single-scan prefetch scheduler is retired to enforce SSOT runtime.
-TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED = True
-_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS = _env_int("TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS", 3)
-CELERY_BEAT_SCHEDULE["build-realtime-symbol-universe-snapshot"] = {
-    "task": "portfolio.tasks.build_realtime_symbol_universe_snapshot",
-    "schedule": timedelta(seconds=max(TICKER_UNIVERSE_REFRESH_SECONDS, 10)),
-    "options": {"queue": "realtime_prefetch"},
-}
-CELERY_BEAT_SCHEDULE["schedule-realtime-prefetch-shards"] = {
-    "task": "portfolio.tasks.schedule_realtime_prefetch_shards",
-    "schedule": timedelta(seconds=max(_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS, 1)),
-    "options": {"queue": "realtime_prefetch"},
-}
+# DEPRECATED: Realtime prefetch has been migrated to native SaaS backend.
+# The following legacy entries are disabled to avoid conflicts with core backend.
+# See: packages/core/backend/src/market_serving/realtime_prefetch.py
+# TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED = True
+# _TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS = _env_int("TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS", 3)
+# CELERY_BEAT_SCHEDULE["build-realtime-symbol-universe-snapshot"] = { ... }
+# CELERY_BEAT_SCHEDULE["schedule-realtime-prefetch-shards"] = { ... }
+
+# Legacy entries disabled — native SaaS implementation is active in core backend
+# (set REALTIME_PREFETCH_ENABLED=false in env to fully disable)
+TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED = _env_bool("REALTIME_PREFETCH_ENABLED", False)
+
+if TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED:
+    # Only enable legacy if core backend native is down (emergency fallback)
+    _TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS = _env_int("TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS", 3)
+    CELERY_BEAT_SCHEDULE["build-realtime-symbol-universe-snapshot"] = {
+        "task": "portfolio.tasks.build_realtime_symbol_universe_snapshot",
+        "schedule": timedelta(seconds=max(TICKER_UNIVERSE_REFRESH_SECONDS, 10)),
+        "options": {"queue": "realtime_prefetch"},
+    }
+    CELERY_BEAT_SCHEDULE["schedule-realtime-prefetch-shards"] = {
+        "task": "portfolio.tasks.schedule_realtime_prefetch_shards",
+        "schedule": timedelta(seconds=max(_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS, 1)),
+        "options": {"queue": "realtime_prefetch"},
+    }
 
 if OFFPEAK_VNBROKER_INGEST_ENABLED:
     from celery.schedules import crontab as _crontab_offpeak

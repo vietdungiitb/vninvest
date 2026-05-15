@@ -56,9 +56,9 @@ export function ShellAiCommandCenterPage({
       detail: "Flag chính xác nhận runtime đang mở lane điều hành AI cho shell hiện tại.",
     },
     {
-      key: "show_admin_ops",
-      label: "show_admin_ops",
-      detail: "Cho biết operator lane có đồng thời bật để phối hợp với control center AI hay không.",
+      key: "show_operations_center",
+      label: "show_operations_center",
+      detail: "Cho biết lane SOC có đồng thời bật để phối hợp với control center AI hay không.",
     },
     {
       key: "show_vip_shell",

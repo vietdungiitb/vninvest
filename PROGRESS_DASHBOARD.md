@@ -1,3 +1,1667 @@
+# 2026-05-15 — Global Market Data Matrix T08 Semantic Read-Path Closure ✅
+
+Status: **✅ `T08` COMPLETE** | **AI advisory compat GET/manual-trigger paths giờ được khóa vào native advisory domain với owner regressions, và semantic audit cuối cùng xác nhận primary product read paths không còn per-user provider crawl**  
+Validation: **✅ `market_data.tests.test_stock_management_native_api` passed (`13` tests)** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun hoàn tất; direct probes xác nhận `/core/v1/health=200` và các route `/api/soc/matrix/providers/`, `/api/soc/dataops/queue-tiers/`, `/api/soc/dataops/runtime-config/` đều trả `401` trên runtime mới**
+
+## Global Market Data Matrix T08 Semantic Closure Subslice
+
+**What changed**
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` thêm 2 regression khóa phần proof còn thiếu của `T08`: `GET /api/stock-management/stocks/<symbol>/ai-advisory-session/` đọc native `AdvisoryRecord`, còn `POST /api/stock-management/stocks/<symbol>/ai-advisory-components/generate/` tạo pending native advisory trigger qua `AdvisoryRefreshView` mà không đụng market-data provider helpers trong request path.
+- Regression mới assert trực tiếp các helper `fetch_realtime_price`, `fetch_daily_history`, `fetch_price_board_snapshot`, và `fetch_intraday_tape` không bị gọi trong advisory compat request path, nên proof không chỉ dựa vào đọc code.
+- Semantic audit cuối cùng trên product-facing `*views.py` xác nhận phần provider-backed còn sót lại chỉ là `fetch_symbol_group_members()` trong `StockManagementSeedView`; đây là explicit seed/bootstrap mutation cho operator flow, không phải primary read path của product surfaces.
+- Với advisory proof này, toàn bộ checklist `T08` hiện đã khép lại: intraday compat/core APIs, watchlist sync, watchlist reads, whale/session-facts reads, advisory reads/triggers, và invariant không còn per-user provider crawl trên primary path.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T09` vẫn đang mở vì coverage panel, manual run builder, và run history/audit view chưa được nối vào SOC operator surface.
+- `StockManagementSeedView` vẫn dùng `fetch_symbol_group_members()` cho hành động seed explicit; path này nằm ngoài primary read path nhưng vẫn là provider-backed bootstrap mutation cần cân nhắc planner-ization ở slice sau nếu muốn chuẩn hóa operator write path hơn nữa.
+
+# 2026-05-15 — Global Market Data Matrix T09 DataOps Operator Surface + PAT Refresh Slice 🔄
+
+Status: **🔄 `T09` IN PROGRESS** | **SOC `dataops` tab giờ đã mount market-data operator surface thật với queue-tier board + runtime-config editor, backend có thêm `GET /api/soc/dataops/runtime-config/`, và `start_dev.ps1` không còn bị shell placeholder token chặn rebuild core image**  
+Validation: **✅ focused backend DataOps suite passed (`4` tests)** | **✅ focused frontend SOC suites passed (`12` tests)** | **✅ diagnostics sạch cho frontend/backend/compose/runtime files đã chạm** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun thành công, raw PAT mentions trong log = `0`, và runtime probes `/api/soc/matrix/providers/`, `/api/soc/dataops/queue-tiers/`, `/api/soc/dataops/runtime-config/` đều trả `401` nên core image mới đã live**
+
+## Global Market Data Matrix T09 DataOps Operator Surface Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/views/dataops.py` mở rộng `DataOpsRuntimeConfigView` với `GET /api/soc/dataops/runtime-config/`, trả `config + ownership + updated_at` để UI operator surface có bootstrap state chuẩn theo SSOT runtime config.
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` thêm regression cho GET runtime-config contract, khóa current-config load + ownership payload ở backend.
+- `frontend/src/api/socApi.js`, `frontend/src/components/soc/DataOpsPanel.jsx`, `frontend/src/pages/SOCPage.jsx`, `frontend/src/pages/SOCPage.test.jsx`, và `frontend/src/components/soc/SOCComponents.test.jsx` nối tab `DataOps` từ panel VNBroker cũ sang market-data surface thật: queue-tier cards, runtime-config JSON editor, preview/apply modal, ownership banner, và localized copy cho cả tiếng Việt lẫn tiếng Anh.
+- `start_dev.ps1` giờ bỏ qua `VNBROKER_GITHUB_TOKEN` placeholder trong shell hiện tại và fallback sang token persisted, nên build path không còn bị short-circuit bởi giá trị `dummy` trước khi chạm token thật.
+- `packages/core/backend/Dockerfile`, `docker-compose.yml`, `docker-compose.dev.yml`, và `docker-compose.prod.yml` đổi core build path sang secret-mounted credentials + tokenless requirements clone path để PAT không còn lộ raw trong build log; rerun `start_dev.ps1` sau đó xác nhận `PatMentions=0` trong output log của lần refresh mới nhất.
+- Semantic audit của `T08` cũng đã rà nốt các consumer `getRealtimeTickers`, `getStockWorkspaceOverview`, `getStockPriceChart`, `getWhaleFeed`, và `getSessionFacts`: các request path tương ứng hiện đọc `SymbolSnapshot`, `DailyPrice`, `IntradayBar`, `UnifiedAlert`, `SessionFacts`, và `SessionFactsBucket` từ shared layer, nên backlog `T08` còn lại chủ yếu là AI advisory verification + final proof không còn per-user provider crawl trên primary path.
+
+**Files audited in this slice**
+- `start_dev.ps1`
+- `packages/core/backend/Dockerfile`
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/pages/SOCPage.jsx`
+- `frontend/src/pages/SOCPage.test.jsx`
+- `frontend/src/components/soc/SOCComponents.test.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `docker-compose.yml`
+- `docker-compose.dev.yml`
+- `docker-compose.prod.yml`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T09` mới chỉ chốt runtime-config panel và queue-tier board; coverage panel, manual run builder, và run history/audit view vẫn chưa có UI operator surface.
+- `T08` vẫn chưa đóng hoàn toàn vì AI advisory path và bằng chứng cuối cùng cho invariant “không còn per-user provider crawl trên primary path” vẫn cần audit riêng.
+- `packages/core/docker-compose.core.yml` là workflow runtime `pip install` khác, vẫn chưa được harden theo secret-mounted PAT path trong subslice này.
+- File dev env tracked hiện vẫn chứa secrets thực tế; build log đã được làm sạch, nhưng hygiene hoàn chỉnh vẫn cần rotate và loại bỏ secrets khỏi tracked config.
+
+# 2026-05-15 — Global Market Data Matrix T08 Core Intraday Prices Cutover Slice 🔄
+
+Status: **🔄 `T08` IN PROGRESS** | **Public core route `/core/v1/market-data/intraday-prices/<symbol>/` không còn đọc provider trực tiếp; cả core intraday prices và core intraday tape đều đã phục vụ canonical `IntradayBar`/`IntradayTick` từ shared layer**  
+Validation: **✅ focused core intraday suites passed (`4` tests)** | **✅ diagnostics sạch cho `market_data.views` và test mới** | **✅ module tree regenerated (`1198` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
+
+## Global Market Data Matrix T08 Core Intraday Prices Subslice
+
+**What changed**
+- `packages/core/backend/src/market_data/views.py` cắt `IntradayPricesView` khỏi `vnbroker_adapter.fetch_intraday_ohlcv()`, chuyển route sang đọc canonical `IntradayBar` rows theo `symbol/timeframe/lookback`, và giữ response contract với `points`/`interval`/`timeframe` cho public core API.
+- `packages/core/backend/src/market_data/tests/test_intraday_prices_api.py` thêm focused regression chứng minh route chỉ đọc DB bars theo timeframe/lookback và không còn gọi provider trong request path; suite được rerun cùng `test_intraday_tape_api.py` để khóa cả hai core intraday endpoints trong cùng file view.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/views.py`
+- `packages/core/backend/src/market_data/tests/test_intraday_prices_api.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Nhóm direct provider fetch trên product-facing intraday routes đã được cắt thêm một lớp nữa, nhưng `T08` vẫn còn phần semantic audit cho watchlist display, AI advisory/alerts, và các read surfaces còn lại.
+- Runtime refresh vẫn chưa chứng minh code mới đã live trong container vì build core image tiếp tục fail khi clone private `vnbroker` bằng PAT hiện tại.
+
+# 2026-05-15 — Global Market Data Matrix T08 Watchlist Sync Planner Routing Slice 🔄
+
+Status: **🔄 `T08` IN PROGRESS** | **Watchlist không còn tự fetch quote provider trong request path; `/api/stock-management/sync/` giờ queue một global planner run audited trên `manual_on_demand`, còn UI copy cũng đã đổi sang semantics “gửi yêu cầu làm mới”**  
+Validation: **✅ focused stock-management native API suite passed (`11` tests)** | **✅ diagnostics sạch cho sync backend + i18n files** | **✅ module tree regenerated (`1197` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
+
+## Global Market Data Matrix T08 Watchlist Sync Subslice
+
+**What changed**
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py` cắt `StockManagementSyncView` khỏi `fetch_price_board_snapshot()` trong request path, chuyển sang `create_global_planner_run()` với dataset `price_board_snapshot`, policy `missing_only`, queue `manual_on_demand`, và audit metadata cho user-demand scope.
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` cập nhật focused regression để patch `create_global_planner_run`, assert call args planner/audit đúng, và khóa invariant `market_data.vnbroker_adapter.fetch_price_board_snapshot()` không còn được gọi khi user bấm sync từ watchlist scope.
+- `frontend/src/i18n/vi.js` và `frontend/src/i18n/en.js` đổi watchlist sync success copy sang queued-refresh semantics để không nói sai rằng dữ liệu đã được sync trực tiếp ngay trong request path.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Watchlist sync path đã rời direct provider fetch, nhưng watchlist display surfaces và các AI/advisory/alert read paths còn lại vẫn chưa được audit xong cho `T08`.
+- Runtime refresh vẫn chưa chứng minh code mới đã live trong container vì build core image tiếp tục fail khi clone private `vnbroker` bằng PAT hiện tại.
+
+# 2026-05-15 — Global Market Data Matrix T08 Intraday Read-Path Cutover Slice 🔄
+
+Status: **🔄 `T08` IN PROGRESS** | **Stock Detail và LegacyDashboard không còn kéo intraday tape từ provider trong request path; cả compat route `/api/realtime/intraday/<symbol>/` lẫn core route `/core/v1/market-data/intraday-tape/<symbol>/` giờ đọc latest-session `IntradayTick` từ shared layer**  
+Validation: **✅ focused intraday suites passed (`4` tests)** | **✅ diagnostics sạch cho các view/test vừa chạm** | **✅ module tree regenerated (`1197` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
+
+## Global Market Data Matrix T08 Intraday Read-Path Subslice
+
+**What changed**
+- `packages/core/backend/src/market_serving/native_views.py` cắt `RealtimeIntradayView` khỏi `vnbroker_adapter.fetch_intraday_tape()`, chuyển sang đọc latest-session `IntradayTick` rows trong DB, trả `served_at/source_event_at/age_seconds`, và degrade an toàn về empty-stale payload khi shared layer chưa có dữ liệu.
+- `packages/core/backend/src/market_data/views.py` áp dụng cùng facts-first semantics cho `IntradayTapeView`, nên cả compat route lẫn core route intraday tape đều không còn recrawl provider chỉ vì user mở màn hình.
+- `packages/core/backend/src/market_serving/tests/test_native_views.py` và `packages/core/backend/src/market_data/tests/test_intraday_tape_api.py` thêm focused regression, patch `market_data.vnbroker_adapter.fetch_intraday_tape` để chứng minh request path không còn gọi provider và chỉ phục vụ latest-session DB rows.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_serving/native_views.py`
+- `packages/core/backend/src/market_serving/tests/test_native_views.py`
+- `packages/core/backend/src/market_data/views.py`
+- `packages/core/backend/src/market_data/tests/test_intraday_tape_api.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T08` mới đóng path intraday matched-trade cho Stock Detail/LegacyDashboard; watchlist, AI advisory/alerts, và các read paths còn lại vẫn cần audit/cutover tiếp.
+- Runtime refresh vẫn chưa chứng minh code mới đã live trong container vì build core image tiếp tục fail khi clone private `vnbroker` bằng PAT hiện tại.
+
+# 2026-05-15 — Global Market Data Matrix T07 Scheduler Consumer Slice ✅
+
+Status: **✅ `T07` COMPLETE FOR CODE + VALIDATION** | **queue-tier policy không chỉ có config surface mà giờ đã có scheduler consumer thật, bám runtime cadence/batch-size và dispatch planner runs vào các queue hiện có**  
+Validation: **✅ focused service-ops + planner suite passed (`55` tests)** | **✅ diagnostics sạch cho scheduler/helper/queue-policy/planner files** | **✅ module tree regenerated (`1195` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ probe runtime xác nhận route cũ `/api/soc/matrix/providers/` trả `401` nhưng cả `/api/soc/dataops/queue-tiers/` và `/api/soc/dataops/runtime-config/` đều trả `404`, nên core containers vẫn đang chạy image cũ do build private `vnbroker` tiếp tục fail**
+
+## Global Market Data Matrix T07 Scheduler Consumer Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/dataops_market_data.py` gom các helper chung cho market-data dataops: resolve queue tier từ `GlobalSymbolRegistry`, load runtime config hiện hành, map tier sang queue execution, dataset policy, và batch symbol selection.
+- `packages/core/backend/src/service_ops/tasks.py` thêm `run_market_data_queue_tier_scheduler`, dùng `ServiceRunLog` để chống dispatch trùng theo `poll_interval_seconds`, chọn symbol theo `max_batch_size`, rồi gọi `create_global_planner_run()` với `trigger`, `planner_queue`, và scheduler context rõ ràng.
+- `packages/core/backend/src/market_data/global_symbol_planner.py` mở rộng parent run-log input để nhận `trigger`, `planner_queue`, và `extra_input_summary`; async planner dispatch giờ có thể route vào queue tương ứng với tier.
+- `packages/core/backend/src/vninvest_core/queue_policy.py` và `packages/core/backend/src/vninvest_core/settings.py` đã nối scheduler task mới vào `manual_on_demand` queue và `CELERY_BEAT_SCHEDULE` `30s`, để runtime policy trong SOC có consumer thực tế.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` và `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py` có thêm regression cho tier scheduler dispatch, inflight cooldown, và planner queue/context handoff.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/dataops_market_data.py`
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/market_data/global_symbol_planner.py`
+- `packages/core/backend/src/vninvest_core/queue_policy.py`
+- `packages/core/backend/src/vninvest_core/settings.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T07` đã xong ở code và tests, nhưng route/runtime verification vẫn bị block vì core image không rebuild được khi clone private `vnbroker` thất bại.
+- Chương trình vẫn chưa production-ready vì `T08+` chưa hoàn tất, và runtime dev stack hiện chưa phục vụ code mới nhất của `T07`.
+
+# 2026-05-15 — Global Market Data Matrix T07 Queue Tier API + Runtime Config Slice 🔄
+
+Status: **🔄 `T07` IN PROGRESS** | **SOC Data Ops giờ đã có backend contract cho `queue-tiers` và `runtime-config`; queue-tier policy không còn là implicit convention nằm rải rác trong registry fields**  
+Validation: **✅ focused service-ops suite passed (`33` tests)** | **✅ diagnostics sạch cho các file mới/chạm trong `service_ops`** | **✅ module tree regenerated (`1194` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ probe runtime xác nhận route cũ `/api/soc/matrix/providers/` trả `401` nhưng route mới `/api/soc/dataops/queue-tiers/` trả `404`, nên core containers vẫn đang chạy image cũ do build private `vnbroker` tiếp tục fail**
+
+## Global Market Data Matrix T07 Queue Tier API + Runtime Config Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/domain_configs/market_data.py` thêm typed runtime config cho queue tiers market-data SSOT, gồm `decay_days` và cadence/batch-size cho `hot_user_demand`, `warm_liquid_market`, `cold_full_market`, `recovery_backlog`.
+- `packages/core/backend/src/service_ops/views/dataops.py` thêm `GET /api/soc/dataops/queue-tiers/` để trả phân bổ symbol theo queue tier cùng cadence hiện hành, và `POST /api/soc/dataops/runtime-config/` để apply runtime config mới với audit trail chuẩn `ServiceConfig`/`ConfigChangeAudit`.
+- `packages/core/backend/src/service_ops/ownership.py` mở rộng ownership matrix với domain `dataops_market_data`, giữ đường ghi runtime config của market-data SSOT nằm trong SOC service layer.
+- `packages/core/backend/src/service_ops/urls.py` đã expose các route `dataops` mới; `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`, `test_soc_domain_configs.py`, và `test_soc_ownership.py` có regression cho default config, override config, apply flow, và ownership payload.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/domain_configs/market_data.py`
+- `packages/core/backend/src/service_ops/domain_configs/__init__.py`
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `packages/core/backend/src/service_ops/ownership.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_ownership.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T07` mới xong policy/config surfaces; scheduler/worker consumers vẫn chưa dùng runtime policy này để batch/throttle execution.
+- Dù stack health OK, runtime probe cho thấy route mới chưa live trên container thật vì build core image vẫn fail ở private `vnbroker`, nên production-readiness chưa thể xác nhận.
+
+# 2026-05-15 — Global Market Data Matrix T06 Intraday Hydration Slice ✅
+
+Status: **✅ `T06` COMPLETE FOR CODE + VALIDATION** | **Planner execution giờ đã chạy được cả `daily_prices`, `price_board_snapshot`, `intraday_ticks`, và `intraday_bars`; slice refactor ingest theo `plan_items` của `T06` đã khép kín ở backend**  
+Validation: **✅ focused planner/ingest suite passed (`16` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail vì PAT hiện tại không clone được private `vnbroker`, nên runtime có thể vẫn đang dùng image core cũ**
+
+## Global Market Data Matrix T06 Intraday Hydration Subslice
+
+**What changed**
+- `packages/core/backend/src/data_ingest/tasks.py` mở rộng `warm_intraday_universe()` từ cache warmer sang audited hydration task nhận `plan_items`, persist canonical `IntradayTick`, aggregate `IntradayBar` cho các timeframe intraday chuẩn, và ghi `tick_counts`/`bar_counts` cùng `inserted/updated/skipped_existing/failed_count` vào run-log.
+- `packages/core/backend/src/market_data/global_symbol_planner.py` bổ sung support thực thi `intraday_ticks` và `intraday_bars`, tạo child run log `vnbroker_intraday_tape`, và aggregate summary intraday vào parent planner run cùng contract với daily/snapshot paths.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` có thêm regression chứng minh intraday hydration consume `plan_items`, skip row đã có, insert row mới, và aggregate bar đúng từ tape trades; `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py` có thêm regression chứng minh sync planner run thực thi được intraday datasets và audit đúng service key con.
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md` đã được cập nhật để phản ánh `T06 = DONE`; từ đây backlog kỹ thuật chính chuyển sang `T07` queue tiers và schedule policies.
+
+**Files audited in this slice**
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/market_data/global_symbol_planner.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Backend refactor của `T06` đã xong, nhưng chưa production-ready vì `T07+` vẫn chưa implement và build Docker core runtime hiện vẫn không rebuild sạch do PAT private `vnbroker` chưa hợp lệ.
+- Runtime stack vẫn healthy sau `start_dev.ps1`, nhưng image freshness của core containers chưa được chứng minh cho code mới nhất.
+
+# 2026-05-15 — Global Market Data Matrix T06 Price Board Plan-Item Slice ✅
+
+Status: **✅ `T05` COMPLETE / 🔄 `T06` EXPANDED** | **Planner execution giờ đã chạy được cả `daily_prices` lẫn `price_board_snapshot`; snapshot ingest không còn buộc quét toàn active universe khi planner chỉ yêu cầu subset symbols**  
+Validation: **✅ focused planner/ingest suite passed (`14` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
+
+## Global Market Data Matrix T06 Price Board Plan-Item Subslice
+
+**What changed**
+- `packages/core/backend/src/data_ingest/tasks.py` mở rộng `fetch_and_upsert_price_board()` để nhận explicit `plan_items`, dedupe subset symbols từ planner, cập nhật `ServiceRunLog` với `planned_items/symbols_count/inserted/updated/skipped_existing/failed_count`, và tránh execution toàn universe khi không cần.
+- `packages/core/backend/src/market_serving/vnbroker_materializer.py` giờ nhận `symbols` optional, chỉ materialize đúng subset cần thiết, và phân biệt rõ snapshot rows `inserted`, `updated`, `skipped_existing`, `failed` thay cho blind `update_or_create()` trên mọi symbol mỗi lần chạy.
+- `packages/core/backend/src/market_data/global_symbol_planner.py` bổ sung support thực thi `price_board_snapshot`, tạo child run log `vnbroker_price_board`, và aggregate summary snapshot vào parent planner run cùng contract với daily-history path.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` có thêm regression chứng minh price-board path consume `plan_items`; `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py` có thêm regression chứng minh sync planner run thực thi được `price_board_snapshot` và audit đúng service key con.
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md` đã được cập nhật để phản ánh `T06` hiện xong `daily_prices + price_board_snapshot`, còn intraday là phần pending chính.
+
+**Files audited in this slice**
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/market_serving/vnbroker_materializer.py`
+- `packages/core/backend/src/market_data/global_symbol_planner.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T06` vẫn chưa hoàn tất vì `intraday_bars`, `intraday_ticks`, và các path hydration tương ứng chưa consume `plan_items` theo cùng execution contract.
+- `start_dev.ps1` vẫn khởi động stack healthy, nhưng build core runtime tiếp tục fail vì clone private `vnbroker` không qua được auth; do đó runtime refresh cho code backend mới chưa được chứng minh bằng image rebuild sạch.
+
+# 2026-05-15 — Global Market Data Matrix T05 Execution Contract + T06 Daily History Slice ✅
+
+Status: **✅ `T05` COMPLETE / 🔄 `T06` STARTED** | **Planner missing-only giờ không chỉ preview mà đã có execution contract + audited run trail; daily-history ingest path cũng đã chuyển sang consume explicit `plan_items` thay vì backfill mù theo range chung**  
+Validation: **✅ focused planner/ingest suite passed (`12` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
+
+## Global Market Data Matrix T05 Execution Contract + T06 Daily History Subslice
+
+**What changed**
+- `packages/core/backend/src/market_data/global_symbol_planner.py` được thêm mới để chuyển planner preview sang run payload có thể thực thi, hỗ trợ cả `execution_mode=async|sync`, tạo parent `ServiceRunLog` trên `matrix_cycle_coordinator`, và tổng hợp summary thực thi theo chuẩn `planned_items/inserted/updated/skipped_existing/failed/repaired_conflicts`.
+- `packages/core/backend/src/data_ingest/tasks.py` có thêm task wrapper `run_global_market_data_planner`, đồng thời refactor `ingest_daily_prices()` và `backfill_daily_prices()` để nhận explicit `plan_items`, resolve window theo từng symbol, và chỉ upsert các row thực sự mới hoặc thay đổi thay vì overwrite mù toàn bộ batch.
+- Daily-history path giờ trả được detailed counters `inserted`, `updated`, `skipped_existing`, `failed_count`, `repaired_conflicts`; đây là lát cắt đầu tiên của `T06` để những dataset còn lại bám theo cùng contract.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` có thêm coverage cho plan-item consumption + skipped-existing semantics; `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py` khóa sync/async planner run contract và audit trail cha/con.
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md` đã được cập nhật để phản ánh `T05 = DONE` và `T06 = IN PROGRESS`.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/global_symbol_planner.py`
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T06` mới chỉ phủ `daily_prices`; `price_board_snapshot` và các path intraday vẫn chưa consume plan items nên planner execution hiện mới thực sự chạy được daily-history path.
+- `start_dev.ps1` vẫn khởi động stack healthy, nhưng build core runtime tiếp tục fail vì clone private `vnbroker` không qua được auth; do đó runtime refresh cho code backend mới chưa được chứng minh bằng image rebuild sạch.
+
+# 2026-05-15 — Global Market Data Matrix T05 Planner Preview Slice ✅
+
+Status: **✅ COMPLETE FOR THIS SUBSLICE** | **`T05` đã có planner preview helper bám `GlobalSymbolCoverage`, sinh explicit plan items với policy mặc định `missing_only`; execution contract và queue handoff sẽ là follow-up kế tiếp trong cùng task**  
+Validation: **✅ focused planner/coverage tests passed (`5` tests)** | **✅ diagnostics sạch cho code tests vừa chạm** | **✅ module tree regenerated (`1190` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
+
+## Global Market Data Matrix T05 Planner Preview Subslice
+
+**What changed**
+- `packages/core/backend/src/market_data/global_symbol_coverage.py` được mở rộng thêm planner preview service để chuyển coverage rows thành explicit plan items theo contract `T05`.
+- Planner mới hỗ trợ `mode=missing_only`, dedupe symbol/dataset inputs, map `freshness_state` sang `reason` (`missing`, `stale`, `repair`, `manual_force`), và build `requested_window` theo dataset thay vì full-scan mù.
+- Với `force_refresh=false`, planner chỉ plan các dataset `missing/stale/error/unknown` và skip `coverage_ok`; với `force_refresh=true`, planner chỉ chạy khi caller explicit override và đánh `overwrite_existing=true`.
+- `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py` có thêm regression cho missing-only semantics và explicit force refresh behavior.
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md` đã được cập nhật để phản ánh `T05 = IN PROGRESS` với preview helper đã xong, execution contract còn pending.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/global_symbol_coverage.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Slice này mới chốt planner preview/service layer; chưa có planner execution contract hoặc queue/audit run integration, nên `T05` vẫn đang `IN PROGRESS`.
+- `start_dev.ps1` vẫn boot stack healthy, nhưng build core runtime tiếp tục fail vì clone private `vnbroker` không qua được auth; do đó runtime refresh cho code mới chưa được chứng minh bằng image rebuild sạch.
+
+# 2026-05-15 — Hard Rule: Use start_dev.ps1 For Dev Runtime Refresh ✅
+
+Status: **✅ COMPLETE** | **Repo governance đã được cập nhật để mọi build/rebuild/restart dev stack mặc định phải đi qua `./start_dev.ps1`, không còn dùng `docker compose` trực tiếp như workflow thường ngày**  
+Validation: **✅ diagnostics sạch cho `AGENTS.md` và `docs/AI_CODING_REGULATION.md`** | **✅ grep xác nhận hard rule `start_dev.ps1` đã vào cả hai file governance** | **✅ user memory đã được cập nhật để các phiên sau tự mặc định dùng `./start_dev.ps1`**
+
+## Dev Runtime Governance Hardening Slice
+
+**What changed**
+- `AGENTS.md` đã thay command runtime refresh mẫu sang `./start_dev.ps1` và nâng rule thành operating discipline bắt buộc cho mọi slice runtime/UI/backend của dev stack.
+- `docs/AI_CODING_REGULATION.md` có thêm section `Dev Runtime Refresh Hard Rule`, cấm dùng `docker compose ... up/build` trực tiếp như default workflow và quy định rõ khi nào mới được dùng `./start_dev.ps1 -SkipBuild`.
+- User memory cũng đã được cập nhật để các phiên sau mặc định dùng `./start_dev.ps1` mà không hỏi lại.
+
+**Files audited in this slice**
+- `AGENTS.md`
+- `docs/AI_CODING_REGULATION.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Rule governance đã cứng hóa, nhưng các entry audit cũ trong ledger vẫn còn chứa ví dụ `docker compose` từ các slice lịch sử; đây là historical evidence, không phải workflow chuẩn cho các slice mới nữa.
+
+# 2026-05-15 — Global Market Data Matrix T03 Closure + T04 Coverage Inventory ✅
+
+Status: **✅ COMPLETE FOR CODE + VALIDATION** | **`T03` đã chốt xong admin/system promotion và canonical `vn100`; `T04` đã có coverage inventory service cho 5 dataset cùng summary/detail helpers bám trực tiếp canonical tables/read models**  
+Validation: **✅ T03 focused regression passed (`46` tests, `1` skipped)** | **✅ T04 focused validation passed (`18` tests)** | **✅ diagnostics sạch cho code/docs vừa chạm** | **✅ module tree regenerated (`1190` modules)** | **⚠️ dev Docker rebuild attempted nhưng bị chặn bởi `VNBROKER_GITHUB_TOKEN` không hợp lệ trong build context**
+
+## Global Market Data Matrix Mainline Progress Recovery Slice
+
+**What changed**
+- `packages/core/backend/src/market_data/global_symbol_registry.py` sửa defect cleanup alias `top100 -> vn100`: sync canonical `vn100` giờ chỉ deactivate edge legacy `system_default:top100`, không còn tự tắt edge canonical `system_default:vn100`.
+- `packages/core/backend/src/market_data/global_symbol_coverage.py` được thêm mới để build/upsert coverage inventory cho `daily_prices`, `price_board_snapshot`, `intraday_bars`, `intraday_ticks`, và `session_facts`, đồng thời refresh summary fields về `GlobalSymbolRegistry`.
+- Service coverage mới cũng cung cấp helper `build_global_coverage_summary()` và `build_symbol_coverage_detail()` để unlock contract của `T04` trước khi đi tiếp sang planner/API surface.
+- `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py` khóa lại freshness/missing semantics, dataset summary aggregation, và symbol detail serialization.
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md` đã được cập nhật để phản ánh đúng trạng thái `T03 = DONE`, `T04 = DONE`.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/global_symbol_registry.py`
+- `packages/core/backend/src/market_data/global_symbol_coverage.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T04` mới xong ở service/helper layer; `SOC Data Ops` API endpoints và planner integration (`T05`, `T09`) vẫn chưa được nối vào runtime surface.
+- Dev runtime chưa rebuild được sau slice này vì Docker build cần `VNBROKER_GITHUB_TOKEN` hợp lệ để cài private dependency `vnbroker`; code đã pass local Django tests nhưng container image chưa được refresh.
+
+# 2026-05-15 — Dev Core-Only DB + Single Redis Topology Consolidation ✅
+
+Status: **✅ COMPLETE** | **Dev stack đã bỏ `db` để chỉ còn `core-db`, và các stack còn giữ Redis kép (`docker-compose.prod.yml`, `portainer-stack-vninvest.yml`) đã được hợp nhất về một `core-redis` duy nhất với DB-index split để không trộn queue/key giữa core và legacy**  
+Validation: **✅ dev merged compose không còn `db`** | **✅ dev runtime chỉ còn `vninvest-dev-core-db` + `vninvest-dev-core-redis`** | **✅ `core-db` dev bind host `127.0.0.1:5432` và healthy** | **✅ merged prod compose không còn service `redis`** | **✅ merged Portainer main stack không còn service `redis`** | **✅ diagnostics sạch cho các compose files đã chạm** | **✅ module tree regenerated (`1188` modules)**
+
+## Core-Only DB + Single Redis Topology Slice
+
+**What changed**
+- `docker-compose.dev.yml` được chuyển từ topology `db + core-db` sang chỉ còn override `core-db`; đồng thời host port `5432` được bind trực tiếp từ `core-db`, nên dev stack không còn container `db` riêng.
+- `docker-compose.prod.yml` bỏ service `redis` riêng, nâng `core-redis` thành Redis persistent duy nhất, và chuyển legacy backend/celery còn sót sang dùng `core-redis` với split DB index: legacy `0/1/2`, core `3`.
+- `portainer-stack-vninvest.yml` được đồng bộ cùng topology: chỉ còn `core-redis`, cùng DB-index split như production compose để tránh trộn broker/result/cache/stream giữa legacy và core.
+- `docker-compose.prod.yml` cũng bỏ `env_file` khỏi `frontend` để merged config không còn lộ các biến Redis legacy không dùng tới từ backend env file.
+
+**Files audited in this slice**
+- `docker-compose.dev.yml`
+- `docker-compose.prod.yml`
+- `portainer-stack-vninvest.yml`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `docker-compose.prod.yml` và `portainer-stack-vninvest.yml` vẫn còn topology database kép (`db` cho legacy và `core-db` cho core); slice này chỉ hợp nhất Redis ở các stack hybrid, chưa decommission legacy DB.
+- Các stack Portainer cũ khác như `portainer-stack-nginx-proxy.yml` và `portainer-stack-https.yml` vẫn là legacy-only topology riêng; chúng không có Redis kép nhưng cũng chưa được nâng lên core-only architecture.
+
+# 2026-05-15 — Dev Compose Single Redis Consolidation ✅
+
+Status: **✅ COMPLETE** | **Dev stack hợp nhất về một Redis container duy nhất bằng cách biến `docker-compose.dev.yml` thành override trực tiếp của `core-redis`; service `redis` riêng không còn tồn tại trong merged compose nữa**  
+Validation: **✅ merged compose services chỉ còn `core-redis`, không còn `redis`** | **✅ merged compose giữ `container_name: vninvest-dev-core-redis`** | **✅ dev runtime refresh với `--remove-orphans` thành công** | **✅ `docker ps` chỉ còn `vninvest-dev-core-redis` cho Redis** | **✅ diagnostics sạch cho `docker-compose.dev.yml`** | **✅ module tree regenerated (`1188` modules)**
+
+## Dev Compose Single Redis Slice
+
+**What changed**
+- `docker-compose.dev.yml` đổi service override từ `redis` sang `core-redis`, nên khi merge với `docker-compose.yml` dev stack không còn tạo thêm một Redis thứ hai ngoài core Redis nữa.
+- Dev Redis container name được chuẩn hóa thành `vninvest-dev-core-redis`, vẫn giữ port bind `6379` cho local/hybrid usage và vẫn bám cùng service DNS `core-redis` mà core runtime đang dùng.
+- Refresh runtime bằng `docker compose ... up -d --build --remove-orphans ...` đã loại bỏ orphan Redis cũ và đưa toàn bộ core services lên lại với single-Redis topology.
+
+**Files audited in this slice**
+- `docker-compose.dev.yml`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Dev stack hiện vẫn còn cặp database `db` và `core-db`; slice này chỉ hợp nhất Redis theo đúng yêu cầu hiện tại, chưa đụng tới database topology.
+
+# 2026-05-15 — Global Market Data Matrix T02/T03 Registry Slice ✅
+
+Status: **✅ COMPLETE FOR THIS SLICE** | **`GlobalSymbolRegistry`, `GlobalSymbolDemandSource`, `GlobalSymbolCoverage` và flow promote/deactivate cho `watchlist`, `tracked_symbol`, `holding`, `alert` đã được nối native qua signal layer; đồng thời TECH_SPEC đã được mở rộng với contract chi tiết cho `SOC Data Ops` API/UI**  
+Validation: **✅ `makemigrations market_data --dry-run --check` passed** | **✅ focused backend tests passed (`16` tests)** | **✅ module tree regenerated (`1188` modules)** | **✅ dev `core-api`, `core-worker`, `core-beat`, `core-worker-manual` rebuilt/recreated** | **✅ runtime `showmigrations market_data` xác nhận `[X] 0003`**
+
+## Global Market Data Matrix T02/T03 Registry + Promotion Slice
+
+**What changed**
+- `docs/TECH_SPEC_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md` được mở rộng thêm contract chi tiết cho `SOC Data Ops`: summary, symbol list/detail, coverage summary/detail, planner preview/run, queue tiers, runtime config, run logs, và UI state rules cho tab `dataops`.
+- `packages/core/backend/src/market_data/models.py` có thêm 3 model SSOT nền tảng: `GlobalSymbolRegistry`, `GlobalSymbolDemandSource`, `GlobalSymbolCoverage`.
+- `packages/core/backend/src/market_data/global_symbol_registry.py` thêm service sync dùng chung để normalize symbol, upsert/deactivate demand edges, refresh summary tier/decay state, và recompute holding demand theo `(portfolio, symbol)`.
+- `packages/core/backend/src/user_workspace/signals.py` + `packages/core/backend/src/user_workspace/apps.py` nối signal-based promotion cho `WatchlistItem`, `TrackedSymbol`, `PriceAlert`, `Transaction`, nên native stock-management, workspace API, legacy watchlist paths và seed flows đều đi vào cùng một registry sync path.
+- Focused tests mới khóa lại 3 lớp: model/service registry, native stock-management integration, và workspace/legacy integration.
+
+**Files audited in this slice**
+- `docs/TECH_SPEC_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `packages/core/backend/src/market_data/models.py`
+- `packages/core/backend/src/market_data/global_symbol_registry.py`
+- `packages/core/backend/src/market_data/migrations/0003_globalsymbolregistry_globalsymbolcoverage_and_more.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_registry.py`
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `packages/core/backend/src/user_workspace/apps.py`
+- `packages/core/backend/src/user_workspace/signals.py`
+- `packages/core/backend/tests/test_global_symbol_registry_workspace_integration.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `admin_group` và `system_default` demand sources chưa có native promotion path trong slice này; `T03` vì thế vẫn là `IN PROGRESS` ở taskboard.
+- Coverage/freshness inventory, planner API, queue tiers và UI/operator surface của `SOC Data Ops` mới được chốt ở contract/spec, chưa được implement runtime.
+
+# 2026-05-15 — Global Market Data Matrix SSOT Documentation Pack ✅
+
+Status: **✅ COMPLETE** | **Bộ governance + planning docs cho `global market data matrix` đã được dựng và hard rules SSOT chung đã được nâng lên thành quy định công khai, bắt buộc tuân thủ trong `AGENTS.md` và `docs/AI_CODING_REGULATION.md`**  
+Validation: **✅ doc-pack created** | **✅ governance references inserted** | **✅ no diagnostics for touched docs/config files**
+
+## Global Market Data Matrix SSOT Documentation Slice
+
+**What changed**
+- Tạo mới doc-pack `GLOBAL_MARKET_DATA_MATRIX_SSOT_*` gồm handoff master, implementation plan, tech spec, taskboard, traceability matrix, self-audit/test protocol, code quality constitution, và execution evidence template.
+- `AGENTS.md` được mở rộng để nhận diện task liên quan `global market data matrix`, `market data SSOT`, `coverage gap`, `freshness gap`, `missing-only crawl planner`, và thêm section hard constraints riêng cho chương trình này.
+- `docs/AI_CODING_REGULATION.md` được mở rộng từ SSOT domain-level sang hard rules cụ thể cho global market-data matrix và điều kiện merge bổ sung cho planner/read-path.
+
+**Files audited in this slice**
+- `AGENTS.md`
+- `docs/AI_CODING_REGULATION.md`
+- `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_HANDOFF_MASTER_20260515.md`
+- `docs/IMPLEMENTATION_PLAN_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `docs/TECH_SPEC_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_TRACEABILITY_MATRIX_20260515.md`
+- `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_SELF_AUDIT_AND_TEST_PROTOCOL_20260515.md`
+- `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_CODE_QUALITY_CONSTITUTION_20260515.md`
+- `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_EXECUTION_EVIDENCE_TEMPLATE_20260515.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Slice này mới hoàn tất governance và planning pack; chưa có implementation/runtime cutover cho global registry, planner, hoặc SOC Data Ops API/UI.
+
+# 2026-05-15 — Scraping T16 WhaleAdvisory Native Advisory Compat Closure ✅
+
+Status: **✅ COMPLETE** | **`WhaleAdvisory` giờ tự dựng active symbol universe từ holdings/tracked symbols khi native list/stats endpoints còn rỗng, refresh call đã chuyển sang portfolio native advisory route, và compat delegates `canonical/current/refresh` trong `user_workspace` không còn nổ `500` vì truyền nhầm `rest_framework.request.Request` sang advisory domain**  
+Validation: **✅ `useWhaleAdvisoryData.test.js` passed** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched frontend/backend files** | **✅ `test_user_workspace_api_routes.py` passed (`4` tests)** | **✅ module tree regenerated (`1183` modules)** | **✅ dev `core-api` rebuilt/recreated** | **✅ runtime smoke inside rebuilt `core-api` returned `canonical=200`, `current=200`, `refresh=201`**
+
+## Scraping SaaS-Native T16 WhaleAdvisory Native-Compat Closure Subslice
+
+**What changed**
+- `frontend/src/api/client.js` đổi `refreshWhaleAdvisory(symbol)` sang `/api/portfolio/ai-advisory/<symbol>/refresh/`, chấm dứt việc bắn `POST` vào stock-management route chỉ hỗ trợ `GET` trên native core.
+- `frontend/src/hooks/useWhaleAdvisoryData.js` hiện tự load symbol universe từ `getHoldings(activePortfolioId)` + `getTrackedSymbols()` khi `/api/portfolio/ai-advisory/` và `/api/portfolio/ai-advisory-symbol-stats/` trả rỗng; cùng lúc hook sẽ fallback sang `getCanonicalAIAdvisory(symbol)` để route vẫn có advisory payload cho từng symbol native.
+- `frontend/src/pages/WhaleAdvisory.jsx` truyền `activePortfolioId` vào hook dữ liệu, nên fallback symbol universe bám đúng portfolio context hiện hành.
+- `packages/core/backend/src/user_workspace/portfolio_analytics_views.py` thêm request unwrapping trước khi delegate sang `AdvisoryLatestView` / `AdvisoryRefreshView`, nên compat routes `canonical`, `current`, và `refresh` không còn tái-wrap DRF request và không còn vỡ với assertion `django.http.HttpRequest`.
+- `packages/core/backend/tests/test_user_workspace_api_routes.py` khóa lại regression này bằng route-level coverage cho cả GET `canonical/current` và POST `refresh`.
+
+**Files audited in this slice**
+- `frontend/src/api/client.js`
+- `frontend/src/hooks/useWhaleAdvisoryData.js`
+- `frontend/src/hooks/useWhaleAdvisoryData.test.js`
+- `frontend/src/pages/WhaleAdvisory.jsx`
+- `packages/core/backend/src/user_workspace/portfolio_analytics_views.py`
+- `packages/core/backend/tests/test_user_workspace_api_routes.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watch=false --runTestsByPath src/hooks/useWhaleAdvisoryData.test.js; Pop-Location` passed.
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed after the WhaleAdvisory native fallback changes.
+- `functions.get_errors` reported no diagnostics for the touched frontend and backend files in this slice.
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; ..\..\..\.venv\Scripts\python.exe manage.py test tests --pattern="test_user_workspace_api_routes.py" --keepdb; Pop-Location` passed (`4` tests).
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1183` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api` refreshed the impacted runtime and restarted `vninvest-dev-core-api` on the new image.
+- Runtime smoke in the rebuilt container, executed via `python src/manage.py shell -c ...`, returned `canonical_status=200`, `current_status=200`, and `refresh_status=201` for the native portfolio advisory compat routes.
+- Prior live browser smoke on `/ai-advisory` after the fallback cutover already confirmed `HPG` appears in the symbol sidebar and the facts-first bubble wrapper mounts instead of the old select-symbol placeholder.
+
+**Residual Risk**
+- Native list/stats endpoints for portfolio advisory are still placeholders; route usability is now preserved by frontend fallback logic rather than by a fully materialized native list contract.
+- `auto-refresh-info` on the portfolio advisory compat path is still a placeholder response in native core.
+
+# 2026-05-15 — Scraping T16 ModernDashboard Facts-First Whale Deck Adapter ✅
+
+Status: **✅ COMPLETE** | **`ModernDashboard` giờ mount deck adapter facts-first nên whale tab của modern dashboard không còn đi qua chain snapshot-flow cũ `ModularPositionDeck -> WhaleAnalyticsTab`; route live đã chuyển sang `FactsFirstModularPositionDeck -> FactsFirstWhaleAnalyticsTab -> FactsFirstWhaleBubbleChart`, và follow-up hook stabilization đã chặn SessionFacts CVD refetch lặp lại khi `tradeDates` chỉ đổi array identity**  
+Validation: **✅ `FactsFirstWhaleAnalyticsTab.test.jsx` passed (`1` test)** | **✅ combined facts-first bubble+tab tests passed (`3` tests)** | **✅ `useSessionFactsCvdSeries.test.js` passed (`1` test)** | **✅ combined hook+bubble+tab regressions passed (`4` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched frontend files** | **✅ module tree regenerated (`1182` modules)** | **✅ dev `frontend` + `core-api` rebuilt/recreated; `core-db`, `core-redis`, `core-api` healthy** | **✅ browser screenshot evidence captured on clean `testpro` session with `XÁC THỰC SSOT` visible on `/dashboard` whale tab**
+
+## Scraping SaaS-Native T16 ModernDashboard Whale-Tab Adapter Subslice
+
+**What changed**
+- `frontend/src/hooks/useWhaleAnalyticsData.js` có thêm `skip` mode để facts-first consumers tái sử dụng analytics state đã fetch sẵn thay vì gọi snapshot endpoint lặp lại.
+- `frontend/src/components/FactsFirstWhaleBubbleChart.jsx` được mở rộng nhận `analyticsData` / `analyticsLoading` / `analyticsError`, nên wrapper hiện hỗ trợ cả 2 mode: tự fetch như trước cho `WhaleAdvisory`, hoặc nhận prefetched analytics từ parent mới.
+- `frontend/src/components/FactsFirstWhaleAnalyticsTab.jsx` thêm adapter mới giữ UI/controls/badges của whale tab cũ nhưng đẩy flow overlay sang facts-first wrapper, vẫn dùng một lần fetch snapshot chung cho bubble orders và metadata footer.
+- `frontend/src/components/modern/FactsFirstModularPositionDeck.jsx` là fork host-local duy nhất của deck immutable, chỉ đổi dependency whale tab sang adapter facts-first.
+- `frontend/src/pages/modern/ModernDashboard.jsx` giờ import deck adapter mới, nên live route modern dashboard đã rời snapshot-flow whale tab path mà không sửa trực tiếp immutable sources.
+- `frontend/src/hooks/useSessionFactsCvdSeries.js` được ổn định theo content key của `tradeDates`, nên rerender realtime của dashboard không còn đủ điều kiện refire request facts-first chỉ vì caller tạo mảng mới với cùng nội dung.
+- `frontend/src/hooks/useSessionFactsCvdSeries.test.js` khóa regression này ở hook layer để lần sau mọi consumer facts-first dùng chung hook đều không kéo request CVD lặp lại theo array identity.
+
+**Files audited in this slice**
+- `frontend/src/hooks/useWhaleAnalyticsData.js`
+- `frontend/src/hooks/useSessionFactsCvdSeries.js`
+- `frontend/src/hooks/useSessionFactsCvdSeries.test.js`
+- `frontend/src/components/FactsFirstWhaleBubbleChart.jsx`
+- `frontend/src/components/FactsFirstWhaleAnalyticsTab.jsx`
+- `frontend/src/components/FactsFirstWhaleAnalyticsTab.test.jsx`
+- `frontend/src/components/modern/FactsFirstModularPositionDeck.jsx`
+- `frontend/src/pages/modern/ModernDashboard.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watch=false --runTestsByPath src/components/FactsFirstWhaleAnalyticsTab.test.jsx; Pop-Location` passed (`1` test).
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watch=false --runTestsByPath src/components/FactsFirstWhaleBubbleChart.test.jsx src/components/FactsFirstWhaleAnalyticsTab.test.jsx; Pop-Location` passed (`3` tests).
+- `Push-Location ./frontend; npm test -- --watch=false --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js; Pop-Location` passed (`1` test).
+- `Push-Location ./frontend; npm test -- --watch=false --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js src/components/FactsFirstWhaleBubbleChart.test.jsx src/components/FactsFirstWhaleAnalyticsTab.test.jsx; Pop-Location` passed (`4` tests).
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed after the host swap.
+- `functions.get_errors` reported no diagnostics for all touched frontend files in this slice, including the follow-up SessionFacts hook stabilization.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1182` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api` rebuilt the impacted services and returned `vninvest-core-db`, `vninvest-core-redis`, and `vninvest-dev-core-api` healthy while restarting `vninvest-dev-frontend` on the new build.
+- Integrated browser evidence was captured on a clean `testpro` session after token bootstrap to the refreshed runtime; `/dashboard` loaded the modern whale tab and the screenshot showed `XÁC THỰC SSOT` alongside `DỮ LIỆU REALTIME` in the facts-first footer.
+
+**Residual Risk**
+- Các file immutable gốc vẫn tồn tại trong repo theo đúng rule; live route đã bypass qua adapter, nhưng direct imports mới vào các file gốc sẽ kéo snapshot-flow behavior quay lại nếu không đi cùng pattern adapter này.
+
+# 2026-05-15 — Scraping T16 WhaleAdvisory Facts-First Bubble Wrapper ✅
+
+Status: **✅ COMPLETE** | **`WhaleAdvisory` giờ bọc `WhaleBubbleChart` qua controlled facts-first wrapper, nên page này không còn phụ thuộc vào snapshot flow buckets làm nguồn truth chính cho overlay flow**  
+Validation: **✅ `FactsFirstWhaleBubbleChart.test.jsx` passed (`2` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched frontend files** | **✅ module tree regenerated (`1178` modules)** | **✅ dev `frontend` + `core-api` refreshed and `core-api` is healthy after compose drift + DB credential sync**
+
+## Scraping SaaS-Native T16 Non-Dashboard Bubble Cutover Subslice
+
+**What changed**
+- `frontend/src/components/FactsFirstWhaleBubbleChart.jsx` thêm wrapper controlled mới dùng `useWhaleAnalyticsData(...)` cho bubble orders/snapshot shell và `useSessionFactsCvdSeries(...)` + `buildFactsFirstFlowData(...)` cho flow overlay facts-first.
+- Wrapper này cố ý suppress SessionFacts transport error khi snapshot flow fallback vẫn có dữ liệu, để immutable `WhaleBubbleChart` không bị chuyển sang error state sai trong trường hợp facts-first fetch chậm hoặc fail cục bộ.
+- `frontend/src/pages/WhaleAdvisory.jsx` đã đổi từ `WhaleBubbleChart` uncontrolled sang wrapper mới, nên advisory page rời snapshot flow legacy mà không cần sửa trực tiếp immutable source.
+- `docker-compose.dev.yml` được chỉnh các DSN/Redis host của core services sang `core-db` / `core-redis` và schema identity core hiện tại; việc này đóng source-level compose drift nhưng chưa đủ để chữa credential mismatch của volume DB dev đang chạy.
+
+**Files audited in this slice**
+- `frontend/src/components/FactsFirstWhaleBubbleChart.jsx`
+- `frontend/src/components/FactsFirstWhaleBubbleChart.test.jsx`
+- `frontend/src/pages/WhaleAdvisory.jsx`
+- `docker-compose.dev.yml`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Set-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watch=false --runTestsByPath src/components/FactsFirstWhaleBubbleChart.test.jsx` passed (`2` tests).
+- `Set-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build` passed after the wrapper cutover.
+- `functions.get_errors` reported no diagnostics for the touched frontend files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1178` modules.
+- `functions.grep_search` confirmed the stale active `db` / `redis` DSNs were removed from `docker-compose.dev.yml`.
+- `docker inspect --format='{{range .Config.Env}}{{println .}}{{end}}' vninvest-core-db | Select-String '^(POSTGRES_USER|POSTGRES_DB)='` confirmed the running DB identity is `vninvest` / `vninvest_core`.
+- `docker exec -e PGPASSWORD=devpassword -u postgres vninvest-core-db psql -h 127.0.0.1 -U vninvest -d vninvest_core -tAc "SELECT 1;"` confirmed the dev DB accepts the expected TCP credentials.
+- `docker exec -u postgres vninvest-core-db psql -U vninvest -d vninvest_core -c "ALTER ROLE vninvest WITH PASSWORD 'devpassword';"` synchronized the existing dev DB role password with `compose.dev.env`.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d core-api frontend` completed, and `docker ps --filter name=vninvest-dev-core-api --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"` reported `Up ... (healthy)`.
+- Integrated browser entry proof now confirms `/ai-advisory` loads on the refreshed `testpro` session and an entry-state screenshot was captured on the live runtime.
+
+**Residual Risk**
+- `WhaleAnalyticsTab` and any other immutable-source consumers still need wrapper-based cutover separately.
+- Browser entry proof now confirms `/ai-advisory` loads on the refreshed `testpro` session, nhưng runtime dataset hiện có `0` active whale symbols và quick trigger `POST /api/stock-management/stocks/HPG/ai-advisory-session/` trả `405`, nên bubble wrapper chưa có symbol thật để render chart-level evidence trong route này.
+
+# 2026-05-15 — Scraping T16 WhaleAlertsDashboard Facts-First Flow Consumers ✅
+
+Status: **✅ COMPLETE** | **Route `whale-alerts/:symbol` giờ ưu tiên SessionFacts bucket flow cho KLine, bubble chart, và compact flow ngay tại `WhaleAlertsDashboard`, thay vì đẩy thẳng snapshot flow buckets làm nguồn truth duy nhất**  
+Validation: **✅ `sessionFactsFlowAdapter.test.js` passed (`2` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched frontend files** | **✅ module tree regenerated (`1176` modules)** | **✅ dev `frontend` + `core-api` rebuilt/recreated**
+
+## Scraping SaaS-Native T16 Dashboard Flow-Consumer Cutover Subslice
+
+**What changed**
+- `frontend/src/hooks/useSessionFactsCvdSeries.js` hiện fetch `SessionFactsCvd` theo đúng bucket window (`15m/30m/1h`) và hỗ trợ merge nhiều `trade_date` cho visible chart history path.
+- `frontend/src/utils/sessionFactsFlowAdapter.js` chuẩn hóa SessionFacts bucket rows thành `flowData` canonical dùng được cho cả KLine, bubble và compact flow; adapter này giữ explicit `timeframe_window` cho rolling/morning/afternoon bubble views và vẫn preserve heatmap/marker/speed overlays từ snapshot khi có.
+- `frontend/src/pages/WhaleAlertsDashboard.jsx` không còn truyền trực tiếp `chartAnalyticsData.flow` / `bubbleAnalyticsData.flow` xuống các flow consumers. Thay vào đó page build facts-first flow data từ SessionFacts buckets cho `KLineChartPanel`, `WhaleBubbleChart`, và `CompactDarkMoneyFlow`, trong khi bubble orders/supplemental overlays vẫn lấy từ snapshot path.
+- `frontend/src/utils/sessionFactsFlowAdapter.test.js` khóa lại hai semantics chính: merge nhiều session bucket payloads và filter facts-first series theo timeframe window đã chọn.
+
+**Files audited in this slice**
+- `frontend/src/pages/WhaleAlertsDashboard.jsx`
+- `frontend/src/hooks/useSessionFactsCvdSeries.js`
+- `frontend/src/utils/sessionFactsFlowAdapter.js`
+- `frontend/src/utils/sessionFactsFlowAdapter.test.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Set-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watch=false --runTestsByPath src/utils/sessionFactsFlowAdapter.test.js` passed (`2` tests).
+- `Set-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build` passed after the facts-first dashboard cutover.
+- `functions.get_errors` reported no diagnostics for all touched frontend files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1176` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api` refreshed the active runtime services and returned `vninvest-dev-core-api` healthy.
+
+**Residual Risk**
+- Chỉ `WhaleAlertsDashboard` được cut over trong slice này; các immutable source / non-dashboard consumers vẫn cần wrapper-based cutover riêng để bỏ tiếp snapshot flow legacy mà không vi phạm feature-pack rules.
+- Chưa có browser/screenshot evidence mới cho route `whale-alerts/:symbol` trong slice này.
+
+# 2026-05-15 — Scraping T16 Strength Buckets + StockDetail Facts-First KLine ✅
+
+Status: **✅ COMPLETE** | **`SessionFactsBucket` giờ persist cả `buy_strength` và `institutional_strength` theo bucket, `SessionFactsCvdView` trả strength per bucket, và `StockDetail` KLine đã ưu tiên flow buckets facts-first thay cho snapshot flow buckets ở selected-session path**  
+Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_api_routes` + `tests.test_saas14_materializers.TestMaterializeSessionFactsNative` passed (`31` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched backend/frontend files** | **✅ `makemigrations market_serving --dry-run --check` sạch** | **✅ module tree regenerated (`1173` modules)** | **✅ runtime `showmigrations market_serving` xác nhận `[X] 0007`**
+
+## Scraping SaaS-Native T16 Bucket-Strength + KLine Facts-First Subslice
+
+**What changed**
+- `packages/core/backend/src/market_serving/models.py` có thêm `buy_strength` và `institutional_strength` trên `SessionFactsBucket`, nên bucket-facts table không còn chỉ materialize CVD/volume nữa.
+- `packages/core/backend/src/market_serving/session_facts_engine.py` giờ mang theo bucket-strength values vào payload `include_series`, chuyển chúng vào bucket rows, và persist qua bulk create cho mọi window `5m`, `15m`, `30m`, `1h`.
+- `packages/core/backend/src/market_serving/migrations/0007_sessionfactsbucket_strength_fields.py` thêm schema mới và backfill các bucket cũ trực tiếp từ `WhaleAlertCanonical`, tránh việc strength pane phải chờ materializer chạy lại mới có dữ liệu.
+- `packages/core/backend/src/market_serving/views.py` mở rộng `SessionFactsCvdView` để trả `buy_strength` và `institutional_strength` trong từng item `cvd_series`, đồng thời đổi cache key sang `v2` để tránh cache payload cũ không có strength.
+- `frontend/src/pages/StockDetail.jsx` không còn đưa nguyên snapshot flow buckets vào KLine như nguồn truth duy nhất; thay vào đó nó build `flowData.view_model` từ SessionFacts bucket payload facts-first, giữ lại heatmap/marker overlays từ snapshot nếu có, và vẫn render được ngay cả khi legacy `getStockOrderFlow(...)` không trả base payload.
+- Cùng file đó, `fetchOrderFlow(...)` đã được sửa dependency để `selectedTradeDate` thực sự retrigger facts-first refresh, thay vì giữ callback stale.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_serving/models.py`
+- `packages/core/backend/src/market_serving/session_facts_engine.py`
+- `packages/core/backend/src/market_serving/views.py`
+- `packages/core/backend/src/market_serving/migrations/0007_sessionfactsbucket_strength_fields.py`
+- `packages/core/backend/tests/test_session_facts_api.py`
+- `packages/core/backend/tests/test_market_serving_api_routes.py`
+- `packages/core/backend/tests/test_saas14_materializers.py`
+- `frontend/src/pages/StockDetail.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_session_facts_api tests.test_market_serving_api_routes tests.test_saas14_materializers.TestMaterializeSessionFactsNative --keepdb; Pop-Location` passed (`31` tests).
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned `No changes detected in app 'market_serving'`.
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed after wiring KLine to facts-first bucket flow.
+- `functions.get_errors` reported no diagnostics for all touched backend/frontend files in this slice.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace to `1173` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat core-worker-manual` refreshed the active runtime, and `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml exec -T core-api python /app/src/manage.py showmigrations market_serving` confirmed `[X] 0007_sessionfactsbucket_strength_fields`.
+- Browser evidence: `StockDetail` loaded on the refreshed runtime after local auth bootstrap and screenshot capture succeeded, but tested symbols had no KLine chart candles, so selected-session click behavior could not be exercised end-to-end in this runtime dataset.
+
+**Residual Risk**
+- `StockDetail` is now facts-first for bucket-level CVD/strength, but other snapshot-driven consumers still need their own native route cutover if they should stop depending on legacy flow snapshot payloads.
+- Browser selected-session verification remains blocked by current runtime data availability, not by a detected code error.
+- Runtime still warns about unrelated apps with pending model drift (`data_ingest`, `identity_access`, `ops_audit`, `signal_intelligence`, `user_workspace`), outside this slice.
+
+# 2026-05-15 — Scraping T16 Selected-Session Contract + SessionFactsBucket Read Model ✅
+
+Status: **✅ COMPLETE** | **SessionFacts detail/CVD giờ có contract `trade_date` rõ ràng cho selected session, `StockDetail` đã truyền `selectedTradeDate` xuống request, và primary read path của CVD đã chuyển từ JSON inline sang bảng `SessionFactsBucket` materialized**  
+Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_api_routes` + `tests.test_saas14_materializers.TestMaterializeSessionFactsNative` passed (`31` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched backend/frontend files** | **✅ `makemigrations market_serving --dry-run --check` sạch** | **✅ module tree regenerated (`1171` modules)** | **✅ runtime `showmigrations market_serving` xác nhận `[X] 0005` + `[X] 0006`**
+
+## Scraping SaaS-Native T16 Selected-Session + Bucket-Facts Subslice
+
+**What changed**
+- `packages/core/backend/src/market_serving/views.py` giờ nhận `trade_date` cho cả `GET /api/market/session-facts/<symbol>/` và `GET /api/market/session-facts/<symbol>/cvd/`; nếu caller truyền ngày phiên, endpoint chỉ trả đúng phiên đó hoặc `404`, thay vì âm thầm fallback sang phiên gần nhất.
+- `frontend/src/api/client.js` và `frontend/src/pages/StockDetail.jsx` đã nối `selectedTradeDate` từ selected KLine session vào request `getSessionFactsCvd(...)`, nên selected-session truth không còn bị rơi mất ở nhánh CVD SSOT.
+- `packages/core/backend/src/market_serving/models.py` không còn giữ `series_by_window` inline trên `SessionFacts`; thay vào đó có `SessionFactsBucket` để lưu bucket rows chuẩn hóa theo `session_facts`, `window`, `bucket_ts`.
+- `packages/core/backend/src/market_serving/session_facts_engine.py` materialize `SessionFactsBucket` rows theo từng window và `packages/core/backend/src/market_serving/migrations/0005_session_facts_bucket_table.py` backfill dữ liệu inline cũ sang bảng mới trước khi remove field JSON; `0006_rename_sessionfactsbucket_indexes.py` chốt state migration cho index names.
+- `packages/core/backend/tests/test_session_facts_api.py`, `packages/core/backend/tests/test_market_serving_api_routes.py`, và `packages/core/backend/tests/test_saas14_materializers.py` đã khóa lại cả selected-session contract lẫn persistence mới qua bucket table.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_serving/models.py`
+- `packages/core/backend/src/market_serving/session_facts_engine.py`
+- `packages/core/backend/src/market_serving/views.py`
+- `packages/core/backend/src/market_serving/migrations/0005_session_facts_bucket_table.py`
+- `packages/core/backend/src/market_serving/migrations/0006_rename_sessionfactsbucket_indexes.py`
+- `packages/core/backend/tests/test_session_facts_api.py`
+- `packages/core/backend/tests/test_market_serving_api_routes.py`
+- `packages/core/backend/tests/test_saas14_materializers.py`
+- `frontend/src/api/client.js`
+- `frontend/src/pages/StockDetail.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_session_facts_api tests.test_market_serving_api_routes tests.test_saas14_materializers.TestMaterializeSessionFactsNative --keepdb; Pop-Location` passed (`31` tests).
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed after wiring `selectedTradeDate` into the frontend SessionFacts client.
+- `functions.get_errors` reported no diagnostics for all touched backend/frontend files.
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned `No changes detected in app 'market_serving'`.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace to `1171` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat core-worker-manual` refreshed the full affected runtime, and a follow-up backend refresh loaded migration `0006` into the running containers.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml exec -T core-api python /app/src/manage.py showmigrations market_serving` confirmed `[X] 0005_session_facts_bucket_table` and `[X] 0006_rename_sessionfactsbucket_indexes` in the active dev runtime.
+
+**Residual Risk**
+- Selected-session contract đã có trên SessionFacts detail/CVD, nhưng các consumer không có selected-session state vẫn sẽ tiếp tục đọc latest-session default, đây là hành vi đúng nhưng khác semantics với selected-session path.
+- Bucket table hiện mới bao phủ CVD/volume buckets; nếu strength pane cần bucket-level facts thay vì aggregate-only `SessionFacts`, sẽ cần thêm surface materialization kế tiếp.
+- Runtime vẫn cảnh báo app khác có model drift chưa có migration (`data_ingest`, `identity_access`, `ops_audit`, `signal_intelligence`, `user_workspace`), ngoài scope slice này.
+
+# 2026-05-15 — Scraping T16 Materialized SessionFacts Read Model ✅
+
+Status: **✅ COMPLETE** | **`/api/market/session-facts/<symbol>/` và `/api/market/session-facts/<symbol>/cvd/` giờ chỉ đọc SessionFacts materialized + cache, không còn compute-on-demand trong request path; `SessionFacts` đã mang `series_by_window` để CVD chart lấy trực tiếp series facts-first**  
+Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_api_routes` + `tests.test_saas14_materializers.TestMaterializeSessionFactsNative` passed (`25` tests)** | **✅ diagnostics sạch cho market_serving model/engine/view/tests/migration** | **✅ module tree regenerated (`1170` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated** | **✅ runtime `showmigrations market_serving` xác nhận `[X] 0004_add_session_facts_series_by_window`**
+
+## Scraping SaaS-Native T16 Read-Model Subslice
+
+**What changed**
+- `packages/core/backend/src/market_serving/models.py` có thêm `SessionFacts.series_by_window`, cho phép lưu trực tiếp payload CVD series theo `5m`, `15m`, `30m`, `1h` trên cùng read model phiên.
+- `packages/core/backend/src/market_serving/session_facts_engine.py` được refactor để load canonical whale rows một lần cho mỗi symbol, build aggregates + series payload theo nhiều window, và loại bỏ duplicate symbol fan-out bằng cách xóa default ordering trước `.distinct()`.
+- `packages/core/backend/src/market_serving/views.py` không còn gọi `compute_session_facts(...)` trong request path: detail endpoint trả row materialized hiện tại hoặc gần nhất; CVD endpoint đọc `series_by_window` materialized và chỉ dùng cache như một read-through layer.
+- `packages/core/backend/tests/test_session_facts_api.py`, `packages/core/backend/tests/test_market_serving_api_routes.py`, và `packages/core/backend/tests/test_saas14_materializers.py` đã khóa lại 3 điểm quan trọng: no compute on read path, CVD endpoint là native route materialized, và materializer thực sự persist `series_by_window` cho symbol được yêu cầu.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_serving/models.py`
+- `packages/core/backend/src/market_serving/session_facts_engine.py`
+- `packages/core/backend/src/market_serving/views.py`
+- `packages/core/backend/src/market_serving/migrations/0004_add_session_facts_series_by_window.py`
+- `packages/core/backend/tests/test_session_facts_api.py`
+- `packages/core/backend/tests/test_market_serving_api_routes.py`
+- `packages/core/backend/tests/test_saas14_materializers.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_session_facts_api tests.test_market_serving_api_routes tests.test_saas14_materializers.TestMaterializeSessionFactsNative --keepdb; Pop-Location` passed (`25` tests).
+- `functions.get_errors` reported no diagnostics for the touched `market_serving` model/engine/view/test/migration files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace to `1170` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat core-worker-manual` refreshed the active backend runtime services; `vninvest-dev-core-api` returned healthy and workers/beat restarted successfully.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml exec -T core-api python /app/src/manage.py showmigrations market_serving` confirmed `[X] 0004_add_session_facts_series_by_window` inside the running dev runtime.
+
+**Residual Risk**
+- Read path facts-first cho session-facts/CVD đã được chốt, nhưng endpoint vẫn chưa có contract `trade_date`/selected-session explicit; hiện chỉ trả phiên hiện tại nếu có, nếu không thì phiên materialized gần nhất.
+- `series_by_window` đang là JSON inline trên `SessionFacts`; nếu sau này cần thêm pane history/phân tích bucket sâu hơn, có thể cần tách sang bucket-facts table riêng.
+- Runtime migrate vẫn báo các app khác có model drift chưa có migration (`data_ingest`, `identity_access`, `ops_audit`, `signal_intelligence`, `user_workspace`), ngoài scope slice này.
+
+# 2026-05-14 — Scraping T16 Native Session Facts Workflow Wiring ✅
+
+Status: **✅ COMPLETE** | **SOC signals execution plan không còn báo `signal_session_facts_materializer` là unsupported; session-facts materialization giờ có native `service_ops` task với run-log tracking và hỗ trợ preview/materialize theo `symbol` được yêu cầu**  
+Validation: **✅ `service_ops.tests.test_soc_tasks` + `service_ops.tests.test_soc_api_signals` passed (`24` tests)** | **✅ diagnostics sạch cho workflow/materializer files** | **✅ module tree regenerated (`1169` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat`, `frontend` rebuilt/recreated**
+
+## Scraping SaaS-Native T16 Workflow Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/views/signals.py` giờ quảng bá `signal_session_facts_materializer` là native execution step có thể chạy cho `all`, `whale`, và `session_facts`, đồng thời giữ preview symbol để operator biết đúng selected symbol sẽ được materialize.
+- `packages/core/backend/src/service_ops/tasks.py` có thêm `run_signal_session_facts_materialization(...)` và `run_signals_detection_workflow(...)` giờ tạo child `ServiceRunLog` cho step này thay vì bỏ trống pipeline session-facts.
+- `packages/core/backend/src/market_serving/materializers.py` và `packages/core/backend/src/market_serving/session_facts_engine.py` đã được mở rộng để materialize session facts theo symbol cụ thể, thay vì chỉ chạy kiểu all-symbol fanout mơ hồ với summary không phản ánh symbol yêu cầu.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` và `packages/core/backend/src/service_ops/tests/test_soc_api_signals.py` khóa lại behavior mới bằng task-level và API-level regression coverage.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_serving/session_facts_engine.py`
+- `packages/core/backend/src/market_serving/materializers.py`
+- `packages/core/backend/src/service_ops/views/signals.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_signals.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_signals --keepdb; Pop-Location` passed (`24` tests).
+- `functions.get_errors` reported no diagnostics for the touched workflow/materializer source and test files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace to `1169` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat core-worker-manual` refreshed the active runtime services; `vninvest-dev-core-api` returned healthy and workers/beat/frontend restarted successfully.
+
+**Residual Risk**
+- `packages/core/backend/src/market_serving/views.py` vẫn còn compute-on-demand read path cho session facts/CVD, nên T16 chưa đóng hoàn toàn read-model side.
+- `SessionFacts` chưa lưu per-bucket series; facts-first primary path cho CVD/strength vẫn cần một read model/persistence slice tiếp theo nếu muốn loại bỏ compute-on-demand triệt để.
+
+# 2026-05-14 — SOC-Only Operations Center Cutover ✅
+
+Status: **✅ COMPLETE** | **Package shell, host bootstrap, và backend capability payloads giờ chỉ còn surface `operations-center` / `show_operations_center`; dead AdminOps UI compat sources đã bị xóa để chấm dứt việc cùng lúc tồn tại hai interface vận hành**  
+Validation: **✅ `identity_access.tests.test_capabilities_soc` + `tests.test_runtime_baseline` passed (`10` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched package-shell/backend files** | **✅ module tree regenerated (`1169` modules)** | **✅ dev `frontend`, `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
+
+## SOC Surface Finalization Subslice
+
+**What changed**
+- `packages/web/src/app/routeCatalog.js`, `packages/web/src/app/navigationCatalog.js`, `packages/web/src/pages/pageRegistry.js`, và `packages/web/src/index.js` đã bỏ route/page compat `admin-ops` để dùng thống nhất route ID `operations-center` cùng `ShellOperationsCenterPage`.
+- `packages/web/src/context/bootstrapClient.js`, `packages/web/src/context/authRuntime.js`, `packages/web/src/pages/system/ShellAiCommandCenterPage.js`, và `frontend/src/pages/packageShellHostRuntime.js` giờ dùng `show_operations_center` thay cho `show_admin_ops`, đồng thời host runtime chặn non-admin nhìn thấy surface này.
+- `packages/core/backend/src/identity_access/views_auth.py`, `packages/core/backend/src/vninvest_core/api_stub.py`, và `packages/core/backend/src/vninvest_core/views_health.py` đã align capability/bootstrap payload sang `operations-center` và `show_operations_center`, với regression tests cập nhật tương ứng.
+- Dead compat UI sources `packages/web/src/pages/admin/ShellAdminOpsPage.js`, `frontend/src/pages/AdminOps*.jsx`, và `frontend/src/components/adminops/**` đã bị xóa khỏi repo vì không còn là active mounted surface.
+
+**Files audited in this slice**
+- `packages/web/src/app/navigationCatalog.js`
+- `packages/web/src/app/routeCatalog.js`
+- `packages/web/src/context/bootstrapClient.js`
+- `packages/web/src/context/authRuntime.js`
+- `packages/web/src/index.js`
+- `packages/web/src/pages/pageRegistry.js`
+- `packages/web/src/pages/admin/ShellOperationsCenterPage.js`
+- `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
+- `frontend/src/pages/packageShellHostRuntime.js`
+- `packages/core/backend/src/identity_access/views_auth.py`
+- `packages/core/backend/src/vninvest_core/api_stub.py`
+- `packages/core/backend/src/vninvest_core/views_health.py`
+- `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py`
+- `packages/core/backend/tests/test_runtime_baseline.py`
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js` (deleted)
+- `frontend/src/pages/AdminOpsShellHost.jsx` (deleted)
+- `frontend/src/pages/AdminOps.jsx` (deleted)
+- `frontend/src/pages/AdminOps.test.jsx` (deleted)
+- `frontend/src/components/adminops/GlobalScreenerAdminPanel.jsx` (deleted)
+- `frontend/src/components/adminops/SignalControlCenter.jsx` (deleted)
+- `frontend/src/components/adminops/SignalControlCenter.test.jsx` (deleted)
+- `frontend/src/components/adminops/VnbrokerBenchmarkPanel.jsx` (deleted)
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test identity_access.tests.test_capabilities_soc tests.test_runtime_baseline --keepdb; Pop-Location` passed (`10` tests).
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed and produced a successful production bundle before runtime refresh.
+- `functions.get_errors` reported no diagnostics for the touched package-shell, host runtime, backend capability, and focused test files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace to `1169` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat core-worker-manual` refreshed the active runtime services; `vninvest-dev-core-api` returned healthy and workers/beat/frontend restarted successfully.
+
+**Residual Risk**
+- User-facing SOC drift đã được chốt, nhưng các backend compat namespaces `admin_ops` cho contract khác vẫn còn và cần native-only cleanup riêng.
+- Chưa có screenshot/video mới cho SOC shell sau cleanup này; phần evidence UI vẫn cần một manual visual capture nếu audit yêu cầu artifact trực quan.
+
+# 2026-05-14 — SOC Interface Unification Slice ✅
+
+Status: **✅ COMPLETE** | **Package-shell operator surface giờ dùng cùng một tên SOC ở route/path/title/copy thay vì còn sót `admin-ops`, và các fallback nav label phía host cũng không còn dựng lại một interface tên khác**  
+Validation: **✅ diagnostics sạch cho `packages/web`/i18n files đã chạm** | **✅ frontend build passed** | **✅ module tree regenerated (`1176` modules)** | **✅ dev `frontend` + `core-api` rebuilt/recreated**
+
+## SOC Surface Alignment Subslice
+
+**What changed**
+- `packages/web/src/app/routeCatalog.js` hiện map operations page sang user-facing path `/operations-center` với title key SOC thay vì metadata `admin-ops` cũ.
+- `packages/web/src/app/navigationCatalog.js` không còn gắn label nhóm vận hành theo wording admin cũ; shell giờ dùng cùng key SOC như host app.
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js` được reword toàn bộ hero copy, metrics, flags, và route descriptions sang SOC/operator wording để không còn trình bày một surface vận hành song song.
+- `frontend/src/i18n/vi.js` và `frontend/src/i18n/en.js` đã align `layout.nav.adminOps` về wording SOC, nên nếu còn caller compat nào dùng key cũ thì UI vẫn không làm tách tên interface nữa.
+
+**Files audited in this slice**
+- `packages/web/src/app/navigationCatalog.js`
+- `packages/web/src/app/routeCatalog.js`
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `functions.get_errors` reported no diagnostics for the touched `packages/web` and i18n source files.
+- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed and produced a successful production bundle.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and kept the workspace at `1176` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api` refreshed the active UI/runtime services; `vninvest-dev-core-api` returned healthy and `vninvest-dev-frontend` restarted successfully.
+
+**Residual Risk**
+- Internal compat identifiers (`admin-ops`, `show_admin_ops`, `ShellAdminOpsPage`) vẫn còn tồn tại ở source để tránh widen scope vào bootstrap/RBAC contracts.
+- `frontend/src/pages/AdminOps.jsx` và `frontend/src/components/adminops/**` vẫn là dead compat code; chưa xóa trong subslice này.
+
+# 2026-05-14 — Scraping T07 Native Signal Contract Ownership Freeze ✅
+
+Status: **✅ COMPLETE** | **Signal admin contract family không còn đổi ownership sang bridge mode khi `LEGACY_BACKEND_URL` xuất hiện; signal summary/config/jobs paths giờ giữ native ownership nhất quán**  
+Validation: **✅ `tests.test_admin_ops_signals_contract_api` passed (`6` tests)** | **✅ diagnostics sạch cho `admin_ops/views.py` và focused test file** | **✅ module tree regenerated (`1176` modules)** | **✅ dev `core-api` refreshed trong runtime rebuild hiện tại**
+
+## Scraping SaaS-Native T07 Contract Ownership Subslice
+
+**What changed**
+- `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` không còn flip signal ownership snapshot sang bridge mode khi có `LEGACY_BACKEND_URL`; signal contract family giữ native-owned semantics.
+- Cùng file này, signal summary/config/jobs route family tiếp tục bám native contract path thay vì treat legacy bridge as active writer/read owner.
+- `packages/core/backend/tests/test_admin_ops_signals_contract_api.py` đã khóa lại behavior trên bằng focused regression tests, bao gồm proof rằng legacy bridge flag không được phép đổi ownership hoặc reroute contract control.
+
+**Files audited in this slice**
+- `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py`
+- `packages/core/backend/tests/test_admin_ops_signals_contract_api.py`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_admin_ops_signals_contract_api --keepdb; Pop-Location` passed (`6` tests).
+- `functions.get_errors` reported no diagnostics for the touched backend source/test files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and kept the workspace at `1176` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api` refreshed the active `core-api` runtime on the audited code.
+
+**Residual Risk**
+- Slice này chỉ chốt signal contract family. Những compat `admin_ops` handlers khác ngoài signals vẫn cần native-only cleanup/decommission riêng.
+- User-facing unification đã được xử lý ở subslice SOC riêng, nhưng backend namespace `admin_ops` vẫn chưa bị xóa toàn diện.
+
+# 2026-05-14 — Scraping T06 Native Benchmark Route Cutover ✅
+
+Status: **✅ COMPLETE** | **Admin-ops benchmark latest/run không còn bridge sang legacy backend; core giờ tự benchmark provider qua `vnbroker_adapter`, lưu latest report trong cache, và dispatch benchmark bằng Celery task native**  
+Validation: **✅ benchmark-focused admin-ops contract tests + helper tests passed (`5` tests)** | **✅ diagnostics sạch cho benchmark helper/task/view/tests** | **✅ module tree regenerated (`1176` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
+
+## Scraping SaaS-Native T06 Benchmark Subslice
+
+**What changed**
+- `packages/core/backend/src/market_data/vnbroker_benchmark.py` là helper core-side mới cho benchmark provider price-board: chạy benchmark qua `fetch_price_board_snapshot(..., source=provider)`, cache latest report, và build runtime recommendation mà không import code legacy từ `backend/portfolio`.
+- `packages/core/backend/src/data_ingest/tasks.py` có thêm `run_vnbroker_price_board_benchmark` trên queue `manual_on_demand` để benchmark run dùng Celery native.
+- `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` giờ trả `GET /api/admin-ops/vnbroker-config/benchmark-price-board/latest/` từ cache core-side và `POST /run/` từ native task/local-thread fallback, không còn `_legacy_admin_bridge_response(...)` cho route family này.
+- `packages/core/backend/tests/test_admin_ops_contract_api.py` đã được bổ sung coverage chứng minh latest/run hoạt động native và không quay lại bridge kể cả khi `LEGACY_BACKEND_URL` được cấu hình.
+- `packages/core/backend/src/market_data/tests/test_vnbroker_benchmark.py` khóa helper benchmark core-side và latest-report cache.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/vnbroker_benchmark.py`
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py`
+- `packages/core/backend/tests/test_admin_ops_contract_api.py`
+- `packages/core/backend/src/market_data/tests/test_vnbroker_benchmark.py`
+- `docs/TASKBOARD_SCRAPING_SYSTEM_SAAS_NATIVE_20260514.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_admin_ops_contract_api.AdminOpsContractApiTests.test_benchmark_latest_returns_native_empty_state_without_report tests.test_admin_ops_contract_api.AdminOpsContractApiTests.test_benchmark_run_dispatches_native_task tests.test_admin_ops_contract_api.AdminOpsContractApiTests.test_benchmark_latest_returns_cached_native_report tests.test_admin_ops_contract_api.AdminOpsContractApiTests.test_benchmark_routes_remain_native_even_when_legacy_bridge_is_configured market_data.tests.test_vnbroker_benchmark --keepdb; Pop-Location` passed (`5` tests).
+- `functions.get_errors` reported no diagnostics for the touched benchmark helper, task, admin-ops view, and focused test files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1176` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat core-worker-manual` refreshed the active core runtime services; `core-api` returned healthy and workers/beat restarted.
+
+**Residual Risk**
+- Đây là một subslice của Phase F: benchmark latest/run đã native, nhưng các bridge scraping-adjacent khác vẫn còn và cần tiếp tục cắt.
+- Broader `tests.test_admin_ops_contract_api` vẫn có drift cũ ngoài scope slice này (`stats` / `system-ai`), nên chưa dùng được như gate toàn diện cho admin-ops contract.
+
+# 2026-05-14 — Scraping T05 Native Signal Facts-First Cutover ✅
+
+Status: **✅ COMPLETE** | **Whale materialization không còn legacy-first hay synthetic/random fallback; native path giờ aggregate trực tiếp từ `OrderFlowEvent`, và `DARK_FLOW` events cũng được materialize thành `UnifiedAlert` facts-first thay vì phụ thuộc dữ liệu seed/bridge**  
+Validation: **✅ `signal_intelligence.tests.test_materializers` + `service_ops.tests.test_soc_api_signals` passed (`14` tests)** | **✅ diagnostics sạch cho signal materializer/test files** | **✅ grep gate sạch cho `legacy_readonly`/`random` trong `signal_intelligence`** | **✅ module tree regenerated (`1174` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
+
+## Scraping SaaS-Native T05/T16 Signal Facts Subslice
+
+**What changed**
+- `packages/core/backend/src/signal_intelligence/materializers.py` không còn thử đọc `legacy_readonly` cho whale aggregate và không còn fabricate whale alerts bằng `random` từ `SymbolSnapshot`.
+- Cùng file này, `materialize_whale_feed_aggregate()` giờ chỉ aggregate từ native `OrderFlowEvent` với signal type `WHALE_BUY/WHALE_SELL`, yêu cầu có đủ `price_at_signal` + `volume_at_signal`, và degrade `created=0/skipped>0` khi native facts chưa đủ thay vì bịa dữ liệu.
+- `materialize_unified_alerts()` giờ còn upsert `UnifiedAlert(alert_type=dark_flow)` từ native `OrderFlowEvent(signal_type=DARK_FLOW)` và link ngược `event.unified_alert` để read path dùng chung canonical alert facts.
+- `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` khóa thêm coverage cho whale facts-only path, incomplete-fact degradation, idempotence, dark-flow alert materialization, và dark-flow idempotence.
+
+**Files audited in this slice**
+- `packages/core/backend/src/signal_intelligence/materializers.py`
+- `packages/core/backend/src/signal_intelligence/tests/test_materializers.py`
+- `docs/TASKBOARD_SCRAPING_SYSTEM_SAAS_NATIVE_20260514.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers service_ops.tests.test_soc_api_signals --keepdb; Pop-Location` passed (`14` tests).
+- `functions.get_errors` reported no diagnostics for the touched signal materializer/test files.
+- `functions.grep_search` found no remaining `legacy_readonly`, `random.`, legacy whale helper names, or mock-detection wording under `packages/core/backend/src/signal_intelligence/**/*.py`.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1174` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat core-worker-manual` refreshed the active core runtime services; `core-api` returned healthy and workers/beat restarted.
+
+**Residual Risk**
+- T16 vẫn mới in-progress: whale và dark-flow đã facts-first, nhưng CVD/strength materialization còn cần slice riêng để chốt pipeline native end-to-end.
+- Các admin/operator bridge surfaces ngoài signal materializer path vẫn chưa được native hóa hoàn toàn.
+
+# 2026-05-14 — Scraping T03 Control-Plane Run-Log Wiring ✅
+
+Status: **✅ COMPLETE** | **Manual `daily-prices` và `price-board` triggers giờ tạo `ServiceRunLog` thuộc `service_ops`, trả về `service_run_log_id` trong response, và hai task ingest tương ứng cập nhật cùng run-log đó theo trạng thái running/success/failed/skipped**  
+Validation: **✅ `data_ingest.tests.test_tasks` + `data_ingest.tests.test_views` passed (`6` tests)** | **✅ diagnostics sạch cho `data_ingest` source/test files** | **✅ module tree regenerated (`1173` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
+
+## Scraping SaaS-Native T03 Observability Subslice
+
+**What changed**
+- `packages/core/backend/src/data_ingest/serializers.py` hiện mở rộng trigger response contract với field `service_run_log_id` để operator caller có thể nối execution vào control plane canonically.
+- `packages/core/backend/src/data_ingest/views.py` giờ tạo queued `ServiceRunLog` cho `vnbroker_history` và `vnbroker_price_board` trước khi queue task, chuyển `service_run_log_id` sang Celery kwargs, trả ID đó trong response, và mark run-log failed nếu queueing gặp lỗi.
+- `packages/core/backend/src/data_ingest/tasks.py` hiện nhận `service_run_log_id` ở cả `ingest_daily_prices()` và `fetch_and_upsert_price_board()`, rồi cập nhật run-log qua các trạng thái running/success/failed/skipped với `output_summary` phù hợp.
+- `packages/core/backend/src/data_ingest/tests/test_views.py` có coverage chứng minh hai manual trigger endpoints tạo đúng `ServiceRunLog` và queue task với run-log ID.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` có coverage chứng minh daily-history và price-board task paths cập nhật `ServiceRunLog` về `success` cùng output summary đúng.
+
+**Files audited in this slice**
+- `packages/core/backend/src/data_ingest/serializers.py`
+- `packages/core/backend/src/data_ingest/views.py`
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_views.py`
+- `docs/TASKBOARD_SCRAPING_SYSTEM_SAAS_NATIVE_20260514.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test data_ingest.tests.test_tasks data_ingest.tests.test_views --keepdb; Pop-Location` passed (`6` tests).
+- `functions.get_errors` reported no diagnostics for the touched `data_ingest` source/test files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1173` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat core-worker-manual` refreshed the active core runtime services; `core-api` returned healthy and workers/beat restarted.
+
+**Residual Risk**
+- T03 vẫn chưa hoàn tất: scheduled/beat/native ingest paths chưa tạo `ServiceRunLog` riêng, nên control-plane observability hiện mới canonical cho manual admin trigger flows.
+
+# 2026-05-14 — Scraping T03 Inline Ingest Execution Cleanup ✅
+
+Status: **✅ COMPLETE** | **`ingest_daily_prices()` không còn queue một Celery task khác rồi `.get()` chờ kết quả trong worker; path này giờ reuse `backfill_daily_prices.run(...)` inline và bỏ được drift orchestration cục bộ**  
+Validation: **✅ `data_ingest.tests.test_tasks` passed (`2` tests)** | **✅ diagnostics sạch cho `data_ingest/tasks.py` và test file** | **✅ module tree regenerated (`1172` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
+
+## Scraping SaaS-Native T03 Subslice
+
+**What changed**
+- `packages/core/backend/src/data_ingest/tasks.py` hiện không còn dùng `backfill_daily_prices.apply_async(...).get(timeout=3600)` bên trong `ingest_daily_prices()`.
+- Thay vào đó, ingest task reuse trực tiếp `backfill_daily_prices.run(days=days, symbols=symbols)`, giữ execution trong cùng worker context và tránh một nested Celery orchestration không cần thiết.
+- Cùng patch đó, duplicate `run.save(...)` trên failure path đã bị loại bỏ.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` có thêm coverage xác nhận ingest path mới dùng inline execution và không còn gọi `apply_async()`.
+
+**Files audited in this slice**
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test data_ingest.tests.test_tasks --keepdb; Pop-Location` passed (`2` tests).
+- `functions.get_errors` reported no diagnostics for the touched data-ingest files.
+- `functions.grep_search` confirmed `data_ingest/tasks.py` now uses `backfill_daily_prices.run(days=days, symbols=symbols)` and no longer contains `backfill_daily_prices.apply_async`.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1172` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat core-worker-manual` refreshed the active core runtime services.
+
+**Residual Risk**
+- Đây mới chỉ là cleanup execution drift cục bộ trong `ingest_daily_prices()`. Việc hợp nhất hoàn toàn scheduled/manual/history orchestration với control plane `service_ops` vẫn là bước tiếp theo của T03.
+
+# 2026-05-14 — Scraping T02 Broker SSOT Cleanup ✅
+
+Status: **✅ COMPLETE** | **Adapter daily-history path đã được sửa thành provider-aware SSOT, `data_ingest` không còn import thẳng `vnbroker.explorer.*` cho backfill, và provider roster active của adapter đã được khóa về `VCI/KBS/DNSE`**  
+Validation: **✅ `service_ops.tests.test_soc_tasks` + `data_ingest.tests.test_tasks` passed (`15` tests)** | **✅ diagnostics sạch cho adapter / data-ingest / test files** | **✅ module tree regenerated (`1172` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
+
+## Scraping SaaS-Native T02 Slice
+
+**What changed**
+- `packages/core/backend/src/market_data/vnbroker_adapter.py` hiện có `_SUPPORTED_PROVIDER_SOURCES = ('VCI', 'KBS', 'DNSE')`, dùng roster này cho intraday fallback, và chặn runtime source cũ ngoài roster active bằng normalization về provider hợp lệ.
+- Cùng file adapter đó, `fetch_daily_history()` đã được rewrite thành provider-aware SSOT dùng quote class theo `source`, trả OHLCV rows chuẩn hóa kèm metadata `source`, thay cho path VCI-hardcoded bị lẫn dead code cũ.
+- `packages/core/backend/src/data_ingest/tasks.py` không còn import trực tiếp `vnbroker.explorer.{provider}.quote`; `_fetch_and_upsert_bucket()` giờ gọi `fetch_daily_history(symbol, days=..., source=provider)` qua adapter SSOT.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` có thêm regression proof cho `fetch_daily_history(..., source='KBS')`.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` được thêm để khóa việc bucket backfill dùng adapter SSOT và vẫn persist `DailyPrice` đúng `source`.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/vnbroker_adapter.py`
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/data_ingest/tests/__init__.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_tasks data_ingest.tests.test_tasks --keepdb; Pop-Location` passed (`15` tests).
+- `functions.get_errors` reported no diagnostics for the touched adapter, data-ingest, and test files.
+- `functions.grep_search` confirmed no direct provider import remains in `packages/core/backend/src/data_ingest/tasks.py` and that the adapter active roster is now `VCI/KBS/DNSE`.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1172` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat core-worker-manual` refreshed the active core runtime services.
+
+**Residual Risk**
+- Model-level runtime config choices vẫn còn enum provider cũ để tương thích dữ liệu hiện hữu; adapter đã guard active path, nhưng việc thu hẹp schema/choices còn là một follow-up slice riêng.
+- Compat surfaces ngoài `data_ingest` vẫn có thể còn import/provider drift và sẽ cần dọn ở các slice native-only tiếp theo.
+
+# 2026-05-14 — Scraping SaaS-Native Bundle + T01 Canonical Route Freeze ✅
+
+Status: **✅ COMPLETE** | **Đã tạo bundle docs SaaS-native cho scraping system và mount canonical Matrix routes dưới `/core/v1/operator/scraping/matrix/*` mà không làm vỡ alias `/api/soc/matrix/*` hiện có**  
+Validation: **✅ `service_ops.tests.test_soc_matrix` passed (`11` tests, `1` skipped)** | **✅ diagnostics sạch cho file code mới/chỉnh sửa** | **✅ `module_tree_full.md` regenerated (`1170` modules)** | **✅ dev `core-api` rebuilt/recreated**
+
+## Scraping SaaS-Native T01 Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/operator_urls.py` được tạo để tách một route module hẹp cho canonical operator scraping path của Matrix thay vì mount toàn bộ SOC tree một cách mơ hồ.
+- `packages/core/backend/src/vninvest_core/contracts/operator/urls.py` hiện mount family route mới dưới `/core/v1/operator/scraping/`, tạo canonical path đầu tiên cho workstream này.
+- `packages/core/backend/src/service_ops/tests/test_soc_matrix.py` hiện có regression proof rằng canonical provider endpoint trả cùng payload với alias `/api/soc/matrix/providers/` và canonical start-cycle path dispatch cùng workflow Matrix.
+- Bộ tài liệu execution mới đã được tạo gồm `SCRAPING_SYSTEM_SAAS_NATIVE_HANDOFF_MASTER`, `TECH_SPEC`, `IMPLEMENTATION_PLAN`, và `TASKBOARD` ngày `2026-05-14`.
+- `docs/SCRAPING_SYSTEM_AUDIT_AND_PLAN_COORDINATED_PARALLEL_20260515.md` giờ được đánh dấu là historical audit only, không còn là execution SSOT.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/operator_urls.py`
+- `packages/core/backend/src/vninvest_core/contracts/operator/urls.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_matrix.py`
+- `docs/SCRAPING_SYSTEM_SAAS_NATIVE_HANDOFF_MASTER_20260514.md`
+- `docs/TECH_SPEC_SCRAPING_SYSTEM_SAAS_NATIVE_20260514.md`
+- `docs/IMPLEMENTATION_PLAN_SCRAPING_SYSTEM_SAAS_NATIVE_20260514.md`
+- `docs/TASKBOARD_SCRAPING_SYSTEM_SAAS_NATIVE_20260514.md`
+- `docs/SCRAPING_SYSTEM_AUDIT_AND_PLAN_COORDINATED_PARALLEL_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_matrix --keepdb; Pop-Location` passed (`11` tests, `1` skipped).
+- `functions.get_errors` reported no diagnostics for the touched operator route files and the focused Matrix test file.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1170` modules.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api` refreshed the dev runtime so the canonical operator scraping route is active.
+
+**Residual Risk**
+- T01 mới chỉ khóa canonical path cho Matrix. Các route scraping khác, consumer cutover, broker SSOT cleanup, và bridge removal vẫn là các slice tiếp theo của taskboard mới.
+
+# 2026-05-14 — Scraping Plan Provider Roster Narrowing ✅
+
+Status: **✅ COMPLETE** | **The coordinated parallel scraping plan now uses the temporary provider roster `VCI/KBS/DNSE` only and no longer references `TCBS/SSI` in its provider matrix, fallback chain, health-check example, or approval summary**  
+Validation: **✅ doc grep found no remaining `TCBS` or `SSI` references in the plan** | **✅ provider examples/default lists now align to `VCI/KBS/DNSE`**
+
+## Scraping Plan Provider Alignment Slice
+
+**What changed**
+- `docs/SCRAPING_SYSTEM_AUDIT_AND_PLAN_COORDINATED_PARALLEL_20260515.md` now limits the temporary provider roster to `VCI`, `KBS`, and `DNSE`.
+- The same plan file no longer mentions `TCBS` or `SSI` in the provider infrastructure table, adapter fallback-chain example, provider diagram, rate-limit table, sample health-check endpoint, or approval summary.
+- Sample provider defaults in the plan's pseudo-code now align to `['VCI', 'KBS', 'DNSE']` so operator examples match the requested temporary roster.
+
+**Files audited in this slice**
+- `docs/SCRAPING_SYSTEM_AUDIT_AND_PLAN_COORDINATED_PARALLEL_20260515.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `functions.grep_search` reported no remaining `TCBS` or `SSI` matches in `docs/SCRAPING_SYSTEM_AUDIT_AND_PLAN_COORDINATED_PARALLEL_20260515.md` after the patch.
+- `functions.grep_search` confirmed `VCI`, `KBS`, and `DNSE` remain present in the plan's provider tables and sample lists.
+
+**Residual Risk**
+- This is a documentation-only alignment slice. Runtime/provider SSOT cleanup in code is still a separate task if the broader repo is being narrowed to `vci/kbs/dnse` only.
+
+# 2026-05-14 — Stock-Management Migration Drift Recovery ✅
+
+Status: **✅ COMPLETE** | **`market_serving.0003` is now idempotent, `core-api` starts healthy again, and the native stock-management tests pass in the rebuilt dev container**  
+Validation: **✅ `market_data.tests.test_stock_management_native_api` passed (`11` tests)** | **✅ `functions.get_errors` clean on the touched migration** | **✅ `module_tree_full.md` regenerated (`1169` modules)** | **✅ dev `core-api` / `core-worker` / `core-beat` / `frontend` rebuilt/recreated**
+
+## Migration Recovery Slice
+
+**What changed**
+- `packages/core/backend/src/market_serving/migrations/0003_add_snapshot_quote_columns_and_backfill.py` now checks existing columns before adding quote fields, so a database that already has `reference_price`, `ceiling`, and `floor` no longer crashes on startup.
+- The same migration still backfills quote bands when the fields are present, so fresh databases and drifted databases both converge safely.
+- `module_tree_full.md` was regenerated after the code change so the inventory matches the current workspace.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_serving/migrations/0003_add_snapshot_quote_columns_and_backfill.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `functions.get_errors` reported no diagnostics for the touched migration.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat frontend` completed and `core-api` returned to healthy.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml exec -T core-api python src/manage.py test market_data.tests.test_stock_management_native_api --keepdb` passed (`11` tests).
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1169` modules.
+
+**Residual Risk**
+- Other legacy migration drift may still exist in unrelated apps; this slice only removed the startup blocker caused by `market_serving.0003`.
+
+## Stock-Management Native Slice
+
+**What changed**
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py` now owns native `GET /api/stock-management/stocks/` search and returns a paginated SaaS-native envelope instead of falling through to missing legacy paths.
+- The same native view file now returns canonical stock workspace envelopes for `overview` and `chart`, including `tracked_symbol_id`, `is_tracked`, `market_group_refs`, `watchlist_memberships`, `points`, and `technical`.
+- Chart reads now come from native core tables only: `IntradayBar` for intraday timeframes and `DailyPrice` for daily/weekly/monthly/yearly aggregation.
+- Overview now maps watchlist-backed tracking metadata without touching legacy models and safely degrades when runtime `SymbolSnapshot` schema is older than the current model declaration.
+- `packages/core/backend/src/market_data/public_urls.py` now exposes the missing `stock-management/stocks/` alias on the active public route map.
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` now locks the native contract with focused coverage for search, overview, tracked mapping, empty chart envelope, intraday chart data, and daily chart data.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/public_urls.py`
+- `packages/core/backend/src/market_data/tests/__init__.py`
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_stock_management_native_api --keepdb; Pop-Location` passed (`6` tests).
+- `functions.get_errors` returned no diagnostics for the touched stock-management core files.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1167` modules.
+- `docker compose --env-file .\compose.dev.env -p vninvest-dev -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build --force-recreate core-api` refreshed the impacted runtime service.
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test market_data.tests.test_stock_management_native_api --keepdb` passed (`6` tests) inside the rebuilt core-api container.
+
+**Residual Risk**
+- Runtime PostgreSQL still has an older `market_serving_symbolsnapshot` schema, so overview currently falls back to `DailyPrice` for fields like `reference_price` when those snapshot columns are absent.
+- Any external caller still assuming raw-array stock search responses must switch to the SaaS-native paginated envelope (`results`).
+
+# 2026-05-14 — SOC Matrix Provider-Aware Universe Discovery ✅
+
+Status: **✅ COMPLETE** | **Matrix symbol-group resolution now follows the selected provider through the vnbroker listing adapter, so `vn30`/`top100` no longer depend on one shared seed universe path before snapshot fetching**  
+Validation: **✅ PostgreSQL `test_soc_tasks` passed (`13` tests)** | **✅ PostgreSQL `test_soc_matrix` passed (`9` tests)** | **✅ clean runtime cycle `cycle_20260514_011` completed as `kbs`-only with `symbols_processed=30`** | **✅ manual worker log proved `Fetching symbol group VN30 from KBS.` then `Fetching price board snapshot from KBS for 30 symbols.`** | **✅ `module_tree_full.md` regenerated (`1166` modules)**
+
+## SOC Matrix Provider-Aware Universe Slice
+
+**What changed**
+- `packages/core/backend/src/market_data/vnbroker_adapter.py` now uses `vnbroker.api.listing.Listing(source=...)` as the SSOT for listing discovery, normalizes listing rows across providers, and falls back to the existing seed universe only when upstream listing fetches fail.
+- The same adapter now exposes `fetch_symbol_group_members(symbol_group_id, source=...)`, which maps Matrix groups (`vn30`, `top100`) to provider-backed listing groups (`VN30`, `VN100`) before falling back to sliced listing rows.
+- `packages/core/backend/src/service_ops/tasks.py` now resolves Matrix symbol groups through `fetch_symbol_group_members(..., source=provider)` instead of using one shared `fetch_listing_symbols()` result for every provider.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` now locks provider-aware group-member discovery, provider-aware snapshot propagation, adapter listing dispatch, and group lookup normalization in the focused SOC task suite.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/vnbroker_adapter.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test service_ops.tests.test_soc_tasks --keepdb` passed (`13` tests).
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test service_ops.tests.test_soc_matrix --keepdb` passed (`9` tests).
+- `functions.get_errors` returned no diagnostics for `packages/core/backend/src/market_data/vnbroker_adapter.py`, `packages/core/backend/src/service_ops/tasks.py`, and `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-worker-manual` rebuilt and refreshed the impacted runtime services after the provider-aware universe changes.
+- Runtime smoke created `cycle_20260514_011` with providers `['kbs']`; `docker logs vninvest-dev-core-worker-manual --tail 240` showed `Fetching symbol group VN30 from KBS.`, then `Fetching price board snapshot from KBS for 30 symbols.`, then successful completion of `service_ops.scrape_cell_task[...]`.
+- `docker exec vninvest-dev-core-api python /app/src/manage.py shell -c "... ScrapeMatrix.objects.get(cycle_id='cycle_20260514_011') ..."` reported `MATRIX_STATUS cycle_20260514_011 completed 1 1 100.0` and `CELLS [('vn30', 'kbs', 'done', 30)]`.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1166` modules.
+
+**Residual Risk**
+- `VCI` listing discovery still appears rate-limited upstream (`429`) in this environment, so provider-aware universe discovery currently falls back to the seed universe for that provider instead of a real listing response.
+- `top100` is now mapped to `VN100`, but broader custom symbol-group taxonomies still fall back to sliced listing universes unless explicit provider group mappings are added.
+
+# 2026-05-14 — SOC Matrix Provider-Aware Snapshot Dispatch ✅
+
+Status: **✅ COMPLETE** | **Matrix cell execution now forwards the selected provider into the vnbroker SSOT, so `kbs` cells no longer reuse the same VCI-only snapshot path under the hood**  
+Validation: **✅ PostgreSQL `test_soc_tasks` passed (`8` tests)** | **✅ PostgreSQL `test_soc_matrix` passed (`9` tests)** | **✅ clean runtime cycle `cycle_20260514_009` completed as `kbs`-only with `symbols_processed=30`** | **✅ manual worker log proved `Fetching price board snapshot from KBS for 30 symbols.`** | **✅ `module_tree_full.md` regenerated (`1166` modules)**
+
+## SOC Matrix Provider Truth Slice
+
+**What changed**
+- `packages/core/backend/src/market_data/vnbroker_adapter.py` now resolves the requested realtime source dynamically from the provider/source code, loads the matching provider-specific `Quote` class through the adapter SSOT, and propagates that source through `fetch_realtime_price()` and `fetch_price_board_snapshot()`.
+- `packages/core/backend/src/service_ops/tasks.py` now forwards Matrix `provider` into `fetch_price_board_snapshot(symbols, source=...)` instead of silently using the generic config-labelled path.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` now locks both the task-side provider propagation (`kbs -> KBS`) and the adapter-side quote-module dispatch path so future regressions cannot fall back to fake provider parity.
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md` now reflects the real completed state of the T06 Matrix checklist instead of leaving DONE status paired with stale unchecked Matrix implementation items.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/vnbroker_adapter.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test service_ops.tests.test_soc_tasks --keepdb` passed (`8` tests).
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test service_ops.tests.test_soc_matrix --keepdb` passed (`9` tests).
+- `functions.get_errors` returned no diagnostics for `packages/core/backend/src/market_data/vnbroker_adapter.py`, `packages/core/backend/src/service_ops/tasks.py`, and `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`.
+- `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-worker-manual` rebuilt and refreshed the impacted runtime services with the new provider-aware adapter path.
+- Runtime smoke created `cycle_20260514_009` with providers `['kbs']`; `docker logs vninvest-dev-core-worker-manual --tail 120` showed `Task service_ops.scrape_cell_task[...] received`, `Fetching price board snapshot from KBS for 30 symbols.`, and successful completion.
+- `docker exec vninvest-dev-core-api python /app/src/manage.py shell -c "... ScrapeMatrix.objects.get(cycle_id='cycle_20260514_009') ..."` reported `MATRIX_STATUS completed 1 1 100.0` and `CELLS [('vn30', 'kbs', 'done', 30)]`.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1166` modules.
+
+**Residual Risk**
+- `fetch_listing_symbols()` still returns a generic listing universe from the active runtime config, so Matrix now has provider-aware snapshot execution but not provider-aware universe discovery.
+- DNSE remains runtime-gated by secrets and still lacks a verified runtime smoke in this slice; the proof here is specific to the KBS path that was previously fake.
+
+# 2026-05-14 — SOC Matrix Runtime Queue Isolation and Manual Worker Recovery ✅
+
+Status: **✅ COMPLETE** | **Matrix start/monitor now trigger real Celery work again in dev runtime: Matrix tasks bind to the configured `vninvest_core` app, `manual_on_demand` is isolated away from the generic worker, and the dedicated manual worker now runs in `solo` mode proven to consume clean Matrix cycles end-to-end**  
+Validation: **✅ PostgreSQL `test_soc_matrix` passed (`9` tests)** | **✅ PostgreSQL `test_soc_tasks` passed (`8` tests)** | **✅ clean runtime cycle `cycle_20260514_008` reached terminal `completed` state** | **✅ `module_tree_full.md` regenerated (`1166` modules)**
+
+## SOC Matrix Runtime Recovery Slice
+
+**What changed**
+- `packages/core/backend/src/vninvest_core/queue_policy.py` now routes `service_ops.run_scrape_cycle` and `service_ops.scrape_cell_task` to `manual_on_demand` so Matrix work no longer competes with the overloaded default `celery` backlog.
+- `packages/core/backend/src/vninvest_core/__init__.py` now bootstraps `celery_app`, which fixes the earlier bug where shared tasks bound to Celery's unconfigured `default` app and silently ignored `CELERY_TASK_ROUTES`.
+- `packages/core/backend/src/service_ops/views/matrix.py` and `packages/core/backend/src/service_ops/tasks.py` now rely on the corrected task binding/queue metadata path for Matrix dispatch rather than the stale default-app/default-queue behavior.
+- `packages/core/backend/entrypoint.sh` now honors `CELERY_POOL`, and `docker-compose.dev.yml` now removes `manual_on_demand` from `core-worker` while forcing `core-worker-manual` to run `solo` with concurrency `1`, which matches the worker mode proven to consume Matrix tasks successfully in runtime.
+- Runtime smoke proved the current dedicated manual worker (`95ca6bbe445c`) received `service_ops.run_scrape_cycle[9251b5ef-dcc4-4b30-a638-10257cbc3e52]`, received child `scrape_cell_task` work for `cycle_20260514_008`, and persisted `cycle_20260514_008` as `completed` in the database.
+
+**Files audited in this slice**
+- `packages/core/backend/src/vninvest_core/queue_policy.py`
+- `packages/core/backend/src/vninvest_core/__init__.py`
+- `packages/core/backend/src/service_ops/views/matrix.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/entrypoint.sh`
+- `docker-compose.dev.yml`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test service_ops.tests.test_soc_matrix --keepdb` passed (`9` tests).
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test service_ops.tests.test_soc_tasks --keepdb` passed (`8` tests).
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate core-api core-worker core-worker-manual` refreshed the sender, generic worker, and dedicated manual worker after the queue isolation changes.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate core-worker-manual` refreshed the dedicated manual worker again after enabling `CELERY_POOL=solo` and `CELERY_CONCURRENCY=1`.
+- Runtime smoke for `cycle_20260514_008` returned `201` from `/api/soc/matrix/cycles/start/`, stored dispatch task `9251b5ef-dcc4-4b30-a638-10257cbc3e52`, and manual-worker logs showed `Task service_ops.run_scrape_cycle[...] received`, `... succeeded`, and `Task service_ops.scrape_cell_task[24d6be86-e861-4bc9-93ea-f6e5d1c3d11b] received`.
+- `docker exec vninvest-dev-core-api python /app/src/manage.py shell -c "... ScrapeMatrix.objects.get(cycle_id='cycle_20260514_008') ..."` reported `MATRIX cycle_20260514_008 completed Counter({'done': 2, 'skipped': 2})`.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1166` modules.
+
+**Residual Risk**
+- `MatrixCoordinator.mark_cell_done()` still intentionally marks sibling providers in the same symbol group as `skipped`, so the clean runtime proof for `cycle_20260514_008` ended `done=2, skipped=2`; if product intent requires every provider row to execute independently, that semantics still needs a follow-up slice.
+- `_fetch_symbols_from_provider(symbols, provider)` still ignores the `provider` argument and uses the generic board snapshot path, so provider-specific fetch parity is not solved in this recovery slice.
+- Redis broker state still contains stale `unacked` artifacts from earlier interrupted debug cycles (`cycle_20260514_005` and one interrupted `cycle_20260514_007` child task); fresh cycles now run, but queue hygiene may still need an explicit cleanup window.
+
+# 2026-05-14 — SOC REQ-25 Matrix Atomic Claim Proof ✅
+
+Status: **✅ COMPLETE** | **REQ-25 is now backed by both host-safe claim semantics and a real PostgreSQL concurrent-claim proof for `MatrixCoordinator.try_claim_cell()`**  
+Validation: **✅ host `test_soc_matrix` passed (`7` tests, `1` SQLite feature-gated skip)** | **✅ PostgreSQL `test_soc_matrix` passed (`7` tests)** | **✅ `module_tree_full.md` regenerated (`1166` modules)** | **✅ dev `core-api` rebuilt/recreated and healthy**
+
+## SOC REQ-25 Closure Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/tests/test_soc_matrix.py` now includes a host-safe regression proving a second worker cannot re-claim an already claimed cell.
+- The same test module now includes a PostgreSQL-only `TransactionTestCase` that launches two concurrent claim attempts and proves only one worker wins when `select_for_update` is actually supported.
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md` now promotes REQ-25 from implemented-only to tested because the matrix claim path has concrete proof instead of inference.
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md` now marks the `try_claim_cell atomic` checklist item complete under T06.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/tests/test_soc_matrix.py`
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md`
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Set-Location "C:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_matrix --keepdb` passed (`7` tests, `1` skipped) on the host SQLite test database.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate core-api` rebuilt and recreated `core-api` with the latest test code.
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test service_ops.tests.test_soc_matrix --keepdb` passed (`7` tests) on the PostgreSQL-backed runtime container, including the concurrent claim proof.
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1166` modules.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml ps core-api` showed `core-api` `Up ... (healthy)` on `0.0.0.0:8001->8100/tcp`.
+
+**Residual Risk**
+- Host-side Django tests still rely on SQLite, so the real row-lock proof remains container/PostgreSQL-only even though the file-level regression suite runs cleanly on both surfaces.
+
+# 2026-05-14 — SOC REQ-02 VNBroker Canonical Typed Schema ✅
+
+Status: **✅ COMPLETE** | **REQ-02 is now closed on the real spec shape: VNBroker config emits `timeout` + `preferred_provider` canonically, while legacy flat payloads remain accepted for compatibility**  
+Validation: **✅ `test_soc_domain_configs + test_soc_api_domain` passed (`23` tests)** | **✅ `test_soc_api_integration + test_soc_api_overview` passed (`22` tests)** | **✅ `module_tree_full.md` regenerated (`1166` modules)** | **✅ dev `core-api` rebuilt/recreated and healthy**
+
+## SOC REQ-02 Closure Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/domain_configs/vnbroker.py` now defines `VnbrokerTimeoutConfig` and canonical `VnbrokerDomainConfig.timeout/preferred_provider/retry_delay_seconds`, while still normalizing legacy flat keys such as `connect_timeout`, `read_timeout`, `primary_provider`, and `retry_backoff_factor`.
+- `packages/core/backend/src/service_ops/domain_configs/__init__.py` now exports `VnbrokerTimeoutConfig`, so the nested typed schema is visible from the domain-config package surface.
+- `packages/core/backend/src/service_ops/views/vnbroker.py` now sanitizes, previews, and reports provider state against the canonical nested payload shape instead of the stale flat schema.
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`, `test_soc_api_domain.py`, `test_soc_api_integration.py`, and `test_soc_api_overview.py` now lock both the canonical nested payload shape and the legacy-compat parsing path.
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md` and `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md` now reflect that REQ-02 is backed by the nested typed schema rather than the earlier flat approximation.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/domain_configs/vnbroker.py`
+- `packages/core/backend/src/service_ops/domain_configs/__init__.py`
+- `packages/core/backend/src/service_ops/views/vnbroker.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_integration.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_overview.py`
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md`
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Set-Location "C:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_api_domain --keepdb` passed (`23` tests).
+- `Set-Location "C:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_api_integration service_ops.tests.test_soc_api_overview --keepdb` passed (`22` tests).
+- `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1166` modules.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate core-api` rebuilt and recreated `core-api`.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml ps core-api` showed `core-api` `Up ... (healthy)` on `0.0.0.0:8001->8100/tcp`.
+
+**Residual Risk**
+- No authenticated manual API smoke was rerun after the backend-only rebuild; the nested-schema contract is covered by focused Django tests instead.
+
+# 2026-05-14 — SOC Legacy Admin-Ops Alias Coverage ✅
+
+Status: **✅ COMPLETE** | **`/admin-ops` now behaves as a pure legacy alias to SOC, and frontend route/component proof for REQ-32..40 is recorded in the active traceability set**  
+Validation: **✅ focused frontend SOC suites passed (`12` tests)** | **✅ `module_tree_full.md` regenerated (`1166` modules)** | **✅ dev `frontend` rebuilt/recreated**
+
+## SOC Frontend Route Evidence Slice
+
+**What changed**
+- `frontend/src/App.jsx` no longer gates `/admin-ops` with legacy `AdminOps`; the route now hands off directly to `/operations-center` as the replacement SOC surface.
+- `frontend/src/App.test.jsx` now covers both the legacy alias redirect and direct `/operations-center` render for a user with `ServiceOpsCenter` but no `AdminOps` entitlement.
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md` now marks REQ-32..40 as tested using `frontend/src/components/soc/SOCComponents.test.jsx`, `frontend/src/pages/SOCPage.test.jsx`, and `frontend/src/App.test.jsx`.
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md` now records the combined frontend regression evidence and the post-patch frontend rebuild under T10.
+
+**Files audited in this slice**
+- `frontend/src/App.jsx`
+- `frontend/src/App.test.jsx`
+- `frontend/src/components/soc/SOCComponents.test.jsx`
+- `frontend/src/pages/SOCPage.test.jsx`
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md`
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `Set-Location "C:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watch=false --runTestsByPath src/components/soc/SOCComponents.test.jsx src/pages/SOCPage.test.jsx src/App.test.jsx` passed (`12` tests).
+- `C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1166` modules.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate frontend`
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml ps frontend` showed `frontend` up on `0.0.0.0:80->80/tcp`.
+
+**Residual Risk**
+- Focused App router tests still emit the React Router future-flag warning because the app has not opted into `v7_startTransition`; this is non-blocking.
+- No authenticated browser smoke was rerun after the frontend-only rebuild in this micro-slice.
+
+# 2026-05-14 — SOC Traceability Closure for Matrix Tasks and Frontend Spec Alignment ✅
+
+Status: **✅ COMPLETE** | **REQ-30..40 are no longer blocked by missing code: Matrix now has real cell tasks, config apply audit stores the real previous snapshot, and the SOC frontend tabs/query/components now match the active tech spec more closely**  
+Validation: **✅ `test_soc_tasks + test_soc_api_domain` passed (`25` tests)** | **✅ frontend build completed** | **✅ `module_tree_full.md` regenerated (1163 modules)** | **✅ dev `frontend` + `core-api` + workers rebuilt/recreated** | **⚠️ `core-beat` still `health: starting` at capture time**
+
+## SOC Traceability Closure Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/tasks.py` now contains real Matrix dispatch primitives (`run_scrape_cycle`, `scrape_cell_task`) backed by `MatrixCoordinator`, `fetch_listing_symbols()`, and `fetch_price_board_snapshot()`.
+- `packages/core/backend/src/service_ops/views/mixins.py` now records the actual previous config payload in `ConfigChangeAudit.before_snapshot`, and `test_soc_api_domain.py` proves that the VNBroker apply flow now preserves before/after snapshots correctly.
+- `frontend/src/components/soc/ServiceHealthCard.jsx`, `OwnershipBadgeRow.jsx`, `WriteGuardBanner.jsx`, `ConfigPreviewModal.jsx`, and `MatrixScrapeMonitor.jsx` were aligned to the visual/prop expectations in the SOC tech spec.
+- `frontend/src/components/soc/SOCDomainTabs.jsx` and `frontend/src/pages/SOCPage.jsx` now use the documented tab contract (`overview/signals/dataops/prefetch/screener/matrix`) and the `?tab=` URL search parameter.
+- `frontend/src/components/soc/VnbrokerPanel.jsx` now behaves like the documented DataOps surface by supporting editable JSON preview/apply flow with live preview validation and impact warnings.
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md` now reflects the real implementation status for REQ-30..40 instead of the stale unchecked rows.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/views/mixins.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `frontend/src/components/soc/ServiceHealthCard.jsx`
+- `frontend/src/components/soc/OverviewPanel.jsx`
+- `frontend/src/components/soc/OwnershipBadgeRow.jsx`
+- `frontend/src/components/soc/WriteGuardBanner.jsx`
+- `frontend/src/components/soc/ConfigPreviewModal.jsx`
+- `frontend/src/components/soc/MatrixScrapeMonitor.jsx`
+- `frontend/src/components/soc/SOCDomainTabs.jsx`
+- `frontend/src/components/soc/VnbrokerPanel.jsx`
+- `frontend/src/components/soc/SignalsPanel.jsx`
+- `frontend/src/pages/SOCPage.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md`
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Validation**
+- `manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` passed (`25` tests).
+- `npm run build` in `frontend/` compiled successfully.
+- `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` to `1163` modules.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate frontend core-api core-worker core-worker-manual core-worker-realtime-stream core-worker-analytics core-worker-enrichment core-worker-realtime-prefetch core-beat` refreshed the affected runtime services.
+- `docker compose ... ps ...` showed `core-api` healthy, `frontend` up, workers up, and `core-beat` still `health: starting`.
+- `docker compose ... exec -T core-api python /app/src/manage.py check` returned `System check identified no issues (0 silenced).`
+- `docker compose ... exec -T core-api python /app/src/manage.py showmigrations service_ops` showed both SOC migrations applied.
+- `Invoke-WebRequest http://127.0.0.1:8001/api/soc/overview/ -SkipHttpErrorCheck` returned `401` with the standard auth envelope, which matches expected unauthenticated behavior.
+- Integrated browser smoke at `/operations-center?tab=signals` rendered the SOC heading, 6-tab strip, and Signals panel shell; screenshot captured in-session.
+
+**Residual Risk**
+- `core-beat` had not reached a healthy state at the exact capture timestamp.
+- No git commit/push evidence exists for this slice.
+
+# 2026-05-14 — SOC Unit Suite Completion and Real Signals Task Wiring ✅
+
+Status: **✅ COMPLETE** | **SOC now has the missing unit/task suites, the stale legacy suites have been rewritten to the current schema, Signals jobs run through tracked `service_ops` tasks, and the full `service_ops.tests` package is green**  
+Validation: **✅ full `service_ops.tests` passed (`75` tests)** | **✅ `module_tree_full.md` regenerated (1163 modules)** | **✅ dev `core-api` + Celery workers/beat rebuilt/recreated**
+
+## SOC Unit + Tasks Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/tasks.py` now provides the missing SOC task module with `health_check_all_services` and tracked Signals workflow/materializer tasks backed by real `signal_intelligence` materializers.
+- `packages/core/backend/src/service_ops/views/signals.py` now enqueues the tracked Signals workflow through `jobs/run`, stores `celery_task_id`, and reports a real materialization execution plan plus tracked run-log state instead of a pure placeholder surface.
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`, `test_soc_ownership.py`, and `test_soc_tasks.py` now cover the exact unit/task suites that the traceability matrix and taskboard were still missing.
+- `packages/core/backend/src/service_ops/tests/test_soc_models.py` and `test_soc_api_integration.py` were rewritten from stale pre-schema assumptions to the current `service_ops` models and `/api/soc/services/*` contracts, which unblocked the full package suite.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/views/signals.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_ownership.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_signals.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_models.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_integration.py`
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md`
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md`
+- `module_tree_full.md`
+- `PROGRESS_DASHBOARD.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+
+**Validation**
+- `manage.py test service_ops.tests.test_soc_tasks --keepdb` passed (`5` tests).
+- `manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_ownership --keepdb` passed (`10` tests).
+- `manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_signals --keepdb` passed (`14` tests).
+- `manage.py test service_ops.tests.test_soc_models service_ops.tests.test_soc_api_integration --keepdb` passed (`18` tests).
+- `manage.py test service_ops.tests --keepdb` passed (`75` tests).
+- `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` to `1163` modules.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate core-api core-worker core-worker-manual core-worker-realtime-stream core-worker-analytics core-worker-enrichment core-worker-realtime-prefetch core-beat`
+
+**Residual Risk**
+- `signal_session_facts_materializer` is still status-only in SOC because no native execution task exists for that service key yet.
+- Browser `/operations-center` smoke and git commit/push evidence are not part of this slice.
+
+# 2026-05-14 — SOC Overview, Domain Alias, and Signals Contract Realignment ✅
+
+Status: **✅ COMPLETE** | **SOC overview/services contracts, domain alias routes, and the missing Signals preview/status/job surfaces now match the active backend more closely and pass the focused regression set**  
+Validation: **✅ 42 focused `service_ops` tests passed** | **✅ `module_tree_full.md` regenerated (1159 modules)** | **✅ dev `core-api` rebuilt/recreated**
+
+## SOC Contract Realignment Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/views/base.py` now normalizes DRF exceptions into the standard SOC error envelope (`detail`, `code`, `timestamp`, `request_id`, `field_errors`).
+- `packages/core/backend/src/service_ops/views/overview.py` and `packages/core/backend/src/service_ops/urls.py` now expose the documented `/api/soc/overview/` summary and `/api/soc/services/` list/detail/config/health/audit/history contract instead of the stale mixed implementation.
+- `packages/core/backend/src/service_ops/ownership.py` now preserves `bridge-write` semantics correctly when DB overrides exist, so Signals ownership cannot become implicitly writable to SOC.
+- `packages/core/backend/src/service_ops/views/prefetch.py` and `packages/core/backend/src/service_ops/views/screener.py` now expose the remaining easy spec aliases: `prefetch/warm-now/` and `screener/rules/run/`.
+- `packages/core/backend/src/service_ops/views/signals.py` now exposes `retention-policy/preview`, `materialization`, `materialization/preview`, `universe`, `universe/update`, `jobs/run`, and `jobs/status` while keeping write attempts blocked by the bridge-write ownership rule.
+- `frontend/src/api/socApi.js` and `frontend/src/components/soc/OverviewPanel.jsx` now follow the overview/services split used by the backend.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/views/base.py`
+- `packages/core/backend/src/service_ops/views/overview.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `packages/core/backend/src/service_ops/ownership.py`
+- `packages/core/backend/src/service_ops/views/vnbroker.py`
+- `packages/core/backend/src/service_ops/views/prefetch.py`
+- `packages/core/backend/src/service_ops/views/screener.py`
+- `packages/core/backend/src/service_ops/views/signals.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_overview.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_signals.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/OverviewPanel.jsx`
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md`
+- `docs/TASKBOARD_SOC_FULL_REPLACEMENT_20260513.md`
+- `module_tree_full.md`
+- `PROGRESS_DASHBOARD.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+
+**Validation**
+- `manage.py test service_ops.tests.test_soc_api_domain --keepdb` passed (`16` tests).
+- `manage.py test service_ops.tests.test_soc_api_signals --keepdb` passed (`9` tests).
+- `manage.py test service_ops.tests.test_soc_api_overview service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_api_signals service_ops.tests.test_soc_matrix --keepdb` passed (`42` tests).
+- `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` to `1159` modules.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api`
+
+**Residual Risk**
+- The named unit suites for domain configs, ownership internals, and background tasks are still not the main evidence source; the current proof is concentrated in API/matrix-focused regression suites.
+- The new Signals job/materialization routes are contract-compatible surfaces backed by queue/status previews, not full deep-pipeline execution triggers.
+
+# 2026-05-14 — SOC Provider Catalog & Matrix Readiness Gate ✅
+
+Status: **✅ COMPLETE** | **SOC provider surfaces now use the `vci/kbs/dnse` SSOT, DNSE is runtime-gated, the Matrix regression suite is split cleanly, and the live dev runtime enforces the gate before cycle reuse**  
+Validation: **✅ 23 focused `service_ops` tests passed** | **✅ live smoke returned `blocked_status=400`, `blocked_code=MATRIX_PROVIDER_NOT_READY` for `dnse` even with an active cycle present** | **✅ `module_tree_full.md` regenerated (1159 modules)** | **✅ dev `core-api` + `frontend` rebuilt/recreated**
+
+## SOC Provider Catalog Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/provider_catalog.py` now centralizes the Matrix/VNBroker provider SSOT (`vci`, `kbs`, `dnse`) plus runtime-readiness metadata.
+- `packages/core/backend/src/service_ops/views/matrix.py`, `matrix_coordinator.py`, and `domain_configs/vnbroker.py` now derive provider defaults/validation from that catalog and block DNSE when `SOC_MATRIX_DNSE_API_ID` / `SOC_MATRIX_DNSE_API_KEY` are absent.
+- `packages/core/backend/src/service_ops/views/matrix.py` now validates provider requests before reusing an active cycle, which closes the live bypass where an unready DNSE request could previously inherit an existing cycle.
+- `packages/core/backend/src/service_ops/views/vnbroker.py` now removes TCBS/SSI from SOC operator surfaces and exposes the supported provider readiness catalog consistently.
+- `frontend/src/components/soc/MatrixPanel.jsx`, `frontend/src/i18n/vi.js`, and `frontend/src/i18n/en.js` now let operators select only ready providers and see blocked-runtime state directly in the Matrix panel.
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` was cleaned after the failed add-file patch, and `packages/core/backend/src/service_ops/tests/test_soc_matrix.py` now carries the dedicated Matrix/provider regression coverage.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/provider_catalog.py`
+- `packages/core/backend/src/service_ops/domain_configs/vnbroker.py`
+- `packages/core/backend/src/service_ops/matrix_coordinator.py`
+- `packages/core/backend/src/service_ops/views/matrix.py`
+- `packages/core/backend/src/service_ops/views/vnbroker.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_matrix.py`
+- `frontend/src/components/soc/MatrixPanel.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `docs/SOC_FULL_REPLACEMENT_TRACEABILITY_MATRIX_20260513.md`
+- `module_tree_full.md`
+- `PROGRESS_DASHBOARD.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+
+**Validation**
+- `manage.py test service_ops.tests.test_soc_matrix --keepdb` passed (`5` tests).
+- `manage.py test service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_api_signals service_ops.tests.test_soc_matrix --keepdb` passed (`23` tests).
+- `manage.py shell -c "... matrix cycle reuse + dnse block smoke ..."` returned `{'first_status': 200, 'first_reused': True, 'blocked_status': 400, 'blocked_code': 'MATRIX_PROVIDER_NOT_READY', 'ready_providers': ['vci', 'kbs'], 'blocked_providers': ['dnse']}`.
+- `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` to `1159` modules.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api frontend`
+- `docker compose ... ps core-api frontend` showed `core-api` healthy and `frontend` up.
+
+**Residual Risk**
+- A valid Matrix start request with a different selection than the current active cycle still reuses the existing cycle; only invalid/unready provider bypass is fixed in this slice.
+- `VnbrokerProvidersView` has live smoke coverage through the provider catalog slice but still lacks its own dedicated test module.
+
+# 2026-05-14 — SOC Matrix Runtime Wiring & Contract Hardening ✅
+
+Status: **✅ COMPLETE** | **Matrix is now backed by native cycle APIs, the mounted SOC data tabs no longer rely on sample payloads, and focused contract tests pass**  
+Validation: **✅ Matrix start/monitor/abort smoke passed** | **✅ frontend build completed** | **✅ 18 focused `service_ops` tests passed** | **✅ `module_tree_full.md` regenerated (1157 modules)** | **✅ dev `core-api` + `frontend` rebuilt/recreated**
+
+## SOC Matrix + Runtime Data Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/models.py`, `serializers.py`, `matrix_coordinator.py`, `views/matrix.py`, `urls.py`, and `migrations/0002_add_scrape_matrix_models.py` now provide the native Matrix control plane (`cycles/start`, `cycles/{id}`, `cells`, `abort`, `providers`, `monitor`).
+- `frontend/src/api/socApi.js`, `frontend/src/components/soc/MatrixPanel.jsx`, and `frontend/src/components/soc/MatrixScrapeMonitor.jsx` now drive the Matrix tab from the real backend monitor/detail/start/abort routes instead of the dead stub route.
+- `packages/core/backend/src/service_ops/views/prefetch.py`, `views/screener.py`, and `views/signals.py` now return runtime-backed data for schedule/universe, screener rules/results/history/manual-scan, and recent signal payloads instead of sample literals.
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` and `test_soc_api_signals.py` were rewritten to lock the current native SOC contracts and bridge-write behavior.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/models.py`
+- `packages/core/backend/src/service_ops/serializers.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `packages/core/backend/src/service_ops/matrix_coordinator.py`
+- `packages/core/backend/src/service_ops/views/matrix.py`
+- `packages/core/backend/src/service_ops/migrations/0002_add_scrape_matrix_models.py`
+- `packages/core/backend/src/service_ops/views/prefetch.py`
+- `packages/core/backend/src/service_ops/views/screener.py`
+- `packages/core/backend/src/service_ops/views/signals.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_signals.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/MatrixPanel.jsx`
+- `frontend/src/components/soc/MatrixScrapeMonitor.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `module_tree_full.md`
+- `PROGRESS_DASHBOARD.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+
+**Validation**
+- `manage.py shell -c "... matrix start/monitor/cells/abort ..."` returned `201` start, `active` monitor status, `4` cells, and `aborted` after abort.
+- `manage.py shell -c "... screener rules/results/alert-history/manual-scan ..."` returned runtime-backed payloads and queued a real `ServiceRunLog`.
+- `manage.py shell -c "... prefetch universe-groups/task-schedule ..."` reflected the applied config groups and intervals.
+- `manage.py shell -c "... signals whale/dark-pool/screener recent ..."` reflected canonical `UnifiedAlert` data.
+- `npm run build` in `frontend/` compiled successfully.
+- `manage.py test service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_api_signals --keepdb` passed (`18` tests).
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api frontend`
+- `docker compose ... ps core-api frontend` showed `core-api` healthy and `frontend` up.
+
+**Residual Risk**
+- `vnbroker/test-connection` and `prefetch/cache-status` remain helper payloads rather than live probes.
+- No authenticated browser smoke of the Matrix tab was executed in this turn.
+
+# 2026-05-14 — SOC Registry Bootstrap & Contract Alignment ✅
+
+Status: **✅ COMPLETE** | **SOC now materializes the canonical 23-service registry and the main non-matrix tabs are aligned to live backend contracts**  
+Validation: **✅ core DB shows `23` active SOC services** | **✅ `GET /api/soc/signals/summary/` returns 200** | **✅ frontend build completed** | **✅ dev `core-api` + `frontend` rebuilt/recreated** | **✅ `module_tree_full.md` regenerated (1154 modules)**
+
+## SOC Bootstrap Slice
+
+**What changed**
+- `packages/core/backend/src/service_ops/registry.py` now seeds the canonical 23-service SOC registry, 5 ownership records, and 4 default domain configs instead of leaving `/api/soc/overview/` empty.
+- `packages/core/backend/src/service_ops/apps.py`, `views/base.py`, and the domain views now self-heal/resolve against canonical SOC service keys.
+- `packages/core/backend/src/vninvest_core/db_router.py` now routes `service_ops` writes to the core default database, which was the hard blocker preventing registry materialization.
+- `packages/core/backend/src/service_ops/views/signals.py` and `packages/core/backend/src/service_ops/urls.py` now provide the missing `signals/summary/` route and config-backed signals responses.
+- `frontend/src/api/socApi.js`, `frontend/src/components/soc/OverviewPanel.jsx`, and `frontend/src/components/soc/PrefetchPanel.jsx` now consume the backend routes/shapes that actually exist, so the mounted SOC tabs no longer depend on mismatched client assumptions.
+
+**Validation**
+- `Set-Location "C:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py migrate service_ops --noinput`
+- `manage.py shell -c "... ServiceDefinition.objects.count() ..."` returned `23` services, `5` ownership records, `4` current configs
+- `manage.py shell -c "... client.get('/api/soc/overview/') ... client.get('/api/soc/signals/summary/') ..."` returned `200` with the expected payload keys
+- `npm run build` in `frontend/` compiled successfully
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api frontend`
+- `docker compose ... ps core-api frontend` showed `core-api` healthy and `frontend` up
+- Browser smoke at `http://localhost/operations-center` rendered overview cards plus working `VNBroker`, `Prefetch`, `Signals`, and `Screener` tabs
+
+**Residual Risk**
+- Matrix remains a stub domain and still requires the planned `ScrapeMatrix` backend implementation.
+- Legacy `service_ops` tests remain outdated and were not repaired in this slice.
+
+# 2026-05-14 — SOC Operations Center Render Fix ✅
+
+Status: **✅ COMPLETE** | **/operations-center now renders with localized labels and live SOC overview data**  
+Validation: **✅ core-api smoke test returned 200 on `/api/soc/overview/`** | **✅ frontend rebuild completed** | **✅ browser screenshot captured** | **✅ `module_tree_full.md` regenerated (1153 modules)**
+
+## SOC Fix Slice
+
+**What changed**
+- `frontend/src/api/socApi.js` now sends the browser bearer token and cookies for SOC calls.
+- `frontend/src/pages/SOCPage.jsx` now passes the resolved `pageT` function into the child panels.
+- `frontend/src/i18n/vi.js` and `frontend/src/i18n/en.js` now include the missing `soc` namespace.
+- `packages/core/backend/src/service_ops/views/overview.py` now uses `StandardPageNumberPagination` for `/api/soc/overview/`.
+
+**Validation**
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api`
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps frontend`
+- Live container smoke test inside `vninvest-dev-core-api` returned `200 OK` and `{'count': 0, 'next': None, 'previous': None, 'results': []}` for `/api/soc/overview/`
+- Browser reload of `/operations-center` showed the SOC shell, translated title, tabs, and overview panel without the `n is not a function` crash
+- `/admin-ops` redirected to `/operations-center`
+
+**Residual Risk**
+- The SOC overview list is empty in the current runtime database, so the page renders correctly but shows no service cards until `ServiceDefinition` rows are seeded.
+
 # 2026-05-14 — Native Realtime Prefetch Warm Repair ✅
 
 Status: **✅ COMPLETE** | **core-api warm path now populates `SymbolSnapshot` and BCM is live**  

@@ -5,9 +5,17 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { socApi } from '../../api/socApi';
 
+const PROFILE_FIELDS = [
+  { name: 'pre_open', field: 'pre_open_interval_seconds' },
+  { name: 'market_open', field: 'market_open_interval_seconds' },
+  { name: 'lunch_break', field: 'lunch_break_interval_seconds' },
+  { name: 'pre_close', field: 'pre_close_interval_seconds' },
+  { name: 'post_close', field: 'post_close_interval_seconds' },
+  { name: 'offhours', field: 'offhours_interval_seconds' },
+];
+
 const PrefetchPanel = ({ t }) => {
   const [config, setConfig] = useState(null);
-  const [profiles, setProfiles] = useState([]);
   const [cacheStatus, setCacheStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,13 +23,11 @@ const PrefetchPanel = ({ t }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [cfg, profs, cache] = await Promise.all([
+        const [cfg, cache] = await Promise.all([
           socApi.getPrefetchConfig(),
-          socApi.getPrefetchProfiles(),
           socApi.getPrefetchCacheStatus(),
         ]);
         setConfig(cfg.config || {});
-        setProfiles(profs.profiles || []);
         setCacheStatus(cache);
         setError(null);
       } catch (err) {
@@ -42,6 +48,12 @@ const PrefetchPanel = ({ t }) => {
       setError(err.message);
     }
   };
+
+  const profiles = PROFILE_FIELDS.map((profile) => ({
+    name: profile.name,
+    interval_seconds: Number(config?.[profile.field] || 0),
+    enabled: Boolean(config?.enabled),
+  }));
 
   if (loading) return <p className="text-slate-400">{t('soc.pages.status_loading')}</p>;
 
@@ -109,6 +121,8 @@ const PrefetchPanel = ({ t }) => {
   );
 };
 
+// NOTE: React 19 no longer runs propTypes validation at runtime.
+// PropTypes kept for documentation and IDE tooling only.
 PrefetchPanel.propTypes = {
   t: PropTypes.func.isRequired,
 };

@@ -26,10 +26,10 @@ export const navigationCatalog = Object.freeze([
   },
   {
     id: "admin",
-    labelKey: "navigation.admin",
+    labelKey: "layout.nav.soc",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["admin.operator.read"],
-    items: ["admin-ops"],
+    items: ["operations-center"],
   },
   {
     id: "vip-local",

@@ -110,3 +110,38 @@ class SessionFacts(models.Model):
 
     def __str__(self):
         return f'{self.symbol} @ {self.session_date} CVD={self.cvd_normalized:.2f}'
+
+
+class SessionFactsBucket(models.Model):
+    """
+    Materialized flow buckets for a specific SessionFacts row and window.
+    """
+
+    session_facts = models.ForeignKey(
+        SessionFacts,
+        on_delete=models.CASCADE,
+        related_name='buckets',
+    )
+    symbol = models.CharField(max_length=32, db_index=True)
+    session_date = models.DateField(db_index=True)
+    window = models.CharField(max_length=8, db_index=True)
+    bucket_minutes = models.PositiveIntegerField()
+    bucket_ts = models.DateTimeField(db_index=True)
+    cumulative_cvd = models.FloatField(default=0.0)
+    buy_strength = models.FloatField(default=0.0)
+    institutional_strength = models.FloatField(default=0.0)
+    buy_volume = models.BigIntegerField(default=0)
+    sell_volume = models.BigIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Session Facts Bucket'
+        verbose_name_plural = 'Session Facts Buckets'
+        ordering = ['session_date', 'window', 'bucket_ts', 'pk']
+        unique_together = [('session_facts', 'window', 'bucket_ts')]
+        indexes = [
+            models.Index(fields=['symbol', 'session_date', 'window', 'bucket_ts']),
+            models.Index(fields=['session_facts', 'window', 'bucket_ts']),
+        ]
+
+    def __str__(self):
+        return f'{self.symbol} {self.session_date} {self.window} {self.bucket_ts.isoformat()}'

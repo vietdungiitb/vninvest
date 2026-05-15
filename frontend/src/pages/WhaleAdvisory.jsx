@@ -3,7 +3,7 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 import RiskModeSelector from '../components/advisory/RiskModeSelector';
 import RecommendationHistoryMini from '../components/advisory/RecommendationHistoryMini';
-import WhaleBubbleChart from '../components/WhaleBubbleChart';
+import FactsFirstWhaleBubbleChart from '../components/FactsFirstWhaleBubbleChart';
 import TrustTelemetryPanel from '../components/advisory/TrustTelemetryPanel';
 
 // Modular Components
@@ -22,7 +22,7 @@ function fmtTime(ts) {
  * Orchestrates the modular bento-grid layout for whale intelligence.
  */
 export default function WhaleAdvisory() {
-  const { userPlan } = usePortfolio();
+  const { userPlan, activePortfolioId } = usePortfolio();
   const { t } = useI18n();
   const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
 
@@ -39,7 +39,7 @@ export default function WhaleAdvisory() {
     items, error, symbolStats, statsLoading, refreshInfoMap, pendingRefreshSymbols,
     pendingDeleteSymbols, rowMessages, fetchData, loadRefreshInfo,
     handleRefreshAdvisory, handleDeleteAdvisory
-  } = useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode);
+  } = useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode, { activePortfolioId });
 
   // Sync risk mode
   useEffect(() => localStorage.setItem('vninvest:risk-mode', riskMode), [riskMode]);
@@ -147,7 +147,7 @@ export default function WhaleAdvisory() {
               <div className="xl:col-span-2 min-h-[360px]">
                 <div className="h-full neon-glass-panel p-3">
                   {activeSymbol ? (
-                    <WhaleBubbleChart selectedSymbol={activeSymbol} isEmbedded={true} />
+                    <FactsFirstWhaleBubbleChart symbol={activeSymbol} isEmbedded={true} />
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center text-slate-600 gap-3 border border-dashed border-slate-800 rounded-3xl">
                       <div className="text-3xl opacity-20">🐋</div>

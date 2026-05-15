@@ -22,23 +22,6 @@ services:
     mem_limit: ${DB_MEM_LIMIT:-2g}
     cpus: ${DB_CPUS:-1.5}
 
-  redis:
-    image: redis:7-alpine
-    container_name: vninvest-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - vninvest_network
-    mem_limit: ${REDIS_MEM_LIMIT:-1g}
-    cpus: ${REDIS_CPUS:-1.0}
-
   mailpit:
     image: axllent/mailpit:latest
     container_name: vninvest-mailpit
@@ -72,7 +55,9 @@ services:
     image: redis:7-alpine
     container_name: vninvest-core-redis
     restart: unless-stopped
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - core_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -89,7 +74,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-api
     restart: unless-stopped
@@ -100,7 +86,7 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
     command: ["api"]
     depends_on:
       core-db:
@@ -133,7 +119,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker
     restart: unless-stopped
@@ -142,7 +129,7 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
       CELERY_QUEUES: celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand
     command: ["worker"]
     depends_on:
@@ -159,7 +146,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker-realtime-prefetch
     restart: unless-stopped
@@ -168,7 +156,7 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
       CELERY_QUEUES: realtime_prefetch
       CELERY_CONCURRENCY: "4"
     command: ["worker"]
@@ -186,7 +174,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker-realtime-stream
     restart: unless-stopped
@@ -195,7 +184,7 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
       CELERY_QUEUES: realtime_stream
       CELERY_CONCURRENCY: "4"
     command: ["worker"]
@@ -213,7 +202,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker-enrichment
     restart: unless-stopped
@@ -222,7 +212,7 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
       CELERY_QUEUES: enrichment_offhours
       CELERY_CONCURRENCY: "6"
     command: ["worker"]
@@ -240,7 +230,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker-analytics
     restart: unless-stopped
@@ -249,7 +240,7 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
       CELERY_QUEUES: analytics_heavy
       CELERY_CONCURRENCY: "4"
     command: ["worker"]
@@ -267,7 +258,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-worker-manual
     restart: unless-stopped
@@ -276,7 +268,7 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
       CELERY_QUEUES: manual_on_demand
       CELERY_CONCURRENCY: "3"
     command: ["worker"]
@@ -294,7 +286,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+      secrets:
+        - vnbroker_github_token
     image: vninvest-core-api:${APP_RELEASE:-latest}
     container_name: vninvest-core-beat
     restart: unless-stopped
@@ -303,7 +296,7 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
     command: ["beat"]
     depends_on:
       core-api:
@@ -333,8 +326,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_HOST: ${POSTGRES_HOST:-db}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}
+      CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}
+      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}
+      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}
       APP_RELEASE: ${APP_RELEASE:-main-local}
       # PAT-only: pepper must match core-api for LegacyCorePATAuthentication to validate tokens.
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set in production}
@@ -343,7 +339,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
+      core-redis:
         condition: service_healthy
       mailpit:
         condition: service_started
@@ -380,15 +376,18 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_HOST: ${POSTGRES_HOST:-db}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}
+      CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}
+      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}
+      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}
       APP_RELEASE: ${APP_RELEASE:-main-local}
     labels:
       com.vninvest.release: ${APP_RELEASE:-main-local}
     depends_on:
       db:
         condition: service_healthy
-      redis:
+      core-redis:
         condition: service_healthy
       mailpit:
         condition: service_started
@@ -423,15 +422,18 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_HOST: ${POSTGRES_HOST:-db}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
-      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}
+      CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}
+      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}
+      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}
       APP_RELEASE: ${APP_RELEASE:-main-local}
     labels:
       com.vninvest.release: ${APP_RELEASE:-main-local}
     depends_on:
       db:
         condition: service_healthy
-      redis:
+      core-redis:
         condition: service_healthy
       mailpit:
         condition: service_started
@@ -535,8 +537,6 @@ services:
         REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
     container_name: vninvest-frontend
     restart: unless-stopped
-    env_file:
-      - ./backend/.env.production
     environment:
       APP_RELEASE: ${APP_RELEASE:-main-local}
       REACT_APP_API_BASE_URL: /api
@@ -564,9 +564,13 @@ services:
 volumes:
   postgres_data:
   core_pgdata:
-  redis_data:
+  core_redis_data:
   prometheus_data:
   grafana_data:
+
+secrets:
+  vnbroker_github_token:
+    environment: VNBROKER_GITHUB_TOKEN
 
 networks:
   vninvest_network:

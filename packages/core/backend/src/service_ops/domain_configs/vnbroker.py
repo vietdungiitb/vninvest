@@ -1,24 +1,87 @@
-"""
-VNBroker domain config typed schema.
-"""
+"""VNBroker domain config typed schema."""
 from dataclasses import dataclass, field
 from typing import Any
+
+from ..provider_catalog import (
+    get_default_provider_ids,
+    get_supported_provider_ids,
+    normalize_provider_id,
+)
+
+
+SUPPORTED_VNBROKER_PROVIDERS = frozenset(get_supported_provider_ids('vnbroker'))
+DEFAULT_VNBROKER_PREFERRED_PROVIDER = 'vci'
+
+
+def _normalize_provider_list(provider_ids: list | None) -> list[str]:
+    normalized = []
+    for provider_id in provider_ids or []:
+        normalized_id = normalize_provider_id(provider_id)
+        if normalized_id and normalized_id not in normalized:
+            normalized.append(normalized_id)
+    return normalized
+
+
+DEFAULT_FALLBACK_PROVIDERS = [
+    provider_id
+    for provider_id in get_default_provider_ids('vnbroker')
+    if provider_id != DEFAULT_VNBROKER_PREFERRED_PROVIDER
+]
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+@dataclass
+class VnbrokerTimeoutConfig:
+    connect: float = 10.0
+    read: float = 30.0
+    write: float = 10.0
+    pool: float = 5.0
+
+    def validate(self) -> list[str]:
+        errors = []
+        if not _is_number(self.connect) or not (1.0 <= float(self.connect) <= 60.0):
+            errors.append('timeout.connect phải trong khoảng [1.0, 60.0]')
+        if not _is_number(self.read) or not (5.0 <= float(self.read) <= 300.0):
+            errors.append('timeout.read phải trong khoảng [5.0, 300.0]')
+        if not _is_number(self.write) or not (1.0 <= float(self.write) <= 60.0):
+            errors.append('timeout.write phải trong khoảng [1.0, 60.0]')
+        if not _is_number(self.pool) or not (1.0 <= float(self.pool) <= 60.0):
+            errors.append('timeout.pool phải trong khoảng [1.0, 60.0]')
+        return errors
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> 'VnbrokerTimeoutConfig':
+        payload = dict(data or {})
+        return cls(
+            connect=payload.get('connect', payload.get('connect_timeout', 10.0)),
+            read=payload.get('read', payload.get('read_timeout', 30.0)),
+            write=payload.get('write', payload.get('write_timeout', 10.0)),
+            pool=payload.get('pool', payload.get('pool_connections', 5.0)),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            'connect': self.connect,
+            'read': self.read,
+            'write': self.write,
+            'pool': self.pool,
+        }
 
 
 @dataclass
 class VnbrokerDomainConfig:
     """Typed config cho VNBroker data adapter."""
 
-    # Timeout settings
-    connect_timeout: float = 5.0
-    read_timeout: float = 30.0
-    pool_connections: int = 5
+    timeout: VnbrokerTimeoutConfig = field(default_factory=VnbrokerTimeoutConfig)
     max_retries: int = 3
-    retry_backoff_factor: float = 0.5
+    retry_delay_seconds: float = 2.0
 
     # Providers
-    primary_provider: str = 'vci'
-    fallback_providers: list = field(default_factory=lambda: ['tcbs', 'ssi'])
+    preferred_provider: str = DEFAULT_VNBROKER_PREFERRED_PROVIDER
+    fallback_providers: list[str] = field(default_factory=lambda: list(DEFAULT_FALLBACK_PROVIDERS))
     enabled: bool = True
 
     # Circuit breaker
@@ -32,37 +95,67 @@ class VnbrokerDomainConfig:
 
     def validate(self) -> list[str]:
         """Trả về danh sách lỗi; list rỗng = valid."""
-        errors = []
-        if self.connect_timeout <= 0:
-            errors.append('connect_timeout phải > 0')
-        if self.read_timeout <= 0:
-            errors.append('read_timeout phải > 0')
-        if self.pool_connections < 1:
-            errors.append('pool_connections phải >= 1')
-        if self.max_retries < 0:
-            errors.append('max_retries phải >= 0')
-        if self.primary_provider not in ('vci', 'tcbs', 'ssi', 'wifeed'):
-            errors.append(f"primary_provider '{self.primary_provider}' không hợp lệ")
+        errors = self.timeout.validate()
+        if not isinstance(self.max_retries, int) or not (0 <= self.max_retries <= 10):
+            errors.append('max_retries phải trong khoảng [0, 10]')
+        if not _is_number(self.retry_delay_seconds) or float(self.retry_delay_seconds) < 0:
+            errors.append('retry_delay_seconds phải >= 0')
+        if self.preferred_provider not in SUPPORTED_VNBROKER_PROVIDERS:
+            errors.append(f"preferred_provider '{self.preferred_provider}' không hợp lệ")
+        invalid_fallbacks = [
+            provider_id
+            for provider_id in self.fallback_providers
+            if provider_id not in SUPPORTED_VNBROKER_PROVIDERS
+        ]
+        if invalid_fallbacks:
+            errors.append(
+                'fallback_providers không hợp lệ: ' + ', '.join(invalid_fallbacks)
+            )
+        if self.preferred_provider in self.fallback_providers:
+            errors.append('fallback_providers không được chứa preferred_provider')
         if self.circuit_breaker_threshold < 1:
             errors.append('circuit_breaker_threshold phải >= 1')
         if self.requests_per_minute < 1:
             errors.append('requests_per_minute phải >= 1')
+        if self.burst_limit < 1:
+            errors.append('burst_limit phải >= 1')
         return errors
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'VnbrokerDomainConfig':
-        known = {f.name for f in cls.__dataclass_fields__.values()}
-        filtered = {k: v for k, v in data.items() if k in known}
-        return cls(**filtered)
+        payload = dict(data or {})
+        timeout_payload = payload.get('timeout') if isinstance(payload.get('timeout'), dict) else payload
+        preferred_provider = normalize_provider_id(
+            payload.get('preferred_provider', payload.get('primary_provider', DEFAULT_VNBROKER_PREFERRED_PROVIDER))
+        )
+        fallback_providers = _normalize_provider_list(payload.get('fallback_providers'))
+        if not fallback_providers:
+            fallback_providers = [
+                provider_id
+                for provider_id in DEFAULT_FALLBACK_PROVIDERS
+                if provider_id != preferred_provider
+            ]
+
+        return cls(
+            timeout=VnbrokerTimeoutConfig.from_dict(timeout_payload),
+            max_retries=payload.get('max_retries', 3),
+            retry_delay_seconds=payload.get('retry_delay_seconds', payload.get('retry_backoff_factor', 2.0)),
+            circuit_breaker_threshold=payload.get('circuit_breaker_threshold', 5),
+            circuit_breaker_window_seconds=payload.get('circuit_breaker_window_seconds', 60),
+            circuit_breaker_cooldown_seconds=payload.get('circuit_breaker_cooldown_seconds', 300),
+            preferred_provider=preferred_provider or DEFAULT_VNBROKER_PREFERRED_PROVIDER,
+            fallback_providers=fallback_providers,
+            enabled=payload.get('enabled', True),
+            requests_per_minute=payload.get('requests_per_minute', 60),
+            burst_limit=payload.get('burst_limit', 10),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            'connect_timeout': self.connect_timeout,
-            'read_timeout': self.read_timeout,
-            'pool_connections': self.pool_connections,
+            'timeout': self.timeout.to_dict(),
             'max_retries': self.max_retries,
-            'retry_backoff_factor': self.retry_backoff_factor,
-            'primary_provider': self.primary_provider,
+            'retry_delay_seconds': self.retry_delay_seconds,
+            'preferred_provider': self.preferred_provider,
             'fallback_providers': self.fallback_providers,
             'enabled': self.enabled,
             'circuit_breaker_threshold': self.circuit_breaker_threshold,

@@ -9,11 +9,12 @@ All views require IsAuthenticated; symbol param is always uppercased.
 from datetime import date
 
 from django.db.models import Avg
+from django.utils import timezone
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from market_data import vnbroker_adapter
+from market_data.models import IntradayTick
 from .models import SymbolSnapshot
 
 
@@ -98,25 +99,72 @@ def _normalize_trade(t: dict) -> dict:
     }
 
 
+def _serialize_intraday_tick(tick: IntradayTick) -> dict:
+    return {
+        'time': timezone.localtime(tick.timestamp).strftime('%H:%M:%S'),
+        'price': float(tick.price),
+        'volume': int(tick.volume),
+        'side': _INTRADAY_SIDE_MAP.get(str(tick.side).upper(), 'NO'),
+    }
+
+
 class RealtimeIntradayView(APIView):
-    """GET /api/realtime/intraday/<symbol>/ — intraday bars for symbol."""
+    """GET /api/realtime/intraday/<symbol>/ — intraday matched trades from shared DB."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        page_size = int(request.query_params.get('page_size', 50))
-        data = vnbroker_adapter.fetch_intraday_tape(symbol, page_size=page_size)
-        raw_trades = data.get('trades') or []
-        trades = [_normalize_trade(t) for t in raw_trades]
+        try:
+            page_size = max(1, min(int(request.query_params.get('page_size', 50)), 200))
+        except (TypeError, ValueError):
+            page_size = 50
+
+        served_at = timezone.now()
+        latest_tick = (
+            IntradayTick.objects.filter(symbol=symbol)
+            .only('timestamp', 'created_at')
+            .order_by('-timestamp')
+            .first()
+        )
+        if latest_tick is None:
+            return Response({
+                'symbol': symbol,
+                'trades': [],
+                'bars': [],
+                'total': 0,
+                'source': 'intraday_tick_db_missing',
+                'stale': True,
+                'fetched_at': None,
+                'source_event_at': None,
+                'served_at': served_at.isoformat(),
+                'age_seconds': None,
+                'stale_over_threshold': False,
+                'stale_threshold_seconds': None,
+                'rate_limited': False,
+            })
+
+        latest_trade_date = timezone.localdate(latest_tick.timestamp)
+        tick_rows = list(
+            IntradayTick.objects.filter(symbol=symbol, timestamp__date=latest_trade_date)
+            .order_by('-timestamp')[:page_size]
+        )
+        trades = [_serialize_intraday_tick(tick) for tick in tick_rows]
+        age_seconds = max(int((served_at - latest_tick.timestamp).total_seconds()), 0)
 
         return Response({
             'symbol': symbol,
             'trades': trades,
             'bars': trades,
             'total': len(trades),
-            'source': data.get('source', 'native'),
-            'stale': bool(data.get('stale', False)),
-            'fetched_at': data.get('fetched_at'),
+            'source': 'intraday_tick_db',
+            'stale': latest_trade_date != timezone.localdate(),
+            'fetched_at': latest_tick.created_at.isoformat() if latest_tick.created_at else latest_tick.timestamp.isoformat(),
+            'source_event_at': latest_tick.timestamp.isoformat(),
+            'served_at': served_at.isoformat(),
+            'age_seconds': age_seconds,
+            'stale_over_threshold': False,
+            'stale_threshold_seconds': None,
+            'rate_limited': False,
         })
 
 

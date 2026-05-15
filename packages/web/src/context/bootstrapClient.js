@@ -112,7 +112,7 @@ export function deriveLegacyAuthState(bootstrapPayload) {
     buildTarget: capabilities.build?.target ?? session.build_target ?? null,
     navigation: capabilities.navigation || { visible_groups: [], visible_routes: [] },
     surfaces: capabilities.surfaces || {
-      show_admin_ops: false,
+      show_operations_center: false,
       show_ai_command_center: false,
       show_vip_shell: false,
     },

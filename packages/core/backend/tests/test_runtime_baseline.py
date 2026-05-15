@@ -40,8 +40,9 @@ class CoreRuntimeBaselineTests(unittest.TestCase):
         self.assertEqual(payload['snapshot_version'], '2026-05-03')
         self.assertIn('ai-advisory', payload['navigation']['visible_routes'])
         self.assertIn('whale-alerts', payload['navigation']['visible_routes'])
-        self.assertIn('admin-ops', payload['navigation']['visible_routes'])
-        self.assertTrue(payload['surfaces']['show_admin_ops'])
+        self.assertIn('operations-center', payload['navigation']['visible_routes'])
+        self.assertNotIn('admin-ops', payload['navigation']['visible_routes'])
+        self.assertTrue(payload['surfaces']['show_operations_center'])
         self.assertTrue(payload['surfaces']['show_ai_command_center'])
 
     def test_healthcheck_accepts_fresh_written_file(self):
@@ -105,7 +106,8 @@ class DjangoHealthViewTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('whale-alerts', data['navigation']['visible_routes'])
         self.assertIn('ai-advisory', data['navigation']['visible_routes'])
-        self.assertIn('admin-ops', data['navigation']['visible_routes'])
+        self.assertIn('operations-center', data['navigation']['visible_routes'])
+        self.assertNotIn('admin-ops', data['navigation']['visible_routes'])
 
     def test_x_request_id_propagated(self):
         from django.test import RequestFactory

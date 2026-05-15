@@ -71,6 +71,7 @@ class IngestTriggerResponseSerializer(serializers.Serializer):
     """Response schema for ingest trigger endpoints."""
     task_id = serializers.CharField()
     job_id = serializers.IntegerField(allow_null=True)
+    service_run_log_id = serializers.IntegerField(allow_null=True, required=False)
     status = serializers.CharField()
     started_at = serializers.DateTimeField()
     message = serializers.CharField()

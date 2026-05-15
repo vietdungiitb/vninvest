@@ -1,33 +1,28 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Khởi động toàn bộ stack vninvest ở chế độ dev local.
+    Khởi động toàn bộ stack vninvest ở chế độ dev local, native core only.
 
 .DESCRIPTION
     Script này:
-      1. Build và khởi động tất cả Docker services (db, redis, backend, celery, frontend)
-      2. Đợi backend healthy
-    3. Đồng bộ nhóm mã thị trường (không seed dữ liệu demo)
-    4. Chỉ seed demo khi truyền cờ -SeedDemo
+      1. Build và khởi động tất cả Docker services core (db, redis, core-api, core-workers, core-beat, frontend)
+      2. Đợi core-api healthy
+      3. Kiểm tra drift hàng đợi Celery native
 
         Truy cập sau khi chạy:
-        - App:       http://localhost       (username: testuser   / password: Test@123456)
-            - Admin:     http://localhost/admin (username: admin      / password: test@123456)
-            - API:       http://localhost:8000/api/
+        - App:       http://localhost/operations-center
+        - Admin:     http://localhost/admin
+        - API:       http://localhost:8001/core/v1/health
             - Mailpit:   http://localhost:8025
-            - Backend log: docker compose logs -f backend
+            - Core API log: docker compose logs -f core-api
 
 .USAGE
-    .\start_dev.ps1              # full build + up (không seed demo)
+    .\start_dev.ps1             # full build + up
     .\start_dev.ps1 -SkipBuild  # chỉ up (đã build rồi)
-    .\start_dev.ps1 -SeedDemo   # build + up + seed demo thủ công
-    .\start_dev.ps1 -SkipSeed   # cờ tương thích ngược, ưu tiên không seed
     .\start_dev.ps1 -Down       # dừng và xóa containers
 #>
 param(
     [switch]$SkipBuild,
-    [switch]$SeedDemo,
-    [switch]$SkipSeed,
     [switch]$Down
 )
 
@@ -65,10 +60,49 @@ function Get-EnvValueFromFile {
     return $null
 }
 
+function Test-IsPlaceholderSecretValue {
+    param(
+        [AllowNull()]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $true
+    }
+
+    $normalized = $Value.Trim().ToLowerInvariant()
+    return @(
+        'dummy',
+        'changeme',
+        'change-me',
+        'replace-me',
+        'replace_me',
+        'your_token_here',
+        'token',
+        'unset'
+    ) -contains $normalized
+}
+
 function Ensure-VnbrokerGitHubToken {
-    $token = $env:VNBROKER_GITHUB_TOKEN
-    if ([string]::IsNullOrWhiteSpace($token)) {
-        $token = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
+    $envToken = $env:VNBROKER_GITHUB_TOKEN
+    $backendToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
+    $composeToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot $ComposeEnvFile) -Key "VNBROKER_GITHUB_TOKEN"
+
+    if (-not (Test-IsPlaceholderSecretValue -Value $envToken)) {
+        $token = $envToken
+    } elseif (-not [string]::IsNullOrWhiteSpace($envToken)) {
+        Write-Host "  Ignoring placeholder VNBROKER_GITHUB_TOKEN from current shell." -ForegroundColor Yellow
+        $token = $null
+    } else {
+        $token = $null
+    }
+
+    if ([string]::IsNullOrWhiteSpace($token) -and -not (Test-IsPlaceholderSecretValue -Value $backendToken)) {
+        $token = $backendToken
+    }
+
+    if ([string]::IsNullOrWhiteSpace($token) -and -not (Test-IsPlaceholderSecretValue -Value $composeToken)) {
+        $token = $composeToken
     }
 
     if ([string]::IsNullOrWhiteSpace($token)) {
@@ -82,7 +116,14 @@ function Ensure-VnbrokerGitHubToken {
             throw "Missing scripts/dev-setup.ps1 to bootstrap VNBROKER_GITHUB_TOKEN."
         }
 
-        $token = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
+        $backendToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
+        $composeToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot $ComposeEnvFile) -Key "VNBROKER_GITHUB_TOKEN"
+
+        if (-not (Test-IsPlaceholderSecretValue -Value $backendToken)) {
+            $token = $backendToken
+        } elseif (-not (Test-IsPlaceholderSecretValue -Value $composeToken)) {
+            $token = $composeToken
+        }
     }
 
     if ([string]::IsNullOrWhiteSpace($token)) {
@@ -213,9 +254,14 @@ $devContainerNames = @(
     "vninvest-dev-db",
     "vninvest-dev-redis",
     "vninvest-dev-mailpit",
-    "vninvest-dev-backend",
-    "vninvest-dev-celery-worker",
-    "vninvest-dev-celery-beat",
+    "vninvest-dev-core-api",
+    "vninvest-dev-core-worker",
+    "vninvest-dev-core-worker-realtime-prefetch",
+    "vninvest-dev-core-worker-realtime-stream",
+    "vninvest-dev-core-worker-analytics",
+    "vninvest-dev-core-worker-enrichment",
+    "vninvest-dev-core-worker-manual",
+    "vninvest-dev-core-beat",
     "vninvest-dev-frontend"
 )
 foreach ($name in $devContainerNames) {
@@ -228,20 +274,20 @@ foreach ($name in $devContainerNames) {
 
 Invoke-Compose up -d --remove-orphans
 
-# ── Đợi backend healthy ──────────────────────────────────────────────────────
-Write-Step "Đợi backend khởi động (tối đa 120 giây)..."
+# ── Đợi core-api healthy ──────────────────────────────────────────────────────
+Write-Step "Đợi core-api khởi động (tối đa 120 giây)..."
 $maxRetries = 24
 $retryDelay = 5
 $healthy = $false
 
 for ($i = 1; $i -le $maxRetries; $i++) {
     Start-Sleep -Seconds $retryDelay
-    $status = Get-ContainerHealthStatus -ContainerName "vninvest-dev-backend"
+    $status = Get-ContainerHealthStatus -ContainerName "vninvest-dev-core-api"
     if (-not $status) {
         # fallback: compose tạo tên có suffix
-        $status = Get-ContainerHealthStatus -ContainerName "vninvest-dev-backend-1"
+        $status = Get-ContainerHealthStatus -ContainerName "vninvest-dev-core-api-1"
     }
-    Write-Host "  [$i/$maxRetries] backend health: $status"
+    Write-Host "  [$i/$maxRetries] core-api health: $status"
     if ($status -eq "healthy" -or $status -eq "running-no-healthcheck") {
         $healthy = $true
         break
@@ -250,118 +296,53 @@ for ($i = 1; $i -le $maxRetries; $i++) {
 
 if (-not $healthy) {
     Write-Host ""
-    Write-Host "WARN: Backend chưa healthy sau 2 phút. Kiểm tra log:" -ForegroundColor Yellow
-    Write-Host "  docker compose -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail=50 backend" -ForegroundColor Yellow
-    Write-Host "Vẫn tiếp tục các bước hậu khởi động (có thể backend đang chạy nhưng healthcheck chưa pass)..." -ForegroundColor Yellow
+    Write-Host "WARN: core-api chưa healthy sau 2 phút. Kiểm tra log:" -ForegroundColor Yellow
+    Write-Host "  docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail=50 core-api" -ForegroundColor Yellow
+    Write-Host "Vẫn tiếp tục các bước hậu khởi động (có thể core-api đang chạy nhưng healthcheck chưa pass)..." -ForegroundColor Yellow
     Start-Sleep -Seconds 10
 }
 
-# ── Market taxonomy sync (không phải demo seed) ─────────────────────────────
-Write-Step "Sync securities groups (dữ liệu thị trường)"
-$backendContainer = docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" 2>$null | Select-Object -First 1
-if (-not $backendContainer) {
-    Write-Host "WARN: Không tìm thấy container backend đang chạy, bỏ qua sync securities groups." -ForegroundColor Yellow
+# ── Native scheduler sanity check ───────────────────────────────────────────
+Write-Step "Kiểm tra scheduler queue native"
+$coreApiContainer = docker ps --filter "name=core-api" --filter "status=running" --format "{{.Names}}" 2>$null | Select-Object -First 1
+if (-not $coreApiContainer) {
+    Write-Host "WARN: Không tìm thấy container core-api đang chạy, bỏ qua check_scheduler_queue_drift." -ForegroundColor Yellow
 } else {
-    Write-Host "  Container: $backendContainer"
-    $seedGroupOutput = cmd /c "docker exec $backendContainer python manage.py seed_securities_groups 2>&1"
-    if ($seedGroupOutput) {
-        $seedGroupOutput | ForEach-Object { Write-Host $_ }
+    Write-Host "  Container: $coreApiContainer"
+    $queueDriftOutput = cmd /c "docker exec $coreApiContainer python src/manage.py check_scheduler_queue_drift --warn-only 2>&1"
+    if ($queueDriftOutput) {
+        $queueDriftOutput | ForEach-Object { Write-Host $_ }
     }
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "WARN: seed_securities_groups thất bại (exit code: $LASTEXITCODE). Tiếp tục để không chặn stack." -ForegroundColor Yellow
+        Write-Host "WARN: check_scheduler_queue_drift báo lỗi (exit code: $LASTEXITCODE). Tiếp tục để không chặn stack." -ForegroundColor Yellow
     }
-}
-
-# ── Seed demo data (opt-in only) ─────────────────────────────────────────────
-$shouldSeedDemo = $SeedDemo -and (-not $SkipSeed)
-if ($shouldSeedDemo) {
-    Write-Step "Seed demo data (opt-in: -SeedDemo)"
-
-    $previousErrorActionPreference = $ErrorActionPreference
-    $nativeCommandErrPrefVar = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
-    if ($nativeCommandErrPrefVar) {
-        $nativeCommandErrPref = $nativeCommandErrPrefVar.Value
-        $PSNativeCommandUseErrorActionPreference = $false
-    }
-    $ErrorActionPreference = "Continue"
-    try {
-        # Tìm tên container backend đúng
-        $backendContainer = docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" 2>$null | Select-Object -First 1
-        if (-not $backendContainer) {
-            Write-Host "Lỗi: Không tìm thấy container backend đang chạy." -ForegroundColor Red
-            exit 1
-        }
-        Write-Host "  Container: $backendContainer"
-
-        # Tạo superuser admin
-        Write-Host "  Tạo superuser admin..."
-        docker exec $backendContainer python manage.py shell -c @"
-from django.contrib.auth.models import User
-password = 'test@123456'
-user, created = User.objects.get_or_create(username='admin', defaults={
-    'email': 'admin@local.dev',
-    'is_staff': True,
-    'is_superuser': True,
-})
-user.email = 'admin@local.dev'
-user.is_staff = True
-user.is_superuser = True
-user.set_password(password)
-user.save()
-print('Created admin / test@123456' if created else 'Updated admin password -> test@123456')
-"@
-        if ($LASTEXITCODE -ne 0) {
-            throw "Tạo superuser admin thất bại (exit code: $LASTEXITCODE)."
-        }
-
-        # Seed demo data (testuser / test123 + mock intraday data)
-        Write-Host "  Seed demo user + data (skip mock whale alerts)..."
-        docker exec $backendContainer python manage.py seed_demo_data --no-alerts 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            throw "Seed demo data thất bại (exit code: $LASTEXITCODE)."
-        }
-
-        Write-Host ""
-        Write-Host "  Demo accounts:" -ForegroundColor Green
-        Write-Host "    testuser  / Test@123456  (user thường, portfolio đầy đủ)" -ForegroundColor Green
-        Write-Host "    admin     / test@123456 (superuser, vào /admin)" -ForegroundColor Green
-    }
-    finally {
-        $ErrorActionPreference = $previousErrorActionPreference
-        if ($nativeCommandErrPrefVar) {
-            $PSNativeCommandUseErrorActionPreference = $nativeCommandErrPref
-        }
-    }
-} else {
-    Write-Step "Bỏ qua seed demo (mặc định dùng dữ liệu thật thị trường)"
-    Write-Host "  Dùng -SeedDemo nếu bạn muốn tạo bộ dữ liệu demo để test UI cục bộ." -ForegroundColor DarkGray
 }
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host " Stack đã sẵn sàng!" -ForegroundColor Green
+Write-Host " Stack native đã sẵn sàng!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  App        -> http://localhost:8080"
-Write-Host "  Admin      -> http://localhost:8080/admin   (admin / test@123456)"
-Write-Host "  API        -> http://localhost:8000/api/"
+Write-Host "  App        -> http://localhost/operations-center"
+Write-Host "  Admin      -> http://localhost/admin"
+Write-Host "  API        -> http://localhost:8001/core/v1/health"
 Write-Host "  Mailpit    -> http://localhost:8026"
 Write-Host ""
 Write-Host "Useful commands:"
-Write-Host "  Xem log backend:   docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f backend"
-Write-Host "  Xem log celery:    docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f celery_worker"
+Write-Host "  Xem log core-api:  docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f core-api"
+Write-Host "  Xem log beat:      docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f core-beat"
 Write-Host "  Dừng stack:        .\start_dev.ps1 -Down"
-Write-Host "  Smoke test API:    Invoke-RestMethod http://localhost:8000/api/health/"
+Write-Host "  Smoke test API:    Invoke-RestMethod http://localhost:8001/core/v1/health"
 Write-Host ""
 
-# Smoke probes để xác nhận backend/frontend đã sẵn sàng test thủ công.
-Write-Step "Smoke checks (backend + frontend)"
+# Smoke probes để xác nhận core-api/frontend đã sẵn sàng test thủ công.
+Write-Step "Smoke checks (core-api + frontend)"
 $backendOk = $false
 $frontendOk = $false
 
 try {
-    $backendResp = Invoke-WebRequest -Uri "http://localhost:8000/api/health/" -UseBasicParsing -TimeoutSec 15
+    $backendResp = Invoke-WebRequest -Uri "http://localhost:8001/core/v1/health" -UseBasicParsing -TimeoutSec 15
     if ($backendResp.StatusCode -ge 200 -and $backendResp.StatusCode -lt 500) {
         $backendOk = $true
     }
@@ -370,7 +351,7 @@ try {
 }
 
 try {
-    $frontendResp = Invoke-WebRequest -Uri "http://localhost:8080" -UseBasicParsing -TimeoutSec 15
+    $frontendResp = Invoke-WebRequest -Uri "http://localhost" -UseBasicParsing -TimeoutSec 15
     if ($frontendResp.StatusCode -ge 200 -and $frontendResp.StatusCode -lt 500) {
         $frontendOk = $true
     }
@@ -378,7 +359,7 @@ try {
     $frontendOk = $false
 }
 
-Write-Host ("  Backend health  : " + ($(if ($backendOk) { "OK" } else { "FAIL" })))
+Write-Host ("  Core API health : " + ($(if ($backendOk) { "OK" } else { "FAIL" })))
 Write-Host ("  Frontend health : " + ($(if ($frontendOk) { "OK" } else { "FAIL" })))
 
 if (-not $backendOk -or -not $frontendOk) {

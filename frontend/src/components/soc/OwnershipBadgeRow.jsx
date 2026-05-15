@@ -5,11 +5,11 @@
 import PropTypes from 'prop-types';
 
 const MODE_COLORS = {
-  'native-write': { bg: 'bg-green-900', border: 'border-green-700', badge: 'bg-green-700' },
-  'bridge-write': { bg: 'bg-yellow-900', border: 'border-yellow-700', badge: 'bg-yellow-700' },
-  'read-only': { bg: 'bg-gray-900', border: 'border-gray-700', badge: 'bg-gray-700' },
-  'canonical': { bg: 'bg-blue-900', border: 'border-blue-700', badge: 'bg-blue-700' },
-  'deprecated': { bg: 'bg-red-900', border: 'border-red-700', badge: 'bg-red-700' },
+  'canonical': { bg: 'bg-emerald-950/40', border: 'border-emerald-700', badge: 'bg-emerald-900 text-emerald-200' },
+  'native-write': { bg: 'bg-sky-950/40', border: 'border-sky-700', badge: 'bg-sky-900 text-sky-200' },
+  'bridge-write': { bg: 'bg-amber-950/40', border: 'border-amber-700', badge: 'bg-amber-900 text-amber-200' },
+  'read-only': { bg: 'bg-slate-900', border: 'border-slate-700', badge: 'bg-slate-800 text-slate-200' },
+  'deprecated': { bg: 'bg-rose-950/30', border: 'border-rose-700', badge: 'bg-rose-900/50 text-rose-200' },
 };
 
 export const OwnershipBadgeRow = ({ domain, ownership, t }) => {
@@ -26,7 +26,7 @@ export const OwnershipBadgeRow = ({ domain, ownership, t }) => {
           </p>
         </div>
         <div className="flex gap-2">
-          <span className={`${colors.badge} px-3 py-1 rounded text-white text-xs font-bold`}>
+          <span className={`${colors.badge} px-3 py-1 rounded text-xs font-bold`}>
             {ownership.mode}
           </span>
           <span className={`${canApply} px-3 py-1 rounded text-xs font-bold`}>
@@ -48,6 +48,8 @@ export const OwnershipBadgeRow = ({ domain, ownership, t }) => {
   );
 };
 
+// NOTE: React 19 no longer runs propTypes validation at runtime.
+// PropTypes kept for documentation and IDE tooling only.
 OwnershipBadgeRow.propTypes = {
   domain: PropTypes.string.isRequired,
   ownership: PropTypes.shape({

@@ -7,7 +7,9 @@ VnbrokerRuntimeConfig: runtime configuration for vnbroker adapter.
 
 ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 """
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class StockProfile(models.Model):
@@ -197,3 +199,181 @@ class IntradayTick(models.Model):
 
     def __str__(self) -> str:
         return f'{self.symbol} {self.timestamp} {self.price} {self.side}'
+
+
+class GlobalSymbolRegistry(models.Model):
+    """
+    Persistent SSOT row for a symbol in the shared market-data matrix.
+    """
+
+    class PriorityTierChoices(models.TextChoices):
+        HOT = 'hot', 'Hot'
+        WARM = 'warm', 'Warm'
+        COLD = 'cold', 'Cold'
+        RECOVERY = 'recovery', 'Recovery'
+
+    symbol = models.CharField(max_length=32, unique=True, db_index=True, verbose_name='Mã cổ phiếu')
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name='Đang thuộc active crawl set')
+    current_priority_tier = models.CharField(
+        max_length=16,
+        choices=PriorityTierChoices.choices,
+        default=PriorityTierChoices.COLD,
+        db_index=True,
+        verbose_name='Tier ưu tiên hiện hành',
+    )
+    priority_score = models.FloatField(default=0.0, verbose_name='Điểm ưu tiên')
+    demand_source_count = models.PositiveIntegerField(default=0, verbose_name='Số demand source đang active')
+    last_demand_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Lần demand cuối')
+    last_hydrated_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Lần hydrate cuối')
+    latest_trade_date = models.DateField(null=True, blank=True, db_index=True, verbose_name='Phiên dữ liệu đầy đủ gần nhất')
+    freshness_state_summary = models.CharField(max_length=16, default='unknown', db_index=True, verbose_name='Tóm tắt freshness')
+    coverage_state_summary = models.CharField(max_length=16, default='unknown', db_index=True, verbose_name='Tóm tắt coverage')
+    decay_after_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Thời điểm hết decay window')
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Global symbol registry'
+        verbose_name_plural = 'Global symbol registry'
+        ordering = ['symbol']
+        indexes = [
+            models.Index(fields=['is_active', 'current_priority_tier'], name='mktdata_gsr_active_tier_idx'),
+            models.Index(fields=['freshness_state_summary', 'coverage_state_summary'], name='mktdata_gsr_fresh_cov_idx'),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.symbol} [{self.current_priority_tier}]'
+
+
+class GlobalSymbolDemandSource(models.Model):
+    """
+    Active/inactive demand edges that pull a symbol into the global matrix.
+    """
+
+    class SourceTypeChoices(models.TextChoices):
+        SYSTEM_DEFAULT = 'system_default', 'System default'
+        ADMIN_GROUP = 'admin_group', 'Admin group'
+        HOLDING = 'holding', 'Holding'
+        WATCHLIST = 'watchlist', 'Watchlist'
+        TRACKED_SYMBOL = 'tracked_symbol', 'Tracked symbol'
+        ALERT = 'alert', 'Alert'
+
+    registry = models.ForeignKey(
+        GlobalSymbolRegistry,
+        on_delete=models.CASCADE,
+        related_name='demand_sources',
+        verbose_name='Registry',
+    )
+    source_type = models.CharField(
+        max_length=32,
+        choices=SourceTypeChoices.choices,
+        db_index=True,
+        verbose_name='Loại demand source',
+    )
+    source_ref = models.CharField(max_length=128, db_index=True, verbose_name='Định danh source')
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.SET_NULL,
+        related_name='global_symbol_demand_sources',
+        null=True,
+        blank=True,
+        verbose_name='Tenant',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='global_symbol_demand_sources',
+        null=True,
+        blank=True,
+        verbose_name='Người dùng',
+    )
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name='Đang active')
+    activated_at = models.DateTimeField(default=timezone.now, verbose_name='Thời điểm activate')
+    deactivated_at = models.DateTimeField(null=True, blank=True, verbose_name='Thời điểm deactivate')
+    weight = models.FloatField(default=1.0, verbose_name='Trọng số demand')
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Global symbol demand source'
+        verbose_name_plural = 'Global symbol demand sources'
+        ordering = ['registry__symbol', 'source_type', 'source_ref']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['registry', 'source_type', 'source_ref'],
+                name='mktdata_gsd_unique_source',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['source_type', 'is_active'], name='mktdata_gsd_source_active_idx'),
+            models.Index(fields=['tenant', 'source_type', 'is_active'], name='mktdata_gsd_tenant_source_idx'),
+            models.Index(fields=['user', 'source_type', 'is_active'], name='mktdata_gsd_user_source_idx'),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.registry.symbol}:{self.source_type}:{self.source_ref}'
+
+
+class GlobalSymbolCoverage(models.Model):
+    """
+    Coverage/freshness inventory for a symbol per dataset.
+    """
+
+    class DatasetChoices(models.TextChoices):
+        DAILY_PRICES = 'daily_prices', 'Daily prices'
+        PRICE_BOARD_SNAPSHOT = 'price_board_snapshot', 'Price board snapshot'
+        INTRADAY_BARS = 'intraday_bars', 'Intraday bars'
+        INTRADAY_TICKS = 'intraday_ticks', 'Intraday ticks'
+        SESSION_FACTS = 'session_facts', 'Session facts'
+
+    class FreshnessChoices(models.TextChoices):
+        FRESH = 'fresh', 'Fresh'
+        WARM = 'warm', 'Warm'
+        STALE = 'stale', 'Stale'
+        MISSING = 'missing', 'Missing'
+        ERROR = 'error', 'Error'
+        UNKNOWN = 'unknown', 'Unknown'
+
+    registry = models.ForeignKey(
+        GlobalSymbolRegistry,
+        on_delete=models.CASCADE,
+        related_name='coverage_rows',
+        verbose_name='Registry',
+    )
+    dataset = models.CharField(max_length=32, choices=DatasetChoices.choices, db_index=True, verbose_name='Dataset')
+    latest_available_at = models.DateTimeField(null=True, blank=True, verbose_name='Mốc dữ liệu mới nhất')
+    oldest_available_at = models.DateTimeField(null=True, blank=True, verbose_name='Mốc dữ liệu cũ nhất')
+    latest_complete_trade_date = models.DateField(null=True, blank=True, verbose_name='Phiên hoàn chỉnh mới nhất')
+    freshness_state = models.CharField(
+        max_length=16,
+        choices=FreshnessChoices.choices,
+        default=FreshnessChoices.UNKNOWN,
+        db_index=True,
+        verbose_name='Trạng thái freshness',
+    )
+    missing_ranges = models.JSONField(default=list, blank=True)
+    last_verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần verify cuối')
+    next_recommended_action = models.CharField(max_length=64, blank=True, default='', verbose_name='Hành động kế tiếp')
+    detail = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Global symbol coverage'
+        verbose_name_plural = 'Global symbol coverage'
+        ordering = ['registry__symbol', 'dataset']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['registry', 'dataset'],
+                name='mktdata_gsc_unique_dataset',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['dataset', 'freshness_state'], name='mktdata_gsc_dataset_state_idx'),
+            models.Index(fields=['registry', 'dataset', 'freshness_state'], name='mktdata_gsc_reg_dataset_idx'),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.registry.symbol}:{self.dataset}:{self.freshness_state}'

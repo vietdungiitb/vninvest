@@ -1,5 +1,5 @@
 """
-ServiceOwnershipMatrix — SSOT ownership cho 4 domains của SOC.
+ServiceOwnershipMatrix — SSOT ownership cho 5 domains của SOC.
 
 Constants được copy từ admin_ops (không import để tránh circular dep).
 Frontend derive write capability từ can_apply.
@@ -12,7 +12,11 @@ WRITABLE_MODES = frozenset({
     'write-through', 'write-enabled', 'direct-writer',
 })
 
-# ── Ownership records mặc định cho 4 domain của SOC ──────────────────────────
+SOC_APPLY_MODES = frozenset({
+    'canonical', 'native-write', 'write-through', 'write-enabled', 'direct-writer',
+})
+
+# ── Ownership records mặc định cho 5 domain của SOC ──────────────────────────
 # Copy constant từ admin_ops/views.py — không import
 DEFAULT_DOMAIN_OWNERSHIP: dict[str, dict[str, Any]] = {
     'vnbroker': {
@@ -63,6 +67,14 @@ DEFAULT_DOMAIN_OWNERSHIP: dict[str, dict[str, Any]] = {
         'can_apply': True,
         'locked_fields': [],
         'compatibility_domains': [],
+    },
+    'dataops_market_data': {
+        'mode': 'native-write',
+        'owner_team': 'core',
+        'write_surface': 'service_ops',
+        'can_apply': True,
+        'locked_fields': [],
+        'compatibility_domains': ['matrix'],
     },
 }
 
@@ -121,6 +133,7 @@ class ServiceOwnershipMatrix:
         return {
             'domain': domain,
             'mode': record.get('mode', 'unknown'),
+            'writer': record.get('write_surface', '') or record.get('owner_team', ''),
             'owner_team': record.get('owner_team', ''),
             'write_surface': record.get('write_surface', ''),
             'can_apply': record.get('can_apply', False),
@@ -150,7 +163,7 @@ def build_ownership_matrix_from_db() -> ServiceOwnershipMatrix:
             'mode': rec.write_mode,
             'owner_team': rec.owner_team,
             'write_surface': rec.write_surface,
-            'can_apply': rec.is_writable(),
+            'can_apply': rec.write_mode in SOC_APPLY_MODES,
             'locked_fields': rec.locked_fields or [],
             'compatibility_domains': rec.compatibility_domains or [],
         }

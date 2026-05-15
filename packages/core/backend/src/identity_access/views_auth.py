@@ -115,6 +115,7 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
         abilities.extend([
             {'action': 'read', 'subject': 'admin.operator.read'},
             {'action': 'manage', 'subject': 'system.ai_command_center.manage'},
+            {'action': 'read', 'subject': 'ServiceOpsCenter'},
             # Operator admin panel subjects used by ProtectedRoute in frontend App.jsx
             {'action': 'read', 'subject': 'AdminOps'},
             {'action': 'read', 'subject': 'AdminCrawlControl'},
@@ -137,7 +138,7 @@ def _build_navigation(user, tenant: CoreTenant) -> dict:
 
     if user.is_staff or user.is_superuser:
         groups.append('admin')
-        routes.extend(['admin-ops', 'ai-command-center'])
+        routes.extend(['operations-center', 'ai-command-center'])
 
     if _build_target() == 'vip':
         groups.append('vip-local')
@@ -199,7 +200,7 @@ def _build_capabilities_payload(user, tenant: CoreTenant, service_account=None) 
         'entitlements': entitlements,
         'navigation': _build_navigation(user, tenant),
         'surfaces': {
-            'show_admin_ops': bool(user.is_staff or user.is_superuser),
+            'show_operations_center': bool(user.is_staff or user.is_superuser),
             'show_ai_command_center': _build_target() in {'saas', 'vip'},
             'show_vip_shell': _build_target() == 'vip',
         },

@@ -494,19 +494,26 @@ export const getWhaleFeed = (symbol) =>
 /**
  * Lấy SessionFacts (CVD, Strength, Dark Flow) cho một symbol.
  * Endpoint: GET /api/market/session-facts/<symbol>/
- * Tự động compute on-demand nếu chưa có dữ liệu hôm nay.
+ * Nếu truyền tradeDate, endpoint khóa đúng selected session thay vì fallback về phiên gần nhất.
  */
-export const getSessionFacts = (symbol) =>
-apiClient.get(`/market/session-facts/${encodeURIComponent(symbol)}/`);
+export const getSessionFacts = (symbol, tradeDate = null) =>
+  apiClient.get(`/market/session-facts/${encodeURIComponent(symbol)}/`, {
+    params: {
+      ...(tradeDate ? { trade_date: tradeDate } : {}),
+    },
+  });
 
 /**
  * Lấy chuỗi CVD theo bucket từ SSOT duy nhất (WhaleAlertCanonical).
  * Endpoint: GET /api/market/session-facts/<symbol>/cvd/?window=<5m|15m|30m|1h>
  * Thay thế cvd_series từ IntradayTick cho OrderFlowRadarPanel.
  */
-export const getSessionFactsCvd = (symbol, window = '15m') =>
+export const getSessionFactsCvd = (symbol, window = '15m', tradeDate = null) =>
   apiClient.get(`/market/session-facts/${encodeURIComponent(symbol)}/cvd/`, {
-    params: { window },
+    params: {
+      window,
+      ...(tradeDate ? { trade_date: tradeDate } : {}),
+    },
   });export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate, includeBaseline } = {}) =>
   apiClient.get(`/portfolio/whale/analytics/${encodeURIComponent(symbol)}/`, {
     params: {
@@ -639,7 +646,7 @@ export const getMarketDiscoveryHub = () => apiClient.get('/portfolio/market-disc
 export const getCanonicalAIAdvisory = (symbol) =>
   apiClient.get(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/canonical/`);
 export const refreshWhaleAdvisory = (symbol) =>
-  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`);
+  apiClient.post(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/refresh/`);
 export const deleteCurrentWhaleAdvisory = (symbol) =>
   apiClient.delete(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/current/`);
 export const getAdvisoryAutoRefreshInfo = (symbol) =>

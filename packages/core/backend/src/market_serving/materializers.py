@@ -175,7 +175,7 @@ def materialize_pre_open_snapshots(
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def materialize_session_facts(self):
+def materialize_session_facts(self, symbol: str | None = None):
     """
     Tính SessionFacts từ WhaleAlertCanonical dùng công thức chuẩn quốc tế:
       - CVD (Cumulative Volume Delta) normalized 0-100
@@ -189,7 +189,7 @@ def materialize_session_facts(self):
     from market_serving.session_facts_engine import compute_session_facts_for_all_active
 
     try:
-        result = compute_session_facts_for_all_active()
+        result = compute_session_facts_for_all_active(symbol=symbol)
         logger.info(
             'materialize_session_facts: %s',
             result,

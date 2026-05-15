@@ -19,8 +19,6 @@ import AICommandCenterShellHost from './pages/AICommandCenterShellHost';
 import PortfoliosShellHost from './pages/PortfoliosShellHost';
 import Watchlist from './pages/Watchlist';
 import WatchlistShellHost from './pages/WatchlistShellHost';
-import AdminOps from './pages/AdminOps';
-import AdminOpsShellHost from './pages/AdminOpsShellHost';
 import AdminCoreOverview from './pages/AdminCoreOverview';
 import AdminCoreTenants from './pages/AdminCoreTenants';
 import AdminCoreServiceAccounts from './pages/AdminCoreServiceAccounts';
@@ -248,11 +246,7 @@ export default function App() {
                   </Route>
                   <Route
                     path="admin-ops"
-                    element={(
-                      <ProtectedRoute action="read" subject="AdminOps">
-                        {packageShellHostEnabled ? <AdminOpsShellHost /> : <AdminOps />}
-                      </ProtectedRoute>
-                    )}
+                    element={<Navigate to="/operations-center" replace />}
                   />
                   <Route
                     path="admin-crawl-control"

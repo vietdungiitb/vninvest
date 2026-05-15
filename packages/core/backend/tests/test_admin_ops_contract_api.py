@@ -28,6 +28,10 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import SystemAISettings
+from market_data.vnbroker_benchmark import (
+    clear_latest_price_board_benchmark_report,
+    set_latest_price_board_benchmark_report,
+)
 from market_data.models import VnbrokerRuntimeConfig
 from ops_audit.models import RequestTrace
 from user_workspace.models import Portfolio, Watchlist, WatchlistItem
@@ -50,6 +54,7 @@ from vninvest_core.contracts.admin_ops.views import (
 
 class AdminOpsContractApiTests(TestCase):
     def setUp(self):
+        clear_latest_price_board_benchmark_report()
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='core-admin-ops',
@@ -301,11 +306,77 @@ class AdminOpsContractApiTests(TestCase):
         self.assertTrue(response.data['ok'])
         self.assertEqual(response.data['result']['upserted'], 42)
 
-    def test_bridge_backed_admin_ops_routes_fail_soft_without_bridge(self):
+    def test_benchmark_latest_returns_native_empty_state_without_report(self):
         benchmark_response = self.client.get('/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
         self.assertEqual(benchmark_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(benchmark_response.data['status'], 'not_available')
+        self.assertTrue(benchmark_response.data['ok'])
+        self.assertFalse(benchmark_response.data['has_report'])
 
+    @patch('vninvest_core.contracts.admin_ops.views._is_celery_alive', return_value=True)
+    @patch('data_ingest.tasks.run_vnbroker_price_board_benchmark.apply_async')
+    def test_benchmark_run_dispatches_native_task(self, mock_apply_async, _is_celery_alive_mock):
+        mock_apply_async.return_value = SimpleNamespace(id='bench-1')
+
+        response = self.client.post(
+            '/api/admin-ops/vnbroker-config/benchmark-price-board/run/',
+            {'symbol': 'FPT'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['status'], 'started')
+        self.assertEqual(response.data['task_id'], 'bench-1')
+        self.assertEqual(response.data['mode'], 'celery')
+        mock_apply_async.assert_called_once_with(kwargs={'payload': {'symbol': 'FPT'}}, queue='manual_on_demand')
+
+    @override_settings(LEGACY_BACKEND_URL='http://legacy.internal')
+    @patch('vninvest_core.contracts.admin_ops.views.httpx.request')
+    @patch('vninvest_core.contracts.admin_ops.views._is_celery_alive', return_value=True)
+    @patch('data_ingest.tasks.run_vnbroker_price_board_benchmark.apply_async')
+    def test_benchmark_routes_remain_native_even_when_legacy_bridge_is_configured(
+        self,
+        mock_apply_async,
+        _is_celery_alive_mock,
+        mock_request,
+    ):
+        mock_apply_async.return_value = SimpleNamespace(id='bench-2')
+
+        latest_response = self.client.get('/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
+        run_response = self.client.post(
+            '/api/admin-ops/vnbroker-config/benchmark-price-board/run/',
+            {'symbol': 'VNM'},
+            format='json',
+        )
+
+        self.assertEqual(latest_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(latest_response.data['ok'])
+        self.assertFalse(latest_response.data['has_report'])
+        self.assertEqual(run_response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(run_response.data['task_id'], 'bench-2')
+        mock_request.assert_not_called()
+
+    def test_benchmark_latest_returns_cached_native_report(self):
+        set_latest_price_board_benchmark_report(
+            {
+                'status': 'completed',
+                'started_at': timezone.now().isoformat(),
+                'finished_at': timezone.now().isoformat(),
+                'symbol': 'FPT',
+                'duration_seconds': 10,
+                'results': [],
+                'recommendation': {'primary_provider': 'KBS'},
+            }
+        )
+
+        response = self.client.get('/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertTrue(response.data['has_report'])
+        self.assertEqual(response.data['report']['symbol'], 'FPT')
+
+    def test_market_groups_sync_remains_native_without_bridge(self):
         market_groups_response = self.client.post('/api/admin-ops/market-groups/sync/', {}, format='json')
         self.assertEqual(market_groups_response.status_code, status.HTTP_200_OK)
         self.assertEqual(market_groups_response.data['status'], 'accepted')
@@ -314,8 +385,6 @@ class AdminOpsContractApiTests(TestCase):
     @patch('vninvest_core.contracts.admin_ops.views.httpx.request')
     def test_bridge_backed_admin_ops_routes_delegate_to_legacy_backend(self, mock_request):
         mock_request.side_effect = [
-            httpx.Response(200, json={'ok': True, 'has_report': False}),
-            httpx.Response(202, json={'ok': True, 'status': 'started', 'task_id': 'bench-1'}),
             httpx.Response(200, json={'success': True, 'message': 'synced'}),
             httpx.Response(200, json={'ok': True, 'scope_rows': 3}),
             httpx.Response(202, json={'ok': True, 'task_id': 'bf-1'}),
@@ -324,20 +393,6 @@ class AdminOpsContractApiTests(TestCase):
         ]
 
         auth_header = 'Bearer vni_pat_bridge_test'
-
-        benchmark_latest_response = self.client.get(
-            '/api/admin-ops/vnbroker-config/benchmark-price-board/latest/',
-            HTTP_AUTHORIZATION=auth_header,
-        )
-        self.assertEqual(benchmark_latest_response.status_code, status.HTTP_200_OK)
-
-        benchmark_run_response = self.client.post(
-            '/api/admin-ops/vnbroker-config/benchmark-price-board/run/',
-            {'symbols': ['FPT']},
-            format='json',
-            HTTP_AUTHORIZATION=auth_header,
-        )
-        self.assertEqual(benchmark_run_response.status_code, status.HTTP_202_ACCEPTED)
 
         market_groups_response = self.client.post(
             '/api/admin-ops/market-groups/sync/?mode=all&clear=true',
@@ -361,7 +416,7 @@ class AdminOpsContractApiTests(TestCase):
             format='json',
             HTTP_AUTHORIZATION=auth_header,
         )
-        self.assertEqual(backfill_apply_response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(backfill_apply_response.status_code, status.HTTP_200_OK)
 
         backfill_status_response = self.client.get(
             '/api/admin-ops/intraday-side-backfill/status/bf-1/',
@@ -377,9 +432,7 @@ class AdminOpsContractApiTests(TestCase):
         )
         self.assertEqual(warm_now_response.status_code, status.HTTP_200_OK)
 
-        self.assertEqual(mock_request.call_count, 7)
-        self.assertEqual(mock_request.call_args_list[0].kwargs['url'], 'http://legacy.internal/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
-        self.assertEqual(mock_request.call_args_list[0].kwargs['headers']['Host'], 'testserver')
-        self.assertEqual(mock_request.call_args_list[2].kwargs['url'], 'http://legacy.internal/api/admin-ops/market-groups/sync/')
-        self.assertEqual(mock_request.call_args_list[2].kwargs['params'], {'mode': 'all', 'clear': 'true'})
-        self.assertEqual(mock_request.call_args_list[6].kwargs['url'], 'http://legacy.internal/api/admin-ops/intraday-universe/warm-now/')
+        self.assertEqual(mock_request.call_count, 5)
+        self.assertEqual(mock_request.call_args_list[0].kwargs['url'], 'http://legacy.internal/api/admin-ops/market-groups/sync/')
+        self.assertEqual(mock_request.call_args_list[0].kwargs['params'], {'mode': 'all', 'clear': 'true'})
+        self.assertEqual(mock_request.call_args_list[4].kwargs['url'], 'http://legacy.internal/api/admin-ops/intraday-universe/warm-now/')

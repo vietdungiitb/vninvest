@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # packages/core/backend/Dockerfile
 # SM-P0.3: Production-grade immutable image for vninvest-core services.
 # No source mounts. All code baked in at build time.
@@ -7,12 +8,9 @@
 #   runtime  — minimal final image
 
 ARG PYTHON_VERSION=3.13
-ARG VNBROKER_GITHUB_TOKEN
 
 # ── Stage 1: builder ──────────────────────────────────────────────────────────
 FROM python:${PYTHON_VERSION}-slim AS builder
-
-ARG VNBROKER_GITHUB_TOKEN
 
 WORKDIR /build
 
@@ -22,10 +20,19 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --upgrade pip \
-    && : "${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}" \
-    && mkdir -p /install \
-    && pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.txt
+RUN --mount=type=secret,id=vnbroker_github_token \
+    set -eu; \
+    token_file='/run/secrets/vnbroker_github_token'; \
+    test -f "$token_file"; \
+    token="$(cat "$token_file")"; \
+    test -n "$token"; \
+    printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc; \
+    chmod 600 /root/.netrc; \
+    sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt; \
+    pip install --upgrade pip; \
+    mkdir -p /install; \
+    pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt; \
+    rm -f /root/.netrc requirements.build.txt
 
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────

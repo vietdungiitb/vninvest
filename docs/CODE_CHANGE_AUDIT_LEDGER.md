@@ -1,3 +1,32 @@
+# 2026-05-14 — Stock-Management SaaS-Native Contract Closure ✅
+
+Status: Completed. `stock-management` search, overview, and chart now resolve through core-api native code only.
+
+What changed:
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+  - Added native `GET /api/stock-management/stocks/` paginated search route.
+  - Replaced non-canonical `overview` payload with a stable stock-workspace envelope including `tracked_symbol_id`, `is_tracked`, `market_group_refs`, and `watchlist_memberships`.
+  - Replaced non-canonical `chart` payload with the stock-workspace chart envelope (`symbol/days/timeframe/interval/start_date/end_date/points/technical`).
+  - Read intraday candles from `IntradayBar`, daily candles from `DailyPrice`, and added schema-safe fallback when runtime `SymbolSnapshot` lacks newer quote columns.
+- `packages/core/backend/src/market_data/public_urls.py`
+  - Registered native `stock-management/stocks/` on the active core public route map.
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` (NEW)
+  - Added focused regressions for stock search, overview envelope, tracked/watchlist mapping, empty chart envelope, intraday chart data, and daily chart data.
+- `packages/core/backend/src/market_data/tests/__init__.py` (NEW)
+  - Added package marker for the new native stock-management tests.
+
+Validation evidence:
+- Host focused suite: `manage.py test market_data.tests.test_stock_management_native_api --keepdb` → `6` tests passed ✅
+- Container focused suite: `docker exec vninvest-dev-core-api python /app/src/manage.py test market_data.tests.test_stock_management_native_api --keepdb` → `6` tests passed ✅
+- `functions.get_errors` returned no diagnostics on the touched stock-management core files ✅
+- `module_tree_full.md` regenerated to `1167` modules ✅
+- `docker compose ... up -d --build --force-recreate core-api` refreshed runtime with the new native slice ✅
+
+Residual note:
+- Runtime PostgreSQL still lacks newer `market_serving_symbolsnapshot` quote columns such as `reference_price`; the native overview path now falls back to `DailyPrice` instead of failing, but richer quote fields still depend on the pending schema/materializer rollout.
+
+---
+
 # 2026-05-14 — Phase 1 Critical Fix C5: WebSocket Symbol Sanitization ✅
 
 Status: Completed. WebSocket receive() method now logs all exceptions properly; symbol sanitization validated.

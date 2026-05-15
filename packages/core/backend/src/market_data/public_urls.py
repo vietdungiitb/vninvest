@@ -1,19 +1,16 @@
 from django.urls import path
 
-from . import views
-from .legacy_views import (
+from .stock_mgmt_native_views import (
     StockManagementGroupsView,
     StockManagementSeedView,
     StockManagementSyncView,
-    TrackedSymbolsView,
-    TrackedSymbolDetailView,
-    TrackedSymbolBulkThresholdView,
-    PriceAlertsView,
-    PriceAlertDetailView,
-    PriceAlertTriggerView,
-)
-# C3: Native views replacing StockManagementLegacyBridgeView
-from .stock_mgmt_native_views import (
+    StockManagementTrackedSymbolsView,
+    StockManagementTrackedSymbolDetailView,
+    StockManagementTrackedSymbolBulkThresholdView,
+    StockManagementPriceAlertsView,
+    StockManagementPriceAlertDetailView,
+    StockManagementPriceAlertTriggerView,
+    StockManagementStockListView,
     StockManagementTechnicalsView,
     StockManagementDetailView,
     StockManagementOverviewView,
@@ -39,8 +36,7 @@ from .stock_mgmt_native_views import (
 )
 
 urlpatterns = [
-    # Native tracked-symbols (already here)
-    path('stock-management/tracked-symbols/', views.TrackedSymbolsView.as_view(), name='tracked-symbols'),
+    path('stock-management/tracked-symbols/', StockManagementTrackedSymbolsView.as_view(), name='tracked-symbols'),
 
     # =========================================================================
     # Legacy frontend stock-management aliases
@@ -52,16 +48,17 @@ urlpatterns = [
     path('stock-management/items/<int:item_id>/', StockManagementItemDetailView.as_view(), name='legacy-sm-item-detail'),
     path('stock-management/seed/', StockManagementSeedView.as_view(), name='legacy-sm-seed'),
     path('stock-management/sync/', StockManagementSyncView.as_view(), name='legacy-sm-sync'),
-    path('stock-management/tracked-symbols/<int:pk>/', TrackedSymbolDetailView.as_view(), name='legacy-tracked-symbol-detail'),
-    path('stock-management/tracked-symbols/bulk-threshold/', TrackedSymbolBulkThresholdView.as_view(), name='legacy-tracked-symbol-bulk'),
-    path('stock-management/price-alerts/', PriceAlertsView.as_view(), name='legacy-price-alerts'),
-    path('stock-management/price-alerts/<int:pk>/', PriceAlertDetailView.as_view(), name='legacy-price-alert-detail'),
-    path('stock-management/price-alerts/<int:pk>/mark-triggered/', PriceAlertTriggerView.as_view(), name='legacy-price-alert-trigger'),
+    path('stock-management/tracked-symbols/<int:pk>/', StockManagementTrackedSymbolDetailView.as_view(), name='legacy-tracked-symbol-detail'),
+    path('stock-management/tracked-symbols/bulk-threshold/', StockManagementTrackedSymbolBulkThresholdView.as_view(), name='legacy-tracked-symbol-bulk'),
+    path('stock-management/price-alerts/', StockManagementPriceAlertsView.as_view(), name='legacy-price-alerts'),
+    path('stock-management/price-alerts/<int:pk>/', StockManagementPriceAlertDetailView.as_view(), name='legacy-price-alert-detail'),
+    path('stock-management/price-alerts/<int:pk>/mark-triggered/', StockManagementPriceAlertTriggerView.as_view(), name='legacy-price-alert-trigger'),
 
     # =========================================================================
     # C3: Stock data routes — now native (no bridge to backend:8000)
     # =========================================================================
     path('stock-management/technicals/bulk/', StockManagementTechnicalsView.as_view(), name='legacy-technicals-bulk'),
+    path('stock-management/stocks/', StockManagementStockListView.as_view(), name='legacy-stock-list'),
     path('stock-management/stocks/<str:symbol>/overview/', StockManagementOverviewView.as_view(), name='legacy-stock-overview'),
     path('stock-management/stocks/<str:symbol>/chart/', StockManagementChartView.as_view(), name='legacy-stock-chart'),
     path('stock-management/stocks/<str:symbol>/order-flow/', StockManagementOrderFlowView.as_view(), name='legacy-stock-order-flow'),

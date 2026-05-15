@@ -26,11 +26,11 @@ def capability_bootstrap(request):
         'navigation': {
             'visible_routes': [
                 'dashboard', 'portfolio', 'watchlist',
-                'whale-alerts', 'ai-advisory', 'admin-ops',
+                'whale-alerts', 'ai-advisory', 'operations-center',
             ],
         },
         'surfaces': {
-            'show_admin_ops': True,
+            'show_operations_center': True,
             'show_ai_command_center': True,
         },
         'api_base': '/core/v1',

@@ -1,245 +1,207 @@
-"""
-test_soc_api_overview.py — Integration tests for SOC overview endpoints
-Tests: GET /api/soc/overview/, detail, config, health, audit, history
-"""
-from django.test import TestCase, Client
+"""Focused overview contract tests for the spec-aligned SOC overview endpoints."""
+
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from django.utils import timezone
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-from service_ops.models import ServiceDefinition, ServiceConfig, ConfigChangeAudit
+from django.test import TestCase
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from service_ops.models import ConfigChangeAudit, ServiceConfig, ServiceDefinition, ServiceHealth, ServiceRunLog
+from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 
 User = get_user_model()
 
 
-class SOCOverviewApiTestCase(TestCase):
-    """Test SOC overview endpoints"""
-
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        
-        # Create admin group and add user
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
-        
-        self.client.force_authenticate(user=self.user)
-
-        # Create test services
-        self.service_vnbroker = ServiceDefinition.objects.create(
-            service_key='vnbroker',
-            name='VNBroker Integration',
-            ownership_matrix={'mode': 'native-write', 'can_apply': True},
-            config_schema={}
+class OverviewApiBaseTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        ensure_service_registry()
+        cls.user = User.objects.create_user(
+            username='soc-overview-admin',
+            email='soc-overview-admin@test.local',
+            password='pass123',
         )
-        self.service_signals = ServiceDefinition.objects.create(
-            service_key='signals',
-            name='Signal Intelligence',
-            ownership_matrix={'mode': 'bridge-write', 'can_apply': False},
-            config_schema={}
-        )
-
-    def test_overview_list_endpoint(self):
-        """Test GET /api/soc/overview/ returns service list"""
-        response = self.client.get('/api/soc/overview/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        self.assertIn('results', data)
-        self.assertEqual(len(data['results']), 2)
-
-    def test_overview_list_has_pagination(self):
-        """Test that list endpoint has pagination"""
-        response = self.client.get('/api/soc/overview/')
-        data = response.json()
-        self.assertIn('count', data)
-        self.assertIn('next', data)
-        self.assertIn('previous', data)
-
-    def test_overview_detail_endpoint(self):
-        """Test GET /api/soc/overview/{service_key}/ returns service detail"""
-        response = self.client.get('/api/soc/overview/vnbroker/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        self.assertEqual(data['service_key'], 'vnbroker')
-        self.assertEqual(data['name'], 'VNBroker Integration')
-
-    def test_overview_detail_not_found(self):
-        """Test 404 for non-existent service"""
-        response = self.client.get('/api/soc/overview/nonexistent/')
-        self.assertEqual(response.status_code, 404)
-
-    def test_overview_config_endpoint(self):
-        """Test GET /api/soc/overview/{service_key}/config/ returns current config"""
-        config_data = {'timeout': 5, 'providers': ['p1']}
-        cfg = ServiceConfig.objects.create(
-            service=self.service_vnbroker,
-            config=config_data,
-            status='active',
-            applied_by=self.user,
-        )
-
-        response = self.client.get('/api/soc/overview/vnbroker/config/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        self.assertEqual(data['config'], config_data)
-
-    def test_overview_health_endpoint(self):
-        """Test GET /api/soc/overview/{service_key}/health/ returns health status"""
-        response = self.client.get('/api/soc/overview/vnbroker/health/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        # Should have health info even if no explicit ServiceHealth record
-        self.assertIsNotNone(data)
-
-    def test_overview_audit_endpoint(self):
-        """Test GET /api/soc/overview/{service_key}/audit/ returns audit logs"""
-        ConfigChangeAudit.objects.create(
-            service_key='vnbroker',
-            config_before={'timeout': 5},
-            config_after={'timeout': 10},
-            applied_by=self.user,
-            applied_at=timezone.now(),
-            change_summary='Test audit',
-        )
-
-        response = self.client.get('/api/soc/overview/vnbroker/audit/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        self.assertIn('results', data)
-        self.assertGreater(len(data['results']), 0)
-
-    def test_overview_history_endpoint(self):
-        """Test GET /api/soc/overview/{service_key}/history/ returns version history"""
-        ServiceConfig.objects.create(
-            service=self.service_vnbroker,
-            config={'timeout': 5},
-            status='active',
-            applied_by=self.user,
-        )
-        ServiceConfig.objects.create(
-            service=self.service_vnbroker,
-            config={'timeout': 10},
-            status='active',
-            applied_by=self.user,
-        )
-
-        response = self.client.get('/api/soc/overview/vnbroker/history/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        self.assertIn('results', data)
-        self.assertEqual(len(data['results']), 2)
-
-    def test_overview_requires_authentication(self):
-        """Test that overview endpoints require authentication"""
-        self.client.logout()
-        response = self.client.get('/api/soc/overview/')
-        self.assertEqual(response.status_code, 401)
-
-    def test_overview_requires_admin_permissions(self):
-        """Test that overview endpoints require admin permissions"""
-        # Create non-admin user
-        user = User.objects.create_user('user', 'user@test.com', 'pass123')
-        self.client.force_login(user)
-        
-        response = self.client.get('/api/soc/overview/')
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-    def test_error_response_envelope(self):
-        """Test that error responses use proper envelope format"""
-        self.client.logout()
-        response = self.client.get('/api/soc/overview/')
-        data = response.json()
-        
-        # Error envelope should have detail, code, timestamp, request_id
-        self.assertIn('detail', data)
-        self.assertIn('code', data)
-        self.assertIn('timestamp', data)
-
-
-class SOCDetailEndpointsTestCase(TestCase):
-    """Test detail retrieval endpoints"""
+        cls.user.is_staff = True
+        cls.user.is_superuser = True
+        cls.user.save(update_fields=['is_staff', 'is_superuser'])
+        cls.vnbroker_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
 
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user('admin_user', 'admin@test.com', 'testpass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
         self.client.force_authenticate(user=self.user)
 
-        self.service = ServiceDefinition.objects.create(
-            service_key='test_service',
-            name='Test Service',
-            ownership_matrix={'mode': 'native-write', 'can_apply': True},
-            config_schema={}
+
+class OverviewContractTestCase(OverviewApiBaseTestCase):
+    def test_overview_summary_returns_health_breakdown(self):
+        response = self.client.get('/api/soc/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('generated_at', payload)
+        self.assertIn('summary', payload)
+        self.assertIn('by_domain', payload)
+        self.assertIn('services', payload)
+        self.assertGreaterEqual(payload['summary']['total'], 1)
+        self.assertIn(self.vnbroker_service.domain, payload['by_domain'])
+
+    def test_services_list_returns_paginated_services(self):
+        response = self.client.get('/api/soc/services/?page_size=100')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('count', payload)
+        self.assertIn('results', payload)
+        self.assertTrue(any(item['service_key'] == self.vnbroker_service.service_key for item in payload['results']))
+
+    def test_service_detail_includes_current_config_health_and_ownership(self):
+        ServiceHealth.objects.update_or_create(
+            service=self.vnbroker_service,
+            defaults={'status': 'degraded', 'consecutive_failures': 1, 'detail': {'reason': 'latency spike'}},
         )
 
-    def test_detail_endpoint_includes_ownership(self):
-        """Test that detail endpoint includes ownership info"""
-        response = self.client.get('/api/soc/overview/test_service/')
-        data = response.json()
-        self.assertIn('ownership_matrix', data)
-        self.assertEqual(data['ownership_matrix']['mode'], 'native-write')
+        response = self.client.get(f'/api/soc/services/{self.vnbroker_service.service_key}/')
 
-    def test_detail_endpoint_includes_current_config(self):
-        """Test that detail endpoint includes current config"""
-        config_data = {'setting1': 'value1'}
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['service_key'], self.vnbroker_service.service_key)
+        self.assertIsNotNone(payload['current_config'])
+        self.assertEqual(payload['health']['status'], 'degraded')
+        self.assertEqual(payload['ownership']['domain'], self.vnbroker_service.domain)
+
+    def test_current_config_endpoint_returns_current_config(self):
+        response = self.client.get(f'/api/soc/services/{self.vnbroker_service.service_key}/config/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['service_key'], self.vnbroker_service.service_key)
+        self.assertIn('config_payload', payload)
+
+    def test_service_health_endpoint_returns_unknown_when_missing(self):
+        service = ServiceDefinition.objects.create(
+            service_key='overview_health_unknown',
+            name='Overview Health Unknown',
+            domain='platform',
+        )
+
+        response = self.client.get(f'/api/soc/services/{service.service_key}/health/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['status'], 'unknown')
+        self.assertEqual(payload['service_key'], service.service_key)
+
+    def test_service_audit_and_history_endpoints_are_paginated(self):
         ServiceConfig.objects.create(
-            service=self.service,
-            config=config_data,
-            status='active',
-            applied_by=self.user,
+            service=self.vnbroker_service,
+            config_payload={'timeout': {'connect': 8.0}},
+            applied_by=self.user.username,
+            change_reason='history seed',
+        )
+        ConfigChangeAudit.objects.create(
+            service=self.vnbroker_service,
+            action='apply',
+            actor=self.user.username,
+            before_snapshot={'timeout': {'connect': 5.0}},
+            after_snapshot={'timeout': {'connect': 8.0}},
+            change_summary='overview audit seed',
+            request_id='req-overview-audit',
         )
 
-        response = self.client.get('/api/soc/overview/test_service/')
-        data = response.json()
-        # Config may be in a nested field depending on serializer
-        self.assertIsNotNone(data)
+        audit_response = self.client.get(f'/api/soc/services/{self.vnbroker_service.service_key}/audit/')
+        history_response = self.client.get(f'/api/soc/services/{self.vnbroker_service.service_key}/history/')
 
+        self.assertEqual(audit_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(history_response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', audit_response.json())
+        self.assertIn('results', history_response.json())
+        self.assertGreaterEqual(audit_response.json()['count'], 1)
+        self.assertGreaterEqual(history_response.json()['count'], 1)
 
-class SOCVersionHistoryTestCase(TestCase):
-    """Test config version history tracking"""
-
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
-        self.client.force_authenticate(user=self.user)
-
-        self.service = ServiceDefinition.objects.create(
-            service_key='version_test',
-            name='Version Test',
-            ownership_matrix={'mode': 'native-write', 'can_apply': True},
-            config_schema={}
+    def test_global_run_logs_and_change_audit_endpoints_are_paginated(self):
+        ServiceRunLog.objects.create(
+            service=self.vnbroker_service,
+            status='queued',
+            input_summary={'trigger': 'test'},
+            output_summary={},
+        )
+        ConfigChangeAudit.objects.create(
+            service=self.vnbroker_service,
+            action='apply',
+            actor=self.user.username,
+            before_snapshot={'enabled': False},
+            after_snapshot={'enabled': True},
+            change_summary='global audit seed',
+            request_id='req-global-audit',
         )
 
-    def test_history_shows_all_versions(self):
-        """Test that history endpoint returns all config versions"""
-        for i in range(3):
-            ServiceConfig.objects.create(
-                service=self.service,
-                config={'iteration': i},
-                status='active',
-                applied_by=self.user,
-            )
+        run_logs_response = self.client.get('/api/soc/run-logs/?service_key=vnbroker_runtime_config')
+        change_audit_response = self.client.get('/api/soc/change-audit/?service_key=vnbroker_runtime_config')
 
-        response = self.client.get('/api/soc/overview/version_test/history/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        self.assertEqual(len(data['results']), 3)
+        self.assertEqual(run_logs_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(change_audit_response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', run_logs_response.json())
+        self.assertIn('results', change_audit_response.json())
 
-    def test_history_ordered_by_version(self):
-        """Test that history is ordered by version"""
-        for i in range(3):
-            ServiceConfig.objects.create(
-                service=self.service,
-                config={'iteration': i},
-                status='active',
-                applied_by=self.user,
-            )
+    def test_service_health_check_trigger_creates_queued_run_log(self):
+        response = self.client.post(f'/api/soc/services/{self.vnbroker_service.service_key}/health-check/', {}, format='json')
 
-        response = self.client.get('/api/soc/overview/version_test/history/')
-        data = response.json()
-        versions = [cfg['version'] for cfg in data['results']]
-        # Should be ordered
-        self.assertEqual(versions, sorted(versions))
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        payload = response.json()
+        self.assertEqual(payload['service_key'], self.vnbroker_service.service_key)
+        self.assertEqual(payload['status'], 'queued')
+        self.assertTrue(
+            ServiceRunLog.objects.filter(
+                service=self.vnbroker_service,
+                status='queued',
+                input_summary__trigger='manual_health_check',
+            ).exists()
+        )
+
+    def test_health_status_endpoint_is_not_shadowed_by_service_routes(self):
+        response = self.client.get('/api/soc/overview/health-status/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('total_services', payload)
+        self.assertIn('health_status_counts', payload)
+
+    def test_service_not_found_returns_standard_error_envelope(self):
+        response = self.client.get('/api/soc/services/nonexistent-service/config/')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        payload = response.json()
+        self.assertEqual(payload['code'], 'SERVICE_NOT_FOUND')
+        self.assertIn('detail', payload)
+        self.assertIn('timestamp', payload)
+        self.assertIn('request_id', payload)
+
+
+class OverviewAuthContractTestCase(TestCase):
+    def test_unauthenticated_requests_use_standard_error_envelope(self):
+        client = APIClient()
+
+        response = client.get('/api/soc/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        payload = response.json()
+        self.assertIn('detail', payload)
+        self.assertIn('code', payload)
+        self.assertIn('timestamp', payload)
+        self.assertIn('request_id', payload)
+
+    def test_non_admin_requests_are_forbidden_with_standard_error_envelope(self):
+        user = User.objects.create_user(
+            username='soc-overview-reader',
+            email='soc-overview-reader@test.local',
+            password='pass123',
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get('/api/soc/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        payload = response.json()
+        self.assertIn('detail', payload)
+        self.assertIn('code', payload)
+        self.assertIn('timestamp', payload)
+        self.assertIn('request_id', payload)

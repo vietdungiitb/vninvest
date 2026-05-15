@@ -4,11 +4,13 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import timedelta
 import logging
+from threading import Thread
 from typing import Any
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import caches
+from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 import httpx
 from rest_framework import permissions, status
@@ -28,6 +30,8 @@ from vninvest_core.monitoring.queue_metrics import build_scheduler_queue_metrics
 
 
 logger = logging.getLogger(__name__)
+
+_BENCHMARK_RUNNING_MAX_SECONDS = 15 * 60
 
 
 def _now_iso() -> str:
@@ -288,17 +292,13 @@ DEFAULT_SIGNAL_OWNERSHIP = {
 }
 
 SIGNAL_CONFIG_WRITE_BLOCK_MESSAGE = (
-    'Signal policy writer vẫn thuộc legacy global-signal SSOT. '
-    'Native Signal Control Center ở slice này chỉ hỗ trợ read-side và preview an toàn.'
+    'Signal policy writer chưa được promote vào core-admin native path. '
+    'Signal Control Center ở slice này chỉ hỗ trợ read-side và preview an toàn.'
 )
 
 SIGNAL_JOB_WRITE_BLOCK_MESSAGE = (
-    'Manual run/retry cho whale hoặc dark flow chưa được promote native vì core chưa có detector parity đầy đủ cho write path này.'
-)
-
-LEGACY_BRIDGE_REQUIRED_MESSAGE = (
-    'Write-through bridge sang legacy admin chưa được cấu hình. '
-    'Set LEGACY_BACKEND_URL và bật legacy backend khi cần dùng đúng SSOT helpers hiện hữu.'
+    'Manual run/retry cho whale hoặc dark flow đang dùng native materializer orchestration; '
+    'advanced detector scheduling chưa được promote đầy đủ ở control plane này.'
 )
 
 LEGACY_ADMIN_BRIDGE_TIMEOUT = httpx.Timeout(connect=5.0, read=120.0, write=30.0, pool=5.0)
@@ -331,6 +331,29 @@ def _get_celery_active_queues() -> list[str]:
         logger.debug('_get_celery_active_queues: Celery inspect failed: %s', e)
         return []
     return timezone.now().isoformat()
+
+
+def _run_vnbroker_benchmark_background(payload: dict[str, Any], base_report: dict[str, Any]) -> None:
+    from market_data.vnbroker_benchmark import run_price_board_provider_benchmark, set_latest_price_board_benchmark_report, utc_now_iso
+
+    try:
+        report = run_price_board_provider_benchmark(payload)
+        report['status'] = report.get('status') or 'completed'
+        report['execution_mode'] = base_report.get('execution_mode')
+        report['task_id'] = base_report.get('task_id')
+        set_latest_price_board_benchmark_report(report)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning('native benchmark background execution failed: %s', exc)
+        set_latest_price_board_benchmark_report(
+            {
+                **base_report,
+                'status': 'failed',
+                'finished_at': utc_now_iso(),
+                'results': [],
+                'recommendation': None,
+                'error': str(exc),
+            }
+        )
 
 
 def _legacy_backend_url() -> str:
@@ -1012,22 +1035,7 @@ def _coerce_signal_retention_policy(payload: Any, fallback: dict[str, Any] | Non
 
 
 def _signal_ownership_snapshot() -> dict[str, Any]:
-    snapshot = deepcopy(DEFAULT_SIGNAL_OWNERSHIP)
-    if _legacy_admin_bridge_enabled():
-        snapshot['mode'] = 'native-read-legacy-write-through'
-        snapshot['domains']['services_config']['status'] = 'bridge-write'
-        snapshot['domains']['universe_policy']['status'] = 'bridge-write'
-        snapshot['domains']['retention_policy']['status'] = 'bridge-write'
-        snapshot['domains']['jobs'] = {
-            'owner': 'legacy-detector-runtime',
-            'status': 'bridge-write',
-        }
-        snapshot['deprecation_notes'] = [
-            'Signal policy và detector writes đang được write-through sang legacy SSOT qua bridge; core vẫn giữ native read-side cho facts/events.',
-            'raw_intraday_keep_days vẫn do Data Ops runtime owner quyết định; Signal Control Center chỉ write-through phần retention policy mà legacy đang sở hữu.',
-            'tracked symbols, price alerts và curated group universe vẫn phụ thuộc legacy resolver cho đến khi source native được promote hoàn tất.',
-        ]
-    return snapshot
+    return deepcopy(DEFAULT_SIGNAL_OWNERSHIP)
 
 
 def _signal_services_config() -> dict[str, Any]:
@@ -1043,8 +1051,6 @@ def _signal_retention_policy() -> dict[str, Any]:
 
 
 def _signal_write_guard(message: str) -> Response:
-    if not _legacy_admin_bridge_enabled():
-        message = f'{message} {LEGACY_BRIDGE_REQUIRED_MESSAGE}'
     return Response(
         {
             'ok': False,
@@ -1974,13 +1980,6 @@ class AdminOpsSignalsConfigView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        bridged_response = _legacy_admin_bridge_response(
-            request,
-            '/api/admin-ops/signals/config/',
-            unavailable_message='Không đọc được signal config từ legacy SSOT bridge.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return Response(
             {
                 'ok': True,
@@ -1993,13 +1992,6 @@ class AdminOpsSignalsConfigView(APIView):
         )
 
     def put(self, request):
-        bridged_response = _legacy_admin_bridge_response(
-            request,
-            '/api/admin-ops/signals/config/',
-            unavailable_message='Không ghi được signal config qua legacy SSOT bridge.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return _signal_write_guard(SIGNAL_CONFIG_WRITE_BLOCK_MESSAGE)
 
 
@@ -2007,13 +1999,6 @@ class AdminOpsSignalsConfigPreviewView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        bridged_response = _legacy_admin_bridge_response(
-            request,
-            '/api/admin-ops/signals/config/preview/',
-            unavailable_message='Không tạo được signal config preview từ legacy SSOT bridge.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         current_services = _signal_services_config()
         current_universe = _signal_universe_policy()
         current_retention = _signal_retention_policy()
@@ -2064,13 +2049,6 @@ class AdminOpsSignalsUniversePreviewView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        bridged_response = _legacy_admin_bridge_response(
-            request,
-            '/api/admin-ops/signals/universe/preview/',
-            unavailable_message='Không tạo được signal universe preview từ legacy SSOT bridge.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         policy = _coerce_signal_universe_policy(request.data or {}, fallback=_signal_universe_policy())
         return Response(
             {
@@ -2086,13 +2064,6 @@ class AdminOpsSignalsUniverseApplyView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        bridged_response = _legacy_admin_bridge_response(
-            request,
-            '/api/admin-ops/signals/universe/apply/',
-            unavailable_message='Không áp dụng được signal universe qua legacy SSOT bridge.',
-        )
-        if bridged_response is not None:
-            return bridged_response
         return _signal_write_guard(SIGNAL_CONFIG_WRITE_BLOCK_MESSAGE)
 
 
@@ -2108,13 +2079,6 @@ class AdminOpsSignalsJobsView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        bridged_response = _legacy_admin_bridge_response(
-            request,
-            '/api/admin-ops/signals/jobs/',
-            unavailable_message='Không tải được signal jobs từ legacy detector bridge.',
-        )
-        if bridged_response is not None and bridged_response.status_code != status.HTTP_503_SERVICE_UNAVAILABLE:
-            return bridged_response
         page = _parse_positive_int(request.query_params.get('page'), 1, maximum=100000)
         page_size = _parse_positive_int(request.query_params.get('page_size', request.query_params.get('limit')), 20, maximum=100)
         service_domain = str(request.query_params.get('service_domain') or '').strip().lower() or None
@@ -2180,28 +2144,98 @@ class AdminOpsVnbrokerBenchmarkLatestView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        bridged_response = _legacy_admin_bridge_response(
-            request,
-            '/api/admin-ops/vnbroker-config/benchmark-price-board/latest/',
-            unavailable_message='Không đọc được benchmark price board từ legacy admin bridge.',
+        from market_data.vnbroker_benchmark import get_latest_price_board_benchmark_report, set_latest_price_board_benchmark_report, utc_now_iso
+
+        report = get_latest_price_board_benchmark_report()
+        if report is None:
+            return Response(
+                {
+                    'ok': True,
+                    'has_report': False,
+                    'message': 'Chua co du lieu benchmark gan nhat.',
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        if str(report.get('status') or '').lower() == 'running':
+            started_at_raw = str(report.get('started_at') or '').strip()
+            started_at = parse_datetime(started_at_raw) if started_at_raw else None
+            if started_at is not None:
+                if timezone.is_naive(started_at):
+                    started_at = timezone.make_aware(started_at, timezone=timezone.utc)
+                running_seconds = max((timezone.now() - started_at).total_seconds(), 0)
+                report['running_seconds'] = int(running_seconds)
+                if running_seconds > _BENCHMARK_RUNNING_MAX_SECONDS:
+                    report = {
+                        **report,
+                        'status': 'failed',
+                        'finished_at': utc_now_iso(),
+                        'error': 'Benchmark chay qua lau do worker nghen. Vui long thu lai.',
+                    }
+                    set_latest_price_board_benchmark_report(report)
+
+        return Response(
+            {
+                'ok': True,
+                'has_report': True,
+                'report': report,
+            },
+            status=status.HTTP_200_OK,
         )
-        if bridged_response is not None:
-            return bridged_response
-        return Response({'status': 'not_available'}, status=status.HTTP_200_OK)
 
 
 class AdminOpsVnbrokerBenchmarkRunView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        bridged_response = _legacy_admin_bridge_response(
-            request,
-            '/api/admin-ops/vnbroker-config/benchmark-price-board/run/',
-            unavailable_message='Không chạy được benchmark price board qua legacy admin bridge.',
+        from data_ingest.tasks import run_vnbroker_price_board_benchmark
+        from market_data.vnbroker_benchmark import set_latest_price_board_benchmark_report, utc_now_iso
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        base_report = {
+            'status': 'running',
+            'started_at': utc_now_iso(),
+            'finished_at': None,
+            'results': [],
+            'recommendation': None,
+            'payload': payload,
+        }
+
+        if _is_celery_alive():
+            task = run_vnbroker_price_board_benchmark.apply_async(
+                kwargs={'payload': payload},
+                queue='manual_on_demand',
+            )
+            base_report['execution_mode'] = 'celery'
+            base_report['task_id'] = str(task.id)
+            set_latest_price_board_benchmark_report(base_report)
+            return Response(
+                {
+                    'ok': True,
+                    'status': 'started',
+                    'task_id': str(task.id),
+                    'mode': 'celery',
+                    'message': 'Benchmark da duoc khoi dong. Vui long doi va reload ket qua sau vai giay.',
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        base_report['execution_mode'] = 'local_thread'
+        set_latest_price_board_benchmark_report(base_report)
+        Thread(
+            target=_run_vnbroker_benchmark_background,
+            args=(payload, base_report),
+            daemon=True,
+        ).start()
+        return Response(
+            {
+                'ok': True,
+                'status': 'started',
+                'mode': 'local_thread',
+                'message': 'Celery worker dang offline. Benchmark da chuyen sang luong nen noi bo.',
+            },
+            status=status.HTTP_202_ACCEPTED,
         )
-        if bridged_response is not None:
-            return bridged_response
-        return Response({'status': 'not_available'}, status=status.HTTP_200_OK)
 
 
 class AdminOpsMarketGroupsSyncView(APIView):

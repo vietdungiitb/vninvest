@@ -3,7 +3,7 @@ export { routeCatalog, getRouteCatalogIds, getRoutesForBuildTarget } from "./app
 export { navigationCatalog, getNavigationGroupIds, getNavigationForBuildTarget } from "./app/navigationCatalog.js";
 export { renderShellField, renderShellMetric, renderShellPageChrome, renderShellPanel, renderShellSelectField } from "./components/ShellPageTemplate.js";
 export { getPageComponent, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
-export { ShellAdminOpsPage } from "./pages/admin/ShellAdminOpsPage.js";
+export { ShellOperationsCenterPage } from "./pages/admin/ShellOperationsCenterPage.js";
 export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.js";
 export { ShellWhaleAlertsPage } from "./pages/signals/ShellWhaleAlertsPage.js";
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.js";

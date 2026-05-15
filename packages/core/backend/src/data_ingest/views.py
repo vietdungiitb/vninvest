@@ -23,6 +23,8 @@ from .serializers import (
     IngestTriggerResponseSerializer,
 )
 from .tasks import ingest_daily_prices
+from service_ops.models import ServiceRunLog
+from service_ops.registry import ensure_service_registry, get_registered_service
 
 logger = logging.getLogger(__name__)
 
@@ -102,11 +104,27 @@ class DataIngestAdminViewSet(viewsets.ViewSet):
 
         days = serializer.validated_data.get('days', 1)
         symbols = serializer.validated_data.get('symbols')
+        ensure_service_registry()
+        service_run_log = ServiceRunLog.objects.create(
+            service=get_registered_service('vnbroker_history'),
+            status='queued',
+            input_summary={
+                'trigger': 'data_ingest.trigger_daily_prices',
+                'requested_by': request.user.username,
+                'days': days,
+                'symbols': symbols or [],
+            },
+            output_summary={},
+        )
 
         try:
             # Queue the ingest task asynchronously
             task = ingest_daily_prices.apply_async(
-                args=[days, symbols],
+                kwargs={
+                    'days': days,
+                    'symbols': symbols,
+                    'service_run_log_id': service_run_log.id,
+                },
                 countdown=0,  # Execute immediately
             )
 
@@ -119,6 +137,7 @@ class DataIngestAdminViewSet(viewsets.ViewSet):
                 {
                     'task_id': task.id,
                     'job_id': None,
+                    'service_run_log_id': service_run_log.id,
                     'status': 'queued',
                     'started_at': __import__('django.utils.timezone', fromlist=['now']).now(),
                     'message': f'Daily price ingest queued with task ID {task.id}',
@@ -128,6 +147,9 @@ class DataIngestAdminViewSet(viewsets.ViewSet):
 
         except Exception as exc:
             logger.error(f'Failed to queue daily price ingest: {exc}', exc_info=True)
+            service_run_log.status = 'failed'
+            service_run_log.error_detail = str(exc)
+            service_run_log.save(update_fields=['status', 'error_detail'])
             return Response(
                 {
                     'detail': 'Failed to queue ingest task',
@@ -159,9 +181,22 @@ class DataIngestAdminViewSet(viewsets.ViewSet):
         }
         """
         from .tasks import fetch_and_upsert_price_board
+        ensure_service_registry()
+        service_run_log = ServiceRunLog.objects.create(
+            service=get_registered_service('vnbroker_price_board'),
+            status='queued',
+            input_summary={
+                'trigger': 'data_ingest.trigger_price_board',
+                'requested_by': request.user.username,
+            },
+            output_summary={},
+        )
 
         try:
-            task = fetch_and_upsert_price_board.apply_async(countdown=0)
+            task = fetch_and_upsert_price_board.apply_async(
+                kwargs={'service_run_log_id': service_run_log.id},
+                countdown=0,
+            )
 
             logger.info(
                 f'Price board refresh triggered by {request.user.username}, task_id={task.id}'
@@ -171,6 +206,7 @@ class DataIngestAdminViewSet(viewsets.ViewSet):
                 {
                     'task_id': task.id,
                     'job_id': None,
+                    'service_run_log_id': service_run_log.id,
                     'status': 'queued',
                     'started_at': __import__('django.utils.timezone', fromlist=['now']).now(),
                     'message': f'Price board refresh queued with task ID {task.id}',
@@ -180,6 +216,9 @@ class DataIngestAdminViewSet(viewsets.ViewSet):
 
         except Exception as exc:
             logger.error(f'Failed to queue price board refresh: {exc}', exc_info=True)
+            service_run_log.status = 'failed'
+            service_run_log.error_detail = str(exc)
+            service_run_log.save(update_fields=['status', 'error_detail'])
             return Response(
                 {
                     'detail': 'Failed to queue refresh task',

@@ -53,6 +53,12 @@ _BUCKET_MINUTES = 15          # độ rộng bucket mặc định (phút)
 _BASELINE_WINDOW = 20         # số bucket dùng để tính baseline median
 _WHALE_THRESHOLD_VND = 200_000_000   # 200 triệu VND → được coi là "whale bucket"
 _EPS = 1e-9
+_SERIES_WINDOWS_BY_LABEL = {
+    '5m': 5,
+    '15m': 15,
+    '30m': 30,
+    '1h': 60,
+}
 
 
 # ─── Helpers ──────────────────────────────────────────────
@@ -82,6 +88,168 @@ def _floor_bucket(dt: datetime, bucket_minutes: int) -> datetime:
     dt = dt.replace(second=0, microsecond=0)
     floored_minute = (dt.minute // bucket_minutes) * bucket_minutes
     return dt.replace(minute=floored_minute)
+
+
+def _load_session_rows(symbol: str, session_date: date) -> list[dict]:
+    from signal_intelligence.models import WhaleAlertCanonical
+
+    return list(
+        WhaleAlertCanonical.objects
+        .filter(symbol=symbol.upper(), session_date=session_date)
+        .values('side', 'matched_value', 'executed_at')
+        .order_by('executed_at')
+    )
+
+
+def _compute_session_facts_from_rows(
+    rows: list[dict],
+    bucket_minutes: int = _BUCKET_MINUTES,
+    include_series: bool = False,
+) -> dict | None:
+    if not rows:
+        return None
+
+    buckets: dict[datetime, dict] = {}
+    for row in rows:
+        executed_at = row['executed_at']
+        if executed_at is None:
+            continue
+        if executed_at.tzinfo is None:
+            executed_at = executed_at.replace(tzinfo=timezone.utc)
+        bucket_key = _floor_bucket(executed_at, bucket_minutes)
+        if bucket_key not in buckets:
+            buckets[bucket_key] = {'buy': 0.0, 'sell': 0.0, 'total': 0.0, 'whale': 0.0}
+        value = float(row.get('matched_value') or 0)
+        side = str(row.get('side') or '').strip().lower()
+        if side == 'buy':
+            buckets[bucket_key]['buy'] += value
+        else:
+            buckets[bucket_key]['sell'] += value
+        buckets[bucket_key]['total'] += value
+        if value >= _WHALE_THRESHOLD_VND:
+            buckets[bucket_key]['whale'] += value
+
+    if not buckets:
+        return None
+
+    sorted_buckets = sorted(buckets.items())
+
+    cvd_series: list[float] = []
+    cvd_buckets: list[dict] = []
+    cumulative_cvd = 0.0
+    for bucket_ts, bucket in sorted_buckets:
+        delta = bucket['buy'] - bucket['sell']
+        cumulative_cvd += delta
+        cvd_series.append(cumulative_cvd)
+        cvd_buckets.append({
+            'bucket_ts': bucket_ts.isoformat(),
+            'cumulative_cvd': round(cumulative_cvd, 2),
+            'buy_volume': int(bucket['buy']),
+            'sell_volume': int(bucket['sell']),
+        })
+
+    abs_cvds = [abs(value) for value in cvd_series]
+    cvd_scale = _percentile(abs_cvds, 0.95) or max(abs_cvds) or 1.0
+    final_cvd = cvd_series[-1] if cvd_series else 0.0
+    cvd_normalized = _clamp(50.0 + 50.0 * (final_cvd / cvd_scale), 0.0, 100.0)
+
+    raw_strength_history: list[float] = []
+    raw_inst_history: list[float] = []
+    bucket_values_history: list[float] = []
+    buy_strength_series: list[float] = []
+    inst_strength_series: list[float] = []
+
+    for _, bucket in sorted_buckets:
+        buy_v = bucket['buy']
+        sell_v = bucket['sell']
+        total_v = max(bucket['total'], 0.0)
+        delta_v = buy_v - sell_v
+        whale_v = bucket['whale']
+
+        window = bucket_values_history[-_BASELINE_WINDOW:] if bucket_values_history else []
+        baseline = statistics.median(window) if window else max(total_v, 1.0)
+
+        imbalance = abs((buy_v - sell_v) / (buy_v + sell_v + _EPS))
+        raw_strength = 0.6 * imbalance + 0.4 * math.log1p(total_v / (baseline + _EPS))
+        raw_sample = raw_strength_history[-_BASELINE_WINDOW:] + [raw_strength]
+        midpoint = statistics.median(raw_sample)
+        strength_value = _sigmoid(raw_strength, midpoint, slope=1.0)
+        if total_v < baseline * 0.25:
+            strength_value *= 0.55
+        strength_value = _clamp(strength_value, 0.0, 99.5)
+
+        whale_ratio = whale_v / (total_v + _EPS)
+        dark_ratio = abs(delta_v) / (total_v + _EPS)
+        whale_mult = whale_v / (baseline + _EPS)
+        raw_inst = 0.45 * whale_ratio + 0.35 * dark_ratio + 0.20 * math.log1p(whale_mult)
+        inst_sample = raw_inst_history[-_BASELINE_WINDOW:] + [raw_inst]
+        inst_midpoint = statistics.median(inst_sample)
+        inst_value = _sigmoid(raw_inst, inst_midpoint, slope=0.95)
+        if whale_v < baseline * 0.15:
+            inst_value *= 0.6
+        inst_value = _clamp(inst_value, 0.0, 99.5)
+
+        buy_strength_series.append(strength_value)
+        inst_strength_series.append(inst_value)
+        raw_strength_history.append(raw_strength)
+        raw_inst_history.append(raw_inst)
+        bucket_values_history.append(total_v)
+
+    total_buy = sum(bucket['buy'] for _, bucket in sorted_buckets)
+    total_sell = sum(bucket['sell'] for _, bucket in sorted_buckets)
+    total_value = total_buy + total_sell
+    net_cvd = total_buy - total_sell
+    buy_strength_final = buy_strength_series[-1] if buy_strength_series else 0.0
+    inst_strength_final = inst_strength_series[-1] if inst_strength_series else 0.0
+    delta_strength_pct = (net_cvd / (total_value + _EPS)) * 100.0
+    dark_flow_score = _clamp(abs(net_cvd) / (total_value + _EPS) * 100.0, 0.0, 100.0)
+
+    result = {
+        'cvd_normalized': round(cvd_normalized, 4),
+        'buy_strength': round(buy_strength_final, 4),
+        'institutional_strength': round(inst_strength_final, 4),
+        'whale_net_flow': int(net_cvd),
+        'dark_flow_score': round(dark_flow_score, 4),
+        'total_buy_volume': int(total_buy),
+        'total_sell_volume': int(total_sell),
+        'delta_strength_pct': round(delta_strength_pct, 4),
+        'alert_count': len(rows),
+        'bucket_count': len(sorted_buckets),
+    }
+    if include_series:
+        for bucket_payload, buy_strength_value, institutional_strength_value in zip(
+            cvd_buckets,
+            buy_strength_series,
+            inst_strength_series,
+        ):
+            bucket_payload['buy_strength'] = round(buy_strength_value, 4)
+            bucket_payload['institutional_strength'] = round(institutional_strength_value, 4)
+        result['cvd_series'] = cvd_buckets
+    return result
+
+
+def _build_bucket_rows(rows: list[dict]) -> list[dict]:
+    payload = []
+    for window, bucket_minutes in _SERIES_WINDOWS_BY_LABEL.items():
+        result = _compute_session_facts_from_rows(
+            rows,
+            bucket_minutes=bucket_minutes,
+            include_series=True,
+        )
+        if result is None:
+            continue
+        for bucket in result.get('cvd_series', []):
+            payload.append({
+                'window': window,
+                'bucket_minutes': bucket_minutes,
+                'bucket_ts': datetime.fromisoformat(bucket['bucket_ts']),
+                'cumulative_cvd': float(bucket.get('cumulative_cvd') or 0.0),
+                'buy_strength': float(bucket.get('buy_strength') or 0.0),
+                'institutional_strength': float(bucket.get('institutional_strength') or 0.0),
+                'buy_volume': int(bucket.get('buy_volume') or 0),
+                'sell_volume': int(bucket.get('sell_volume') or 0),
+            })
+    return payload
 
 
 # ─── Engine chính ─────────────────────────────────────────
@@ -115,149 +283,19 @@ def compute_session_facts(
       cvd_series            — list[{bucket_ts, cumulative_cvd, buy_volume,
                                sell_volume}] (chỉ khi include_series=True)
     """
-    from signal_intelligence.models import WhaleAlertCanonical
-
-    rows = list(
-        WhaleAlertCanonical.objects
-        .filter(symbol=symbol.upper(), session_date=session_date)
-        .values('side', 'matched_value', 'executed_at')
-        .order_by('executed_at')
-    )
+    rows = _load_session_rows(symbol, session_date)
 
     if not rows:
         logger.debug('compute_session_facts: no whale data for %s %s', symbol, session_date)
         return None
-
-    # ── 1. Gom theo bucket ─────────────────────────────────
-    buckets: dict[datetime, dict] = {}
-    for row in rows:
-        executed_at = row['executed_at']
-        if executed_at is None:
-            continue
-        if executed_at.tzinfo is None:
-            executed_at = executed_at.replace(tzinfo=timezone.utc)
-        bucket_key = _floor_bucket(executed_at, bucket_minutes)
-        if bucket_key not in buckets:
-            buckets[bucket_key] = {'buy': 0.0, 'sell': 0.0, 'total': 0.0, 'whale': 0.0}
-        value = float(row.get('matched_value') or 0)
-        side = str(row.get('side') or '').strip().lower()
-        if side == 'buy':
-            buckets[bucket_key]['buy'] += value
-        else:
-            buckets[bucket_key]['sell'] += value
-        buckets[bucket_key]['total'] += value
-        if value >= _WHALE_THRESHOLD_VND:
-            buckets[bucket_key]['whale'] += value
-
-    if not buckets:
-        return None
-
-    sorted_buckets = sorted(buckets.items())
-
-    # ── 2. CVD tích lũy theo bucket ────────────────────────
-    cvd_series: list[float] = []
-    cvd_buckets: list[dict] = []   # structured series cho API (include_series)
-    cumulative_cvd = 0.0
-    for bk, b in sorted_buckets:
-        delta = b['buy'] - b['sell']
-        cumulative_cvd += delta
-        cvd_series.append(cumulative_cvd)
-        cvd_buckets.append({
-            'bucket_ts': bk.isoformat(),
-            'cumulative_cvd': round(cumulative_cvd, 2),
-            'buy_volume': int(b['buy']),
-            'sell_volume': int(b['sell']),
-        })
-
-    # cvd_normalized: scale theo p95 của abs(CVD series)
-    abs_cvds = [abs(v) for v in cvd_series]
-    cvd_scale = _percentile(abs_cvds, 0.95) or max(abs_cvds) or 1.0
-    final_cvd = cvd_series[-1] if cvd_series else 0.0
-    cvd_normalized = _clamp(50.0 + 50.0 * (final_cvd / cvd_scale), 0.0, 100.0)
-
-    # ── 3. Buy Strength & Institutional Strength ───────────
-    raw_strength_history: list[float] = []
-    raw_inst_history: list[float] = []
-    bucket_values_history: list[float] = []
-
-    buy_strength_series: list[float] = []
-    inst_strength_series: list[float] = []
-
-    for _, b in sorted_buckets:
-        buy_v = b['buy']
-        sell_v = b['sell']
-        total_v = max(b['total'], 0.0)
-        delta_v = buy_v - sell_v
-        whale_v = b['whale']
-
-        # Adaptive baseline = median of last BASELINE_WINDOW buckets
-        window = bucket_values_history[-_BASELINE_WINDOW:] if bucket_values_history else []
-        baseline = statistics.median(window) if window else max(total_v, 1.0)
-
-        # — Buy Strength —
-        imbalance = abs((buy_v - sell_v) / (buy_v + sell_v + _EPS))
-        raw_strength = 0.6 * imbalance + 0.4 * math.log1p(total_v / (baseline + _EPS))
-        raw_sample = raw_strength_history[-_BASELINE_WINDOW:] + [raw_strength]
-        midpoint = statistics.median(raw_sample)
-        strength_value = _sigmoid(raw_strength, midpoint, slope=1.0)
-        if total_v < baseline * 0.25:
-            strength_value *= 0.55          # low-volume penalty
-        strength_value = _clamp(strength_value, 0.0, 99.5)
-
-        # — Institutional Strength —
-        whale_ratio = whale_v / (total_v + _EPS)
-        dark_ratio = abs(delta_v) / (total_v + _EPS)
-        whale_mult = whale_v / (baseline + _EPS)
-        raw_inst = 0.45 * whale_ratio + 0.35 * dark_ratio + 0.20 * math.log1p(whale_mult)
-        inst_sample = raw_inst_history[-_BASELINE_WINDOW:] + [raw_inst]
-        inst_midpoint = statistics.median(inst_sample)
-        inst_value = _sigmoid(raw_inst, inst_midpoint, slope=0.95)
-        if whale_v < baseline * 0.15:
-            inst_value *= 0.6               # low-whale penalty
-        inst_value = _clamp(inst_value, 0.0, 99.5)
-
-        buy_strength_series.append(strength_value)
-        inst_strength_series.append(inst_value)
-
-        raw_strength_history.append(raw_strength)
-        raw_inst_history.append(raw_inst)
-        bucket_values_history.append(total_v)
-
-    # Session-level aggregates
-    total_buy = sum(b['buy'] for _, b in sorted_buckets)
-    total_sell = sum(b['sell'] for _, b in sorted_buckets)
-    total_value = total_buy + total_sell
-    net_cvd = total_buy - total_sell
-
-    # Final strength = last-bucket value (most recent state)
-    buy_strength_final = buy_strength_series[-1] if buy_strength_series else 0.0
-    inst_strength_final = inst_strength_series[-1] if inst_strength_series else 0.0
-
-    # ── 4. Delta Strength % ────────────────────────────────
-    delta_strength_pct = (net_cvd / (total_value + _EPS)) * 100.0
-
-    # ── 5. Dark Flow Score ─────────────────────────────────
-    dark_flow_score = _clamp(abs(net_cvd) / (total_value + _EPS) * 100.0, 0.0, 100.0)
-
-    result = {
-        'cvd_normalized': round(cvd_normalized, 4),
-        'buy_strength': round(buy_strength_final, 4),
-        'institutional_strength': round(inst_strength_final, 4),
-        'whale_net_flow': int(net_cvd),
-        'dark_flow_score': round(dark_flow_score, 4),
-        'total_buy_volume': int(total_buy),
-        'total_sell_volume': int(total_sell),
-        # Không lưu vào model, chỉ dùng trong API response
-        'delta_strength_pct': round(delta_strength_pct, 4),
-        'alert_count': len(rows),
-        'bucket_count': len(sorted_buckets),
-    }
-    if include_series:
-        result['cvd_series'] = cvd_buckets
-    return result
+    return _compute_session_facts_from_rows(
+        rows,
+        bucket_minutes=bucket_minutes,
+        include_series=include_series,
+    )
 
 
-def compute_session_facts_for_all_active(session_date: date | None = None) -> dict:
+def compute_session_facts_for_all_active(session_date: date | None = None, symbol: str | None = None) -> dict:
     """
     Tính và upsert SessionFacts cho tất cả symbol có whale data trong ngày.
 
@@ -266,14 +304,20 @@ def compute_session_facts_for_all_active(session_date: date | None = None) -> di
     from datetime import date as _date
     from django.utils.timezone import now
     from signal_intelligence.models import WhaleAlertCanonical
-    from market_serving.models import SessionFacts
+    from market_serving.models import SessionFacts, SessionFactsBucket
 
     target_date = session_date or now().date()
 
-    # Lấy danh sách symbol có dữ liệu trong ngày
+    normalized_symbol = str(symbol or '').strip().upper() or None
+
+    # Lấy danh sách symbol có dữ liệu trong ngày.
+    whale_queryset = WhaleAlertCanonical.objects.filter(session_date=target_date)
+    if normalized_symbol is not None:
+        whale_queryset = whale_queryset.filter(symbol=normalized_symbol)
+
     symbols = list(
-        WhaleAlertCanonical.objects
-        .filter(session_date=target_date)
+        whale_queryset
+        .order_by()
         .values_list('symbol', flat=True)
         .distinct()
     )
@@ -284,12 +328,17 @@ def compute_session_facts_for_all_active(session_date: date | None = None) -> di
 
     for symbol in symbols:
         try:
-            result = compute_session_facts(symbol, target_date)
+            rows = _load_session_rows(symbol, target_date)
+            if not rows:
+                skipped += 1
+                continue
+
+            result = _compute_session_facts_from_rows(rows, bucket_minutes=_BUCKET_MINUTES)
             if result is None:
                 skipped += 1
                 continue
 
-            SessionFacts.objects.update_or_create(
+            facts_obj, _ = SessionFacts.objects.update_or_create(
                 symbol=symbol,
                 session_date=target_date,
                 defaults={
@@ -304,6 +353,26 @@ def compute_session_facts_for_all_active(session_date: date | None = None) -> di
                     'stale': False,
                 },
             )
+
+            SessionFactsBucket.objects.filter(session_facts=facts_obj).delete()
+            bucket_rows = _build_bucket_rows(rows)
+            if bucket_rows:
+                SessionFactsBucket.objects.bulk_create([
+                    SessionFactsBucket(
+                        session_facts=facts_obj,
+                        symbol=symbol,
+                        session_date=target_date,
+                        window=bucket_row['window'],
+                        bucket_minutes=bucket_row['bucket_minutes'],
+                        bucket_ts=bucket_row['bucket_ts'],
+                        cumulative_cvd=bucket_row['cumulative_cvd'],
+                        buy_strength=bucket_row['buy_strength'],
+                        institutional_strength=bucket_row['institutional_strength'],
+                        buy_volume=bucket_row['buy_volume'],
+                        sell_volume=bucket_row['sell_volume'],
+                    )
+                    for bucket_row in bucket_rows
+                ])
             upserted += 1
 
         except Exception as exc:
@@ -317,6 +386,7 @@ def compute_session_facts_for_all_active(session_date: date | None = None) -> di
     return {
         'status': 'ok' if errors == 0 else 'partial',
         'session_date': target_date.isoformat(),
+        'requested_symbol': normalized_symbol,
         'symbols_total': len(symbols),
         'upserted': upserted,
         'skipped': skipped,

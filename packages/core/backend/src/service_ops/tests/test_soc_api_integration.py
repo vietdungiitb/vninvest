@@ -1,303 +1,288 @@
-"""
-test_soc_api_integration.py — End-to-end integration tests for SOC workflows
-Test: Apply config → Audit record → Version bump → Health check flow
-"""
-from django.test import TestCase
+"""Integration coverage for current SOC workflows and error envelopes."""
+
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.test import TestCase
+from rest_framework import status
 from rest_framework.test import APIClient
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
-from service_ops.models import ServiceDefinition, ServiceConfig, ConfigChangeAudit
+
+from service_ops.models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
+from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
+
 
 User = get_user_model()
 
 
-class ConfigApplyEndToEndTestCase(TestCase):
-    """Test full config apply workflow"""
+class SOCIntegrationBaseTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        ensure_service_registry()
+        cls.user = User.objects.create_user(
+            username='soc-integration-admin',
+            email='soc-integration-admin@test.local',
+            password='pass123',
+        )
+        cls.user.is_staff = True
+        cls.user.is_superuser = True
+        cls.user.save(update_fields=['is_staff', 'is_superuser'])
 
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
         self.client.force_authenticate(user=self.user)
 
-        # Create services
-        ServiceDefinition.objects.create(
-            service_key='vnbroker',
-            name='VNBroker',
-            ownership_matrix={'mode': 'native-write', 'can_apply': True},
-            config_schema={}
-        )
 
-    def test_apply_config_workflow(self):
-        """
-        E2E workflow:
-        1. Fetch current config
-        2. Apply new config
-        3. Verify config changed
-        4. Verify audit log created
-        """
-        # Step 1: Get current config
-        response = self.client.get('/api/soc/vnbroker/config/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        current = response.json()
-        
-        # Step 2: Apply new config
-        new_config = {
-            'timeout_config': {'connect': 10, 'read': 180},
-            'providers': ['p1', 'p2'],
-            'max_retries': 5
-        }
-        payload = {'config': new_config}
-        response = self.client.post(
-            '/api/soc/vnbroker/config/',
-            data=payload,
-            content_type='application/json'
-        )
-        self.assertIn(response.status_code, [HTTP_200_OK, HTTP_201_CREATED])
+class ConfigApplyEndToEndTestCase(SOCIntegrationBaseTestCase):
+    def test_apply_vnbroker_config_workflow_updates_config_history_and_audit(self):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
 
-        # Step 3: Get new config and verify it changed
-        response = self.client.get('/api/soc/vnbroker/config/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        new = response.json()
-        # Config should be updated
-        self.assertIsNotNone(new.get('config'))
-
-        # Step 4: Verify audit log was created
-        response = self.client.get('/api/soc/overview/vnbroker/audit/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        audits = response.json()
-        self.assertIn('results', audits)
-        self.assertGreater(len(audits['results']), 0)
-
-    def test_version_increments_on_apply(self):
-        """Test that config version increments"""
-        # Create initial config
-        ServiceConfig.objects.create(
-            service=ServiceDefinition.objects.get(service_key='vnbroker'),
-            config={'timeout': 5},
-            status='active',
-            applied_by=self.user,
-        )
-
-        # Apply second config
-        payload = {'config': {'timeout': 10}}
-        self.client.post(
-            '/api/soc/vnbroker/config/',
-            data=payload,
-            content_type='application/json'
-        )
-
-        # Fetch history to verify versions
-        response = self.client.get('/api/soc/overview/vnbroker/history/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        history = response.json()
-        
-        # Should have at least 2 versions (or 1 if only second was created)
-        self.assertGreaterEqual(len(history['results']), 1)
-
-    def test_audit_log_contains_before_after(self):
-        """Test that audit logs show config before/after"""
-        # Create initial config via ORM
-        svc = ServiceDefinition.objects.get(service_key='vnbroker')
-        old_cfg = ServiceConfig.objects.create(
-            service=svc,
-            config={'timeout': 5},
-            status='active',
-            applied_by=self.user,
-        )
-
-        # Apply new config
-        new_config = {'timeout': 10}
-        payload = {'config': new_config}
-        self.client.post(
-            '/api/soc/vnbroker/config/',
-            data=payload,
-            content_type='application/json'
-        )
-
-        # Fetch audit and verify before/after
-        response = self.client.get('/api/soc/overview/vnbroker/audit/')
-        audits = response.json()
-        
-        # Should have audit entries with before/after
-        for audit in audits['results']:
-            # Each audit should have config_before and config_after
-            self.assertIn('config_before', audit)
-            self.assertIn('config_after', audit)
-
-
-class MultiDomainWorkflowTestCase(TestCase):
-    """Test workflows across multiple domains"""
-
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
-        self.client.force_authenticate(user=self.user)
-
-        # Create multiple services
-        for key, name in [('vnbroker', 'VNBroker'), ('prefetch', 'Prefetch'), ('signals', 'Signals')]:
-            ServiceDefinition.objects.create(
-                service_key=key,
-                name=name,
-                ownership_matrix={
-                    'mode': 'bridge-write' if key == 'signals' else 'native-write',
-                    'can_apply': key != 'signals'
+        current_response = self.client.get('/api/soc/vnbroker/config/')
+        apply_response = self.client.post(
+            '/api/soc/vnbroker/config/apply/',
+            {
+                'config_payload': {
+                    'preferred_provider': 'kbs',
+                    'fallback_providers': ['dnse'],
+                    'timeout': {
+                        'connect': 7.5,
+                        'read': 45.0,
+                        'write': 10.0,
+                        'pool': 6.0,
+                    },
+                    'max_retries': 4,
+                    'retry_delay_seconds': 0.75,
+                    'enabled': True,
+                    'circuit_breaker_threshold': 4,
+                    'circuit_breaker_window_seconds': 60,
+                    'circuit_breaker_cooldown_seconds': 300,
+                    'requests_per_minute': 90,
+                    'burst_limit': 12,
                 },
-                config_schema={}
-            )
+            },
+            format='json',
+        )
+        config_response = self.client.get(f'/api/soc/services/{service.service_key}/config/')
+        history_response = self.client.get(f'/api/soc/services/{service.service_key}/history/')
+        audit_response = self.client.get(f'/api/soc/services/{service.service_key}/audit/')
 
-    def test_apply_native_write_succeeds(self):
-        """Test applying config to native-write domains"""
-        for service_key in ['vnbroker', 'prefetch']:
-            payload = {'config': {'test': True}}
-            response = self.client.post(
-                f'/api/soc/{service_key}/config/',
-                data=payload,
-                content_type='application/json'
-            )
-            # Should succeed or return validation error, not 403
-            self.assertNotEqual(response.status_code, 403)
+        self.assertEqual(current_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(apply_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(config_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(history_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(audit_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(config_response.json()['config_payload']['preferred_provider'], 'kbs')
+        self.assertEqual(config_response.json()['config_payload']['timeout']['connect'], 7.5)
+        self.assertGreaterEqual(history_response.json()['count'], 1)
+        self.assertGreaterEqual(audit_response.json()['count'], 1)
 
-    def test_apply_bridge_write_fails(self):
-        """Test that applying to bridge-write (signals) fails with 403"""
-        payload = {'config': {'test': True}}
+    def test_apply_vnbroker_config_keeps_single_current_version(self):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
+
+        self.client.post(
+            '/api/soc/vnbroker/config/apply/',
+            {
+                'config_payload': {
+                    'preferred_provider': 'vci',
+                    'fallback_providers': ['kbs'],
+                    'timeout': {
+                        'connect': 6.0,
+                        'read': 30.0,
+                        'write': 10.0,
+                        'pool': 5.0,
+                    },
+                    'max_retries': 3,
+                    'retry_delay_seconds': 0.5,
+                    'enabled': True,
+                    'circuit_breaker_threshold': 5,
+                    'circuit_breaker_window_seconds': 60,
+                    'circuit_breaker_cooldown_seconds': 300,
+                    'requests_per_minute': 60,
+                    'burst_limit': 10,
+                },
+            },
+            format='json',
+        )
+        self.client.post(
+            '/api/soc/vnbroker/config/apply/',
+            {
+                'config_payload': {
+                    'preferred_provider': 'kbs',
+                    'fallback_providers': ['dnse'],
+                    'timeout': {
+                        'connect': 8.0,
+                        'read': 50.0,
+                        'write': 10.0,
+                        'pool': 7.0,
+                    },
+                    'max_retries': 5,
+                    'retry_delay_seconds': 0.8,
+                    'enabled': True,
+                    'circuit_breaker_threshold': 4,
+                    'circuit_breaker_window_seconds': 60,
+                    'circuit_breaker_cooldown_seconds': 300,
+                    'requests_per_minute': 100,
+                    'burst_limit': 15,
+                },
+            },
+            format='json',
+        )
+
+        current_configs = ServiceConfig.objects.filter(service=service, is_current=True)
+
+        self.assertEqual(current_configs.count(), 1)
+        self.assertEqual(current_configs.first().config_payload['preferred_provider'], 'kbs')
+
+
+class MultiDomainWorkflowTestCase(SOCIntegrationBaseTestCase):
+    def test_native_write_domains_apply_through_alias_routes(self):
+        vnbroker_response = self.client.post(
+            '/api/soc/vnbroker/config/apply/',
+            {
+                'config_payload': {
+                    'preferred_provider': 'vci',
+                    'fallback_providers': ['kbs'],
+                    'timeout': {
+                        'connect': 5.0,
+                        'read': 30.0,
+                        'write': 10.0,
+                        'pool': 5.0,
+                    },
+                    'max_retries': 3,
+                    'retry_delay_seconds': 0.5,
+                    'enabled': True,
+                    'circuit_breaker_threshold': 5,
+                    'circuit_breaker_window_seconds': 60,
+                    'circuit_breaker_cooldown_seconds': 300,
+                    'requests_per_minute': 60,
+                    'burst_limit': 10,
+                },
+            },
+            format='json',
+        )
+        prefetch_response = self.client.post(
+            '/api/soc/prefetch/config/apply/',
+            {
+                'config_payload': {
+                    'active_profile': 'market_open',
+                    'pre_open_interval_seconds': 120,
+                    'market_open_interval_seconds': 45,
+                    'lunch_break_interval_seconds': 300,
+                    'pre_close_interval_seconds': 60,
+                    'post_close_interval_seconds': 900,
+                    'offhours_interval_seconds': 3600,
+                    'batch_size': 20,
+                    'max_concurrent_workers': 2,
+                    'universe_group_ids': ['vn30'],
+                    'cache_ttl_seconds': 30,
+                    'enabled': True,
+                    'skip_non_trading_days': True,
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(vnbroker_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(prefetch_response.status_code, status.HTTP_201_CREATED)
+
+    def test_bridge_write_domain_remains_forbidden(self):
         response = self.client.post(
-            '/api/soc/signals/config/',
-            data=payload,
-            content_type='application/json'
-        )
-        self.assertEqual(response.status_code, 403)
-
-    def test_get_all_services_succeeds(self):
-        """Test that overview list shows all services"""
-        response = self.client.get('/api/soc/overview/')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.json()
-        self.assertEqual(len(data['results']), 3)
-
-    def test_get_detail_per_service(self):
-        """Test getting detail for each service"""
-        for key in ['vnbroker', 'prefetch', 'signals']:
-            response = self.client.get(f'/api/soc/overview/{key}/')
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            detail = response.json()
-            self.assertEqual(detail['service_key'], key)
-
-
-class PaginationIntegrationTestCase(TestCase):
-    """Test pagination on list and history endpoints"""
-
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
-        self.client.force_authenticate(user=self.user)
-
-        svc = ServiceDefinition.objects.create(
-            service_key='test',
-            name='Test',
-            ownership_matrix={'mode': 'native-write', 'can_apply': True},
-            config_schema={}
+            '/api/soc/signals/config/apply/',
+            {'config_payload': {'whale_threshold_vnd': 600000000}},
+            format='json',
         )
 
-        # Create multiple configs to test pagination
-        for i in range(25):
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json()['code'], 'OWNERSHIP_WRITE_DENIED')
+
+    def test_services_list_and_detail_routes_use_primary_service_keys(self):
+        list_response = self.client.get('/api/soc/services/?page=1')
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(list_response.json()['count'], 1)
+
+        for domain in ['vnbroker', 'prefetch', 'signals']:
+            service_key = SOC_DOMAIN_PRIMARY_SERVICE_KEYS[domain]
+            response = self.client.get(f'/api/soc/services/{service_key}/')
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.json()['service_key'], service_key)
+
+
+class PaginationIntegrationTestCase(SOCIntegrationBaseTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.service = ServiceDefinition.objects.create(
+            service_key='integration_test_service',
+            name='Integration Test Service',
+            domain='platform',
+            description='Synthetic service for pagination tests',
+            owner_team='core',
+            tags=['test'],
+        )
+        for index in range(25):
             ServiceConfig.objects.create(
-                service=svc,
-                config={'iteration': i},
-                status='active',
-                applied_by=self.user,
+                service=cls.service,
+                config_payload={'iteration': index},
+                applied_by='soc-integration-admin',
+                change_reason=f'config {index}',
             )
-
-    def test_overview_list_pagination(self):
-        """Test that overview list is paginated"""
-        response = self.client.get('/api/soc/overview/')
-        data = response.json()
-        
-        # Should have pagination metadata
-        self.assertIn('count', data)
-        self.assertIn('next', data)
-        self.assertIn('previous', data)
-        self.assertIn('results', data)
-
-    def test_history_pagination(self):
-        """Test that history is paginated"""
-        response = self.client.get('/api/soc/overview/test/history/?page=1')
-        data = response.json()
-        
-        # Should have pagination
-        self.assertIn('results', data)
-        self.assertIn('count', data)
-
-    def test_audit_pagination(self):
-        """Test that audit log is paginated"""
-        # Create some audit entries
-        for i in range(5):
             ConfigChangeAudit.objects.create(
-                service_key='test',
-                config_before={'v': i},
-                config_after={'v': i + 1},
-                applied_by=self.user,
-                applied_at=None,
-                change_summary=f'Change {i}',
+                service=cls.service,
+                action='apply',
+                actor='soc-integration-admin',
+                before_snapshot={'iteration': index - 1} if index > 0 else None,
+                after_snapshot={'iteration': index},
+                change_summary=f'config {index}',
             )
 
-        response = self.client.get('/api/soc/overview/test/audit/?page=1')
+    def test_service_list_pagination(self):
+        response = self.client.get('/api/soc/services/?page=1')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        
+        self.assertIn('count', data)
         self.assertIn('results', data)
+        self.assertLessEqual(len(data['results']), data['count'])
+
+    def test_history_and_audit_routes_are_paginated(self):
+        history_response = self.client.get('/api/soc/services/integration_test_service/history/?page=1')
+        audit_response = self.client.get('/api/soc/services/integration_test_service/audit/?page=1')
+
+        self.assertEqual(history_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(audit_response.status_code, status.HTTP_200_OK)
+        self.assertIn('count', history_response.json())
+        self.assertIn('results', history_response.json())
+        self.assertIn('count', audit_response.json())
+        self.assertIn('results', audit_response.json())
 
 
-class ErrorHandlingIntegrationTestCase(TestCase):
-    """Test error handling across endpoints"""
+class ErrorHandlingIntegrationTestCase(SOCIntegrationBaseTestCase):
+    def test_nonexistent_service_returns_404_with_standard_envelope(self):
+        response = self.client.get('/api/soc/services/nonexistent-service/')
 
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user('admin', 'admin@test.com', 'pass123')
-        admin_group, _ = Group.objects.get_or_create(name='admin_users')
-        self.user.groups.add(admin_group)
-        self.client.force_authenticate(user=self.user)
-
-    def test_nonexistent_service_returns_404(self):
-        """Test that nonexistent service returns 404"""
-        response = self.client.get('/api/soc/overview/nonexistent/')
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         data = response.json()
-        # Should have error envelope
-        self.assertIn('detail', data)
-
-    def test_invalid_json_returns_400(self):
-        """Test that invalid JSON returns 400"""
-        response = self.client.post(
-            '/api/soc/vnbroker/config/',
-            data='invalid json',
-            content_type='application/json'
-        )
-        self.assertGreaterEqual(response.status_code, 400)
-
-    def test_missing_config_field_returns_error(self):
-        """Test that missing required fields return error"""
-        # Missing 'config' key
-        payload = {}
-        response = self.client.post(
-            '/api/soc/vnbroker/config/',
-            data=payload,
-            content_type='application/json'
-        )
-        self.assertGreaterEqual(response.status_code, 400)
-
-    def test_all_errors_have_proper_envelope(self):
-        """Test that all error responses have proper envelope"""
-        # Trigger 404
-        response = self.client.get('/api/soc/overview/bad/')
-        data = response.json()
-        
-        # Must have detail, code, timestamp
         self.assertIn('detail', data)
         self.assertIn('code', data)
         self.assertIn('timestamp', data)
+        self.assertIn('request_id', data)
+
+    def test_invalid_json_returns_400(self):
+        response = self.client.post(
+            '/api/soc/vnbroker/config/apply/',
+            data='{"config_payload":',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('detail', response.json())
+
+    def test_validation_error_uses_standard_error_envelope(self):
+        response = self.client.post(
+            '/api/soc/vnbroker/test-connection/',
+            {'provider': 'ssi'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['code'], 'VNBROKER_PROVIDER_UNSUPPORTED')
+        self.assertIn('field_errors', response.json())

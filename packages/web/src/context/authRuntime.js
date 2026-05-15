@@ -56,7 +56,7 @@ export function createEmptyAuthRuntimeState(options = {}) {
       visible_routes: [],
     },
     surfaces: {
-      show_admin_ops: false,
+      show_operations_center: false,
       show_ai_command_center: false,
       show_vip_shell: false,
     },
@@ -87,7 +87,7 @@ export function deriveAuthRuntimeState(bootstrapPayload, options = {}) {
       visible_routes: [],
     },
     surfaces: legacyAuthState.surfaces || {
-      show_admin_ops: false,
+      show_operations_center: false,
       show_ai_command_center: false,
       show_vip_shell: false,
     },

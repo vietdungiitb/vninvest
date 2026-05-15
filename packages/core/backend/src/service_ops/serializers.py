@@ -10,6 +10,8 @@ from .models import (
     ServiceRunLog,
     OwnershipRecord,
     ConfigChangeAudit,
+    ScrapeMatrix,
+    ScrapeMatrixCell,
 )
 
 
@@ -97,3 +99,31 @@ class ConfigChangeAuditSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'actor', 'actor_ip', 'timestamp', 'request_id',
         ]
+
+
+class ScrapeMatrixSerializer(serializers.ModelSerializer):
+    progress_pct = serializers.FloatField(read_only=True)
+
+    class Meta:
+        model = ScrapeMatrix
+        fields = [
+            'id', 'cycle_id', 'status', 'providers',
+            'started_at', 'completed_at',
+            'total_rows', 'done_rows', 'failed_rows', 'progress_pct',
+        ]
+        read_only_fields = fields
+
+
+class ScrapeMatrixCellSerializer(serializers.ModelSerializer):
+    cycle_id = serializers.SlugRelatedField(
+        source='matrix', slug_field='cycle_id', read_only=True,
+    )
+
+    class Meta:
+        model = ScrapeMatrixCell
+        fields = [
+            'id', 'cycle_id', 'symbol_group_id', 'provider',
+            'status', 'worker_id', 'claimed_at', 'done_at',
+            'symbols_processed', 'error_detail',
+        ]
+        read_only_fields = fields

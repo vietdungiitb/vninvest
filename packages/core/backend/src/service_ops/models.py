@@ -271,3 +271,83 @@ class ConfigChangeAudit(models.Model):
 
     def __str__(self):
         return f'{self.service.service_key} {self.action} by {self.actor} @ {self.timestamp}'
+
+
+class ScrapeMatrix(models.Model):
+    """Một cycle scraping cho toàn bộ universe matrix."""
+
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('completing', 'Completing'),
+        ('completed', 'Completed'),
+        ('aborted', 'Aborted'),
+    ]
+
+    cycle_id = models.CharField(max_length=64, unique=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    providers = models.JSONField(default=list)
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    total_rows = models.IntegerField(default=0)
+    done_rows = models.IntegerField(default=0)
+    failed_rows = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['status', 'started_at']),
+        ]
+        verbose_name = 'Scrape Matrix'
+        verbose_name_plural = 'Scrape Matrices'
+
+    @property
+    def progress_pct(self) -> float:
+        if self.total_rows <= 0:
+            return 0.0
+        return (self.done_rows / self.total_rows) * 100.0
+
+    def __str__(self):
+        return f'{self.cycle_id} ({self.status})'
+
+
+class ScrapeMatrixCell(models.Model):
+    """Một ô trong matrix: SymbolGroup x Provider."""
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('claimed', 'Claimed'),
+        ('working', 'Working'),
+        ('done', 'Done'),
+        ('failed', 'Failed'),
+        ('skipped', 'Skipped'),
+    ]
+
+    matrix = models.ForeignKey(
+        ScrapeMatrix,
+        on_delete=models.CASCADE,
+        related_name='cells',
+    )
+    symbol_group_id = models.CharField(max_length=80)
+    provider = models.CharField(max_length=40)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    worker_id = models.CharField(max_length=200, blank=True)
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    done_at = models.DateTimeField(null=True, blank=True)
+
+    symbols_processed = models.IntegerField(default=0)
+    error_detail = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = [('matrix', 'symbol_group_id', 'provider')]
+        indexes = [
+            models.Index(fields=['matrix', 'status']),
+            models.Index(fields=['matrix', 'symbol_group_id']),
+        ]
+        verbose_name = 'Scrape Matrix Cell'
+        verbose_name_plural = 'Scrape Matrix Cells'
+
+    def __str__(self):
+        return f'{self.matrix.cycle_id} {self.symbol_group_id} x {self.provider} ({self.status})'

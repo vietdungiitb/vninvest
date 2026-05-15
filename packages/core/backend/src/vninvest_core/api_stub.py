@@ -79,7 +79,7 @@ def _visible_routes(identity, build_target):
     if build_target in {"saas", "vip"}:
         routes.extend(["ai-advisory", "whale-alerts", "transactions", "portfolios"])
     if build_target in {"saas", "vip"} and (identity["is_staff"] or identity["is_superuser"]):
-        routes.extend(["admin-ops", "ai-command-center"])
+        routes.extend(["operations-center", "ai-command-center"])
     if build_target == "vip":
         routes.append("vip-local-control")
     return routes
@@ -106,7 +106,7 @@ def _capability_bootstrap_payload():
             "visible_routes": _visible_routes(identity, build_target),
         },
         "surfaces": {
-            "show_admin_ops": identity["is_staff"] or identity["is_superuser"],
+            "show_operations_center": identity["is_staff"] or identity["is_superuser"],
             "show_ai_command_center": build_target in {"saas", "vip"},
             "show_vip_shell": build_target == "vip",
         },

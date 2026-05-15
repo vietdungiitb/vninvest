@@ -6,7 +6,10 @@ Portfolio, Transaction, Watchlist/WatchlistItem replacing legacy counterparts.
 ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 TENANT ISOLATION: All user-scoped models now have explicit tenant FK to identity_access.CoreTenant.
 """
+from decimal import Decimal
+
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -169,6 +172,76 @@ class WatchlistItem(models.Model):
         return f'{self.symbol} ({self.watchlist.name})'
 
 
+class TrackedSymbol(models.Model):
+    """
+    Native tracked symbol entity for stock-management compat routes.
+
+    This remains distinct from WatchlistItem because tracked symbols carry
+    per-symbol override state and an optional source group reference.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='core_tracked_symbols',
+        verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='core_tracked_symbols',
+        null=True,
+        blank=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant owner of this tracked symbol. Must be set after migration.',
+    )
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    source_watchlist = models.ForeignKey(
+        Watchlist,
+        on_delete=models.SET_NULL,
+        related_name='tracked_symbols',
+        null=True,
+        blank=True,
+        verbose_name='Nhóm nguồn',
+    )
+    whale_alert_threshold_million = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        default=None,
+        validators=[MinValueValidator(Decimal('1'))],
+        verbose_name='Ngưỡng whale riêng (triệu VNĐ)',
+    )
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name='Bật theo dõi')
+    is_stale = models.BooleanField(
+        default=False,
+        verbose_name='Dữ liệu cũ?',
+        help_text='Đánh dấu nếu thống kê cần được tính toán lại.',
+    )
+    legacy_tracked_symbol_id = models.IntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='ID tracked legacy',
+    )
+    added_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày thêm')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        verbose_name = 'Mã theo dõi'
+        verbose_name_plural = 'Mã theo dõi'
+        ordering = ['-added_at', '-pk']
+        unique_together = [('user', 'symbol')]
+        indexes = [
+            models.Index(fields=['tenant', 'symbol', 'is_active']),
+            models.Index(fields=['user', 'symbol', 'is_active']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.symbol} ({self.user.username})'
+
+
 class PriceAlert(models.Model):
     """
     Cảnh báo giá cho một mã cổ phiếu.
@@ -222,6 +295,11 @@ class PriceAlert(models.Model):
         verbose_name='Trạng thái',
     )
     is_enabled = models.BooleanField(default=True, db_index=True, verbose_name='Bật/Tắt')
+    cooldown_seconds = models.PositiveIntegerField(
+        default=300,
+        verbose_name='Cooldown (giây)',
+        help_text='Số giây tối thiểu giữa hai lần kích hoạt liên tiếp.',
+    )
     
     # Notification settings
     notify_email = models.BooleanField(default=True, verbose_name='Thông báo qua email')

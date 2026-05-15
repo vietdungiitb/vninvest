@@ -4,12 +4,11 @@ Tests for market_serving materializers (SAAS-14).
 Covers:
 - materialize_symbol_snapshot: no legacy DB URL → skipped
 - materialize_symbol_snapshot: degraded mode (OperationalError → marks stale + schedules retry)
-- materialize_session_facts: no legacy DB URL → skipped
-- backfill_symbol_snapshots: no legacy DB URL → skipped
+- materialize_session_facts: native empty-result + series materialization
 - Pagination classes instantiation
 """
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -26,7 +25,6 @@ django.setup()
 from django.test import TestCase
 
 from market_serving.materializers import (
-    backfill_symbol_snapshots,
     materialize_pre_open_snapshots,
     materialize_session_facts,
     materialize_symbol_snapshot,
@@ -43,22 +41,92 @@ class TestMaterializeSymbolSnapshotNoLegacyUrl(TestCase):
         self.assertEqual(result["reason"], "no_legacy_db_url")
 
 
-class TestMaterializeSessionFactsNoLegacyUrl(TestCase):
-    """When LEGACY_DATABASE_URL is absent, session facts materializer returns skipped."""
-
-    def test_no_legacy_url_returns_skipped(self):
+class TestMaterializeSessionFactsNative(TestCase):
+    def test_no_whale_data_returns_native_empty_result(self):
         result = materialize_session_facts.run()
-        self.assertEqual(result["status"], "skipped")
-        self.assertEqual(result["reason"], "no_legacy_db_url")
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['upserted'], 0)
+        self.assertEqual(result['symbols_total'], 0)
+        self.assertIsNone(result['requested_symbol'])
 
+    def test_materializer_persists_bucket_strengths_for_requested_symbol(self):
+        from market_serving.models import SessionFacts, SessionFactsBucket
+        from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
+        from django.utils.timezone import now
 
-class TestBackfillNoLegacyUrl(TestCase):
-    """backfill_symbol_snapshots returns skipped when no legacy URL."""
+        SessionFacts.objects.all().delete()
+        SessionFactsBucket.objects.all().delete()
+        WhaleAlertCanonical.objects.all().delete()
+        UnifiedAlert.objects.all().delete()
 
-    def test_no_legacy_url_returns_skipped(self):
-        result = backfill_symbol_snapshots.run(days_back=7)
-        self.assertEqual(result["status"], "skipped")
-        self.assertEqual(result["reason"], "no_legacy_db_url")
+        session_date = now().date()
+
+        buy_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            title='VCI whale buy',
+            body='native materializer test',
+            value=250_000_000,
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=session_date,
+            triggered_at=datetime(2026, 5, 13, 9, 5, tzinfo=timezone.utc),
+            source_ref='sf-native-buy',
+        )
+        sell_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            title='VCI whale sell',
+            body='native materializer test',
+            value=100_000_000,
+            direction=UnifiedAlert.DirectionChoices.SELL,
+            session_date=session_date,
+            triggered_at=datetime(2026, 5, 13, 9, 22, tzinfo=timezone.utc),
+            source_ref='sf-native-sell',
+        )
+        WhaleAlertCanonical.objects.create(
+            alert=buy_alert,
+            symbol='VCI',
+            session_date=session_date,
+            side=WhaleAlertCanonical.SideChoices.BUY,
+            price=Decimal('25000.00'),
+            volume=10_000,
+            matched_value=250_000_000,
+            executed_at=datetime(2026, 5, 13, 9, 5, tzinfo=timezone.utc),
+        )
+        WhaleAlertCanonical.objects.create(
+            alert=sell_alert,
+            symbol='VCI',
+            session_date=session_date,
+            side=WhaleAlertCanonical.SideChoices.SELL,
+            price=Decimal('25000.00'),
+            volume=4_000,
+            matched_value=100_000_000,
+            executed_at=datetime(2026, 5, 13, 9, 22, tzinfo=timezone.utc),
+        )
+
+        result = materialize_session_facts.run(symbol='VCI')
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['upserted'], 1)
+        self.assertEqual(result['requested_symbol'], 'VCI')
+
+        facts = SessionFacts.objects.get(symbol='VCI', session_date=session_date)
+        fifteen_minute_buckets = list(
+            SessionFactsBucket.objects.filter(session_facts=facts, window='15m').order_by('bucket_ts')
+        )
+        five_minute_buckets = list(
+            SessionFactsBucket.objects.filter(session_facts=facts, window='5m').order_by('bucket_ts')
+        )
+
+        self.assertTrue(fifteen_minute_buckets)
+        self.assertTrue(five_minute_buckets)
+        self.assertEqual(fifteen_minute_buckets[0].bucket_minutes, 15)
+        self.assertGreaterEqual(fifteen_minute_buckets[0].buy_strength, 0.0)
+        self.assertGreaterEqual(fifteen_minute_buckets[0].institutional_strength, 0.0)
+        self.assertGreaterEqual(len(fifteen_minute_buckets), 1)
+        self.assertGreaterEqual(len(five_minute_buckets), 1)
 
 
 class TestMaterializePreOpenSnapshots(TestCase):

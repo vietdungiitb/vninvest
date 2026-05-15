@@ -13,6 +13,36 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+_SNAPSHOT_COMPARE_FIELDS = (
+    'price',
+    'price_change',
+    'price_change_pct',
+    'volume',
+    'reference_price',
+    'ceiling',
+    'floor',
+    'open',
+    'high',
+    'low',
+    'market_status',
+    'source',
+    'stale',
+)
+
+
+def _normalize_target_symbols(symbols: list[str] | None) -> list[str]:
+    if symbols is not None:
+        return sorted({str(symbol).strip().upper() for symbol in symbols if str(symbol).strip()})
+
+    from market_data.models import StockProfile
+
+    return list(
+        StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE)
+        .values_list('symbol', flat=True)
+        .distinct()
+    )
+
+
 def _hose_tick_size(price: Decimal) -> Decimal:
     """
     HoSE bước giá (tick size) theo quy định sàn HOSE:
@@ -97,7 +127,7 @@ def fetch_realtime_tickers_from_vnbroker(symbols: list[str]) -> list[dict]:
     return tickers
 
 
-def materialize_symbol_snapshot_from_vnbroker():
+def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
     """
     Drop-in replacement for materialize_symbol_snapshot() after legacy decommission.
     
@@ -105,40 +135,62 @@ def materialize_symbol_snapshot_from_vnbroker():
     Writes same SymbolSnapshot contract (no downstream changes needed).
     """
     from market_serving.models import SymbolSnapshot
-    from market_data.models import StockProfile, DailyPrice
+    from market_data.models import DailyPrice
     
     try:
-        symbols = list(
-            StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE)
-            .values_list('symbol', flat=True)
-            .distinct()
-        )
+        target_symbols = _normalize_target_symbols(symbols)
         
-        if not symbols:
+        if not target_symbols:
             logger.warning("No active symbols found for vnbroker fetch")
             return {'status': 'ok', 'upserted': 0, 'source': 'vnbroker_native'}
         
         import time as _time
 
+        inserted = 0
+        updated = 0
+        skipped_existing = 0
+        failed: list[str] = []
         today = date.today()
         yesterday = today - timedelta(days=1)
         count = 0
+        existing_snapshots_by_symbol = {
+            row['symbol']: row
+            for row in SymbolSnapshot.objects.filter(symbol__in=target_symbols, session_date=today).values(
+                'symbol',
+                'price',
+                'price_change',
+                'price_change_pct',
+                'volume',
+                'reference_price',
+                'ceiling',
+                'floor',
+                'open',
+                'high',
+                'low',
+                'market_status',
+                'source',
+                'stale',
+            )
+        }
 
         # Pre-fetch live prices via SSOT adapter (không gọi VciQuote trực tiếp)
         # Delay 0.35s giữa các symbol để tránh 429 Too Many Requests từ VCI.
         from market_data.vnbroker_adapter import fetch_realtime_price
         live_prices: dict[str, dict] = {}
-        for sym in symbols:
+        for sym in target_symbols:
             live = fetch_realtime_price(sym)
             if live is not None:
                 live_prices[sym] = {
                     'close': Decimal(str(live['close'])),
                     'volume': int(live['volume']),
+                    'open': Decimal(str(live.get('open') or live['close'])),
+                    'high': Decimal(str(live.get('high') or live['close'])),
+                    'low': Decimal(str(live.get('low') or live['close'])),
                 }
             _time.sleep(0.35)
-        logger.info('live_prices fetched via adapter: %d/%d', len(live_prices), len(symbols))
+        logger.info('live_prices fetched via adapter: %d/%d', len(live_prices), len(target_symbols))
 
-        for symbol in symbols:
+        for symbol in target_symbols:
             try:
                 # Reference price: yesterday's canonical close (for ceiling/floor)
                 yesterday_price = DailyPrice.objects.filter(
@@ -154,9 +206,9 @@ def materialize_symbol_snapshot_from_vnbroker():
                 if live:
                     live_close = live['close']
                     live_volume = live['volume']
-                    live_open = Decimal(str(live.get('open') or live['close']))
-                    live_high = Decimal(str(live.get('high') or live['close']))
-                    live_low = Decimal(str(live.get('low') or live['close']))
+                    live_open = live['open']
+                    live_high = live['high']
+                    live_low = live['low']
                 elif today_db_price:
                     live_close = today_db_price.close
                     live_volume = today_db_price.volume
@@ -182,32 +234,60 @@ def materialize_symbol_snapshot_from_vnbroker():
                 ceiling = _round_ceiling_price(reference_price * Decimal('1.07'))
                 floor = _round_floor_price(reference_price * Decimal('0.93'))
 
+                snapshot_defaults = {
+                    'price': live_close,
+                    'price_change': price_change,
+                    'price_change_pct': price_change_pct,
+                    'volume': live_volume,
+                    'reference_price': reference_price,
+                    'ceiling': ceiling,
+                    'floor': floor,
+                    'open': live_open,
+                    'high': live_high,
+                    'low': live_low,
+                    'market_status': 'open',
+                    'source': 'vnbroker_native',
+                    'stale': False,
+                }
+                existing = existing_snapshots_by_symbol.get(symbol)
+                if existing is not None and all(existing[field_name] == snapshot_defaults[field_name] for field_name in _SNAPSHOT_COMPARE_FIELDS):
+                    skipped_existing += 1
+                    continue
+
                 SymbolSnapshot.objects.update_or_create(
                     symbol=symbol,
                     session_date=today,
-                    defaults={
-                        'price': live_close,
-                        'price_change': price_change,
-                        'price_change_pct': price_change_pct,
-                        'volume': live_volume,
-                        'reference_price': reference_price,
-                        'ceiling': ceiling,
-                        'floor': floor,
-                        'open': live_open,
-                        'high': live_high,
-                        'low': live_low,
-                        'market_status': 'open',
-                        'source': 'vnbroker_native',
-                        'stale': False,
-                    },
+                    defaults=snapshot_defaults,
                 )
+                if existing is None:
+                    inserted += 1
+                else:
+                    updated += 1
                 count += 1
             except Exception as e:
                 logger.warning(f"Failed to materialize {symbol}: {e}")
+                failed.append(symbol)
                 continue
 
-        logger.info(f"materialize_symbol_snapshot (vnbroker): upserted {count} snapshots (live={len(live_prices)})")
-        return {'status': 'ok', 'upserted': count, 'source': 'vnbroker_native'}
+        logger.info(
+            'materialize_symbol_snapshot (vnbroker): upserted %d snapshots (inserted=%d updated=%d skipped_existing=%d live=%d)',
+            count,
+            inserted,
+            updated,
+            skipped_existing,
+            len(live_prices),
+        )
+        return {
+            'status': 'ok',
+            'symbols_count': len(target_symbols),
+            'upserted': count,
+            'inserted': inserted,
+            'updated': updated,
+            'skipped_existing': skipped_existing,
+            'failed': failed,
+            'failed_count': len(failed),
+            'source': 'vnbroker_native',
+        }
     
     except Exception as e:
         logger.error(f"vnbroker materialize failed: {e}")

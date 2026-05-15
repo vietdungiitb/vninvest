@@ -252,13 +252,16 @@ class PortfolioTechnicalsView(APIView):
 # Portfolio AI advisory compat — delegates to advisory domain
 # ---------------------------------------------------------------------------
 
+def _unwrap_django_request(request):
+    return getattr(request, '_request', request)
+
 class PortfolioAIAdvisoryCanonicalView(APIView):
     """GET /api/portfolio/ai-advisory/<symbol>/canonical/"""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
         from advisory.views import AdvisoryLatestView
-        return AdvisoryLatestView.as_view()(request, symbol=symbol.upper())
+        return AdvisoryLatestView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
 
 
 class PortfolioAIAdvisoryCurrentView(APIView):
@@ -267,7 +270,7 @@ class PortfolioAIAdvisoryCurrentView(APIView):
 
     def get(self, request, symbol):
         from advisory.views import AdvisoryLatestView
-        return AdvisoryLatestView.as_view()(request, symbol=symbol.upper())
+        return AdvisoryLatestView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
 
 
 class PortfolioAIAdvisoryAutoRefreshInfoView(APIView):
@@ -284,7 +287,7 @@ class PortfolioAIAdvisoryRefreshView(APIView):
 
     def post(self, request, symbol):
         from advisory.views import AdvisoryRefreshView
-        return AdvisoryRefreshView.as_view()(request, symbol=symbol.upper())
+        return AdvisoryRefreshView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
 
 
 class PortfolioAICommandCenterView(APIView):

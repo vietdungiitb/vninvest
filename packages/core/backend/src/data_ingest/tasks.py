@@ -9,92 +9,395 @@ send_password_reset_email: async email send for password reset.
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from celery import shared_task
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
+from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 
+from market_data.vnbroker_adapter import fetch_daily_history, fetch_intraday_tape
+
 logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True, name='data_ingest.tasks.run_vnbroker_price_board_benchmark', queue='manual_on_demand')
+def run_vnbroker_price_board_benchmark(self, payload: dict | None = None) -> dict:
+    from market_data.vnbroker_benchmark import run_price_board_provider_benchmark
+
+    return run_price_board_provider_benchmark(payload if isinstance(payload, dict) else {})
 
 # ---------------------------------------------------------------------------
 # Provider registry for daily history backfill.
 # Add entries here when a new explorer module gains a working .history() call.
 # ---------------------------------------------------------------------------
 _HISTORY_PROVIDERS = [
-    'vci',
-    'kbs',
+    'VCI',
+    'KBS',
 ]
+_INTRADAY_PLAN_DATASETS = ('intraday_ticks', 'intraday_bars')
+_INTRADAY_BAR_TIMEFRAMES = ('1m', '5m', '15m', '1H', '2H', '4H')
 
 
-def _fetch_and_upsert_bucket(
-    symbols: list[str],
-    provider: str,
-    days: int,
-    inter_symbol_delay: float = 0.12,
-) -> dict:
-    """
-    Fetch daily history for a bucket of symbols using a single provider and
-    bulk-upsert into DailyPrice.  Designed to run in a thread.
-    """
-    import importlib
-    from market_data.models import DailyPrice
+def _normalize_symbols(symbols: list[str] | None) -> list[str]:
+    if symbols is None:
+        return []
+    return sorted({str(symbol).strip().upper() for symbol in symbols if str(symbol).strip()})
 
-    upserted = 0
-    failed: list[str] = []
+
+def _extract_symbols_from_plan_items(plan_items: list[dict] | None) -> list[str]:
+    if not plan_items:
+        return []
+    return _normalize_symbols([item.get('symbol') for item in plan_items])
+
+
+def _extract_intraday_datasets_from_plan_items(plan_items: list[dict] | None) -> list[str]:
+    if not plan_items:
+        return list(_INTRADAY_PLAN_DATASETS)
+
+    requested = {
+        str(item.get('dataset') or '').strip().lower()
+        for item in plan_items
+        if str(item.get('dataset') or '').strip().lower() in _INTRADAY_PLAN_DATASETS
+    }
+    if not requested:
+        return list(_INTRADAY_PLAN_DATASETS)
+    return [dataset for dataset in _INTRADAY_PLAN_DATASETS if dataset in requested]
+
+
+def _empty_result_counts() -> dict:
+    return {
+        'planned_items': 0,
+        'inserted': 0,
+        'updated': 0,
+        'skipped_existing': 0,
+        'failed': 0,
+        'repaired_conflicts': 0,
+    }
+
+
+def _normalize_intraday_side(side_value: str | None) -> str:
+    normalized_side = str(side_value or '').strip().upper()
+    if normalized_side == 'BUY':
+        return 'BUY'
+    if normalized_side == 'SELL':
+        return 'SELL'
+    return 'UNKNOWN'
+
+
+def _normalize_intraday_trade_row(symbol: str, trade: dict) -> dict | None:
+    timestamp_value = trade.get('timestamp') or trade.get('datetime') or trade.get('time')
+    timestamp = parse_datetime(str(timestamp_value or '')) if timestamp_value else None
+    if timestamp is None:
+        return None
 
     try:
-        mod = importlib.import_module(f'vnbroker.explorer.{provider}.quote')
-        QuoteCls = getattr(mod, 'Quote')
-    except Exception as exc:
-        logger.error('backfill bucket: cannot load provider %s: %s', provider, exc)
-        return {'upserted': 0, 'failed': symbols, 'provider': provider}
+        price = Decimal(str(trade.get('price') or 0))
+        volume = int(trade.get('volume') or 0)
+    except (ArithmeticError, TypeError, ValueError):
+        return None
 
-    from datetime import timedelta, date as dt_date
-    from django.utils import timezone
-    import pandas as pd
+    return {
+        'symbol': symbol,
+        'timestamp': timestamp,
+        'price': price,
+        'volume': volume,
+        'side': _normalize_intraday_side(trade.get('side')),
+        'match_type': str(trade.get('match_type') or 'NormalMatch')[:50],
+        'source': 'vnbroker_intraday',
+    }
 
-    end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=days)
+
+def _floor_intraday_bucket(timestamp: datetime, timeframe: str) -> datetime:
+    normalized_timeframe = str(timeframe or '').strip()
+    if normalized_timeframe.endswith('m'):
+        minutes = max(int(normalized_timeframe[:-1]), 1)
+        floored_minute = (timestamp.minute // minutes) * minutes
+        return timestamp.replace(minute=floored_minute, second=0, microsecond=0)
+
+    if normalized_timeframe.endswith('H'):
+        hours = max(int(normalized_timeframe[:-1]), 1)
+        floored_hour = (timestamp.hour // hours) * hours
+        return timestamp.replace(hour=floored_hour, minute=0, second=0, microsecond=0)
+
+    raise ValueError(f'Unsupported intraday timeframe: {timeframe}')
+
+
+def _build_intraday_bar_payloads(symbol: str, normalized_trades: list[dict], timeframes: tuple[str, ...] = _INTRADAY_BAR_TIMEFRAMES) -> dict[tuple[str, datetime], dict]:
+    bars_by_key: dict[tuple[str, datetime], dict] = {}
+    for trade in sorted(normalized_trades, key=lambda row: row['timestamp']):
+        trade_price = trade['price']
+        trade_volume = trade['volume']
+        for timeframe in timeframes:
+            bucket_ts = _floor_intraday_bucket(trade['timestamp'], timeframe)
+            key = (timeframe, bucket_ts)
+            existing_bar = bars_by_key.get(key)
+            if existing_bar is None:
+                bars_by_key[key] = {
+                    'symbol': symbol,
+                    'datetime': bucket_ts,
+                    'timeframe': timeframe,
+                    'open': trade_price,
+                    'high': trade_price,
+                    'low': trade_price,
+                    'close': trade_price,
+                    'volume': trade_volume,
+                    'source': 'vnbroker_intraday',
+                }
+                continue
+
+            existing_bar['high'] = max(existing_bar['high'], trade_price)
+            existing_bar['low'] = min(existing_bar['low'], trade_price)
+            existing_bar['close'] = trade_price
+            existing_bar['volume'] += trade_volume
+
+    return bars_by_key
+
+
+def _hydrate_intraday_symbols(symbols: list[str], target_datasets: list[str], page_size: int = 50) -> dict:
+    from market_data.models import IntradayBar, IntradayTick
+
+    target_dataset_set = set(target_datasets or _INTRADAY_PLAN_DATASETS)
+    tick_counts = _empty_result_counts()
+    bar_counts = _empty_result_counts()
+    sources: list[str] = []
+    warmed_up_count = 0
+    failed_symbols: list[str] = []
 
     for symbol in symbols:
         try:
-            q = QuoteCls(symbol=symbol)
-            df = q.history(
-                start=start_date.isoformat(),
-                end=end_date.isoformat(),
-                interval='1D',
-                show_log=False,
-            )
-            if df is None or df.empty:
-                logger.debug('backfill bucket [%s] %s: empty', provider, symbol)
+            tape_result = fetch_intraday_tape(symbol, page_size=page_size)
+            raw_trades = list(tape_result.get('trades') or [])
+            source = str(tape_result.get('source') or '').strip()
+            if source and source not in sources:
+                sources.append(source)
+
+            normalized_trades = [
+                trade_row
+                for trade_row in (
+                    _normalize_intraday_trade_row(symbol, trade)
+                    for trade in raw_trades
+                )
+                if trade_row is not None
+            ]
+            if not normalized_trades:
+                continue
+
+            warmed_up_count += 1
+
+            if 'intraday_ticks' in target_dataset_set:
+                tick_counts['planned_items'] += 1
+                existing_tick_keys = {
+                    (
+                        row['timestamp'],
+                        row['price'],
+                        row['volume'],
+                        row['side'],
+                        row['match_type'],
+                    )
+                    for row in IntradayTick.objects.filter(
+                        symbol=symbol,
+                        timestamp__in=[trade['timestamp'] for trade in normalized_trades],
+                    ).values('timestamp', 'price', 'volume', 'side', 'match_type')
+                }
+                tick_objects = []
+                for trade in normalized_trades:
+                    tick_key = (
+                        trade['timestamp'],
+                        trade['price'],
+                        trade['volume'],
+                        trade['side'],
+                        trade['match_type'],
+                    )
+                    if tick_key in existing_tick_keys:
+                        tick_counts['skipped_existing'] += 1
+                        continue
+                    existing_tick_keys.add(tick_key)
+                    tick_counts['inserted'] += 1
+                    tick_objects.append(IntradayTick(**trade))
+
+                if tick_objects:
+                    IntradayTick.objects.bulk_create(tick_objects, batch_size=500)
+
+            if 'intraday_bars' in target_dataset_set:
+                bar_counts['planned_items'] += 1
+                bar_payloads = _build_intraday_bar_payloads(symbol, normalized_trades)
+                existing_bars_by_key = {
+                    (row['timeframe'], row['datetime']): row
+                    for row in IntradayBar.objects.filter(
+                        symbol=symbol,
+                        timeframe__in=list(_INTRADAY_BAR_TIMEFRAMES),
+                        datetime__in=[payload['datetime'] for payload in bar_payloads.values()],
+                    ).values('timeframe', 'datetime', 'open', 'high', 'low', 'close', 'volume', 'source')
+                }
+                bar_objects = []
+                for key, payload in bar_payloads.items():
+                    existing_bar = existing_bars_by_key.get(key)
+                    if existing_bar is None:
+                        bar_counts['inserted'] += 1
+                        bar_objects.append(IntradayBar(**payload))
+                        continue
+
+                    if all(existing_bar[field_name] == payload[field_name] for field_name in ('open', 'high', 'low', 'close', 'volume', 'source')):
+                        bar_counts['skipped_existing'] += 1
+                        continue
+
+                    bar_counts['updated'] += 1
+                    bar_objects.append(IntradayBar(**payload))
+
+                if bar_objects:
+                    IntradayBar.objects.bulk_create(
+                        bar_objects,
+                        update_conflicts=True,
+                        update_fields=['open', 'high', 'low', 'close', 'volume', 'source'],
+                        unique_fields=['symbol', 'datetime', 'timeframe'],
+                    )
+        except Exception as exc:
+            logger.warning('warm_intraday_universe [%s] failed: %s', symbol, exc)
+            failed_symbols.append(symbol)
+
+    return {
+        'status': 'ok',
+        'symbols_count': len(symbols),
+        'warmed_up_count': warmed_up_count,
+        'sources': sources,
+        'inserted': tick_counts['inserted'] + bar_counts['inserted'],
+        'updated': tick_counts['updated'] + bar_counts['updated'],
+        'skipped_existing': tick_counts['skipped_existing'] + bar_counts['skipped_existing'],
+        'failed': failed_symbols,
+        'failed_count': len(failed_symbols),
+        'repaired_conflicts': 0,
+        'tick_counts': tick_counts,
+        'bar_counts': bar_counts,
+    }
+
+
+def _resolve_history_days_from_window(requested_window: dict | None, default_days: int) -> int:
+    window = requested_window if isinstance(requested_window, dict) else {}
+    if window.get('days') is not None:
+        try:
+            return max(int(window['days']), 1)
+        except (TypeError, ValueError):
+            return max(int(default_days), 1)
+
+    trade_date = window.get('trade_date')
+    if trade_date:
+        return 1
+
+    start_date = window.get('start_date')
+    end_date = window.get('end_date')
+    if start_date and end_date:
+        try:
+            start_value = date.fromisoformat(str(start_date))
+            end_value = date.fromisoformat(str(end_date))
+            return max((end_value - start_value).days + 1, 1)
+        except ValueError:
+            return max(int(default_days), 1)
+
+    return max(int(default_days), 1)
+
+
+def _build_default_daily_price_plan_items(symbols: list[str], days: int) -> list[dict]:
+    return [
+        {
+            'symbol': symbol,
+            'requested_window': {'days': max(int(days), 1)},
+        }
+        for symbol in symbols
+    ]
+
+
+def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[dict], normalized_provider: str) -> tuple[list, int, int, int]:
+    from market_data.models import DailyPrice
+
+    objs_to_upsert = []
+    inserted = 0
+    updated = 0
+    skipped_existing = 0
+
+    for row in history_rows:
+        try:
+            row_date = row['date']
+            row_symbol = str(row['symbol']).strip().upper()
+            if not row_symbol:
+                raise ValueError('empty symbol')
+
+            source = f"vnbroker_{str(row.get('source') or normalized_provider).lower()}"
+            next_values = {
+                'open': Decimal(str(row['open'])),
+                'high': Decimal(str(row['high'])),
+                'low': Decimal(str(row['low'])),
+                'close': Decimal(str(row['close'])),
+                'volume': int(row['volume']),
+                'source': source,
+            }
+        except Exception as exc:
+            logger.debug('DailyPrice parse error for %s row: %s', row.get('symbol') or 'unknown', exc)
+            continue
+
+        existing = existing_rows_by_date.get(row_date)
+        if existing is None:
+            inserted += 1
+            objs_to_upsert.append(DailyPrice(symbol=row_symbol, date=row_date, **next_values))
+            continue
+
+        if all(existing[field_name] == next_value for field_name, next_value in next_values.items()):
+            skipped_existing += 1
+            continue
+
+        updated += 1
+        objs_to_upsert.append(DailyPrice(symbol=row_symbol, date=row_date, **next_values))
+
+    return objs_to_upsert, inserted, updated, skipped_existing
+
+
+def _fetch_and_upsert_bucket(
+    symbols: list[str] | None,
+    provider: str,
+    days: int,
+    inter_symbol_delay: float = 0.12,
+    plan_items: list[dict] | None = None,
+) -> dict:
+    """
+    Fetch daily history for a bucket of symbols using a single provider and
+    bulk-upsert into DailyPrice. Designed to run in a thread.
+    """
+    from market_data.models import DailyPrice
+
+    inserted = 0
+    updated = 0
+    skipped_existing = 0
+    failed: list[str] = []
+    normalized_provider = str(provider or '').strip().upper()
+    normalized_plan_items = plan_items or _build_default_daily_price_plan_items(list(symbols or []), days)
+
+    for plan_item in normalized_plan_items:
+        symbol = str(plan_item.get('symbol') or '').strip().upper()
+        if not symbol:
+            continue
+        try:
+            requested_days = _resolve_history_days_from_window(plan_item.get('requested_window'), days)
+            history_rows = fetch_daily_history(symbol, days=requested_days, source=normalized_provider)
+            if not history_rows:
+                logger.debug('backfill bucket [%s] %s: empty', normalized_provider, symbol)
                 time.sleep(inter_symbol_delay)
                 continue
 
-            objs = []
-            for _, row in df.iterrows():
-                try:
-                    trade_date = (
-                        pd.to_datetime(row['time']).date()
-                        if not isinstance(row['time'], dt_date)
-                        else row['time']
-                    )
-                    objs.append(DailyPrice(
-                        symbol=symbol,
-                        date=trade_date,
-                        open=float(row['open']),
-                        high=float(row['high']),
-                        low=float(row['low']),
-                        close=float(row['close']),
-                        volume=int(row['volume']),
-                        source=f'vnbroker_{provider}',
-                    ))
-                except Exception as exc:
-                    # Skip malformed rows but log for debugging
-                    logger.debug(f'DailyPrice parse error for {symbol} row: {exc}')
-                    continue
+            history_dates = [row['date'] for row in history_rows if row.get('date') is not None]
+            existing_rows_by_date = {
+                row['date']: row
+                for row in DailyPrice.objects.filter(symbol=symbol, date__in=history_dates).values(
+                    'date', 'open', 'high', 'low', 'close', 'volume', 'source'
+                )
+            }
+            objs, symbol_inserted, symbol_updated, symbol_skipped = _classify_daily_price_rows(
+                existing_rows_by_date,
+                history_rows,
+                normalized_provider,
+            )
 
             if objs:
                 DailyPrice.objects.bulk_create(
@@ -103,20 +406,36 @@ def _fetch_and_upsert_bucket(
                     update_fields=['open', 'high', 'low', 'close', 'volume', 'source'],
                     unique_fields=['symbol', 'date'],
                 )
-                upserted += len(objs)
-                logger.info('backfill [%s] %s: %d rows', provider, symbol, len(objs))
+                inserted += symbol_inserted
+                updated += symbol_updated
+                skipped_existing += symbol_skipped
+                logger.info('backfill [%s] %s: %d rows', normalized_provider, symbol, len(objs))
+            else:
+                skipped_existing += symbol_skipped
 
             time.sleep(inter_symbol_delay)
-
         except Exception as exc:
-            logger.warning('backfill [%s] %s failed: %s', provider, symbol, exc)
+            logger.warning('backfill [%s] %s failed: %s', normalized_provider, symbol, exc)
             failed.append(symbol)
 
-    return {'upserted': upserted, 'failed': failed, 'provider': provider}
+    return {
+        'inserted': inserted,
+        'updated': updated,
+        'skipped_existing': skipped_existing,
+        'upserted': inserted + updated,
+        'failed': failed,
+        'failed_count': len(failed),
+        'provider': normalized_provider,
+    }
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
-def fetch_and_upsert_price_board(self, job_id: int = None):
+def fetch_and_upsert_price_board(
+    self,
+    job_id: int = None,
+    service_run_log_id: int | None = None,
+    plan_items: list[dict] | None = None,
+):
     """
     SM-P2.3: Fetch current price board and upsert into SymbolSnapshot.
 
@@ -126,12 +445,20 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
     This task creates an IngestRun record for observability.
     """
     from data_ingest.models import IngestJob, IngestRun
-    from market_serving.models import SymbolSnapshot
 
     job = None
     run = None
+    service_run_log = None
 
     try:
+        if service_run_log_id is not None:
+            from service_ops.models import ServiceRunLog
+            from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
+
+            service_run_log = ServiceRunLog.objects.select_related('service').filter(pk=service_run_log_id).first()
+            if service_run_log is not None:
+                _mark_run_log_running(service_run_log, getattr(self.request, 'id', ''))
+
         if job_id:
             try:
                 job = IngestJob.objects.get(pk=job_id)
@@ -147,12 +474,14 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
         from market_data.models import StockProfile
 
         # SM-P2.3 Native: Fetch price board from vnbroker adapter.
-        # Use the full active universe for dashboard breadth and heatmap parity.
-        symbols = list(
-            StockProfile.objects
-            .filter(status=StockProfile.StatusChoices.ACTIVE)
-            .values_list('symbol', flat=True)
-        )
+        # When explicit planner items exist, restrict writes to that subset.
+        symbols = _extract_symbols_from_plan_items(plan_items)
+        if not symbols:
+            symbols = list(
+                StockProfile.objects
+                .filter(status=StockProfile.StatusChoices.ACTIVE)
+                .values_list('symbol', flat=True)
+            )
 
         if not symbols:
             if run:
@@ -160,19 +489,68 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
                 run.error_message = 'No active symbols found in StockProfile'
                 run.finished_at = now()
                 run.save(update_fields=['state', 'error_message', 'finished_at'])
+            if service_run_log is not None:
+                _mark_run_log_finished(
+                    service_run_log,
+                    status_value='skipped',
+                    output_summary={'reason': 'no_symbols'},
+                )
             return {'status': 'skipped', 'reason': 'no_symbols'}
 
-        result = materialize_symbol_snapshot_from_vnbroker()
+        result = materialize_symbol_snapshot_from_vnbroker(symbols=symbols)
         count = result.get('upserted', 0)
+        inserted = int(result.get('inserted') or 0)
+        updated = int(result.get('updated') or 0)
+        skipped_existing = int(result.get('skipped_existing') or 0)
+        failed_count = int(result.get('failed_count') or 0)
+        planned_items = len(plan_items or [])
 
         if run:
-            run.state = IngestRun.StateChoices.SUCCESS
+            run.state = (
+                IngestRun.StateChoices.FAILED
+                if failed_count > 0 and count == 0 and skipped_existing == 0
+                else IngestRun.StateChoices.SUCCESS
+            )
             run.rows_upserted = count
             run.finished_at = now()
             run.save(update_fields=['state', 'rows_upserted', 'finished_at'])
 
+        if service_run_log is not None:
+            service_run_status = 'success'
+            if failed_count > 0 and (count > 0 or skipped_existing > 0):
+                service_run_status = 'partial'
+            elif failed_count > 0:
+                service_run_status = 'failed'
+            _mark_run_log_finished(
+                service_run_log,
+                status_value=service_run_status,
+                output_summary={
+                    'upserted': count,
+                    'inserted': inserted,
+                    'updated': updated,
+                    'skipped_existing': skipped_existing,
+                    'failed_count': failed_count,
+                    'planned_items': planned_items,
+                    'symbols_count': len(symbols),
+                    'source': result.get('source'),
+                    'ingest_run_id': run.id if run is not None else None,
+                },
+            )
+
         logger.info("fetch_and_upsert_price_board (native): upserted %d rows using %s.", count, result.get('source'))
-        return {'status': 'ok', 'upserted': count, 'source': result.get('source')}
+        return {
+            'status': 'ok',
+            'planned_items': planned_items,
+            'symbols_count': len(symbols),
+            'upserted': count,
+            'inserted': inserted,
+            'updated': updated,
+            'skipped_existing': skipped_existing,
+            'failed': list(result.get('failed') or []),
+            'failed_count': failed_count,
+            'repaired_conflicts': int(result.get('repaired_conflicts') or 0),
+            'source': result.get('source'),
+        }
 
 
     except Exception as exc:
@@ -182,33 +560,150 @@ def fetch_and_upsert_price_board(self, job_id: int = None):
             run.error_message = str(exc)[:500]
             run.finished_at = now()
             run.save(update_fields=['state', 'error_message', 'finished_at'])
+        if service_run_log is not None:
+            _mark_run_log_finished(
+                service_run_log,
+                status_value='failed',
+                error_detail=str(exc),
+                output_summary={'ingest_run_id': run.id if run is not None else None},
+            )
         raise self.retry(exc=exc)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
-def warm_intraday_universe(self):
+def warm_intraday_universe(
+    self,
+    plan_items: list[dict] | None = None,
+    service_run_log_id: int | None = None,
+    page_size: int = 50,
+):
     """
-    Warm native intraday cache for the active symbol universe.
+    Warm native intraday cache and hydrate canonical intraday rows.
     """
+    from data_ingest.models import IngestJob, IngestRun
     from market_data.models import StockProfile
-    from market_data.vnbroker_adapter import warm_up_intraday_symbols
 
-    symbols = list(
-        StockProfile.objects
-        .filter(status=StockProfile.StatusChoices.ACTIVE)
-        .values_list('symbol', flat=True)
+    service_run_log = None
+    if service_run_log_id is not None:
+        from service_ops.models import ServiceRunLog
+        from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
+
+        service_run_log = ServiceRunLog.objects.select_related('service').filter(pk=service_run_log_id).first()
+        if service_run_log is not None:
+            _mark_run_log_running(service_run_log, getattr(self.request, 'id', ''))
+
+    job, _ = IngestJob.objects.get_or_create(
+        name='intraday-universe-hydrate',
+        defaults={
+            'source': IngestJob.SourceChoices.VNBROKER_INTRADAY,
+            'status': IngestJob.StatusChoices.ACTIVE,
+            'schedule_seconds': 300,
+        },
     )
+
+    run = None
+
+    symbols = _extract_symbols_from_plan_items(plan_items)
+    target_datasets = _extract_intraday_datasets_from_plan_items(plan_items)
 
     if not symbols:
+        symbols = list(
+            StockProfile.objects
+            .filter(status=StockProfile.StatusChoices.ACTIVE)
+            .values_list('symbol', flat=True)
+        )
+
+    if not symbols:
+        if service_run_log is not None:
+            _mark_run_log_finished(
+                service_run_log,
+                status_value='skipped',
+                output_summary={'reason': 'no_symbols'},
+            )
         return {'status': 'skipped', 'reason': 'no_symbols'}
 
-    result = warm_up_intraday_symbols(symbols)
-    logger.info(
-        "warm_intraday_universe (native): warmed %d / %d symbols.",
-        result.get('warmed_up_count', 0),
-        result.get('symbols_count', 0),
-    )
-    return result
+    try:
+        run = IngestRun.objects.create(
+            job=job,
+            state=IngestRun.StateChoices.RUNNING,
+        )
+        result = _hydrate_intraday_symbols(symbols, target_datasets, page_size=page_size)
+
+        total_upserted = int(result.get('inserted') or 0) + int(result.get('updated') or 0)
+        total_skipped = int(result.get('skipped_existing') or 0)
+        failed_count = int(result.get('failed_count') or 0)
+        run.state = (
+            IngestRun.StateChoices.FAILED
+            if failed_count > 0 and total_upserted == 0 and total_skipped == 0
+            else IngestRun.StateChoices.SUCCESS
+        )
+        run.rows_upserted = total_upserted
+        run.rows_skipped = total_skipped
+        run.meta = {
+            'symbols_count': len(symbols),
+            'page_size': page_size,
+            'target_datasets': list(target_datasets),
+            'tick_counts': dict(result.get('tick_counts') or {}),
+            'bar_counts': dict(result.get('bar_counts') or {}),
+            'failed': list(result.get('failed') or []),
+        }
+        run.finished_at = now()
+        run.save(update_fields=['state', 'rows_upserted', 'rows_skipped', 'meta', 'finished_at'])
+
+        if service_run_log is not None:
+            service_run_status = 'success'
+            if failed_count > 0 and (total_upserted > 0 or total_skipped > 0):
+                service_run_status = 'partial'
+            elif failed_count > 0:
+                service_run_status = 'failed'
+            _mark_run_log_finished(
+                service_run_log,
+                status_value=service_run_status,
+                output_summary={
+                    'planned_items': len(plan_items or []),
+                    'symbols_count': len(symbols),
+                    'target_datasets': list(target_datasets),
+                    'warmed_up_count': int(result.get('warmed_up_count') or 0),
+                    'inserted': int(result.get('inserted') or 0),
+                    'updated': int(result.get('updated') or 0),
+                    'skipped_existing': int(result.get('skipped_existing') or 0),
+                    'failed_count': failed_count,
+                    'repaired_conflicts': int(result.get('repaired_conflicts') or 0),
+                    'sources': list(result.get('sources') or []),
+                    'tick_counts': dict(result.get('tick_counts') or {}),
+                    'bar_counts': dict(result.get('bar_counts') or {}),
+                    'ingest_run_id': run.id if run is not None else None,
+                },
+            )
+
+        logger.info(
+            'warm_intraday_universe (native): warmed %d / %d symbols, inserted=%d updated=%d skipped_existing=%d',
+            int(result.get('warmed_up_count', 0)),
+            int(result.get('symbols_count', 0)),
+            int(result.get('inserted', 0)),
+            int(result.get('updated', 0)),
+            int(result.get('skipped_existing', 0)),
+        )
+        return result
+    except Exception as exc:
+        logger.error('warm_intraday_universe failed: %s', exc, exc_info=True)
+        if run is not None:
+            run.state = IngestRun.StateChoices.FAILED
+            run.error_message = str(exc)[:500]
+            run.finished_at = now()
+            run.save(update_fields=['state', 'error_message', 'finished_at'])
+        if service_run_log is not None:
+            _mark_run_log_finished(
+                service_run_log,
+                status_value='failed',
+                error_detail=str(exc),
+                output_summary={
+                    'planned_items': len(plan_items or []),
+                    'symbols_count': len(symbols),
+                    'ingest_run_id': run.id if run is not None else None,
+                },
+            )
+        raise self.retry(exc=exc)
 
 
 @shared_task(bind=True, max_retries=2)
@@ -239,7 +734,13 @@ def sync_market_groups(self):
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
+def ingest_daily_prices(
+    self,
+    days: int = 1,
+    symbols: list = None,
+    plan_items: list[dict] | None = None,
+    service_run_log_id: int | None = None,
+) -> dict:
     """
     Daily price ingestion task (P3-T01 core-worker topology).
     
@@ -259,6 +760,15 @@ def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
     """
     from data_ingest.models import IngestJob, IngestRun
     from django.utils.timezone import now
+
+    service_run_log = None
+    if service_run_log_id is not None:
+        from service_ops.models import ServiceRunLog
+        from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
+
+        service_run_log = ServiceRunLog.objects.select_related('service').filter(pk=service_run_log_id).first()
+        if service_run_log is not None:
+            _mark_run_log_running(service_run_log, getattr(self.request, 'id', ''))
     
     # Get or create the IngestJob for daily price ingestion
     job, created = IngestJob.objects.get_or_create(
@@ -279,13 +789,14 @@ def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
             state=IngestRun.StateChoices.RUNNING,
         )
         
-        logger.info(f'ingest_daily_prices starting: days={days}, symbols={len(symbols) if symbols else "all"}, run_id={run.id}')
+        unique_symbols = _extract_symbols_from_plan_items(plan_items)
+        logger.info(
+            f'ingest_daily_prices starting: days={days}, symbols={len(unique_symbols) if plan_items else len(symbols) if symbols else "all"}, '
+            f'plan_items={len(plan_items or [])}, run_id={run.id}'
+        )
         
-        # Call the main backfill task (handles provider round-robin and threading)
-        result = backfill_daily_prices.apply_async(
-            args=[days, symbols],
-            countdown=0,
-        ).get(timeout=3600)  # 1 hour timeout for backfill
+        # Reuse the backfill execution logic inline instead of queuing a nested Celery job.
+        result = backfill_daily_prices.run(days=days, symbols=symbols, plan_items=plan_items)
         
         upserted = result.get('upserted', 0)
         failed = result.get('failed', [])
@@ -295,6 +806,25 @@ def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
             run.rows_upserted = upserted
             run.finished_at = now()
             run.save(update_fields=['state', 'rows_upserted', 'finished_at'])
+
+        if service_run_log is not None:
+            _mark_run_log_finished(
+                service_run_log,
+                status_value='success',
+                output_summary={
+                    'days': days,
+                    'symbols_count': len(unique_symbols) if plan_items else len(symbols or []),
+                    'planned_items': int(result.get('planned_items') or len(plan_items or [])),
+                    'inserted': int(result.get('inserted') or 0),
+                    'updated': int(result.get('updated') or 0),
+                    'skipped_existing': int(result.get('skipped_existing') or 0),
+                    'upserted': upserted,
+                    'failed_count': int(result.get('failed_count') or len(failed)),
+                    'repaired_conflicts': int(result.get('repaired_conflicts') or 0),
+                    'providers': result.get('providers', []),
+                    'ingest_run_id': run.id if run is not None else None,
+                },
+            )
         
         logger.info(
             f'ingest_daily_prices completed: run_id={run.id if run else "none"}, upserted={upserted}, failed={len(failed)}, '
@@ -309,14 +839,31 @@ def ingest_daily_prices(self, days: int = 1, symbols: list = None) -> dict:
             run.error_message = str(exc)[:500]
             run.finished_at = now()
             run.save(update_fields=['state', 'error_message', 'finished_at'])
-            run.save(update_fields=['state', 'error_message', 'finished_at'])
+
+        if service_run_log is not None:
+            _mark_run_log_finished(
+                service_run_log,
+                status_value='failed',
+                error_detail=str(exc),
+                output_summary={
+                    'days': days,
+                    'symbols_count': len(unique_symbols) if plan_items else len(symbols or []),
+                    'ingest_run_id': run.id if run is not None else None,
+                },
+            )
         
         # Retry with exponential backoff (60s, 120s, 240s)
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
-def backfill_daily_prices(self, days: int = 365, symbols: list = None, max_workers: int = None):
+def backfill_daily_prices(
+    self,
+    days: int = 365,
+    symbols: list = None,
+    max_workers: int = None,
+    plan_items: list[dict] | None = None,
+):
     """
     Backfill DailyPrice cho tất cả active symbols (hoặc danh sách truyền vào).
 
@@ -331,60 +878,145 @@ def backfill_daily_prices(self, days: int = 365, symbols: list = None, max_worke
     """
     from market_data.models import StockProfile
 
-    if symbols is None:
+    if plan_items is None and symbols is None:
         symbols = list(
             StockProfile.objects
             .filter(status=StockProfile.StatusChoices.ACTIVE)
             .values_list('symbol', flat=True)
         )
 
-    if not symbols:
+    if plan_items is None:
+        plan_items = _build_default_daily_price_plan_items(list(symbols or []), days)
+
+    if not plan_items:
         return {'status': 'skipped', 'reason': 'no_symbols'}
 
     providers = _HISTORY_PROVIDERS
     n = len(providers)
     workers = max_workers or n
 
-    # Round-robin partition: symbol[i] → providers[i % n]
-    buckets: dict[str, list[str]] = {p: [] for p in providers}
-    for i, sym in enumerate(symbols):
-        buckets[providers[i % n]].append(sym)
+    # Round-robin partition: item[i] → providers[i % n]
+    buckets: dict[str, list[dict]] = {p: [] for p in providers}
+    for i, plan_item in enumerate(plan_items):
+        buckets[providers[i % n]].append(plan_item)
+
+    symbols = [str(item.get('symbol') or '').strip().upper() for item in plan_items if item.get('symbol')]
 
     logger.info(
-        'backfill_daily_prices: %d symbols / %d providers / %d threads / %d days',
-        len(symbols), n, workers, days,
+        'backfill_daily_prices: %d symbols / %d plan items / %d providers / %d threads / %d days',
+        len(symbols), len(plan_items), n, workers, days,
     )
     for p, bucket in buckets.items():
-        logger.info('  bucket [%s]: %d symbols', p, len(bucket))
+        logger.info('  bucket [%s]: %d plan items', p, len(bucket))
 
+    total_inserted = 0
+    total_updated = 0
+    total_skipped_existing = 0
     total_upserted = 0
     all_failed: list[str] = []
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {
-            pool.submit(_fetch_and_upsert_bucket, bucket, provider, days): provider
-            for provider, bucket in buckets.items()
-            if bucket
-        }
-        for future in as_completed(futures):
-            provider = futures[future]
-            try:
-                result = future.result()
-                total_upserted += result['upserted']
-                all_failed.extend(result['failed'])
-                logger.info(
-                    'backfill [%s] done: upserted=%d failed=%d',
-                    provider, result['upserted'], len(result['failed']),
-                )
-            except Exception as exc:
-                logger.error('backfill thread [%s] raised: %s', provider, exc)
+    non_empty_buckets = [
+        (provider, bucket)
+        for provider, bucket in buckets.items()
+        if bucket
+    ]
+
+    if workers <= 1 or len(non_empty_buckets) <= 1:
+        for provider, bucket in non_empty_buckets:
+            result = _fetch_and_upsert_bucket(
+                [str(item.get('symbol') or '').strip().upper() for item in bucket],
+                provider,
+                days,
+                0.12,
+                bucket,
+            )
+            total_inserted += int(result.get('inserted') or 0)
+            total_updated += int(result.get('updated') or 0)
+            total_skipped_existing += int(result.get('skipped_existing') or 0)
+            total_upserted += result['upserted']
+            all_failed.extend(result['failed'])
+            logger.info(
+                'backfill [%s] done: inserted=%d updated=%d skipped_existing=%d failed=%d',
+                provider,
+                int(result.get('inserted') or 0),
+                int(result.get('updated') or 0),
+                int(result.get('skipped_existing') or 0),
+                len(result['failed']),
+            )
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {
+                pool.submit(
+                    _fetch_and_upsert_bucket,
+                    [str(item.get('symbol') or '').strip().upper() for item in bucket],
+                    provider,
+                    days,
+                    0.12,
+                    bucket,
+                ): provider
+                for provider, bucket in buckets.items()
+                if bucket
+            }
+            for future in as_completed(futures):
+                provider = futures[future]
+                try:
+                    result = future.result()
+                    total_inserted += int(result.get('inserted') or 0)
+                    total_updated += int(result.get('updated') or 0)
+                    total_skipped_existing += int(result.get('skipped_existing') or 0)
+                    total_upserted += result['upserted']
+                    all_failed.extend(result['failed'])
+                    logger.info(
+                        'backfill [%s] done: inserted=%d updated=%d skipped_existing=%d failed=%d',
+                        provider,
+                        int(result.get('inserted') or 0),
+                        int(result.get('updated') or 0),
+                        int(result.get('skipped_existing') or 0),
+                        len(result['failed']),
+                    )
+                except Exception as exc:
+                    logger.error('backfill thread [%s] raised: %s', provider, exc)
 
     return {
         'status': 'ok',
+        'planned_items': len(plan_items),
+        'inserted': total_inserted,
+        'updated': total_updated,
+        'skipped_existing': total_skipped_existing,
         'upserted': total_upserted,
         'failed': all_failed,
+        'failed_count': len(all_failed),
+        'repaired_conflicts': 0,
         'providers': providers,
     }
+
+
+@shared_task(bind=True, name='data_ingest.tasks.run_global_market_data_planner')
+def run_global_market_data_planner(self, service_run_log_id: int) -> dict:
+    from market_data.global_symbol_planner import execute_global_planner_run
+    from service_ops.models import ServiceRunLog
+    from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
+
+    run_log = ServiceRunLog.objects.select_related('service').get(pk=service_run_log_id)
+    _mark_run_log_running(run_log, getattr(self.request, 'id', ''))
+    try:
+        result = execute_global_planner_run(service_run_log_id=run_log.id)
+        status_lookup = {
+            'success': 'success',
+            'partial': 'partial',
+            'failed': 'failed',
+            'skipped': 'skipped',
+        }
+        _mark_run_log_finished(
+            run_log,
+            status_value=status_lookup.get(str(result.get('status') or '').lower(), 'success'),
+            output_summary=result,
+        )
+        return result
+    except Exception as exc:
+        logger.exception('run_global_market_data_planner failed for run_log_id=%s', service_run_log_id)
+        _mark_run_log_finished(run_log, status_value='failed', error_detail=str(exc))
+        raise
 
 
 # ---------------------------------------------------------------------------

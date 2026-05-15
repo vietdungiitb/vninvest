@@ -59,6 +59,17 @@ Với task liên quan `SaaS Production Migration`, `legacy decommission`, `domai
 11. `docs/RUN_INTEGRATION_TESTS_SAAS_MIGRATION_20260504.md`
 12. `docs/RUN_SPEC_AUDIT_SAAS_MIGRATION_20260504.md`
 
+Với task liên quan `global market data matrix`, `global symbol matrix`, `market data SSOT`, `runtime data ingest control center`, `coverage gap`, `freshness gap`, `missing-only crawl planner`, `watchlist/tracked/holding promotion`, đọc gói:
+
+1. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_HANDOFF_MASTER_20260515.md`
+2. `docs/IMPLEMENTATION_PLAN_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+3. `docs/TECH_SPEC_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+4. `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+5. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_TRACEABILITY_MATRIX_20260515.md`
+6. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_SELF_AUDIT_AND_TEST_PROTOCOL_20260515.md`
+7. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_CODE_QUALITY_CONSTITUTION_20260515.md`
+8. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_EXECUTION_EVIDENCE_TEMPLATE_20260515.md`
+
 ## 2. Read-first quality docs
 
 Trước mọi thay đổi có liên quan feature này, đọc theo thứ tự:
@@ -130,6 +141,16 @@ Trước mọi thay đổi liên quan `OpenAPI`, `API contract`, `serializer sch
 12. `docs/RUN_INTEGRATION_TESTS_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
 13. `docs/RUN_SPEC_AUDIT_CORE_API_OPENAPI_STANDARDIZATION_20260513.md`
 
+Trước mọi thay đổi liên quan `global market data matrix`, `global symbol matrix`, `market data SSOT`, `coverage gap`, `freshness gap`, `missing-only crawl planner`, `watchlist/tracked/holding promotion`, hoặc `SOC Data Ops` cho dữ liệu thị trường, đọc theo thứ tự:
+
+1. `quality/QUALITY.md`
+2. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_HANDOFF_MASTER_20260515.md`
+3. `docs/TECH_SPEC_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+4. `docs/IMPLEMENTATION_PLAN_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+5. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_TRACEABILITY_MATRIX_20260515.md`
+6. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_CODE_QUALITY_CONSTITUTION_20260515.md`
+7. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_SELF_AUDIT_AND_TEST_PROTOCOL_20260515.md`
+
 ## 3. Hard constraints for this feature pack
 
 1. `whale-alerts/:symbol` phải dùng KLineChart làm surface trung tâm.
@@ -189,7 +210,7 @@ Pop-Location
 ### Runtime refresh for UI/runtime slices
 
 ```powershell
-docker compose -f ./docker-compose.dev.yml up -d --build frontend backend
+.\start_dev.ps1
 ```
 
 ## 6. Required operating discipline for AI sessions
@@ -199,7 +220,8 @@ docker compose -f ./docker-compose.dev.yml up -d --build frontend backend
 3. Không đánh dấu xong nếu chưa cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` và `PROGRESS_DASHBOARD.md`.
 4. Với slice runtime/UI phải rebuild hoặc restart stack bị ảnh hưởng để final auditor kiểm tra được ngay.
 5. Không dùng workaround làm sai ngữ cảnh selected session, tooltip bucket, heatmap semantics hoặc whale marker viewport rule.
-6. Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.
+6. Sau mỗi lần sửa code, bắt buộc refresh dev runtime qua entrypoint chuẩn `./start_dev.ps1` để đảm bảo env bootstrap, token bootstrap, build, healthcheck và smoke checks đều chạy đúng chuẩn; không được mặc định gọi thẳng `docker compose ... up/build` thay cho script này.
+7. `docker compose` trực tiếp cho dev stack chỉ được dùng khi đang debug chính `start_dev.ps1` hoặc cần forensic đặc biệt; mọi trường hợp lệch khỏi `./start_dev.ps1` phải được ghi rõ lý do trong evidence/audit.
 
 ## 7. Evidence obligations
 
@@ -269,3 +291,16 @@ Template chuẩn nằm tại:
 6. **Fallback logic** (DailyPrice DB khi vnbroker fail) phải nằm trong adapter, không nằm ở caller.
 7. **Mọi PR thêm hàm fetch mới từ vnbroker** phải đặt vào `vnbroker_adapter.py` và có ít nhất một unit test với mock.
 8. Mọi exception khỏi hard rule phải có ticket, owner, expiry; quá hạn thì block merge.
+
+## 12. Hard constraints for Global Market Data Matrix SSOT
+
+1. **`global symbol matrix` / `global symbol registry` là SSOT duy nhất** cho toàn bộ dữ liệu thị trường dùng chung của hệ thống; tuyệt đối không tạo matrix riêng theo user.
+2. **Global matrix phải là hợp nhất persistent của mọi demand source hợp lệ**: mặc định hệ thống, nhóm global do quản trị viên quyết định, holdings, watchlists, tracked symbols, alerts, và các nguồn global đã được phê duyệt.
+3. **User không sở hữu bản sao dữ liệu thị trường riêng**; user chỉ sở hữu membership hoặc metadata riêng, còn mọi giá/history/intraday/facts/snapshots phải đọc từ shared global data layer.
+4. **Watchlist/tracked/holding/alert events chỉ được promote demand vào global matrix**; tuyệt đối cấm tạo silo crawl riêng theo từng user hoặc theo từng workspace cá nhân.
+5. **`ScrapeMatrix` và mọi run-state chỉ là execution tracking**, không được dùng làm persistent universe SSOT thay cho global registry.
+6. **Mọi product read path phải ưu tiên global facts/snapshots/history/materialized data**; cấm per-user recrawl nếu đã tồn tại shared facts-first path hợp lệ.
+7. **Planner cào dữ liệu bắt buộc coverage-gap và freshness-gap driven trên global registry**; cấm chạy ad hoc theo yêu cầu user kiểu full-scan hoặc overwrite mù quáng.
+8. **Một mã chỉ được hạ ưu tiên hoặc rời active crawl set khi toàn bộ demand sources hết hiệu lực và qua decay window vận hành**, không được drop ngay vì một user bỏ theo dõi.
+9. **Thứ tự ưu tiên khi có trade-off**: giữ đúng shared SSOT trước, tránh crawl lặp sau, rồi mới tối ưu UX/SLA/chi phí.
+10. Mọi exception khỏi hard rule phải có ticket, owner, expiry; quá hạn thì block merge.

@@ -24,6 +24,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
   const [data, setData] = useState(createEmptyAnalyticsData());
   const requestIdRef = useRef(0);
   const includeBaseline = options?.includeBaseline ?? false;
+  const skip = options?.skip ?? false;
   const selectedTradeDate = options?.selectedTradeDate ? String(options.selectedTradeDate).slice(0, 10) : null;
   const requestedTradeDates = useMemo(() => Array.from(new Set(
     (Array.isArray(options?.tradeDates) ? options.tradeDates : [])
@@ -33,6 +34,15 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
   const requestedTradeDatesKey = requestedTradeDates.join('|');
 
   const fetchData = useCallback(async ({ silent = false } = {}) => {
+    if (skip) {
+      if (!silent) {
+        setLoading(false);
+        setError(null);
+      }
+      setData(createEmptyAnalyticsData());
+      return;
+    }
+
     if (!symbol) {
       setData(createEmptyAnalyticsData());
       return;
@@ -112,13 +122,25 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
         setLoading(false);
       }
     }
-  }, [includeBaseline, requestedTradeDatesKey, selectedTradeDate, symbol, timeframe, tradeDate]);
+  }, [includeBaseline, requestedTradeDatesKey, selectedTradeDate, skip, symbol, timeframe, tradeDate]);
 
   useEffect(() => {
+    if (skip) {
+      requestIdRef.current += 1;
+      setLoading(false);
+      setError(null);
+      setData(createEmptyAnalyticsData());
+      return;
+    }
+
     fetchData({ silent: false });
-  }, [fetchData]);
+  }, [fetchData, skip]);
 
   useEffect(() => {
+    if (skip) {
+      return undefined;
+    }
+
     const timeframeWindow = resolveWhaleTimeframeWindow(timeframe);
     if (!timeframeWindow.isLive || tradeDate || requestedTradeDates.length > 0) {
       return undefined;
@@ -150,7 +172,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [fetchData, requestedTradeDatesKey, timeframe, tradeDate]);
+  }, [fetchData, requestedTradeDatesKey, skip, timeframe, tradeDate]);
 
   return { 
     loading, 

@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { socApi } from '../../api/socApi';
+import { OwnershipBadgeRow } from './OwnershipBadgeRow';
 import { WriteGuardBanner } from './WriteGuardBanner';
 
 const SignalsPanel = ({ t }) => {
@@ -50,10 +51,9 @@ const SignalsPanel = ({ t }) => {
 
       {/* Write Guard Banner */}
       <WriteGuardBanner
-        show={true}
-        domain="signals"
         reason={t('soc.signals.read_only_notice')}
-        write_surface={ownership?.write_surface}
+        writer={ownership?.writer || ownership?.owner_team}
+        writeSurface={ownership?.write_surface}
         t={t}
       />
 
@@ -135,16 +135,14 @@ const SignalsPanel = ({ t }) => {
 
       {/* Ownership Info */}
       {ownership && (
-        <div className="p-6 bg-slate-900 rounded-lg border border-slate-700">
-          <h3 className="text-lg font-bold text-white mb-4">{t('soc.signals.ownership')}</h3>
-          <p className="text-slate-300">Write Surface: <span className="font-bold">{ownership.write_surface}</span></p>
-          <p className="text-slate-300">Write Mode: <span className="font-bold text-amber-400">bridge-write</span></p>
-        </div>
+        <OwnershipBadgeRow domain="signals" ownership={ownership} t={t} />
       )}
     </div>
   );
 };
 
+// NOTE: React 19 no longer runs propTypes validation at runtime.
+// PropTypes kept for documentation and IDE tooling only.
 SignalsPanel.propTypes = {
   t: PropTypes.func.isRequired,
 };
