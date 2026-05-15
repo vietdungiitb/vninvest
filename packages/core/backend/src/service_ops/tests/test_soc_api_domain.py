@@ -490,6 +490,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(results_response.json()['alerts_triggered'], 1)
         self.assertEqual(results_response.json()['symbols_matched'][0]['symbol'], 'VCI')
         self.assertEqual(history_response.json()['count'], 1)
+        self.assertEqual(history_response.json()['results'][0]['symbol'], 'VCI')
 
     def test_manual_scan_creates_dispatch_run_log(self):
         response = self.client.post(

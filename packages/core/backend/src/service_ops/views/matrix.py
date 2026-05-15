@@ -216,6 +216,7 @@ class MatrixCycleDetailView(SOCBaseView):
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
+        429: OpenApiTypes.OBJECT,
     },
 )
 class MatrixCycleStartView(SOCBaseView):

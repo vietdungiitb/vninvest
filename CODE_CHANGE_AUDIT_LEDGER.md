@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+# 2026-05-15 | Task SOA-T04 | Screener alert-history pagination + 429 semantics ✅
+
+**Status:** ✅ focused slice complete
+**Session Commits:** 1 (feat(soc-api): SOA-T04 screener pagination + 429 semantics)
+**Issues Fixed:**
+- `ScreenerAlertHistoryView` — real `paginate_queryset` pagination (standard 20/page envelope) replacing `limit=50` hardcode
+- `ScreenerAlertHistoryResponseSerializer` updated to match `StandardPageNumberPagination` response envelope (`count/next/previous/results`)
+- `PAGINATION_PARAMETERS` added to `screener.py` + applied to `@extend_schema` decorator for `ScreenerAlertHistoryView`
+- `ScreenerManualScanView` + `MatrixCycleStartView` — `429` status added to `responses` dict in schema
+- Test updated: `test_results_and_history_use_runtime_signal_alerts` now checks `results` key from paginated response
+
+### All Modified/Created Files (3 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/views/screener.py` | Pagination + 429 semantics |
+| `packages/core/backend/src/service_ops/views/matrix.py` | 429 in MatrixCycleStartView schema |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Test update for paginated history |
+
+### Validation
+- Combined suite: **49 tests passing** ✅
+
+---
+
 # 2026-05-15 | Task SOA-T03-T13-MATRIX-OPENAPI | Matrix OpenAPI schema slice ✅
 
 **Status:** ✅ focused slice complete
