@@ -30,7 +30,8 @@ class SignalServicesDomainConfig:
     screener_signal_cooldown_seconds: int = 300
 
     # Retention
-    intraday_tick_retention_days: int = 3
+    # SOC-T06 policy: intraday ticks are hot/short-lived staging data — minimum 7 days.
+    intraday_tick_retention_days: int = 7
     canonical_event_retention_days: int = 365
     bucket_fact_retention_days: int = 90
     forensic_window_days: int = 30
@@ -52,10 +53,10 @@ class SignalServicesDomainConfig:
             errors.append('dark_pool_threshold_vnd phải >= 1.000.000 VNĐ')
         if not (0 < self.dark_pool_block_ratio_min < 1):
             errors.append('dark_pool_block_ratio_min phải trong khoảng (0, 1)')
-        if self.intraday_tick_retention_days < 1:
-            errors.append('intraday_tick_retention_days phải >= 1')
-        if self.canonical_event_retention_days < 30:
-            errors.append('canonical_event_retention_days phải >= 30')
+        if self.intraday_tick_retention_days < 7:
+            errors.append('intraday_tick_retention_days phải >= 7 ngày (hot retention floor)')
+        if self.canonical_event_retention_days < 180:
+            errors.append('canonical_event_retention_days phải >= 180 ngày (long-lived canonical events floor)')
         if self.detection_task_interval_seconds < 10:
             errors.append('detection_task_interval_seconds phải >= 10')
         return errors

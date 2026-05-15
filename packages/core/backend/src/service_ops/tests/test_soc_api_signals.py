@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 from decimal import Decimal
+import json
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
@@ -15,6 +16,15 @@ from service_ops.models import OwnershipRecord
 from service_ops.registry import ensure_service_registry
 
 User = get_user_model()
+
+
+def _load_openapi_schema(response):
+    try:
+        return json.loads(response.content)
+    except json.JSONDecodeError:
+        import yaml
+
+        return yaml.safe_load(response.content)
 
 
 class SignalsApiBaseTestCase(TestCase):
@@ -141,6 +151,40 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         self.assertTrue(data['valid'])
         self.assertFalse(data['can_apply'])
 
+    def test_signals_routes_appear_in_openapi_schema(self):
+        response = self.client.get('/core/v1/schema/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        schema = _load_openapi_schema(response)
+
+        config_path = schema['paths']['/api/soc/signals/config/']
+        preview_path = schema['paths']['/api/soc/signals/config/preview/']
+        apply_path = schema['paths']['/api/soc/signals/config/apply/']
+        summary_path = schema['paths']['/api/soc/signals/summary/']
+        whale_recent_path = schema['paths']['/api/soc/signals/whale/recent/']
+        retention_preview_path = schema['paths']['/api/soc/signals/retention-policy/preview/']
+        materialization_path = schema['paths']['/api/soc/signals/materialization/']
+        universe_update_path = schema['paths']['/api/soc/signals/universe/update/']
+        job_run_path = schema['paths']['/api/soc/signals/jobs/run/']
+        performance_path = schema['paths']['/api/soc/signals/performance-metrics/']
+
+        self.assertEqual(config_path['get']['summary'], 'Lấy runtime config Signals')
+        self.assertEqual(preview_path['post']['summary'], 'Preview runtime config Signals')
+        self.assertIn('requestBody', preview_path['post'])
+        self.assertEqual(apply_path['post']['summary'], 'Apply runtime config Signals')
+        self.assertIn('requestBody', apply_path['post'])
+        self.assertEqual(summary_path['get']['summary'], 'Lấy summary Signals')
+        self.assertEqual(whale_recent_path['get']['summary'], 'Lấy recent whale alerts Signals')
+        self.assertEqual(retention_preview_path['post']['summary'], 'Preview retention policy Signals')
+        self.assertIn('requestBody', retention_preview_path['post'])
+        self.assertEqual(materialization_path['get']['summary'], 'Lấy materialization status Signals')
+        self.assertEqual(universe_update_path['post']['summary'], 'Cập nhật universe Signals')
+        self.assertIn('requestBody', universe_update_path['post'])
+        self.assertEqual(job_run_path['post']['summary'], 'Queue detection job Signals')
+        self.assertIn('requestBody', job_run_path['post'])
+        self.assertEqual(performance_path['get']['summary'], 'Lấy performance metrics Signals')
+        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}])
+
     def test_summary_aggregates_alerts_and_events_from_current_session(self):
         response = self.client.get('/api/soc/signals/summary/')
 
@@ -224,7 +268,7 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
 
         retention_preview = self.client.post(
             '/api/soc/signals/retention-policy/preview/',
-            {'config_payload': {'intraday_tick_retention_days': 5}},
+            {'config_payload': {'intraday_tick_retention_days': 7}},
             format='json',
         )
         materialization = self.client.get('/api/soc/signals/materialization/')
