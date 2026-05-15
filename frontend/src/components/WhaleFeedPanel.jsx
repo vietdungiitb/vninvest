@@ -25,6 +25,18 @@ function inSessionWindow(tsRaw, windowKey) {
   return totalMin >= startMin && totalMin <= endMin;
 }
 
+function matchesTradeDate(tsRaw, tradeDate) {
+  if (!tradeDate || !tsRaw) return true;
+  let parsed;
+  try { parsed = new Date(tsRaw); } catch { return false; }
+  if (Number.isNaN(parsed.getTime())) return false;
+  const vn = new Date(parsed.getTime() + 7 * 3600 * 1000);
+  const yyyy = vn.getUTCFullYear();
+  const mm = String(vn.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(vn.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}` === String(tradeDate).trim();
+}
+
 function fmtBil(v) {
   if (v == null) return '—';
   const n = Number(v);
@@ -172,6 +184,8 @@ export function WhaleFeedPanel({
   symbol,
   realtimeAlerts,
   feedData = null,
+  ordersOverride = null,
+  selectedTradeDate = null,
   loading: controlledLoading,
   onRefresh = null,
   feedHeightClass = 'h-[420px] sm:h-[500px] xl:h-[560px]',
@@ -193,12 +207,12 @@ export function WhaleFeedPanel({
     (async () => {
       try {
         const { getSessionFacts } = await import('../api/client');
-        const resp = await getSessionFacts(symbol);
+        const resp = await getSessionFacts(symbol, selectedTradeDate);
         if (!cancelled) setSessionFacts(resp.data);
       } catch { /* silent — fallback: strip hidden when unavailable */ }
     })();
     return () => { cancelled = true; };
-  }, [symbol]);
+  }, [selectedTradeDate, symbol]);
   
   const isControlled = typeof onRefresh === 'function' || controlledLoading !== undefined || feedData !== null;
 
@@ -230,13 +244,14 @@ export function WhaleFeedPanel({
 
   const activeData = isControlled ? feedData : data;
   const loading = isControlled ? Boolean(controlledLoading) : internalLoading;
-  const orders = activeData?.whale_orders || [];
+  const orders = Array.isArray(ordersOverride) ? ordersOverride : (activeData?.whale_orders || []);
   const handleRefresh = typeof onRefresh === 'function' ? onRefresh : fetch;
   const realtimeItems = React.useMemo(
     () => (realtimeAlerts || [])
+      .filter((a) => matchesTradeDate(a.ts, selectedTradeDate))
       .filter((a) => inSessionWindow(a.ts, sessionWindow))
       .slice(0, 3),
-    [realtimeAlerts, sessionWindow],
+    [realtimeAlerts, selectedTradeDate, sessionWindow],
   );
   const realtimeEventKeys = React.useMemo(() => {
     const keys = new Set();
@@ -262,8 +277,9 @@ export function WhaleFeedPanel({
   const dedupedOrders = React.useMemo(
     () => dedupedHistoryOrders
       .filter((order) => !realtimeEventKeys.has(buildFeedEventKey({ ...order, alert_kind: 'whale_alert' })))
+      .filter((order) => matchesTradeDate(order.ts || order.raw_ts, selectedTradeDate))
       .filter((order) => inSessionWindow(order.ts || order.raw_ts, sessionWindow)),
-    [dedupedHistoryOrders, realtimeEventKeys, sessionWindow],
+    [dedupedHistoryOrders, realtimeEventKeys, selectedTradeDate, sessionWindow],
   );
 
   const sourceMeta = React.useMemo(() => {
@@ -396,7 +412,7 @@ export function WhaleFeedPanel({
             ))}
           </div>
         </div>
-      ) : orders.length === 0 && (realtimeAlerts?.length || 0) === 0 ? (
+      ) : dedupedOrders.length === 0 && realtimeItems.length === 0 ? (
         <div className={`panel-scrollbar mt-3 flex min-h-0 ${feedHeightClass} items-center justify-center overflow-y-scroll overscroll-contain pr-1`} style={feedViewportStyle}>
           <p className="text-center text-[12px] text-slate-500">
             {t('whaleAlertsDashboard.noLargeOrders')}

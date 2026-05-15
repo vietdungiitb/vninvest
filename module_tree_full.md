@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-15 22:55:06`
+Generated at: `2026-05-15 23:16:11`
 
 ## Summary
 
-- Total modules: 1200
+- Total modules: 1201
 - Python modules: 678
-- JS/TS modules: 522
+- JS/TS modules: 523
 - Total classes: 1317
-- Total functions: 3225
-- Total top-level variables: 4794
+- Total functions: 3227
+- Total top-level variables: 4801
 
 ## Python Modules
 
@@ -5015,7 +5015,7 @@ Generated at: `2026-05-15 22:55:06`
 - Functions:
   - `fetch`, `getAccessToken`, `handleResponse`, `normalizeConfigEnvelope`, `normalizeVnbrokerHealth`
 - Top-level variables:
-  - `BASE_URL`, `CANONICAL_DATAOPS_BASE_URL`, `accessToken`, `alertsTriggered`, `config`, `data`, `errorData`, `errorRateByStatus`, `headers`, `health`, `latency`, `query`, `resp`, `socApi`, `status`, `symbolsScanned`
+  - `BASE_URL`, `CANONICAL_DATAOPS_BASE_URL`, `accessToken`, `alertsTriggered`, `config`, `data`, `errorData`, `errorRateByStatus`, `headers`, `health`, `latency`, `payload`, `query`, `resp`, `socApi`, `status`, `symbolsScanned`
 
 ### `frontend/src/api/support.js`
 
@@ -5430,9 +5430,9 @@ Generated at: `2026-05-15 22:55:06`
 ### `frontend/src/components/soc/DataOpsPanel.jsx`
 
 - Functions:
-  - `DataOpsPanel`, `buildChangeSummary`, `buildImpactWarnings`, `buildPlannerPayload`, `getNextActionLabelKey`, `handleApply`, `handlePlannerPreview`, `handlePlannerRun`, `handlePreview`, `handleRunLogsPageChange`, `hasTierRuntimeChange`, `loadData`, `parseSymbolsInput`, `updateManualRunForm`
+  - `DataOpsPanel`, `buildChangeSummary`, `buildImpactWarnings`, `buildPlannerPayload`, `getNextActionLabelKey`, `handleApply`, `handleAuditPageChange`, `handlePlannerPreview`, `handlePlannerRun`, `handlePreview`, `handleRunLogsPageChange`, `hasTierRuntimeChange`, `loadData`, `parseSymbolsInput`, `updateManualRunForm`
 - Top-level variables:
-  - `CONFIG_LABEL_KEYS`, `COVERAGE_STATE_ORDER`, `DATASET_LABEL_KEYS`, `DEFAULT_MANUAL_RUN_FORM`, `DEFAULT_RUN_LOGS_ENVELOPE`, `FRESHNESS_LABEL_KEYS`, `MANUAL_RUN_DATASET_OPTIONS`, `NEXT_ACTION_LABEL_KEYS`, `RUN_STATUS_LABEL_KEYS`, `TIER_LABEL_KEYS`, `appliedPayload`, `checked`, `coverageUpdatedAt`, `currentConfig`, `lastUpdated`, `nextTier`, `nextValue`, `ownership`, `parsed`, `previewPayload`, `previousTier`, `runLogsPayload`, `runPayload`, `seenSymbols`, `tierNames`, `tiersPayload`, `totalSymbols`, `uniqueSymbols`, `warnings`
+  - `CONFIG_LABEL_KEYS`, `COVERAGE_STATE_ORDER`, `DATASET_LABEL_KEYS`, `DEFAULT_AUDIT_ENVELOPE`, `DEFAULT_MANUAL_RUN_FORM`, `DEFAULT_RUN_LOGS_ENVELOPE`, `FRESHNESS_LABEL_KEYS`, `MANUAL_RUN_DATASET_OPTIONS`, `NEXT_ACTION_LABEL_KEYS`, `RUN_STATUS_LABEL_KEYS`, `TIER_LABEL_KEYS`, `appliedPayload`, `auditPayload`, `checked`, `coverageUpdatedAt`, `currentConfig`, `lastUpdated`, `nextConfig`, `nextTier`, `nextValidationErrors`, `nextValue`, `ownership`, `parsed`, `previewPayload`, `previousTier`, `runLogsPayload`, `runPayload`, `seenSymbols`, `tierNames`, `totalSymbols`, `uniqueSymbols`, `warnings`
 
 ### `frontend/src/components/soc/MatrixPanel.jsx`
 
@@ -5663,9 +5663,13 @@ Generated at: `2026-05-15 22:55:06`
 ### `frontend/src/components/WhaleFeedPanel.jsx`
 
 - Functions:
-  - `AlertFeedCard`, `WhaleFeedPanel`, `buildFeedEventKey`, `fmtBil`, `fmtPrice`, `fmtVol`, `inSessionWindow`, `normalizeEventTimestamp`, `severityLabel`, `severityTone`, `sizeClassEmoji`
+  - `AlertFeedCard`, `WhaleFeedPanel`, `buildFeedEventKey`, `fmtBil`, `fmtPrice`, `fmtVol`, `inSessionWindow`, `matchesTradeDate`, `normalizeEventTimestamp`, `severityLabel`, `severityTone`, `sizeClassEmoji`
 - Top-level variables:
-  - `SESSION_WINDOWS`, `activeData`, `alertKind`, `cancelled`, `count`, `d`, `dedupedHistoryOrders`, `dedupedOrders`, `endMin`, `eventId`, `feedViewportStyle`, `fetch`, `h`, `handleRefresh`, `isBig`, `isBuy`, `isControlled`, `isDarkFlow`, `key`, `keys`, `loading`, `m`, `matchedValue`, `n`, `normalizedSeverity`, `orders`, `parsed`, `prevCountRef`, `realtimeEventKeys`, `realtimeItems`, `resp`, `roundedMatchedValue`, `seen`, `severity`, `severityClass`, `side`, `sourceMeta`, `src`, `startMin`, `timestamp`, `totalMin`, `unique`, `vn`, `w`
+  - `SESSION_WINDOWS`, `activeData`, `alertKind`, `cancelled`, `count`, `d`, `dd`, `dedupedHistoryOrders`, `dedupedOrders`, `endMin`, `eventId`, `feedViewportStyle`, `fetch`, `h`, `handleRefresh`, `isBig`, `isBuy`, `isControlled`, `isDarkFlow`, `key`, `keys`, `loading`, `m`, `matchedValue`, `mm`, `n`, `normalizedSeverity`, `orders`, `parsed`, `prevCountRef`, `realtimeEventKeys`, `realtimeItems`, `resp`, `roundedMatchedValue`, `seen`, `severity`, `severityClass`, `side`, `sourceMeta`, `src`, `startMin`, `timestamp`, `totalMin`, `unique`, `vn`, `w`, `yyyy`
+
+### `frontend/src/components/WhaleFeedPanel.test.jsx`
+
+- No parseable top-level symbols found
 
 ### `frontend/src/context/AbilityContext.js`
 

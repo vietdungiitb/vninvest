@@ -1,3 +1,19 @@
+# 2026-05-15 — SOA-T10/T11 Admin Panel + Session Truth Slice ✅
+
+Status: **✅ focused slice complete** | **`DataOpsPanel` now previews against backend validation, shows runtime-config audit history, and `WhaleFeedPanel` now stays pinned to the selected chart session**
+Validation: **✅ frontend combined `socApi.dataops.test.js` + `SOCComponents.test.jsx` + `WhaleFeedPanel.test.jsx` passed (`19` tests)** | **✅ `module_tree_full.md` regenerated successfully (`1201` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ frontend health check passed**
+
+## SOA-T10/T11 Frontend Runtime Slice
+
+**What changed**
+- `frontend/src/components/soc/DataOpsPanel.jsx` now uses backend preview payloads before apply and renders paginated runtime-config audit history for operators.
+- `frontend/src/api/socApi.js` keeps preview validation payloads available even when backend returns `400`, so the modal can show projected config and validation errors without losing context.
+- `frontend/src/components/WhaleFeedPanel.jsx` and `frontend/src/pages/WhaleAlertsDashboard.jsx` now keep tape/session-facts reads pinned to the same `selectedTradeDate` already used by the chart and advisory surfaces.
+- Added focused regressions for both the DataOps admin flow and selected-session tape behavior.
+
+**Residual Risk**
+- The tape panel still depends on whichever historical orders are present in the selected-session analytics payload; if backend later narrows that payload, the UI will still stay consistent but may show fewer historical rows.
+
 # 2026-05-15 — SOA-T09 DataOps Adapter Slice ✅
 
 Status: **✅ focused slice complete** | **`frontend/src/api/socApi.js` now exposes SOC adapter methods for DataOps runtime-config preview/audit, and the matching frontend test suite now locks both contracts**

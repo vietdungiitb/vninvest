@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+# 2026-05-15 | Task SOA-T10/T11 | DataOps runtime admin panel + selected-session truth on tape ✅
+
+**Status:** ✅ focused slice complete
+**Issues Fixed:**
+- `frontend/src/components/soc/DataOpsPanel.jsx` now calls backend runtime-config preview before apply and renders paginated audit history for operators
+- `frontend/src/api/socApi.js` preview handler now preserves 400 validation payloads so modal-level validation can show projected config and field errors
+- `frontend/src/components/WhaleFeedPanel.jsx` now locks `SessionFacts` fetches and tape filtering to `selectedTradeDate`
+- `frontend/src/pages/WhaleAlertsDashboard.jsx` now passes selected-session tape orders into `WhaleFeedPanel`, keeping chart/advisory/tape on one session truth
+- Added focused regressions for DataOps admin surface and selected-session tape behavior
+
+### All Modified/Created Files (8 files)
+| File | Change |
+|------|--------|
+| `frontend/src/api/socApi.js` | Preserve DataOps preview payload on 400 validation responses |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Added backend preview + audit UI wiring |
+| `frontend/src/components/soc/SOCComponents.test.jsx` | Locked preview/audit behavior on DataOps panel |
+| `frontend/src/components/WhaleFeedPanel.jsx` | Locked session facts/tape to selected trade date |
+| `frontend/src/components/WhaleFeedPanel.test.jsx` | Added selected-session truth regression |
+| `frontend/src/pages/WhaleAlertsDashboard.jsx` | Passed selected session truth into tape panel |
+| `frontend/src/i18n/vi.js` | Added DataOps audit/preview Vietnamese labels |
+| `frontend/src/i18n/en.js` | Added matching English labels |
+
+### Validation
+- Frontend combined focused suite: **19 tests passing** ✅
+- `module_tree_full.md` regenerated successfully (`1201` modules) ✅
+- `start_dev.ps1`: dev stack rebuilt/refreshed successfully; frontend health check passed ✅
+
+---
+
 # 2026-05-15 | Task SOA-T09 | Frontend DataOps runtime-config adapter preview + audit ✅
 
 **Status:** ✅ focused slice complete

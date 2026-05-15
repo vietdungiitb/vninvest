@@ -216,7 +216,11 @@ export const socApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ config_payload: config }),
     });
-    return handleResponse(resp);
+    const payload = await resp.json().catch(() => ({}));
+    if (!resp.ok && resp.status !== 400) {
+      throw new Error(payload.detail || `API error: ${resp.status}`);
+    }
+    return payload;
   },
 
   getDataOpsRuntimeConfigAudit: async (page = 1) => {

@@ -20,7 +20,12 @@ jest.mock('../../api/socApi', () => ({
     applyDataOpsRuntimeConfig: jest.fn(),
     getDataOpsCoverage: jest.fn(),
     getDataOpsQueueTiers: jest.fn(),
+    getDataOpsRunLogs: jest.fn(),
+    getDataOpsRuntimeConfigAudit: jest.fn(),
     getDataOpsRuntimeConfig: jest.fn(),
+    previewDataOpsRuntimeConfig: jest.fn(),
+    previewDataOpsPlanner: jest.fn(),
+    runDataOpsPlanner: jest.fn(),
     getMatrixMonitor: jest.fn(),
     getMatrixProviders: jest.fn(),
     startMatrixCycle: jest.fn(),
@@ -222,6 +227,94 @@ describe('SOC component contracts', () => {
       ],
       updated_at: '2026-05-15T11:02:00Z',
     });
+    socApi.getDataOpsRunLogs.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          run_id: 'md-run-111',
+          status: 'success',
+          mode: 'missing_only',
+          reason: 'scheduler_hot_tier',
+          started_at: '2026-05-15T10:55:00Z',
+          finished_at: '2026-05-15T10:56:00Z',
+          summary: {
+            planned_items: 3,
+            inserted: 2,
+            updated: 1,
+            skipped_existing: 0,
+            failed: 0,
+          },
+        },
+      ],
+    });
+    socApi.getDataOpsRuntimeConfigAudit.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 11,
+          actor: 'operator@vninvest.local',
+          timestamp: '2026-05-15T10:58:00Z',
+          service_key: 'matrix_cycle_coordinator',
+          change_summary: 'Cập nhật cadence hot tier',
+        },
+      ],
+    });
+    socApi.previewDataOpsPlanner.mockResolvedValue({
+      items: [
+        {
+          symbol: 'HPG',
+          dataset: 'daily_prices',
+          coverage_before: 'missing',
+          reason: 'missing',
+        },
+      ],
+      skipped: [],
+      summary: {
+        planned_items: 1,
+        skipped_items: 0,
+      },
+      ownership: {
+        domain: 'dataops_market_data',
+        can_apply: true,
+      },
+    });
+    socApi.runDataOpsPlanner.mockResolvedValue({
+      queued: true,
+      status: 'queued',
+      run_id: 'md-run-321',
+      service_run_log_id: 321,
+      plan_summary: {
+        planned_items: 1,
+        skipped_items: 0,
+      },
+      ownership: {
+        domain: 'dataops_market_data',
+        can_apply: true,
+      },
+    });
+    socApi.previewDataOpsRuntimeConfig.mockResolvedValue({
+      projected_config: {
+        decay_days: 9,
+        hot_user_demand: { poll_interval_seconds: 20, max_batch_size: 60 },
+        warm_liquid_market: { poll_interval_seconds: 120, max_batch_size: 100 },
+        cold_full_market: { poll_interval_seconds: 900, max_batch_size: 200 },
+        recovery_backlog: { poll_interval_seconds: 600, max_batch_size: 50 },
+      },
+      validation_errors: [],
+      is_valid: true,
+      ownership: {
+        domain: 'dataops_market_data',
+        mode: 'canonical',
+        owner_team: 'market_data',
+        can_apply: true,
+        write_surface: 'soc_dataops',
+        locked_fields: [],
+      },
+    });
     socApi.applyDataOpsRuntimeConfig.mockResolvedValue({
       config: {
         decay_days: 9,
@@ -246,8 +339,49 @@ describe('SOC component contracts', () => {
     expect(await screen.findByText('Điều phối dữ liệu thị trường')).toBeInTheDocument();
     expect(screen.getByText('Nhu cầu người dùng nóng')).toBeInTheDocument();
     expect(screen.getByText('Độ phủ dữ liệu')).toBeInTheDocument();
+    expect(screen.getByText('Builder chạy planner')).toBeInTheDocument();
+    expect(screen.getByText('Kiểm toán cấu hình')).toBeInTheDocument();
+    expect(screen.getByText('Lịch sử chạy')).toBeInTheDocument();
     expect(screen.getByText('AAA')).toBeInTheDocument();
     expect(screen.getByText('FPT')).toBeInTheDocument();
+    expect(screen.getByText('md-run-111')).toBeInTheDocument();
+    expect(screen.getByText('operator@vninvest.local')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Symbol mục tiêu'), {
+      target: { value: 'HPG' },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Xem kế hoạch chạy' }));
+
+    await waitFor(() => {
+      expect(socApi.previewDataOpsPlanner).toHaveBeenCalledWith(
+        expect.objectContaining({
+          symbols: ['HPG'],
+          datasets: ['daily_prices'],
+          mode: 'missing_only',
+          execution_mode: 'async',
+          force_refresh: false,
+        }),
+      );
+    });
+
+    expect(screen.getByRole('button', { name: 'Chạy planner' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: 'Chạy planner' }));
+
+    await waitFor(() => {
+      expect(socApi.runDataOpsPlanner).toHaveBeenCalledWith(
+        expect.objectContaining({
+          symbols: ['HPG'],
+          datasets: ['daily_prices'],
+          mode: 'missing_only',
+          execution_mode: 'async',
+          force_refresh: false,
+        }),
+      );
+    });
+
+    expect(await screen.findByText('Đã gửi planner run. md-run-321')).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Cấu hình runtime'), {
       target: {
@@ -262,6 +396,12 @@ describe('SOC component contracts', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Xem trước' }));
+
+    await waitFor(() => {
+      expect(socApi.previewDataOpsRuntimeConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ decay_days: 9 }),
+      );
+    });
 
     expect(await screen.findByText('Xem trước cấu hình')).toBeInTheDocument();
 
@@ -382,5 +522,6 @@ describe('SOC component contracts', () => {
     expect(vi.soc.guard.writer).toBe('Bộ phận ghi');
     expect(vi.soc.matrix.symbol_group).toBe('Nhóm mã');
     expect(vi.soc.matrix.runtime_summary_title).toBe('Cách matrix chạy');
+    expect(vi.soc.dataops.audit_title).toBe('Kiểm toán cấu hình');
   });
 });

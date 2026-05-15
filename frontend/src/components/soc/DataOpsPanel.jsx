@@ -21,6 +21,13 @@ const DATASET_LABEL_KEYS = {
   session_facts: 'soc.dataops.dataset_session_facts',
 };
 
+const MANUAL_RUN_DATASET_OPTIONS = [
+  'daily_prices',
+  'price_board_snapshot',
+  'intraday_bars',
+  'intraday_ticks',
+];
+
 const FRESHNESS_LABEL_KEYS = {
   fresh: 'soc.dataops.freshness_fresh',
   warm: 'soc.dataops.freshness_warm',
@@ -28,6 +35,15 @@ const FRESHNESS_LABEL_KEYS = {
   missing: 'soc.dataops.freshness_missing',
   error: 'soc.dataops.freshness_error',
   unknown: 'soc.dataops.freshness_unknown',
+};
+
+const RUN_STATUS_LABEL_KEYS = {
+  queued: 'soc.dataops.run_status_queued',
+  running: 'soc.dataops.run_status_running',
+  success: 'soc.dataops.run_status_success',
+  partial: 'soc.dataops.run_status_partial',
+  failed: 'soc.dataops.run_status_failed',
+  skipped: 'soc.dataops.run_status_skipped',
 };
 
 const NEXT_ACTION_LABEL_KEYS = {
@@ -49,6 +65,25 @@ const NEXT_ACTION_LABEL_KEYS = {
 };
 
 const COVERAGE_STATE_ORDER = ['fresh', 'warm', 'stale', 'missing', 'error', 'unknown'];
+const DEFAULT_RUN_LOGS_ENVELOPE = {
+  count: 0,
+  next: null,
+  previous: null,
+  results: [],
+};
+const DEFAULT_AUDIT_ENVELOPE = {
+  count: 0,
+  next: null,
+  previous: null,
+  results: [],
+};
+const DEFAULT_MANUAL_RUN_FORM = {
+  symbolsText: '',
+  datasets: ['daily_prices'],
+  executionMode: 'async',
+  forceRefresh: false,
+  reason: '',
+};
 
 const CONFIG_LABEL_KEYS = {
   decay_days: 'soc.dataops.decay_days',
@@ -90,29 +125,74 @@ const buildImpactWarnings = (before, after, t) => {
 
 const getNextActionLabelKey = (nextAction) => NEXT_ACTION_LABEL_KEYS[nextAction] || 'soc.dataops.action_unknown';
 
+const parseSymbolsInput = (symbolsText) => {
+  const uniqueSymbols = [];
+  const seenSymbols = new Set();
+  String(symbolsText || '')
+    .split(/[\s,]+/)
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean)
+    .forEach((symbol) => {
+      if (seenSymbols.has(symbol)) {
+        return;
+      }
+      seenSymbols.add(symbol);
+      uniqueSymbols.push(symbol);
+    });
+  return uniqueSymbols;
+};
+
+const buildPlannerPayload = (manualRunForm, { forPreview = false } = {}) => ({
+  symbols: parseSymbolsInput(manualRunForm.symbolsText),
+  datasets: [...(manualRunForm.datasets || [])],
+  mode: 'missing_only',
+  force_refresh: Boolean(manualRunForm.forceRefresh),
+  execution_mode: manualRunForm.executionMode || 'async',
+  reason: String(manualRunForm.reason || '').trim() || (forPreview ? 'manual_preview' : 'operator_manual_run'),
+});
+
 const DataOpsPanel = ({ t }) => {
   const [queueSnapshot, setQueueSnapshot] = useState({ tiers: [], updated_at: null });
   const [coverageSummary, setCoverageSummary] = useState({ datasets: [], top_gaps: [], updated_at: null });
   const [runtimeEnvelope, setRuntimeEnvelope] = useState({ config: {}, ownership: null, updated_at: null });
+  const [runLogsEnvelope, setRunLogsEnvelope] = useState(DEFAULT_RUN_LOGS_ENVELOPE);
+  const [runLogsPage, setRunLogsPage] = useState(1);
+  const [auditEnvelope, setAuditEnvelope] = useState(DEFAULT_AUDIT_ENVELOPE);
+  const [auditPage, setAuditPage] = useState(1);
+  const [manualRunForm, setManualRunForm] = useState(DEFAULT_MANUAL_RUN_FORM);
+  const [plannerPreview, setPlannerPreview] = useState(null);
+  const [plannerRunResult, setPlannerRunResult] = useState(null);
   const [draftJson, setDraftJson] = useState('{}');
   const [previewConfig, setPreviewConfig] = useState(null);
+  const [previewValidationErrors, setPreviewValidationErrors] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfigPreviewing, setIsConfigPreviewing] = useState(false);
+  const [isRunLogsLoading, setIsRunLogsLoading] = useState(false);
+  const [isAuditLoading, setIsAuditLoading] = useState(false);
+  const [isPlannerPreviewing, setIsPlannerPreviewing] = useState(false);
+  const [isPlannerRunning, setIsPlannerRunning] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  const loadData = async () => {
+  const loadData = async (page = runLogsPage) => {
     try {
       setLoading(true);
-      const [tiersPayload, runtimePayload, coveragePayload] = await Promise.all([
+      const [tiersPayload, runtimePayload, coveragePayload, runLogsPayload, auditPayload] = await Promise.all([
         socApi.getDataOpsQueueTiers(),
         socApi.getDataOpsRuntimeConfig(),
         socApi.getDataOpsCoverage(),
+        socApi.getDataOpsRunLogs(page),
+        socApi.getDataOpsRuntimeConfigAudit(1),
       ]);
       setQueueSnapshot(tiersPayload || { tiers: [], updated_at: null });
       setRuntimeEnvelope(runtimePayload || { config: {}, ownership: null, updated_at: null });
       setCoverageSummary(coveragePayload || { datasets: [], top_gaps: [], updated_at: null });
+      setRunLogsEnvelope(runLogsPayload || DEFAULT_RUN_LOGS_ENVELOPE);
+      setRunLogsPage(page);
+      setAuditEnvelope(auditPayload || DEFAULT_AUDIT_ENVELOPE);
+      setAuditPage(1);
       setDraftJson(JSON.stringify(runtimePayload?.config || {}, null, 2));
       setError(null);
     } catch (err) {
@@ -123,16 +203,57 @@ const DataOpsPanel = ({ t }) => {
   };
 
   useEffect(() => {
-    loadData();
+    loadData(1);
   }, []);
+
+  const handleRunLogsPageChange = async (page) => {
+    try {
+      setIsRunLogsLoading(true);
+      const runLogsPayload = await socApi.getDataOpsRunLogs(page);
+      setRunLogsEnvelope(runLogsPayload || DEFAULT_RUN_LOGS_ENVELOPE);
+      setRunLogsPage(page);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsRunLogsLoading(false);
+    }
+  };
+
+  const updateManualRunForm = (updater) => {
+    setManualRunForm((currentValue) => {
+      const nextValue = typeof updater === 'function' ? updater(currentValue) : updater;
+      return nextValue;
+    });
+    setPlannerPreview(null);
+    setPlannerRunResult(null);
+    setError(null);
+    setSuccessMessage(null);
+  };
 
   const handlePreview = () => {
     try {
       const parsed = JSON.parse(draftJson);
-      setPreviewConfig(parsed);
-      setPreviewOpen(true);
+      setIsConfigPreviewing(true);
+      setPreviewValidationErrors(null);
       setError(null);
       setSuccessMessage(null);
+      socApi.previewDataOpsRuntimeConfig(parsed)
+        .then((previewPayload) => {
+          const nextConfig = previewPayload?.projected_config || parsed;
+          const nextValidationErrors = Array.isArray(previewPayload?.validation_errors) && previewPayload.validation_errors.length > 0
+            ? { config_payload: previewPayload.validation_errors }
+            : null;
+          setPreviewConfig(nextConfig);
+          setPreviewValidationErrors(nextValidationErrors);
+          setPreviewOpen(true);
+        })
+        .catch((err) => {
+          setError(err.message);
+        })
+        .finally(() => {
+          setIsConfigPreviewing(false);
+        });
     } catch {
       setError(t('soc.dataops.invalid_json'));
     }
@@ -151,14 +272,63 @@ const DataOpsPanel = ({ t }) => {
       setSuccessMessage(t('soc.dataops.apply_success'));
       setPreviewOpen(false);
       setPreviewConfig(null);
+      setPreviewValidationErrors(null);
       setError(null);
 
-      const tiersPayload = await socApi.getDataOpsQueueTiers();
+      const [tiersPayload, auditPayload] = await Promise.all([
+        socApi.getDataOpsQueueTiers(),
+        socApi.getDataOpsRuntimeConfigAudit(1),
+      ]);
       setQueueSnapshot(tiersPayload || { tiers: [], updated_at: null });
+      setAuditEnvelope(auditPayload || DEFAULT_AUDIT_ENVELOPE);
+      setAuditPage(1);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAuditPageChange = async (page) => {
+    try {
+      setIsAuditLoading(true);
+      const auditPayload = await socApi.getDataOpsRuntimeConfigAudit(page);
+      setAuditEnvelope(auditPayload || DEFAULT_AUDIT_ENVELOPE);
+      setAuditPage(page);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsAuditLoading(false);
+    }
+  };
+
+  const handlePlannerPreview = async () => {
+    try {
+      setIsPlannerPreviewing(true);
+      const previewPayload = await socApi.previewDataOpsPlanner(buildPlannerPayload(manualRunForm, { forPreview: true }));
+      setPlannerPreview(previewPayload);
+      setPlannerRunResult(null);
+      setError(null);
+      setSuccessMessage(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsPlannerPreviewing(false);
+    }
+  };
+
+  const handlePlannerRun = async () => {
+    try {
+      setIsPlannerRunning(true);
+      const runPayload = await socApi.runDataOpsPlanner(buildPlannerPayload(manualRunForm));
+      setPlannerRunResult(runPayload);
+      setError(null);
+      setSuccessMessage(`${t('soc.dataops.planner_run_success')} ${runPayload.run_id || ''}`.trim());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsPlannerRunning(false);
     }
   };
 
@@ -184,7 +354,7 @@ const DataOpsPanel = ({ t }) => {
         </div>
         <button
           type="button"
-          onClick={loadData}
+          onClick={() => loadData(runLogsPage)}
           className="rounded bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
         >
           {t('soc.dataops.refresh')}
@@ -350,15 +520,238 @@ const DataOpsPanel = ({ t }) => {
       <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
+            <h3 className="text-lg font-bold text-white">{t('soc.dataops.planner_title')}</h3>
+            <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.planner_description')}</p>
+          </div>
+          <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-4 py-3 text-right">
+            <p className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.planner_policy')}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-100">{t('soc.dataops.planner_mode_missing_only')}</p>
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,1fr)]">
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="soc-dataops-planner-symbols" className="mb-2 block text-sm font-medium text-slate-200">
+                {t('soc.dataops.planner_symbols')}
+              </label>
+              <textarea
+                id="soc-dataops-planner-symbols"
+                value={manualRunForm.symbolsText}
+                onChange={(event) => {
+                  updateManualRunForm((currentValue) => ({
+                    ...currentValue,
+                    symbolsText: event.target.value,
+                  }));
+                }}
+                rows={4}
+                spellCheck={false}
+                placeholder={t('soc.dataops.planner_symbols_placeholder')}
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 p-4 font-mono text-sm text-slate-200 outline-none transition focus:border-emerald-500"
+              />
+              <p className="mt-2 text-xs text-slate-500">{t('soc.dataops.planner_symbols_hint')}</p>
+            </div>
+
+            <fieldset>
+              <legend className="mb-2 text-sm font-medium text-slate-200">{t('soc.dataops.planner_datasets')}</legend>
+              <div className="grid gap-3 md:grid-cols-2">
+                {MANUAL_RUN_DATASET_OPTIONS.map((dataset) => {
+                  const checked = manualRunForm.datasets.includes(dataset);
+                  return (
+                    <label key={dataset} className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-200">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          updateManualRunForm((currentValue) => ({
+                            ...currentValue,
+                            datasets: checked
+                              ? currentValue.datasets.filter((item) => item !== dataset)
+                              : [...currentValue.datasets, dataset],
+                          }));
+                        }}
+                        className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                      />
+                      <span>{t(DATASET_LABEL_KEYS[dataset] || 'soc.dataops.dataset_unknown')}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label htmlFor="soc-dataops-planner-execution-mode" className="mb-2 block text-sm font-medium text-slate-200">
+                  {t('soc.dataops.planner_execution_mode')}
+                </label>
+                <select
+                  id="soc-dataops-planner-execution-mode"
+                  value={manualRunForm.executionMode}
+                  onChange={(event) => {
+                    updateManualRunForm((currentValue) => ({
+                      ...currentValue,
+                      executionMode: event.target.value,
+                    }));
+                  }}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-emerald-500"
+                >
+                  <option value="async">{t('soc.dataops.planner_execution_mode_async')}</option>
+                  <option value="sync">{t('soc.dataops.planner_execution_mode_sync')}</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="soc-dataops-planner-reason" className="mb-2 block text-sm font-medium text-slate-200">
+                  {t('soc.dataops.planner_reason')}
+                </label>
+                <input
+                  id="soc-dataops-planner-reason"
+                  type="text"
+                  value={manualRunForm.reason}
+                  onChange={(event) => {
+                    updateManualRunForm((currentValue) => ({
+                      ...currentValue,
+                      reason: event.target.value,
+                    }));
+                  }}
+                  placeholder={t('soc.dataops.planner_reason_placeholder')}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <label className="flex items-start gap-3 rounded-lg border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-200">
+              <input
+                type="checkbox"
+                checked={manualRunForm.forceRefresh}
+                onChange={(event) => {
+                  updateManualRunForm((currentValue) => ({
+                    ...currentValue,
+                    forceRefresh: event.target.checked,
+                  }));
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+              />
+              <span>
+                <span className="font-medium text-slate-100">{t('soc.dataops.planner_force_refresh')}</span>
+                <span className="mt-1 block text-xs text-slate-500">{t('soc.dataops.planner_force_refresh_hint')}</span>
+              </span>
+            </label>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handlePlannerPreview}
+                disabled={isPlannerPreviewing || manualRunForm.datasets.length === 0}
+                className="rounded bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPlannerPreviewing ? t('soc.dataops.planner_preview_loading') : t('soc.dataops.planner_preview')}
+              </button>
+              <button
+                type="button"
+                onClick={handlePlannerRun}
+                disabled={!plannerPreview || isPlannerRunning || manualRunForm.datasets.length === 0 || !ownership?.can_apply}
+                className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPlannerRunning ? t('soc.dataops.planner_run_loading') : t('soc.dataops.planner_run')}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+              <h4 className="text-sm font-semibold text-white">{t('soc.dataops.planner_preview_summary')}</h4>
+              {plannerPreview ? (
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
+                    <dt className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.planner_planned_items')}</dt>
+                    <dd className="mt-1 text-lg font-semibold text-slate-100">{plannerPreview.summary?.planned_items || 0}</dd>
+                  </div>
+                  <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
+                    <dt className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.planner_skipped_items')}</dt>
+                    <dd className="mt-1 text-lg font-semibold text-slate-100">{plannerPreview.summary?.skipped_items || 0}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">{t('soc.dataops.planner_preview_empty')}</p>
+              )}
+            </div>
+
+            {plannerRunResult && (
+              <div className="rounded-lg border border-emerald-700/60 bg-emerald-950/40 p-4">
+                <h4 className="text-sm font-semibold text-emerald-100">{t('soc.dataops.planner_run_result')}</h4>
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-emerald-300/70">{t('soc.dataops.planner_run_id')}</dt>
+                    <dd className="mt-1 font-semibold text-emerald-100">{plannerRunResult.run_id}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-emerald-300/70">{t('soc.dataops.planner_status')}</dt>
+                    <dd className="mt-1 font-semibold text-emerald-100">{plannerRunResult.status}</dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+              <h4 className="text-sm font-semibold text-white">{t('soc.dataops.planner_items_title')}</h4>
+              {(plannerPreview?.items || []).length > 0 ? (
+                <ul className="mt-4 space-y-3">
+                  {plannerPreview.items.map((item) => (
+                    <li key={`${item.symbol}-${item.dataset}`} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{item.symbol}</p>
+                          <p className="mt-1 text-xs text-slate-400">{t(DATASET_LABEL_KEYS[item.dataset] || 'soc.dataops.dataset_unknown')}</p>
+                        </div>
+                        <span className="rounded-full border border-cyan-700/60 bg-cyan-950/50 px-2 py-1 text-xs font-semibold text-cyan-200">
+                          {t(FRESHNESS_LABEL_KEYS[item.coverage_before] || 'soc.dataops.freshness_unknown')}
+                        </span>
+                      </div>
+                      {item.reason ? (
+                        <p className="mt-3 text-xs text-slate-300">{t('soc.dataops.planner_reason_label')}: {item.reason}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">{t('soc.dataops.planner_items_empty')}</p>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+              <h4 className="text-sm font-semibold text-white">{t('soc.dataops.planner_skipped_title')}</h4>
+              {(plannerPreview?.skipped || []).length > 0 ? (
+                <ul className="mt-4 space-y-3">
+                  {plannerPreview.skipped.map((item) => (
+                    <li key={`${item.symbol}-${item.dataset}-skipped`} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
+                      <p className="text-sm font-semibold text-white">{item.symbol}</p>
+                      <p className="mt-1 text-xs text-slate-400">{t(DATASET_LABEL_KEYS[item.dataset] || 'soc.dataops.dataset_unknown')}</p>
+                      <p className="mt-3 text-xs text-slate-300">{t('soc.dataops.planner_reason_label')}: {item.reason}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">{t('soc.dataops.planner_skipped_empty')}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
             <h3 className="text-lg font-bold text-white">{t('soc.dataops.runtime_config')}</h3>
             <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.runtime_config_hint')}</p>
           </div>
           <button
             type="button"
             onClick={handlePreview}
+            disabled={isConfigPreviewing}
             className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600"
           >
-            {t('soc.actions.preview')}
+            {isConfigPreviewing ? t('soc.dataops.preview_loading') : t('soc.actions.preview')}
           </button>
         </div>
         <label htmlFor="soc-dataops-runtime-config" className="mb-2 block text-sm font-medium text-slate-200">
@@ -378,6 +771,166 @@ const DataOpsPanel = ({ t }) => {
         />
       </div>
 
+      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-white">{t('soc.dataops.audit_title')}</h3>
+            <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.audit_description')}</p>
+          </div>
+          <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-4 py-3 text-right">
+            <p className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.audit_total')}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-100">{auditEnvelope.count || 0}</p>
+          </div>
+        </div>
+
+        {(auditEnvelope.results || []).length > 0 ? (
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-800 text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="px-3 py-3">{t('soc.dataops.audit_timestamp')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.audit_actor')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.audit_service_key')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.audit_change_summary')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {(auditEnvelope.results || []).map((auditItem) => (
+                    <tr key={auditItem.id} className="align-top">
+                      <td className="px-3 py-4 text-slate-300">{auditItem.timestamp || t('common.notAvailable')}</td>
+                      <td className="px-3 py-4 text-slate-300">{auditItem.actor || t('common.notAvailable')}</td>
+                      <td className="px-3 py-4 font-mono text-xs text-slate-300">{auditItem.service_key || t('common.notAvailable')}</td>
+                      <td className="px-3 py-4 text-slate-300">{auditItem.change_summary || t('common.notAvailable')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-slate-400">
+                {t('soc.dataops.audit_page')} {auditPage}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleAuditPageChange(Math.max(auditPage - 1, 1))}
+                  disabled={!auditEnvelope.previous || isAuditLoading}
+                  className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {t('soc.dataops.audit_previous')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAuditPageChange(auditPage + 1)}
+                  disabled={!auditEnvelope.next || isAuditLoading}
+                  className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {t('soc.dataops.audit_next')}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">{t('soc.dataops.audit_empty')}</p>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-white">{t('soc.dataops.run_history_title')}</h3>
+            <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.run_history_description')}</p>
+          </div>
+          <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-4 py-3 text-right">
+            <p className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.run_history_total')}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-100">{runLogsEnvelope.count || 0}</p>
+          </div>
+        </div>
+
+        {(runLogsEnvelope.results || []).length > 0 ? (
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-800 text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="px-3 py-3">{t('soc.dataops.run_history_run_id')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.run_history_status')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.run_history_mode')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.run_history_reason')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.run_history_started_at')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.run_history_finished_at')}</th>
+                    <th className="px-3 py-3">{t('soc.dataops.run_history_summary')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {(runLogsEnvelope.results || []).map((runLog) => (
+                    <tr key={runLog.run_id} className="align-top">
+                      <td className="px-3 py-4 font-mono text-sm text-white">{runLog.run_id}</td>
+                      <td className="px-3 py-4">
+                        <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-xs font-semibold text-slate-200">
+                          {t(RUN_STATUS_LABEL_KEYS[runLog.status] || 'soc.dataops.run_status_unknown')}
+                        </span>
+                      </td>
+                      <td className="px-3 py-4 text-slate-300">{runLog.mode || 'missing_only'}</td>
+                      <td className="px-3 py-4 font-mono text-xs text-slate-300">{runLog.reason || 'operator_manual_run'}</td>
+                      <td className="px-3 py-4 text-slate-300">{runLog.started_at || t('common.notAvailable')}</td>
+                      <td className="px-3 py-4 text-slate-300">{runLog.finished_at || t('common.notAvailable')}</td>
+                      <td className="px-3 py-4">
+                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                            {t('soc.dataops.planner_planned_items')}: {runLog.summary?.planned_items || 0}
+                          </span>
+                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                            {t('soc.dataops.run_history_inserted')}: {runLog.summary?.inserted || 0}
+                          </span>
+                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                            {t('soc.dataops.run_history_updated')}: {runLog.summary?.updated || 0}
+                          </span>
+                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                            {t('soc.dataops.run_history_skipped_existing')}: {runLog.summary?.skipped_existing || 0}
+                          </span>
+                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                            {t('soc.dataops.run_history_failed')}: {runLog.summary?.failed || 0}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-slate-400">
+                {t('soc.dataops.run_history_page')} {runLogsPage}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleRunLogsPageChange(Math.max(runLogsPage - 1, 1))}
+                  disabled={!runLogsEnvelope.previous || isRunLogsLoading}
+                  className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {t('soc.dataops.run_history_previous')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRunLogsPageChange(runLogsPage + 1)}
+                  disabled={!runLogsEnvelope.next || isRunLogsLoading}
+                  className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {t('soc.dataops.run_history_next')}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">{t('soc.dataops.run_history_empty')}</p>
+        )}
+      </div>
+
       {ownership && (
         <OwnershipBadgeRow domain={ownership.domain || 'dataops_market_data'} ownership={ownership} t={t} />
       )}
@@ -389,11 +942,12 @@ const DataOpsPanel = ({ t }) => {
         onClose={() => {
           setPreviewOpen(false);
           setPreviewConfig(null);
+          setPreviewValidationErrors(null);
         }}
         onConfirm={handleApply}
         changeSummary={buildChangeSummary(currentConfig, previewConfig || currentConfig, t)}
         impactWarnings={buildImpactWarnings(currentConfig, previewConfig || currentConfig, t)}
-        validationErrors={null}
+        validationErrors={previewValidationErrors}
         domain={ownership?.domain || 'dataops_market_data'}
         isSubmitting={isSubmitting}
         t={t}

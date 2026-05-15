@@ -538,6 +538,8 @@ export default function WhaleAlertsDashboard() {
             symbol={normalizedSymbol}
             realtimeAlerts={liveBoardAlerts}
             feedData={feedData}
+            ordersOverride={selectedTradeDate ? bubbleOrdersForFlow : null}
+            selectedTradeDate={selectedTradeDate}
             loading={feedLoading}
             onRefresh={() => fetchFeed({ silent: false })}
             feedHeightClass="h-[320px] sm:h-[360px]"
