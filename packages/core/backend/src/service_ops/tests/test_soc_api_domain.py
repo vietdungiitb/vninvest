@@ -1153,4 +1153,48 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
             ).exists()
         )
 
+    def test_runtime_config_preview_validates_without_saving(self):
+        response = self.client.post(
+            '/api/soc/dataops/runtime-config/preview/',
+            {
+                'config_payload': {
+                    'decay_days': 14,
+                    'hot_user_demand': {'poll_interval_seconds': 10, 'max_batch_size': 30},
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertTrue(payload['is_valid'])
+        self.assertEqual(payload['projected_config']['decay_days'], 14)
+        self.assertEqual(payload['projected_config']['hot_user_demand']['poll_interval_seconds'], 10)
+        self.assertEqual(payload['validation_errors'], [])
+        self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
+        # Preview must NOT save to DB
+        self.assertFalse(
+            ServiceConfig.objects.filter(
+                service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+                config_payload__decay_days=14,
+            ).exists()
+        )
+
+    def test_runtime_config_audit_returns_paginated_change_history(self):
+        # First apply a config change so there's an audit record
+        self.client.post(
+            '/api/soc/dataops/runtime-config/',
+            {'config_payload': {'decay_days': 7}},
+            format='json',
+        )
+
+        response = self.client.get('/api/soc/dataops/runtime-config/audit/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('count', payload)
+        self.assertIn('results', payload)
+        self.assertGreaterEqual(payload['count'], 1)
+        self.assertIn('service_key', payload['results'][0])
+        self.assertIn('actor', payload['results'][0])
 

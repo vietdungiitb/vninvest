@@ -101,8 +101,13 @@ urlpatterns = [
     path('matrix/providers/', matrix.MatrixProvidersView.as_view(), name='soc_matrix_providers'),
     path('matrix/monitor/', matrix.MatrixMonitorView.as_view(), name='soc_matrix_monitor'),
 
-    # Data Ops market-data SSOT domain (3)
+    # Data Ops market-data SSOT domain (6)
     path('dataops/coverage/', dataops.DataOpsCoverageView.as_view(), name='soc_dataops_coverage'),
+    path('dataops/run-logs/', dataops.DataOpsRunLogsView.as_view(), name='soc_dataops_run_logs'),
+    path('dataops/planner/preview/', dataops.DataOpsPlannerPreviewView.as_view(), name='soc_dataops_planner_preview'),
+    path('dataops/planner/run/', dataops.DataOpsPlannerRunView.as_view(), name='soc_dataops_planner_run'),
     path('dataops/queue-tiers/', dataops.DataOpsQueueTiersView.as_view(), name='soc_dataops_queue_tiers'),
     path('dataops/runtime-config/', dataops.DataOpsRuntimeConfigView.as_view(), name='soc_dataops_runtime_config'),
+    path('dataops/runtime-config/preview/', dataops.DataOpsRuntimeConfigPreviewView.as_view(), name='soc_dataops_runtime_config_preview'),
+    path('dataops/runtime-config/audit/', dataops.DataOpsRuntimeConfigAuditView.as_view(), name='soc_dataops_runtime_config_audit'),
 ]

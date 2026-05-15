@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-15 | Task SOA-T05 | Runtime config preview + audit endpoints ✅
+
+**Status:** ✅ focused slice complete
+**Issues Fixed:**
+- Added `DataOpsRuntimeConfigPreviewView` — POST dry-run validates config_payload and returns projected config without saving
+- Added `DataOpsRuntimeConfigAuditView` — GET returns paginated ConfigChangeAudit history for dataops market-data domain
+- Registered `/api/soc/dataops/runtime-config/preview/` and `/api/soc/dataops/runtime-config/audit/` in `urls.py`
+- 2 new test cases: preview validates without saving, audit returns paginated history
+
+### All Modified/Created Files (3 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/views/dataops.py` | 2 new views + serializers |
+| `packages/core/backend/src/service_ops/urls.py` | 2 new URL patterns |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | 2 new test cases |
+
+### Validation
+- Combined suite: **51 tests passing** ✅
+
+---
+
 # 2026-05-15 | Task SOA-T04 | Screener alert-history pagination + 429 semantics ✅
 
 **Status:** ✅ focused slice complete
