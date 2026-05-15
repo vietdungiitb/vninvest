@@ -4,6 +4,7 @@
  */
 
 const BASE_URL = '/api/soc';
+const CANONICAL_DATAOPS_BASE_URL = '/core/v1/operator/scraping/dataops';
 
 const getAccessToken = () => {
   try {
@@ -163,26 +164,63 @@ export const socApi = {
 
   // DataOps market-data runtime
   getDataOpsQueueTiers: async () => {
-    const resp = await fetch(`${BASE_URL}/dataops/queue-tiers/`);
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/queue-tiers/`);
     return handleResponse(resp);
   },
 
   getDataOpsCoverage: async () => {
-    const resp = await fetch(`${BASE_URL}/dataops/coverage/`);
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/coverage/`);
+    return handleResponse(resp);
+  },
+
+  getDataOpsRunLogs: async (page = 1) => {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/run-logs/?page=${page}`);
+    return handleResponse(resp);
+  },
+
+  previewDataOpsPlanner: async (payload) => {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/planner/preview/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse(resp);
+  },
+
+  runDataOpsPlanner: async (payload) => {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/planner/run/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
     return handleResponse(resp);
   },
 
   getDataOpsRuntimeConfig: async () => {
-    const resp = await fetch(`${BASE_URL}/dataops/runtime-config/`);
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/runtime-config/`);
     return handleResponse(resp);
   },
 
   applyDataOpsRuntimeConfig: async (config) => {
-    const resp = await fetch(`${BASE_URL}/dataops/runtime-config/`, {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/runtime-config/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ config_payload: config }),
     });
+    return handleResponse(resp);
+  },
+
+  previewDataOpsRuntimeConfig: async (config) => {
+    const resp = await fetch(`${BASE_URL}/dataops/runtime-config/preview/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config_payload: config }),
+    });
+    return handleResponse(resp);
+  },
+
+  getDataOpsRuntimeConfigAudit: async (page = 1) => {
+    const resp = await fetch(`${BASE_URL}/dataops/runtime-config/audit/?page=${page}`);
     return handleResponse(resp);
   },
 

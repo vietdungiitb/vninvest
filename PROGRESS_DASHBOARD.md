@@ -1,3 +1,18 @@
+# 2026-05-15 — SOA-T09 DataOps Adapter Slice ✅
+
+Status: **✅ focused slice complete** | **`frontend/src/api/socApi.js` now exposes SOC adapter methods for DataOps runtime-config preview/audit, and the matching frontend test suite now locks both contracts**
+Validation: **✅ frontend `src/__tests__/socApi.dataops.test.js` passed (`9` tests)** | **✅ SOA-T08 facts-first read path validated with no code change** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ core-api and frontend health checks both passed**
+
+## SOA-T09 DataOps Adapter Slice
+
+**What changed**
+- `frontend/src/api/socApi.js` now exposes `previewDataOpsRuntimeConfig()` and `getDataOpsRuntimeConfigAudit()` under the SOC adapter.
+- `frontend/src/__tests__/socApi.dataops.test.js` now locks both route contracts, including payload envelope and page query semantics.
+- SOA-T08 was validated in the same pass: `whale-alerts/:symbol` stays facts-first, and `market_serving` uses materialized `SessionFacts`.
+
+**Residual Risk**
+- This only covers the DataOps adapter surface; downstream UI consumers still need follow-up wiring in later slices.
+
 # 2026-05-15 — Matrix OpenAPI Schema Slice ✅
 
 Status: **✅ focused slice complete** | **`service_ops/views/matrix.py` now exposes explicit OpenAPI contracts for matrix cycles/detail/start/cells/abort/providers/monitor, and the adjacent `PrefetchWarmNowView` no longer relies on serializer guessing because the endpoint now declares `request=None`**

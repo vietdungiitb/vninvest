@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-15 22:20:32`
+Generated at: `2026-05-15 22:55:06`
 
 ## Summary
 
 - Total modules: 1200
 - Python modules: 678
 - JS/TS modules: 522
-- Total classes: 1311
+- Total classes: 1317
 - Total functions: 3225
-- Total top-level variables: 4793
+- Total top-level variables: 4794
 
 ## Python Modules
 
@@ -3579,7 +3579,7 @@ Generated at: `2026-05-15 22:20:32`
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
 
 - Classes:
-  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`
+  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_audit_returns_paginated_change_history`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`, `test_runtime_config_preview_validates_without_saving`
   - `MatrixDomainApiTestCase` -> methods: `test_matrix_providers_reflect_active_cycle`, `test_matrix_routes_appear_in_openapi_schema`, `test_start_monitor_and_abort_matrix_cycle`
   - `OverviewDomainApiTestCase` -> methods: `test_overview_routes_appear_in_openapi_schema`, `test_overview_summary_endpoint_returns_grouped_health_snapshot`, `test_service_health_check_endpoint_queues_manual_probe_run_log`
   - `PrefetchDomainApiTestCase` -> methods: `test_apply_prefetch_config_updates_schedule_and_universe`, `test_prefetch_apply_alias_and_ownership_endpoint_match_contract`, `test_prefetch_default_config_response_has_stable_metadata`, `test_prefetch_routes_appear_in_openapi_schema`, `test_prefetch_warm_now_queues_run_log`, `test_profiles_cache_and_purge_endpoints_return_contract`
@@ -3692,6 +3692,12 @@ Generated at: `2026-05-15 22:20:32`
   - `DataOpsRunLogsResponseSerializer`
   - `DataOpsRunLogsView` -> methods: `get`
   - `DataOpsRuntimeConfigApplyRequestSerializer`
+  - `DataOpsRuntimeConfigAuditResponseSerializer`
+  - `DataOpsRuntimeConfigAuditSerializer`
+  - `DataOpsRuntimeConfigAuditView` -> methods: `get`
+  - `DataOpsRuntimeConfigPreviewRequestSerializer`
+  - `DataOpsRuntimeConfigPreviewResponseSerializer`
+  - `DataOpsRuntimeConfigPreviewView` -> methods: `post`
   - `DataOpsRuntimeConfigResponseSerializer`
   - `DataOpsRuntimeConfigView` -> methods: `get`, `post`
 - Functions:
@@ -3815,6 +3821,8 @@ Generated at: `2026-05-15 22:20:32`
   - `ScreenerRulesView` -> methods: `get`, `post`
 - Functions:
   - `_build_default_screener_config_response`, `_build_screener_ownership_payload`, `_get_recent_signal_alerts`, `_get_screener_config`, `_serialize_signal_alert`
+- Top-level variables:
+  - `PAGINATION_PARAMETERS`
 
 ### `packages/core/backend/src/service_ops/views/signals.py`
 

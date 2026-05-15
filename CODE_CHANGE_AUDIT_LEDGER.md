@@ -1,5 +1,51 @@
 # Code Change Audit Ledger
 
+# 2026-05-15 | Task SOA-T09 | Frontend DataOps runtime-config adapter preview + audit ✅
+
+**Status:** ✅ focused slice complete
+**Issues Fixed:**
+- `frontend/src/api/socApi.js` now exposes `previewDataOpsRuntimeConfig()` and `getDataOpsRuntimeConfigAudit()` through the SOC adapter
+- `frontend/src/__tests__/socApi.dataops.test.js` now locks both new route contracts
+- SOA-T08 was validated in the same pass: primary `whale-alerts/:symbol` read path stays facts-first via `UnifiedAlert`, and `market_serving` keeps using materialized `SessionFacts` for CVD/session truth
+
+### All Modified/Created Files (4 files)
+| File | Change |
+|------|--------|
+| `frontend/src/api/socApi.js` | Added 2 DataOps runtime-config adapter methods |
+| `frontend/src/__tests__/socApi.dataops.test.js` | Added 2 route contract tests |
+| `module_tree_full.md` | Regenerated successfully (`1200` modules) |
+| `PROGRESS_DASHBOARD.md` | Updated slice progress |
+
+### Validation
+- Frontend `src/__tests__/socApi.dataops.test.js`: **9 tests passing** ✅
+- `start_dev.ps1`: dev stack rebuilt/refreshed successfully; core-api and frontend health checks both passed ✅
+
+---
+
+# 2026-05-15 | Task SOA-T06/T07/T08 | Retention policy hot floor + canonical long-lived + facts-first read path ✅
+
+**Status:** ✅ focused slice complete
+**Commit:** `381ae502`
+**Issues Fixed:**
+- `intraday_tick_retention_days` default 3→7, validation floor 1→7 (SOA-T06: hot staging floor)
+- `canonical_event_retention_days` validation floor 30→180 (SOA-T07: long-lived canonical events)
+- `SignalsRetentionPolicyView.get` now returns `session_facts_days` field (SOA-T07)
+- `SignalsRetentionPolicyResponseSerializer` has `session_facts_days` field
+- Test `test_retention_materialization_universe_and_job_routes_return_contract` updated: `intraday_tick_retention_days: 5 → 7` to match new floor
+- SOA-T08 (facts-first read): verified primary `whale-alerts/:symbol` path reads from `UnifiedAlert` (canonical), `market_serving` reads from `SessionFacts` (materialized) — no code change required
+
+### All Modified/Created Files (3 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/domain_configs/signals.py` | Retention defaults/validation floors updated |
+| `packages/core/backend/src/service_ops/views/signals.py` | Serializer + view response include `session_facts_days` |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_signals.py` | Test fixture value updated for new floor |
+
+### Validation
+- Combined suite: **51 tests passing** ✅
+
+---
+
 # 2026-05-15 | Task SOA-T05 | Runtime config preview + audit endpoints ✅
 
 **Status:** ✅ focused slice complete
