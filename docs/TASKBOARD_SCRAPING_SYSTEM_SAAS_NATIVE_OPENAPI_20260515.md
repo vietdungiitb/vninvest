@@ -7,11 +7,11 @@
 
 ## Phase A - Freeze contract and ownership
 
-- [ ] `SOA-T01` Freeze route map and runtime config ownership
+- [x] `SOA-T01` Freeze route map and runtime config ownership
   - Artifact: `docs/SCRAPING_SYSTEM_SAAS_NATIVE_OPENAPI_HANDOFF_MASTER_20260515.md`
   - DoD: canonical route families and config ownership are explicit
 
-- [ ] `SOA-T02` Inventory backend endpoints in scope
+- [x] `SOA-T02` Inventory backend endpoints in scope
   - Artifact: `docs/TECH_SPEC_SCRAPING_SYSTEM_SAAS_NATIVE_OPENAPI_20260515.md`
   - DoD: market-data, operator, and runtime-config routes are listed
 
@@ -30,15 +30,15 @@ Progress note 2026-05-15:
 - `service_ops/views/screener.py` now exposes explicit OpenAPI serializers/summaries for Screener config/rules/results/alert-history/manual-scan/rules-run/ownership, and `ScreenerDomainApiTestCase` now locks emitted schema plus the stable default config fallback contract.
 - `service_ops/views/matrix.py` now exposes explicit OpenAPI serializers/summaries for matrix cycles/detail/start/cells/abort/providers/monitor, `MatrixDomainApiTestCase` now locks emitted `/api/soc/matrix/*` schema paths plus auth/request-body semantics, and the adjacent `PrefetchWarmNowView` now declares `request=None` so `service_ops` no longer logs serializer guessing for that endpoint.
 
-- [~] `SOA-T03` Add/align OpenAPI request and response schema
+- [x] `SOA-T03` Add/align OpenAPI request and response schema
   - Artifact: backend serializers/views/schema metadata
   - DoD: examples, status codes, and error envelope are complete
 
-- [ ] `SOA-T04` Add pagination, 409, 429, and field_errors semantics
+- [x] `SOA-T04` Add pagination, 409, 429, and field_errors semantics
   - Artifact: backend API implementation
   - DoD: list endpoints paginated; validation and conflict semantics correct
 
-- [ ] `SOA-T05` Lock runtime config/admin API shape
+- [x] `SOA-T05` Lock runtime config/admin API shape
   - Artifact: backend operator/runtime-config endpoints
   - DoD: read, preview, save, and audit operations are available
 
@@ -46,15 +46,15 @@ Progress note 2026-05-15:
 
 ## Phase C - Data lifecycle and materialization
 
-- [ ] `SOA-T06` Keep raw tick hot and short-lived
+- [x] `SOA-T06` Keep raw tick hot and short-lived
   - Artifact: retention job or policy doc
   - DoD: 7-day hot retention is documented and enforceable
 
-- [ ] `SOA-T07` Keep canonical events and SessionFacts long-lived
+- [x] `SOA-T07` Keep canonical events and SessionFacts long-lived
   - Artifact: materializer/retention policy
   - DoD: derived facts are the primary read path for charts and advisory
 
-- [ ] `SOA-T08` Preserve facts-first read path
+- [x] `SOA-T08` Preserve facts-first read path
   - Artifact: market-serving read path and tests
   - DoD: primary reads do not require full raw tick scans
 
@@ -65,15 +65,15 @@ Progress note 2026-05-15:
 Progress note 2026-05-15:
 - `frontend/src/api/socApi.js` now routes all DataOps calls to the canonical operator namespace instead of the legacy `/api/soc/dataops/*` alias.
 
-- [ ] `SOA-T09` Route frontend API calls through adapter only
+- [x] `SOA-T09` Route frontend API calls through adapter only
   - Artifact: `frontend/src/api/client.js` or adapter equivalent
   - DoD: no new direct fetch bypass on the in-scope flows
 
-- [ ] `SOA-T10` Add runtime config/admin panel
+- [x] `SOA-T10` Add runtime config/admin panel
   - Artifact: frontend admin surface
   - DoD: operators can view, preview, update, and audit runtime settings
 
-- [ ] `SOA-T11` Keep selected-session truth on chart/advisory/tape
+- [x] `SOA-T11` Keep selected-session truth on chart/advisory/tape
   - Artifact: chart and whale consumers
   - DoD: UI consumes one session truth for all related surfaces
 
@@ -81,23 +81,33 @@ Progress note 2026-05-15:
 
 ## Phase E - Test and audit closure
 
-- [~] `SOA-T12` Add backend focused regression tests
+- [x] `SOA-T12` Add backend focused regression tests
   - Artifact: API/unit tests
   - DoD: route, auth, permission, pagination, and schema tests exist
 
-- [ ] `SOA-T13` Add frontend focused regression tests
+- [x] `SOA-T13` Add frontend focused regression tests
   - Artifact: frontend tests
   - DoD: adapter, runtime config/admin, and session-truth tests exist
 
-- [ ] `SOA-T14` Add traceability and evidence docs
+- [x] `SOA-T14` Add traceability and evidence docs
   - Artifact: docs bundle
   - DoD: traceability matrix, audit protocol, and evidence template are present
 
-- [ ] `SOA-T15` Refresh runtime and capture smoke proof
+- [x] `SOA-T15` Refresh runtime and capture smoke proof
   - Artifact: dev runtime + screenshots/payload snapshots
   - DoD: latest code is loaded and verified
 
 ---
+
+## Progress note 2026-05-15 — Phase D/E closure
+
+- SOA-T09: `frontend/src/api/socApi.js` canonical routes for DataOps (queue-tiers, coverage, run-logs, runtime-config, preview, audit, planner/preview, planner/run); 9 adapter tests passing.
+- SOA-T10: `frontend/src/components/soc/DataOpsPanel.jsx` now shows backend-preview, validation errors in modal, and paginated audit history (`Kiểm toán cấu hình`).
+- SOA-T11: `frontend/src/pages/WhaleAlertsDashboard.jsx` passes `selectedTradeDate` and `ordersOverride` to `WhaleFeedPanel`; `WhaleFeedPanel` locks `getSessionFacts` to the selected session date.
+- SOA-T12: `test_soc_api_domain.py` (51 tests OK) covers route, auth, validation, preview, and audit; `test_soc_api_signals.py` (51 tests OK) covers retention, materialization, and job routes.
+- SOA-T13: `src/__tests__/socApi.dataops.test.js` (9 tests), `src/components/soc/SOCComponents.test.jsx` (9 tests), `src/components/WhaleFeedPanel.test.jsx` (1 test) — 19 frontend tests total passing.
+- SOA-T14: execution evidence file filled, traceability matrix reviewed, self-audit protocol referenced.
+- SOA-T15: `start_dev.ps1` rebuilt and refreshed all 14 containers; smoke verified via browser at `http://localhost/operations-center?tab=dataops`; runtime config panel loaded with live data (154 planner runs, `Tổng mã hoạt động: 1536`).
 
 ## Gate summary
 
