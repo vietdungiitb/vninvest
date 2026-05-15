@@ -1,6 +1,465 @@
+# 2026-05-15 — Matrix OpenAPI Schema Slice ✅
+
+Status: **✅ focused slice complete** | **`service_ops/views/matrix.py` now exposes explicit OpenAPI contracts for matrix cycles/detail/start/cells/abort/providers/monitor, and the adjacent `PrefetchWarmNowView` no longer relies on serializer guessing because the endpoint now declares `request=None`**
+Validation: **✅ backend `MatrixDomainApiTestCase` passed (`3` tests)** | **✅ backend `PrefetchDomainApiTestCase` passed (`6` tests) after the warm-now cleanup** | **✅ combined `DataOpsDomainApiTestCase` + `OverviewDomainApiTestCase` + `VnbrokerDomainApiTestCase` + `PrefetchDomainApiTestCase` + `test_soc_api_signals` + `ScreenerDomainApiTestCase` + `MatrixDomainApiTestCase` passed (`48` tests)** | **✅ final schema-generation output no longer logs serializer guessing for `MatrixCycleAbortView` or `PrefetchWarmNowView`** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live schema smoke on `http://localhost:8001/core/v1/schema/` returned `200`, exposed the Matrix summaries plus `Queue warm-now Prefetch`, and unauthenticated live `GET /api/soc/matrix/cycles/` plus `POST /api/soc/prefetch/warm-now/` both returned `401`**
+
+## Matrix OpenAPI Schema Subslice
+
+**What changed**
+- `service_ops/views/matrix.py` now declares explicit OpenAPI serializers, summaries, descriptions, request bodies, and response metadata for matrix cycle list/detail/start, cell list, abort, provider catalog, and monitor endpoints.
+- `service_ops/tests/test_soc_api_domain.py` now locks emitted `/api/soc/matrix/*` schema paths, request-body presence, query parameters, and `CorePATBearer` security so the Matrix contract cannot drift silently.
+- `service_ops/views/prefetch.py` now declares `request=None` on `PrefetchWarmNowView`, closing the last adjacent `service_ops` serializer-guess fallback that the combined regression surfaced.
+
+**Residual Risk**
+- This slice closes the Matrix warning cluster, but broader schema operationId collisions and non-`service_ops` serializer-guess fallbacks still need follow-up remediation.
+
+# 2026-05-15 — Screener OpenAPI Schema Slice ✅
+
+Status: **✅ focused slice complete** | **`service_ops/views/screener.py` now exposes explicit OpenAPI contracts for Screener config/rules/results/alert-history/manual-scan/rules-run/ownership, and the default config fallback now returns stable metadata instead of a partial payload**
+Validation: **✅ backend `ScreenerDomainApiTestCase` passed (`7` tests)** | **✅ combined `ScreenerDomainApiTestCase` + `test_soc_api_signals` + `PrefetchDomainApiTestCase` + `VnbrokerDomainApiTestCase` + `OverviewDomainApiTestCase` + `DataOpsDomainApiTestCase` passed (`45` tests)** | **✅ schema-generation output no longer relies on serializer guessing for `service_ops/views/screener.py`** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live schema smoke on `http://localhost:8001/core/v1/schema/` returned `200` and exposed the Screener summaries; unauthenticated live `GET /api/soc/screener/config/` returned `401`**
+
+## Screener OpenAPI Schema Subslice
+
+**What changed**
+- `service_ops/views/screener.py` now declares explicit OpenAPI serializers, summaries, descriptions, request bodies, and response metadata for Screener config, rules, results, alert history, manual scan, alias run, and ownership endpoints.
+- The default `GET /api/soc/screener/config/` branch now returns a stable runtime-config payload with `service_key`, `config_schema_version`, and provenance metadata instead of a partial anonymous payload.
+- `service_ops/tests/test_soc_api_domain.py` now includes a Screener schema regression and a default-config contract test so the emitted schema and fallback payload cannot drift silently.
+
+**Residual Risk**
+- This slice closes the Screener warning cluster, but `matrix` and broader schema operationId collisions still need follow-up remediation.
+
+# 2026-05-15 — Signals OpenAPI Schema Slice ✅
+
+Status: **✅ focused slice complete** | **`service_ops/views/signals.py` now exposes explicit OpenAPI contracts across the Signals bridge-write/read-only surface, and the dedicated signals API suite now locks representative `/api/soc/signals/*` routes in the emitted schema**
+Validation: **✅ backend `test_soc_api_signals` passed (`10` tests)** | **✅ combined `test_soc_api_signals` + `PrefetchDomainApiTestCase` + `VnbrokerDomainApiTestCase` + `OverviewDomainApiTestCase` + `DataOpsDomainApiTestCase` passed (`38` tests)** | **✅ schema-generation output no longer relies on serializer guessing for `service_ops/views/signals.py`** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live schema smoke on `http://localhost:8001/core/v1/schema/` returned `200` and exposed the Signals summaries; unauthenticated live `GET /api/soc/signals/config/` returned `401`**
+
+## Signals OpenAPI Schema Subslice
+
+**What changed**
+- `service_ops/views/signals.py` now declares explicit OpenAPI serializers, summaries, descriptions, request bodies, and response metadata for Signals config/preview/apply-block, summary, whale, dark-pool, screener, retention, materialization, universe, jobs, and performance endpoints.
+- `service_ops/tests/test_soc_api_signals.py` now parses the emitted schema and locks representative Signals summaries plus request bodies so this domain cannot silently drift back to serializer-guessing behavior.
+
+**Residual Risk**
+- This slice closes the Signals warning cluster, but sibling `service_ops` domains and broader schema operationId collisions still need follow-up remediation.
+
+# 2026-05-15 — Prefetch OpenAPI Schema Slice ✅
+
+Status: **✅ focused slice complete** | **`service_ops/views/prefetch.py` now exposes explicit OpenAPI contracts for Prefetch config/profiles/cache-status/purge-cache/warm-now/universe-groups/task-schedule/ownership, and the default config fallback now returns stable metadata instead of a partial payload**
+Validation: **✅ backend `PrefetchDomainApiTestCase` passed (`6` tests)** | **✅ combined `PrefetchDomainApiTestCase` + `VnbrokerDomainApiTestCase` + `OverviewDomainApiTestCase` + `DataOpsDomainApiTestCase` passed (`28` tests)** | **✅ schema-generation output no longer relies on serializer guessing for `service_ops/views/prefetch.py`** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live schema smoke on `http://localhost:8001/core/v1/schema/` returned `200` and exposed the Prefetch summaries; unauthenticated live `GET /api/soc/prefetch/config/` returned `401`**
+
+## Prefetch OpenAPI Schema Subslice
+
+**What changed**
+- `service_ops/views/prefetch.py` now declares explicit OpenAPI serializers, summaries, descriptions, request bodies, response metadata, and example payloads for the Prefetch runtime config and scheduler support endpoints.
+- The default `GET /api/soc/prefetch/config/` branch now returns a stable runtime-config payload with `service_key`, `config_schema_version`, and provenance metadata instead of a partial anonymous payload.
+- `service_ops/tests/test_soc_api_domain.py` now includes a Prefetch schema regression and a default-config contract test so the emitted schema and fallback payload cannot drift silently.
+
+**Residual Risk**
+- This slice closes the Prefetch warning cluster, but sibling `service_ops` domains and broader schema operationId collisions still need follow-up remediation.
+
+# 2026-05-15 — VNBroker OpenAPI Schema Slice ✅
+
+Status: **✅ focused slice complete** | **`service_ops/views/vnbroker.py` now exposes explicit OpenAPI contracts for VNBroker config/preview/health/test-connection/providers/circuit-breaker/ownership, and the focused regression suite now locks both schema and health fallback behavior for the domain**
+Validation: **✅ backend `VnbrokerDomainApiTestCase` + `OverviewDomainApiTestCase` + `DataOpsDomainApiTestCase` passed (`22` tests)** | **✅ schema-generation output no longer includes fallback warnings for `service_ops/views/vnbroker.py`** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live schema smoke on `http://localhost:8001/core/v1/schema/` returned `200` and exposed the VNBroker summaries; unauthenticated live `GET /api/soc/vnbroker/health/` returned `401`**
+
+## VNBroker OpenAPI Schema Subslice
+
+**What changed**
+- `service_ops/views/vnbroker.py` now declares explicit OpenAPI serializers, summaries, descriptions, request bodies, and response metadata for the VNBroker runtime config, preview, health, test-connection, providers, circuit-breaker, and ownership endpoints.
+- `service_ops/tests/test_soc_api_domain.py` now includes a VNBroker schema regression and a health fallback test so the emitted contract cannot drift silently.
+
+**Residual Risk**
+- This slice closes the VNBroker warning cluster, but sibling `service_ops` domains still need serializer/schema remediation before the broader OpenAPI standardization program is complete.
+
+# 2026-05-15 — SOC Overview OpenAPI Schema Slice ✅
+
+Status: **✅ focused slice complete** | **`service_ops/views/overview.py` now exposes explicit OpenAPI contracts for the SOC overview/service catalog/health-check surfaces, and focused regression tests now lock both behavior and emitted schema for `/api/soc/overview/` plus `/api/soc/services/{service_key}/health-check/`**
+Validation: **✅ backend `OverviewDomainApiTestCase` + `DataOpsDomainApiTestCase` passed (`15` tests)** | **✅ schema-generation output no longer includes fallback warnings for `service_ops/views/overview.py`** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live smoke on `http://localhost:8001/core/v1/schema/` returned `200` and exposed the new `overview` summaries; unauthenticated live `POST /api/soc/services/vnbroker_runtime/health-check/` returned `401`**
+
+## SOC Overview OpenAPI Schema Subslice
+
+**What changed**
+- `service_ops/views/overview.py` now declares explicit response serializers, pagination/filter query parameters, summaries, and route metadata for `overview`, `services`, `health-check`, `run-logs`, `change-audit`, `ownership`, and related service-detail endpoints.
+- `service_ops/tests/test_soc_api_domain.py` now contains `OverviewDomainApiTestCase`, which verifies overview summary behavior, manual health-check queue behavior, and the emitted OpenAPI schema for the touched routes.
+
+**Residual Risk**
+- This slice closes the `overview` warning cluster, but the remaining `service_ops` subdomains and several other apps still need serializer/schema remediation before the broader OpenAPI standardization program is complete.
+
+# 2026-05-15 — CorePAT OpenAPI Auth Scheme Slice ✅
+
+Status: **✅ focused slice complete** | **`CorePATAuthentication` now publishes an explicit `CorePATBearer` security scheme into OpenAPI, canonical DataOps operations advertise that bearer requirement, and the previous schema warning about unresolved CorePAT auth has been closed**
+Validation: **✅ backend `DataOpsDomainApiTestCase` passed (`12` tests)** | **✅ schema regression now asserts `components.securitySchemes.CorePATBearer` and route-level `security` on canonical DataOps operations** | **✅ schema-generation output no longer includes the unresolved CorePAT authenticator warning** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live schema smoke on `http://localhost:8001/core/v1/schema/` returned `200` and exposed `CorePATBearer` in runtime output**
+
+## CorePAT OpenAPI Auth Scheme Subslice
+
+**What changed**
+- `identity_access/authentication.py` now registers a `drf-spectacular` authentication extension that documents Core PAT auth as an HTTP bearer security scheme with `bearerFormat=PAT`.
+- `service_ops/tests/test_soc_api_domain.py` now locks the emitted `securitySchemes` section and verifies that canonical DataOps operations declare `CorePATBearer` in their OpenAPI security requirements.
+
+**Residual Risk**
+- This slice closes auth-scheme drift, but schema completeness work is still blocked by many APIViews that lack explicit serializers and therefore still fall back to generic `unable to guess serializer` warnings.
+
+# 2026-05-15 — Canonical DataOps OpenAPI Schema Slice ✅
+
+Status: **✅ focused slice complete** | **Canonical DataOps routes now carry explicit OpenAPI summaries, request/response schema, examples, and a focused schema regression; the root cause of the previously empty `/core/v1/schema/` output was closed by removing DRF `NamespaceVersioning`, which was incompatible with the current namespace layout**
+Validation: **✅ backend `DataOpsDomainApiTestCase` passed (`12` tests)** | **✅ focused schema regression proves canonical DataOps `runtime-config` and `planner/preview` routes appear in `/core/v1/schema/` with request bodies** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live schema smoke on `http://localhost:8001/core/v1/schema/` returned `200` and exposed canonical DataOps paths**
+
+## Canonical DataOps OpenAPI Schema Subslice
+
+**What changed**
+- `service_ops/views/dataops.py` now documents canonical DataOps operator endpoints with summaries, descriptions, query parameters, request schema, response schema, and concrete examples for `queue-tiers`, `coverage`, `run-logs`, `planner/preview`, `planner/run`, and `runtime-config`.
+- `vninvest_core/settings.py` no longer uses DRF `NamespaceVersioning`, because that setting was causing the OpenAPI generator to publish an empty schema even though the routes were mounted.
+- `service_ops/tests/test_soc_api_domain.py` now locks the canonical OpenAPI surface by asserting that DataOps routes show up in `/core/v1/schema/` with the expected summaries and request bodies.
+
+**Residual Risk**
+- This slice restores meaningful schema generation and closes DataOps contract drift, but many other APIViews in the broader backend still need explicit serializers/auth extensions to fully satisfy the OpenAPI standardization program.
+
+# 2026-05-15 — Canonical DataOps Runtime/Admin Route Slice ✅
+
+Status: **✅ focused slice complete** | **DataOps runtime/admin endpoints now mount under the canonical operator namespace `/core/v1/operator/scraping/dataops/*`, the frontend DataOps adapter now targets those canonical routes, focused backend/frontend tests pass, and the refreshed runtime proves the new routes are live**
+Validation: **✅ backend `DataOpsDomainApiTestCase` passed (`11` tests)** | **✅ frontend `socApi.dataops.test.js` passed (`7` tests)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live smoke on canonical DataOps `runtime-config` and `queue-tiers` returned `401` instead of `404`, confirming the routes are mounted and protected**
+
+## Canonical DataOps Runtime/Admin Route Subslice
+
+**What changed**
+- `service_ops.operator_urls` now exposes canonical DataOps aliases for `coverage`, `run-logs`, `planner/preview`, `planner/run`, `queue-tiers`, and `runtime-config` under `/core/v1/operator/scraping/dataops/*`.
+- `frontend/src/api/socApi.js` now sends all DataOps adapter calls to the canonical operator namespace instead of the legacy `/api/soc/dataops/*` alias.
+- A new focused frontend test suite locks those canonical URLs so the adapter cannot silently drift back to the alias path.
+
+**Residual Risk**
+- This slice does not yet complete the broader runtime-config/admin UI cutover or full OpenAPI metadata coverage for every operator route in scope.
+
+# 2026-05-15 — Scraping System SaaS-Native OpenAPI Handoff Package ✅
+
+Status: **✅ docs bundle complete** | **Created a complete SaaS-native/OpenAPI handoff package with implementation plan, tech spec, taskboard, backend design, frontend design, self-audit protocol, traceability matrix, execution evidence template, and code quality constitution; frontend runtime config/admin is now explicitly part of the design**
+Validation: **✅ targeted `git diff --check` over the new bundle returned no output**
+
+## Scraping System SaaS-Native OpenAPI Handoff Package
+
+**What changed**
+- The new bundle closes the missing handoff pieces for backend contract design, frontend adapter/admin control, and audit/evidence flow.
+- The frontend design now includes a runtime config/admin surface so operators can manage runtime settings directly in the UI.
+
+**Residual Risk**
+- This is a documentation slice only; the actual code implementation is the next execution step.
+
+# 2026-05-15 — Global Market Data Matrix Core Worker Recovery Slice ✅
+
+Status: **✅ follow-up slice complete** | **`core-worker` was still prefork and SIGKILL-ing child processes under the 128m cap; it has now been stabilized to `CELERY_POOL=solo` + `CELERY_CONCURRENCY=1`, the orphaned warm-tier branch `matrix_cycle_coordinator#75` plus child `vnbroker_price_board#77` / `IngestRun#41` were recovered, and the refreshed runtime has since advanced through `md-run-90` successfully**
+Validation: **✅ `docker compose ... config` renders `core-worker` with `CELERY_POOL=solo` + `CELERY_CONCURRENCY=1`** | **✅ `start_dev.ps1` rerun successfully** | **✅ post-refresh worker inspection showed `core-worker restart=0 oom=false`** | **✅ recent `core-worker` logs show no new `WorkerLostError/SIGKILL` noise** | **✅ latest DB snapshot shows `matrix_cycle_coordinator#75 failed`, `vnbroker_price_board#77 failed`, `IngestRun#41 failed`, and fresh `matrix_cycle_coordinator#90 success` with `vnbroker_history#91` / `IngestRun#50` plus `vnbroker_price_board#92` / `IngestRun#51`; final counts now show `active_registry_count=1536`, `dailyprice_active_symbol_count=204`, `dailyprice_total_rows=1794`, `snapshot_active_symbol_count=163`, `snapshot_total_rows=163`, `coverage_total_rows=1065`**
+
+## Global Market Data Matrix Core Worker Recovery Subslice
+
+**What changed**
+- `docker-compose.dev.yml` now runs the remaining generic `core-worker` in dev with `CELERY_POOL=solo` and `CELERY_CONCURRENCY=1`, matching the stabilization pattern that already fixed analytics/enrichment.
+- The stale-run recovery helper was used to close the orphaned warm-tier branch that survived the stack restart: parent `matrix_cycle_coordinator#75`, child `vnbroker_price_board#77`, and linked `IngestRun#41` are all now failed with recovery metadata instead of lying as active work.
+- After `start_dev.ps1` refreshed the stack, `core-worker` came back with `restart=0` and `oom=false`, and the queue-tier scheduler has since continued cleanly through to `md-run-90`, showing the crawler can continue after the cleanup.
+
+**Residual Risk**
+- Continuous crawling can still leave orphan rows across a forced stack refresh, so stale-run recovery remains a required ops path.
+- The earlier ad-hoc snapshot caller risk still applies for future code paths, but the active worker instability on `core-worker` is now closed.
+
+# 2026-05-15 — Global Market Data Matrix Dev Worker Stability Recovery Slice ✅
+
+Status: **✅ follow-up slice complete** | **`analytics_heavy`/`enrichment_offhours` dev workers were restart-looping under the 128m cap and have now been stabilized to `solo/1`; the stale warm-tier branches `matrix_cycle_coordinator#49/#24` plus linked `vnbroker_history#50/#52` were recovered with the queue-tier helper after Celery reported `WorkerLostError: SIGKILL`; the refreshed stack then completed fresh warm-tier batches successfully**
+Validation: **✅ `docker compose ... config` renders `core-worker-analytics` and `core-worker-enrichment` with `CELERY_POOL=solo` + `CELERY_CONCURRENCY=1`** | **✅ `start_dev.ps1` rerun successfully** | **✅ post-refresh worker inspection showed `core-worker-analytics` restart=0 oom=false, `core-worker-enrichment` restart=0 oom=false, and `core-worker-realtime-prefetch` restart=0 oom=false** | **✅ live runtime proof: `md-run-69` and `md-run-72` both completed `success`; latest child `vnbroker_history#73` produced `ingest_run_id=38`, latest child `vnbroker_price_board#74` produced `ingest_run_id=39`; final snapshot now shows `active_registry_count=1536`, `dailyprice_active_symbol_count=201`, `dailyprice_total_rows=1774`, `snapshot_active_symbol_count=162`, `snapshot_total_rows=162`, `coverage_total_rows=1055`; the scheduler later recovered the stale `md-run-75` branch and launched `md-run-78` with `IngestRun#43` running, which is expected for continuous crawling**
+
+## Global Market Data Matrix Dev Worker Stability Recovery Subslice
+
+**What changed**
+- `docker-compose.dev.yml` now runs `core-worker-analytics` and `core-worker-enrichment` with `CELERY_POOL=solo` and `CELERY_CONCURRENCY=1` in dev so the heavy queues stop restart-looping under the 128m worker memory cap.
+- The queue-tier recovery helper was exercised against the stale warm-tier branches that had been left behind by the earlier worker `SIGKILL` / `WorkerLostError` events: parents `#49/#24`, child logs `#50/#52`, and linked `IngestRun` rows `#22/#24` were all marked failed with the recovery metadata the scheduler already knows how to emit.
+- After `start_dev.ps1` refreshed the stack, the worker containers came back cleanly with `restart=0`, and the scheduler relaunches `md-run-69` and `md-run-72` both completed successfully instead of dying mid-run.
+- The current stable snapshot now shows `active_registry_count=1536`, `dailyprice_active_symbol_count=201`, `dailyprice_total_rows=1774`, `snapshot_active_symbol_count=162`, `snapshot_total_rows=162`, and `coverage_total_rows=1055`, which is the current live evidence to trust.
+
+**Residual Risk**
+- The ad-hoc snapshot caller risk from the earlier slices still applies: any new price-board caller should reuse the same job contract as the planner/admin warm path instead of inventing another observability shape.
+- Forced stack refreshes can still strand in-flight runs if they happen mid-batch, so stale-run recovery remains part of the operating model even after the worker hardening.
+
+# 2026-05-15 — Global Market Data Matrix Price-Board Lifecycle Symmetry Slice ✅
+
+Status: **✅ follow-up slice complete** | **`price_board_snapshot` planner child giờ cũng có `IngestRun` lifecycle truth giống `daily_prices`: planner sync path reuse `core-price-board-prefetch` job, child run log nhận `ingest_run_id`, và live smoke xác nhận path này thật sự chạy trong runtime chứ không chỉ pass ở unit test**
+Validation: **✅ `data_ingest.tests.test_tasks` passed (`7` tests)** | **✅ `market_data.tests.test_global_symbol_planner` passed (`5` tests)** | **✅ diagnostics sạch cho `market_data/global_symbol_planner.py`, `data_ingest/tests/test_tasks.py`, `market_data/tests/test_global_symbol_planner.py`** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun sau patch; `Core API health` và `Frontend health` đều `OK`** | **✅ live runtime proof: scheduler batch `md-run-45` hoàn tất `success` với child `vnbroker_history#46` (`ingest_run_id=19`) và child `vnbroker_price_board#47` (`ingest_run_id=20`); snapshot sau batch cho thấy `GlobalSymbolCoverage=825` rows, `dailyprice_active_symbol_count=161`, `snapshot_active_symbol_count=131`, và không còn ingest runs đang chạy**
+
+## Global Market Data Matrix Price-Board Lifecycle Symmetry Subslice
+
+**What changed**
+- `packages/core/backend/src/market_data/global_symbol_planner.py` giờ reuse một `IngestJob` thực cho price-board snapshot (`core-price-board-prefetch`) rồi truyền `job_id` vào `fetch_and_upsert_price_board.run(...)`; nhờ đó child service log của planner có thể ghi `ingest_run_id` ngay khi task bắt đầu giống hệt daily ingest path.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` được mở rộng để khóa contract mới ở task-level: khi price-board task nhận `job_id`, nó phải tạo `IngestRun` success và gắn `ingest_run_id` lên child service log output summary.
+- `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py` giờ khóa luôn planner-level propagation: sync planner run cho `price_board_snapshot` phải sinh child `vnbroker_price_board` có `ingest_run_id`, và `IngestRun` đó phải finish success với job `core-price-board-prefetch`.
+- Live smoke sau `start_dev.ps1` đã xác nhận fix này chạy đúng trong runtime thật: `md-run-45` hoàn tất `success`, child `vnbroker_history#46` mang `ingest_run_id=19`, child `vnbroker_price_board#47` mang `ingest_run_id=20`, cả hai `IngestRun` đều `success`, và coverage totals giữ ở `825` rows nhưng hydration symbol counts đã tăng lên `dailyprice_active_symbol_count=161` / `snapshot_active_symbol_count=131`.
+
+**Files audited in this slice**
+- `packages/core/backend/src/market_data/global_symbol_planner.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `vnbroker_price_board` now has lifecycle truth when invoked through the planner and admin warm path, but there is still room to standardize any other ad-hoc snapshot callers on the same job contract if they appear later.
+
+# 2026-05-15 — Global Market Data Matrix Realtime-Prefetch Worker Stability Slice ✅
+
+Status: **✅ follow-up slice complete** | **Dev worker `core-worker-realtime-prefetch` đã được chuyển sang `solo`/`1`, stale batch bị ngắt bởi worker restart đã được reconcile, và warm-tier batch kế tiếp đã hoàn tất end-to-end thay vì chết giữa chừng**
+Validation: **✅ `docker compose ... config` render đúng `CELERY_POOL=solo`, `CELERY_CONCURRENCY=1` cho `core-worker-realtime-prefetch`** | **✅ diagnostics sạch cho `docker-compose.dev.yml`** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun thành công; `Core API health` và `Frontend health` đều `OK`** | **✅ live runtime proof: worker mới lên với `RestartCount=0`, stale batch `#27/#28/#12` đã được dọn, warm-tier run `#29` hoàn tất `success` với child `#30/#31`, và runtime hiện có `GlobalSymbolCoverage=250` rows (`50` symbols x `5` datasets)**
+
+## Global Market Data Matrix Realtime-Prefetch Worker Stability Subslice
+
+**What changed**
+- `docker-compose.dev.yml` đổi `core-worker-realtime-prefetch` từ `prefork` concurrency `4` sang `CELERY_POOL=solo` + `CELERY_CONCURRENCY=1`, bám đúng pattern worker `manual_on_demand` đã từng được chứng minh ổn định trong dev runtime của repo.
+- Sau `start_dev.ps1`, worker `realtime_prefetch` mới được verify trực tiếp ở container layer với `RestartCount=0`; đây là điểm khác biệt rõ ràng so với trạng thái trước đó khi worker cũ đã restart sau lúc batch đang chạy và làm cặp `#27/#28/#12` chết giữa chừng.
+- Runtime maintenance cleanup đã mark `matrix_cycle_coordinator#27`, `vnbroker_history#28`, và `IngestRun#12` sang `failed` với recovery note phản ánh worker restart, để scheduler có thể dispatch lại batch mới trên worker ổn định.
+- Warm-tier relaunch `matrix_cycle_coordinator#29` hoàn tất end-to-end trong runtime mới: `vnbroker_history#30` `success` với `planned_items=50`, `ingest_run_id=13`, `coverage_refreshed_symbols=50`; tiếp theo `vnbroker_price_board#31` `success` với `planned_items=50`, `coverage_refreshed_symbols=50`; parent `#29` đóng `success` với `planned_items=100` và `inserted=174`.
+- Snapshot sau relaunch hiện cho thấy `GlobalSymbolCoverage=250` rows (`50` mỗi dataset), `dailyprice_active_symbol_count=86`, `dailyprice_total_rows=219`, và `snapshot_active_symbol_count=49`, tức live hydration đã tiến thêm một bước rõ ràng so với mốc `coverage=5` trước slice này.
+
+**Files audited in this slice**
+- `docker-compose.dev.yml`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Runtime dev hiện ổn hơn hẳn ở queue `realtime_prefetch`, nhưng proof này mới được chụp trên dev compose worker `solo`; nếu cần giữ throughput cao hơn trong dev hoặc áp dụng sang runtime khác, cần evidence riêng trước khi tăng lại pool/concurrency.
+- `vnbroker_price_board#31` vẫn cho `output_summary.ingest_run_id=null` vì planner path hiện chưa tạo `IngestRun` mặc định cho snapshot task khi không có `job_id`; lifecycle truth hiện đã tốt cho child daily ingest, nhưng snapshot observability vẫn chưa đối xứng hoàn toàn.
+
+# 2026-05-15 — Global Market Data Matrix Warm Batch + IngestRun Lifecycle Slice ✅
+
+Status: **✅ follow-up slice complete** | **Warm-tier default batch đã được hạ từ `100` xuống `50`, child `ServiceRunLog` giờ được stamp `ingest_run_id` ngay khi task thực sự tạo `IngestRun`, và stale-parent cleanup không còn để `IngestRun` treo `running` sau restart/recovery**
+Validation: **✅ `data_ingest.tests.test_tasks` passed (`7` tests)** | **✅ `service_ops.tests.test_soc_tasks` passed (`23` tests)** | **✅ `service_ops.tests.test_soc_domain_configs` passed (`8` tests)** | **✅ diagnostics sạch cho `service_ops/domain_configs/market_data.py`, `data_ingest/tasks.py`, `service_ops/tasks.py`, `data_ingest/tests/test_tasks.py`, `service_ops/tests/test_soc_domain_configs.py`, `service_ops/tests/test_soc_tasks.py`** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun sau patch; `Core API health` và `Frontend health` đều `OK`** | **✅ live runtime proof: stale pair `#25/#26` cùng stale `IngestRun #1-#9/#11` đã được dọn, scheduler relaunch tạo warm run `#27` với `50` symbols (`100` plan items), child `vnbroker_history#28` đã có `output_summary.ingest_run_id=12`, và snapshot sớm cho thấy `29/50` symbols trong batch mới đã materialize `DailyPrice`**
+
+## Global Market Data Matrix Warm Batch + IngestRun Lifecycle Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/domain_configs/market_data.py` giảm `warm_liquid_market.max_batch_size` từ `100` xuống `50` để warm-tier dev runtime có batch nhỏ hơn và ít rơi vào fail-loop/stale recovery hơn trong lúc parent liveness vẫn còn false-negative.
+- `packages/core/backend/src/data_ingest/tasks.py` thêm helper `_attach_ingest_run_to_service_run_log(...)` và gọi nó ngay sau khi `IngestRun` được tạo trong các ingest path có lifecycle record; nhờ đó operator có `ingest_run_id` trên child run log ngay từ khi task còn đang chạy, không phải chờ tới lúc finish mới thấy link.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` hiện assert `service_run_log.output_summary.ingest_run_id` đã xuất hiện ngay trong `backfill` side effect, khóa đúng behavior “attach sớm” thay vì chỉ kiểm tra summary cuối task.
+- `packages/core/backend/src/service_ops/tasks.py` thêm `_recover_linked_ingest_run(...)` để stale child cleanup fail luôn `IngestRun` đang `running` và ghi `recovered_ingest_run_id` lên child output summary; `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` được mở rộng để khóa lifecycle cleanup này.
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py` khóa default warm-tier mới (`50`) để runtime config schema không drift lại về batch `100`.
+- Runtime maintenance sau refresh đã dọn cặp stale `matrix_cycle_coordinator#25` / `vnbroker_history#26` và các `IngestRun` cũ còn `running`; sau đó scheduler được kick lại, tạo warm run `#27` với đúng `50` symbols, còn child `#28` hiện đã mang `ingest_run_id=12` trong runtime thật.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/domain_configs/market_data.py`
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Warm-tier batch mới đã nhỏ hơn và link lifecycle đã đúng, nhưng snapshot mới nhất vẫn cho thấy parent `#27` còn `running`; coverage rows trong batch mới vẫn mới ở mức `5` vì path refresh coverage chỉ ghi sau khi child ingest path return, nên proof hydrate-complete cho full batch vẫn chưa đóng.
+- `vnbroker_history` child run vẫn có `celery_task_id=''` theo design inline `.run()` hiện tại; link `ingest_run_id` giúp audit/cleanup truth hơn trước, nhưng nếu muốn worker-level liveness chuẩn cho child thì vẫn cần cutover async hoặc cơ chế heartbeat riêng.
+
+# 2026-05-15 — Global Market Data Matrix Coverage Writeback + Child Cleanup Slice ✅
+
+Status: **✅ follow-up slice complete** | **`GlobalSymbolCoverage` không còn bị kẹt ở trạng thái test-only helper: production ingest path cho `daily_prices`, `price_board_snapshot`, và `intraday_*` giờ refresh coverage ngay sau khi write data; queue-tier stale-parent recovery cũng cleanup luôn inline child run logs còn treo**
+Validation: **✅ `data_ingest.tests.test_tasks` passed (`7` tests)** | **✅ `service_ops.tests.test_soc_tasks` passed (`23` tests)** | **✅ diagnostics sạch cho `data_ingest/tasks.py`, `data_ingest/tests/test_tasks.py`, `service_ops/tasks.py`, `service_ops/tests/test_soc_tasks.py`** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun lại sau cả hai backend patch; `Core API health` và `Frontend health` đều `OK`** | **✅ live auth/runtime proof: `admin` đã có `CoreTenant(internal/active)` + active service account + profile, `login_view` trả `200`, one-symbol sync planner smoke cho `A32` tạo `5` coverage rows, và runtime cleanup đã đưa `remaining_orphans=[]`**
+
+## Global Market Data Matrix Coverage Writeback + Child Cleanup Subslice
+
+**What changed**
+- `packages/core/backend/src/data_ingest/tasks.py` thêm helper refresh coverage idempotent cho symbol đã ingest xong, rồi nối helper này vào `ingest_daily_prices`, `fetch_and_upsert_price_board`, và `warm_intraday_universe`; output summary của mỗi task giờ cũng ghi `coverage_refreshed_symbols` để operator nhìn run log biết writeback đã chạy chưa.
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py` được mở rộng để khóa production writeback path thật: daily ingest, price-board materialization, và intraday warm-up đều phải tạo/refresh `GlobalSymbolCoverage` cho registry symbols liên quan.
+- `packages/core/backend/src/service_ops/tasks.py` giờ cleanup cả child `ServiceRunLog` inline khi stale parent queue-tier bị auto-recover, thay vì chỉ fail parent rồi để child `running` treo vô hạn.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` thêm focused regression cho stale parent + child cleanup path; suite hiện pass `23` tests và vẫn giữ nguyên invariant “child còn mới thì phải tiếp tục giữ inflight”.
+- Runtime admin blocker đã được xử lý đúng contract auth core: compose-backed `admin` không chỉ là Django superuser mà còn có `CoreTenant`, active `CoreServiceAccount`, và `UserProfile.tenant`, nên login/profile/capabilities path không còn trả `No tenant associated with this account.`.
+- Live runtime evidence hiện tại: `GlobalSymbolRegistry=1536`, `DailyPrice=157` rows cho `65` active symbols, `GlobalSymbolCoverage=5` rows sau planner smoke một symbol, manual cleanup đã dọn `8` orphan child history runs cũ, và snapshot cuối cùng xác nhận `remaining_orphans=[]`.
+
+**Files audited in this slice**
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Coverage writeback đã thông, nhưng live total mới chỉ ở `5` rows vì mới smoke bằng một planner run hẹp; toàn cục vẫn còn bài toán hydrate rộng hơn (`DailyPrice=157` rows / `65` active symbols trên `1536` registry active).
+- Child history runs vẫn có `celery_task_id=''` theo design hiện tại vì planner gọi child paths bằng `.run()` inline; vấn đề lifecycle audit cho child đã được giảm rủi ro bằng stale-parent cleanup, nhưng nếu muốn task-level liveness truth đầy đủ thì cần một cutover riêng sang child async execution hoặc heartbeat khác.
+
+# 2026-05-15 — Global Market Data Matrix Queue-Tier Orphan Guard Slice ✅
+
+Status: **✅ follow-up slice complete** | **Queue-tier scheduler giờ không chỉ có stale-timeout fallback mà còn kiểm tra liveness của parent `celery_task_id` theo hướng bảo thủ: chỉ auto-recover orphan khi đã qua grace window và chưa có child run inflight; nếu child execution path đã tồn tại thì tier vẫn được giữ `inflight` thay vì fail-loop parent run**
+Validation: **✅ `service_ops.tests.test_soc_tasks` passed (`22` tests)** | **✅ diagnostics sạch cho `service_ops/tasks.py` và `service_ops/tests/test_soc_tasks.py`** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun build lại core + frontend thành công; runtime probe sau deploy giữ `warm_liquid_market` ở `inflight` thay vì tiếp tục auto-fail parent run đang có child `vnbroker_history`** | **✅ live materialization evidence: `GlobalSymbolRegistry` vẫn có `1536` active symbols, `DailyPrice` đã có `157` rows cho `65` active symbols, nhưng `GlobalSymbolCoverage` vẫn đang `0` rows**
+
+## Global Market Data Matrix Queue-Tier Orphan Guard Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/tasks.py` thêm stale inflight timeout cho queue-tier parents, helper kiểm tra `celery_task_id` qua Celery inspect, và quan trọng hơn là guard `child-run aware`: nếu parent task không còn thấy trên worker nhưng đã có `queued/running` child run gắn `parent_run_log_id`, scheduler sẽ giữ tier ở `inflight` thay vì đánh fail parent ngay lập tức.
+- Same file cũng thêm grace window ngắn trước khi coi một parent missing-worker-task là orphan thật, để tránh false positive ngay sau lúc task vừa được queue/worker vừa chuyển trạng thái.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` hiện khóa đủ 4 nhánh cho slice này: recent inflight phải skip, missing worker task không có child phải auto-recover, inflight cũ quá stale phải auto-recover, và parent mất task nhưng đã có child inflight thì phải tiếp tục giữ `inflight`.
+- Dev runtime admin testing đã được mở khóa bằng superuser compose-backed `admin` với email `admin@local.test`; password là giá trị anh yêu cầu trong phiên này.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Runtime probe cho thấy `celery_task_id` của parent queue-tier run vẫn thường hiện `not live` dù child `vnbroker_history` đang chạy; vì vậy guard mới hiện an toàn hơn trước, nhưng bản thân liveness signal từ Celery inspect vẫn chưa đủ mạnh để kết luận parent execution truth.
+- `DailyPrice` đã materialize một phần (`157` rows / `65` active symbols) nhưng `GlobalSymbolCoverage` vẫn chưa được hydrate; do đó bài toán completeness/freshness proof vẫn chưa đóng, và child history run logs hiện vẫn thiếu `celery_task_id` riêng.
+
+# 2026-05-15 — Global Market Data Matrix Listed-Market Baseline Expansion Slice ✅
+
+Status: **✅ follow-up slice complete** | **Scheduler giờ không chỉ self-heal empty-universe mà còn đảm bảo có `system_default:listed_market` baseline từ provider listing lớn nhất đang khả dụng; warm-tier stale run sau restart đã được recover để backlog mới queue lại trên full baseline này**
+Validation: **✅ `service_ops.tests.test_soc_tasks` passed (`19` tests)** | **✅ diagnostics sạch cho `service_ops/dataops_market_data.py`, `service_ops/tasks.py`, và `service_ops/tests/test_soc_tasks.py`** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun build lại core + frontend thành công; smoke checks `Core API health` và `Frontend health` đều `OK`** | **✅ live runtime evidence: `KBS` listing trả `1535` symbols, `system_default:listed_market` hiện có `1535` active edges, `GlobalSymbolRegistry` hiện có `1536` active symbols, warm-tier run mới `id=4` đang `running` với `planned_items=200`, và stale orphan runs `id=1/2` đã được mark `failed` để mở lại scheduler**
+
+## Global Market Data Matrix Listed-Market Baseline Expansion Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/dataops_market_data.py` không còn dừng ở bootstrap `vn30/vn100`: helper giờ chọn listing baseline từ provider có universe lớn nhất trong `KBS/VCI/DNSE`, sync nó vào `system_default:listed_market`, và dùng baseline này cả cho runtime trống lẫn runtime đã có partial system-default baseline.
+- `packages/core/backend/src/service_ops/tasks.py` gọi helper baseline mới trước queue-tier evaluation nên scheduler có thể mở rộng current live universe mà không cần chờ DB rơi về trạng thái rỗng.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` được mở rộng để khóa cả hai nhánh: empty registry phải bootstrap `listed_market`, và registry đã có dữ liệu một phần vẫn phải backfill baseline listing thay vì giữ nguyên `vn30/vn100` mãi mãi.
+- Runtime verification trên stack mới cho thấy `fetch_listing_symbols(source='KBS')` trả `1535` mã trong khi `VCI` chỉ fallback `60`; sau rollout, live DB tự mở rộng lên `1536` active symbols và tạo `1535` active `system_default:listed_market` edges.
+- Nhánh warm cũ bị orphan sau restart (`matrix_cycle_coordinator#1` + `vnbroker_history#2`) đã được recover bằng operator maintenance: mark `failed` với recovery note rồi rerun scheduler; warm-tier mới `matrix_cycle_coordinator#4` đã queue lại `100` symbols đầu tiên (`200` plan items cho `daily_prices` + `price_board_snapshot`) trên baseline mở rộng này.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/dataops_market_data.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Universe và queue dispatch đã được mở rộng, còn hydrate hiện đã có tiến triển bước đầu (`DailyPrice=157` rows / `65` active symbols), nhưng `GlobalSymbolCoverage` vẫn chưa materialize; proof freshness/completeness vẫn cần vòng evidence tiếp theo.
+- Child run `vnbroker_history` vẫn chưa có `celery_task_id` trong `ServiceRunLog`; scheduler hiện đã được harden thêm ở slice queue-tier orphan guard, nhưng lifecycle truth cho child runs vẫn chưa được chuẩn hóa hoàn toàn.
+
+# 2026-05-15 — Global Market Data Matrix Empty-Universe Scheduler Self-Heal Slice ✅
+
+Status: **✅ follow-up slice complete** | **Queue-tier scheduler giờ tự bootstrap `system_default:vn30/vn100` khi active global registry rỗng, đồng thời tiếp tục ưu tiên symbol có plannable coverage gap trong từng tier; dev runtime không còn đứng yên ở trạng thái empty-universe**
+Validation: **✅ `service_ops.tests.test_soc_tasks` passed (`18` tests)** | **✅ diagnostics sạch cho `service_ops/dataops_market_data.py`, `service_ops/tasks.py`, và `service_ops/tests/test_soc_tasks.py`** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun build lại core + frontend thành công; smoke checks `Core API health` và `Frontend health` đều `OK`** | **✅ live core-api evidence: `active_registry_count=60`, toàn bộ đang ở `warm` tier, `active_system_default_edges=90`, `coverage_row_count=0`, và `ServiceRunLog` warm-tier mới nhất đang `running` với `planned_items=120`, `overwrite_existing=false`**
+
+## Global Market Data Matrix Empty-Universe Scheduler Self-Heal Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/dataops_market_data.py` được mở rộng theo hai hướng cùng một control path: selector trong từng tier giờ ưu tiên registry có `freshness_state` còn plannable (`error/missing/stale/unknown`) trước các symbol đã fresh, và scheduler helper có thêm self-heal bootstrap `system_default:vn30/vn100` nếu `GlobalSymbolRegistry` đang rỗng.
+- `packages/core/backend/src/service_ops/tasks.py` gọi bootstrap guard này trước khi evaluate `QUEUE_TIER_ORDER`, đồng thời trả `bootstrap` summary trong payload scheduler để operator/runtime evidence nhìn thấy rõ scheduler đã phải seed universe hay chỉ reuse active set sẵn có.
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` thêm focused regression cho empty-registry bootstrap path và cập nhật dispatch coverage để khóa invariant: hot tier phải ưu tiên gap-bearing symbols, còn runtime trống phải tự bật warm system-default backlog thay vì no-op.
+- Sau khi rerun `start_dev.ps1`, live runtime cho thấy empty-universe failure mode không còn tái diễn: core DB hiện có `60` active registries, `90` active `system_default` demand edges, và warm-tier planner run mới nhất đang xử lý `120` missing-only plan items với `overwrite_existing=false`.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/dataops_market_data.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- Runtime evidence hiện xác nhận bootstrap + planner dispatch creation, nhưng `GlobalSymbolCoverage` vẫn đang là `0` rows tại thời điểm capture vì warm-tier planner run còn `running`; cần thêm một vòng evidence sau khi worker materialize xong để chứng minh freshness distribution thực tế.
+- Auto-bootstrap hiện chỉ seed `system_default:vn30/vn100`; nếu muốn phủ rộng full-market shared universe ngay từ cold path thì đó vẫn là backlog vận hành tiếp theo, không nên nhầm với scope self-heal của slice này.
+
+# 2026-05-15 — Global Market Data Matrix T09 Run History Completion Slice ✅
+
+Status: **✅ `T09` COMPLETE** | **SOC `dataops` tab hiện đã có queue-tier board, runtime-config editor, coverage panel, manual run builder, và run history table; backlog implementation của T09 đã được đóng**
+Validation: **✅ `service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase` passed (`8` tests)** | **✅ focused frontend SOC suites passed (`12` tests)** | **✅ diagnostics sạch cho touched backend/frontend files** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun build lại core + frontend thành công; smoke checks `Core API health` và `Frontend health` đều `OK`; direct probes xác nhận `/core/v1/health=200`, `/api/soc/dataops/coverage=401`, `/api/soc/dataops/queue-tiers=401`, `/api/soc/dataops/runtime-config=401`, `/api/soc/dataops/run-logs=401`, `/api/soc/dataops/planner/preview=401`, `/api/soc/dataops/planner/run=401`**
+
+## Global Market Data Matrix T09 Run History Completion Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/views/dataops.py` thêm `GET /api/soc/dataops/run-logs/`, chỉ đọc parent `matrix_cycle_coordinator` run logs và chuẩn hóa chúng về contract `run_id/status/mode/reason/summary` đúng với spec `7.10` thay vì đẩy raw `input_summary/output_summary` của generic SOC overview endpoint sang UI.
+- `packages/core/backend/src/service_ops/urls.py` expose route run-history mới, còn `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` thêm regression khóa pagination envelope, summary normalization, và invariant chỉ parent planner runs của market-data SSOT xuất hiện trong danh sách.
+- `frontend/src/api/socApi.js` thêm `getDataOpsRunLogs()`, còn `frontend/src/components/soc/DataOpsPanel.jsx` render block `Run History` dạng table read-only với status badge, reason, timestamps, summary metrics, và pagination controls tối thiểu.
+- `frontend/src/components/soc/SOCComponents.test.jsx`, `frontend/src/i18n/vi.js`, và `frontend/src/i18n/en.js` được cập nhật để giữ run-history panel có focused coverage + localized copy chuẩn; sau subslice này, checklist `T09` không còn item UI/backend nào chưa hoàn tất.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/components/soc/SOCComponents.test.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T09` đã hoàn tất ở mức implementation/runtime evidence, nhưng chưa có screenshot/video auth-bound cho operator UI trong dashboard vì route này yêu cầu phiên đăng nhập hợp lệ; evidence hiện là focused tests + live route probes.
+- `T10+` vẫn chưa bắt đầu, nên dù operator surface đã xong, program-wide audit/integration/shadow validation vẫn là backlog kế tiếp.
+
+# 2026-05-15 — Global Market Data Matrix T09 Manual Run Builder Slice 🔄
+
+Status: **🔄 `T09` IN PROGRESS** | **SOC `dataops` tab hiện đã có queue-tier board, runtime-config editor, coverage panel, và manual run builder; phần còn lại của `T09` chỉ còn run history/audit view**
+Validation: **✅ `service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase` passed (`7` tests)** | **✅ focused frontend SOC suites passed (`12` tests)** | **✅ diagnostics sạch cho touched backend/frontend files** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun build lại core + frontend thành công; smoke checks `Core API health` và `Frontend health` đều `OK`; direct probes xác nhận `/core/v1/health=200`, `/api/soc/dataops/coverage=401`, `/api/soc/dataops/queue-tiers=401`, `/api/soc/dataops/runtime-config=401`, `/api/soc/dataops/planner/preview=401`, `/api/soc/dataops/planner/run=401`**
+
+## Global Market Data Matrix T09 Manual Run Builder Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/views/dataops.py` thêm wrapper mỏng cho `POST /api/soc/dataops/planner/preview/` và `POST /api/soc/dataops/planner/run/`, tái dùng trực tiếp `build_global_planner_preview()` và `create_global_planner_run()` để SOC không phát sinh planner logic song song ngoài SSOT.
+- `packages/core/backend/src/service_ops/urls.py` expose hai route planner mới, còn `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` thêm regression khóa missing-only preview semantics, audited manual-on-demand queue handoff, và response contract cho operator surface.
+- `frontend/src/api/socApi.js` thêm `previewDataOpsPlanner()` và `runDataOpsPlanner()`, còn `frontend/src/components/soc/DataOpsPanel.jsx` render builder form cho `symbols/datasets/execution_mode/force_refresh/reason`, vùng preview plan summary/items/skips, và kết quả submit run ngay trong tab `DataOps`.
+- `frontend/src/components/soc/SOCComponents.test.jsx`, `frontend/src/i18n/vi.js`, và `frontend/src/i18n/en.js` được mở rộng để giữ manual run builder có focused coverage + localized copy đầy đủ dấu; button `Chạy planner` chỉ mở sau khi preview thành công.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/components/soc/SOCComponents.test.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T09` vẫn còn mở vì run history/audit view chưa được đưa vào tab `DataOps`.
+- Manual run builder hiện chỉ expose các dataset planner đã thực thi được end-to-end (`daily_prices`, `price_board_snapshot`, `intraday_bars`, `intraday_ticks`); nếu cần operator preview/run `session_facts` thì phải mở rộng execution path ở slice sau, không nên mở checkbox UI trước khi backend execution thật sự tồn tại.
+
+# 2026-05-15 — Global Market Data Matrix T09 Coverage Panel Slice 🔄
+
+Status: **🔄 `T09` IN PROGRESS** | **SOC `dataops` tab hiện đã có đủ queue-tier board, runtime-config editor, và coverage panel dựa trên coverage SSOT; phần còn lại của `T09` chỉ còn manual run builder và run history/audit view**
+Validation: **✅ `service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase` passed (`5` tests)** | **✅ focused frontend SOC suites passed (`12` tests)** | **✅ diagnostics sạch cho touched backend/frontend files** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun build lại core + frontend thành công; smoke checks `Core API health` và `Frontend health` đều `OK`; direct probes xác nhận `/core/v1/health=200`, `/api/soc/dataops/coverage=401`, `/api/soc/dataops/queue-tiers=401`, `/api/soc/dataops/runtime-config=401`**
+
+## Global Market Data Matrix T09 Coverage Panel Subslice
+
+**What changed**
+- `packages/core/backend/src/service_ops/views/dataops.py` thêm `DataOpsCoverageView` và `packages/core/backend/src/service_ops/urls.py` expose `GET /api/soc/dataops/coverage/`, reusing trực tiếp `market_data.global_symbol_coverage.build_global_coverage_summary()` thay vì tạo aggregate logic song song trong operator surface.
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` thêm regression cho coverage summary contract, khóa dataset freshness counts và `top_gaps` ordering ở owner suite `DataOpsDomainApiTestCase`.
+- `frontend/src/api/socApi.js` thêm `getDataOpsCoverage()`, còn `frontend/src/components/soc/DataOpsPanel.jsx` hiện load coverage summary song song với queue tiers/runtime config và render 2 block mới: dataset freshness cards và priority gaps list với next-action labels đã i18n hóa.
+- `frontend/src/components/soc/SOCComponents.test.jsx`, `frontend/src/i18n/vi.js`, và `frontend/src/i18n/en.js` được cập nhật để giữ panel mới có test coverage + copy chuẩn song ngữ; UI text tiếng Việt dùng đầy đủ dấu theo rule của repo.
+
+**Files audited in this slice**
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/components/soc/SOCComponents.test.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `docs/TASKBOARD_GLOBAL_MARKET_DATA_MATRIX_SSOT_20260515.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+**Residual Risk**
+- `T09` vẫn còn mở vì manual run builder và run history/audit view chưa được đưa vào tab `DataOps`.
+- Coverage panel hiện chỉ là summary/top-gap surface; symbol-level detail drilldown và planner preview/run controls vẫn là phần còn thiếu của các slice kế tiếp.
+
 # 2026-05-15 — Global Market Data Matrix T08 Semantic Read-Path Closure ✅
 
-Status: **✅ `T08` COMPLETE** | **AI advisory compat GET/manual-trigger paths giờ được khóa vào native advisory domain với owner regressions, và semantic audit cuối cùng xác nhận primary product read paths không còn per-user provider crawl**  
+Status: **✅ `T08` COMPLETE** | **AI advisory compat GET/manual-trigger paths giờ được khóa vào native advisory domain với owner regressions, và semantic audit cuối cùng xác nhận primary product read paths không còn per-user provider crawl**
 Validation: **✅ `market_data.tests.test_stock_management_native_api` passed (`13` tests)** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun hoàn tất; direct probes xác nhận `/core/v1/health=200` và các route `/api/soc/matrix/providers/`, `/api/soc/dataops/queue-tiers/`, `/api/soc/dataops/runtime-config/` đều trả `401` trên runtime mới**
 
 ## Global Market Data Matrix T08 Semantic Closure Subslice
@@ -24,7 +483,7 @@ Validation: **✅ `market_data.tests.test_stock_management_native_api` passed (`
 
 # 2026-05-15 — Global Market Data Matrix T09 DataOps Operator Surface + PAT Refresh Slice 🔄
 
-Status: **🔄 `T09` IN PROGRESS** | **SOC `dataops` tab giờ đã mount market-data operator surface thật với queue-tier board + runtime-config editor, backend có thêm `GET /api/soc/dataops/runtime-config/`, và `start_dev.ps1` không còn bị shell placeholder token chặn rebuild core image**  
+Status: **🔄 `T09` IN PROGRESS** | **SOC `dataops` tab giờ đã mount market-data operator surface thật với queue-tier board + runtime-config editor, backend có thêm `GET /api/soc/dataops/runtime-config/`, và `start_dev.ps1` không còn bị shell placeholder token chặn rebuild core image**
 Validation: **✅ focused backend DataOps suite passed (`4` tests)** | **✅ focused frontend SOC suites passed (`12` tests)** | **✅ diagnostics sạch cho frontend/backend/compose/runtime files đã chạm** | **✅ module tree regenerated (`1199` modules)** | **✅ `start_dev.ps1` rerun thành công, raw PAT mentions trong log = `0`, và runtime probes `/api/soc/matrix/providers/`, `/api/soc/dataops/queue-tiers/`, `/api/soc/dataops/runtime-config/` đều trả `401` nên core image mới đã live**
 
 ## Global Market Data Matrix T09 DataOps Operator Surface Subslice
@@ -65,7 +524,7 @@ Validation: **✅ focused backend DataOps suite passed (`4` tests)** | **✅ foc
 
 # 2026-05-15 — Global Market Data Matrix T08 Core Intraday Prices Cutover Slice 🔄
 
-Status: **🔄 `T08` IN PROGRESS** | **Public core route `/core/v1/market-data/intraday-prices/<symbol>/` không còn đọc provider trực tiếp; cả core intraday prices và core intraday tape đều đã phục vụ canonical `IntradayBar`/`IntradayTick` từ shared layer**  
+Status: **🔄 `T08` IN PROGRESS** | **Public core route `/core/v1/market-data/intraday-prices/<symbol>/` không còn đọc provider trực tiếp; cả core intraday prices và core intraday tape đều đã phục vụ canonical `IntradayBar`/`IntradayTick` từ shared layer**
 Validation: **✅ focused core intraday suites passed (`4` tests)** | **✅ diagnostics sạch cho `market_data.views` và test mới** | **✅ module tree regenerated (`1198` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
 
 ## Global Market Data Matrix T08 Core Intraday Prices Subslice
@@ -88,7 +547,7 @@ Validation: **✅ focused core intraday suites passed (`4` tests)** | **✅ diag
 
 # 2026-05-15 — Global Market Data Matrix T08 Watchlist Sync Planner Routing Slice 🔄
 
-Status: **🔄 `T08` IN PROGRESS** | **Watchlist không còn tự fetch quote provider trong request path; `/api/stock-management/sync/` giờ queue một global planner run audited trên `manual_on_demand`, còn UI copy cũng đã đổi sang semantics “gửi yêu cầu làm mới”**  
+Status: **🔄 `T08` IN PROGRESS** | **Watchlist không còn tự fetch quote provider trong request path; `/api/stock-management/sync/` giờ queue một global planner run audited trên `manual_on_demand`, còn UI copy cũng đã đổi sang semantics “gửi yêu cầu làm mới”**
 Validation: **✅ focused stock-management native API suite passed (`11` tests)** | **✅ diagnostics sạch cho sync backend + i18n files** | **✅ module tree regenerated (`1197` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
 
 ## Global Market Data Matrix T08 Watchlist Sync Subslice
@@ -114,7 +573,7 @@ Validation: **✅ focused stock-management native API suite passed (`11` tests)*
 
 # 2026-05-15 — Global Market Data Matrix T08 Intraday Read-Path Cutover Slice 🔄
 
-Status: **🔄 `T08` IN PROGRESS** | **Stock Detail và LegacyDashboard không còn kéo intraday tape từ provider trong request path; cả compat route `/api/realtime/intraday/<symbol>/` lẫn core route `/core/v1/market-data/intraday-tape/<symbol>/` giờ đọc latest-session `IntradayTick` từ shared layer**  
+Status: **🔄 `T08` IN PROGRESS** | **Stock Detail và LegacyDashboard không còn kéo intraday tape từ provider trong request path; cả compat route `/api/realtime/intraday/<symbol>/` lẫn core route `/core/v1/market-data/intraday-tape/<symbol>/` giờ đọc latest-session `IntradayTick` từ shared layer**
 Validation: **✅ focused intraday suites passed (`4` tests)** | **✅ diagnostics sạch cho các view/test vừa chạm** | **✅ module tree regenerated (`1197` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
 
 ## Global Market Data Matrix T08 Intraday Read-Path Subslice
@@ -140,7 +599,7 @@ Validation: **✅ focused intraday suites passed (`4` tests)** | **✅ diagnosti
 
 # 2026-05-15 — Global Market Data Matrix T07 Scheduler Consumer Slice ✅
 
-Status: **✅ `T07` COMPLETE FOR CODE + VALIDATION** | **queue-tier policy không chỉ có config surface mà giờ đã có scheduler consumer thật, bám runtime cadence/batch-size và dispatch planner runs vào các queue hiện có**  
+Status: **✅ `T07` COMPLETE FOR CODE + VALIDATION** | **queue-tier policy không chỉ có config surface mà giờ đã có scheduler consumer thật, bám runtime cadence/batch-size và dispatch planner runs vào các queue hiện có**
 Validation: **✅ focused service-ops + planner suite passed (`55` tests)** | **✅ diagnostics sạch cho scheduler/helper/queue-policy/planner files** | **✅ module tree regenerated (`1195` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ probe runtime xác nhận route cũ `/api/soc/matrix/providers/` trả `401` nhưng cả `/api/soc/dataops/queue-tiers/` và `/api/soc/dataops/runtime-config/` đều trả `404`, nên core containers vẫn đang chạy image cũ do build private `vnbroker` tiếp tục fail**
 
 ## Global Market Data Matrix T07 Scheduler Consumer Subslice
@@ -172,7 +631,7 @@ Validation: **✅ focused service-ops + planner suite passed (`55` tests)** | **
 
 # 2026-05-15 — Global Market Data Matrix T07 Queue Tier API + Runtime Config Slice 🔄
 
-Status: **🔄 `T07` IN PROGRESS** | **SOC Data Ops giờ đã có backend contract cho `queue-tiers` và `runtime-config`; queue-tier policy không còn là implicit convention nằm rải rác trong registry fields**  
+Status: **🔄 `T07` IN PROGRESS** | **SOC Data Ops giờ đã có backend contract cho `queue-tiers` và `runtime-config`; queue-tier policy không còn là implicit convention nằm rải rác trong registry fields**
 Validation: **✅ focused service-ops suite passed (`33` tests)** | **✅ diagnostics sạch cho các file mới/chạm trong `service_ops`** | **✅ module tree regenerated (`1194` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ probe runtime xác nhận route cũ `/api/soc/matrix/providers/` trả `401` nhưng route mới `/api/soc/dataops/queue-tiers/` trả `404`, nên core containers vẫn đang chạy image cũ do build private `vnbroker` tiếp tục fail**
 
 ## Global Market Data Matrix T07 Queue Tier API + Runtime Config Subslice
@@ -203,7 +662,7 @@ Validation: **✅ focused service-ops suite passed (`33` tests)** | **✅ diagno
 
 # 2026-05-15 — Global Market Data Matrix T06 Intraday Hydration Slice ✅
 
-Status: **✅ `T06` COMPLETE FOR CODE + VALIDATION** | **Planner execution giờ đã chạy được cả `daily_prices`, `price_board_snapshot`, `intraday_ticks`, và `intraday_bars`; slice refactor ingest theo `plan_items` của `T06` đã khép kín ở backend**  
+Status: **✅ `T06` COMPLETE FOR CODE + VALIDATION** | **Planner execution giờ đã chạy được cả `daily_prices`, `price_board_snapshot`, `intraday_ticks`, và `intraday_bars`; slice refactor ingest theo `plan_items` của `T06` đã khép kín ở backend**
 Validation: **✅ focused planner/ingest suite passed (`16` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail vì PAT hiện tại không clone được private `vnbroker`, nên runtime có thể vẫn đang dùng image core cũ**
 
 ## Global Market Data Matrix T06 Intraday Hydration Subslice
@@ -230,7 +689,7 @@ Validation: **✅ focused planner/ingest suite passed (`16` tests)** | **✅ mod
 
 # 2026-05-15 — Global Market Data Matrix T06 Price Board Plan-Item Slice ✅
 
-Status: **✅ `T05` COMPLETE / 🔄 `T06` EXPANDED** | **Planner execution giờ đã chạy được cả `daily_prices` lẫn `price_board_snapshot`; snapshot ingest không còn buộc quét toàn active universe khi planner chỉ yêu cầu subset symbols**  
+Status: **✅ `T05` COMPLETE / 🔄 `T06` EXPANDED** | **Planner execution giờ đã chạy được cả `daily_prices` lẫn `price_board_snapshot`; snapshot ingest không còn buộc quét toàn active universe khi planner chỉ yêu cầu subset symbols**
 Validation: **✅ focused planner/ingest suite passed (`14` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
 
 ## Global Market Data Matrix T06 Price Board Plan-Item Subslice
@@ -259,7 +718,7 @@ Validation: **✅ focused planner/ingest suite passed (`14` tests)** | **✅ mod
 
 # 2026-05-15 — Global Market Data Matrix T05 Execution Contract + T06 Daily History Slice ✅
 
-Status: **✅ `T05` COMPLETE / 🔄 `T06` STARTED** | **Planner missing-only giờ không chỉ preview mà đã có execution contract + audited run trail; daily-history ingest path cũng đã chuyển sang consume explicit `plan_items` thay vì backfill mù theo range chung**  
+Status: **✅ `T05` COMPLETE / 🔄 `T06` STARTED** | **Planner missing-only giờ không chỉ preview mà đã có execution contract + audited run trail; daily-history ingest path cũng đã chuyển sang consume explicit `plan_items` thay vì backfill mù theo range chung**
 Validation: **✅ focused planner/ingest suite passed (`12` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
 
 ## Global Market Data Matrix T05 Execution Contract + T06 Daily History Subslice
@@ -287,7 +746,7 @@ Validation: **✅ focused planner/ingest suite passed (`12` tests)** | **✅ mod
 
 # 2026-05-15 — Global Market Data Matrix T05 Planner Preview Slice ✅
 
-Status: **✅ COMPLETE FOR THIS SUBSLICE** | **`T05` đã có planner preview helper bám `GlobalSymbolCoverage`, sinh explicit plan items với policy mặc định `missing_only`; execution contract và queue handoff sẽ là follow-up kế tiếp trong cùng task**  
+Status: **✅ COMPLETE FOR THIS SUBSLICE** | **`T05` đã có planner preview helper bám `GlobalSymbolCoverage`, sinh explicit plan items với policy mặc định `missing_only`; execution contract và queue handoff sẽ là follow-up kế tiếp trong cùng task**
 Validation: **✅ focused planner/coverage tests passed (`5` tests)** | **✅ diagnostics sạch cho code tests vừa chạm** | **✅ module tree regenerated (`1190` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
 
 ## Global Market Data Matrix T05 Planner Preview Subslice
@@ -313,7 +772,7 @@ Validation: **✅ focused planner/coverage tests passed (`5` tests)** | **✅ di
 
 # 2026-05-15 — Hard Rule: Use start_dev.ps1 For Dev Runtime Refresh ✅
 
-Status: **✅ COMPLETE** | **Repo governance đã được cập nhật để mọi build/rebuild/restart dev stack mặc định phải đi qua `./start_dev.ps1`, không còn dùng `docker compose` trực tiếp như workflow thường ngày**  
+Status: **✅ COMPLETE** | **Repo governance đã được cập nhật để mọi build/rebuild/restart dev stack mặc định phải đi qua `./start_dev.ps1`, không còn dùng `docker compose` trực tiếp như workflow thường ngày**
 Validation: **✅ diagnostics sạch cho `AGENTS.md` và `docs/AI_CODING_REGULATION.md`** | **✅ grep xác nhận hard rule `start_dev.ps1` đã vào cả hai file governance** | **✅ user memory đã được cập nhật để các phiên sau tự mặc định dùng `./start_dev.ps1`**
 
 ## Dev Runtime Governance Hardening Slice
@@ -334,7 +793,7 @@ Validation: **✅ diagnostics sạch cho `AGENTS.md` và `docs/AI_CODING_REGULAT
 
 # 2026-05-15 — Global Market Data Matrix T03 Closure + T04 Coverage Inventory ✅
 
-Status: **✅ COMPLETE FOR CODE + VALIDATION** | **`T03` đã chốt xong admin/system promotion và canonical `vn100`; `T04` đã có coverage inventory service cho 5 dataset cùng summary/detail helpers bám trực tiếp canonical tables/read models**  
+Status: **✅ COMPLETE FOR CODE + VALIDATION** | **`T03` đã chốt xong admin/system promotion và canonical `vn100`; `T04` đã có coverage inventory service cho 5 dataset cùng summary/detail helpers bám trực tiếp canonical tables/read models**
 Validation: **✅ T03 focused regression passed (`46` tests, `1` skipped)** | **✅ T04 focused validation passed (`18` tests)** | **✅ diagnostics sạch cho code/docs vừa chạm** | **✅ module tree regenerated (`1190` modules)** | **⚠️ dev Docker rebuild attempted nhưng bị chặn bởi `VNBROKER_GITHUB_TOKEN` không hợp lệ trong build context**
 
 ## Global Market Data Matrix Mainline Progress Recovery Slice
@@ -361,7 +820,7 @@ Validation: **✅ T03 focused regression passed (`46` tests, `1` skipped)** | **
 
 # 2026-05-15 — Dev Core-Only DB + Single Redis Topology Consolidation ✅
 
-Status: **✅ COMPLETE** | **Dev stack đã bỏ `db` để chỉ còn `core-db`, và các stack còn giữ Redis kép (`docker-compose.prod.yml`, `portainer-stack-vninvest.yml`) đã được hợp nhất về một `core-redis` duy nhất với DB-index split để không trộn queue/key giữa core và legacy**  
+Status: **✅ COMPLETE** | **Dev stack đã bỏ `db` để chỉ còn `core-db`, và các stack còn giữ Redis kép (`docker-compose.prod.yml`, `portainer-stack-vninvest.yml`) đã được hợp nhất về một `core-redis` duy nhất với DB-index split để không trộn queue/key giữa core và legacy**
 Validation: **✅ dev merged compose không còn `db`** | **✅ dev runtime chỉ còn `vninvest-dev-core-db` + `vninvest-dev-core-redis`** | **✅ `core-db` dev bind host `127.0.0.1:5432` và healthy** | **✅ merged prod compose không còn service `redis`** | **✅ merged Portainer main stack không còn service `redis`** | **✅ diagnostics sạch cho các compose files đã chạm** | **✅ module tree regenerated (`1188` modules)**
 
 ## Core-Only DB + Single Redis Topology Slice
@@ -386,7 +845,7 @@ Validation: **✅ dev merged compose không còn `db`** | **✅ dev runtime ch�
 
 # 2026-05-15 — Dev Compose Single Redis Consolidation ✅
 
-Status: **✅ COMPLETE** | **Dev stack hợp nhất về một Redis container duy nhất bằng cách biến `docker-compose.dev.yml` thành override trực tiếp của `core-redis`; service `redis` riêng không còn tồn tại trong merged compose nữa**  
+Status: **✅ COMPLETE** | **Dev stack hợp nhất về một Redis container duy nhất bằng cách biến `docker-compose.dev.yml` thành override trực tiếp của `core-redis`; service `redis` riêng không còn tồn tại trong merged compose nữa**
 Validation: **✅ merged compose services chỉ còn `core-redis`, không còn `redis`** | **✅ merged compose giữ `container_name: vninvest-dev-core-redis`** | **✅ dev runtime refresh với `--remove-orphans` thành công** | **✅ `docker ps` chỉ còn `vninvest-dev-core-redis` cho Redis** | **✅ diagnostics sạch cho `docker-compose.dev.yml`** | **✅ module tree regenerated (`1188` modules)**
 
 ## Dev Compose Single Redis Slice
@@ -407,7 +866,7 @@ Validation: **✅ merged compose services chỉ còn `core-redis`, không còn `
 
 # 2026-05-15 — Global Market Data Matrix T02/T03 Registry Slice ✅
 
-Status: **✅ COMPLETE FOR THIS SLICE** | **`GlobalSymbolRegistry`, `GlobalSymbolDemandSource`, `GlobalSymbolCoverage` và flow promote/deactivate cho `watchlist`, `tracked_symbol`, `holding`, `alert` đã được nối native qua signal layer; đồng thời TECH_SPEC đã được mở rộng với contract chi tiết cho `SOC Data Ops` API/UI**  
+Status: **✅ COMPLETE FOR THIS SLICE** | **`GlobalSymbolRegistry`, `GlobalSymbolDemandSource`, `GlobalSymbolCoverage` và flow promote/deactivate cho `watchlist`, `tracked_symbol`, `holding`, `alert` đã được nối native qua signal layer; đồng thời TECH_SPEC đã được mở rộng với contract chi tiết cho `SOC Data Ops` API/UI**
 Validation: **✅ `makemigrations market_data --dry-run --check` passed** | **✅ focused backend tests passed (`16` tests)** | **✅ module tree regenerated (`1188` modules)** | **✅ dev `core-api`, `core-worker`, `core-beat`, `core-worker-manual` rebuilt/recreated** | **✅ runtime `showmigrations market_data` xác nhận `[X] 0003`**
 
 ## Global Market Data Matrix T02/T03 Registry + Promotion Slice
@@ -440,7 +899,7 @@ Validation: **✅ `makemigrations market_data --dry-run --check` passed** | **�
 
 # 2026-05-15 — Global Market Data Matrix SSOT Documentation Pack ✅
 
-Status: **✅ COMPLETE** | **Bộ governance + planning docs cho `global market data matrix` đã được dựng và hard rules SSOT chung đã được nâng lên thành quy định công khai, bắt buộc tuân thủ trong `AGENTS.md` và `docs/AI_CODING_REGULATION.md`**  
+Status: **✅ COMPLETE** | **Bộ governance + planning docs cho `global market data matrix` đã được dựng và hard rules SSOT chung đã được nâng lên thành quy định công khai, bắt buộc tuân thủ trong `AGENTS.md` và `docs/AI_CODING_REGULATION.md`**
 Validation: **✅ doc-pack created** | **✅ governance references inserted** | **✅ no diagnostics for touched docs/config files**
 
 ## Global Market Data Matrix SSOT Documentation Slice
@@ -469,7 +928,7 @@ Validation: **✅ doc-pack created** | **✅ governance references inserted** | 
 
 # 2026-05-15 — Scraping T16 WhaleAdvisory Native Advisory Compat Closure ✅
 
-Status: **✅ COMPLETE** | **`WhaleAdvisory` giờ tự dựng active symbol universe từ holdings/tracked symbols khi native list/stats endpoints còn rỗng, refresh call đã chuyển sang portfolio native advisory route, và compat delegates `canonical/current/refresh` trong `user_workspace` không còn nổ `500` vì truyền nhầm `rest_framework.request.Request` sang advisory domain**  
+Status: **✅ COMPLETE** | **`WhaleAdvisory` giờ tự dựng active symbol universe từ holdings/tracked symbols khi native list/stats endpoints còn rỗng, refresh call đã chuyển sang portfolio native advisory route, và compat delegates `canonical/current/refresh` trong `user_workspace` không còn nổ `500` vì truyền nhầm `rest_framework.request.Request` sang advisory domain**
 Validation: **✅ `useWhaleAdvisoryData.test.js` passed** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched frontend/backend files** | **✅ `test_user_workspace_api_routes.py` passed (`4` tests)** | **✅ module tree regenerated (`1183` modules)** | **✅ dev `core-api` rebuilt/recreated** | **✅ runtime smoke inside rebuilt `core-api` returned `canonical=200`, `current=200`, `refresh=201`**
 
 ## Scraping SaaS-Native T16 WhaleAdvisory Native-Compat Closure Subslice
@@ -508,7 +967,7 @@ Validation: **✅ `useWhaleAdvisoryData.test.js` passed** | **✅ frontend build
 
 # 2026-05-15 — Scraping T16 ModernDashboard Facts-First Whale Deck Adapter ✅
 
-Status: **✅ COMPLETE** | **`ModernDashboard` giờ mount deck adapter facts-first nên whale tab của modern dashboard không còn đi qua chain snapshot-flow cũ `ModularPositionDeck -> WhaleAnalyticsTab`; route live đã chuyển sang `FactsFirstModularPositionDeck -> FactsFirstWhaleAnalyticsTab -> FactsFirstWhaleBubbleChart`, và follow-up hook stabilization đã chặn SessionFacts CVD refetch lặp lại khi `tradeDates` chỉ đổi array identity**  
+Status: **✅ COMPLETE** | **`ModernDashboard` giờ mount deck adapter facts-first nên whale tab của modern dashboard không còn đi qua chain snapshot-flow cũ `ModularPositionDeck -> WhaleAnalyticsTab`; route live đã chuyển sang `FactsFirstModularPositionDeck -> FactsFirstWhaleAnalyticsTab -> FactsFirstWhaleBubbleChart`, và follow-up hook stabilization đã chặn SessionFacts CVD refetch lặp lại khi `tradeDates` chỉ đổi array identity**
 Validation: **✅ `FactsFirstWhaleAnalyticsTab.test.jsx` passed (`1` test)** | **✅ combined facts-first bubble+tab tests passed (`3` tests)** | **✅ `useSessionFactsCvdSeries.test.js` passed (`1` test)** | **✅ combined hook+bubble+tab regressions passed (`4` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched frontend files** | **✅ module tree regenerated (`1182` modules)** | **✅ dev `frontend` + `core-api` rebuilt/recreated; `core-db`, `core-redis`, `core-api` healthy** | **✅ browser screenshot evidence captured on clean `testpro` session with `XÁC THỰC SSOT` visible on `/dashboard` whale tab**
 
 ## Scraping SaaS-Native T16 ModernDashboard Whale-Tab Adapter Subslice
@@ -551,7 +1010,7 @@ Validation: **✅ `FactsFirstWhaleAnalyticsTab.test.jsx` passed (`1` test)** | *
 
 # 2026-05-15 — Scraping T16 WhaleAdvisory Facts-First Bubble Wrapper ✅
 
-Status: **✅ COMPLETE** | **`WhaleAdvisory` giờ bọc `WhaleBubbleChart` qua controlled facts-first wrapper, nên page này không còn phụ thuộc vào snapshot flow buckets làm nguồn truth chính cho overlay flow**  
+Status: **✅ COMPLETE** | **`WhaleAdvisory` giờ bọc `WhaleBubbleChart` qua controlled facts-first wrapper, nên page này không còn phụ thuộc vào snapshot flow buckets làm nguồn truth chính cho overlay flow**
 Validation: **✅ `FactsFirstWhaleBubbleChart.test.jsx` passed (`2` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched frontend files** | **✅ module tree regenerated (`1178` modules)** | **✅ dev `frontend` + `core-api` refreshed and `core-api` is healthy after compose drift + DB credential sync**
 
 ## Scraping SaaS-Native T16 Non-Dashboard Bubble Cutover Subslice
@@ -589,7 +1048,7 @@ Validation: **✅ `FactsFirstWhaleBubbleChart.test.jsx` passed (`2` tests)** | *
 
 # 2026-05-15 — Scraping T16 WhaleAlertsDashboard Facts-First Flow Consumers ✅
 
-Status: **✅ COMPLETE** | **Route `whale-alerts/:symbol` giờ ưu tiên SessionFacts bucket flow cho KLine, bubble chart, và compact flow ngay tại `WhaleAlertsDashboard`, thay vì đẩy thẳng snapshot flow buckets làm nguồn truth duy nhất**  
+Status: **✅ COMPLETE** | **Route `whale-alerts/:symbol` giờ ưu tiên SessionFacts bucket flow cho KLine, bubble chart, và compact flow ngay tại `WhaleAlertsDashboard`, thay vì đẩy thẳng snapshot flow buckets làm nguồn truth duy nhất**
 Validation: **✅ `sessionFactsFlowAdapter.test.js` passed (`2` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched frontend files** | **✅ module tree regenerated (`1176` modules)** | **✅ dev `frontend` + `core-api` rebuilt/recreated**
 
 ## Scraping SaaS-Native T16 Dashboard Flow-Consumer Cutover Subslice
@@ -622,7 +1081,7 @@ Validation: **✅ `sessionFactsFlowAdapter.test.js` passed (`2` tests)** | **✅
 
 # 2026-05-15 — Scraping T16 Strength Buckets + StockDetail Facts-First KLine ✅
 
-Status: **✅ COMPLETE** | **`SessionFactsBucket` giờ persist cả `buy_strength` và `institutional_strength` theo bucket, `SessionFactsCvdView` trả strength per bucket, và `StockDetail` KLine đã ưu tiên flow buckets facts-first thay cho snapshot flow buckets ở selected-session path**  
+Status: **✅ COMPLETE** | **`SessionFactsBucket` giờ persist cả `buy_strength` và `institutional_strength` theo bucket, `SessionFactsCvdView` trả strength per bucket, và `StockDetail` KLine đã ưu tiên flow buckets facts-first thay cho snapshot flow buckets ở selected-session path**
 Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_api_routes` + `tests.test_saas14_materializers.TestMaterializeSessionFactsNative` passed (`31` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched backend/frontend files** | **✅ `makemigrations market_serving --dry-run --check` sạch** | **✅ module tree regenerated (`1173` modules)** | **✅ runtime `showmigrations market_serving` xác nhận `[X] 0007`**
 
 ## Scraping SaaS-Native T16 Bucket-Strength + KLine Facts-First Subslice
@@ -664,7 +1123,7 @@ Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_ap
 
 # 2026-05-15 — Scraping T16 Selected-Session Contract + SessionFactsBucket Read Model ✅
 
-Status: **✅ COMPLETE** | **SessionFacts detail/CVD giờ có contract `trade_date` rõ ràng cho selected session, `StockDetail` đã truyền `selectedTradeDate` xuống request, và primary read path của CVD đã chuyển từ JSON inline sang bảng `SessionFactsBucket` materialized**  
+Status: **✅ COMPLETE** | **SessionFacts detail/CVD giờ có contract `trade_date` rõ ràng cho selected session, `StockDetail` đã truyền `selectedTradeDate` xuống request, và primary read path của CVD đã chuyển từ JSON inline sang bảng `SessionFactsBucket` materialized**
 Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_api_routes` + `tests.test_saas14_materializers.TestMaterializeSessionFactsNative` passed (`31` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched backend/frontend files** | **✅ `makemigrations market_serving --dry-run --check` sạch** | **✅ module tree regenerated (`1171` modules)** | **✅ runtime `showmigrations market_serving` xác nhận `[X] 0005` + `[X] 0006`**
 
 ## Scraping SaaS-Native T16 Selected-Session + Bucket-Facts Subslice
@@ -707,7 +1166,7 @@ Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_ap
 
 # 2026-05-15 — Scraping T16 Materialized SessionFacts Read Model ✅
 
-Status: **✅ COMPLETE** | **`/api/market/session-facts/<symbol>/` và `/api/market/session-facts/<symbol>/cvd/` giờ chỉ đọc SessionFacts materialized + cache, không còn compute-on-demand trong request path; `SessionFacts` đã mang `series_by_window` để CVD chart lấy trực tiếp series facts-first**  
+Status: **✅ COMPLETE** | **`/api/market/session-facts/<symbol>/` và `/api/market/session-facts/<symbol>/cvd/` giờ chỉ đọc SessionFacts materialized + cache, không còn compute-on-demand trong request path; `SessionFacts` đã mang `series_by_window` để CVD chart lấy trực tiếp series facts-first**
 Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_api_routes` + `tests.test_saas14_materializers.TestMaterializeSessionFactsNative` passed (`25` tests)** | **✅ diagnostics sạch cho market_serving model/engine/view/tests/migration** | **✅ module tree regenerated (`1170` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated** | **✅ runtime `showmigrations market_serving` xác nhận `[X] 0004_add_session_facts_series_by_window`**
 
 ## Scraping SaaS-Native T16 Read-Model Subslice
@@ -744,7 +1203,7 @@ Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_ap
 
 # 2026-05-14 — Scraping T16 Native Session Facts Workflow Wiring ✅
 
-Status: **✅ COMPLETE** | **SOC signals execution plan không còn báo `signal_session_facts_materializer` là unsupported; session-facts materialization giờ có native `service_ops` task với run-log tracking và hỗ trợ preview/materialize theo `symbol` được yêu cầu**  
+Status: **✅ COMPLETE** | **SOC signals execution plan không còn báo `signal_session_facts_materializer` là unsupported; session-facts materialization giờ có native `service_ops` task với run-log tracking và hỗ trợ preview/materialize theo `symbol` được yêu cầu**
 Validation: **✅ `service_ops.tests.test_soc_tasks` + `service_ops.tests.test_soc_api_signals` passed (`24` tests)** | **✅ diagnostics sạch cho workflow/materializer files** | **✅ module tree regenerated (`1169` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat`, `frontend` rebuilt/recreated**
 
 ## Scraping SaaS-Native T16 Workflow Subslice
@@ -778,7 +1237,7 @@ Validation: **✅ `service_ops.tests.test_soc_tasks` + `service_ops.tests.test_s
 
 # 2026-05-14 — SOC-Only Operations Center Cutover ✅
 
-Status: **✅ COMPLETE** | **Package shell, host bootstrap, và backend capability payloads giờ chỉ còn surface `operations-center` / `show_operations_center`; dead AdminOps UI compat sources đã bị xóa để chấm dứt việc cùng lúc tồn tại hai interface vận hành**  
+Status: **✅ COMPLETE** | **Package shell, host bootstrap, và backend capability payloads giờ chỉ còn surface `operations-center` / `show_operations_center`; dead AdminOps UI compat sources đã bị xóa để chấm dứt việc cùng lúc tồn tại hai interface vận hành**
 Validation: **✅ `identity_access.tests.test_capabilities_soc` + `tests.test_runtime_baseline` passed (`10` tests)** | **✅ frontend build passed** | **✅ diagnostics sạch cho touched package-shell/backend files** | **✅ module tree regenerated (`1169` modules)** | **✅ dev `frontend`, `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
 
 ## SOC Surface Finalization Subslice
@@ -829,7 +1288,7 @@ Validation: **✅ `identity_access.tests.test_capabilities_soc` + `tests.test_ru
 
 # 2026-05-14 — SOC Interface Unification Slice ✅
 
-Status: **✅ COMPLETE** | **Package-shell operator surface giờ dùng cùng một tên SOC ở route/path/title/copy thay vì còn sót `admin-ops`, và các fallback nav label phía host cũng không còn dựng lại một interface tên khác**  
+Status: **✅ COMPLETE** | **Package-shell operator surface giờ dùng cùng một tên SOC ở route/path/title/copy thay vì còn sót `admin-ops`, và các fallback nav label phía host cũng không còn dựng lại một interface tên khác**
 Validation: **✅ diagnostics sạch cho `packages/web`/i18n files đã chạm** | **✅ frontend build passed** | **✅ module tree regenerated (`1176` modules)** | **✅ dev `frontend` + `core-api` rebuilt/recreated**
 
 ## SOC Surface Alignment Subslice
@@ -861,7 +1320,7 @@ Validation: **✅ diagnostics sạch cho `packages/web`/i18n files đã chạm**
 
 # 2026-05-14 — Scraping T07 Native Signal Contract Ownership Freeze ✅
 
-Status: **✅ COMPLETE** | **Signal admin contract family không còn đổi ownership sang bridge mode khi `LEGACY_BACKEND_URL` xuất hiện; signal summary/config/jobs paths giờ giữ native ownership nhất quán**  
+Status: **✅ COMPLETE** | **Signal admin contract family không còn đổi ownership sang bridge mode khi `LEGACY_BACKEND_URL` xuất hiện; signal summary/config/jobs paths giờ giữ native ownership nhất quán**
 Validation: **✅ `tests.test_admin_ops_signals_contract_api` passed (`6` tests)** | **✅ diagnostics sạch cho `admin_ops/views.py` và focused test file** | **✅ module tree regenerated (`1176` modules)** | **✅ dev `core-api` refreshed trong runtime rebuild hiện tại**
 
 ## Scraping SaaS-Native T07 Contract Ownership Subslice
@@ -889,7 +1348,7 @@ Validation: **✅ `tests.test_admin_ops_signals_contract_api` passed (`6` tests)
 
 # 2026-05-14 — Scraping T06 Native Benchmark Route Cutover ✅
 
-Status: **✅ COMPLETE** | **Admin-ops benchmark latest/run không còn bridge sang legacy backend; core giờ tự benchmark provider qua `vnbroker_adapter`, lưu latest report trong cache, và dispatch benchmark bằng Celery task native**  
+Status: **✅ COMPLETE** | **Admin-ops benchmark latest/run không còn bridge sang legacy backend; core giờ tự benchmark provider qua `vnbroker_adapter`, lưu latest report trong cache, và dispatch benchmark bằng Celery task native**
 Validation: **✅ benchmark-focused admin-ops contract tests + helper tests passed (`5` tests)** | **✅ diagnostics sạch cho benchmark helper/task/view/tests** | **✅ module tree regenerated (`1176` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
 
 ## Scraping SaaS-Native T06 Benchmark Subslice
@@ -924,7 +1383,7 @@ Validation: **✅ benchmark-focused admin-ops contract tests + helper tests pass
 
 # 2026-05-14 — Scraping T05 Native Signal Facts-First Cutover ✅
 
-Status: **✅ COMPLETE** | **Whale materialization không còn legacy-first hay synthetic/random fallback; native path giờ aggregate trực tiếp từ `OrderFlowEvent`, và `DARK_FLOW` events cũng được materialize thành `UnifiedAlert` facts-first thay vì phụ thuộc dữ liệu seed/bridge**  
+Status: **✅ COMPLETE** | **Whale materialization không còn legacy-first hay synthetic/random fallback; native path giờ aggregate trực tiếp từ `OrderFlowEvent`, và `DARK_FLOW` events cũng được materialize thành `UnifiedAlert` facts-first thay vì phụ thuộc dữ liệu seed/bridge**
 Validation: **✅ `signal_intelligence.tests.test_materializers` + `service_ops.tests.test_soc_api_signals` passed (`14` tests)** | **✅ diagnostics sạch cho signal materializer/test files** | **✅ grep gate sạch cho `legacy_readonly`/`random` trong `signal_intelligence`** | **✅ module tree regenerated (`1174` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
 
 ## Scraping SaaS-Native T05/T16 Signal Facts Subslice
@@ -956,7 +1415,7 @@ Validation: **✅ `signal_intelligence.tests.test_materializers` + `service_ops.
 
 # 2026-05-14 — Scraping T03 Control-Plane Run-Log Wiring ✅
 
-Status: **✅ COMPLETE** | **Manual `daily-prices` và `price-board` triggers giờ tạo `ServiceRunLog` thuộc `service_ops`, trả về `service_run_log_id` trong response, và hai task ingest tương ứng cập nhật cùng run-log đó theo trạng thái running/success/failed/skipped**  
+Status: **✅ COMPLETE** | **Manual `daily-prices` và `price-board` triggers giờ tạo `ServiceRunLog` thuộc `service_ops`, trả về `service_run_log_id` trong response, và hai task ingest tương ứng cập nhật cùng run-log đó theo trạng thái running/success/failed/skipped**
 Validation: **✅ `data_ingest.tests.test_tasks` + `data_ingest.tests.test_views` passed (`6` tests)** | **✅ diagnostics sạch cho `data_ingest` source/test files** | **✅ module tree regenerated (`1173` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
 
 ## Scraping SaaS-Native T03 Observability Subslice
@@ -990,7 +1449,7 @@ Validation: **✅ `data_ingest.tests.test_tasks` + `data_ingest.tests.test_views
 
 # 2026-05-14 — Scraping T03 Inline Ingest Execution Cleanup ✅
 
-Status: **✅ COMPLETE** | **`ingest_daily_prices()` không còn queue một Celery task khác rồi `.get()` chờ kết quả trong worker; path này giờ reuse `backfill_daily_prices.run(...)` inline và bỏ được drift orchestration cục bộ**  
+Status: **✅ COMPLETE** | **`ingest_daily_prices()` không còn queue một Celery task khác rồi `.get()` chờ kết quả trong worker; path này giờ reuse `backfill_daily_prices.run(...)` inline và bỏ được drift orchestration cục bộ**
 Validation: **✅ `data_ingest.tests.test_tasks` passed (`2` tests)** | **✅ diagnostics sạch cho `data_ingest/tasks.py` và test file** | **✅ module tree regenerated (`1172` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
 
 ## Scraping SaaS-Native T03 Subslice
@@ -1020,7 +1479,7 @@ Validation: **✅ `data_ingest.tests.test_tasks` passed (`2` tests)** | **✅ di
 
 # 2026-05-14 — Scraping T02 Broker SSOT Cleanup ✅
 
-Status: **✅ COMPLETE** | **Adapter daily-history path đã được sửa thành provider-aware SSOT, `data_ingest` không còn import thẳng `vnbroker.explorer.*` cho backfill, và provider roster active của adapter đã được khóa về `VCI/KBS/DNSE`**  
+Status: **✅ COMPLETE** | **Adapter daily-history path đã được sửa thành provider-aware SSOT, `data_ingest` không còn import thẳng `vnbroker.explorer.*` cho backfill, và provider roster active của adapter đã được khóa về `VCI/KBS/DNSE`**
 Validation: **✅ `service_ops.tests.test_soc_tasks` + `data_ingest.tests.test_tasks` passed (`15` tests)** | **✅ diagnostics sạch cho adapter / data-ingest / test files** | **✅ module tree regenerated (`1172` modules)** | **✅ dev `core-api`, `core-worker`, `core-worker-manual`, `core-beat` rebuilt/recreated**
 
 ## Scraping SaaS-Native T02 Slice
@@ -1055,7 +1514,7 @@ Validation: **✅ `service_ops.tests.test_soc_tasks` + `data_ingest.tests.test_t
 
 # 2026-05-14 — Scraping SaaS-Native Bundle + T01 Canonical Route Freeze ✅
 
-Status: **✅ COMPLETE** | **Đã tạo bundle docs SaaS-native cho scraping system và mount canonical Matrix routes dưới `/core/v1/operator/scraping/matrix/*` mà không làm vỡ alias `/api/soc/matrix/*` hiện có**  
+Status: **✅ COMPLETE** | **Đã tạo bundle docs SaaS-native cho scraping system và mount canonical Matrix routes dưới `/core/v1/operator/scraping/matrix/*` mà không làm vỡ alias `/api/soc/matrix/*` hiện có**
 Validation: **✅ `service_ops.tests.test_soc_matrix` passed (`11` tests, `1` skipped)** | **✅ diagnostics sạch cho file code mới/chỉnh sửa** | **✅ `module_tree_full.md` regenerated (`1170` modules)** | **✅ dev `core-api` rebuilt/recreated**
 
 ## Scraping SaaS-Native T01 Slice
@@ -1091,7 +1550,7 @@ Validation: **✅ `service_ops.tests.test_soc_matrix` passed (`11` tests, `1` sk
 
 # 2026-05-14 — Scraping Plan Provider Roster Narrowing ✅
 
-Status: **✅ COMPLETE** | **The coordinated parallel scraping plan now uses the temporary provider roster `VCI/KBS/DNSE` only and no longer references `TCBS/SSI` in its provider matrix, fallback chain, health-check example, or approval summary**  
+Status: **✅ COMPLETE** | **The coordinated parallel scraping plan now uses the temporary provider roster `VCI/KBS/DNSE` only and no longer references `TCBS/SSI` in its provider matrix, fallback chain, health-check example, or approval summary**
 Validation: **✅ doc grep found no remaining `TCBS` or `SSI` references in the plan** | **✅ provider examples/default lists now align to `VCI/KBS/DNSE`**
 
 ## Scraping Plan Provider Alignment Slice
@@ -1115,7 +1574,7 @@ Validation: **✅ doc grep found no remaining `TCBS` or `SSI` references in the 
 
 # 2026-05-14 — Stock-Management Migration Drift Recovery ✅
 
-Status: **✅ COMPLETE** | **`market_serving.0003` is now idempotent, `core-api` starts healthy again, and the native stock-management tests pass in the rebuilt dev container**  
+Status: **✅ COMPLETE** | **`market_serving.0003` is now idempotent, `core-api` starts healthy again, and the native stock-management tests pass in the rebuilt dev container**
 Validation: **✅ `market_data.tests.test_stock_management_native_api` passed (`11` tests)** | **✅ `functions.get_errors` clean on the touched migration** | **✅ `module_tree_full.md` regenerated (`1169` modules)** | **✅ dev `core-api` / `core-worker` / `core-beat` / `frontend` rebuilt/recreated**
 
 ## Migration Recovery Slice
@@ -1172,7 +1631,7 @@ Validation: **✅ `market_data.tests.test_stock_management_native_api` passed (`
 
 # 2026-05-14 — SOC Matrix Provider-Aware Universe Discovery ✅
 
-Status: **✅ COMPLETE** | **Matrix symbol-group resolution now follows the selected provider through the vnbroker listing adapter, so `vn30`/`top100` no longer depend on one shared seed universe path before snapshot fetching**  
+Status: **✅ COMPLETE** | **Matrix symbol-group resolution now follows the selected provider through the vnbroker listing adapter, so `vn30`/`top100` no longer depend on one shared seed universe path before snapshot fetching**
 Validation: **✅ PostgreSQL `test_soc_tasks` passed (`13` tests)** | **✅ PostgreSQL `test_soc_matrix` passed (`9` tests)** | **✅ clean runtime cycle `cycle_20260514_011` completed as `kbs`-only with `symbols_processed=30`** | **✅ manual worker log proved `Fetching symbol group VN30 from KBS.` then `Fetching price board snapshot from KBS for 30 symbols.`** | **✅ `module_tree_full.md` regenerated (`1166` modules)**
 
 ## SOC Matrix Provider-Aware Universe Slice
@@ -1206,7 +1665,7 @@ Validation: **✅ PostgreSQL `test_soc_tasks` passed (`13` tests)** | **✅ Post
 
 # 2026-05-14 — SOC Matrix Provider-Aware Snapshot Dispatch ✅
 
-Status: **✅ COMPLETE** | **Matrix cell execution now forwards the selected provider into the vnbroker SSOT, so `kbs` cells no longer reuse the same VCI-only snapshot path under the hood**  
+Status: **✅ COMPLETE** | **Matrix cell execution now forwards the selected provider into the vnbroker SSOT, so `kbs` cells no longer reuse the same VCI-only snapshot path under the hood**
 Validation: **✅ PostgreSQL `test_soc_tasks` passed (`8` tests)** | **✅ PostgreSQL `test_soc_matrix` passed (`9` tests)** | **✅ clean runtime cycle `cycle_20260514_009` completed as `kbs`-only with `symbols_processed=30`** | **✅ manual worker log proved `Fetching price board snapshot from KBS for 30 symbols.`** | **✅ `module_tree_full.md` regenerated (`1166` modules)**
 
 ## SOC Matrix Provider Truth Slice
@@ -1241,7 +1700,7 @@ Validation: **✅ PostgreSQL `test_soc_tasks` passed (`8` tests)** | **✅ Postg
 
 # 2026-05-14 — SOC Matrix Runtime Queue Isolation and Manual Worker Recovery ✅
 
-Status: **✅ COMPLETE** | **Matrix start/monitor now trigger real Celery work again in dev runtime: Matrix tasks bind to the configured `vninvest_core` app, `manual_on_demand` is isolated away from the generic worker, and the dedicated manual worker now runs in `solo` mode proven to consume clean Matrix cycles end-to-end**  
+Status: **✅ COMPLETE** | **Matrix start/monitor now trigger real Celery work again in dev runtime: Matrix tasks bind to the configured `vninvest_core` app, `manual_on_demand` is isolated away from the generic worker, and the dedicated manual worker now runs in `solo` mode proven to consume clean Matrix cycles end-to-end**
 Validation: **✅ PostgreSQL `test_soc_matrix` passed (`9` tests)** | **✅ PostgreSQL `test_soc_tasks` passed (`8` tests)** | **✅ clean runtime cycle `cycle_20260514_008` reached terminal `completed` state** | **✅ `module_tree_full.md` regenerated (`1166` modules)**
 
 ## SOC Matrix Runtime Recovery Slice
@@ -1280,7 +1739,7 @@ Validation: **✅ PostgreSQL `test_soc_matrix` passed (`9` tests)** | **✅ Post
 
 # 2026-05-14 — SOC REQ-25 Matrix Atomic Claim Proof ✅
 
-Status: **✅ COMPLETE** | **REQ-25 is now backed by both host-safe claim semantics and a real PostgreSQL concurrent-claim proof for `MatrixCoordinator.try_claim_cell()`**  
+Status: **✅ COMPLETE** | **REQ-25 is now backed by both host-safe claim semantics and a real PostgreSQL concurrent-claim proof for `MatrixCoordinator.try_claim_cell()`**
 Validation: **✅ host `test_soc_matrix` passed (`7` tests, `1` SQLite feature-gated skip)** | **✅ PostgreSQL `test_soc_matrix` passed (`7` tests)** | **✅ `module_tree_full.md` regenerated (`1166` modules)** | **✅ dev `core-api` rebuilt/recreated and healthy**
 
 ## SOC REQ-25 Closure Slice
@@ -1311,7 +1770,7 @@ Validation: **✅ host `test_soc_matrix` passed (`7` tests, `1` SQLite feature-g
 
 # 2026-05-14 — SOC REQ-02 VNBroker Canonical Typed Schema ✅
 
-Status: **✅ COMPLETE** | **REQ-02 is now closed on the real spec shape: VNBroker config emits `timeout` + `preferred_provider` canonically, while legacy flat payloads remain accepted for compatibility**  
+Status: **✅ COMPLETE** | **REQ-02 is now closed on the real spec shape: VNBroker config emits `timeout` + `preferred_provider` canonically, while legacy flat payloads remain accepted for compatibility**
 Validation: **✅ `test_soc_domain_configs + test_soc_api_domain` passed (`23` tests)** | **✅ `test_soc_api_integration + test_soc_api_overview` passed (`22` tests)** | **✅ `module_tree_full.md` regenerated (`1166` modules)** | **✅ dev `core-api` rebuilt/recreated and healthy**
 
 ## SOC REQ-02 Closure Slice
@@ -1349,7 +1808,7 @@ Validation: **✅ `test_soc_domain_configs + test_soc_api_domain` passed (`23` t
 
 # 2026-05-14 — SOC Legacy Admin-Ops Alias Coverage ✅
 
-Status: **✅ COMPLETE** | **`/admin-ops` now behaves as a pure legacy alias to SOC, and frontend route/component proof for REQ-32..40 is recorded in the active traceability set**  
+Status: **✅ COMPLETE** | **`/admin-ops` now behaves as a pure legacy alias to SOC, and frontend route/component proof for REQ-32..40 is recorded in the active traceability set**
 Validation: **✅ focused frontend SOC suites passed (`12` tests)** | **✅ `module_tree_full.md` regenerated (`1166` modules)** | **✅ dev `frontend` rebuilt/recreated**
 
 ## SOC Frontend Route Evidence Slice
@@ -1383,7 +1842,7 @@ Validation: **✅ focused frontend SOC suites passed (`12` tests)** | **✅ `mod
 
 # 2026-05-14 — SOC Traceability Closure for Matrix Tasks and Frontend Spec Alignment ✅
 
-Status: **✅ COMPLETE** | **REQ-30..40 are no longer blocked by missing code: Matrix now has real cell tasks, config apply audit stores the real previous snapshot, and the SOC frontend tabs/query/components now match the active tech spec more closely**  
+Status: **✅ COMPLETE** | **REQ-30..40 are no longer blocked by missing code: Matrix now has real cell tasks, config apply audit stores the real previous snapshot, and the SOC frontend tabs/query/components now match the active tech spec more closely**
 Validation: **✅ `test_soc_tasks + test_soc_api_domain` passed (`25` tests)** | **✅ frontend build completed** | **✅ `module_tree_full.md` regenerated (1163 modules)** | **✅ dev `frontend` + `core-api` + workers rebuilt/recreated** | **⚠️ `core-beat` still `health: starting` at capture time**
 
 ## SOC Traceability Closure Slice
@@ -1436,7 +1895,7 @@ Validation: **✅ `test_soc_tasks + test_soc_api_domain` passed (`25` tests)** |
 
 # 2026-05-14 — SOC Unit Suite Completion and Real Signals Task Wiring ✅
 
-Status: **✅ COMPLETE** | **SOC now has the missing unit/task suites, the stale legacy suites have been rewritten to the current schema, Signals jobs run through tracked `service_ops` tasks, and the full `service_ops.tests` package is green**  
+Status: **✅ COMPLETE** | **SOC now has the missing unit/task suites, the stale legacy suites have been rewritten to the current schema, Signals jobs run through tracked `service_ops` tasks, and the full `service_ops.tests` package is green**
 Validation: **✅ full `service_ops.tests` passed (`75` tests)** | **✅ `module_tree_full.md` regenerated (1163 modules)** | **✅ dev `core-api` + Celery workers/beat rebuilt/recreated**
 
 ## SOC Unit + Tasks Slice
@@ -1477,7 +1936,7 @@ Validation: **✅ full `service_ops.tests` passed (`75` tests)** | **✅ `module
 
 # 2026-05-14 — SOC Overview, Domain Alias, and Signals Contract Realignment ✅
 
-Status: **✅ COMPLETE** | **SOC overview/services contracts, domain alias routes, and the missing Signals preview/status/job surfaces now match the active backend more closely and pass the focused regression set**  
+Status: **✅ COMPLETE** | **SOC overview/services contracts, domain alias routes, and the missing Signals preview/status/job surfaces now match the active backend more closely and pass the focused regression set**
 Validation: **✅ 42 focused `service_ops` tests passed** | **✅ `module_tree_full.md` regenerated (1159 modules)** | **✅ dev `core-api` rebuilt/recreated**
 
 ## SOC Contract Realignment Slice
@@ -1523,7 +1982,7 @@ Validation: **✅ 42 focused `service_ops` tests passed** | **✅ `module_tree_f
 
 # 2026-05-14 — SOC Provider Catalog & Matrix Readiness Gate ✅
 
-Status: **✅ COMPLETE** | **SOC provider surfaces now use the `vci/kbs/dnse` SSOT, DNSE is runtime-gated, the Matrix regression suite is split cleanly, and the live dev runtime enforces the gate before cycle reuse**  
+Status: **✅ COMPLETE** | **SOC provider surfaces now use the `vci/kbs/dnse` SSOT, DNSE is runtime-gated, the Matrix regression suite is split cleanly, and the live dev runtime enforces the gate before cycle reuse**
 Validation: **✅ 23 focused `service_ops` tests passed** | **✅ live smoke returned `blocked_status=400`, `blocked_code=MATRIX_PROVIDER_NOT_READY` for `dnse` even with an active cycle present** | **✅ `module_tree_full.md` regenerated (1159 modules)** | **✅ dev `core-api` + `frontend` rebuilt/recreated**
 
 ## SOC Provider Catalog Slice
@@ -1566,7 +2025,7 @@ Validation: **✅ 23 focused `service_ops` tests passed** | **✅ live smoke ret
 
 # 2026-05-14 — SOC Matrix Runtime Wiring & Contract Hardening ✅
 
-Status: **✅ COMPLETE** | **Matrix is now backed by native cycle APIs, the mounted SOC data tabs no longer rely on sample payloads, and focused contract tests pass**  
+Status: **✅ COMPLETE** | **Matrix is now backed by native cycle APIs, the mounted SOC data tabs no longer rely on sample payloads, and focused contract tests pass**
 Validation: **✅ Matrix start/monitor/abort smoke passed** | **✅ frontend build completed** | **✅ 18 focused `service_ops` tests passed** | **✅ `module_tree_full.md` regenerated (1157 modules)** | **✅ dev `core-api` + `frontend` rebuilt/recreated**
 
 ## SOC Matrix + Runtime Data Slice
@@ -1614,7 +2073,7 @@ Validation: **✅ Matrix start/monitor/abort smoke passed** | **✅ frontend bui
 
 # 2026-05-14 — SOC Registry Bootstrap & Contract Alignment ✅
 
-Status: **✅ COMPLETE** | **SOC now materializes the canonical 23-service registry and the main non-matrix tabs are aligned to live backend contracts**  
+Status: **✅ COMPLETE** | **SOC now materializes the canonical 23-service registry and the main non-matrix tabs are aligned to live backend contracts**
 Validation: **✅ core DB shows `23` active SOC services** | **✅ `GET /api/soc/signals/summary/` returns 200** | **✅ frontend build completed** | **✅ dev `core-api` + `frontend` rebuilt/recreated** | **✅ `module_tree_full.md` regenerated (1154 modules)**
 
 ## SOC Bootstrap Slice
@@ -1641,7 +2100,7 @@ Validation: **✅ core DB shows `23` active SOC services** | **✅ `GET /api/soc
 
 # 2026-05-14 — SOC Operations Center Render Fix ✅
 
-Status: **✅ COMPLETE** | **/operations-center now renders with localized labels and live SOC overview data**  
+Status: **✅ COMPLETE** | **/operations-center now renders with localized labels and live SOC overview data**
 Validation: **✅ core-api smoke test returned 200 on `/api/soc/overview/`** | **✅ frontend rebuild completed** | **✅ browser screenshot captured** | **✅ `module_tree_full.md` regenerated (1153 modules)**
 
 ## SOC Fix Slice
@@ -1664,7 +2123,7 @@ Validation: **✅ core-api smoke test returned 200 on `/api/soc/overview/`** | *
 
 # 2026-05-14 — Native Realtime Prefetch Warm Repair ✅
 
-Status: **✅ COMPLETE** | **core-api warm path now populates `SymbolSnapshot` and BCM is live**  
+Status: **✅ COMPLETE** | **core-api warm path now populates `SymbolSnapshot` and BCM is live**
 Validation: **✅ direct warm call returned `ok/upserted=59`** | **✅ `GET /api/realtime/ticker/BCM/` returned a live price** | **✅ `module_tree_full.md` regenerated (1153 modules)**
 
 ## Runtime Slice
@@ -1697,13 +2156,13 @@ Validation: **✅ `start_dev.ps1 -SkipBuild` passed** | **✅ core-api and front
 
 # 2026-05-14 — SOC Phase 1 Final: Full Deployment & Audit ✅
 
-Status: **✅ DEPLOYED & RUNNING** | **⚠️ Test Suite Has Field Name Fix (Non-Critical)**  
-Commits This Session: **7 total** (auth, exports, routes, imports, cleanup, audit)  
-Tests: **80+ tests located correctly** (field names need update for execution)  
-Backend Endpoints: **39 REST endpoints all responding** ✅  
-Frontend: **Accessible at http://localhost/operations-center** ✅  
-Docker Services: **12/12 running and healthy** ✅  
-Database: **Migrations applied, all models created** ✅  
+Status: **✅ DEPLOYED & RUNNING** | **⚠️ Test Suite Has Field Name Fix (Non-Critical)**
+Commits This Session: **7 total** (auth, exports, routes, imports, cleanup, audit)
+Tests: **80+ tests located correctly** (field names need update for execution)
+Backend Endpoints: **39 REST endpoints all responding** ✅
+Frontend: **Accessible at http://localhost/operations-center** ✅
+Docker Services: **12/12 running and healthy** ✅
+Database: **Migrations applied, all models created** ✅
 
 ## SOC Phase 1 (T01-T10) FINAL STATUS
 
@@ -1746,8 +2205,8 @@ Database: **Migrations applied, all models created** ✅
 
 # 2026-05-13 — Phase 2 Slice 4 (B3): Tenant Isolation Audit ✅
 
-Status: COMPLETE (2026-05-13T18:45:00Z)  
-Tests: **19/19 B3 specific PASS** ✅  
+Status: COMPLETE (2026-05-13T18:45:00Z)
+Tests: **19/19 B3 specific PASS** ✅
 Committed: dev branch (`e992f03a`)
 
 ## Slice 4 Summary
@@ -1791,8 +2250,8 @@ Committed: dev branch (`e992f03a`)
 
 # 2026-05-13 — Phase 2 Slice 3 (A6): Complete Exception Audit ✅
 
-Status: COMPLETE (2026-05-13T18:15:00Z)  
-Tests: 13/13 A6 specific PASS  
+Status: COMPLETE (2026-05-13T18:15:00Z)
+Tests: 13/13 A6 specific PASS
 Committed: dev branch (`038fb991`)
 
 ## Slice 3 Summary
@@ -1814,8 +2273,8 @@ Committed: dev branch (`038fb991`)
 
 # 2026-05-13 — Phase 2 Slice 2 (B1): Rate Limiting on Auth Endpoints ✅
 
-Status: COMPLETE (2026-05-13T16:45:00Z)  
-Tests: 15/15 B1 specific PASS  
+Status: COMPLETE (2026-05-13T16:45:00Z)
+Tests: 15/15 B1 specific PASS
 Committed: dev branch (`8164fecb`)
 
 ## Slice 2 Summary
@@ -1840,8 +2299,8 @@ Committed: dev branch (`8164fecb`)
 
 # 2026-05-13 — Phase 2 Slice 1 (A4-A5): HTTP Status Codes + Standard Error Envelope ✅
 
-Status: COMPLETE (2026-05-13T15:30:00Z)  
-Tests: 16/16 A4-A5 specific + 49/49 integration suite PASS  
+Status: COMPLETE (2026-05-13T15:30:00Z)
+Tests: 16/16 A4-A5 specific + 49/49 integration suite PASS
 Ready for: `git add && git commit && git push origin dev`
 
 ## Slice 1 Summary
@@ -2000,7 +2459,7 @@ Completed today:
   - Created `send_password_reset_email()` task for password reset
   - Both tasks have automatic retry with exponential backoff (max 3 retries)
   - Email delivery no longer blocks API responses
-  
+
 - **Views Refactoring** (identity_access/views_auth.py):
   - `register_view`: now calls `send_email_verification_token.delay()`
   - `password_reset_request_view`: now calls `send_password_reset_email.delay()`
@@ -2042,19 +2501,19 @@ Completed today:
 - **Identity Access**: Email verification logging
   - Changed: `except Exception: pass` → logger.error() with email context
   - File: `views_auth.py` line 543
-  
+
 - **Market Serving**: Cache operation logging (4 locations)
   - Added: logging import
   - Changed: silent cache exceptions → logger.warning with operation context
   - Files: `views.py` lines 58, 69, 108, 119
   - Impact: Cache failures now visible for debugging
-  
+
 - **Advisory**: Audit logging
   - Added: logging import
   - Changed: `except Exception: pass` → logger.error()
   - File: `views.py` line 88
   - Impact: Audit write failures logged without blocking manual triggers
-  
+
 - **Data Ingest**: Backfill parsing logging
   - Changed: silent row skip → logger.debug() + continue
   - File: `tasks.py` line 90
@@ -2087,7 +2546,7 @@ Completed today:
   - Token generation, validation, mark-used lifecycle
   - Cleanup utility for expired tokens
   - Migration `0005_passwordresettoken.py` applied successfully
-  
+
 - **Views Update**: `password_reset_request_view` + `password_reset_confirm_view`
   - Replaced in-memory `_PASSWORD_RESET_TOKENS` dict with DB persistence
   - Changed `fail_silently=True` → `False` (exception logging enabled)
@@ -2335,21 +2794,21 @@ Operational note:
 
 # 2026-05-13 — SaaS Full Independence Cutover (C1–C7) ✅ PRODUCTION APPROVED
 
-**Status**: ✅ **PRODUCTION LIVE** — All routes native (core-api:8100 only); backend:8000 decommissioned  
-**Decision**: Gate F (shadow run) skipped — greenfield deployment, no end-user data  
-**Gate G**: Tech Lead approval granted — SaaS model authorized for frontend development  
+**Status**: ✅ **PRODUCTION LIVE** — All routes native (core-api:8100 only); backend:8000 decommissioned
+**Decision**: Gate F (shadow run) skipped — greenfield deployment, no end-user data
+**Gate G**: Tech Lead approval granted — SaaS model authorized for frontend development
 
 **Scope**: Migrate 46 frontend routes from legacy bridge (backend:8000) to native core-api:8100 implementation
 
 **Summary**:
 - **C1** (Queue Routing): realtime_prefetch domain configured for price-board tasks ✅
 - **C2** (Realtime Views): 9 native views (ticker, whale-feed, breadth, rvol, etc.) — bridge removed ✅
-- **C3** (Stock-Mgmt Views): 21 native views (technicals, overview, chart, order-flow, advisory delegation) — bridge removed ✅  
+- **C3** (Stock-Mgmt Views): 21 native views (technicals, overview, chart, order-flow, advisory delegation) — bridge removed ✅
 - **C4** (Portfolio Analytics): 16 native views (holdings aggregation, NAV curve, allocation, P&L) — real computation ✅
 - **C5** (Auth Verify): Already native (no changes) ✅
 - **C6** (Misc Stubs): Already stubbed (no changes) ✅
 - **C7** (Decommission): legacy_http_bridge.py deleted; bridge classes removed; backend services commented ✅
-- **Evidence**: `CUT-C1-C7-EXECUTION-EVIDENCE-20260513.md`  
+- **Evidence**: `CUT-C1-C7-EXECUTION-EVIDENCE-20260513.md`
 - **Approval**: `GATE-G-PRODUCTION-APPROVAL-SAAS-CUTOVER-20260513.md`
 
 **Next Phase**: Frontend developers start coding against core-api:8100 immediately (46 routes available)
@@ -7890,7 +8349,7 @@ Validation:
 # 2026-04-24cm: Remove redundant lines from Whale Analytics info panel
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - loại bỏ 3 dòng khỏi info panel tóm tắt)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cm)
-**Date**: 2026-04-23  
+**Date**: 2026-04-23
 **Status**: Whale Service Phase 5 Complete ✅ (E2E Integration Finished)
 
 ---
@@ -9998,8 +10457,8 @@ Validation:
 
 ### AI Advisory Runtime Configuration (prompt_config v2) - COMPLETE ✅
 
-**Milestone:** Canonical prompt_config support with 3 new context builders  
-**Duration:** 2026-04-18 ~14:00-15:30 UTC+7  
+**Milestone:** Canonical prompt_config support with 3 new context builders
+**Duration:** 2026-04-18 ~14:00-15:30 UTC+7
 **Result:** All 9 regression tests passing, deployed to dev
 
 **Feature Summary:**
@@ -10058,8 +10517,8 @@ Validation:
 
 ### REALTIME ENGINE STABILIZATION - PHASES 0-5 COMPLETE ✅
 
-**Milestone:** Phase 5 Extended Soak Test [PASS] - Ready for deploy gate  
-**Duration:** 2026-04-17 10:04-10:05 UTC+7  
+**Milestone:** Phase 5 Extended Soak Test [PASS] - Ready for deploy gate
+**Duration:** 2026-04-17 10:04-10:05 UTC+7
 **Result:** All pass criteria met
 
 **Soak Test Summary:**
@@ -10101,7 +10560,7 @@ Validation:
 
 **Root Cause:** Backend declared `_SYSTEM_PRICE_UNIT='VND'` but system expected `THOUSAND_VND`. Prices from different sources (vnbroker KBS/VCI, realtime snapshot, intraday tick) arrived in different units. Frontend created 3 separate heuristic normalization functions to reverse-engineer correct unit.
 
-**Solution Architecture:** 
+**Solution Architecture:**
 - Phase 0: New canonical module (`price_units.py`) with QuotePrice dataclass and conversion helpers
 - Phase 1: Adapter standardization - ALL adapter outputs now guarantee THOUSAND_VND unit with metadata seal
 - Phase 2: Services layer correction - `_SYSTEM_PRICE_UNIT` fixed to `THOUSAND_VND`, integrated in `fetch_and_save_daily_prices`
@@ -10129,7 +10588,7 @@ Validation:
 - ✅ `PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md` (executive update)
 - ✅ `RELEASE_SNAPSHOT_PRICE_UNIT_CANONICAL_20260416.md` (release snapshot for QA sign-off)
 
-**Status:** 
+**Status:**
 - Phase 0: ✅ COMPLETE
 - Phase 1: ✅ COMPLETE
 - Phase 2: ✅ COMPLETE
@@ -11157,7 +11616,7 @@ Validation:
 ## ✅ COMPLETED TODAY (Day 1)
 
 ### ✅ Task 1.1: Code Review Watchlist (Lines 100-400)
-**Status**: ✅ VERIFIED  
+**Status**: ✅ VERIFIED
 **Key Findings**:
 - ✅ Imports hook: `import useRealtimeFeed from '../hooks/useRealtimeFeed'` (Line 15)
 - ✅ Aggregates 3 symbol sources correctly
@@ -11167,7 +11626,7 @@ Validation:
 - ✅ Zero WebSocket logic found
 
 ### ✅ Task 1.2: Code Review Dashboard Component
-**Status**: ✅ VERIFIED  
+**Status**: ✅ VERIFIED
 **Key Findings**:
 - ✅ Imports hook correctly
 - ✅ Aggregates holdings + tracked symbols
@@ -11177,7 +11636,7 @@ Validation:
 - ✅ Zero WebSocket logic found
 
 ### ✅ Task 1.3: Global Search - Zero Duplication
-**Status**: ✅ VERIFIED  
+**Status**: ✅ VERIFIED
 **Test Results**:
 ```
 new WebSocket        → Only in: hooks/useRealtimeFeed.js ✅
@@ -11240,7 +11699,7 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 ## ⏳ REMAINING
 
 ### Task 1.4: Verify Subscription Patterns & Cleanup
-**Est. Time**: 1.5 hours  
+**Est. Time**: 1.5 hours
 **Action Items**:
 - [ ] Verify Watchlist subscription: groups + tracked + alerts
   ```
@@ -11418,7 +11877,7 @@ Delta highlights:
 
 ---
 
-**Last Updated**: 2026-04-03 11:20  
-**Next Update**: after Redis-backed validation  
+**Last Updated**: 2026-04-03 11:20
+**Next Update**: after Redis-backed validation
 **Target**: close Sprint 12 validation checklist
 

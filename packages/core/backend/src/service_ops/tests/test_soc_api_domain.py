@@ -1,6 +1,9 @@
 """Focused SOC domain API contract tests for the current native routes."""
 
 from decimal import Decimal
+import json
+
+from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -15,6 +18,7 @@ from service_ops.models import (
     ScrapeMatrix,
     ServiceConfig,
     ServiceDefinition,
+    ServiceHealth,
     ServiceRunLog,
 )
 from service_ops.registry import (
@@ -25,6 +29,15 @@ from service_ops.registry import (
 )
 
 User = get_user_model()
+
+
+def _load_openapi_schema(response):
+    try:
+        return json.loads(response.content)
+    except json.JSONDecodeError:
+        import yaml
+
+        return yaml.safe_load(response.content)
 
 
 class SOCAdminApiTestCase(TestCase):
@@ -221,8 +234,55 @@ class VnbrokerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(ownership_response.json()['domain'], 'vnbroker')
         self.assertTrue(ownership_response.json()['can_apply'])
 
+    def test_vnbroker_health_endpoint_returns_unknown_snapshot_when_missing(self):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
+        ServiceHealth.objects.filter(service=service).delete()
+
+        response = self.client.get('/api/soc/vnbroker/health/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['service_key'], SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
+        self.assertEqual(payload['status'], 'unknown')
+        self.assertEqual(payload['detail']['message'], 'Health record not found')
+
+    def test_vnbroker_routes_appear_in_openapi_schema(self):
+        response = self.client.get('/core/v1/schema/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        schema = _load_openapi_schema(response)
+
+        config_path = schema['paths']['/api/soc/vnbroker/config/']
+        preview_path = schema['paths']['/api/soc/vnbroker/config/preview/']
+        health_path = schema['paths']['/api/soc/vnbroker/health/']
+        test_connection_path = schema['paths']['/api/soc/vnbroker/test-connection/']
+
+        self.assertEqual(config_path['get']['summary'], 'Lấy runtime config VNBroker')
+        self.assertEqual(config_path['post']['summary'], 'Apply runtime config VNBroker')
+        self.assertIn('requestBody', config_path['post'])
+        self.assertEqual(preview_path['post']['summary'], 'Preview runtime config VNBroker')
+        self.assertIn('requestBody', preview_path['post'])
+        self.assertEqual(health_path['get']['summary'], 'Lấy health snapshot VNBroker')
+        self.assertEqual(test_connection_path['post']['summary'], 'Kiểm tra kết nối provider VNBroker')
+        self.assertIn('requestBody', test_connection_path['post'])
+        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}])
+
 
 class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
+    def test_prefetch_default_config_response_has_stable_metadata(self):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'])
+        ServiceConfig.objects.filter(service=service).delete()
+
+        response = self.client.get('/api/soc/prefetch/config/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['service_key'], SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'])
+        self.assertEqual(payload['config_schema_version'], '1.0')
+        self.assertEqual(payload['applied_by'], 'system')
+        self.assertTrue(payload['is_current'])
+        self.assertIn('active_profile', payload['config_payload'])
+
     def test_apply_prefetch_config_updates_schedule_and_universe(self):
         apply_response = self.client.post(
             '/api/soc/prefetch/config/',
@@ -324,6 +384,34 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
             ).exists()
         )
 
+    def test_prefetch_routes_appear_in_openapi_schema(self):
+        response = self.client.get('/core/v1/schema/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        schema = _load_openapi_schema(response)
+
+        config_path = schema['paths']['/api/soc/prefetch/config/']
+        profiles_path = schema['paths']['/api/soc/prefetch/config/profiles/']
+        cache_status_path = schema['paths']['/api/soc/prefetch/cache-status/']
+        purge_cache_path = schema['paths']['/api/soc/prefetch/purge-cache/']
+        warm_now_path = schema['paths']['/api/soc/prefetch/warm-now/']
+        groups_path = schema['paths']['/api/soc/prefetch/universe-groups/']
+        schedule_path = schema['paths']['/api/soc/prefetch/task-schedule/']
+        ownership_path = schema['paths']['/api/soc/prefetch/ownership/']
+
+        self.assertEqual(config_path['get']['summary'], 'Lấy runtime config Prefetch')
+        self.assertEqual(config_path['post']['summary'], 'Apply runtime config Prefetch')
+        self.assertIn('requestBody', config_path['post'])
+        self.assertEqual(profiles_path['get']['summary'], 'Lấy profile thời gian Prefetch')
+        self.assertEqual(cache_status_path['get']['summary'], 'Lấy cache status Prefetch')
+        self.assertEqual(purge_cache_path['post']['summary'], 'Purge cache Prefetch')
+        self.assertIn('requestBody', purge_cache_path['post'])
+        self.assertEqual(warm_now_path['post']['summary'], 'Queue warm-now Prefetch')
+        self.assertEqual(groups_path['get']['summary'], 'Lấy universe groups Prefetch')
+        self.assertEqual(schedule_path['get']['summary'], 'Lấy task schedule Prefetch')
+        self.assertEqual(ownership_path['get']['summary'], 'Lấy ownership Prefetch')
+        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}])
+
 
 class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
     @classmethod
@@ -343,6 +431,20 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
             source_ref='soc-domain-signal-alert',
             metadata={'rule_name': 'price_change_pct'},
         )
+
+    def test_screener_default_config_response_has_stable_metadata(self):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['screener'])
+        ServiceConfig.objects.filter(service=service).delete()
+
+        response = self.client.get('/api/soc/screener/config/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['service_key'], SOC_DOMAIN_PRIMARY_SERVICE_KEYS['screener'])
+        self.assertEqual(payload['config_schema_version'], '1.0')
+        self.assertEqual(payload['applied_by'], 'system')
+        self.assertTrue(payload['is_current'])
+        self.assertIn('rules', payload['config_payload'])
 
     def test_rules_endpoint_uses_current_screener_config(self):
         apply_response = self.client.post(
@@ -422,6 +524,35 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertEqual(response.json()['status'], 'queued')
 
+    def test_screener_routes_appear_in_openapi_schema(self):
+        response = self.client.get('/core/v1/schema/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        schema = _load_openapi_schema(response)
+
+        config_path = schema['paths']['/api/soc/screener/config/']
+        rules_path = schema['paths']['/api/soc/screener/rules/']
+        results_path = schema['paths']['/api/soc/screener/results/']
+        history_path = schema['paths']['/api/soc/screener/alert-history/']
+        manual_scan_path = schema['paths']['/api/soc/screener/manual-scan/']
+        rules_run_path = schema['paths']['/api/soc/screener/rules/run/']
+        ownership_path = schema['paths']['/api/soc/screener/ownership/']
+
+        self.assertEqual(config_path['get']['summary'], 'Lấy runtime config Screener')
+        self.assertEqual(config_path['post']['summary'], 'Apply runtime config Screener')
+        self.assertIn('requestBody', config_path['post'])
+        self.assertEqual(rules_path['get']['summary'], 'Lấy rules Screener')
+        self.assertEqual(rules_path['post']['summary'], 'Tạo rule Screener')
+        self.assertIn('requestBody', rules_path['post'])
+        self.assertEqual(results_path['get']['summary'], 'Lấy kết quả scan Screener')
+        self.assertEqual(history_path['get']['summary'], 'Lấy alert history Screener')
+        self.assertEqual(manual_scan_path['post']['summary'], 'Queue manual scan Screener')
+        self.assertIn('requestBody', manual_scan_path['post'])
+        self.assertEqual(rules_run_path['post']['summary'], 'Queue rules run Screener')
+        self.assertIn('requestBody', rules_run_path['post'])
+        self.assertEqual(ownership_path['get']['summary'], 'Lấy ownership Screener')
+        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}])
+
 
 class MatrixDomainApiTestCase(SOCAdminApiTestCase):
     def test_start_monitor_and_abort_matrix_cycle(self):
@@ -468,8 +599,116 @@ class MatrixDomainApiTestCase(SOCAdminApiTestCase):
         self.assertTrue(providers['vci']['in_active_cycle'])
         self.assertFalse(providers['kbs']['in_active_cycle'])
 
+    def test_matrix_routes_appear_in_openapi_schema(self):
+        response = self.client.get('/core/v1/schema/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        schema = _load_openapi_schema(response)
+
+        cycles_path = schema['paths']['/api/soc/matrix/cycles/']
+        start_path = schema['paths']['/api/soc/matrix/cycles/start/']
+        cells_path = schema['paths']['/api/soc/matrix/cycles/{cycle_id}/cells/']
+        abort_path = schema['paths']['/api/soc/matrix/cycles/{cycle_id}/abort/']
+        providers_path = schema['paths']['/api/soc/matrix/providers/']
+        monitor_path = schema['paths']['/api/soc/matrix/monitor/']
+
+        self.assertEqual(cycles_path['get']['summary'], 'Liệt kê matrix cycles')
+        cycle_parameters = {parameter['name'] for parameter in cycles_path['get']['parameters']}
+        self.assertIn('page', cycle_parameters)
+        self.assertIn('page_size', cycle_parameters)
+        self.assertEqual(start_path['post']['summary'], 'Khởi động matrix cycle')
+        self.assertIn('requestBody', start_path['post'])
+        self.assertEqual(cells_path['get']['summary'], 'Liệt kê matrix cells')
+        self.assertEqual(abort_path['post']['summary'], 'Abort matrix cycle')
+        self.assertEqual(providers_path['get']['summary'], 'Lấy matrix providers')
+        self.assertEqual(monitor_path['get']['summary'], 'Lấy matrix monitor')
+        monitor_parameters = {parameter['name'] for parameter in monitor_path['get']['parameters']}
+        self.assertIn('cycle_id', monitor_parameters)
+        self.assertEqual(start_path['post']['security'], [{'CorePATBearer': []}])
+
+
+class OverviewDomainApiTestCase(SOCAdminApiTestCase):
+    def test_overview_summary_endpoint_returns_grouped_health_snapshot(self):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
+        ServiceHealth.objects.update_or_create(
+            service=service,
+            defaults={
+                'status': 'healthy',
+                'last_success_at': timezone.now(),
+                'consecutive_failures': 0,
+                'avg_response_ms': 21.5,
+                'detail': {'source': 'test'},
+            },
+        )
+
+        response = self.client.get('/api/soc/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('generated_at', payload)
+        self.assertGreater(payload['summary']['total'], 0)
+        services_by_key = {item['service_key']: item for item in payload['services']}
+        self.assertIn(service.service_key, services_by_key)
+        self.assertEqual(services_by_key[service.service_key]['status'], 'healthy')
+
+    def test_service_health_check_endpoint_queues_manual_probe_run_log(self):
+        service_key = SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker']
+
+        response = self.client.post(f'/api/soc/services/{service_key}/health-check/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        payload = response.json()
+        self.assertEqual(payload['service_key'], service_key)
+        self.assertEqual(payload['status'], 'queued')
+        self.assertTrue(
+            ServiceRunLog.objects.filter(
+                service__service_key=service_key,
+                status='queued',
+                input_summary__trigger='manual_health_check',
+            ).exists()
+        )
+
+    def test_overview_routes_appear_in_openapi_schema(self):
+        response = self.client.get('/core/v1/schema/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        schema = _load_openapi_schema(response)
+
+        overview_path = schema['paths']['/api/soc/overview/']
+        services_path = schema['paths']['/api/soc/services/']
+        health_check_path = schema['paths']['/api/soc/services/{service_key}/health-check/']
+
+        self.assertEqual(overview_path['get']['summary'], 'Lấy tổng quan sức khỏe SOC')
+        self.assertEqual(services_path['get']['summary'], 'Liệt kê danh mục service SOC')
+        self.assertEqual(health_check_path['post']['summary'], 'Queue health check thủ công cho service SOC')
+        service_parameters = {parameter['name'] for parameter in services_path['get']['parameters']}
+        self.assertIn('page', service_parameters)
+        self.assertIn('page_size', service_parameters)
+        self.assertEqual(health_check_path['post']['security'], [{'CorePATBearer': []}])
+
 
 class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
+    def test_operator_canonical_dataops_routes_appear_in_openapi_schema(self):
+        response = self.client.get('/core/v1/schema/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        schema = _load_openapi_schema(response)
+
+        runtime_config_path = schema['paths']['/core/v1/operator/scraping/dataops/runtime-config/']
+        planner_preview_path = schema['paths']['/core/v1/operator/scraping/dataops/planner/preview/']
+        security_schemes = schema['components']['securitySchemes']
+
+        self.assertEqual(runtime_config_path['get']['summary'], 'Lấy runtime config DataOps market-data')
+        self.assertEqual(runtime_config_path['post']['summary'], 'Apply runtime config DataOps market-data')
+        self.assertIn('requestBody', runtime_config_path['post'])
+        self.assertEqual(runtime_config_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(planner_preview_path['post']['summary'], 'Preview planner DataOps market-data')
+        self.assertIn('requestBody', planner_preview_path['post'])
+        self.assertIn('CorePATBearer', security_schemes)
+        self.assertEqual(security_schemes['CorePATBearer']['type'], 'http')
+        self.assertEqual(security_schemes['CorePATBearer']['scheme'], 'bearer')
+        self.assertEqual(security_schemes['CorePATBearer']['bearerFormat'], 'PAT')
+
     def test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload(self):
         service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
         ServiceConfig.objects.create(
@@ -494,6 +733,27 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
         self.assertTrue(payload['ownership']['can_apply'])
         self.assertIn('updated_at', payload)
+
+    def test_operator_canonical_runtime_config_endpoint_matches_soc_alias(self):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        ServiceConfig.objects.create(
+            service=service,
+            config_schema_version='1.0',
+            config_payload={
+                'decay_days': 13,
+                'hot_user_demand': {
+                    'poll_interval_seconds': 25,
+                    'max_batch_size': 55,
+                },
+            },
+            applied_by='test',
+        )
+
+        soc_response = self.client.get('/api/soc/dataops/runtime-config/')
+        canonical_response = self.client.get('/core/v1/operator/scraping/dataops/runtime-config/')
+
+        self.assertEqual(canonical_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(canonical_response.json(), soc_response.json())
 
     def test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution(self):
         GlobalSymbolRegistry.objects.bulk_create([
@@ -593,6 +853,200 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(payload['top_gaps'][0]['next_recommended_action'], 'backfill_history')
         self.assertIn('updated_at', payload)
 
+    def test_run_logs_endpoint_returns_paginated_market_data_parent_runs(self):
+        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        history_service = get_registered_service('vnbroker_history')
+
+        queued_log = ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='queued',
+            input_summary={
+                'mode': 'missing_only',
+                'reason': 'operator_manual_run',
+                'execution_mode': 'async',
+                'plan_summary': {
+                    'planned_items': 2,
+                    'skipped_items': 1,
+                },
+            },
+            output_summary={},
+        )
+        success_log = ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='success',
+            input_summary={
+                'mode': 'missing_only',
+                'reason': 'scheduler_hot_tier',
+                'execution_mode': 'async',
+                'plan_summary': {
+                    'planned_items': 3,
+                    'skipped_items': 0,
+                },
+            },
+            output_summary={
+                'summary': {
+                    'planned_items': 3,
+                    'skipped_items': 0,
+                    'inserted': 2,
+                    'updated': 1,
+                    'skipped_existing': 0,
+                    'failed': 0,
+                },
+            },
+        )
+        ignored_log = ServiceRunLog.objects.create(
+            service=history_service,
+            status='success',
+            input_summary={'mode': 'missing_only'},
+            output_summary={'summary': {'planned_items': 99}},
+        )
+
+        response = self.client.get('/api/soc/dataops/run-logs/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['count'], 2)
+        results_by_run_id = {item['run_id']: item for item in payload['results']}
+        self.assertEqual(results_by_run_id[f'md-run-{queued_log.id}']['summary']['planned_items'], 2)
+        self.assertEqual(results_by_run_id[f'md-run-{queued_log.id}']['summary']['skipped_items'], 1)
+        self.assertEqual(results_by_run_id[f'md-run-{success_log.id}']['summary']['inserted'], 2)
+        self.assertEqual(results_by_run_id[f'md-run-{success_log.id}']['summary']['updated'], 1)
+        self.assertEqual(results_by_run_id[f'md-run-{success_log.id}']['reason'], 'scheduler_hot_tier')
+        self.assertNotIn(f'md-run-{ignored_log.id}', results_by_run_id)
+
+    def test_planner_preview_endpoint_returns_missing_only_plan_and_skips(self):
+        registry = GlobalSymbolRegistry.objects.create(
+            symbol='FPT',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            freshness_state_summary='stale',
+            coverage_state_summary='missing',
+        )
+        GlobalSymbolCoverage.objects.bulk_create([
+            GlobalSymbolCoverage(
+                registry=registry,
+                dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
+                next_recommended_action='hydrate_daily_prices',
+            ),
+            GlobalSymbolCoverage(
+                registry=registry,
+                dataset=GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH,
+                next_recommended_action='coverage_ok',
+            ),
+        ])
+
+        response = self.client.post(
+            '/api/soc/dataops/planner/preview/',
+            {
+                'symbols': ['FPT'],
+                'datasets': ['daily_prices', 'price_board_snapshot'],
+                'mode': 'missing_only',
+                'force_refresh': False,
+                'reason': 'manual_preview',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['summary']['planned_items'], 1)
+        self.assertEqual(payload['summary']['skipped_items'], 1)
+        self.assertEqual(payload['items'][0]['symbol'], 'FPT')
+        self.assertEqual(payload['items'][0]['dataset'], 'daily_prices')
+        self.assertEqual(payload['skipped'][0]['dataset'], 'price_board_snapshot')
+        self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
+
+    def test_operator_canonical_planner_preview_matches_soc_alias(self):
+        registry = GlobalSymbolRegistry.objects.create(
+            symbol='FPT',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            freshness_state_summary='stale',
+            coverage_state_summary='missing',
+        )
+        GlobalSymbolCoverage.objects.bulk_create([
+            GlobalSymbolCoverage(
+                registry=registry,
+                dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
+                next_recommended_action='hydrate_daily_prices',
+            ),
+            GlobalSymbolCoverage(
+                registry=registry,
+                dataset=GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH,
+                next_recommended_action='coverage_ok',
+            ),
+        ])
+
+        request_payload = {
+            'symbols': ['FPT'],
+            'datasets': ['daily_prices', 'price_board_snapshot'],
+            'mode': 'missing_only',
+            'force_refresh': False,
+            'reason': 'manual_preview',
+        }
+
+        soc_response = self.client.post(
+            '/api/soc/dataops/planner/preview/',
+            request_payload,
+            format='json',
+        )
+        canonical_response = self.client.post(
+            '/core/v1/operator/scraping/dataops/planner/preview/',
+            request_payload,
+            format='json',
+        )
+
+        self.assertEqual(canonical_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(canonical_response.json(), soc_response.json())
+
+    @patch('data_ingest.tasks.run_global_market_data_planner.apply_async', return_value=Mock(id='soc-dataops-planner-task'))
+    def test_planner_run_endpoint_creates_audited_manual_on_demand_run(self, planner_task_mock):
+        registry = GlobalSymbolRegistry.objects.create(
+            symbol='HPG',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.WARM,
+            freshness_state_summary='stale',
+            coverage_state_summary='missing',
+        )
+        GlobalSymbolCoverage.objects.create(
+            registry=registry,
+            dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+            freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
+            next_recommended_action='hydrate_daily_prices',
+        )
+
+        response = self.client.post(
+            '/api/soc/dataops/planner/run/',
+            {
+                'symbols': ['HPG'],
+                'datasets': ['daily_prices'],
+                'mode': 'missing_only',
+                'force_refresh': False,
+                'execution_mode': 'async',
+                'reason': 'operator_manual_run',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payload = response.json()
+        self.assertTrue(payload['queued'])
+        self.assertEqual(payload['status'], 'queued')
+        self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
+        run_log = ServiceRunLog.objects.get(pk=payload['service_run_log_id'])
+        self.assertEqual(run_log.input_summary['trigger'], 'soc.dataops.planner.run')
+        self.assertEqual(run_log.input_summary['planner_queue'], 'manual_on_demand')
+        self.assertEqual(run_log.input_summary['write_surface'], 'soc_dataops')
+        self.assertEqual(run_log.input_summary['requested_by'], self.user.username)
+        planner_task_mock.assert_called_once_with(
+            kwargs={'service_run_log_id': run_log.id},
+            queue='manual_on_demand',
+        )
+
     def test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides(self):
         GlobalSymbolRegistry.objects.create(
             symbol='VCI',
@@ -664,6 +1118,37 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
             ConfigChangeAudit.objects.filter(
                 service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
                 action='apply',
+            ).exists()
+        )
+
+    def test_operator_canonical_runtime_config_endpoint_applies_market_data_config(self):
+        response = self.client.post(
+            '/core/v1/operator/scraping/dataops/runtime-config/',
+            {
+                'config_payload': {
+                    'decay_days': 8,
+                    'hot_user_demand': {
+                        'poll_interval_seconds': 18,
+                        'max_batch_size': 38,
+                    },
+                    'warm_liquid_market': {
+                        'poll_interval_seconds': 150,
+                        'max_batch_size': 105,
+                    },
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payload = response.json()
+        self.assertEqual(payload['config']['decay_days'], 8)
+        self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
+        self.assertTrue(
+            ServiceConfig.objects.filter(
+                service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+                is_current=True,
+                config_payload__decay_days=8,
             ).exists()
         )
 

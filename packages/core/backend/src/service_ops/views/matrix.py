@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from django.db.models import Count
-from rest_framework import status
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers, status
 from rest_framework.response import Response
 
 from ..matrix_coordinator import (
@@ -24,6 +26,109 @@ from ..provider_catalog import (
 from ..serializers import ScrapeMatrixCellSerializer, ScrapeMatrixSerializer
 from ..tasks import run_scrape_cycle
 from ..views.base import SOCBaseView
+
+
+PAGINATION_PARAMETERS = [
+    OpenApiParameter(
+        name='page',
+        type=OpenApiTypes.INT,
+        location=OpenApiParameter.QUERY,
+        required=False,
+        description='Trang kết quả cần lấy.',
+    ),
+    OpenApiParameter(
+        name='page_size',
+        type=OpenApiTypes.INT,
+        location=OpenApiParameter.QUERY,
+        required=False,
+        description='Số phần tử mỗi trang.',
+    ),
+]
+
+
+class MatrixProviderStatusSerializer(serializers.Serializer):
+    provider = serializers.CharField()
+    label = serializers.CharField()
+    enabled = serializers.BooleanField()
+    in_active_cycle = serializers.BooleanField()
+    runtime_ready = serializers.BooleanField()
+    credential_mode = serializers.CharField()
+    requires_runtime_credentials = serializers.BooleanField()
+    required_runtime_envs = serializers.ListField(child=serializers.CharField())
+    runtime_gate = serializers.CharField()
+    readiness_reason = serializers.CharField()
+    default_selected = serializers.BooleanField()
+    supports_matrix = serializers.BooleanField()
+    supports_vnbroker = serializers.BooleanField()
+
+
+class MatrixCellsSummarySerializer(serializers.Serializer):
+    pending = serializers.IntegerField()
+    claimed = serializers.IntegerField()
+    working = serializers.IntegerField()
+    done = serializers.IntegerField()
+    failed = serializers.IntegerField()
+    skipped = serializers.IntegerField()
+
+
+class MatrixCycleSummarySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    cycle_id = serializers.CharField()
+    status = serializers.CharField()
+    providers = serializers.ListField(child=serializers.CharField())
+    started_at = serializers.DateTimeField(required=False, allow_null=True)
+    completed_at = serializers.DateTimeField(required=False, allow_null=True)
+    total_rows = serializers.IntegerField()
+    done_rows = serializers.IntegerField()
+    failed_rows = serializers.IntegerField()
+    progress_pct = serializers.FloatField()
+
+
+class MatrixCycleDetailResponseSerializer(MatrixCycleSummarySerializer):
+    cells_summary = MatrixCellsSummarySerializer()
+    cells = serializers.ListField(child=serializers.JSONField())
+    symbol_groups = serializers.ListField(child=serializers.JSONField())
+    reused_existing_cycle = serializers.BooleanField(required=False)
+    dispatch_task_id = serializers.CharField(required=False, allow_blank=True)
+
+
+class MatrixCycleListResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(required=False, allow_null=True)
+    previous = serializers.CharField(required=False, allow_null=True)
+    results = MatrixCycleSummarySerializer(many=True)
+
+
+class MatrixCellListResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(required=False, allow_null=True)
+    previous = serializers.CharField(required=False, allow_null=True)
+    results = serializers.ListField(child=serializers.JSONField())
+
+
+class MatrixCycleStartRequestSerializer(serializers.Serializer):
+    providers = serializers.ListField(child=serializers.CharField(), required=False)
+    symbol_group_ids = serializers.ListField(child=serializers.CharField(), required=False)
+
+
+class MatrixProvidersResponseSerializer(serializers.Serializer):
+    providers = MatrixProviderStatusSerializer(many=True)
+    default_providers = serializers.ListField(child=serializers.CharField())
+    ready_providers = serializers.ListField(child=serializers.CharField())
+    blocked_providers = serializers.ListField(child=serializers.CharField())
+
+
+class MatrixMonitorResponseSerializer(serializers.Serializer):
+    cycle_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    status = serializers.CharField()
+    progress_pct = serializers.FloatField()
+    total_rows = serializers.IntegerField()
+    done_rows = serializers.IntegerField()
+    failed_rows = serializers.IntegerField()
+    providers = serializers.ListField(child=serializers.CharField())
+    symbol_groups = serializers.ListField(child=serializers.JSONField())
+    cells_summary = MatrixCellsSummarySerializer()
+    cells = serializers.ListField(child=serializers.JSONField())
 
 
 def _serialize_cells_summary(matrix: ScrapeMatrix) -> dict:
@@ -53,6 +158,16 @@ def _serialize_cycle_detail(matrix: ScrapeMatrix) -> dict:
     return data
 
 
+@extend_schema(
+    summary='Liệt kê matrix cycles',
+    description='Trả về danh sách các matrix cycle theo phân trang chuẩn của SOC.',
+    parameters=PAGINATION_PARAMETERS,
+    responses={
+        200: MatrixCycleListResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class MatrixCycleListView(SOCBaseView):
     """GET /api/soc/matrix/cycles/"""
 
@@ -65,6 +180,16 @@ class MatrixCycleListView(SOCBaseView):
         return Response(ScrapeMatrixSerializer(queryset, many=True).data)
 
 
+@extend_schema(
+    summary='Lấy chi tiết matrix cycle',
+    description='Trả về chi tiết một matrix cycle bao gồm cells và cells summary.',
+    responses={
+        200: MatrixCycleDetailResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class MatrixCycleDetailView(SOCBaseView):
     """GET /api/soc/matrix/cycles/{cycle_id}/"""
 
@@ -81,6 +206,18 @@ class MatrixCycleDetailView(SOCBaseView):
         return Response(_serialize_cycle_detail(matrix))
 
 
+@extend_schema(
+    summary='Khởi động matrix cycle',
+    description='Tạo matrix cycle mới hoặc reuse cycle đang active nếu đã tồn tại.',
+    request=MatrixCycleStartRequestSerializer,
+    responses={
+        200: MatrixCycleDetailResponseSerializer,
+        201: MatrixCycleDetailResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class MatrixCycleStartView(SOCBaseView):
     """POST /api/soc/matrix/cycles/start/"""
 
@@ -130,6 +267,17 @@ class MatrixCycleStartView(SOCBaseView):
         return Response(payload, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='Liệt kê matrix cells',
+    description='Trả về danh sách cells của một matrix cycle theo phân trang chuẩn.',
+    parameters=PAGINATION_PARAMETERS,
+    responses={
+        200: MatrixCellListResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class MatrixCellListView(SOCBaseView):
     """GET /api/soc/matrix/cycles/{cycle_id}/cells/"""
 
@@ -152,6 +300,17 @@ class MatrixCellListView(SOCBaseView):
         return Response(ScrapeMatrixCellSerializer(queryset, many=True).data)
 
 
+@extend_schema(
+    summary='Abort matrix cycle',
+    description='Abort một matrix cycle hiện có và mark các cells chưa xong thành skipped.',
+    request=None,
+    responses={
+        200: MatrixCycleDetailResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class MatrixCycleAbortView(SOCBaseView):
     """POST /api/soc/matrix/cycles/{cycle_id}/abort/"""
 
@@ -169,6 +328,15 @@ class MatrixCycleAbortView(SOCBaseView):
         return Response(_serialize_cycle_detail(matrix))
 
 
+@extend_schema(
+    summary='Lấy matrix providers',
+    description='Trả về provider catalog cho matrix, bao gồm active providers của cycle hiện tại và readiness metadata.',
+    responses={
+        200: MatrixProvidersResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class MatrixProvidersView(SOCBaseView):
     """GET /api/soc/matrix/providers/"""
 
@@ -192,6 +360,24 @@ class MatrixProvidersView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='Lấy matrix monitor',
+    description='Trả về monitor snapshot của cycle hiện tại hoặc cycle được chỉ định qua query param `cycle_id`.',
+    parameters=[
+        OpenApiParameter(
+            name='cycle_id',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description='Cycle ID cần theo dõi. Nếu bỏ trống, hệ thống lấy cycle active gần nhất.',
+        )
+    ],
+    responses={
+        200: MatrixMonitorResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class MatrixMonitorView(SOCBaseView):
     """GET /api/soc/matrix/monitor/"""
 

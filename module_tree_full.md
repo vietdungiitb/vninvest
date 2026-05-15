@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-15 14:34:53`
+Generated at: `2026-05-15 22:20:32`
 
 ## Summary
 
-- Total modules: 1199
+- Total modules: 1200
 - Python modules: 678
-- JS/TS modules: 521
-- Total classes: 1201
-- Total functions: 3195
-- Total top-level variables: 4762
+- JS/TS modules: 522
+- Total classes: 1311
+- Total functions: 3225
+- Total top-level variables: 4793
 
 ## Python Modules
 
@@ -2721,7 +2721,7 @@ Generated at: `2026-05-15 14:34:53`
 ### `packages/core/backend/src/data_ingest/tasks.py`
 
 - Functions:
-  - `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_classify_daily_price_rows`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_floor_intraday_bucket`, `_hydrate_intraday_symbols`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_resolve_history_days_from_window`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
+  - `_attach_ingest_run_to_service_run_log`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_classify_daily_price_rows`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_floor_intraday_bucket`, `_hydrate_intraday_symbols`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_days_from_window`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
 - Top-level variables:
   - `_HISTORY_PROVIDERS`, `_INTRADAY_BAR_TIMEFRAMES`, `_INTRADAY_PLAN_DATASETS`, `logger`
 
@@ -2785,6 +2785,7 @@ Generated at: `2026-05-15 14:34:53`
 
 - Classes:
   - `CorePATAuthentication` -> methods: `authenticate`, `authenticate_header`
+  - `CorePATAuthenticationScheme` -> methods: `get_security_definition`
 
 ### `packages/core/backend/src/identity_access/commercial_partner_views.py`
 
@@ -3445,9 +3446,9 @@ Generated at: `2026-05-15 14:34:53`
 ### `packages/core/backend/src/service_ops/dataops_market_data.py`
 
 - Functions:
-  - `_get_recovery_queryset_filter`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
+  - `_get_recovery_queryset_filter`, `_select_market_data_bootstrap_listing_symbols`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `ensure_market_data_system_default_baseline`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
 - Top-level variables:
-  - `DATAOPS_MARKET_DATA_DOMAIN`, `PRIORITY_TIER_TO_QUEUE_TIER`, `QUEUE_TIER_DATASETS`, `QUEUE_TIER_EXECUTION_QUEUES`, `QUEUE_TIER_ORDER`, `RECOVERY_COVERAGE_STATES`, `RECOVERY_FRESHNESS_STATES`
+  - `DATAOPS_MARKET_DATA_DOMAIN`, `LISTING_BOOTSTRAP_PROVIDER_SOURCES`, `PLANNABLE_FRESHNESS_STATES`, `PRIORITY_TIER_TO_QUEUE_TIER`, `QUEUE_TIER_DATASETS`, `QUEUE_TIER_EXECUTION_QUEUES`, `QUEUE_TIER_ORDER`, `RECOVERY_COVERAGE_STATES`, `RECOVERY_FRESHNESS_STATES`, `SYSTEM_DEFAULT_BOOTSTRAP_GROUP_IDS`, `SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID`, `logger`
 
 ### `packages/core/backend/src/service_ops/domain_configs/__init__.py`
 
@@ -3567,9 +3568,9 @@ Generated at: `2026-05-15 14:34:53`
 ### `packages/core/backend/src/service_ops/tasks.py`
 
 - Functions:
-  - `_create_child_run_log`, `_fetch_symbols_from_provider`, `_get_latest_queue_tier_run`, `_get_symbols_for_group`, `_mark_run_log_finished`, `_mark_run_log_running`, `_probe_service_health`, `_queue_tier_due`, `create_signal_job_run_log`, `health_check_all_services`, `run_market_data_queue_tier_scheduler`, `run_scrape_cycle`, `run_signal_session_facts_materialization`, `run_signal_unified_alert_materialization`, `run_signal_whale_materialization`, `run_signals_detection_workflow`, `scrape_cell_task`
+  - `_create_child_run_log`, `_fetch_symbols_from_provider`, `_get_latest_queue_tier_run`, `_get_queue_tier_stale_timeout_seconds`, `_get_symbols_for_group`, `_has_inflight_child_run`, `_is_celery_task_live`, `_mark_run_log_finished`, `_mark_run_log_running`, `_probe_service_health`, `_queue_tier_due`, `_recover_inflight_child_runs`, `_recover_linked_ingest_run`, `_recover_stale_queue_tier_run`, `create_signal_job_run_log`, `health_check_all_services`, `run_market_data_queue_tier_scheduler`, `run_scrape_cycle`, `run_signal_session_facts_materialization`, `run_signal_unified_alert_materialization`, `run_signal_whale_materialization`, `run_signals_detection_workflow`, `scrape_cell_task`
 - Top-level variables:
-  - `logger`
+  - `QUEUE_TIER_ORPHAN_GRACE_SECONDS`, `QUEUE_TIER_STALE_INFLIGHT_MIN_SECONDS`, `QUEUE_TIER_STALE_INFLIGHT_MULTIPLIER`, `logger`
 
 ### `packages/core/backend/src/service_ops/tests/__init__.py`
 
@@ -3578,13 +3579,16 @@ Generated at: `2026-05-15 14:34:53`
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
 
 - Classes:
-  - `DataOpsDomainApiTestCase` -> methods: `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`
-  - `MatrixDomainApiTestCase` -> methods: `test_matrix_providers_reflect_active_cycle`, `test_start_monitor_and_abort_matrix_cycle`
-  - `PrefetchDomainApiTestCase` -> methods: `test_apply_prefetch_config_updates_schedule_and_universe`, `test_prefetch_apply_alias_and_ownership_endpoint_match_contract`, `test_prefetch_warm_now_queues_run_log`, `test_profiles_cache_and_purge_endpoints_return_contract`
+  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`
+  - `MatrixDomainApiTestCase` -> methods: `test_matrix_providers_reflect_active_cycle`, `test_matrix_routes_appear_in_openapi_schema`, `test_start_monitor_and_abort_matrix_cycle`
+  - `OverviewDomainApiTestCase` -> methods: `test_overview_routes_appear_in_openapi_schema`, `test_overview_summary_endpoint_returns_grouped_health_snapshot`, `test_service_health_check_endpoint_queues_manual_probe_run_log`
+  - `PrefetchDomainApiTestCase` -> methods: `test_apply_prefetch_config_updates_schedule_and_universe`, `test_prefetch_apply_alias_and_ownership_endpoint_match_contract`, `test_prefetch_default_config_response_has_stable_metadata`, `test_prefetch_routes_appear_in_openapi_schema`, `test_prefetch_warm_now_queues_run_log`, `test_profiles_cache_and_purge_endpoints_return_contract`
   - `RegistryBootstrapTestCase` -> methods: `test_ensure_service_registry_recreates_canonical_rows`
-  - `ScreenerDomainApiTestCase` -> methods: `setUpTestData`, `test_manual_scan_creates_dispatch_run_log`, `test_results_and_history_use_runtime_signal_alerts`, `test_rules_endpoint_uses_current_screener_config`, `test_rules_run_alias_queues_manual_scan`, `test_screener_ownership_endpoint_returns_native_write_status`
+  - `ScreenerDomainApiTestCase` -> methods: `setUpTestData`, `test_manual_scan_creates_dispatch_run_log`, `test_results_and_history_use_runtime_signal_alerts`, `test_rules_endpoint_uses_current_screener_config`, `test_rules_run_alias_queues_manual_scan`, `test_screener_default_config_response_has_stable_metadata`, `test_screener_ownership_endpoint_returns_native_write_status`, `test_screener_routes_appear_in_openapi_schema`
   - `SOCAdminApiTestCase` -> methods: `setUp`, `setUpTestData`
-  - `VnbrokerDomainApiTestCase` -> methods: `test_get_vnbroker_config_returns_seeded_payload`, `test_post_vnbroker_config_creates_current_config_and_audit`, `test_vnbroker_apply_alias_and_ownership_endpoint_match_contract`, `test_vnbroker_apply_audit_captures_before_and_after_snapshots`, `test_vnbroker_preview_returns_validation_envelope`
+  - `VnbrokerDomainApiTestCase` -> methods: `test_get_vnbroker_config_returns_seeded_payload`, `test_post_vnbroker_config_creates_current_config_and_audit`, `test_vnbroker_apply_alias_and_ownership_endpoint_match_contract`, `test_vnbroker_apply_audit_captures_before_and_after_snapshots`, `test_vnbroker_health_endpoint_returns_unknown_snapshot_when_missing`, `test_vnbroker_preview_returns_validation_envelope`, `test_vnbroker_routes_appear_in_openapi_schema`
+- Functions:
+  - `_load_openapi_schema`
 - Top-level variables:
   - `User`
 
@@ -3612,8 +3616,10 @@ Generated at: `2026-05-15 14:34:53`
 
 - Classes:
   - `SignalsApiBaseTestCase` -> methods: `setUp`, `setUpTestData`
-  - `SignalsApiContractTestCase` -> methods: `test_apply_alias_remains_blocked_for_bridge_write_even_with_db_override`, `test_direct_apply_methods_on_config_route_are_blocked`, `test_get_signal_config_returns_bridge_write_metadata`, `test_preview_returns_validation_envelope_without_apply_permission`, `test_retention_materialization_universe_and_job_routes_return_contract`, `test_runtime_read_endpoints_return_current_payloads`, `test_summary_aggregates_alerts_and_events_from_current_session`
+  - `SignalsApiContractTestCase` -> methods: `test_apply_alias_remains_blocked_for_bridge_write_even_with_db_override`, `test_direct_apply_methods_on_config_route_are_blocked`, `test_get_signal_config_returns_bridge_write_metadata`, `test_preview_returns_validation_envelope_without_apply_permission`, `test_retention_materialization_universe_and_job_routes_return_contract`, `test_runtime_read_endpoints_return_current_payloads`, `test_signals_routes_appear_in_openapi_schema`, `test_summary_aggregates_alerts_and_events_from_current_session`
   - `SignalsAuthenticationTestCase` -> methods: `setUp`, `test_non_admin_user_is_forbidden`, `test_unauthenticated_requests_return_401`
+- Functions:
+  - `_load_openapi_schema`
 - Top-level variables:
   - `User`
 
@@ -3651,7 +3657,7 @@ Generated at: `2026-05-15 14:34:53`
 ### `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
 
 - Classes:
-  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
+  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty`, `test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists`, `test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately`, `test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent`, `test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
   - `VnbrokerAdapterTaskBridgeTestCase` -> methods: `test_fetch_daily_history_uses_requested_source_quote_class`, `test_fetch_listing_symbols_uses_requested_source_listing_adapter`, `test_fetch_price_board_snapshot_passes_explicit_source`, `test_fetch_realtime_price_uses_requested_source_quote_class`, `test_fetch_symbol_group_members_uses_requested_source_group`
 
 ### `packages/core/backend/src/service_ops/urls.py`
@@ -3672,23 +3678,50 @@ Generated at: `2026-05-15 14:34:53`
 ### `packages/core/backend/src/service_ops/views/dataops.py`
 
 - Classes:
+  - `DataOpsCoverageResponseSerializer`
+  - `DataOpsCoverageView` -> methods: `get`
+  - `DataOpsOwnershipSerializer`
+  - `DataOpsPlannerPreviewRequestSerializer`
+  - `DataOpsPlannerPreviewResponseSerializer`
+  - `DataOpsPlannerPreviewView` -> methods: `post`
+  - `DataOpsPlannerRunRequestSerializer`
+  - `DataOpsPlannerRunResponseSerializer`
+  - `DataOpsPlannerRunView` -> methods: `post`
+  - `DataOpsQueueTiersResponseSerializer`
   - `DataOpsQueueTiersView` -> methods: `get`
+  - `DataOpsRunLogsResponseSerializer`
+  - `DataOpsRunLogsView` -> methods: `get`
+  - `DataOpsRuntimeConfigApplyRequestSerializer`
+  - `DataOpsRuntimeConfigResponseSerializer`
   - `DataOpsRuntimeConfigView` -> methods: `get`, `post`
 - Functions:
-  - `_build_market_data_ownership_payload`
+  - `_build_market_data_ownership_payload`, `_build_market_data_run_summary`, `_build_market_data_write_denied_response`, `_format_market_data_run_id`, `_get_reference_trade_date`, `_get_request_datasets`, `_get_request_force_refresh`, `_get_request_symbols`, `_serialize_market_data_run_log`
+- Top-level variables:
+  - `RUN_SUMMARY_KEYS`
 
 ### `packages/core/backend/src/service_ops/views/matrix.py`
 
 - Classes:
+  - `MatrixCellListResponseSerializer`
   - `MatrixCellListView` -> methods: `get`
+  - `MatrixCellsSummarySerializer`
   - `MatrixCycleAbortView` -> methods: `post`
+  - `MatrixCycleDetailResponseSerializer`
   - `MatrixCycleDetailView` -> methods: `get`
+  - `MatrixCycleListResponseSerializer`
   - `MatrixCycleListView` -> methods: `get`
+  - `MatrixCycleStartRequestSerializer`
   - `MatrixCycleStartView` -> methods: `post`
+  - `MatrixCycleSummarySerializer`
+  - `MatrixMonitorResponseSerializer`
   - `MatrixMonitorView` -> methods: `get`
+  - `MatrixProvidersResponseSerializer`
+  - `MatrixProviderStatusSerializer`
   - `MatrixProvidersView` -> methods: `get`
 - Functions:
   - `_serialize_cells_summary`, `_serialize_cycle_detail`
+- Top-level variables:
+  - `PAGINATION_PARAMETERS`
 
 ### `packages/core/backend/src/service_ops/views/mixins.py`
 
@@ -3699,70 +3732,143 @@ Generated at: `2026-05-15 14:34:53`
 
 - Classes:
   - `ChangeAuditListView` -> methods: `get`
+  - `HealthCheckTriggerResponseSerializer`
+  - `HealthStatusResponseSerializer`
   - `HealthStatusView` -> methods: `get`
+  - `OverviewCountsSerializer`
+  - `OverviewSummaryResponseSerializer`
   - `OverviewSummaryView` -> methods: `get`
+  - `PaginatedConfigChangeAuditResponseSerializer`
+  - `PaginatedServiceConfigResponseSerializer`
+  - `PaginatedServiceDefinitionResponseSerializer`
+  - `PaginatedServiceRunLogResponseSerializer`
   - `RunLogListView` -> methods: `get`
   - `ServiceAuditView` -> methods: `get`
   - `ServiceConfigHistoryView` -> methods: `get`
+  - `ServiceCurrentConfigSnapshotSerializer`
   - `ServiceCurrentConfigView` -> methods: `get`
+  - `ServiceDetailResponseSerializer`
   - `ServiceDetailView` -> methods: `get`
   - `ServiceHealthCheckTriggerView` -> methods: `post`
+  - `ServiceHealthSnapshotSerializer`
   - `ServiceHealthView` -> methods: `get`
   - `ServiceListView` -> methods: `get`
+  - `ServiceOwnershipPayloadSerializer`
   - `ServiceOwnershipView` -> methods: `get`
   - `ServiceRunLogsView` -> methods: `get`
+  - `ServiceSummaryRowSerializer`
 - Functions:
   - `_get_current_config`, `_get_ownership_payload`, `_get_service_or_error`, `_serialize_health`, `_serialize_service_detail`
+- Top-level variables:
+  - `STANDARD_PAGINATION_PARAMETERS`
 
 ### `packages/core/backend/src/service_ops/views/prefetch.py`
 
 - Classes:
+  - `PrefetchCacheStatusResponseSerializer`
   - `PrefetchCacheStatusView` -> methods: `get`
+  - `PrefetchConfigPayloadSerializer`
+  - `PrefetchConfigRequestSerializer`
+  - `PrefetchConfigResponseSerializer`
   - `PrefetchConfigView` -> methods: `get`, `post`
+  - `PrefetchOwnershipResponseSerializer`
   - `PrefetchOwnershipView` -> methods: `get`
+  - `PrefetchProfilesResponseSerializer`
   - `PrefetchProfilesView` -> methods: `get`
+  - `PrefetchPurgeCacheRequestSerializer`
+  - `PrefetchPurgeCacheResponseSerializer`
   - `PrefetchPurgeCacheView` -> methods: `post`
+  - `PrefetchRedisStatusSerializer`
+  - `PrefetchScheduleItemSerializer`
+  - `PrefetchTaskScheduleResponseSerializer`
   - `PrefetchTaskScheduleView` -> methods: `get`
+  - `PrefetchUniverseGroupSerializer`
+  - `PrefetchUniverseGroupsResponseSerializer`
   - `PrefetchUniverseGroupsView` -> methods: `get`
+  - `PrefetchWarmNowResponseSerializer`
   - `PrefetchWarmNowView` -> methods: `post`
 - Functions:
-  - `_build_prefetch_ownership_payload`, `_get_prefetch_config`
+  - `_build_default_prefetch_config_response`, `_build_prefetch_ownership_payload`, `_get_prefetch_config`
 
 ### `packages/core/backend/src/service_ops/views/screener.py`
 
 - Classes:
+  - `ScreenerAlertHistoryResponseSerializer`
   - `ScreenerAlertHistoryView` -> methods: `get`
+  - `ScreenerAlertSerializer`
+  - `ScreenerConfigPayloadSerializer`
+  - `ScreenerConfigRequestSerializer`
+  - `ScreenerConfigResponseSerializer`
   - `ScreenerConfigView` -> methods: `get`, `post`
+  - `ScreenerManualScanRequestSerializer`
+  - `ScreenerManualScanResponseSerializer`
   - `ScreenerManualScanView` -> methods: `post`
+  - `ScreenerOwnershipResponseSerializer`
   - `ScreenerOwnershipView` -> methods: `get`
+  - `ScreenerResultsResponseSerializer`
   - `ScreenerResultsView` -> methods: `get`
-  - `ScreenerRulesRunView`
+  - `ScreenerRuleCreateRequestSerializer`
+  - `ScreenerRuleCreateResponseSerializer`
+  - `ScreenerRuleSerializer`
+  - `ScreenerRulesResponseSerializer`
+  - `ScreenerRulesRunView` -> methods: `post`
   - `ScreenerRulesView` -> methods: `get`, `post`
 - Functions:
-  - `_build_screener_ownership_payload`, `_get_recent_signal_alerts`, `_get_screener_config`, `_serialize_signal_alert`
+  - `_build_default_screener_config_response`, `_build_screener_ownership_payload`, `_get_recent_signal_alerts`, `_get_screener_config`, `_serialize_signal_alert`
 
 ### `packages/core/backend/src/service_ops/views/signals.py`
 
 - Classes:
+  - `SignalsBridgeWriteDeniedResponseSerializer`
   - `SignalsConfigApplyView` -> methods: `post`
+  - `SignalsConfigPayloadSerializer`
+  - `SignalsConfigPreviewRequestSerializer`
+  - `SignalsConfigPreviewResponseSerializer`
   - `SignalsConfigPreviewView` -> methods: `post`
+  - `SignalsConfigResponseSerializer`
   - `SignalsConfigView` -> methods: `get`
+  - `SignalsDarkPoolRecentItemSerializer`
+  - `SignalsDarkPoolRecentResponseSerializer`
   - `SignalsDarkPoolRecentView` -> methods: `get`
+  - `SignalsDarkPoolResponseSerializer`
   - `SignalsDarkPoolView` -> methods: `get`
+  - `SignalsJobRunRequestSerializer`
+  - `SignalsJobRunResponseSerializer`
   - `SignalsJobRunView` -> methods: `post`
+  - `SignalsJobStatusResponseSerializer`
   - `SignalsJobStatusView` -> methods: `get`
+  - `SignalsMaterializationExecutionPlanItemSerializer`
+  - `SignalsMaterializationPreviewRequestSerializer`
+  - `SignalsMaterializationPreviewResponseSerializer`
   - `SignalsMaterializationPreviewView` -> methods: `post`
+  - `SignalsMaterializationResponseSerializer`
   - `SignalsMaterializationView` -> methods: `get`
+  - `SignalsMaterializerStatusSerializer`
+  - `SignalsOwnershipSerializer`
   - `SignalsOwnershipView` -> methods: `get`
+  - `SignalsPerformanceMetricsResponseSerializer`
   - `SignalsPerformanceMetricsView` -> methods: `get`
+  - `SignalsRecentAlertSerializer`
+  - `SignalsRecentResponseSerializer`
+  - `SignalsRetentionPolicyResponseSerializer`
   - `SignalsRetentionPolicyView` -> methods: `get`
+  - `SignalsRetentionPreviewResponseSerializer`
   - `SignalsRetentionPreviewView` -> methods: `post`
   - `SignalsScreenerRecentView` -> methods: `get`
+  - `SignalsScreenerResponseSerializer`
   - `SignalsScreenerView` -> methods: `get`
+  - `SignalsSummaryResponseSerializer`
   - `SignalsSummaryView` -> methods: `get`
+  - `SignalsUniverseResponseSerializer`
+  - `SignalsUniverseUpdateRequestSerializer`
   - `SignalsUniverseUpdateView` -> methods: `post`
   - `SignalsUniverseView` -> methods: `get`
+  - `SignalsWhaleRecentItemSerializer`
+  - `SignalsWhaleRecentResponseSerializer`
   - `SignalsWhaleRecentView` -> methods: `get`
+  - `SignalsWhaleResponseSerializer`
+  - `SignalsWhaleTestRequestSerializer`
+  - `SignalsWhaleTestResponseSerializer`
   - `SignalsWhaleTestView` -> methods: `post`
   - `SignalsWhaleView` -> methods: `get`
 - Functions:
@@ -3771,13 +3877,27 @@ Generated at: `2026-05-15 14:34:53`
 ### `packages/core/backend/src/service_ops/views/vnbroker.py`
 
 - Classes:
+  - `ProviderStatusSerializer`
+  - `VnbrokerCircuitBreakerResponseSerializer`
+  - `VnbrokerCircuitBreakerSummarySerializer`
   - `VnbrokerCircuitBreakerView` -> methods: `get`
+  - `VnbrokerConfigPayloadSerializer`
   - `VnbrokerConfigPreviewView` -> methods: `post`
+  - `VnbrokerConfigRequestSerializer`
+  - `VnbrokerConfigResponseSerializer`
   - `VnbrokerConfigView` -> methods: `get`, `post`
+  - `VnbrokerHealthResponseSerializer`
   - `VnbrokerHealthView` -> methods: `get`
+  - `VnbrokerOwnershipResponseSerializer`
   - `VnbrokerOwnershipView` -> methods: `get`
+  - `VnbrokerPreviewImpactSerializer`
+  - `VnbrokerPreviewResponseSerializer`
+  - `VnbrokerProvidersResponseSerializer`
   - `VnbrokerProvidersView` -> methods: `get`
+  - `VnbrokerTestConnectionRequestSerializer`
+  - `VnbrokerTestConnectionResponseSerializer`
   - `VnbrokerTestConnectionView` -> methods: `post`
+  - `VnbrokerTimeoutSerializer`
 - Functions:
   - `_build_vnbroker_ownership_payload`, `_get_active_vnbroker_provider_ids`, `_sanitize_vnbroker_config_payload`
 - Top-level variables:
@@ -4847,6 +4967,13 @@ Generated at: `2026-05-15 14:34:53`
 - Top-level variables:
   - `config`, `config1`, `config2`, `defaults`, `expectedSources`, `final`, `key`, `loaded`, `loaded1`, `loaded2`, `newConfig`, `originalSetItem`, `parsed`, `recheck1`, `reloaded`, `store`, `stored`, `symbol`, `symbol1`, `symbol2`
 
+### `frontend/src/__tests__/socApi.dataops.test.js`
+
+- Functions:
+  - `mockOkResponse`
+- Top-level variables:
+  - `config`, `getItemSpy`, `payload`
+
 ### `frontend/src/__tests__/StockDetail.prompt_config.test.js`
 
 - Functions:
@@ -4880,7 +5007,7 @@ Generated at: `2026-05-15 14:34:53`
 - Functions:
   - `fetch`, `getAccessToken`, `handleResponse`, `normalizeConfigEnvelope`, `normalizeVnbrokerHealth`
 - Top-level variables:
-  - `BASE_URL`, `accessToken`, `alertsTriggered`, `config`, `data`, `errorData`, `errorRateByStatus`, `headers`, `health`, `latency`, `query`, `resp`, `socApi`, `status`, `symbolsScanned`
+  - `BASE_URL`, `CANONICAL_DATAOPS_BASE_URL`, `accessToken`, `alertsTriggered`, `config`, `data`, `errorData`, `errorRateByStatus`, `headers`, `health`, `latency`, `query`, `resp`, `socApi`, `status`, `symbolsScanned`
 
 ### `frontend/src/api/support.js`
 
@@ -5295,9 +5422,9 @@ Generated at: `2026-05-15 14:34:53`
 ### `frontend/src/components/soc/DataOpsPanel.jsx`
 
 - Functions:
-  - `DataOpsPanel`, `buildChangeSummary`, `buildImpactWarnings`, `handleApply`, `handlePreview`, `hasTierRuntimeChange`, `loadData`
+  - `DataOpsPanel`, `buildChangeSummary`, `buildImpactWarnings`, `buildPlannerPayload`, `getNextActionLabelKey`, `handleApply`, `handlePlannerPreview`, `handlePlannerRun`, `handlePreview`, `handleRunLogsPageChange`, `hasTierRuntimeChange`, `loadData`, `parseSymbolsInput`, `updateManualRunForm`
 - Top-level variables:
-  - `CONFIG_LABEL_KEYS`, `TIER_LABEL_KEYS`, `appliedPayload`, `currentConfig`, `lastUpdated`, `nextTier`, `ownership`, `parsed`, `previousTier`, `tierNames`, `tiersPayload`, `totalSymbols`, `warnings`
+  - `CONFIG_LABEL_KEYS`, `COVERAGE_STATE_ORDER`, `DATASET_LABEL_KEYS`, `DEFAULT_MANUAL_RUN_FORM`, `DEFAULT_RUN_LOGS_ENVELOPE`, `FRESHNESS_LABEL_KEYS`, `MANUAL_RUN_DATASET_OPTIONS`, `NEXT_ACTION_LABEL_KEYS`, `RUN_STATUS_LABEL_KEYS`, `TIER_LABEL_KEYS`, `appliedPayload`, `checked`, `coverageUpdatedAt`, `currentConfig`, `lastUpdated`, `nextTier`, `nextValue`, `ownership`, `parsed`, `previewPayload`, `previousTier`, `runLogsPayload`, `runPayload`, `seenSymbols`, `tierNames`, `tiersPayload`, `totalSymbols`, `uniqueSymbols`, `warnings`
 
 ### `frontend/src/components/soc/MatrixPanel.jsx`
 
