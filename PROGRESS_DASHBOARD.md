@@ -1,3 +1,19 @@
+# 2026-05-16 — Global Alert Center D11 complete (SOC prefetch contract stabilization) ✅
+
+Status: **✅ D11 DONE** | **✅ full SOC suites green trở lại** | **✅ prefetch universe-group test aligned with endpoint contract hiện tại**
+
+## What changed
+- Updated the prefetch domain test expectation so it validates selected group IDs under the current response model (returns all groups with `selected` flag).
+- Removed false-negative failure from full SOC regression runs without changing runtime code paths.
+
+## Validation
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_tasks --keepdb` → **69 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1203 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Remaining workspace delta is non-wave housekeeping (`AGENTS.md`, `debug_whale_data.py`) pending explicit treatment policy.
+
 # 2026-05-16 — Global Alert Center D10 complete (service_ops operator matrix wave) ✅
 
 Status: **✅ D10 DONE** | **✅ operator registry summary/detail/reconcile paths landed** | **✅ SOC focused suites green in core container**

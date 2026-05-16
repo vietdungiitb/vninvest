@@ -31,6 +31,7 @@
 | D08 | signal_intelligence canonical alert model wave | ✅ DONE | Copilot | Added unified-alert read model fields, evidence-aware materializers, delivery route registration, and focused signal_intelligence regression coverage |
 | D09 | market_data matrix SSOT parity wave | ✅ DONE | Copilot | Completed registry/coverage/planner parity updates for global symbol matrix workflows with focused market_data test suites |
 | D10 | service_ops operator matrix wave | ✅ DONE | Copilot | Added operator-facing registry summary/detail/reconcile-preview coverage and queue-tier runtime dataset parity updates with focused SOC test suites |
+| D11 | SOC prefetch contract stabilization | ✅ DONE | Copilot | Updated prefetch universe-group test contract to match current endpoint behavior (all groups + selected flag) and restored green status for full SOC suites |
 
 **Legend**: ⬜ NOT STARTED | 🔄 IN PROGRESS | ✅ DONE | ❌ BLOCKED
 

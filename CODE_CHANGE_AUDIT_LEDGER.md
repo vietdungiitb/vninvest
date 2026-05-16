@@ -1,5 +1,23 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D11 complete: SOC prefetch contract stabilization | tests + docs
+
+## All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Updated prefetch universe-groups expectation to validate selected IDs under current endpoint contract (all groups + selected flag) |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added D11 row and marked DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added D11 evidence entry |
+| `PROGRESS_DASHBOARD.md` | Added D11 completion snapshot |
+| `module_tree_full.md` | Regenerated module tree after D11 test adjustment |
+
+## Validation
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_tasks --keepdb` → **69 tests OK** ✅
+- `./start_dev.ps1` runtime refresh passed with Core API health OK and Frontend health OK ✅
+
+## Residual risk
+- D11 is a contract-alignment test wave only; runtime behavior remains unchanged.
+
 # 2026-05-16 | Global Alert Center D10 complete: service_ops operator matrix wave | backend + docs
 
 ## All Modified Files (10 files)
