@@ -1,16 +1,32 @@
-# 2026-05-16 — DataOps Planner Preview Compact Layout 🔄
+# 2026-05-16 — DataOps Planner Preview Collapse/Expand Toggle ✅
 
-Status: **🔄 local change ready** | **Planner preview đã gọn hơn, không kéo dài dọc trang**
+Status: **✅ Commit `0ea2a457`, 1 file changed, 145 insertions/107 deletions** | **Frontend compiled successfully (861.6 kB gzip)** | **git push dev → `53d533cc..0ea2a457`**
+
+## Commit `0ea2a457` — Collapse/Expand for Planner Preview (Items + Skipped)
+
+**What changed**
+- Added `plannerItemsExpanded` + `plannerSkippedExpanded` state for toggle UI
+- Planner Items section: collapsed-by-default header with count badge (cyan) + toggle chevron; click to expand shows table + pagination
+- Planner Skipped section: collapsed-by-default header with count badge (amber) + toggle chevron; click to expand shows table + pagination
+- State reset when `plannerPreview` changes (cleaner UX)
+- Empty state always visible when no items/skipped
+
+**Files changed (1)**
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+
+**Validation:** `npm run build` → Compiled successfully (861.6 kB) | `./start_dev.ps1` → 14/14 Started; core-api Healthy; smoke checks OK | `git push origin dev` → `53d533cc..0ea2a457`
+
+---
+
+# 2026-05-16 — DataOps Planner Preview Compact Layout 🔄 → ✅
+
+Status: **✅ Commit `53d533cc` pushed to dev** | **Planner preview đã gọn hơn, không kéo dài dọc trang**
 Validation: **✅ `npm run build` Compiled successfully** | **✅ `./start_dev.ps1` 14/14 Started; core-api healthy; smoke checks OK**
 
 ## What changed
 - `frontend/src/components/soc/DataOpsPanel.jsx`: phần preview của planner (`Hạng mục sẽ chạy`, `Hạng mục bị bỏ qua`) đổi sang bảng compact có chiều cao cố định, cuộn nội bộ và điều hướng trang nhỏ để operator đọc nhanh hơn mà không bị trang quá dài.
 
 ---
-
-# 2026-05-16 — Symbol Group Management A+B (Predefined + Custom CRUD) ✅
-
-Status: **✅ Commit `9359fdd2`, 11 files changed, 595 insertions** | **Frontend compiled successfully (858 kB gzip)** | **Migration applied: `service_ops.0003_add_custom_symbol_group`** | **git push dev → 4804db3e..9359fdd2**
 
 ## Commit `9359fdd2` — Symbol Group Management A+B for Backfill + Snapshot
 

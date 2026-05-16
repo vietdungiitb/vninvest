@@ -1,14 +1,50 @@
 # Code Change Audit Ledger
 
-# 2026-05-16 | DataOps Planner Preview Compact Layout | dev branch 🔄
+# 2026-05-16 | DataOps Planner Preview Collapse/Expand | dev branch ✅
 
-**Status:** 🔄 Local change ready (chưa commit)
+**Status:** ✅ Commit `0ea2a457` pushed to dev  
+**Build:** `npm run build` → Compiled successfully (861.6 kB) ✅
+**Runtime refresh:** `./start_dev.ps1` → 14/14 services started, core-api + frontend healthy, smoke checks OK ✅
+
+---
+
+## Slice 3: Planner preview collapse/expand toggle (items + skipped)
+
+### All Modified Files (1 file)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Added `plannerItemsExpanded` + `plannerSkippedExpanded` state; refactored planner preview sections: collapsed-by-default with count badge + toggle chevron; click to expand shows full table + pagination |
+
+### Details
+- **Planner Items section:**
+  - Collapsed (default): Shows title + count badge (cyan) + toggle button
+  - Expanded: Shows full table with symbol/dataset/freshness info + pagination
+  - State reset when `plannerPreview` changes
+  
+- **Planner Skipped section:**
+  - Collapsed (default): Shows title + count badge (amber) + toggle button
+  - Expanded: Shows full table with symbol/dataset/reason + pagination
+  - State reset when `plannerPreview` changes
+
+- **Empty state:** Always shows "empty message" when no items/skipped
+
+### Validation
+- `npm run build`: **Compiled successfully** (861.6 kB gzip) ✅
+- `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
+- Git commit: `0ea2a457` ✅
+- Git push: `53d533cc..0ea2a457` ✅
+
+---
+
+# 2026-05-16 | DataOps Planner Preview Compact Layout | dev branch ✅
+
+**Status:** ✅ Commit `53d533cc` pushed to dev
 **Build:** `npm run build` → Compiled successfully (861.41 kB) ✅
 **Runtime refresh:** `./start_dev.ps1` → 14/14 services started, core-api healthy, smoke checks OK ✅
 
 ---
 
-## Slice: Planner preview không kéo dài trang
+## Slice 2: Planner preview không kéo dài trang
 
 ### All Modified Files (1 file)
 | File | Change |
@@ -20,15 +56,6 @@
 - `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
 
 ---
-
-# 2026-05-16 | Symbol Group Management A+B (Predefined + Custom CRUD) | dev branch ✅
-
-**Status:** ✅ Commit `9359fdd2` pushed to dev
-**Build:** `npm run build` → 858.98 kB ✅ | Migration: `0003_add_custom_symbol_group` OK
-
----
-
-## Commit `9359fdd2` — Symbol Group Management A+B
 
 ### All Modified Files (11 files)
 | File | Change |
