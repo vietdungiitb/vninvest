@@ -1,3 +1,17 @@
+# 2026-05-16 — Global Alert Center D09 complete (market_data matrix SSOT parity wave) ✅
+
+Status: **✅ D09 DONE** | **✅ registry/coverage/planner parity landed** | **✅ market_data focused suites green in core container**
+
+## What changed
+- Completed `market_data` parity updates for global matrix registry, coverage/freshness, and planner execution paths.
+- Kept this wave scoped to the core matrix SSOT layer and its direct regression suites.
+
+## Validation
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test market_data.tests.test_global_symbol_registry market_data.tests.test_global_symbol_coverage market_data.tests.test_global_symbol_planner --keepdb` → **22 tests OK** ✅
+
+## Next
+- Continue with service_ops operator/runtime wave as a dedicated commit.
+
 # 2026-05-16 — Global Alert Center D08 complete (signal_intelligence canonical alert model wave) ✅
 
 Status: **✅ D08 DONE** | **✅ canonical unified-alert model/materializer wave landed** | **✅ signal_intelligence focused tests green in core container**

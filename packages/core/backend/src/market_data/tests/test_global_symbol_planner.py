@@ -57,6 +57,15 @@ class GlobalSymbolPlannerRunTests(TestCase):
             next_recommended_action='hydrate_intraday_bars',
         )
 
+    def _create_session_facts_gap(self, registry: GlobalSymbolRegistry, freshness_state: str = 'missing') -> None:
+        GlobalSymbolCoverage.objects.create(
+            registry=registry,
+            dataset=GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
+            freshness_state=freshness_state,
+            missing_ranges=[{'start': '2026-05-15', 'end': '2026-05-15'}],
+            next_recommended_action='materialize_session_facts',
+        )
+
     @patch('data_ingest.tasks.run_global_market_data_planner.apply_async', return_value=Mock(id='planner-task-1'))
     def test_create_global_planner_run_queues_async_run_log(self, planner_task_mock):
         self._create_registry_with_daily_gap('HPG')
@@ -238,3 +247,43 @@ class GlobalSymbolPlannerRunTests(TestCase):
         self.assertEqual(child_run_log.status, 'success')
         self.assertEqual(child_run_log.output_summary['tick_counts']['inserted'], 2)
         self.assertEqual(child_run_log.output_summary['bar_counts']['inserted'], 7)
+
+    @patch('service_ops.tasks.run_signal_session_facts_materialization.run')
+    def test_create_global_planner_run_executes_session_facts_sync(self, session_facts_run_mock):
+        registry = GlobalSymbolRegistry.objects.create(symbol='VNM', is_active=True)
+        GlobalSymbolDemandSource.objects.create(
+            registry=registry,
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
+            source_ref='watchlist:vnm',
+            is_active=True,
+        )
+        self._create_session_facts_gap(registry, freshness_state='missing')
+        session_facts_run_mock.return_value = {
+            'status': 'ok',
+            'session_date': '2026-05-15',
+            'requested_symbol': 'VNM',
+            'symbols_total': 1,
+            'upserted': 1,
+            'skipped': 0,
+            'errors': 0,
+        }
+
+        result = create_global_planner_run(
+            symbols=['VNM'],
+            datasets=['session_facts'],
+            execution_mode='sync',
+            reason='operator_manual_run',
+            reference_trade_date=date(2026, 5, 15),
+        )
+
+        self.assertFalse(result['queued'])
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(result['summary']['updated'], 1)
+        self.assertEqual(result['summary']['failed'], 0)
+
+        parent_run_log = ServiceRunLog.objects.get(pk=result['service_run_log_id'])
+        child_run_log = ServiceRunLog.objects.exclude(pk=parent_run_log.id).get()
+        self.assertEqual(parent_run_log.status, 'success')
+        self.assertEqual(child_run_log.service.service_key, 'signal_session_facts_materializer')
+        self.assertEqual(child_run_log.status, 'queued')
+        session_facts_run_mock.assert_called_once_with(run_log_id=child_run_log.id, symbol='VNM')

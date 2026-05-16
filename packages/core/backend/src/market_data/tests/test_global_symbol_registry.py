@@ -4,9 +4,15 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
-from market_data.global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group, upsert_global_symbol_demand
+from market_data.global_symbol_registry import (
+    deactivate_global_symbol_demand,
+    sync_admin_group_symbol_set,
+    sync_global_source_symbol_set,
+    sync_system_default_symbol_group,
+    upsert_global_symbol_demand,
+)
 from market_data.models import GlobalSymbolDemandSource, GlobalSymbolRegistry
-from user_workspace.models import Portfolio, Transaction, Watchlist, WatchlistItem
+from user_workspace.models import Portfolio, PriceAlert, TrackedSymbol, Transaction, Watchlist, WatchlistItem
 
 User = get_user_model()
 
@@ -136,3 +142,100 @@ class GlobalSymbolRegistrySignalTestCase(TestCase):
         self.assertFalse(legacy_edge.is_active)
         self.assertTrue(canonical_edge.is_active)
         self.assertEqual(canonical_edge.metadata['group_id'], 'vn100')
+
+    def test_tracked_symbol_signal_syncs_and_deactivates_demand_edge(self):
+        tracked = TrackedSymbol.objects.create(
+            user=self.user,
+            symbol='SSI',
+            is_active=True,
+        )
+
+        registry = GlobalSymbolRegistry.objects.get(symbol='SSI')
+        edge = GlobalSymbolDemandSource.objects.get(
+            registry=registry,
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.TRACKED_SYMBOL,
+            source_ref=f'tracked_symbol:{tracked.pk}',
+        )
+        self.assertTrue(edge.is_active)
+        self.assertEqual(registry.current_priority_tier, GlobalSymbolRegistry.PriorityTierChoices.HOT)
+
+        tracked.is_active = False
+        tracked.save(update_fields=['is_active', 'updated_at'])
+
+        registry.refresh_from_db()
+        edge.refresh_from_db()
+        self.assertFalse(edge.is_active)
+        self.assertEqual(registry.current_priority_tier, GlobalSymbolRegistry.PriorityTierChoices.RECOVERY)
+
+    def test_price_alert_signal_syncs_and_deactivates_demand_edge(self):
+        alert = PriceAlert.objects.create(
+            user=self.user,
+            symbol='VCB',
+            alert_type=PriceAlert.AlertType.ABOVE,
+            price_threshold=Decimal('105000.00'),
+            status=PriceAlert.AlertStatus.ACTIVE,
+            is_enabled=True,
+        )
+
+        registry = GlobalSymbolRegistry.objects.get(symbol='VCB')
+        edge = GlobalSymbolDemandSource.objects.get(
+            registry=registry,
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.ALERT,
+            source_ref=f'price_alert:{alert.pk}',
+        )
+        self.assertTrue(edge.is_active)
+        self.assertEqual(edge.metadata['alert_type'], PriceAlert.AlertType.ABOVE)
+
+        alert.is_enabled = False
+        alert.status = PriceAlert.AlertStatus.DISABLED
+        alert.save(update_fields=['is_enabled', 'status', 'updated_at'])
+
+        registry.refresh_from_db()
+        edge.refresh_from_db()
+        self.assertFalse(edge.is_active)
+        self.assertEqual(registry.current_priority_tier, GlobalSymbolRegistry.PriorityTierChoices.RECOVERY)
+
+    def test_upsert_rejects_invalid_source_type(self):
+        with self.assertRaisesMessage(ValueError, 'Source type khong hop le'):
+            upsert_global_symbol_demand(
+                symbol='FPT',
+                source_type='unsupported_source_type',
+                source_ref='invalid:1',
+            )
+
+    def test_upsert_rejects_empty_source_ref(self):
+        with self.assertRaisesMessage(ValueError, 'Source ref khong duoc de trong'):
+            upsert_global_symbol_demand(
+                symbol='FPT',
+                source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
+                source_ref='   ',
+            )
+
+    def test_sync_global_source_symbol_set_normalizes_and_validates_source_contract(self):
+        sync_global_source_symbol_set(
+            source_type=' WATCHLIST ',
+            source_ref=' watchlist:123 ',
+            symbols=['fpt'],
+        )
+
+        edge = GlobalSymbolDemandSource.objects.get(
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
+            source_ref='watchlist:123',
+            registry__symbol='FPT',
+        )
+        self.assertTrue(edge.is_active)
+
+        with self.assertRaisesMessage(ValueError, 'Source type khong hop le'):
+            sync_global_source_symbol_set(
+                source_type='not_a_real_source',
+                source_ref='watchlist:123',
+                symbols=['FPT'],
+            )
+
+    def test_deactivate_rejects_invalid_source_contract(self):
+        with self.assertRaisesMessage(ValueError, 'Source type khong hop le'):
+            deactivate_global_symbol_demand(
+                symbol='FPT',
+                source_type='invalid',
+                source_ref='watchlist:1',
+            )

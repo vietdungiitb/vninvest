@@ -14,6 +14,7 @@ SUPPORTED_EXECUTION_DATASETS = frozenset({
     GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT,
     GlobalSymbolCoverage.DatasetChoices.INTRADAY_BARS,
     GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS,
+    GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
 })
 SUPPORTED_EXECUTION_MODES = frozenset({'async', 'sync'})
 
@@ -73,7 +74,7 @@ def _build_parent_run_log_input(
 
 def execute_global_planner_run(service_run_log_id: int) -> dict[str, Any]:
     from data_ingest.tasks import fetch_and_upsert_price_board, ingest_daily_prices, warm_intraday_universe
-    from service_ops.tasks import _create_child_run_log
+    from service_ops.tasks import _create_child_run_log, run_signal_session_facts_materialization
 
     parent_run_log = ServiceRunLog.objects.select_related('service').get(pk=service_run_log_id)
     input_summary = dict(parent_run_log.input_summary or {})
@@ -218,6 +219,61 @@ def execute_global_planner_run(service_run_log_id: int) -> dict[str, Any]:
                 'run_log_id': child_run_log.id,
                 'summary': dict(result.get('bar_counts') or {}),
             })
+
+    session_facts_items = [
+        item for item in executable_items
+        if str(item.get('dataset') or '').strip().lower() == GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS
+    ]
+    if session_facts_items:
+        session_symbols = sorted({
+            str(item.get('symbol') or '').strip().upper()
+            for item in session_facts_items
+            if str(item.get('symbol') or '').strip()
+        })
+        for symbol in session_symbols:
+            child_run_log = _create_child_run_log(
+                'signal_session_facts_materializer',
+                parent_run_log,
+                f'global_market_data_planner_session_facts_{symbol.lower()}',
+            )
+            try:
+                result = run_signal_session_facts_materialization.run(
+                    run_log_id=child_run_log.id,
+                    symbol=symbol,
+                )
+                upserted = int(result.get('upserted') or 0)
+                errors = int(result.get('errors') or 0)
+                skipped = int(result.get('skipped') or 0)
+                summary['updated'] += upserted
+                summary['failed'] += errors
+                summary['skipped_existing'] += skipped
+                execution_results.append({
+                    'dataset': GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
+                    'service_key': child_run_log.service.service_key,
+                    'run_log_id': child_run_log.id,
+                    'symbol': symbol,
+                    'summary': {
+                        'upserted': upserted,
+                        'skipped': skipped,
+                        'errors': errors,
+                        'status': result.get('status') or 'success',
+                    },
+                })
+            except Exception as exc:
+                summary['failed'] += 1
+                execution_results.append({
+                    'dataset': GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
+                    'service_key': child_run_log.service.service_key,
+                    'run_log_id': child_run_log.id,
+                    'symbol': symbol,
+                    'summary': {
+                        'upserted': 0,
+                        'skipped': 0,
+                        'errors': 1,
+                        'status': 'failed',
+                        'detail': str(exc),
+                    },
+                })
 
     if not plan_items:
         status = 'skipped'

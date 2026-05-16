@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import Any
 
 from django.conf import settings
+from django.db.models import Max
 from django.utils import timezone
 
 from .models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry
@@ -29,6 +30,36 @@ FRESHNESS_RANK = {
 SYSTEM_DEFAULT_GROUP_ID_ALIASES = {
     'top100': 'vn100',
 }
+PRIORITY_TIER_ORDER = (
+    GlobalSymbolRegistry.PriorityTierChoices.HOT,
+    GlobalSymbolRegistry.PriorityTierChoices.WARM,
+    GlobalSymbolRegistry.PriorityTierChoices.COLD,
+    GlobalSymbolRegistry.PriorityTierChoices.RECOVERY,
+)
+FRESHNESS_STATE_ORDER = (
+    GlobalSymbolCoverage.FreshnessChoices.FRESH,
+    GlobalSymbolCoverage.FreshnessChoices.WARM,
+    GlobalSymbolCoverage.FreshnessChoices.STALE,
+    GlobalSymbolCoverage.FreshnessChoices.MISSING,
+    GlobalSymbolCoverage.FreshnessChoices.ERROR,
+    GlobalSymbolCoverage.FreshnessChoices.UNKNOWN,
+)
+COVERAGE_STATE_ORDER = ('ok', 'warming', 'stale', 'gap', 'unknown')
+VALID_SOURCE_TYPES = frozenset(
+    choice
+    for choice, _ in GlobalSymbolDemandSource.SourceTypeChoices.choices
+)
+REGISTRY_PROJECTION_FIELDS = (
+    'is_active',
+    'current_priority_tier',
+    'priority_score',
+    'demand_source_count',
+    'decay_after_at',
+    'freshness_state_summary',
+    'coverage_state_summary',
+    'last_hydrated_at',
+    'latest_trade_date',
+)
 
 
 def normalize_symbol(raw_symbol: Any) -> str:
@@ -83,6 +114,20 @@ def _coerce_metadata(metadata: Any) -> dict[str, Any]:
     return {}
 
 
+def _normalize_source_type(raw_source_type: Any) -> str:
+    source_type = str(raw_source_type or '').strip().lower()
+    if source_type not in VALID_SOURCE_TYPES:
+        raise ValueError(f'Source type khong hop le: {raw_source_type}')
+    return source_type
+
+
+def _normalize_source_ref(raw_source_ref: Any) -> str:
+    source_ref = str(raw_source_ref or '').strip()
+    if not source_ref:
+        raise ValueError('Source ref khong duoc de trong.')
+    return source_ref
+
+
 def _resolve_weight(source_type: str, explicit_weight: float | None = None) -> float:
     if explicit_weight is not None:
         return float(explicit_weight)
@@ -95,6 +140,14 @@ def _resolve_weight(source_type: str, explicit_weight: float | None = None) -> f
         GlobalSymbolDemandSource.SourceTypeChoices.SYSTEM_DEFAULT: 0.5,
     }
     return float(defaults.get(source_type, 1.0))
+
+
+def _serialize_datetime(value) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _serialize_date(value) -> str | None:
+    return value.isoformat() if value is not None else None
 
 
 def _summarize_coverage(registry: GlobalSymbolRegistry) -> dict[str, Any]:
@@ -158,12 +211,12 @@ def _resolve_priority_tier(active_source_types: set[str], demand_source_count: i
     return GlobalSymbolRegistry.PriorityTierChoices.COLD
 
 
-def refresh_global_symbol_registry(symbol_or_registry: str | GlobalSymbolRegistry) -> GlobalSymbolRegistry:
-    registry = symbol_or_registry
-    if isinstance(symbol_or_registry, str):
-        registry = GlobalSymbolRegistry.objects.get(symbol=normalize_symbol(symbol_or_registry))
-
-    now = timezone.now()
+def _build_registry_projection(
+    registry: GlobalSymbolRegistry,
+    *,
+    now=None,
+) -> dict[str, Any]:
+    now = now or timezone.now()
     active_edges = list(
         registry.demand_sources.filter(is_active=True).values('source_type', 'weight')
     )
@@ -179,8 +232,7 @@ def refresh_global_symbol_registry(symbol_or_registry: str | GlobalSymbolRegistr
         is_active = decay_after_at > now
 
     coverage_summary = _summarize_coverage(registry)
-    update_fields = []
-    next_values = {
+    return {
         'is_active': is_active,
         'current_priority_tier': _resolve_priority_tier(active_source_types, demand_source_count),
         'priority_score': priority_score,
@@ -191,6 +243,51 @@ def refresh_global_symbol_registry(symbol_or_registry: str | GlobalSymbolRegistr
         'last_hydrated_at': coverage_summary['last_hydrated_at'],
         'latest_trade_date': coverage_summary['latest_trade_date'],
     }
+
+
+def _build_registry_state_payload(
+    registry: GlobalSymbolRegistry,
+    *,
+    projected_values: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    values = projected_values or {
+        field_name: getattr(registry, field_name)
+        for field_name in REGISTRY_PROJECTION_FIELDS
+    }
+    return {
+        'symbol': registry.symbol,
+        'is_active': bool(values['is_active']),
+        'current_priority_tier': values['current_priority_tier'],
+        'priority_score': float(values['priority_score'] or 0.0),
+        'demand_source_count': int(values['demand_source_count'] or 0),
+        'decay_after_at': _serialize_datetime(values['decay_after_at']),
+        'freshness_state_summary': values['freshness_state_summary'],
+        'coverage_state_summary': values['coverage_state_summary'],
+        'last_demand_at': _serialize_datetime(registry.last_demand_at),
+        'last_hydrated_at': _serialize_datetime(values['last_hydrated_at']),
+        'latest_trade_date': _serialize_date(values['latest_trade_date']),
+        'metadata': dict(registry.metadata or {}),
+    }
+
+
+def _resolve_registry_drift_fields(
+    registry: GlobalSymbolRegistry,
+    projected_values: dict[str, Any],
+) -> list[str]:
+    drift_fields = []
+    for field_name in REGISTRY_PROJECTION_FIELDS:
+        if getattr(registry, field_name) != projected_values[field_name]:
+            drift_fields.append(field_name)
+    return drift_fields
+
+
+def refresh_global_symbol_registry(symbol_or_registry: str | GlobalSymbolRegistry) -> GlobalSymbolRegistry:
+    registry = symbol_or_registry
+    if isinstance(symbol_or_registry, str):
+        registry = GlobalSymbolRegistry.objects.get(symbol=normalize_symbol(symbol_or_registry))
+
+    next_values = _build_registry_projection(registry)
+    update_fields = []
 
     for field_name, next_value in next_values.items():
         if getattr(registry, field_name) != next_value:
@@ -204,6 +301,151 @@ def refresh_global_symbol_registry(symbol_or_registry: str | GlobalSymbolRegistr
     return registry
 
 
+def build_global_symbol_registry_summary() -> dict[str, Any]:
+    registry_queryset = GlobalSymbolRegistry.objects.all()
+    demand_queryset = GlobalSymbolDemandSource.objects.all()
+
+    latest_registry_update = registry_queryset.aggregate(latest=Max('updated_at'))['latest']
+    priority_tiers = [
+        {
+            'priority_tier': priority_tier,
+            'count': registry_queryset.filter(current_priority_tier=priority_tier).count(),
+        }
+        for priority_tier in PRIORITY_TIER_ORDER
+    ]
+    freshness_states = [
+        {
+            'freshness_state': freshness_state,
+            'count': registry_queryset.filter(freshness_state_summary=freshness_state).count(),
+        }
+        for freshness_state in FRESHNESS_STATE_ORDER
+    ]
+    coverage_states = [
+        {
+            'coverage_state': coverage_state,
+            'count': registry_queryset.filter(coverage_state_summary=coverage_state).count(),
+        }
+        for coverage_state in COVERAGE_STATE_ORDER
+    ]
+    demand_sources = []
+    for source_type, _ in GlobalSymbolDemandSource.SourceTypeChoices.choices:
+        active_edges = demand_queryset.filter(source_type=source_type, is_active=True)
+        inactive_edges = demand_queryset.filter(source_type=source_type, is_active=False)
+        demand_sources.append({
+            'source_type': source_type,
+            'active_edges': active_edges.count(),
+            'inactive_edges': inactive_edges.count(),
+            'active_symbols': active_edges.values('registry_id').distinct().count(),
+        })
+
+    return {
+        'totals': {
+            'total_symbols': registry_queryset.count(),
+            'active_symbols': registry_queryset.filter(is_active=True).count(),
+            'decaying_symbols': registry_queryset.filter(
+                is_active=True,
+                demand_source_count=0,
+                decay_after_at__isnull=False,
+            ).count(),
+            'recovery_symbols': registry_queryset.filter(
+                current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.RECOVERY,
+            ).count(),
+        },
+        'priority_tiers': priority_tiers,
+        'freshness_states': freshness_states,
+        'coverage_states': coverage_states,
+        'demand_sources': demand_sources,
+        'updated_at': _serialize_datetime(latest_registry_update or timezone.now()),
+    }
+
+
+def build_global_symbol_registry_detail(symbol_or_registry: str | GlobalSymbolRegistry) -> dict[str, Any]:
+    if isinstance(symbol_or_registry, GlobalSymbolRegistry):
+        registry = symbol_or_registry
+    else:
+        registry = GlobalSymbolRegistry.objects.get(symbol=normalize_symbol(symbol_or_registry))
+
+    from .global_symbol_coverage import build_symbol_coverage_detail
+
+    projected_values = _build_registry_projection(registry)
+    drift_fields = _resolve_registry_drift_fields(registry, projected_values)
+    demand_sources = [
+        {
+            'source_type': edge.source_type,
+            'source_ref': edge.source_ref,
+            'is_active': bool(edge.is_active),
+            'weight': float(edge.weight or 0.0),
+            'tenant_id': edge.tenant_id,
+            'user_id': edge.user_id,
+            'activated_at': _serialize_datetime(edge.activated_at),
+            'deactivated_at': _serialize_datetime(edge.deactivated_at),
+            'metadata': dict(edge.metadata or {}),
+        }
+        for edge in registry.demand_sources.select_related('tenant', 'user').order_by(
+            '-is_active', 'source_type', 'source_ref', 'pk'
+        )
+    ]
+    coverage_detail = build_symbol_coverage_detail(registry)
+    return {
+        'symbol': registry.symbol,
+        'registry': _build_registry_state_payload(registry),
+        'projected_registry': _build_registry_state_payload(registry, projected_values=projected_values),
+        'needs_reconcile': bool(drift_fields),
+        'drift_fields': drift_fields,
+        'demand_sources': demand_sources,
+        'coverage': coverage_detail['datasets'],
+    }
+
+
+def build_global_symbol_registry_reconcile_preview(
+    *,
+    symbols: list[str] | tuple[str, ...] | set[str] | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    normalized_symbols = []
+    if symbols:
+        seen_symbols = set()
+        for raw_symbol in symbols:
+            normalized_symbol = normalize_symbol(raw_symbol)
+            if normalized_symbol in seen_symbols:
+                continue
+            seen_symbols.add(normalized_symbol)
+            normalized_symbols.append(normalized_symbol)
+
+    requested_limit = max(min(int(limit or 0), 200), 0)
+    queryset = GlobalSymbolRegistry.objects.all().order_by('symbol')
+    if normalized_symbols:
+        queryset = queryset.filter(symbol__in=normalized_symbols)
+
+    items = []
+    out_of_sync = 0
+    for registry in queryset[:requested_limit or None]:
+        projected_values = _build_registry_projection(registry)
+        drift_fields = _resolve_registry_drift_fields(registry, projected_values)
+        in_sync = not drift_fields
+        if not in_sync:
+            out_of_sync += 1
+        items.append({
+            'symbol': registry.symbol,
+            'in_sync': in_sync,
+            'drift_fields': drift_fields,
+            'current_registry': _build_registry_state_payload(registry),
+            'projected_registry': _build_registry_state_payload(registry, projected_values=projected_values),
+        })
+
+    evaluated_symbols = len(items)
+    return {
+        'summary': {
+            'requested_symbols': normalized_symbols,
+            'evaluated_symbols': evaluated_symbols,
+            'out_of_sync': out_of_sync,
+            'in_sync': evaluated_symbols - out_of_sync,
+            'limit': requested_limit,
+        },
+        'items': items,
+    }
+
+
 def upsert_global_symbol_demand(
     *,
     symbol: str,
@@ -215,6 +457,8 @@ def upsert_global_symbol_demand(
     weight: float | None = None,
 ) -> tuple[GlobalSymbolRegistry, GlobalSymbolDemandSource]:
     normalized_symbol = normalize_symbol(symbol)
+    normalized_source_type = _normalize_source_type(source_type)
+    normalized_source_ref = _normalize_source_ref(source_ref)
     now = timezone.now()
     registry, _ = GlobalSymbolRegistry.objects.get_or_create(
         symbol=normalized_symbol,
@@ -226,15 +470,15 @@ def upsert_global_symbol_demand(
     )
     edge, _ = GlobalSymbolDemandSource.objects.get_or_create(
         registry=registry,
-        source_type=source_type,
-        source_ref=source_ref,
+        source_type=normalized_source_type,
+        source_ref=normalized_source_ref,
         defaults={
             'tenant': tenant,
             'user': user,
             'is_active': True,
             'activated_at': now,
             'deactivated_at': None,
-            'weight': _resolve_weight(source_type, weight),
+            'weight': _resolve_weight(normalized_source_type, weight),
             'metadata': _coerce_metadata(metadata),
         },
     )
@@ -246,7 +490,7 @@ def upsert_global_symbol_demand(
     if edge.tenant_id != getattr(tenant, 'pk', None):
         edge.tenant = tenant
         edge_update_fields.append('tenant')
-    resolved_weight = _resolve_weight(source_type, weight)
+    resolved_weight = _resolve_weight(normalized_source_type, weight)
     if float(edge.weight or 0.0) != resolved_weight:
         edge.weight = resolved_weight
         edge_update_fields.append('weight')
@@ -278,11 +522,16 @@ def deactivate_global_symbol_demand(
     metadata: dict[str, Any] | None = None,
 ) -> tuple[GlobalSymbolRegistry | None, GlobalSymbolDemandSource | None]:
     normalized_symbol = normalize_symbol(symbol)
+    normalized_source_type = _normalize_source_type(source_type)
+    normalized_source_ref = _normalize_source_ref(source_ref)
     registry = GlobalSymbolRegistry.objects.filter(symbol=normalized_symbol).first()
     if registry is None:
         return None, None
 
-    edge = registry.demand_sources.filter(source_type=source_type, source_ref=source_ref).first()
+    edge = registry.demand_sources.filter(
+        source_type=normalized_source_type,
+        source_ref=normalized_source_ref,
+    ).first()
     if edge is None:
         return refresh_global_symbol_registry(registry), None
 
@@ -311,6 +560,8 @@ def sync_global_source_symbol_set(
     default_metadata: dict[str, Any] | None = None,
     weight: float | None = None,
 ) -> list[GlobalSymbolRegistry]:
+    normalized_source_type = _normalize_source_type(source_type)
+    normalized_source_ref = _normalize_source_ref(source_ref)
     normalized_symbols = []
     seen_symbols = set()
     for raw_symbol in symbols:
@@ -329,7 +580,7 @@ def sync_global_source_symbol_set(
 
     existing_edges = list(
         GlobalSymbolDemandSource.objects.select_related('registry')
-        .filter(source_type=source_type, source_ref=source_ref)
+        .filter(source_type=normalized_source_type, source_ref=normalized_source_ref)
     )
     existing_edge_by_symbol = {
         edge.registry.symbol: edge
@@ -340,8 +591,8 @@ def sync_global_source_symbol_set(
         metadata = {**default_metadata, **metadata_lookup.get(symbol, {})}
         registry, _ = upsert_global_symbol_demand(
             symbol=symbol,
-            source_type=source_type,
-            source_ref=source_ref,
+            source_type=normalized_source_type,
+            source_ref=normalized_source_ref,
             user=None,
             tenant=None,
             metadata=metadata,
@@ -354,8 +605,8 @@ def sync_global_source_symbol_set(
             continue
         registry, _ = deactivate_global_symbol_demand(
             symbol=symbol,
-            source_type=source_type,
-            source_ref=source_ref,
+            source_type=normalized_source_type,
+            source_ref=normalized_source_ref,
         )
         if registry is not None:
             refreshed_registries.append(registry)

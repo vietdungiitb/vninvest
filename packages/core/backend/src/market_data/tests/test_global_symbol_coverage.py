@@ -321,3 +321,63 @@ class GlobalSymbolCoverageServiceTestCase(TestCase):
         self.assertTrue(item['overwrite_existing'])
         self.assertEqual(item['coverage_before'], 'fresh')
         self.assertEqual(item['requested_window'], {'trade_date': '2026-05-15'})
+
+    def test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm(self):
+        today = date(2026, 5, 15)
+        verified_at = timezone.make_aware(datetime.combine(today, time(hour=15, minute=0)))
+        registry = self._ensure_registry('MBB')
+
+        DailyPrice.objects.create(
+            symbol='MBB',
+            date=today,
+            open=Decimal('20.00'),
+            high=Decimal('20.20'),
+            low=Decimal('19.90'),
+            close=Decimal('20.10'),
+            volume=1000,
+        )
+        snapshot = SymbolSnapshot.objects.create(
+            symbol='MBB',
+            session_date=today,
+            stale=False,
+            price=Decimal('20.10'),
+            volume=1000,
+        )
+        SymbolSnapshot.objects.filter(pk=snapshot.pk).update(
+            fetched_at=verified_at - timedelta(minutes=40),
+        )
+        session_facts = SessionFacts.objects.create(
+            symbol='MBB',
+            session_date=today,
+            stale=False,
+        )
+        SessionFacts.objects.filter(pk=session_facts.pk).update(
+            computed_at=verified_at - timedelta(minutes=50),
+        )
+
+        refresh_global_symbol_coverage(
+            registry,
+            reference_trade_date=today,
+            as_of=verified_at,
+        )
+
+        coverage_by_dataset = {
+            row.dataset: row
+            for row in GlobalSymbolCoverage.objects.filter(registry=registry)
+        }
+        self.assertEqual(
+            coverage_by_dataset[GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT].freshness_state,
+            GlobalSymbolCoverage.FreshnessChoices.WARM,
+        )
+        self.assertEqual(
+            coverage_by_dataset[GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT].next_recommended_action,
+            'refresh_price_board_snapshot',
+        )
+        self.assertEqual(
+            coverage_by_dataset[GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS].freshness_state,
+            GlobalSymbolCoverage.FreshnessChoices.WARM,
+        )
+        self.assertEqual(
+            coverage_by_dataset[GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS].next_recommended_action,
+            'refresh_session_facts',
+        )

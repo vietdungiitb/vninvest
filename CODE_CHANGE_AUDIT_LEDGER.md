@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D09 complete: market_data matrix SSOT parity wave | backend + docs
+
+## All Modified Files (9 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/global_symbol_registry.py` | Updated registry behavior for matrix SSOT parity and demand-source lifecycle handling |
+| `packages/core/backend/src/market_data/global_symbol_coverage.py` | Updated coverage/freshness evaluation paths for alert-center readiness |
+| `packages/core/backend/src/market_data/global_symbol_planner.py` | Updated planner behavior for missing-only and session-facts-first execution parity |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_registry.py` | Added/updated focused registry parity tests |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py` | Added/updated coverage and freshness tests |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py` | Added/updated planner parity tests |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added D09 row and marked DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added D09 evidence entry |
+| `PROGRESS_DASHBOARD.md` | Added D09 completion snapshot |
+
+## Validation
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test market_data.tests.test_global_symbol_registry market_data.tests.test_global_symbol_coverage market_data.tests.test_global_symbol_planner --keepdb` → **22 tests OK** ✅
+- Runtime stack remains healthy under active `start_dev.ps1` environment ✅
+
+## Residual risk
+- Service-ops integration layer changes are intentionally left for the next isolated wave.
+
 # 2026-05-16 | Global Alert Center D08 complete: signal_intelligence canonical alert model wave | backend + docs
 
 ## All Modified Files (11 files)

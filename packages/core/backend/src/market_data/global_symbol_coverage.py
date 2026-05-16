@@ -156,7 +156,15 @@ def _resolve_snapshot_state(row: SymbolSnapshot | None, reference_trade_date: da
         return GlobalSymbolCoverage.FreshnessChoices.STALE
     if row.stale:
         return GlobalSymbolCoverage.FreshnessChoices.STALE
-    return GlobalSymbolCoverage.FreshnessChoices.FRESH
+    fetched_at = _normalize_dt(row.fetched_at)
+    if fetched_at is None:
+        return GlobalSymbolCoverage.FreshnessChoices.UNKNOWN
+    age = max(as_of - fetched_at, timedelta())
+    if age <= _SNAPSHOT_FRESH_WINDOW:
+        return GlobalSymbolCoverage.FreshnessChoices.FRESH
+    if age <= _SNAPSHOT_WARM_WINDOW:
+        return GlobalSymbolCoverage.FreshnessChoices.WARM
+    return GlobalSymbolCoverage.FreshnessChoices.STALE
 
 
 def _resolve_session_facts_state(row: SessionFacts | None, reference_trade_date: date, as_of: datetime) -> str:
@@ -166,7 +174,15 @@ def _resolve_session_facts_state(row: SessionFacts | None, reference_trade_date:
         return GlobalSymbolCoverage.FreshnessChoices.STALE
     if row.stale:
         return GlobalSymbolCoverage.FreshnessChoices.STALE
-    return GlobalSymbolCoverage.FreshnessChoices.FRESH
+    computed_at = _normalize_dt(row.computed_at)
+    if computed_at is None:
+        return GlobalSymbolCoverage.FreshnessChoices.UNKNOWN
+    age = max(as_of - computed_at, timedelta())
+    if age <= _SESSION_FACTS_FRESH_WINDOW:
+        return GlobalSymbolCoverage.FreshnessChoices.FRESH
+    if age <= _SESSION_FACTS_WARM_WINDOW:
+        return GlobalSymbolCoverage.FreshnessChoices.WARM
+    return GlobalSymbolCoverage.FreshnessChoices.STALE
 
 
 def _resolve_next_action(dataset: str, freshness_state: str) -> str:
