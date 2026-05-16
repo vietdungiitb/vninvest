@@ -219,6 +219,20 @@ export function createCoreApiAdapter({ env = {} } = {}) {
   },
 
   /**
+   * Get alert-center symbol context.
+   * @param {string} symbol
+   * @param {object} [params] - Optional filters like session_date
+   * @returns {Promise<object>}
+   */
+  getAlertCenterSymbolContext(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getAlertCenterSymbolContext");
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/signals/alert-center/symbols/${encodeURIComponent(symbol.toUpperCase())}/context${query ? `?${query}` : ""}`);
+  },
+
+  /**
    * Acknowledge an alert-center event.
    * @param {string} alertId
    * @returns {Promise<object>}

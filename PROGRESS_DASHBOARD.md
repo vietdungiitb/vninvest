@@ -1,3 +1,26 @@
+# 2026-05-16 — Global Alert Center checklist-closure wave complete (detail/context + ack/mute + mandatory backend suites) ✅
+
+Status: **✅ checklist validation wave DONE** | **✅ required backend suites added and passing** | **✅ packages/web + frontend regression green** | **✅ runtime refresh completed**
+
+## What changed
+- Added native symbol-context adapter method and regression coverage in packages/web adapter layer.
+- Completed `AlertCenterPage` operational workflow for detail/context load, acknowledge action, and symbol mute action.
+- Added runbook-required backend suites:
+  - `test_alert_center_api.py`
+  - `test_user_alert_delivery.py`
+  - `test_market_anomaly_events.py`
+  - `test_ai_signal_lane.py`
+
+## Validation
+- Backend: `manage.py test signal_intelligence.tests.test_alert_center_api signal_intelligence.tests.test_user_alert_delivery signal_intelligence.tests.test_market_anomaly_events signal_intelligence.tests.test_ai_signal_lane signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb` → **25 tests OK** ✅
+- Packages web: `npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false` → **17 tests OK** ✅
+- Frontend: `npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **4 tests OK** ✅
+- Inventory: `scripts/ops/generate_module_tree.py` → **module tree refreshed (1210 modules)** ✅
+- Runtime: `./start_dev.ps1` → **Frontend health OK** ✅
+
+## Next
+- Continue with taskboard status alignment for C02/C01/D05 based on this validated evidence set and run an end-to-end operator walkthrough capture if required by final audit package.
+
 # 2026-05-16 — Global Alert Center guide pack complete (coding-by-slice + checklist tự audit) ✅
 
 Status: **✅ DONE** | **✅ tài liệu hướng dẫn theo từng slice đã sẵn sàng cho đội code** | **✅ checklist tự-audit để chống lệch hướng đã đóng gói**

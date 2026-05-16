@@ -140,6 +140,14 @@ describe("coreApiAdapter", () => {
     expect(init.method).toBe("POST");
   });
 
+  test("getAlertCenterSymbolContext calls /core/v1/signals/alert-center/symbols/{symbol}/context", async () => {
+    mockOkResponse({ symbol: "VCI", total: 1, recent_events: [] });
+    await coreApiAdapter.getAlertCenterSymbolContext("vci", { session_date: "2026-05-16" });
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/signals/alert-center/symbols/VCI/context");
+    expect(url).toContain("session_date=2026-05-16");
+  });
+
   // ---------------------------------------------------------------------------
   // getWhaleFeedAggregate
   // ---------------------------------------------------------------------------

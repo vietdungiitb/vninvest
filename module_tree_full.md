@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 22:43:37`
+Generated at: `2026-05-16 22:49:11`
 
 ## Summary
 
-- Total modules: 1206
-- Python modules: 685
+- Total modules: 1210
+- Python modules: 689
 - JS/TS modules: 521
-- Total classes: 1360
-- Total functions: 3236
+- Total classes: 1364
+- Total functions: 3239
 - Total top-level variables: 4729
 
 ## Python Modules
@@ -4059,16 +4059,36 @@ Generated at: `2026-05-16 22:43:37`
 
 - No parseable top-level symbols found
 
+### `packages/core/backend/src/signal_intelligence/tests/test_ai_signal_lane.py`
+
+- Classes:
+  - `AISignalLaneTests` -> methods: `setUp`, `test_ai_signal_materialization_goes_to_ai_lane_only`
+
+### `packages/core/backend/src/signal_intelligence/tests/test_alert_center_api.py`
+
+- Classes:
+  - `AlertCenterAPITests` -> methods: `_create_alert`, `setUp`, `test_ai_feed_and_ai_summary_lane`, `test_feed_summary_detail_context_endpoints`
+
 ### `packages/core/backend/src/signal_intelligence/tests/test_delivery_service.py`
 
 - Classes:
   - `DeliveryServiceTests` -> methods: `_create_alert`, `setUp`, `test_apply_user_delivery_policy_filters_by_threshold_and_preferences`, `test_sync_user_delivery_rows_is_idempotent`, `test_transition_seen_then_acknowledged`, `test_upsert_user_alert_preference_updates_scope`
+
+### `packages/core/backend/src/signal_intelligence/tests/test_market_anomaly_events.py`
+
+- Classes:
+  - `MarketAnomalyEventTests` -> methods: `setUp`, `test_price_shock_family_emits_from_materializer`, `test_stale_quote_family_emits_from_materializer`
 
 ### `packages/core/backend/src/signal_intelligence/tests/test_materializers.py`
 
 - Classes:
   - `UnifiedAlertMaterializerTests` -> methods: `test_alert_center_ack_and_mute_flow`, `test_alert_center_feed_filters_by_user_symbols_and_threshold`, `test_alert_center_feed_supports_alert_family_filter_and_summary_payload`, `test_alert_center_routes_are_registered_under_core_v1`, `test_legacy_unified_alert_routes_are_removed`, `test_materialize_ai_signal_alerts_creates_ai_lane_alert`, `test_materialize_market_anomaly_alerts_creates_signal_alert_from_snapshot`, `test_materialize_stale_quote_alerts_creates_system_alert_from_snapshot`, `test_materialize_unified_alerts_creates_dark_flow_alert_from_order_flow_event`, `test_materialize_unified_alerts_is_idempotent_for_dark_flow_event`, `test_unified_alert_list_view_defaults_to_main_lane_and_supports_ai_lane`
   - `WhaleMaterializerTests` -> methods: `test_materialize_whale_feed_aggregate_is_idempotent_for_existing_event`, `test_materialize_whale_feed_aggregate_skips_incomplete_native_facts`, `test_materialize_whale_feed_aggregate_uses_order_flow_facts_only`
+
+### `packages/core/backend/src/signal_intelligence/tests/test_user_alert_delivery.py`
+
+- Classes:
+  - `UserAlertDeliveryAPITests` -> methods: `setUp`, `test_ack_and_mute_flow_for_user_scope`, `test_cross_user_ack_is_blocked_by_scope`
 
 ### `packages/core/backend/src/signal_intelligence/tests/test_websocket_consumer.py`
 
@@ -7778,7 +7798,7 @@ Generated at: `2026-05-16 22:43:37`
 ### `packages/web/src/pages/AlertCenterPage.js`
 
 - Functions:
-  - `AlertCenterPage`, `formatAlertTimestamp`, `formatAlertValue`, `handleApply`, `load`, `normalizeSymbol`, `renderEvidenceList`, `renderSummaryCard`, `useAlertCenterData`
+  - `AlertCenterPage`, `formatAlertTimestamp`, `formatAlertValue`, `handleAcknowledge`, `handleApply`, `handleLoadDetail`, `handleMuteSymbol`, `load`, `normalizeSymbol`, `renderEvidenceList`, `renderSummaryCard`, `useAlertCenterData`
 - Top-level variables:
   - `DEFAULT_ENV`, `LANE_OPTIONS`, `adapter`, `aiSuggestCount`, `alerts`, `e`, `entries`, `highSeverityCount`, `mountedRef`, `numericValue`, `query`, `timestamp`
 

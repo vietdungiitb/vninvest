@@ -40,7 +40,7 @@ function normalizeSymbol(value) {
   return String(value || "").trim().toUpperCase();
 }
 
-function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "" } = {}) {
+function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "", refreshToken = 0 } = {}) {
   const mountedRef = useRef(null);
   const [state, setState] = useState({
     loading: true,
@@ -103,7 +103,7 @@ function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "" } = 
     return () => {
       mountedRef.current = false;
     };
-  }, [env, lane, symbol]);
+  }, [env, lane, symbol, refreshToken]);
 
   return state;
 }
@@ -134,7 +134,13 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
   const [lane, setLane] = useState("main");
   const [symbolDraft, setSymbolDraft] = useState("");
   const [appliedSymbol, setAppliedSymbol] = useState("");
-  const { loading, error, payload, summary } = useAlertCenterData({ env, lane, symbol: appliedSymbol });
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [activeAlertId, setActiveAlertId] = useState("");
+  const [activeDetail, setActiveDetail] = useState(null);
+  const [activeContext, setActiveContext] = useState(null);
+  const [actionError, setActionError] = useState("");
+  const [busyAlertId, setBusyAlertId] = useState("");
+  const { loading, error, payload, summary } = useAlertCenterData({ env, lane, symbol: appliedSymbol, refreshToken });
   const alerts = payload?.results ?? [];
   const highSeverityCount = Number(summary?.by_severity?.high || 0);
   const aiSuggestCount = alerts.filter((alert) => alert?.alert_family === "ai_suggest").length;
@@ -142,6 +148,60 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
   function handleApply(event) {
     event.preventDefault();
     setAppliedSymbol(normalizeSymbol(symbolDraft));
+  }
+
+  async function handleLoadDetail(alert) {
+    if (!alert?.alert_id || !alert?.symbol) return;
+    setActionError("");
+    setBusyAlertId(alert.alert_id);
+    try {
+      const adapter = coreApiAdapter({ env });
+      const [detail, context] = await Promise.all([
+        adapter.getAlertCenterEventDetail(alert.alert_id),
+        adapter.getAlertCenterSymbolContext(alert.symbol),
+      ]);
+      setActiveAlertId(alert.alert_id);
+      setActiveDetail(detail || null);
+      setActiveContext(context || null);
+    } catch (actionErr) {
+      setActionError(actionErr?.message || "Không thể tải chi tiết alert.");
+    } finally {
+      setBusyAlertId("");
+    }
+  }
+
+  async function handleAcknowledge(alert) {
+    if (!alert?.alert_id) return;
+    setActionError("");
+    setBusyAlertId(alert.alert_id);
+    try {
+      const adapter = coreApiAdapter({ env });
+      await adapter.acknowledgeAlertCenterEvent(alert.alert_id);
+      setRefreshToken((value) => value + 1);
+    } catch (actionErr) {
+      setActionError(actionErr?.message || "Không thể xác nhận alert.");
+    } finally {
+      setBusyAlertId("");
+    }
+  }
+
+  async function handleMuteSymbol(alert) {
+    if (!alert?.symbol) return;
+    setActionError("");
+    setBusyAlertId(alert.alert_id || alert.symbol);
+    try {
+      const adapter = coreApiAdapter({ env });
+      await adapter.muteAlertCenterPreference({
+        symbol: alert.symbol,
+        alert_family: alert.alert_family || alert.alert_type || "",
+        mute_minutes: 30,
+      });
+      setRefreshToken((value) => value + 1);
+    } catch (actionErr) {
+      setActionError(actionErr?.message || "Không thể mute symbol.");
+    } finally {
+      setBusyAlertId("");
+    }
   }
 
   return e("div", { className: `core-alert-center-page ${className}`.trim() }, [
@@ -192,6 +252,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
     ]),
     loading ? e("p", { key: "loading", className: "core-loading" }, "Đang tải alert center…") : null,
     error ? e("p", { key: "error", className: "core-error" }, error) : null,
+    actionError ? e("p", { key: "action-error", className: "core-error" }, actionError) : null,
     !loading && !error && alerts.length === 0
       ? e("p", { key: "empty", className: "core-empty" }, "Chưa có alert phù hợp với bộ lọc hiện tại.")
       : null,
@@ -223,9 +284,57 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
                 e("strong", { key: "label" }, "Evidence"),
                 renderEvidenceList(alert.evidence),
               ]),
+              e("div", { key: "actions", className: "core-alert-center-card-metrics" }, [
+                e(
+                  "button",
+                  {
+                    key: "detail",
+                    type: "button",
+                    disabled: busyAlertId === alert.alert_id,
+                    onClick: () => handleLoadDetail(alert),
+                  },
+                  busyAlertId === alert.alert_id ? "Đang tải..." : "Chi tiết"
+                ),
+                lane === "main"
+                  ? e(
+                      "button",
+                      {
+                        key: "ack",
+                        type: "button",
+                        disabled: busyAlertId === alert.alert_id,
+                        onClick: () => handleAcknowledge(alert),
+                      },
+                      "Đánh dấu đã xem"
+                    )
+                  : null,
+                e(
+                  "button",
+                  {
+                    key: "mute",
+                    type: "button",
+                    disabled: busyAlertId === (alert.alert_id || alert.symbol),
+                    onClick: () => handleMuteSymbol(alert),
+                  },
+                  "Mute 30 phút"
+                ),
+              ]),
             ])
           )
         )
+      : null,
+    activeDetail
+      ? e("section", { key: "detail-panel", className: "core-alert-center-card" }, [
+          e("h3", { key: "heading" }, `Chi tiết alert ${activeAlertId || ""}`),
+          e("p", { key: "detail-title" }, activeDetail?.title || "Không có tiêu đề"),
+          e("p", { key: "detail-summary" }, activeDetail?.summary || activeDetail?.body || "Không có mô tả"),
+          activeContext
+            ? e(
+                "p",
+                { key: "detail-context" },
+                `Context ${activeContext.symbol || "—"}: total=${activeContext.total || 0}, unseen=${activeContext.unseen || 0}`
+              )
+            : null,
+        ])
       : null,
   ]);
 }

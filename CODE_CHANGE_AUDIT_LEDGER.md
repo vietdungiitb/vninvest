@@ -1,5 +1,30 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center checklist-closure wave: alert-center detail/context/ack/mute UX + required backend suites | backend + packages/web + frontend + docs
+
+## All Modified Files (9 files)
+| File | Change |
+|------|--------|
+| `packages/web/src/adapters/coreApiAdapter.js` | Added native method `getAlertCenterSymbolContext(symbol)` for `/core/v1/signals/alert-center/symbols/{symbol}/context` |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added adapter regression for symbol-context endpoint and kept native endpoint coverage matrix green |
+| `packages/web/src/pages/AlertCenterPage.js` | Added detail/context loading flow and actions for acknowledge + mute with refresh-token based feed/summary reload |
+| `packages/core/backend/src/signal_intelligence/tests/test_alert_center_api.py` | Added API suite for feed/summary/detail/context contracts and native path behavior |
+| `packages/core/backend/src/signal_intelligence/tests/test_user_alert_delivery.py` | Added per-user delivery behavior coverage for lifecycle and preference semantics |
+| `packages/core/backend/src/signal_intelligence/tests/test_market_anomaly_events.py` | Added anomaly lane regression validating `price_shock`/`stale_quote` family behavior on alert-center feed |
+| `packages/core/backend/src/signal_intelligence/tests/test_ai_signal_lane.py` | Added AI lane regression validating AI alerts stay in AI lane and do not leak into main alert-center lane |
+| `module_tree_full.md` | Regenerated module inventory after this wave (`1210` modules) |
+| `PROGRESS_DASHBOARD.md` | Added this completion snapshot |
+
+## Validation
+- `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_alert_center_api signal_intelligence.tests.test_user_alert_delivery signal_intelligence.tests.test_market_anomaly_events signal_intelligence.tests.test_ai_signal_lane signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb; Pop-Location` passed (`25` tests) ✅
+- `Push-Location ./packages/web; $env:CI='true'; npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false; Pop-Location` passed (`17` tests) ✅
+- `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false; Pop-Location` passed (`4` tests) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1210` modules) ✅
+- `Set-Location .; .\start_dev.ps1` completed with `Frontend health : OK` ✅
+
+## Residual risk
+- `AlertCenterPage` currently executes symbol context fetch on detail-open flow; if backend context payload expands significantly, client-side render perf should be observed under high-frequency operator usage.
+
 # 2026-05-16 | Global Alert Center guide pack: coding-by-slice + execution checklist + PR self-audit checklist | docs
 
 ## All Modified Files (6 files)
