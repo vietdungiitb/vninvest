@@ -351,3 +351,49 @@ class ScrapeMatrixCell(models.Model):
 
     def __str__(self):
         return f'{self.matrix.cycle_id} {self.symbol_group_id} x {self.provider} ({self.status})'
+
+
+class CustomSymbolGroup(models.Model):
+    """Nhóm mã tuỳ chỉnh do operator tạo ra — dùng cho Matrix Snapshot và Backfill."""
+
+    name = models.CharField(max_length=100, verbose_name='Tên nhóm')
+    slug = models.SlugField(
+        max_length=60,
+        unique=True,
+        verbose_name='Slug (group_id)',
+        help_text='Dùng làm group_id khi chạy cycle. Tự động tạo từ tên, có thể chỉnh.',
+    )
+    description = models.TextField(blank=True, verbose_name='Mô tả')
+    symbols = models.JSONField(
+        default=list,
+        verbose_name='Danh sách mã',
+        help_text='Danh sách mã theo dạng ["VCB", "BID", "CTG"]',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Đang hoạt động')
+    created_by = models.CharField(max_length=120, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Nhóm mã tuỳ chỉnh'
+        verbose_name_plural = 'Nhóm mã tuỳ chỉnh'
+
+    def __str__(self):
+        return f'{self.name} ({len(self.symbols or [])} mã)'
+
+    def clean_symbols(self) -> list[str]:
+        """Trả về danh sách mã đã chuẩn hoá (uppercase, dedup, loại trống)."""
+        seen: set[str] = set()
+        result: list[str] = []
+        for raw in (self.symbols or []):
+            sym = str(raw or '').strip().upper()
+            if sym and sym not in seen:
+                seen.add(sym)
+                result.append(sym)
+        return result
+
+    @property
+    def group_id(self) -> str:
+        """group_id nhận dạng bởi vnbroker_adapter: 'custom_<slug>'."""
+        return f'custom_{self.slug}'

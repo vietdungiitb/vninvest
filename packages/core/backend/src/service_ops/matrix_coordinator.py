@@ -13,8 +13,17 @@ DEFAULT_MATRIX_PROVIDERS = get_default_provider_ids('matrix')
 SYMBOL_GROUP_ID_ALIASES = {
     'top100': 'vn100',
 }
+# All known predefined groups — used for validation and API listing
+PREDEFINED_SYMBOL_GROUPS = (
+    {'id': 'vn30',  'name': 'VN30',  'symbol_count': 30,   'type': 'index'},
+    {'id': 'vn50',  'name': 'VN50',  'symbol_count': 50,   'type': 'index'},
+    {'id': 'vn100', 'name': 'VN100', 'symbol_count': 100,  'type': 'index'},
+    {'id': 'hose',  'name': 'HOSE',  'symbol_count': None, 'type': 'exchange'},
+    {'id': 'hnx',   'name': 'HNX',   'symbol_count': None, 'type': 'exchange'},
+    {'id': 'upcom', 'name': 'UPCOM', 'symbol_count': None, 'type': 'exchange'},
+)
 DEFAULT_SYMBOL_GROUPS = (
-    {'id': 'vn30', 'name': 'VN30', 'symbol_count': 30},
+    {'id': 'vn30',  'name': 'VN30',  'symbol_count': 30},
     {'id': 'vn100', 'name': 'VN100', 'symbol_count': 100},
 )
 

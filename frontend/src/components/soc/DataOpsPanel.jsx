@@ -18,10 +18,14 @@ const BACKFILL_DATASETS = [
 ];
 
 const BACKFILL_SYMBOL_GROUPS = [
-  { key: 'VN30', label: 'VN30' },
+  { key: 'VN30',  label: 'VN30' },
+  { key: 'VN50',  label: 'VN50' },
   { key: 'VN100', label: 'VN100' },
-  { key: 'all', label: 'All' },
-  { key: 'custom', label: 'Custom' },
+  { key: 'HOSE',  label: 'HOSE' },
+  { key: 'HNX',   label: 'HNX' },
+  { key: 'UPCOM', label: 'UPCOM' },
+  { key: 'all',   label: 'Tất cả' },
+  { key: 'custom', label: 'Tuỳ chỉnh' },
 ];
 
 const DEFAULT_BACKFILL_FORM = {
@@ -45,10 +49,20 @@ const BACKFILL_DATASET_FIELDS = {
   intraday_tick:  'soc.dataops.dataset_field_intraday_tick',
 };
 
-const BackfillCenterSection = ({ t, canApply }) => {
+const BackfillCenterSection = ({ t, canApply, customGroups }) => {
   const [form, setForm] = useState(DEFAULT_BACKFILL_FORM);
   const [status, setStatus] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+
+  // Combine static predefined groups + dynamic custom groups
+  const allGroups = [
+    ...BACKFILL_SYMBOL_GROUPS,
+    ...(customGroups || []).map((g) => ({
+      key: g.group_id,
+      label: g.name,
+      isCustom: true,
+    })),
+  ];
 
   const toggleDataset = (key) => {
     setForm((prev) => ({
@@ -120,8 +134,8 @@ const BackfillCenterSection = ({ t, canApply }) => {
       {/* Symbol Group */}
       <div className="mb-4">
         <p className="text-xs text-slate-400 mb-2">{t('soc.dataops.backfill_symbol_group')}</p>
-        <div className="flex gap-3">
-          {BACKFILL_SYMBOL_GROUPS.map(({ key, label }) => (
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          {allGroups.map(({ key, label, isCustom }) => (
             <label key={key} className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="radio"
@@ -131,7 +145,7 @@ const BackfillCenterSection = ({ t, canApply }) => {
                 onChange={() => setForm((prev) => ({ ...prev, symbolGroup: key }))}
                 className="accent-indigo-500"
               />
-              <span className="text-sm text-slate-200">{label}</span>
+              <span className={`text-sm ${isCustom ? 'text-teal-300' : 'text-slate-200'}`}>{label}</span>
             </label>
           ))}
         </div>
@@ -369,10 +383,14 @@ const DEFAULT_MATRIX_SYMBOL_GROUPS = [
   { id: 'top100', name: 'Top 100' },
   { id: 'vn30', name: 'VN30' },
 ];
-// Danh sách nhóm mã mà backend hỗ trợ cho Matrix cycle (vn30 + vn100/top100)
+// Danh sách nhóm mã mà backend hỗ trợ cho Matrix cycle (predefined + custom)
 const MATRIX_SYMBOL_GROUPS_OPTIONS = [
-  { id: 'vn30', name: 'VN30' },
-  { id: 'vn100', name: 'VN100' },
+  { id: 'vn30',  name: 'VN30',  type: 'index' },
+  { id: 'vn50',  name: 'VN50',  type: 'index' },
+  { id: 'vn100', name: 'VN100', type: 'index' },
+  { id: 'hose',  name: 'HOSE',  type: 'exchange' },
+  { id: 'hnx',   name: 'HNX',   type: 'exchange' },
+  { id: 'upcom', name: 'UPCOM', type: 'exchange' },
 ];
 const MATRIX_POLL_MS = 5000;
 
@@ -455,10 +473,16 @@ const DataOpsPanel = ({ t }) => {
   const [matrixProviders, setMatrixProviders] = useState([]);
   const [matrixSelectedProviders, setMatrixSelectedProviders] = useState([]);
   const [matrixSymbolGroups, setMatrixSymbolGroups] = useState(DEFAULT_MATRIX_SYMBOL_GROUPS);
-  const [matrixSelectedGroups, setMatrixSelectedGroups] = useState(MATRIX_SYMBOL_GROUPS_OPTIONS.map((g) => g.id));
+  const [matrixSelectedGroups, setMatrixSelectedGroups] = useState(['vn30', 'vn100']);
   const [matrixStatus, setMatrixStatus] = useState('idle');
   const [matrixError, setMatrixError] = useState(null);
   const [matrixLoading, setMatrixLoading] = useState(true);
+  // ── Custom Symbol Groups state ──────────────────────────────────────────────
+  const [customGroups, setCustomGroups] = useState([]);
+  const [showGroupManager, setShowGroupManager] = useState(false);
+  const [newGroupForm, setNewGroupForm] = useState({ name: '', symbolsText: '', description: '' });
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [groupManagerError, setGroupManagerError] = useState(null);
   // ── UI accordion / toggle state ─────────────────────────────────────────────
   const [showQueueTier, setShowQueueTier] = useState(false);
   const [showRunHistory, setShowRunHistory] = useState(false);
@@ -468,7 +492,7 @@ const DataOpsPanel = ({ t }) => {
   const loadData = async (page = runLogsPage) => {
     try {
       setLoading(true);
-      const [tiersPayload, runtimePayload, coveragePayload, runLogsPayload, auditPayload, matrixMonitor, matrixProviderPayload] = await Promise.all([
+      const [tiersPayload, runtimePayload, coveragePayload, runLogsPayload, auditPayload, matrixMonitor, matrixProviderPayload, symbolGroupsPayload] = await Promise.all([
         socApi.getDataOpsQueueTiers(),
         socApi.getDataOpsRuntimeConfig(),
         socApi.getDataOpsCoverage(),
@@ -476,6 +500,7 @@ const DataOpsPanel = ({ t }) => {
         socApi.getDataOpsRuntimeConfigAudit(1),
         socApi.getMatrixMonitor().catch(() => ({ status: 'idle', cycle_id: '', providers: [], symbol_groups: [] })),
         socApi.getMatrixProviders().catch(() => ({ providers: [] })),
+        socApi.getSymbolGroups().catch(() => ({ predefined: [], custom: [] })),
       ]);
       setQueueSnapshot(tiersPayload || { tiers: [], updated_at: null });
       setRuntimeEnvelope(runtimePayload || { config: {}, ownership: null, updated_at: null });
@@ -485,6 +510,7 @@ const DataOpsPanel = ({ t }) => {
       setAuditEnvelope(auditPayload || DEFAULT_AUDIT_ENVELOPE);
       setAuditPage(1);
       setDraftJson(JSON.stringify(runtimePayload?.config || {}, null, 2));
+      setCustomGroups(symbolGroupsPayload?.custom || []);
       // Matrix context
       const providerList = matrixProviderPayload.providers || [];
       const monitorProviders = Array.isArray(matrixMonitor.providers) ? matrixMonitor.providers : [];
@@ -571,6 +597,45 @@ const DataOpsPanel = ({ t }) => {
     setMatrixSelectedGroups((prev) =>
       prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId],
     );
+  };
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ── Custom Symbol Group CRUD handlers ────────────────────────────────────────
+  const handleCreateGroup = async () => {
+    const name = newGroupForm.name.trim();
+    if (!name) { setGroupManagerError('Tên nhóm không được để trống.'); return; }
+    const symbols = newGroupForm.symbolsText
+      .split(/[\s,]+/)
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    if (symbols.length === 0) { setGroupManagerError('Cần ít nhất 1 mã cổ phiếu.'); return; }
+    try {
+      setIsCreatingGroup(true);
+      setGroupManagerError(null);
+      const created = await socApi.createSymbolGroup({
+        name,
+        description: newGroupForm.description.trim(),
+        symbols,
+      });
+      setCustomGroups((prev) => [...prev, created]);
+      setNewGroupForm({ name: '', symbolsText: '', description: '' });
+    } catch (err) {
+      setGroupManagerError(err.message);
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = async (slug) => {
+    try {
+      setGroupManagerError(null);
+      await socApi.deleteSymbolGroup(slug);
+      setCustomGroups((prev) => prev.filter((g) => g.slug !== slug));
+      // Deselect from matrix if it was selected
+      setMatrixSelectedGroups((prev) => prev.filter((id) => id !== `custom_${slug}`));
+    } catch (err) {
+      setGroupManagerError(err.message);
+    }
   };
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -736,7 +801,7 @@ const DataOpsPanel = ({ t }) => {
         />
       )}
 
-      <BackfillCenterSection t={t} canApply={!ownership?.write_block_reason} />
+      <BackfillCenterSection t={t} canApply={!ownership?.write_block_reason} customGroups={customGroups} />
 
       {/* ── Snapshot Trực tiếp (Matrix) ──────────────────────────────────── */}
       <div className="rounded-lg border border-indigo-800 bg-slate-900 p-6">
@@ -790,9 +855,14 @@ const DataOpsPanel = ({ t }) => {
               {t('soc.dataops.snapshot_context_scope_label')}
             </p>
             <div className="flex flex-wrap gap-1">
-              {MATRIX_SYMBOL_GROUPS_OPTIONS.map((g) => {
+              {[
+                ...MATRIX_SYMBOL_GROUPS_OPTIONS,
+                ...customGroups.map((g) => ({ id: g.group_id, name: g.name, type: 'custom' })),
+              ].map((g) => {
                 const isSelected = matrixSelectedGroups.includes(g.id);
                 const isActive = ACTIVE_MATRIX_STATUSES.has(matrixStatus);
+                const isExchange = g.type === 'exchange';
+                const isCustom = g.type === 'custom';
                 return (
                   <button
                     key={g.id}
@@ -801,11 +871,15 @@ const DataOpsPanel = ({ t }) => {
                     onClick={() => handleMatrixGroupToggle(g.id)}
                     className={`rounded-full border px-2 py-0.5 text-xs font-semibold transition ${
                       isSelected
-                        ? 'border-indigo-600 bg-indigo-800 text-indigo-100'
+                        ? isCustom
+                          ? 'border-teal-500 bg-teal-700 text-teal-100'
+                          : isExchange
+                            ? 'border-teal-600 bg-teal-800 text-teal-100'
+                            : 'border-indigo-600 bg-indigo-800 text-indigo-100'
                         : 'border-slate-600 bg-slate-900 text-slate-400 hover:border-indigo-500 hover:text-indigo-200'
                     } ${isActive ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
                   >
-                    {g.name}
+                    {isCustom ? `★ ${g.name}` : g.name}
                   </button>
                 );
               })}
@@ -1487,6 +1561,121 @@ const DataOpsPanel = ({ t }) => {
         <OwnershipBadgeRow domain={ownership.domain || 'dataops_market_data'} ownership={ownership} t={t} />
       )}
 
+      {/* ── Quản lý nhóm mã tuỳ chỉnh ─────────────────────────────────────── */}
+      <div className="rounded-lg border border-teal-800 bg-slate-900 p-6">
+        <button
+          type="button"
+          onClick={() => setShowGroupManager((v) => !v)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold text-white">
+              {t('soc.dataops.group_manager_title')}
+            </span>
+            <span className="rounded bg-teal-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-teal-100">
+              {customGroups.length} {t('soc.dataops.group_manager_count_label')}
+            </span>
+          </div>
+          <span className="text-slate-400">{showGroupManager ? '▲' : '▼'}</span>
+        </button>
+
+        {showGroupManager && (
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-slate-400">{t('soc.dataops.group_manager_description')}</p>
+
+            {/* Existing custom groups */}
+            {customGroups.length > 0 && (
+              <div className="space-y-2">
+                {customGroups.map((g) => (
+                  <div
+                    key={g.slug}
+                    className="flex items-center justify-between rounded border border-teal-800/50 bg-slate-800 px-3 py-2 gap-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-teal-200">{g.name}</span>
+                        <span className="text-[11px] text-slate-500">{g.slug}</span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-400 truncate">
+                        {(g.symbols || []).slice(0, 8).join(', ')}{g.symbols?.length > 8 ? ` +${g.symbols.length - 8}` : ''}
+                        {' '}
+                        <span className="text-slate-500">({g.symbol_count ?? g.symbols?.length ?? 0} mã)</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGroup(g.slug)}
+                      className="shrink-0 rounded border border-red-700 px-2 py-0.5 text-xs font-semibold text-red-400 hover:bg-red-900/50 transition"
+                    >
+                      {t('soc.dataops.group_manager_delete')}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Create new group form */}
+            <div className="rounded border border-teal-700/40 bg-slate-800/60 p-4 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-teal-400">
+                {t('soc.dataops.group_manager_add_title')}
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">
+                    {t('soc.dataops.group_manager_name_label')}
+                  </label>
+                  <input
+                    type="text"
+                    value={newGroupForm.name}
+                    onChange={(e) => setNewGroupForm((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="Ngân hàng lớn, Blue-chip..."
+                    className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-teal-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">
+                    {t('soc.dataops.group_manager_desc_label')}
+                  </label>
+                  <input
+                    type="text"
+                    value={newGroupForm.description}
+                    onChange={(e) => setNewGroupForm((p) => ({ ...p, description: e.target.value }))}
+                    placeholder={t('soc.dataops.group_manager_desc_placeholder')}
+                    className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-teal-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">
+                  {t('soc.dataops.group_manager_symbols_label')}
+                </label>
+                <textarea
+                  value={newGroupForm.symbolsText}
+                  onChange={(e) => setNewGroupForm((p) => ({ ...p, symbolsText: e.target.value }))}
+                  placeholder="VCB, BID, CTG, TCB, MBB..."
+                  rows={3}
+                  className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-teal-500 focus:outline-none resize-y"
+                />
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {t('soc.dataops.group_manager_symbols_hint')}
+                </p>
+              </div>
+              {groupManagerError && (
+                <p className="text-sm text-red-400">{groupManagerError}</p>
+              )}
+              <button
+                type="button"
+                onClick={handleCreateGroup}
+                disabled={isCreatingGroup || !newGroupForm.name.trim() || !newGroupForm.symbolsText.trim()}
+                className="rounded bg-teal-700 hover:bg-teal-600 disabled:opacity-50 px-4 py-1.5 text-sm font-semibold text-white transition"
+              >
+                {isCreatingGroup ? t('soc.dataops.group_manager_creating') : t('soc.dataops.group_manager_create_btn')}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <ConfigPreviewModal
         isOpen={previewOpen}
         before={currentConfig}
@@ -1513,6 +1702,10 @@ const DataOpsPanel = ({ t }) => {
 BackfillCenterSection.propTypes = {
   t: PropTypes.func.isRequired,
   canApply: PropTypes.bool.isRequired,
+  customGroups: PropTypes.arrayOf(PropTypes.shape({
+    group_id: PropTypes.string,
+    name: PropTypes.string,
+  })),
 };
 
 DataOpsPanel.propTypes = {

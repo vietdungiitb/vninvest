@@ -26,9 +26,15 @@ class VnbrokerAdapterError(Exception):
 _INTRADAY_FALLBACK_SOURCES = _SUPPORTED_PROVIDER_SOURCES
 _LISTING_GROUP_ALIASES = {
     'vn30': 'VN30',
+    'vn50': 'VN50',
     'vn100': 'VN100',
     'top100': 'VN100',
+    'hose': 'HOSE',
+    'hnx': 'HNX',
+    'upcom': 'UPCOM',
 }
+# Exchange-based groups resolved by filtering listing rows on exchange field
+_EXCHANGE_BASED_GROUPS = frozenset({'hose', 'hnx', 'upcom'})
 _LISTING_SEED_DATA = [
     ('ACB', 'HOSE', 'ACB', 'Ngân hàng'), ('BCM', 'HOSE', 'Becamex', 'Bất động sản'),
     ('BID', 'HOSE', 'BIDV', 'Ngân hàng'), ('BMP', 'HOSE', 'Nhựa Bình Minh', 'Thép & Vật liệu'),
@@ -323,9 +329,12 @@ def _slice_listing_symbols(symbols: list[str], symbol_group_id: str) -> list[str
     group_id = str(symbol_group_id or '').strip().lower()
     if group_id == 'vn30':
         return symbols[:30]
+    if group_id == 'vn50':
+        return symbols[:50]
     if group_id in {'vn100', 'top100'}:
         return symbols[:100]
-    return symbols[:50]
+    # Exchange-based groups and 'all' return unsliced list
+    return symbols
 
 
 def _fetch_realtime_price_with_quote_class(symbol_upper: str, source: str, quote_class) -> dict[str, Any] | None:
@@ -483,6 +492,20 @@ def fetch_symbol_group_members(symbol_group_id: str, *, source: str | None = Non
     group_id = str(symbol_group_id or '').strip().lower()
     if group_id == 'top100':
         group_id = 'vn100'
+
+    # Custom groups: 'custom_<slug>' → query CustomSymbolGroup model
+    if group_id.startswith('custom_'):
+        slug = group_id[len('custom_'):]
+        try:
+            from service_ops.models import CustomSymbolGroup  # lazy import to avoid circular dep
+            custom_group = CustomSymbolGroup.objects.get(slug=slug, is_active=True)
+            symbols = custom_group.clean_symbols()
+            if symbols:
+                return symbols
+        except Exception as exc:
+            logger.warning('fetch_symbol_group_members custom group %s failed: %s', slug, exc)
+        return []
+
     group_alias = _LISTING_GROUP_ALIASES.get(group_id)
 
     if group_alias:
@@ -507,6 +530,15 @@ def fetch_symbol_group_members(symbol_group_id: str, *, source: str | None = Non
 
     logger.info('Falling back to listing universe slice for %s from %s.', group_id, normalized_source)
     listing_rows = fetch_listing_symbols(source=normalized_source)
+    # Exchange-based groups: filter by exchange field in listing rows
+    if group_id in _EXCHANGE_BASED_GROUPS:
+        exchange_upper = group_id.upper()
+        exchange_symbols = [
+            row['symbol'] for row in listing_rows
+            if row.get('symbol') and str(row.get('exchange') or '').upper() == exchange_upper
+        ]
+        if exchange_symbols:
+            return exchange_symbols
     listing_symbols = [row['symbol'] for row in listing_rows if row.get('symbol')]
     return _slice_listing_symbols(listing_symbols, group_id)
 

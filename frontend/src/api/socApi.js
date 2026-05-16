@@ -474,4 +474,36 @@ export const socApi = {
     const resp = await fetch(`${BASE_URL}/matrix/monitor/${query}`);
     return handleResponse(resp);
   },
+
+  // ── Symbol Groups ────────────────────────────────────────────────────────────
+  getSymbolGroups: async () => {
+    const resp = await fetch(`${BASE_URL}/symbol-groups/`);
+    return handleResponse(resp);
+  },
+
+  createSymbolGroup: async (payload) => {
+    const resp = await fetch(`${BASE_URL}/symbol-groups/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse(resp);
+  },
+
+  updateSymbolGroup: async (slug, payload) => {
+    const resp = await fetch(`${BASE_URL}/symbol-groups/${encodeURIComponent(slug)}/`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse(resp);
+  },
+
+  deleteSymbolGroup: async (slug) => {
+    const resp = await fetch(`${BASE_URL}/symbol-groups/${encodeURIComponent(slug)}/`, {
+      method: 'DELETE',
+    });
+    if (resp.status === 204) return null;
+    return handleResponse(resp);
+  },
 };

@@ -12,7 +12,7 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import dataops, matrix, overview, prefetch, screener, signals, vnbroker
+from .views import dataops, matrix, overview, prefetch, screener, signals, symbol_groups, vnbroker
 
 # Overview endpoints (10)
 urlpatterns = [
@@ -112,4 +112,8 @@ urlpatterns = [
     path('dataops/runtime-config/', dataops.DataOpsRuntimeConfigView.as_view(), name='soc_dataops_runtime_config'),
     path('dataops/runtime-config/preview/', dataops.DataOpsRuntimeConfigPreviewView.as_view(), name='soc_dataops_runtime_config_preview'),
     path('dataops/runtime-config/audit/', dataops.DataOpsRuntimeConfigAuditView.as_view(), name='soc_dataops_runtime_config_audit'),
+
+    # Symbol Groups domain (predefined + custom CRUD)
+    path('symbol-groups/', symbol_groups.SymbolGroupListView.as_view(), name='soc_symbol_groups_list'),
+    path('symbol-groups/<slug:slug>/', symbol_groups.SymbolGroupDetailView.as_view(), name='soc_symbol_groups_detail'),
 ]
