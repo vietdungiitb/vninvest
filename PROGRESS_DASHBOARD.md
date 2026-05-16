@@ -1,3 +1,20 @@
+# 2026-05-16 — Global Alert Center D05 complete (unified-alert frontend bridge hardening) ✅
+
+Status: **✅ D05 DONE** | **✅ getUnifiedAlerts bridged to canonical core delivery** | **✅ browser-side unified snapshot synthesis removed**
+
+## What changed
+- Legacy `getUnifiedAlerts` client call now reads from canonical `coreApiAdapter.getUnifiedAlertDelivery`.
+- Legacy cursor shape is normalized so existing dashboard consumers still receive `next_cursor` and `has_more`.
+- Browser snapshot synthesis fallback in `useUnifiedAlerts` was removed to keep alert truth on server delivery data.
+
+## Validation
+- `src/components/DashboardRealtimePanel.test.jsx` + `src/api/client.unifiedAlerts.test.js` → **4 tests OK** ✅
+- `src/App.test.jsx` → **2 tests OK** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Continue slicing remaining legacy surfaces in backend compat/native cutover bundles per approved gates.
+
 # 2026-05-16 — Global Alert Center D04 complete (dashboard intermediary removal wave) ✅
 
 Status: **✅ D04 DONE** | **✅ /dashboard now routes directly to ModernDashboard** | **✅ obsolete Dashboard intermediary file removed**

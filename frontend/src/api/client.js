@@ -582,28 +582,42 @@ export const getWhaleCampaigns = ({
   return apiClient.get(`/realtime/whale-campaigns/${queryString ? `?${queryString}` : ''}`, { signal });
 };
 
-export const getUnifiedAlerts = ({ symbols, watchlistGroupIds, window = 'session', severityMin = 'low', limit = 20, cursor } = {}) => {
-  const params = new URLSearchParams();
-  if (Array.isArray(symbols) && symbols.length > 0) {
-    params.set('symbols', symbols.join(','));
+export const getUnifiedAlerts = async ({ symbols, watchlistGroupIds: _watchlistGroupIds, window: _window = 'session', severityMin = 'low', limit: _limit = 20, cursor } = {}) => {
+  const normalizedSymbols = Array.isArray(symbols)
+    ? symbols.map((symbol) => String(symbol || '').trim().toUpperCase()).filter(Boolean)
+    : [];
+  const severity = severityMin && severityMin !== 'low' ? severityMin : undefined;
+  const payload = await coreApiAdapter.getUnifiedAlertDelivery({
+    symbol: normalizedSymbols.length === 1 ? normalizedSymbols[0] : undefined,
+    severity,
+    page_size: Number.isFinite(Number(_limit)) ? Number(_limit) : undefined,
+    cursor: cursor || undefined,
+  });
+
+  const nextUrl = String(payload?.next || '').trim();
+  let nextCursor = null;
+  if (nextUrl) {
+    try {
+      const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost';
+      nextCursor = new URL(nextUrl, origin).searchParams.get('cursor');
+    } catch (_error) {
+      nextCursor = null;
+    }
   }
-  if (Array.isArray(watchlistGroupIds) && watchlistGroupIds.length > 0) {
-    params.set('watchlist_group_ids', watchlistGroupIds.join(','));
-  }
-  if (window) {
-    params.set('window', window);
-  }
-  if (severityMin) {
-    params.set('severity_min', severityMin);
-  }
-  if (limit) {
-    params.set('limit', String(limit));
-  }
-  if (cursor) {
-    params.set('cursor', String(cursor));
-  }
-  const queryString = params.toString();
-  return apiClient.get(`/realtime/unified-alerts/${queryString ? `?${queryString}` : ''}`);
+
+  const scopedResults = normalizedSymbols.length > 1
+    ? (payload?.results || []).filter((item) => normalizedSymbols.includes(String(item?.symbol || '').trim().toUpperCase()))
+    : (payload?.results || []);
+
+  return {
+    data: {
+      results: scopedResults,
+      next_cursor: nextCursor,
+      has_more: Boolean(nextCursor),
+      next: payload?.next || null,
+      previous: payload?.previous || null,
+    },
+  };
 };
 
 /**

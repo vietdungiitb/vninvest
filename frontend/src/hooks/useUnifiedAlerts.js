@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAggregateWhaleFeed, getUnifiedAlerts } from '../api/client';
+import { getUnifiedAlerts } from '../api/client';
 import { buildDashboardRealtimeQuoteList } from '../utils/dashboardRealtimeViewModel';
 import {
   normalizeAlertSeverity,
   normalizeAlertType,
-  deriveAlertType,
   severityWeight,
 } from '../utils/alertTaxonomy';
 
@@ -154,7 +153,6 @@ export default function useUnifiedAlerts({
   formatNumber,
   t,
 }) {
-  const [snapshotAlerts, setSnapshotAlerts] = useState([]);
   const [backendUnifiedSnapshot, setBackendUnifiedSnapshot] = useState([]);
   const [backendUnifiedNextCursor, setBackendUnifiedNextCursor] = useState(null);
   const [backendUnifiedHasMore, setBackendUnifiedHasMore] = useState(false);
@@ -166,37 +164,6 @@ export default function useUnifiedAlerts({
     () => monitoredSymbols.slice().sort().join('|'),
     [monitoredSymbols],
   );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadSnapshotAlerts = async () => {
-      if (!enableSnapshot || !monitoredSymbols.length) {
-        if (!cancelled) setSnapshotAlerts([]);
-        return;
-      }
-
-      try {
-        const response = await getAggregateWhaleFeed({
-          symbols: monitoredSymbols,
-          sort: 'ts',
-          limit: 8,
-        });
-        if (!cancelled) {
-          setSnapshotAlerts(response.data?.results || []);
-        }
-      } catch (_err) {
-        if (!cancelled) setSnapshotAlerts([]);
-      }
-    };
-
-    loadSnapshotAlerts();
-    const intervalId = window.setInterval(loadSnapshotAlerts, 30000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [monitoredKey, monitoredSymbols, enableSnapshot]);
 
   const fetchUnifiedPage = async (pageIndex, stackOverride = null) => {
     if (!enableSnapshot || !monitoredSymbols.length) {
@@ -297,26 +264,6 @@ export default function useUnifiedAlerts({
     }
   };
 
-  const mergedAlerts = useMemo(() => {
-    const combined = [];
-    const seen = new Set();
-
-    [...alerts, ...snapshotAlerts].forEach((item, index) => {
-      const key = item.event_id || `${item.symbol || 'NA'}-${item.ts || 'NA'}-${item.side || 'NA'}-${index}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      combined.push(item);
-    });
-
-    combined.sort((left, right) => {
-      const leftTs = new Date(left.ts || left.created_at || 0).getTime();
-      const rightTs = new Date(right.ts || right.created_at || 0).getTime();
-      return rightTs - leftTs;
-    });
-
-    return combined.slice(0, 8);
-  }, [alerts, snapshotAlerts]);
-
   const quoteList = useMemo(() => {
     return buildDashboardRealtimeQuoteList({
       monitoredSymbols,
@@ -326,124 +273,21 @@ export default function useUnifiedAlerts({
   }, [holdings, monitoredSymbols, quotesBySymbol]);
 
   const unifiedAlerts = useMemo(() => {
-    const whaleAlerts = mergedAlerts.map((alert) => {
-      const side = String(alert.side || '').toLowerCase();
-      const isBuy = side === 'buy';
-      const severity = normalizeAlertSeverity(alert.severity, 'high');
-      const valueText = fmtBil(alert.matched_value, formatNumber);
-      return {
-        id: `whale-${alert.event_id || `${alert.symbol}-${alert.ts}`}`,
-        symbol: alert.symbol,
-        ts: alert.ts,
-        source: 'whale',
-        severity,
-        type: isBuy ? 'buy' : 'sell',
-        headline: isBuy ? t('dashboardRealtime.unifiedHeadlineWhaleBuy') : t('dashboardRealtime.unifiedHeadlineWhaleSell'),
-        detail: t('dashboardRealtime.unifiedDetailWhaleValue', { value: valueText }),
-        confidence: alert.display_score ?? alert.event_score ?? null,
-        to: `/whale-alerts/${alert.symbol}`,
-      };
-    });
-
-    const darkFlowUnified = (darkFlowAlerts || []).map((alert) => {
-      const confidence = Number(alert.confidence ?? 0);
-      const strength = Number(alert.strength ?? 0);
-      const severity = confidence >= 80 || strength >= 80
-        ? 'critical'
-        : confidence >= 65 || strength >= 65
-          ? 'high'
-          : 'medium';
-
-      return {
-        id: `dark-${alert.event_id || `${alert.symbol}-${alert.ts}`}`,
-        symbol: alert.symbol,
-        ts: alert.ts,
-        source: 'dark_flow',
-        severity,
-        type: 'flow',
-        headline: t('dashboardRealtime.unifiedHeadlineDarkFlow'),
-        detail: alert.description || t('dashboardRealtime.unifiedDetailDarkFlowFallback'),
-        confidence,
-        to: `/stocks/${alert.symbol}`,
-      };
-    });
-
-    const priceShockUnified = quoteList
-      .filter((item) => item?.symbol && Math.abs(Number(item?.change_pct ?? 0)) >= 5)
-      .map((item) => {
-        const pct = Number(item.change_pct || 0);
-        const absPct = Math.abs(pct);
-        const severity = absPct >= 7 ? 'high' : 'medium';
-        const stableTs = toStableAlertTimestamp(item.last_date, _lastEventAt);
-        return {
-          id: `price-${item.symbol}`,
-          symbol: item.symbol,
-          ts: stableTs,
-          source: 'price_shock',
-          severity,
-          type: pct >= 0 ? 'buy' : 'sell',
-          headline: pct >= 0
-            ? t('dashboardRealtime.unifiedHeadlinePriceJump')
-            : t('dashboardRealtime.unifiedHeadlinePriceDrop'),
-          detail: t('dashboardRealtime.unifiedDetailPriceShock', { pct: absPct.toFixed(2) }),
-          confidence: null,
-          to: `/stocks/${item.symbol}`,
-        };
-      });
-
-    const staleUnified = quoteList
-      .filter((item) => item?.symbol && item?.stale)
-      .slice(0, 3)
-      .map((item) => {
-        const stableTs = toStableAlertTimestamp(item.last_date, _lastEventAt);
-        return {
-          id: `stale-${item.symbol}`,
-          symbol: item.symbol,
-          ts: stableTs,
-          source: 'stale_quote',
-          severity: 'low',
-          type: 'neutral',
-          headline: t('dashboardRealtime.unifiedHeadlineStaleQuote'),
-          detail: t('dashboardRealtime.unifiedDetailStaleQuote', { seconds: formatNumber(item.freshness_seconds ?? 0) }),
-          confidence: null,
-          to: `/stocks/${item.symbol}`,
-        };
-      });
-
-    const combined = [...whaleAlerts, ...darkFlowUnified, ...priceShockUnified, ...staleUnified];
-    const backendNormalized = (backendUnifiedSnapshot || []).map((item) => ({
-      id: item.event_id || `${item.source}-${item.symbol}-${item.ts}`,
+    const normalizedAlerts = (backendUnifiedSnapshot || []).map((item) => ({
+      id: item.alert_id || item.event_id || `${item.alert_type || item.source || 'alert'}-${item.symbol || 'NA'}-${item.triggered_at || item.ts || 'na'}`,
       symbol: item.symbol,
-      ts: item.ts,
-      source: item.source,
+      ts: item.triggered_at || item.ts,
+      source: item.alert_type || item.source,
       severity: normalizeAlertSeverity(item.severity, 'medium'),
-      type: normalizeAlertType(
-        item.type,
-        deriveAlertType({
-          source: item.source,
-          side: item.side,
-          headline: item.headline,
-          changePct: item.change_pct,
-        }),
-      ),
-      headline: localizeUnifiedHeadline(item.headline, t),
-      detail: localizeUnifiedDetail(item.detail, t, formatNumber),
+      type: normalizeAlertType(item.type || item.direction || item.alert_type, 'neutral'),
+      headline: localizeUnifiedHeadline(item.title || item.headline, t),
+      detail: localizeUnifiedDetail(item.body || item.detail, t, formatNumber),
       confidence: item.confidence ?? null,
-      to: item.to || (item.source === 'whale' ? `/whale-alerts/${item.symbol}` : `/stocks/${item.symbol}`),
+      lane: item.lane || 'main',
+      to: item.to || ((item.alert_type || item.source) === 'whale' ? `/whale-alerts/${item.symbol}` : `/stocks/${item.symbol}`),
     }));
 
-    const combinedWithBackend = [...backendNormalized, ...combined];
-    const seen = new Set();
-    const deduped = combinedWithBackend.filter((item) => {
-      const normalizedTs = toStableAlertTimestamp(item.ts) || 'na';
-      const fallbackId = `${item.source || 'unknown'}-${item.symbol || 'NA'}-${normalizeAlertText(item.headline, 'no-headline')}-${normalizedTs}`;
-      const key = String(item.id || fallbackId);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    deduped.sort((a, b) => {
+    normalizedAlerts.sort((a, b) => {
       const aScore = severityWeight(a.severity);
       const bScore = severityWeight(b.severity);
       if (aScore !== bScore) return bScore - aScore;
@@ -452,8 +296,8 @@ export default function useUnifiedAlerts({
       return String(a.symbol || '').localeCompare(String(b.symbol || ''));
     });
 
-    return deduped;
-  }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, _lastEventAt, mergedAlerts, quoteList, t]);
+    return normalizedAlerts;
+  }, [backendUnifiedSnapshot, formatNumber, t]);
 
   const filteredUnifiedAlerts = useMemo(() => {
     const severityRank = {
@@ -610,6 +454,7 @@ export default function useUnifiedAlerts({
     goToPreviousUnifiedPage,
     goToNextUnifiedPage,
     goToLastUnifiedPage,
+    loadMoreUnifiedSnapshot: goToNextUnifiedPage,
     hasLastUnifiedPage: cursorStack.length - 1 > currentPageIndex,
   };
 }

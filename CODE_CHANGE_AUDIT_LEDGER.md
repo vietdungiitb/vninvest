@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D05 complete: unified-alert frontend bridge hardening | frontend + docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `frontend/src/api/client.js` | Rewired `getUnifiedAlerts` to `coreApiAdapter.getUnifiedAlertDelivery` with cursor normalization and legacy response-shape compatibility |
+| `frontend/src/api/client.unifiedAlerts.test.js` | Replaced legacy endpoint query tests with bridge contract tests against the canonical adapter |
+| `frontend/src/hooks/useUnifiedAlerts.js` | Removed browser-side snapshot synthesis branch and kept server-truth pagination flow with compatibility aliases for dashboard consumers |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added D05 row and marked DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added D05 evidence entry |
+| `PROGRESS_DASHBOARD.md` | Added D05 completion snapshot |
+
+## Validation
+- `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand src/components/DashboardRealtimePanel.test.jsx src/api/client.unifiedAlerts.test.js --watch=false; Pop-Location` → **4 tests OK** ✅
+- `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand src/App.test.jsx --watch=false; Pop-Location` → **2 tests OK** ✅
+- `Set-Location .; .\start_dev.ps1` → Core API health OK; Frontend health OK ✅
+
+## Residual risk
+- Legacy route URLs still exist for compatibility, but unified alert truth now comes from server delivery contracts instead of browser synthesis.
+
 # 2026-05-16 | Global Alert Center D04 complete: dashboard intermediary removal wave | frontend + docs
 
 ## All Modified Files (7 files)
