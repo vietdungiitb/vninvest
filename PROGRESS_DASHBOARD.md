@@ -1,3 +1,22 @@
+# 2026-05-16 — Global Alert Center D01 complete (frontend/mobile bridge naming standardization) ✅
+
+Status: **✅ D01 DONE** | **✅ canonical AlertCenterFeed naming applied on runtime path** | **✅ mobile consumers migrated**
+
+## What changed
+- Standardized bridge naming to `AlertCenterFeed` across frontend and mobile service layer runtime paths.
+- Migrated mobile watchlist/advisory service calls from `getUnifiedAlerts` to `getAlertCenterFeed`.
+- Kept compatibility aliases to avoid immediate breaking changes while preserving SaaS-native contract behavior.
+- Updated taskboard status `D01` to `DONE`.
+
+## Validation
+- `npm test -- --runInBand src/api/client.unifiedAlerts.test.js --watch=false` → **3 tests OK** ✅
+- `npm run check:mobile` + `npm run check:mobile-navigation` → **mobile smoke OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+- `./start_dev.ps1` → **Frontend health OK** ✅
+
+## Next
+- Keep `B01/B02/D08` as active technical debt closure lanes for producer/materializer end-to-end taxonomy completeness.
+
 # 2026-05-16 — Global Alert Center D05 complete (frontend naming cleanup for alert-center feed) ✅
 
 Status: **✅ D05 DONE** | **✅ runtime path đã dùng naming chuẩn AlertCenterFeed** | **✅ compatibility alias giữ an toàn migration**

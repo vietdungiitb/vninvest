@@ -23,7 +23,7 @@
 | B03 | OpenAPI alert-center contracts | ✅ DONE | Copilot | Native endpoint family `/core/v1/signals/alert-center/*` + `/core/v1/signals/ai-alerts/*` đã active end-to-end với adapter/UI/backend regression suites pass |
 | C01 | Per-user delivery projection | ✅ DONE | Copilot | Delivery service/state transitions + user-scope ack/mute đã có API coverage, bao gồm cross-user scope block và mute filtering behavior |
 | C02 | packages/web alert hub | ✅ DONE | Copilot | Alert hub đã có full workflow feed/summary/detail/context/ack/mute trên packages/web và có regression test cho adapter contracts |
-| D01 | frontend bridge sunset | 🔄 IN PROGRESS | Copilot | Frontend bridge đã call native alert-center feed contract; còn naming debt lịch sử (`getUnifiedAlerts`, `useUnifiedAlerts`) chưa đổi hoàn toàn |
+| D01 | frontend bridge sunset | ✅ DONE | Copilot | Runtime path chính đã chuẩn hóa sang naming `AlertCenterFeed` cho frontend bridge và mobile service layer; giữ alias tương thích tạm thời để migration an toàn |
 | D02 | Parity/shadow gates + legacy sunset docs | 🟠 REOPENED | Copilot | Self-audit pass-state đang over-claim so với evidence thực tế delivery/openapi completeness |
 | D03 | Frontend wrapper removal wave | 🟠 REOPENED | Copilot | Wrapper removal done, nhưng acceptance phụ thuộc canonical contract closure từ B03/C01 nên chưa thể close độc lập |
 | D04 | Dashboard intermediary removal wave | 🟠 REOPENED | Copilot | Route simplification done, nhưng downstream alert contract parity chưa đạt gate nên chưa close end-to-end |

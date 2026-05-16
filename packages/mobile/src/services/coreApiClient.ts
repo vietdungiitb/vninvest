@@ -68,10 +68,9 @@ export interface PaginatedResponse<T> {
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch unified alerts (whale / dark-flow / signal).
- * Core unified alerts endpoint.
+ * Fetch alert-center feed from core native endpoint.
  */
-export async function getUnifiedAlerts(params: {
+export async function getAlertCenterFeed(params: {
   symbol?: string;
   alert_family?: string;
   alert_type?: string;
@@ -90,6 +89,9 @@ export async function getUnifiedAlerts(params: {
   );
   return response.data;
 }
+
+// Compatibility alias for callers not migrated yet.
+export const getUnifiedAlerts = getAlertCenterFeed;
 
 /**
  * Fetch whale feed aggregate for a symbol.

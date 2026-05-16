@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D01 closure: bridge naming standardization across frontend/mobile | frontend + mobile + docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/mobile/src/services/coreApiClient.ts` | Added canonical mobile service method `getAlertCenterFeed` and kept compatibility alias `getUnifiedAlerts` |
+| `packages/mobile/src/services/watchlistApi.ts` | Migrated mobile watchlist/advisory consumers to `getAlertCenterFeed` |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Updated `D01` from `IN PROGRESS` to `DONE` with note about canonical naming + safe compatibility alias |
+| `module_tree_full.md` | Regenerated module tree after this slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this D01 closure audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for D01 closure |
+
+## Validation
+- `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand src/api/client.unifiedAlerts.test.js --watch=false; Pop-Location` passed (`3` tests) ✅
+- `Push-Location ./packages/mobile; npm run check:mobile; npm run check:mobile-navigation; Pop-Location` passed (mobile config + navigation smoke) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1211` modules) ✅
+- `Set-Location .; .\start_dev.ps1` completed with `Frontend health : OK` ✅
+
+## Residual risk
+- Compatibility aliases vẫn tồn tại có chủ đích để tránh break external call-sites; cần một deprecation wave riêng để xóa alias khi inventory usage về 0.
+
 # 2026-05-16 | Global Alert Center D05 closure: frontend naming cleanup for alert-center feed bridge | frontend + docs
 
 ## All Modified Files (11 files)

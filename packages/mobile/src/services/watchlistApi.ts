@@ -1,5 +1,5 @@
 import authClient from './http';
-import { getUnifiedAlerts, getWhaleFeedAggregate } from './coreApiClient';
+import { getAlertCenterFeed, getWhaleFeedAggregate } from './coreApiClient';
 import type {
   TrackedSymbolItem,
   WatchlistGroup,
@@ -135,7 +135,7 @@ export async function getAggregateWhaleFeed(params: {
 } = {}): Promise<WhaleFeedAggregateResponse> {
   // Use core /core/v1/signals/alert-center/feed for aggregate feed (multi-symbol).
   // For single-symbol feed, use getWhaleFeedAggregate from coreApiClient.
-  const coreResponse = await getUnifiedAlerts({
+  const coreResponse = await getAlertCenterFeed({
     alert_type: 'whale',
     cursor: params.cursor,
   });
@@ -156,7 +156,7 @@ export async function getAggregateWhaleFeed(params: {
 
 export async function getWhaleAdvisories(): Promise<WhaleAdvisoryItem[]> {
   // Remapped to core /core/v1/signals/alert-center/feed?alert_type=whale
-  const coreResponse = await getUnifiedAlerts({ alert_type: 'whale' });
+  const coreResponse = await getAlertCenterFeed({ alert_type: 'whale' });
   return coreResponse.results.map((alert) => ({
     alert_id: alert.alert_id,
     symbol: alert.symbol,

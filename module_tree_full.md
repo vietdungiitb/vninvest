@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 22:57:18`
+Generated at: `2026-05-16 23:02:31`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Generated at: `2026-05-16 22:57:18`
 - JS/TS modules: 522
 - Total classes: 1364
 - Total functions: 3239
-- Total top-level variables: 4731
+- Total top-level variables: 4732
 
 ## Python Modules
 
@@ -6630,9 +6630,9 @@ Generated at: `2026-05-16 22:57:18`
 ### `packages/mobile/src/services/coreApiClient.ts`
 
 - Functions:
-  - `generateRequestId`, `getSessionFacts`, `getSymbolSnapshot`, `getUnifiedAlerts`, `getWhaleFeedAggregate`
+  - `generateRequestId`, `getAlertCenterFeed`, `getSessionFacts`, `getSymbolSnapshot`, `getWhaleFeedAggregate`
 - Top-level variables:
-  - `CORE_API_PREFIX`, `coreClient`, `query`, `r`, `response`, `search`, `token`
+  - `CORE_API_PREFIX`, `coreClient`, `getUnifiedAlerts`, `query`, `r`, `response`, `search`, `token`
 
 ### `packages/mobile/src/services/http.ts`
 
