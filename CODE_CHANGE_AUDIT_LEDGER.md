@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D04 complete: dashboard intermediary removal wave | frontend + docs
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `frontend/src/App.jsx` | Removed `Dashboard` intermediary import and routed `/dashboard` directly to `ModernDashboard` |
+| `frontend/src/App.test.jsx` | Updated route mock to `./pages/modern/ModernDashboard` |
+| `frontend/src/pages/Dashboard.jsx` | Deleted obsolete intermediary page |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added D04 row and marked DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added D04 evidence entry |
+| `PROGRESS_DASHBOARD.md` | Added D04 completion snapshot |
+| `module_tree_full.md` | Regenerated module tree after file deletion |
+
+## Validation
+- `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand src/App.test.jsx --watch=false; Pop-Location` → **2 tests OK** ✅
+- `Set-Location .; .\.venv\Scripts\python.exe .\scripts\ops\generate_module_tree.py` → module tree refreshed (1203 modules) ✅
+- `Set-Location .; .\start_dev.ps1` → Core API health OK; Frontend health OK ✅
+
+## Residual risk
+- `dashboard/shell` debug host remains intentionally behind `REACT_APP_ENABLE_PACKAGE_SHELL_HOST` and was not changed in this wave.
+
 # 2026-05-16 | Global Alert Center D03 complete: frontend wrapper removal wave | frontend + docs
 
 ## All Modified Files (9 files)

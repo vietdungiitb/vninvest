@@ -1,3 +1,20 @@
+# 2026-05-16 — Global Alert Center D04 complete (dashboard intermediary removal wave) ✅
+
+Status: **✅ D04 DONE** | **✅ /dashboard now routes directly to ModernDashboard** | **✅ obsolete Dashboard intermediary file removed**
+
+## What changed
+- Router now mounts `ModernDashboard` directly for `/dashboard`.
+- Deleted `frontend/src/pages/Dashboard.jsx` because it no longer provided independent logic.
+- Updated the App route test mocks to align with the direct import path.
+
+## Validation
+- `src/App.test.jsx` → **2 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1203 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Continue next legacy cut wave only on approved targets that do not break compatibility contracts.
+
 # 2026-05-16 — Global Alert Center D03 complete (frontend wrapper removal wave) ✅
 
 Status: **✅ D03 DONE** | **✅ removed local whale/dashboard wrapper pages** | **✅ canonical pages mounted directly in router** | **✅ route compatibility alias preserved**

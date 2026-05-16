@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginModal from './components/LoginModal';
-import Dashboard from './pages/Dashboard';
 import DashboardShellHost from './pages/DashboardShellHost';
 import StockDetail from './pages/StockDetail';
 import WhaleAdvisory from './pages/WhaleAdvisory';
@@ -46,6 +45,7 @@ import { RealtimeProvider } from './context/RealtimeContext';
 import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AlertCenterPage } from '@vninvest/web';
+import ModernDashboard from './pages/modern/ModernDashboard';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -99,7 +99,7 @@ export default function App() {
                 <Route path="/" element={<ProtectedLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   {/* /dashboard always uses ModernDashboard dispatcher — DashboardShellHost only at /dashboard/shell */}
-                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="dashboard" element={<ModernDashboard />} />
                   {packageShellHostEnabled ? (
                     <Route path="dashboard/shell" element={<DashboardShellHost />} />
                   ) : null}

@@ -2,13 +2,13 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 21:02:18`
+Generated at: `2026-05-16 21:07:43`
 
 ## Summary
 
-- Total modules: 1204
+- Total modules: 1203
 - Python modules: 682
-- JS/TS modules: 522
+- JS/TS modules: 521
 - Total classes: 1341
 - Total functions: 3226
 - Total top-level variables: 4729
@@ -6052,10 +6052,6 @@ Generated at: `2026-05-16 21:02:18`
 
 - Top-level variables:
   - `bootstrapLoader`
-
-### `frontend/src/pages/Dashboard.jsx`
-
-- No parseable top-level symbols found
 
 ### `frontend/src/pages/DashboardShellHost.jsx`
 

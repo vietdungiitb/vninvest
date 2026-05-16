@@ -22,7 +22,7 @@ jest.mock('./components/LoginModal', () => function MockLoginModal() {
   return <div data-testid="login-modal" />;
 });
 
-jest.mock('./pages/Dashboard', () => function MockDashboard() {
+jest.mock('./pages/modern/ModernDashboard', () => function MockDashboard() {
   return <div data-testid="dashboard-page" />;
 });
 
