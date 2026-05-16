@@ -42,10 +42,12 @@ QUEUE_TIER_DATASETS = {
         GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT,
         GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS,
         GlobalSymbolCoverage.DatasetChoices.INTRADAY_BARS,
+        GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
     ),
     'warm_liquid_market': (
         GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
         GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT,
+        GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
     ),
     'cold_full_market': (
         GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
@@ -55,6 +57,7 @@ QUEUE_TIER_DATASETS = {
         GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT,
         GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS,
         GlobalSymbolCoverage.DatasetChoices.INTRADAY_BARS,
+        GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
     ),
 }
 

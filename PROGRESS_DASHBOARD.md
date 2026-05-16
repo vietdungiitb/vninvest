@@ -1,3 +1,18 @@
+# 2026-05-16 — Global Alert Center D10 complete (service_ops operator matrix wave) ✅
+
+Status: **✅ D10 DONE** | **✅ operator registry summary/detail/reconcile paths landed** | **✅ SOC focused suites green in core container**
+
+## What changed
+- Completed `service_ops` operator wave for dataops registry observability and reconcile-preview capabilities.
+- Updated queue-tier dataset mapping for session-facts parity in dataops runtime policy helpers.
+- Added SOC-domain API coverage for new native/alias endpoints.
+
+## Validation
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_tasks --keepdb` → **focused SOC suites passed** ✅
+
+## Next
+- Remaining workspace delta is largely non-wave files (`AGENTS.md`, `debug_whale_data.py`) pending explicit direction.
+
 # 2026-05-16 — Global Alert Center D09 complete (market_data matrix SSOT parity wave) ✅
 
 Status: **✅ D09 DONE** | **✅ registry/coverage/planner parity landed** | **✅ market_data focused suites green in core container**

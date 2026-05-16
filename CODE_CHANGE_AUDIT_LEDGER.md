@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D10 complete: service_ops operator matrix wave | backend + docs
+
+## All Modified Files (10 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Updated queue-tier dataset mapping to include session-facts parity where required |
+| `packages/core/backend/src/service_ops/operator_urls.py` | Added operator registry summary/detail/reconcile-preview endpoints |
+| `packages/core/backend/src/service_ops/urls.py` | Aligned SOC alias/native route registration for new dataops registry paths |
+| `packages/core/backend/src/service_ops/views/dataops.py` | Added/updated dataops registry summary/detail/reconcile-preview views |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Added API-domain coverage for new registry endpoints and OpenAPI metadata expectations |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Updated SOC tasks coverage aligned with queue-tier and planner parity behavior |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added D10 row and marked DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added D10 evidence entry |
+| `PROGRESS_DASHBOARD.md` | Added D10 completion snapshot |
+| `module_tree_full.md` | Retained refreshed module index for this execution window |
+
+## Validation
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_tasks --keepdb` → **focused SOC suites passed** ✅
+- Runtime stack health remained OK in active dev session (`Core API health OK`, `Frontend health OK`) ✅
+
+## Residual risk
+- A local helper script `debug_whale_data.py` remains untracked and intentionally excluded from this production wave.
+
 # 2026-05-16 | Global Alert Center D09 complete: market_data matrix SSOT parity wave | backend + docs
 
 ## All Modified Files (9 files)

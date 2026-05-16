@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from market_data.models import GlobalSymbolCoverage, GlobalSymbolRegistry
+from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry
 from signal_intelligence.models import UnifiedAlert
 from service_ops.models import (
     ConfigChangeAudit,
@@ -697,6 +697,9 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
 
         runtime_config_path = schema['paths']['/core/v1/operator/scraping/dataops/runtime-config/']
         planner_preview_path = schema['paths']['/core/v1/operator/scraping/dataops/planner/preview/']
+        registry_summary_path = schema['paths']['/core/v1/operator/scraping/dataops/registry/summary/']
+        registry_detail_path = schema['paths']['/core/v1/operator/scraping/dataops/registry/{symbol}/']
+        registry_reconcile_path = schema['paths']['/core/v1/operator/scraping/dataops/registry/reconcile-preview/']
         security_schemes = schema['components']['securitySchemes']
 
         self.assertEqual(runtime_config_path['get']['summary'], 'Lấy runtime config DataOps market-data')
@@ -705,10 +708,188 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(runtime_config_path['get']['security'], [{'CorePATBearer': []}])
         self.assertEqual(planner_preview_path['post']['summary'], 'Preview planner DataOps market-data')
         self.assertIn('requestBody', planner_preview_path['post'])
+        self.assertEqual(registry_summary_path['get']['summary'], 'Lấy summary global symbol matrix foundation')
+        self.assertEqual(registry_summary_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(registry_detail_path['get']['summary'], 'Lấy detail một symbol trong global symbol matrix')
+        self.assertEqual(registry_reconcile_path['post']['summary'], 'Preview drift reconcile cho global symbol matrix')
+        self.assertIn('requestBody', registry_reconcile_path['post'])
         self.assertIn('CorePATBearer', security_schemes)
         self.assertEqual(security_schemes['CorePATBearer']['type'], 'http')
         self.assertEqual(security_schemes['CorePATBearer']['scheme'], 'bearer')
         self.assertEqual(security_schemes['CorePATBearer']['bearerFormat'], 'PAT')
+
+    def test_registry_summary_endpoint_returns_foundation_aggregates(self):
+        decaying_registry = GlobalSymbolRegistry.objects.create(
+            symbol='AAA',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.RECOVERY,
+            freshness_state_summary='missing',
+            coverage_state_summary='gap',
+            demand_source_count=0,
+            decay_after_at=timezone.now() + timezone.timedelta(days=3),
+        )
+        hot_registry = GlobalSymbolRegistry.objects.create(
+            symbol='FPT',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            freshness_state_summary='fresh',
+            coverage_state_summary='ok',
+            demand_source_count=2,
+            priority_score=2.5,
+        )
+        GlobalSymbolDemandSource.objects.bulk_create([
+            GlobalSymbolDemandSource(
+                registry=hot_registry,
+                source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
+                source_ref='watchlist:11',
+                is_active=True,
+                weight=1.0,
+            ),
+            GlobalSymbolDemandSource(
+                registry=hot_registry,
+                source_type=GlobalSymbolDemandSource.SourceTypeChoices.SYSTEM_DEFAULT,
+                source_ref='system_default:vn100',
+                is_active=True,
+                weight=0.5,
+            ),
+            GlobalSymbolDemandSource(
+                registry=decaying_registry,
+                source_type=GlobalSymbolDemandSource.SourceTypeChoices.ADMIN_GROUP,
+                source_ref='admin_group:test',
+                is_active=False,
+                weight=0.75,
+            ),
+        ])
+
+        response = self.client.get('/api/soc/dataops/registry/summary/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['totals']['total_symbols'], 2)
+        self.assertEqual(payload['totals']['active_symbols'], 2)
+        self.assertEqual(payload['totals']['decaying_symbols'], 1)
+        priority_tiers = {item['priority_tier']: item['count'] for item in payload['priority_tiers']}
+        self.assertEqual(priority_tiers['hot'], 1)
+        self.assertEqual(priority_tiers['recovery'], 1)
+        demand_sources = {item['source_type']: item for item in payload['demand_sources']}
+        self.assertEqual(demand_sources['watchlist']['active_edges'], 1)
+        self.assertEqual(demand_sources['system_default']['active_edges'], 1)
+        self.assertEqual(demand_sources['admin_group']['inactive_edges'], 1)
+
+    def test_operator_canonical_registry_summary_endpoint_matches_soc_alias(self):
+        GlobalSymbolRegistry.objects.create(
+            symbol='FPT',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            freshness_state_summary='fresh',
+            coverage_state_summary='ok',
+            demand_source_count=1,
+            priority_score=1.0,
+        )
+
+        soc_response = self.client.get('/api/soc/dataops/registry/summary/')
+        canonical_response = self.client.get('/core/v1/operator/scraping/dataops/registry/summary/')
+
+        self.assertEqual(canonical_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(canonical_response.json(), soc_response.json())
+
+    def test_registry_detail_endpoint_returns_demand_sources_coverage_and_queue_tier(self):
+        trade_date = timezone.localdate()
+        verified_at = timezone.now()
+        registry = GlobalSymbolRegistry.objects.create(
+            symbol='FPT',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            freshness_state_summary='missing',
+            coverage_state_summary='gap',
+            demand_source_count=1,
+            priority_score=1.0,
+            latest_trade_date=trade_date,
+            last_hydrated_at=verified_at,
+        )
+        GlobalSymbolDemandSource.objects.create(
+            registry=registry,
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
+            source_ref='watchlist:7',
+            is_active=True,
+            weight=1.0,
+            metadata={'watchlist_id': 7},
+        )
+        GlobalSymbolCoverage.objects.bulk_create([
+            GlobalSymbolCoverage(
+                registry=registry,
+                dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH,
+                latest_complete_trade_date=trade_date,
+                last_verified_at=verified_at,
+                next_recommended_action='coverage_ok',
+            ),
+            GlobalSymbolCoverage(
+                registry=registry,
+                dataset=GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
+                last_verified_at=verified_at,
+                next_recommended_action='materialize_session_facts',
+            ),
+        ])
+
+        response = self.client.get('/api/soc/dataops/registry/FPT/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'FPT')
+        self.assertEqual(payload['queue_tier'], 'hot_user_demand')
+        self.assertFalse(payload['needs_reconcile'])
+        self.assertEqual(len(payload['demand_sources']), 1)
+        self.assertEqual(payload['demand_sources'][0]['source_ref'], 'watchlist:7')
+        coverage_by_dataset = {item['dataset']: item for item in payload['coverage']}
+        self.assertEqual(coverage_by_dataset['daily_prices']['freshness_state'], 'fresh')
+        self.assertEqual(coverage_by_dataset['session_facts']['next_recommended_action'], 'materialize_session_facts')
+
+    def test_registry_reconcile_preview_flags_drift_without_mutating_registry(self):
+        registry = GlobalSymbolRegistry.objects.create(
+            symbol='HPG',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.COLD,
+            freshness_state_summary='unknown',
+            coverage_state_summary='unknown',
+            demand_source_count=0,
+            priority_score=0.0,
+        )
+        GlobalSymbolDemandSource.objects.create(
+            registry=registry,
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
+            source_ref='watchlist:88',
+            is_active=True,
+            weight=1.0,
+        )
+        GlobalSymbolCoverage.objects.create(
+            registry=registry,
+            dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+            freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
+            last_verified_at=timezone.now(),
+            next_recommended_action='hydrate_daily_prices',
+        )
+
+        response = self.client.post(
+            '/api/soc/dataops/registry/reconcile-preview/',
+            {
+                'symbols': ['HPG'],
+                'limit': 10,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['summary']['evaluated_symbols'], 1)
+        self.assertEqual(payload['summary']['out_of_sync'], 1)
+        self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
+        self.assertFalse(payload['items'][0]['in_sync'])
+        self.assertIn('current_priority_tier', payload['items'][0]['drift_fields'])
+        self.assertIn('demand_source_count', payload['items'][0]['drift_fields'])
+        registry.refresh_from_db()
+        self.assertEqual(registry.current_priority_tier, GlobalSymbolRegistry.PriorityTierChoices.COLD)
 
     def test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload(self):
         service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])

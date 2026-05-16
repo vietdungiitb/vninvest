@@ -105,6 +105,9 @@ urlpatterns = [
 
     # Data Ops market-data SSOT domain (6)
     path('dataops/coverage/', dataops.DataOpsCoverageView.as_view(), name='soc_dataops_coverage'),
+    path('dataops/registry/summary/', dataops.DataOpsRegistrySummaryView.as_view(), name='soc_dataops_registry_summary'),
+    path('dataops/registry/reconcile-preview/', dataops.DataOpsRegistryReconcilePreviewView.as_view(), name='soc_dataops_registry_reconcile_preview'),
+    path('dataops/registry/<str:symbol>/', dataops.DataOpsRegistryDetailView.as_view(), name='soc_dataops_registry_detail'),
     path('dataops/run-logs/', dataops.DataOpsRunLogsView.as_view(), name='soc_dataops_run_logs'),
     path('dataops/planner/preview/', dataops.DataOpsPlannerPreviewView.as_view(), name='soc_dataops_planner_preview'),
     path('dataops/planner/run/', dataops.DataOpsPlannerRunView.as_view(), name='soc_dataops_planner_run'),
