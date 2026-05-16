@@ -1,3 +1,22 @@
+# 2026-05-16 — Global Alert Center D02 governance sync complete (parity/shadow evidence normalized) ✅
+
+Status: **🔄 D02 IN PROGRESS (truthful)** | **✅ parity/shadow evidence package now aligned to current code reality** | **🟠 final legacy sunset gate still open**
+
+## What changed
+- Rewrote parity/shadow evidence package to match current native endpoint and delivery architecture.
+- Synced traceability reality status for `GAC-09` and `GAC-10` to reference the evidence package explicitly.
+- Updated taskboard state for `D02` from `REOPENED` to `IN PROGRESS` (no over-claim closure).
+
+## Validation
+- Cross-document consistency check completed for:
+  - taskboard
+  - traceability matrix
+  - parity/shadow evidence package
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Next
+- Complete production shadow/soak evidence horizon and parity dashboard package to close D02 definitively.
+
 # 2026-05-16 — Global Alert Center B01/B02/D08 complete (fact-first materialization wired) ✅
 
 Status: **✅ B01 DONE** | **✅ B02 DONE** | **✅ D08 DONE** | **✅ canonical facts now persisted and linked before read-model delivery**

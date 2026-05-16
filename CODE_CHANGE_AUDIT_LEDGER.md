@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D02 governance sync: parity/shadow evidence package normalization | docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_SHADOW_EVIDENCE_20260516.md` | Rewrote parity/shadow evidence with current native contract reality, command-level validation outcomes, and explicit partial gate status for soak horizon |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260516.md` | Updated `GAC-09` and `GAC-10` evidence summaries to reference parity/shadow package and keep legacy sunset gate as partial |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Updated `D02` from `REOPENED` to `IN PROGRESS` with explicit pending criteria (production soak horizon + parity dashboard) |
+| `module_tree_full.md` | Regenerated module tree after this governance slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this D02 governance sync entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for D02 governance sync |
+
+## Validation
+- Documentation cross-check completed between taskboard, traceability matrix, and parity/shadow evidence package ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1211` modules) ✅
+
+## Residual risk
+- Program-level legacy sunset gate remains open until production shadow run horizon and parity dashboard evidence are available.
+
 # 2026-05-16 | Global Alert Center B01/B02/D08 closure: fact-first materialization for market anomaly and AI lane | backend + docs
 
 ## All Modified Files (8 files)

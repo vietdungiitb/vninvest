@@ -1,55 +1,125 @@
-# Parity / Shadow Evidence — Global Alert Center SaaS OpenAPI Cutover
-**Ngày**: 2026-05-16
+# Global Alert Center SaaS OpenAPI Cutover — Parity & Shadow Evidence
+**Date**: 2026-05-16
+**Status**: Partial evidence package (pre-legacy-sunset)
 
 ---
 
-## 1. Mục đích
+## 1. Scope
 
-Tài liệu này là bằng chứng rằng alert-center đã đi qua gate parity/shadow tối thiểu trước khi legacy alert paths được sunset tiếp. Nó không mở thêm bridge mới và không hợp thức hóa việc bỏ soak/shadow.
+This document captures parity/shadow evidence for Global Alert Center SaaS OpenAPI cutover slices completed in this execution window.
 
----
+Included slices:
 
-## 2. Evidence summary
+1. B01/B02/D08 fact-first materialization closure
+2. C01/C02/B03 endpoint and delivery projection closure
+3. D01/D05 frontend/mobile bridge naming alignment
 
-### Frontend bridge sunset
-- Browser-side alert synthesis đã bị cắt khỏi `frontend/src/hooks/useUnifiedAlerts.js`.
-- `frontend/src/api/client.js` bridge sang canonical core delivery và chuẩn hóa cursor cho contract cũ.
-- `frontend/src/pages/WhaleAlertsHub.jsx` đã trở thành wrapper mỏng trỏ sang canonical `AlertCenterPage`.
-- `frontend/src/pages/LegacyDashboard.jsx` đã trở thành wrapper mỏng trỏ sang `ModernDashboard`.
+Excluded:
 
-### Canonical alert delivery
-- Backend canonical delivery route đang sống ở `/core/v1/unified-alert/delivery`.
-- Delivery contract là per-user projection theo watchlist, tracked symbols, holdings, và whale threshold.
-- Main feed / AI lane vẫn giữ tách lane theo OpenAPI contract.
-
-### Validation evidence
-- `src/components/DashboardRealtimePanel.test.jsx`
-- `src/pages/WhaleAlertsHub.test.jsx`
-- `src/api/client.unifiedAlerts.test.js`
-- `signal_intelligence.tests.test_materializers`
-- `./start_dev.ps1` smoke: Core API health OK, Frontend health OK
+1. Legacy alert path sunset (no hard decommission executed in this slice)
+2. Production soak run >= 3 trading days (not in this implementation window)
 
 ---
 
-## 3. Shadow / parity gate status
+## 2. Validation commands and outcomes
 
-| Gate | Status | Evidence |
-|---|---|---|
-| No browser-side alert synthesis | PASS | `useUnifiedAlerts.js` no longer assembles whale/dark-flow/price-shock/stale-quote browser truth |
-| Canonical delivery bridge only | PASS | `frontend/src/api/client.js` reads `coreApiAdapter.getUnifiedAlertDelivery(...)` |
-| Legacy whale route sunset | PASS | `WhaleAlertsHub` delegates to canonical alert-center page |
-| Legacy dashboard monolith sunset | PASS | `LegacyDashboard` delegates to `ModernDashboard` |
-| No bypass of shadow/parity gates | PASS | Self-audit protocol still blocks any skip-soak/skip-shadow path |
+### 2.1 Signal-intelligence focused parity pack
+
+```powershell
+Push-Location ./packages/core/backend
+$env:DJANGO_DEBUG='true'
+$env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'
+$env:DJANGO_SECRET_KEY='test-secret'
+$env:CORE_PAT_PEPPER='test-pepper'
+..\..\..\.venv\Scripts\python.exe manage.py test \
+	signal_intelligence.tests.test_materializers \
+	signal_intelligence.tests.test_market_anomaly_events \
+	signal_intelligence.tests.test_ai_signal_lane \
+	signal_intelligence.tests.test_alert_center_api \
+	signal_intelligence.tests.test_user_alert_delivery \
+	signal_intelligence.tests.test_delivery_service \
+	--keepdb
+Pop-Location
+```
+
+Outcome: **25 tests passed**.
+
+### 2.2 packages/web adapter parity
+
+```powershell
+Push-Location ./packages/web
+$env:CI='true'
+npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false
+Pop-Location
+```
+
+Outcome: **17 tests passed**.
+
+### 2.3 frontend bridge parity
+
+```powershell
+Push-Location ./frontend
+$env:CI='true'
+npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false
+Pop-Location
+```
+
+Outcome: **5 tests passed**.
+
+### 2.4 runtime smoke
+
+```powershell
+.\start_dev.ps1
+```
+
+Outcome: **Core API health OK**, **Frontend health OK**, queue drift check clean.
 
 ---
 
-## 4. Residual risk
+## 3. Requirement-to-evidence mapping
 
-- D03 wrapper removal wave has removed `WhaleAlertsHub` and `LegacyDashboard`, but other legacy route contracts still exist for compatibility and must be audited before final sunset.
-- No new compat business logic was introduced in this slice.
+| Requirement | Evidence |
+|---|---|
+| Native `/core/v1/signals/alert-center/*` and `/core/v1/signals/ai-alerts/*` contracts | `test_alert_center_api`, adapter tests, runtime smoke |
+| Delivery projection statefulness | `test_user_alert_delivery`, `test_delivery_service` |
+| Canonical fact-first materialization | `test_materializers`, `test_market_anomaly_events`, `test_ai_signal_lane` |
+| Browser-side truth removal | frontend bridge tests + adapter parity |
+| Lane isolation (main vs AI) | `test_ai_signal_lane`, `test_alert_center_api` |
 
 ---
 
-## 5. Approval note
+## 4. Shadow / parity gate status
 
-This report is sufficient to close D02 for the current cutover slice because it records the existing parity/shadow evidence, the wrapper-based sunset state, and the explicit anti-bypass rule.
+### 4.1 Shadow status (legacy vs native)
+
+Status: **Partial**.
+
+Notes:
+
+1. This wave validated native contracts and parity regressions at test/runtime level.
+2. No new legacy business route was introduced.
+3. A long-horizon production shadow run report (>= 3 trading days) is **not** part of this slice.
+
+### 4.2 Parity status
+
+Status: **Partial-to-pass for implementation slices in scope**.
+
+Notes:
+
+1. Test-level parity for contract, lane separation, delivery state, and fact linkage is green.
+2. Program-level parity gate for final legacy sunset remains pending governance decision and soak evidence.
+
+---
+
+## 5. Rollback posture
+
+1. Native endpoints are additive over prior frontend bridge migration path and still support compatibility aliases where required.
+2. No destructive legacy deletion was executed in this slice.
+3. Rollback at code level is available via per-slice commits on `dev`.
+
+---
+
+## 6. Residual risks
+
+1. AI advisory ingestion still accepts `OrderFlowEvent(signal_type=OTHER, metadata.ai_signal)` as shim source; a stricter native advisory producer-only cutover is pending.
+2. Program-level soak/shadow evidence for final legacy decommission remains open and must be completed before any irreversible sunset.

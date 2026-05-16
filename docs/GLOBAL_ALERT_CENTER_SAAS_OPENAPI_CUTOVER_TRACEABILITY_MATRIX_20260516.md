@@ -28,5 +28,5 @@
 | GAC-06 | ✅ PASS (current contract) | `packages/web` gọi qua `coreApiAdapter`, không direct fetch business endpoints |
 | GAC-07 | ✅ PASS (current scope) | Frontend bridge đã bỏ browser-side synthesis cho alert nghiệp vụ và bám server truth từ native alert-center delivery/feed |
 | GAC-08 | ✅ PASS (current evidence) | Chưa thấy compat route business logic mới cho alert-center trong phạm vi audit này |
-| GAC-09 | 🟠 PARTIAL | Có evidence doc, nhưng self-audit pass-state đã bị over-claim trước reality-check |
-| GAC-10 | 🟠 PARTIAL | Legacy sunset governance chưa thể coi complete khi B01..D08 đã re-open |
+| GAC-09 | 🟠 PARTIAL | Evidence package đã có tại `GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_SHADOW_EVIDENCE_20260516.md`; chưa đủ production soak/shadow horizon để close hoàn toàn |
+| GAC-10 | 🟠 PARTIAL | Legacy sunset vẫn chưa thể close vì chưa có parity dashboard + shadow run >= 3 ngày trade thật |
