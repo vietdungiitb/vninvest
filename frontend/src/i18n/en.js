@@ -265,6 +265,10 @@ const en = {
       backfill_run: 'Run backfill',
       backfill_running: 'Running...',
       backfill_queued: 'Backfill queued.',
+      live_snapshot_title: 'Live Snapshot',
+      live_snapshot_description: 'Collect live price board snapshots from multiple providers in parallel. Real-time heatmap tracks progress per Symbol Group × Provider.',
+      gaps_show_all: 'Show all',
+      gaps_collapse: 'Collapse',
     },
     vnbroker: {
       title: 'VNBroker configuration',

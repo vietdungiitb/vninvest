@@ -1,6 +1,7 @@
 /**
- * SOCDomainTabs — Tab navigation cho 8 domains
- * Overview | Signals | DataOps | Prefetch | Screener | VNBroker | Runtime KPI | Matrix
+ * SOCDomainTabs — Tab navigation cho 7 domains
+ * Overview | Signals | DataOps | Prefetch | Screener | VNBroker | Runtime KPI
+ * Matrix đã được hợp nhất vào DataOps tab (Snapshot Trực tiếp section)
  */
 import PropTypes from 'prop-types';
 
@@ -13,7 +14,6 @@ export const SOCDomainTabs = ({ activeDomain, onDomainChange, t }) => {
     { key: 'screener', label: t('soc.tab.screener') },
     { key: 'vnbroker', label: t('soc.tabs.vnbroker') },
     { key: 'runtime-kpi', label: t('soc.tabs.runtime_kpi') },
-    { key: 'matrix', label: t('soc.tab.matrix') },
   ];
 
   return (

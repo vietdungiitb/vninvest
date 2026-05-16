@@ -265,6 +265,10 @@ const vi = {
       backfill_run: 'Chạy backfill',
       backfill_running: 'Đang chạy...',
       backfill_queued: 'Backfill đã được xếp hàng.',
+      live_snapshot_title: 'Snapshot Trực tiếp',
+      live_snapshot_description: 'Thu thập snapshot bảng giá live từ nhiều provider song song. Heatmap theo dõi tiến trình real-time theo từng cặp Nhóm mã × Provider.',
+      gaps_show_all: 'Xem tất cả',
+      gaps_collapse: 'Thu gọn',
     },
     vnbroker: {
       title: 'Cấu hình VNBroker',

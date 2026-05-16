@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 
 import { socApi } from '../../api/socApi';
 import { ConfigPreviewModal } from './ConfigPreviewModal';
+import { MatrixScrapeMonitor } from './MatrixScrapeMonitor';
 import { OwnershipBadgeRow } from './OwnershipBadgeRow';
 import { WriteGuardBanner } from './WriteGuardBanner';
 
@@ -343,6 +344,63 @@ const buildPlannerPayload = (manualRunForm, { forPreview = false } = {}) => ({
   reason: String(manualRunForm.reason || '').trim() || (forPreview ? 'manual_preview' : 'operator_manual_run'),
 });
 
+// ─── Matrix "Snapshot Trực tiếp" utilities (inlined from MatrixPanel) ────────
+const ACTIVE_MATRIX_STATUSES = new Set(['active', 'completing']);
+const DEFAULT_MATRIX_SYMBOL_GROUPS = [
+  { id: 'top100', name: 'Top 100' },
+  { id: 'vn30', name: 'VN30' },
+];
+const MATRIX_POLL_MS = 5000;
+
+const normalizeMatrixSymbolGroups = (symbolGroups) => {
+  const groups = Array.isArray(symbolGroups) ? symbolGroups : [];
+  const normalized = groups
+    .map((g) => {
+      const gId = String(g?.id || '').trim();
+      return gId ? { id: gId, name: String(g?.name || gId).trim() } : null;
+    })
+    .filter(Boolean);
+  return normalized.length > 0 ? normalized : DEFAULT_MATRIX_SYMBOL_GROUPS;
+};
+
+const getMatrixReadyProviderIds = (providerList) =>
+  providerList.filter((p) => p.runtime_ready).map((p) => p.provider);
+
+const getMatrixSelectedProviders = (providerList, monitorProviders, monitorStatus) => {
+  const readyIds = getMatrixReadyProviderIds(providerList);
+  if (ACTIVE_MATRIX_STATUSES.has(monitorStatus)) {
+    const active = (monitorProviders || []).filter((id) => readyIds.includes(id));
+    if (active.length > 0) return active;
+  }
+  const defaults = providerList
+    .filter((p) => p.default_selected && p.runtime_ready)
+    .map((p) => p.provider);
+  return defaults.length > 0 ? defaults : readyIds;
+};
+
+const getMatrixStatusLabel = (status, t) => {
+  const keys = {
+    idle: 'soc.matrix.status_idle',
+    active: 'soc.matrix.status_active',
+    completing: 'soc.matrix.status_completing',
+    completed: 'soc.matrix.status_completed',
+    aborted: 'soc.matrix.status_aborted',
+  };
+  return keys[status] ? t(keys[status]) : status;
+};
+
+const getMatrixStatusTone = (status) => {
+  const tones = {
+    idle: 'bg-slate-800 text-slate-200',
+    active: 'bg-sky-900 text-sky-200',
+    completing: 'bg-amber-900 text-amber-200',
+    completed: 'bg-emerald-900 text-emerald-200',
+    aborted: 'bg-rose-900 text-rose-200',
+  };
+  return tones[status] || tones.idle;
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 const DataOpsPanel = ({ t }) => {
   const [queueSnapshot, setQueueSnapshot] = useState({ tiers: [], updated_at: null });
   const [coverageSummary, setCoverageSummary] = useState({ datasets: [], top_gaps: [], updated_at: null });
@@ -368,15 +426,31 @@ const DataOpsPanel = ({ t }) => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
+  // ── Matrix "Snapshot Trực tiếp" state ──────────────────────────────────────
+  const [matrixCycleId, setMatrixCycleId] = useState('');
+  const [matrixProviders, setMatrixProviders] = useState([]);
+  const [matrixSelectedProviders, setMatrixSelectedProviders] = useState([]);
+  const [matrixSymbolGroups, setMatrixSymbolGroups] = useState(DEFAULT_MATRIX_SYMBOL_GROUPS);
+  const [matrixStatus, setMatrixStatus] = useState('idle');
+  const [matrixError, setMatrixError] = useState(null);
+  const [matrixLoading, setMatrixLoading] = useState(true);
+  // ── UI accordion / toggle state ─────────────────────────────────────────────
+  const [showQueueTier, setShowQueueTier] = useState(false);
+  const [showRunHistory, setShowRunHistory] = useState(false);
+  const [showAllGaps, setShowAllGaps] = useState(false);
+  // ──────────────────────────────────────────────────────────────────────────────
+
   const loadData = async (page = runLogsPage) => {
     try {
       setLoading(true);
-      const [tiersPayload, runtimePayload, coveragePayload, runLogsPayload, auditPayload] = await Promise.all([
+      const [tiersPayload, runtimePayload, coveragePayload, runLogsPayload, auditPayload, matrixMonitor, matrixProviderPayload] = await Promise.all([
         socApi.getDataOpsQueueTiers(),
         socApi.getDataOpsRuntimeConfig(),
         socApi.getDataOpsCoverage(),
         socApi.getDataOpsRunLogs(page),
         socApi.getDataOpsRuntimeConfigAudit(1),
+        socApi.getMatrixMonitor().catch(() => ({ status: 'idle', cycle_id: '', providers: [], symbol_groups: [] })),
+        socApi.getMatrixProviders().catch(() => ({ providers: [] })),
       ]);
       setQueueSnapshot(tiersPayload || { tiers: [], updated_at: null });
       setRuntimeEnvelope(runtimePayload || { config: {}, ownership: null, updated_at: null });
@@ -386,6 +460,16 @@ const DataOpsPanel = ({ t }) => {
       setAuditEnvelope(auditPayload || DEFAULT_AUDIT_ENVELOPE);
       setAuditPage(1);
       setDraftJson(JSON.stringify(runtimePayload?.config || {}, null, 2));
+      // Matrix context
+      const providerList = matrixProviderPayload.providers || [];
+      const monitorProviders = Array.isArray(matrixMonitor.providers) ? matrixMonitor.providers : [];
+      const nextMatrixStatus = matrixMonitor.status || 'idle';
+      setMatrixProviders(providerList);
+      setMatrixCycleId(ACTIVE_MATRIX_STATUSES.has(nextMatrixStatus) ? (matrixMonitor.cycle_id || '') : '');
+      setMatrixStatus(nextMatrixStatus);
+      setMatrixSymbolGroups(normalizeMatrixSymbolGroups(matrixMonitor.symbol_groups));
+      setMatrixSelectedProviders(getMatrixSelectedProviders(providerList, monitorProviders, nextMatrixStatus));
+      setMatrixLoading(false);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -411,6 +495,49 @@ const DataOpsPanel = ({ t }) => {
       setIsRunLogsLoading(false);
     }
   };
+
+  // ── Matrix cycle handlers ────────────────────────────────────────────────────
+  const handleMatrixStartCycle = async () => {
+    if (matrixSelectedProviders.length === 0) {
+      setMatrixError(t('soc.matrix.no_provider_selected'));
+      return;
+    }
+    try {
+      setMatrixError(null);
+      const data = await socApi.startMatrixCycle({ providers: matrixSelectedProviders });
+      setMatrixCycleId(data.cycle_id || '');
+      setMatrixStatus(data.status || 'active');
+      setMatrixSelectedProviders(Array.isArray(data.providers) ? data.providers : matrixSelectedProviders);
+      setMatrixSymbolGroups(normalizeMatrixSymbolGroups(data.symbol_groups));
+    } catch (err) {
+      setMatrixError(err.message);
+    }
+  };
+
+  const handleMatrixAbortCycle = async () => {
+    if (!matrixCycleId) return;
+    try {
+      setMatrixError(null);
+      const data = await socApi.abortMatrixCycle(matrixCycleId);
+      setMatrixStatus(data.status || 'aborted');
+    } catch (err) {
+      setMatrixError(err.message);
+    }
+  };
+
+  const handleMatrixCycleComplete = (snapshot) => {
+    setMatrixStatus(snapshot.status || 'completed');
+    if (snapshot.cycle_id) setMatrixCycleId(snapshot.cycle_id);
+    if (snapshot.symbol_groups) setMatrixSymbolGroups(normalizeMatrixSymbolGroups(snapshot.symbol_groups));
+  };
+
+  const handleMatrixProviderToggle = (providerId) => {
+    if (ACTIVE_MATRIX_STATUSES.has(matrixStatus)) return;
+    setMatrixSelectedProviders((prev) =>
+      prev.includes(providerId) ? prev.filter((id) => id !== providerId) : [...prev, providerId],
+    );
+  };
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const updateManualRunForm = (updater) => {
     setManualRunForm((currentValue) => {
@@ -576,6 +703,92 @@ const DataOpsPanel = ({ t }) => {
 
       <BackfillCenterSection t={t} canApply={!ownership?.write_block_reason} />
 
+      {/* ── Snapshot Trực tiếp (Matrix) ──────────────────────────────────── */}
+      <div className="rounded-lg border border-indigo-800 bg-slate-900 p-6">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-white">{t('soc.dataops.live_snapshot_title')}</h3>
+            <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.live_snapshot_description')}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getMatrixStatusTone(matrixStatus)}`}>
+              {getMatrixStatusLabel(matrixStatus, t)}
+            </span>
+            {ACTIVE_MATRIX_STATUSES.has(matrixStatus) ? (
+              <button
+                type="button"
+                onClick={handleMatrixAbortCycle}
+                className="rounded border border-rose-700 bg-rose-950/60 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-900/80"
+              >
+                {t('soc.matrix.abort_cycle')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleMatrixStartCycle}
+                disabled={matrixLoading || matrixSelectedProviders.length === 0}
+                className="rounded border border-indigo-600 bg-indigo-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {t('soc.matrix.start_cycle')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {matrixError && (
+          <div className="mb-4 rounded-lg border border-red-700 bg-red-900/50 p-3 text-sm text-red-200">
+            {matrixError}
+          </div>
+        )}
+
+        {/* Provider selection */}
+        {!matrixLoading && (
+          <div className="mb-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {t('soc.matrix.providers')}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {matrixProviders.map((provider) => {
+                const isSelected = matrixSelectedProviders.includes(provider.provider);
+                const isActive = ACTIVE_MATRIX_STATUSES.has(matrixStatus);
+                return (
+                  <button
+                    key={provider.provider}
+                    type="button"
+                    disabled={!provider.runtime_ready || isActive}
+                    onClick={() => handleMatrixProviderToggle(provider.provider)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      !provider.runtime_ready
+                        ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500'
+                        : isSelected
+                          ? 'border-indigo-600 bg-indigo-800 text-indigo-100'
+                          : 'border-slate-600 bg-slate-800 text-slate-300 hover:border-indigo-600 hover:text-indigo-200'
+                    }`}
+                  >
+                    {provider.provider}
+                    {!provider.runtime_ready && (
+                      <span className="ml-1 opacity-60">✕</span>
+                    )}
+                  </button>
+                );
+              })}
+              {matrixProviders.length === 0 && (
+                <p className="text-sm text-slate-500">{t('soc.matrix.no_providers')}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Heatmap monitor — centerpiece */}
+        <MatrixScrapeMonitor
+          cycleId={matrixCycleId}
+          pollIntervalMs={MATRIX_POLL_MS}
+          onCycleComplete={handleMatrixCycleComplete}
+          t={t}
+        />
+      </div>
+      {/* ──────────────────────────────────────────────────────────────────── */}
+
       <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-lg border border-slate-700 bg-slate-900 p-4">
           <p className="text-xs uppercase tracking-wide text-slate-400">{t('soc.dataops.total_symbols')}</p>
@@ -595,48 +808,57 @@ const DataOpsPanel = ({ t }) => {
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="rounded-lg border border-slate-700 bg-slate-900">
+        <button
+          type="button"
+          onClick={() => setShowQueueTier((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 p-6 text-left"
+        >
           <div>
             <h3 className="text-lg font-bold text-white">{t('soc.dataops.queue_tiers')}</h3>
             <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.queue_tiers_description')}</p>
           </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {(queueSnapshot.tiers || []).map((tier) => (
-            <div key={tier.tier} className="rounded-lg border border-slate-700 bg-slate-950/80 p-4">
-              <p className="text-sm font-semibold text-white">{t(TIER_LABEL_KEYS[tier.tier] || 'soc.dataops.unknown_tier')}</p>
-              <dl className="mt-4 space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-400">{t('soc.dataops.symbol_count')}</dt>
-                  <dd className="font-semibold text-slate-100">{tier.symbol_count}</dd>
+          <span className="text-slate-400 transition-transform" style={{ transform: showQueueTier ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </button>
+        {showQueueTier && (
+          <div className="px-6 pb-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {(queueSnapshot.tiers || []).map((tier) => (
+                <div key={tier.tier} className="rounded-lg border border-slate-700 bg-slate-950/80 p-4">
+                  <p className="text-sm font-semibold text-white">{t(TIER_LABEL_KEYS[tier.tier] || 'soc.dataops.unknown_tier')}</p>
+                  <dl className="mt-4 space-y-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-400">{t('soc.dataops.symbol_count')}</dt>
+                      <dd className="font-semibold text-slate-100">{tier.symbol_count}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-400">{t('soc.dataops.poll_interval')}</dt>
+                      <dd className="font-semibold text-slate-100">{tier.poll_interval_seconds}s</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-400">{t('soc.dataops.max_batch_size')}</dt>
+                      <dd className="font-semibold text-slate-100">{tier.max_batch_size}</dd>
+                    </div>
+                  </dl>
+                  <div className="mt-4 border-t border-slate-800 pt-4">
+                    <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.examples')}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(tier.examples || []).length > 0 ? (
+                        tier.examples.map((symbol) => (
+                          <span key={symbol} className="rounded-full bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-200">
+                            {symbol}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-500">{t('soc.dataops.empty_examples')}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-400">{t('soc.dataops.poll_interval')}</dt>
-                  <dd className="font-semibold text-slate-100">{tier.poll_interval_seconds}s</dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-400">{t('soc.dataops.max_batch_size')}</dt>
-                  <dd className="font-semibold text-slate-100">{tier.max_batch_size}</dd>
-                </div>
-              </dl>
-              <div className="mt-4 border-t border-slate-800 pt-4">
-                <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.examples')}</p>
-                <div className="flex flex-wrap gap-2">
-                  {(tier.examples || []).length > 0 ? (
-                    tier.examples.map((symbol) => (
-                      <span key={symbol} className="rounded-full bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-200">
-                        {symbol}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-slate-500">{t('soc.dataops.empty_examples')}</span>
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
@@ -651,59 +873,92 @@ const DataOpsPanel = ({ t }) => {
           </div>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {(coverageSummary.datasets || []).map((dataset) => (
-              <div key={dataset.dataset} className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h4 className="text-sm font-semibold text-white">
-                    {t(DATASET_LABEL_KEYS[dataset.dataset] || 'soc.dataops.dataset_unknown')}
-                  </h4>
-                  <span className="rounded-full bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-200">
-                    {COVERAGE_STATE_ORDER.reduce((sum, stateKey) => sum + Number(dataset[stateKey] || 0), 0)}
-                  </span>
-                </div>
-                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
+          {/* Coverage compact table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="py-2 pr-4">Dataset</th>
                   {COVERAGE_STATE_ORDER.map((stateKey) => (
-                    <div key={stateKey} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
-                      <dt className="text-xs uppercase tracking-wide text-slate-500">
-                        {t(FRESHNESS_LABEL_KEYS[stateKey] || 'soc.dataops.freshness_unknown')}
-                      </dt>
-                      <dd className="mt-1 text-lg font-semibold text-slate-100">{Number(dataset[stateKey] || 0)}</dd>
-                    </div>
+                    <th key={stateKey} className="px-3 py-2 text-center">
+                      {t(FRESHNESS_LABEL_KEYS[stateKey] || 'soc.dataops.freshness_unknown')}
+                    </th>
                   ))}
-                </dl>
-              </div>
-            ))}
+                  <th className="px-3 py-2 text-center">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {(coverageSummary.datasets || []).map((dataset) => (
+                  <tr key={dataset.dataset} className="align-middle">
+                    <td className="py-3 pr-4 font-semibold text-slate-200">
+                      {t(DATASET_LABEL_KEYS[dataset.dataset] || 'soc.dataops.dataset_unknown')}
+                    </td>
+                    {COVERAGE_STATE_ORDER.map((stateKey) => (
+                      <td key={stateKey} className="px-3 py-3 text-center font-mono text-slate-300">
+                        {Number(dataset[stateKey] || 0)}
+                      </td>
+                    ))}
+                    <td className="px-3 py-3 text-center font-mono font-semibold text-slate-100">
+                      {COVERAGE_STATE_ORDER.reduce((sum, stateKey) => sum + Number(dataset[stateKey] || 0), 0)}
+                    </td>
+                  </tr>
+                ))}
+                {(coverageSummary.datasets || []).length === 0 && (
+                  <tr>
+                    <td colSpan={COVERAGE_STATE_ORDER.length + 2} className="py-6 text-center text-sm text-slate-500">
+                      {t('soc.dataops.no_top_gaps')}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
 
+          {/* Top gaps — capped at 20 */}
           <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
             <h4 className="text-sm font-semibold text-white">{t('soc.dataops.top_gaps')}</h4>
             <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.top_gaps_description')}</p>
 
             {(coverageSummary.top_gaps || []).length > 0 ? (
-              <ul className="mt-4 space-y-3">
-                {(coverageSummary.top_gaps || []).map((gap) => (
-                  <li key={`${gap.symbol}-${gap.dataset}`} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-white">{gap.symbol}</p>
-                        <p className="mt-1 text-xs text-slate-400">
-                          {t(DATASET_LABEL_KEYS[gap.dataset] || 'soc.dataops.dataset_unknown')}
-                        </p>
+              <>
+                <ul className="mt-4 space-y-2">
+                  {(showAllGaps
+                    ? (coverageSummary.top_gaps || [])
+                    : (coverageSummary.top_gaps || []).slice(0, 20)
+                  ).map((gap) => (
+                    <li key={`${gap.symbol}-${gap.dataset}`} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{gap.symbol}</p>
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            {t(DATASET_LABEL_KEYS[gap.dataset] || 'soc.dataops.dataset_unknown')}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-amber-700/60 bg-amber-950/60 px-2 py-1 text-xs font-semibold text-amber-200">
+                          {t(FRESHNESS_LABEL_KEYS[gap.freshness_state] || 'soc.dataops.freshness_unknown')}
+                        </span>
                       </div>
-                      <span className="rounded-full border border-amber-700/60 bg-amber-950/60 px-2 py-1 text-xs font-semibold text-amber-200">
-                        {t(FRESHNESS_LABEL_KEYS[gap.freshness_state] || 'soc.dataops.freshness_unknown')}
-                      </span>
-                    </div>
-                    {gap.next_recommended_action ? (
-                      <p className="mt-3 text-xs text-slate-300">
-                        {t('soc.dataops.next_action')}: {t(getNextActionLabelKey(gap.next_recommended_action))}
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+                      {gap.next_recommended_action ? (
+                        <p className="mt-2 text-xs text-slate-300">
+                          {t('soc.dataops.next_action')}: {t(getNextActionLabelKey(gap.next_recommended_action))}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+                {(coverageSummary.top_gaps || []).length > 20 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllGaps((v) => !v)}
+                    className="mt-3 w-full rounded border border-slate-700 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
+                  >
+                    {showAllGaps
+                      ? t('soc.dataops.gaps_collapse')
+                      : `${t('soc.dataops.gaps_show_all')} (${(coverageSummary.top_gaps || []).length})`}
+                  </button>
+                )}
+              </>
             ) : (
               <p className="mt-4 text-sm text-slate-500">{t('soc.dataops.no_top_gaps')}</p>
             )}
@@ -1031,97 +1286,106 @@ const DataOpsPanel = ({ t }) => {
         )}
       </div>
 
-      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="rounded-lg border border-slate-700 bg-slate-900">
+        <button
+          type="button"
+          onClick={() => setShowRunHistory((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 p-6 text-left"
+        >
           <div>
             <h3 className="text-lg font-bold text-white">{t('soc.dataops.run_history_title')}</h3>
             <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.run_history_description')}</p>
           </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-4 py-3 text-right">
-            <p className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.run_history_total')}</p>
-            <p className="mt-1 text-sm font-semibold text-slate-100">{runLogsEnvelope.count || 0}</p>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-200">
+              {runLogsEnvelope.count || 0}
+            </span>
+            <span className="text-slate-400 transition-transform" style={{ transform: showRunHistory ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
           </div>
-        </div>
+        </button>
+        {showRunHistory && (
+          <div className="px-6 pb-6">
+            {(runLogsEnvelope.results || []).length > 0 ? (
+              <div className="space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-800 text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                        <th className="px-3 py-3">{t('soc.dataops.run_history_run_id')}</th>
+                        <th className="px-3 py-3">{t('soc.dataops.run_history_status')}</th>
+                        <th className="px-3 py-3">{t('soc.dataops.run_history_mode')}</th>
+                        <th className="px-3 py-3">{t('soc.dataops.run_history_reason')}</th>
+                        <th className="px-3 py-3">{t('soc.dataops.run_history_started_at')}</th>
+                        <th className="px-3 py-3">{t('soc.dataops.run_history_finished_at')}</th>
+                        <th className="px-3 py-3">{t('soc.dataops.run_history_summary')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {(runLogsEnvelope.results || []).map((runLog) => (
+                        <tr key={runLog.run_id} className="align-top">
+                          <td className="px-3 py-4 font-mono text-sm text-white">{runLog.run_id}</td>
+                          <td className="px-3 py-4">
+                            <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-xs font-semibold text-slate-200">
+                              {t(RUN_STATUS_LABEL_KEYS[runLog.status] || 'soc.dataops.run_status_unknown')}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4 text-slate-300">{runLog.mode || 'missing_only'}</td>
+                          <td className="px-3 py-4 font-mono text-xs text-slate-300">{runLog.reason || 'operator_manual_run'}</td>
+                          <td className="px-3 py-4 text-slate-300">{runLog.started_at || t('common.notAvailable')}</td>
+                          <td className="px-3 py-4 text-slate-300">{runLog.finished_at || t('common.notAvailable')}</td>
+                          <td className="px-3 py-4">
+                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                              <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                                {t('soc.dataops.planner_planned_items')}: {runLog.summary?.planned_items || 0}
+                              </span>
+                              <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                                {t('soc.dataops.run_history_inserted')}: {runLog.summary?.inserted || 0}
+                              </span>
+                              <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                                {t('soc.dataops.run_history_updated')}: {runLog.summary?.updated || 0}
+                              </span>
+                              <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                                {t('soc.dataops.run_history_skipped_existing')}: {runLog.summary?.skipped_existing || 0}
+                              </span>
+                              <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
+                                {t('soc.dataops.run_history_failed')}: {runLog.summary?.failed || 0}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-        {(runLogsEnvelope.results || []).length > 0 ? (
-          <div className="space-y-4">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-800 text-sm">
-                <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                    <th className="px-3 py-3">{t('soc.dataops.run_history_run_id')}</th>
-                    <th className="px-3 py-3">{t('soc.dataops.run_history_status')}</th>
-                    <th className="px-3 py-3">{t('soc.dataops.run_history_mode')}</th>
-                    <th className="px-3 py-3">{t('soc.dataops.run_history_reason')}</th>
-                    <th className="px-3 py-3">{t('soc.dataops.run_history_started_at')}</th>
-                    <th className="px-3 py-3">{t('soc.dataops.run_history_finished_at')}</th>
-                    <th className="px-3 py-3">{t('soc.dataops.run_history_summary')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {(runLogsEnvelope.results || []).map((runLog) => (
-                    <tr key={runLog.run_id} className="align-top">
-                      <td className="px-3 py-4 font-mono text-sm text-white">{runLog.run_id}</td>
-                      <td className="px-3 py-4">
-                        <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-xs font-semibold text-slate-200">
-                          {t(RUN_STATUS_LABEL_KEYS[runLog.status] || 'soc.dataops.run_status_unknown')}
-                        </span>
-                      </td>
-                      <td className="px-3 py-4 text-slate-300">{runLog.mode || 'missing_only'}</td>
-                      <td className="px-3 py-4 font-mono text-xs text-slate-300">{runLog.reason || 'operator_manual_run'}</td>
-                      <td className="px-3 py-4 text-slate-300">{runLog.started_at || t('common.notAvailable')}</td>
-                      <td className="px-3 py-4 text-slate-300">{runLog.finished_at || t('common.notAvailable')}</td>
-                      <td className="px-3 py-4">
-                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
-                            {t('soc.dataops.planner_planned_items')}: {runLog.summary?.planned_items || 0}
-                          </span>
-                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
-                            {t('soc.dataops.run_history_inserted')}: {runLog.summary?.inserted || 0}
-                          </span>
-                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
-                            {t('soc.dataops.run_history_updated')}: {runLog.summary?.updated || 0}
-                          </span>
-                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
-                            {t('soc.dataops.run_history_skipped_existing')}: {runLog.summary?.skipped_existing || 0}
-                          </span>
-                          <span className="rounded border border-slate-800 bg-slate-950/70 px-2 py-1 text-xs text-slate-300">
-                            {t('soc.dataops.run_history_failed')}: {runLog.summary?.failed || 0}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-slate-400">
-                {t('soc.dataops.run_history_page')} {runLogsPage}
-              </p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleRunLogsPageChange(Math.max(runLogsPage - 1, 1))}
-                  disabled={!runLogsEnvelope.previous || isRunLogsLoading}
-                  className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {t('soc.dataops.run_history_previous')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRunLogsPageChange(runLogsPage + 1)}
-                  disabled={!runLogsEnvelope.next || isRunLogsLoading}
-                  className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {t('soc.dataops.run_history_next')}
-                </button>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-slate-400">
+                    {t('soc.dataops.run_history_page')} {runLogsPage}
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleRunLogsPageChange(Math.max(runLogsPage - 1, 1))}
+                      disabled={!runLogsEnvelope.previous || isRunLogsLoading}
+                      className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {t('soc.dataops.run_history_previous')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRunLogsPageChange(runLogsPage + 1)}
+                      disabled={!runLogsEnvelope.next || isRunLogsLoading}
+                      className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {t('soc.dataops.run_history_next')}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-sm text-slate-500">{t('soc.dataops.run_history_empty')}</p>
+            )}
           </div>
-        ) : (
-          <p className="text-sm text-slate-500">{t('soc.dataops.run_history_empty')}</p>
         )}
       </div>
 
