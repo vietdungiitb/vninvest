@@ -2,8 +2,24 @@
 
 # 2026-05-16 | DataOps UX Overhaul + REQ-02/13/24 Audit Gaps | dev branch ✅
 
-**Status:** ✅ 3 commits pushed to dev (`471f3dbf`, `75ddc2e1`, `3ac57866`)
+**Status:** ✅ 4 commits pushed to dev (`471f3dbf`, `75ddc2e1`, `3ac57866`, `bb8d570b`)
 **Stack:** 14/14 containers healthy | Core API: Healthy | Frontend: OK
+
+---
+
+## Commit `bb8d570b` — Snapshot UX Fix F1+F2+F3
+
+### All Modified Files (3 files)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/DataOpsPanel.jsx` | `MATRIX_SYMBOL_GROUPS_OPTIONS` const; `matrixSelectedGroups` state; `handleMatrixGroupToggle`; `startMatrixCycle` sends `symbol_group_ids`; scope column = interactive toggle buttons; `snapshot_manual_note` note |
+| `frontend/src/i18n/vi.js` | `status_idle` → "Sẵn sàng"; `status_idle_hint`; `snapshot_context_scope_label` updated; `snapshot_manual_note` |
+| `frontend/src/i18n/en.js` | Mirror of vi.js in English |
+
+### Validation
+- `npm run build`: **Compiled successfully** (852.48 kB gzip) ✅
+- `git push origin dev`: **a8fb4180..bb8d570b** ✅
+- `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
 
 ---
 

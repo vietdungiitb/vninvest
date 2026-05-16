@@ -1,7 +1,21 @@
-# 2026-05-16 — DataOps Tab UX Overhaul (A+B+C+D+E) + REQ-02/13/24 Audit Gaps ✅
+# 2026-05-16 — DataOps Tab UX Overhaul + Snapshot Group Select Fix ✅
 
-Status: **✅ 3 commits, 10 files changed** | **Dev stack 14/14 healthy** | **Frontend compiled successfully (852 kB gzip)**
-Validation: **✅ `npm run build` Compiled successfully** | **✅ `git push origin dev` (471f3dbf → 75ddc2e1 → 3ac57866)** | **✅ `./start_dev.ps1` 14/14 Started; core-api Healthy; smoke checks OK**
+Status: **✅ 4 commits, 13 files changed** | **Dev stack 14/14 healthy** | **Frontend compiled successfully (852 kB gzip)**
+Validation: **✅ `npm run build` Compiled successfully** | **✅ `git push origin dev` (471f3dbf → 75ddc2e1 → 3ac57866 → bb8d570b)** | **✅ `./start_dev.ps1` 14/14 Started; core-api Healthy; smoke checks OK**
+
+## Commit `bb8d570b` — Snapshot Section UX Fix (F1+F2+F3)
+
+**What changed**
+- `DataOpsPanel.jsx`: Added `MATRIX_SYMBOL_GROUPS_OPTIONS` constant (vn30, vn100). Added `matrixSelectedGroups` state (default: all). Added `handleMatrixGroupToggle`. `handleMatrixStartCycle` now sends `symbol_group_ids`. Context grid "Phạm vi mã" column upgraded from read-only display chips to interactive toggle buttons (indigo highlight when selected, disabled/locked when cycle active). Added `snapshot_manual_note` helper text below grid.
+- `i18n/vi.js`: `status_idle` → "Sẵn sàng"; `status_idle_hint` added; `snapshot_context_scope_label` updated; `snapshot_manual_note` added.
+- `i18n/en.js`: Mirror of above in English.
+
+**Files changed (3)**
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+
+**Validation:** `npm run build` → Compiled successfully (852.48 kB gzip) | `git push origin dev` → `a8fb4180..bb8d570b` | `./start_dev.ps1` → 14/14 Started, core-api Healthy, smoke checks OK
 
 ## Commit `3ac57866` — DataOps Operational Context Strips (Backfill + Snapshot)
 
