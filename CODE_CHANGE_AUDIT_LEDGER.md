@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D07 complete: packages/web alert-center route + adapter wave | packages/web + docs
+
+## All Modified Files (10 files)
+| File | Change |
+|------|--------|
+| `packages/web/src/adapters/coreApiAdapter.js` | Added `getUnifiedAlertDelivery`, env override base resolution, and factory-capable adapter construction |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added regression tests for delivery endpoint wiring and env override factory mode |
+| `packages/web/src/app/navigationCatalog.js` | Added `alert-center` to signals navigation group |
+| `packages/web/src/app/routeCatalog.js` | Added `alert-center` route metadata |
+| `packages/web/src/pages/pageRegistry.js` | Registered `AlertCenterPage` for route id `alert-center` |
+| `packages/web/src/pages/AlertCenterPage.js` | Added packages/web canonical alert-center hub page implementation |
+| `packages/web/src/index.js` | Exported `AlertCenterPage` for host consumers |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added D07 row and marked DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added D07 evidence entry |
+| `PROGRESS_DASHBOARD.md` | Added D07 completion snapshot |
+
+## Validation
+- `Push-Location .\packages\web; $env:CI='true'; npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false; Pop-Location` → **14 tests OK** ✅
+- `Set-Location .; .\.venv\Scripts\python.exe .\scripts\ops\generate_module_tree.py` → module tree refreshed (1203 modules) ✅
+- `Set-Location .; .\start_dev.ps1` → Core API health OK; Frontend health OK ✅
+
+## Residual risk
+- This wave introduces packages/web route/page wiring, but host-side route exposure still depends on each host app mounting package routes intentionally.
+
 # 2026-05-16 | Global Alert Center D06 complete: cutover doc-pack sync wave | docs
 
 ## All Modified Files (14 files)

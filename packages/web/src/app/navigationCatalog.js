@@ -15,7 +15,7 @@ export const navigationCatalog = Object.freeze([
     labelKey: "navigation.signals",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["signals.group.read"],
-    items: ["ai-advisory", "whale-alerts"],
+    items: ["alert-center", "ai-advisory", "whale-alerts"],
   },
   {
     id: "system",

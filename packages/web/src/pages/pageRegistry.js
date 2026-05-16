@@ -11,6 +11,7 @@ import { ShellTransactionsPage } from "./workspace/ShellTransactionsPage.js";
 import { ShellWatchlistPage } from "./workspace/ShellWatchlistPage.js";
 // SM-P4 new core user-facing pages
 import { DashboardPage } from "./DashboardPage.js";
+import { AlertCenterPage } from "./AlertCenterPage.js";
 import { WhaleAlertsPage } from "./WhaleAlertsPage.js";
 import { StockDetailPage } from "./StockDetailPage.js";
 import { PortfoliosPage } from "./PortfoliosPage.js";
@@ -74,6 +75,11 @@ export const pageRegistry = Object.freeze([
     status: "baseline",
   },
   // SM-P4 core user-facing pages
+  {
+    routeId: "alert-center",
+    component: AlertCenterPage,
+    status: "core",
+  },
   {
     routeId: "core-dashboard",
     component: DashboardPage,

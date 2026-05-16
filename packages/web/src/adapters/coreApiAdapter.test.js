@@ -104,6 +104,26 @@ describe("coreApiAdapter", () => {
     expect(url).toMatch(/\/unified-alert\/$/);
   });
 
+  test("getUnifiedAlertDelivery calls /core/v1/unified-alert/delivery/", async () => {
+    const payload = { results: [], next: null, previous: null };
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getUnifiedAlertDelivery({ lane: "ai" });
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/unified-alert/delivery/");
+    expect(url).toContain("lane=ai");
+  });
+
+  test("coreApiAdapter accepts env override as factory", async () => {
+    mockOkResponse({ results: [] });
+    const adapter = coreApiAdapter({ env: { CORE_API_BASE_URL: "https://core.example.test/base" } });
+    await adapter.getUnifiedAlerts();
+    const [url] = fetchMock.mock.calls[0];
+    expect(url.startsWith("https://core.example.test/base")).toBe(true);
+  });
+
   // ---------------------------------------------------------------------------
   // getWhaleFeedAggregate
   // ---------------------------------------------------------------------------

@@ -1,3 +1,20 @@
+# 2026-05-16 — Global Alert Center D07 complete (packages/web alert-center route + adapter wave) ✅
+
+Status: **✅ D07 DONE** | **✅ packages/web route/nav/page wiring for alert-center landed** | **✅ adapter delivery endpoint + env-factory tests passed**
+
+## What changed
+- Added `alert-center` route metadata and navigation placement in packages/web.
+- Added `AlertCenterPage` and registered/exported it through package registry/index.
+- Completed adapter support for `getUnifiedAlertDelivery` and factory-style env override.
+
+## Validation
+- `packages/web/src/adapters/coreApiAdapter.test.js` → **14 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1203 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Continue with backend signal_intelligence + market_data/service_ops wave in isolated commits.
+
 # 2026-05-16 — Global Alert Center D06 complete (cutover doc-pack sync wave) ✅
 
 Status: **✅ D06 DONE** | **✅ full cutover doc bundle committed** | **✅ taskboard + runbooks + constitutions available in-repo**

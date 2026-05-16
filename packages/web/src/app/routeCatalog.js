@@ -34,6 +34,16 @@ export const routeCatalog = Object.freeze([
     status: "baseline",
   },
   {
+    id: "alert-center",
+    path: "/alert-center",
+    titleKey: "routes.alertCenter",
+    group: "signals",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["signals.whale_alerts.read"],
+    adapter: "core",
+    status: "core",
+  },
+  {
     id: "watchlist",
     path: "/watchlist",
     titleKey: "routes.watchlist",

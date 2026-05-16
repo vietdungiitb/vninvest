@@ -10,7 +10,13 @@
  * direct calls to legacy portfolio endpoints over time.
  */
 
-function resolveCoreApiBase() {
+function resolveCoreApiBase(env = {}) {
+  if (env && typeof env.CORE_API_BASE_URL === "string" && env.CORE_API_BASE_URL.trim()) {
+    return env.CORE_API_BASE_URL.trim();
+  }
+  if (env && typeof env.REACT_APP_CORE_API_BASE_URL === "string" && env.REACT_APP_CORE_API_BASE_URL.trim()) {
+    return env.REACT_APP_CORE_API_BASE_URL.trim();
+  }
   if (typeof window !== "undefined" && window.CORE_API_BASE_URL) {
     return window.CORE_API_BASE_URL;
   }
@@ -38,104 +44,108 @@ function getAuthorizationHeader() {
   return { "Authorization": `Bearer ${token}` };
 }
 
-async function coreGet(path, options = {}) {
-  const base = resolveCoreApiBase();
-  const requestId = generateRequestId();
+function createCoreTransport(env = {}) {
+  async function coreGet(path, options = {}) {
+    const base = resolveCoreApiBase(env);
+    const requestId = generateRequestId();
 
-  const response = await fetch(`${base}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Request-ID": requestId,
-      ...getAuthorizationHeader(),
-      ...(options.headers || {}),
-    },
-    credentials: "include",
-  });
+    const response = await fetch(`${base}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-ID": requestId,
+        ...getAuthorizationHeader(),
+        ...(options.headers || {}),
+      },
+      credentials: "include",
+    });
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `Core API error ${response.status} ${response.statusText} — ${path}: ${text}`
-    );
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(
+        `Core API error ${response.status} ${response.statusText} — ${path}: ${text}`
+      );
+    }
+
+    return response.json();
   }
 
-  return response.json();
-}
+  async function corePost(path, body = undefined) {
+    const base = resolveCoreApiBase(env);
+    const requestId = generateRequestId();
 
-async function corePost(path, body = undefined) {
-  const base = resolveCoreApiBase();
-  const requestId = generateRequestId();
+    const response = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-ID": requestId,
+        ...getAuthorizationHeader(),
+      },
+      credentials: "include",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
-  const response = await fetch(`${base}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Request-ID": requestId,
-      ...getAuthorizationHeader(),
-    },
-    credentials: "include",
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(
+        `Core API POST error ${response.status} ${response.statusText} — ${path}: ${text}`
+      );
+    }
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `Core API POST error ${response.status} ${response.statusText} — ${path}: ${text}`
-    );
+    if (response.status === 204) return null;
+    return response.json();
   }
 
-  if (response.status === 204) return null;
-  return response.json();
-}
+  async function corePatch(path, body = undefined) {
+    const base = resolveCoreApiBase(env);
+    const requestId = generateRequestId();
 
-async function corePatch(path, body = undefined) {
-  const base = resolveCoreApiBase();
-  const requestId = generateRequestId();
+    const response = await fetch(`${base}${path}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-ID": requestId,
+        ...getAuthorizationHeader(),
+      },
+      credentials: "include",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
-  const response = await fetch(`${base}${path}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Request-ID": requestId,
-      ...getAuthorizationHeader(),
-    },
-    credentials: "include",
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(
+        `Core API PATCH error ${response.status} ${response.statusText} — ${path}: ${text}`
+      );
+    }
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `Core API PATCH error ${response.status} ${response.statusText} — ${path}: ${text}`
-    );
+    return response.json();
   }
 
-  return response.json();
-}
+  async function coreDelete(path) {
+    const base = resolveCoreApiBase(env);
+    const requestId = generateRequestId();
 
-async function coreDelete(path) {
-  const base = resolveCoreApiBase();
-  const requestId = generateRequestId();
+    const response = await fetch(`${base}${path}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthorizationHeader(),
+        "X-Request-ID": requestId,
+      },
+      credentials: "include",
+    });
 
-  const response = await fetch(`${base}${path}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthorizationHeader(),
-      "X-Request-ID": requestId,
-    },
-    credentials: "include",
-  });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(
+        `Core API DELETE error ${response.status} ${response.statusText} — ${path}: ${text}`
+      );
+    }
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `Core API DELETE error ${response.status} ${response.statusText} — ${path}: ${text}`
-    );
+    return null;
   }
 
-  return null;
+  return { coreGet, corePost, corePatch, coreDelete };
 }
 
 /**
@@ -145,7 +155,11 @@ async function coreDelete(path) {
  *   import { coreApiAdapter } from '../../adapters/coreApiAdapter';
  *   const snapshot = await coreApiAdapter.getSymbolSnapshot('VCI');
  */
-export const coreApiAdapter = {
+export function createCoreApiAdapter({ env = {} } = {}) {
+  const { coreGet, corePost, corePatch, coreDelete } = createCoreTransport(env);
+
+  return {
+  
   /**
    * Get the latest SymbolSnapshot for a given symbol.
    * @param {string} symbol - Stock ticker (e.g. 'VCI')
@@ -181,6 +195,18 @@ export const coreApiAdapter = {
       Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
     ).toString();
     return coreGet(`/unified-alert/${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * List per-user projected UnifiedAlerts with optional lane/filter parameters.
+   * @param {object} [params] - Filters: lane, symbol, alert_type, severity, session_date, cursor
+   * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
+   */
+  getUnifiedAlertDelivery(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/unified-alert/delivery/${query ? `?${query}` : ""}`);
   },
 
   /**
@@ -526,10 +552,16 @@ export const coreApiAdapter = {
   },
 
   /**
-   * Lấy trạng thái kết nối DNSE LightSpeed API.
    * @returns {Promise<{ ok: boolean, is_configured: boolean, is_active: boolean }>}
    */
   getDNSETokenStatus() {
     return coreGet("/broker/dnse/token-status/");
   },
-};
+  };
+}
+
+export function coreApiAdapter(options = undefined) {
+  return createCoreApiAdapter(options || {});
+}
+
+Object.assign(coreApiAdapter, createCoreApiAdapter());

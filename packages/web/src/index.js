@@ -16,6 +16,7 @@ export { ShellSupportPage } from "./pages/system/ShellSupportPage.js";
 export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.js";
 // SM-P4 core user-facing pages
 export { DashboardPage } from "./pages/DashboardPage.js";
+export { AlertCenterPage } from "./pages/AlertCenterPage.js";
 export { WhaleAlertsPage } from "./pages/WhaleAlertsPage.js";
 export { StockDetailPage } from "./pages/StockDetailPage.js";
 export { PortfoliosPage } from "./pages/PortfoliosPage.js";
