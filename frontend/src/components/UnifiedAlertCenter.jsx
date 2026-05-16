@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
-import { normalizeAlertText, normalizeSeverity } from '../hooks/useUnifiedAlerts';
+import { normalizeAlertText, normalizeSeverity } from '../hooks/useAlertCenterFeed';
 import PaginationBar from './shared/PaginationBar';
 import SharkIcon from './shared/SharkIcon';
 import {

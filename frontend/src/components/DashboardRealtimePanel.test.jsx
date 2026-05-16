@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DashboardRealtimePanel from './DashboardRealtimePanel';
 
 const mockUseI18n = jest.fn();
-const mockUseUnifiedAlerts = jest.fn();
+const mockUseAlertCenterFeed = jest.fn();
 const mockUsePersistentAlertState = jest.fn();
 const mockGetRealtimeHealth = jest.fn();
 
@@ -12,9 +12,9 @@ jest.mock('../context/LangContext', () => ({
   useI18n: () => mockUseI18n(),
 }));
 
-jest.mock('../hooks/useUnifiedAlerts', () => ({
+jest.mock('../hooks/useAlertCenterFeed', () => ({
   __esModule: true,
-  default: (...args) => mockUseUnifiedAlerts(...args),
+  default: (...args) => mockUseAlertCenterFeed(...args),
   normalizeAlertText: (value) => {
     if (value === null || value === undefined) return '';
     if (typeof value === 'string') return value;
@@ -57,7 +57,7 @@ describe('DashboardRealtimePanel', () => {
       toggleCriticalSound: jest.fn(),
     });
     mockGetRealtimeHealth.mockImplementation(() => new Promise(() => {}));
-    mockUseUnifiedAlerts.mockReturnValue({
+    mockUseAlertCenterFeed.mockReturnValue({
       quoteList: [],
       filteredUnifiedAlerts: [
         {

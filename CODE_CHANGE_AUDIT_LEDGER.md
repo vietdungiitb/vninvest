@@ -1,5 +1,30 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D05 closure: frontend naming cleanup for alert-center feed bridge | frontend + docs
+
+## All Modified Files (11 files)
+| File | Change |
+|------|--------|
+| `frontend/src/api/client.js` | Added canonical bridge method `getAlertCenterFeed` and kept compatibility alias `getUnifiedAlerts` |
+| `frontend/src/api/client.unifiedAlerts.test.js` | Updated focused tests to validate canonical method behavior and compatibility alias |
+| `frontend/src/hooks/useUnifiedAlerts.js` | Switched internals to call `getAlertCenterFeed` and renamed exported default function to canonical `useAlertCenterFeed` |
+| `frontend/src/hooks/useAlertCenterFeed.js` | Added canonical hook entrypoint that re-exports default + helper normalizers for migration-safe import path |
+| `frontend/src/components/DashboardRealtimePanel.jsx` | Updated hook import/usage to canonical `useAlertCenterFeed` path |
+| `frontend/src/components/DashboardRealtimePanel.test.jsx` | Updated hook mock target and naming to canonical hook module |
+| `frontend/src/components/UnifiedAlertCenter.jsx` | Updated helper imports to canonical hook module |
+| `frontend/src/pages/modern/ModernDashboard.jsx` | Updated hook import/usage to canonical `useAlertCenterFeed` |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Updated `D05` from `IN PROGRESS` to `DONE` with migration-safe naming cleanup note |
+| `module_tree_full.md` | Regenerated module inventory after this slice (`1211` modules) |
+| `PROGRESS_DASHBOARD.md` | Added this D05 closure progress snapshot |
+
+## Validation
+- `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false; Pop-Location` passed (`5` tests) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1211` modules) ✅
+- `Set-Location .; .\start_dev.ps1` completed with `Frontend health : OK` ✅
+
+## Residual risk
+- Compatibility alias `getUnifiedAlerts` vẫn được giữ tạm thời để tránh breaking change cho external callers; cần theo dõi usage và xóa alias trong wave deprecation riêng khi đủ evidence.
+
 # 2026-05-16 | Global Alert Center governance sync: taskboard/traceability/self-audit status alignment after checklist-closure evidence | docs
 
 ## All Modified Files (6 files)

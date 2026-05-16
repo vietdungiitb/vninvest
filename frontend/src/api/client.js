@@ -582,7 +582,7 @@ export const getWhaleCampaigns = ({
   return apiClient.get(`/realtime/whale-campaigns/${queryString ? `?${queryString}` : ''}`, { signal });
 };
 
-export const getUnifiedAlerts = async ({ symbols, watchlistGroupIds: _watchlistGroupIds, window: _window = 'session', severityMin = 'low', limit: _limit = 20, cursor } = {}) => {
+export const getAlertCenterFeed = async ({ symbols, watchlistGroupIds: _watchlistGroupIds, window: _window = 'session', severityMin = 'low', limit: _limit = 20, cursor } = {}) => {
   const normalizedSymbols = Array.isArray(symbols)
     ? symbols.map((symbol) => String(symbol || '').trim().toUpperCase()).filter(Boolean)
     : [];
@@ -620,6 +620,9 @@ export const getUnifiedAlerts = async ({ symbols, watchlistGroupIds: _watchlistG
     },
   };
 };
+
+// Compatibility alias for legacy consumers during migration.
+export const getUnifiedAlerts = getAlertCenterFeed;
 
 /**
  * Get symbol co-observation data (dark money + whale campaigns correlation)

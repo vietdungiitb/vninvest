@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getUnifiedAlerts } from '../api/client';
+import { getAlertCenterFeed } from '../api/client';
 import { buildDashboardRealtimeQuoteList } from '../utils/dashboardRealtimeViewModel';
 import {
   normalizeAlertSeverity,
@@ -136,7 +136,7 @@ export function normalizeSeverity(value, fallback = 'medium') {
   return normalizeAlertSeverity(value, fallback);
 }
 
-export default function useUnifiedAlerts({
+export default function useAlertCenterFeed({
   alerts = [],
   darkFlowAlerts = [],
   monitoredSymbols = [],
@@ -183,7 +183,7 @@ export default function useUnifiedAlerts({
 
     setLoadingMoreUnified(true);
     try {
-      const response = await getUnifiedAlerts({
+      const response = await getAlertCenterFeed({
         symbols: monitoredSymbols,
         window: 'session',
         limit: pageSize,

@@ -16,7 +16,8 @@ jest.mock('@vninvest/web/adapters/core-api-adapter', () => ({
   },
 }), { virtual: true });
 
-describe('getUnifiedAlerts', () => {
+describe('getAlertCenterFeed', () => {
+  let getAlertCenterFeed;
   let getUnifiedAlerts;
 
   beforeEach(() => {
@@ -36,7 +37,7 @@ describe('getUnifiedAlerts', () => {
     axiosModule.default.create.mockReturnValue(mockApiClient);
     axiosModule.create.mockReturnValue(mockApiClient);
 
-    ({ getUnifiedAlerts } = require('./client'));
+    ({ getAlertCenterFeed, getUnifiedAlerts } = require('./client'));
   });
 
   it('bridges multi-symbol requests to server truth and normalizes cursor shape', async () => {
@@ -50,7 +51,7 @@ describe('getUnifiedAlerts', () => {
       previous: null,
     });
 
-    const response = await getUnifiedAlerts({
+    const response = await getAlertCenterFeed({
       symbols: ['FPT', 'HPG'],
       watchlistGroupIds: [1, 7],
       window: '5d',
@@ -88,7 +89,7 @@ describe('getUnifiedAlerts', () => {
       previous: null,
     });
 
-    const response = await getUnifiedAlerts({ symbols: ['VNM'] });
+    const response = await getAlertCenterFeed({ symbols: ['VNM'] });
 
     expect(mockGetAlertCenterFeed).toHaveBeenCalledWith({
       symbol: 'VNM',
@@ -100,5 +101,16 @@ describe('getUnifiedAlerts', () => {
     expect(response.data.results).toEqual([{ alert_id: '1', symbol: 'VNM' }]);
     expect(response.data.next_cursor).toBe(null);
     expect(response.data.has_more).toBe(false);
+  });
+
+  it('keeps getUnifiedAlerts as compatibility alias', async () => {
+    mockGetAlertCenterFeed.mockResolvedValue({
+      results: [],
+      next: null,
+      previous: null,
+    });
+
+    await getUnifiedAlerts({ symbols: ['VNM'] });
+    expect(mockGetAlertCenterFeed).toHaveBeenCalledTimes(1);
   });
 });

@@ -27,7 +27,7 @@
 | D02 | Parity/shadow gates + legacy sunset docs | 🟠 REOPENED | Copilot | Self-audit pass-state đang over-claim so với evidence thực tế delivery/openapi completeness |
 | D03 | Frontend wrapper removal wave | 🟠 REOPENED | Copilot | Wrapper removal done, nhưng acceptance phụ thuộc canonical contract closure từ B03/C01 nên chưa thể close độc lập |
 | D04 | Dashboard intermediary removal wave | 🟠 REOPENED | Copilot | Route simplification done, nhưng downstream alert contract parity chưa đạt gate nên chưa close end-to-end |
-| D05 | Unified-alert frontend bridge hardening | 🔄 IN PROGRESS | Copilot | Bridge đã dùng native feed và không còn browser-side synthesis; còn naming debt lịch sử (`getUnifiedAlerts`/`useUnifiedAlerts`) cần cleanup để close hoàn toàn |
+| D05 | Unified-alert frontend bridge hardening | ✅ DONE | Copilot | Frontend bridge đã dùng native feed, browser-side synthesis đã bỏ, runtime path chính đã đổi sang naming `AlertCenterFeed` và giữ alias tương thích để migration an toàn |
 | D06 | Cutover doc-pack sync wave | 🟠 REOPENED | Copilot | Doc pack đầy đủ nhưng một số claim DONE không phản ánh runtime reality sau audit đối chiếu |
 | D07 | packages/web alert-center route + adapter wave | ✅ DONE | Copilot | Adapter + page interaction coverage cho detail/context/ack/mute workflow đã hoàn tất và pass test |
 | D08 | signal_intelligence canonical alert model wave | 🔄 IN PROGRESS | Copilot | R1.1 entities đã bổ sung trong `signal_intelligence/models.py` và migration `0005`; còn pending integration vào views/materializers/tests contract-level |

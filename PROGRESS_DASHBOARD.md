@@ -1,3 +1,24 @@
+# 2026-05-16 — Global Alert Center D05 complete (frontend naming cleanup for alert-center feed) ✅
+
+Status: **✅ D05 DONE** | **✅ runtime path đã dùng naming chuẩn AlertCenterFeed** | **✅ compatibility alias giữ an toàn migration**
+
+## What changed
+- Added canonical frontend bridge method `getAlertCenterFeed` and switched hook internals to consume it.
+- Introduced canonical hook entrypoint `useAlertCenterFeed` and migrated primary consumers:
+  - Dashboard realtime panel
+  - Modern dashboard
+  - Unified alert center helper imports
+- Kept compatibility alias `getUnifiedAlerts` to avoid breaking existing external callers.
+- Updated taskboard status `D05` to `DONE`.
+
+## Validation
+- `npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **5 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+- `./start_dev.ps1` → **Frontend health OK** ✅
+
+## Next
+- Plan deprecation slice to remove compatibility alias after usage inventory confirms no remaining external dependency.
+
 # 2026-05-16 — Global Alert Center governance status sync complete (taskboard + traceability + self-audit) ✅
 
 Status: **✅ docs sync DONE** | **✅ C01/C02 moved to DONE with evidence** | **🟡 D05 remains IN PROGRESS by design (naming debt)**

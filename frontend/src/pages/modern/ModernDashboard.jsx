@@ -11,7 +11,7 @@ import FactsFirstModularPositionDeck from '../../components/modern/FactsFirstMod
 import PortfolioHeatmap from '../../components/PortfolioHeatmap';
 import UnifiedAlertCenter from '../../components/UnifiedAlertCenter';
 import StickyAlertBar from '../../components/StickyAlertBar';
-import useUnifiedAlerts from '../../hooks/useUnifiedAlerts';
+import useAlertCenterFeed from '../../hooks/useAlertCenterFeed';
 import usePersistentAlertState from '../../hooks/usePersistentAlertState';
 
 const ModernSidebar = lazy(() => import('../../components/modern/ModernSidebar'));
@@ -182,7 +182,7 @@ export default function ModernDashboard() {
     goToNextUnifiedPage,
     goToLastUnifiedPage,
     hasLastUnifiedPage,
-  } = useUnifiedAlerts({
+  } = useAlertCenterFeed({
     alerts,
     darkFlowAlerts,
     monitoredSymbols,

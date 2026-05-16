@@ -4,7 +4,7 @@ import { getRealtimeHealth } from '../api/client';
 import AllocationPieChart from './AllocationPieChart';
 import { RealtimeQuoteTable, COLUMN_PRESETS } from './RealtimeQuoteTable';
 import { useI18n } from '../context/LangContext';
-import useUnifiedAlerts, { normalizeAlertText, normalizeSeverity } from '../hooks/useUnifiedAlerts';
+import useAlertCenterFeed, { normalizeAlertText, normalizeSeverity } from '../hooks/useAlertCenterFeed';
 import usePersistentAlertState from '../hooks/usePersistentAlertState';
 import {
   alertCardTone,
@@ -70,7 +70,7 @@ export default function DashboardRealtimePanel({
     backendUnifiedHasMore,
     loadingMoreUnified,
     loadMoreUnifiedSnapshot,
-  } = useUnifiedAlerts({
+  } = useAlertCenterFeed({
     alerts,
     darkFlowAlerts,
     monitoredSymbols,
