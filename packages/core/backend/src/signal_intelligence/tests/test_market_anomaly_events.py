@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 from identity_access.models import UserProfile
 from market_serving.models import SymbolSnapshot
 from signal_intelligence.materializers import materialize_market_anomaly_alerts, materialize_stale_quote_alerts
+from signal_intelligence.models import MarketAnomalyEvent, UnifiedAlert
 from user_workspace.models import Watchlist, WatchlistItem
 
 
@@ -40,6 +41,10 @@ class MarketAnomalyEventTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()['results']), 1)
         self.assertEqual(response.json()['results'][0]['alert_family'], 'price_shock')
+        alert = UnifiedAlert.objects.get(source_ref=f'market_anomaly:VCI:{now.date().isoformat()}')
+        fact = MarketAnomalyEvent.objects.get(source_ref=f'market_anomaly:VCI:{now.date().isoformat()}')
+        self.assertEqual(fact.event_type, MarketAnomalyEvent.EventTypeChoices.PRICE_SHOCK)
+        self.assertEqual(fact.unified_alert_id, alert.id)
 
     def test_stale_quote_family_emits_from_materializer(self):
         now = timezone.now()
@@ -62,3 +67,7 @@ class MarketAnomalyEventTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()['results']), 1)
         self.assertEqual(response.json()['results'][0]['alert_family'], 'stale_quote')
+        alert = UnifiedAlert.objects.get(source_ref=f'stale_quote:VCI:{now.date().isoformat()}')
+        fact = MarketAnomalyEvent.objects.get(source_ref=f'stale_quote:VCI:{now.date().isoformat()}')
+        self.assertEqual(fact.event_type, MarketAnomalyEvent.EventTypeChoices.STALE_QUOTE)
+        self.assertEqual(fact.unified_alert_id, alert.id)

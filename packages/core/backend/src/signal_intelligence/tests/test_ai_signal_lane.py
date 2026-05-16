@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 
 from identity_access.models import UserProfile
 from signal_intelligence.materializers import materialize_ai_signal_alerts
-from signal_intelligence.models import OrderFlowEvent
+from signal_intelligence.models import AdvisorySignalEvent, OrderFlowEvent, UnifiedAlert
 from user_workspace.models import Watchlist, WatchlistItem
 
 
@@ -43,6 +43,10 @@ class AISignalLaneTests(TestCase):
         self.assertEqual(ai_feed.status_code, 200)
         self.assertEqual(len(ai_feed.json()['results']), 1)
         self.assertIn(ai_feed.json()['results'][0]['alert_type'], ['ai_alert', 'ai_suggest'])
+        alert = UnifiedAlert.objects.get(source_ref='ai-lane-fpt')
+        fact = AdvisorySignalEvent.objects.get(source_ref='ai-lane-fpt')
+        self.assertEqual(fact.signal_type, AdvisorySignalEvent.SignalTypeChoices.AI_ALERT)
+        self.assertEqual(fact.unified_alert_id, alert.id)
 
         main_feed = self.client.get('/core/v1/signals/alert-center/feed')
         self.assertEqual(main_feed.status_code, 200)

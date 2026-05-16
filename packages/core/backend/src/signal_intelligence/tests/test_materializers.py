@@ -13,6 +13,7 @@ from signal_intelligence.materializers import (
     materialize_whale_feed_aggregate,
 )
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical, UserAlertDelivery
+from signal_intelligence.models import AdvisorySignalEvent, MarketAnomalyEvent
 from signal_intelligence.views import AIAlertsFeedView, AlertCenterFeedView
 from market_serving.models import SymbolSnapshot
 from identity_access.models import UserProfile
@@ -223,11 +224,14 @@ class UnifiedAlertMaterializerTests(TestCase):
         result = materialize_stale_quote_alerts.run(symbol='SSI')
 
         alert = UnifiedAlert.objects.get(source_ref='stale_quote:SSI:' + now.date().isoformat())
+        fact = MarketAnomalyEvent.objects.get(source_ref='stale_quote:SSI:' + now.date().isoformat())
         self.assertEqual(result['status'], 'ok')
         self.assertEqual(result['created'], 1)
         self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.SYSTEM)
         self.assertEqual(alert.freshness_state, 'stale')
         self.assertEqual(alert.evidence['stale'], True)
+        self.assertEqual(fact.event_type, MarketAnomalyEvent.EventTypeChoices.STALE_QUOTE)
+        self.assertEqual(fact.unified_alert_id, alert.id)
 
     def test_materialize_market_anomaly_alerts_creates_signal_alert_from_snapshot(self):
         now = timezone.now()
@@ -246,12 +250,15 @@ class UnifiedAlertMaterializerTests(TestCase):
         result = materialize_market_anomaly_alerts.run(symbol='VCI')
 
         alert = UnifiedAlert.objects.get(source_ref='market_anomaly:VCI:' + now.date().isoformat())
+        fact = MarketAnomalyEvent.objects.get(source_ref='market_anomaly:VCI:' + now.date().isoformat())
         self.assertEqual(result['status'], 'ok')
         self.assertEqual(result['created'], 1)
         self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.SIGNAL)
         self.assertEqual(alert.severity, UnifiedAlert.SeverityChoices.MEDIUM)
         self.assertEqual(alert.confidence, 0.8)
         self.assertEqual(alert.evidence['price_change_pct'], 8.75)
+        self.assertEqual(fact.event_type, MarketAnomalyEvent.EventTypeChoices.PRICE_SHOCK)
+        self.assertEqual(fact.unified_alert_id, alert.id)
 
     def test_materialize_ai_signal_alerts_creates_ai_lane_alert(self):
         now = timezone.now()
@@ -275,12 +282,15 @@ class UnifiedAlertMaterializerTests(TestCase):
         result = materialize_ai_signal_alerts.run(symbol='FPT')
 
         alert = UnifiedAlert.objects.get(source_ref='ai-signal-fpt')
+        fact = AdvisorySignalEvent.objects.get(source_ref='ai-signal-fpt')
         self.assertEqual(result['status'], 'ok')
         self.assertEqual(result['created'], 1)
         self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.AI_ALERT)
         self.assertEqual(alert.confidence, 0.93)
         self.assertEqual(alert.metadata['source'], 'signal_intelligence.ai_signal_events')
         self.assertEqual(alert.evidence['ai_signal'], 'price_momentum_breakout')
+        self.assertEqual(fact.signal_type, AdvisorySignalEvent.SignalTypeChoices.AI_ALERT)
+        self.assertEqual(fact.unified_alert_id, alert.id)
 
     def test_alert_center_feed_filters_by_user_symbols_and_threshold(self):
         now = timezone.now()

@@ -52,6 +52,135 @@ def _resolve_confidence_from_matched_value(matched_value: int | None, *, alert_f
     return 0.7
 
 
+def _upsert_market_anomaly_event(
+    *,
+    symbol: str,
+    session_date,
+    event_type: str,
+    severity: str,
+    confidence: float,
+    direction: str,
+    source_ref: str,
+    evidence: dict,
+    metadata: dict,
+    triggered_at,
+    unified_alert,
+):
+    from signal_intelligence.models import MarketAnomalyEvent
+
+    event, created = MarketAnomalyEvent.objects.get_or_create(
+        source_ref=source_ref,
+        defaults={
+            'symbol': symbol,
+            'session_date': session_date,
+            'event_type': event_type,
+            'severity': severity,
+            'confidence': confidence,
+            'direction': direction,
+            'value': None,
+            'source_ref': source_ref,
+            'evidence': evidence,
+            'metadata': metadata,
+            'triggered_at': triggered_at,
+            'unified_alert': unified_alert,
+        },
+    )
+
+    dirty_fields: list[str] = []
+    expected_values = {
+        'symbol': symbol,
+        'session_date': session_date,
+        'event_type': event_type,
+        'severity': severity,
+        'confidence': confidence,
+        'direction': direction,
+        'source_ref': source_ref,
+        'evidence': evidence,
+        'metadata': metadata,
+        'triggered_at': triggered_at,
+        'unified_alert': unified_alert,
+    }
+    for field_name, expected_value in expected_values.items():
+        if getattr(event, field_name) != expected_value:
+            setattr(event, field_name, expected_value)
+            dirty_fields.append(field_name)
+
+    if event.value is not None:
+        event.value = None
+        dirty_fields.append('value')
+
+    if dirty_fields and not created:
+        event.save(update_fields=dirty_fields)
+
+    return event
+
+
+def _upsert_advisory_signal_event(
+    *,
+    symbol: str,
+    session_date,
+    signal_type: str,
+    severity: str,
+    confidence: float,
+    title: str,
+    body: str,
+    source_ref: str,
+    evidence: dict,
+    metadata: dict,
+    triggered_at,
+    unified_alert,
+):
+    from signal_intelligence.models import AdvisorySignalEvent
+
+    event, created = AdvisorySignalEvent.objects.get_or_create(
+        source_ref=source_ref,
+        defaults={
+            'symbol': symbol,
+            'session_date': session_date,
+            'signal_type': signal_type,
+            'severity': severity,
+            'confidence': confidence,
+            'title': title,
+            'body': body,
+            'value': None,
+            'source_ref': source_ref,
+            'evidence': evidence,
+            'metadata': metadata,
+            'triggered_at': triggered_at,
+            'unified_alert': unified_alert,
+        },
+    )
+
+    dirty_fields: list[str] = []
+    expected_values = {
+        'symbol': symbol,
+        'session_date': session_date,
+        'signal_type': signal_type,
+        'severity': severity,
+        'confidence': confidence,
+        'title': title,
+        'body': body,
+        'source_ref': source_ref,
+        'evidence': evidence,
+        'metadata': metadata,
+        'triggered_at': triggered_at,
+        'unified_alert': unified_alert,
+    }
+    for field_name, expected_value in expected_values.items():
+        if getattr(event, field_name) != expected_value:
+            setattr(event, field_name, expected_value)
+            dirty_fields.append(field_name)
+
+    if event.value is not None:
+        event.value = None
+        dirty_fields.append('value')
+
+    if dirty_fields and not created:
+        event.save(update_fields=dirty_fields)
+
+    return event
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def materialize_unified_alerts(self):
     """
@@ -332,6 +461,25 @@ def materialize_stale_quote_alerts(self, symbol: str | None = None):
             dirty_fields.append('evidence')
         if dirty_fields and not alert_created:
             alert.save(update_fields=dirty_fields)
+
+        _upsert_market_anomaly_event(
+            symbol=snapshot.symbol,
+            session_date=snapshot.session_date,
+            event_type='stale_quote',
+            severity=severity,
+            confidence=confidence,
+            direction=UnifiedAlert.DirectionChoices.NEUTRAL,
+            source_ref=source_ref,
+            evidence=evidence,
+            metadata={
+                'source': 'market_serving.symbol_snapshot',
+                'market_status': snapshot.market_status,
+                'price_change_pct': float(snapshot.price_change_pct or 0),
+            },
+            triggered_at=snapshot.fetched_at,
+            unified_alert=alert,
+        )
+
         if alert_created or dirty_fields:
             created += 1
 
@@ -431,6 +579,25 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
             dirty_fields.append('evidence')
         if dirty_fields and not alert_created:
             alert.save(update_fields=dirty_fields)
+
+        _upsert_market_anomaly_event(
+            symbol=snapshot.symbol,
+            session_date=snapshot.session_date,
+            event_type='price_shock',
+            severity=severity,
+            confidence=confidence,
+            direction=UnifiedAlert.DirectionChoices.NEUTRAL,
+            source_ref=source_ref,
+            evidence=evidence,
+            metadata={
+                'source': 'market_serving.symbol_snapshot',
+                'market_status': snapshot.market_status,
+                'price_change_pct': pct,
+            },
+            triggered_at=snapshot.fetched_at,
+            unified_alert=alert,
+        )
+
         if alert_created or dirty_fields:
             created += 1
 
@@ -443,7 +610,7 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def materialize_ai_signal_alerts(self, symbol: str | None = None):
-    from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
+    from signal_intelligence.models import AdvisorySignalEvent, OrderFlowEvent, UnifiedAlert
 
     qs = OrderFlowEvent.objects.filter(
         signal_type=OrderFlowEvent.SignalTypeChoices.OTHER,
@@ -465,31 +632,46 @@ def materialize_ai_signal_alerts(self, symbol: str | None = None):
             'ai_signal': metadata.get('ai_signal'),
             'confidence': confidence,
         }
+        resolved_signal_type = (
+            AdvisorySignalEvent.SignalTypeChoices.AI_SUGGEST
+            if str(metadata.get('ai_signal') or '').lower().startswith('suggest')
+            else AdvisorySignalEvent.SignalTypeChoices.AI_ALERT
+        )
+        alert_type = (
+            UnifiedAlert.AlertTypeChoices.AI_SUGGEST
+            if resolved_signal_type == AdvisorySignalEvent.SignalTypeChoices.AI_SUGGEST
+            else UnifiedAlert.AlertTypeChoices.AI_ALERT
+        )
+
+        title = str(metadata.get('title') or f'AI tín hiệu {event.symbol}')
+        body = str(metadata.get('body') or '')
+        updated_metadata = {
+            **metadata,
+            'source': 'signal_intelligence.ai_signal_events',
+        }
+
         alert, alert_created = UnifiedAlert.objects.get_or_create(
             source_ref=source_ref,
             defaults={
                 'symbol': event.symbol,
-                'alert_type': UnifiedAlert.AlertTypeChoices.AI_ALERT,
+                'alert_type': alert_type,
                 'severity': severity,
                 'confidence': confidence,
                 'freshness_state': 'fresh',
-                'title': str(metadata.get('title') or f'AI tín hiệu {event.symbol}'),
-                'body': str(metadata.get('body') or ''),
+                'title': title,
+                'body': body,
                 'value': None,
                 'direction': UnifiedAlert.DirectionChoices.NEUTRAL,
                 'session_date': event.session_date,
                 'triggered_at': event.triggered_at,
                 'source_ref': source_ref,
-                'metadata': {
-                    **metadata,
-                    'source': 'signal_intelligence.ai_signal_events',
-                },
+                'metadata': updated_metadata,
                 'evidence': evidence,
             },
         )
         dirty_fields: list[str] = []
-        if alert.alert_type != UnifiedAlert.AlertTypeChoices.AI_ALERT:
-            alert.alert_type = UnifiedAlert.AlertTypeChoices.AI_ALERT
+        if alert.alert_type != alert_type:
+            alert.alert_type = alert_type
             dirty_fields.append('alert_type')
         if alert.severity != severity:
             alert.severity = severity
@@ -500,8 +682,6 @@ def materialize_ai_signal_alerts(self, symbol: str | None = None):
         if alert.freshness_state != 'fresh':
             alert.freshness_state = 'fresh'
             dirty_fields.append('freshness_state')
-        title = str(metadata.get('title') or f'AI tín hiệu {event.symbol}')
-        body = str(metadata.get('body') or '')
         if alert.title != title:
             alert.title = title
             dirty_fields.append('title')
@@ -514,10 +694,6 @@ def materialize_ai_signal_alerts(self, symbol: str | None = None):
         if alert.triggered_at != event.triggered_at:
             alert.triggered_at = event.triggered_at
             dirty_fields.append('triggered_at')
-        updated_metadata = {
-            **metadata,
-            'source': 'signal_intelligence.ai_signal_events',
-        }
         if alert.metadata != updated_metadata:
             alert.metadata = updated_metadata
             dirty_fields.append('metadata')
@@ -526,6 +702,22 @@ def materialize_ai_signal_alerts(self, symbol: str | None = None):
             dirty_fields.append('evidence')
         if dirty_fields and not alert_created:
             alert.save(update_fields=dirty_fields)
+
+        _upsert_advisory_signal_event(
+            symbol=event.symbol,
+            session_date=event.session_date,
+            signal_type=resolved_signal_type,
+            severity=severity,
+            confidence=confidence,
+            title=title,
+            body=body,
+            source_ref=source_ref,
+            evidence=evidence,
+            metadata=updated_metadata,
+            triggered_at=event.triggered_at,
+            unified_alert=alert,
+        )
+
         if alert_created or dirty_fields:
             created += 1
 

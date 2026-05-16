@@ -18,8 +18,8 @@
 | A01 | Coverage/freshness hardening | ✅ DONE | Copilot | Hoàn tất freshness/next-action cho `daily_prices`, `price_board_snapshot`, `intraday_bars`, `intraday_ticks`, `session_facts` (bao gồm warm-window semantics cho snapshot/session_facts) |
 | A02 | Missing-only planner completion | ✅ DONE | Copilot | Planner execution path nâng `session_facts` thành executable first-class dataset; giữ `missing_only` default + `force_refresh` explicit trên preview/run contract |
 | A03 | Queue tier/runtime policy cutover | ✅ DONE | Copilot | Warm tier now carries `session_facts`; scheduler/runtime snapshot bám theo priority tier và runtime config với ownership audit hiện có |
-| B01 | Alert taxonomy + canonical fact models | 🔄 IN PROGRESS | Copilot | Đã bổ sung payload-level `alert_family` (`price_shock` / `stale_quote`) + filter `alert_family` ở alert-center feed; còn pending producer/materializer taxonomy emission end-to-end |
-| B02 | Producer plane completion | 🔄 IN PROGRESS | Copilot | R1.1 đã thêm `MarketAnomalyEvent` + `AdvisorySignalEvent` models/migration; còn pending wiring producer/read-path + endpoint family contract |
+| B01 | Alert taxonomy + canonical fact models | ✅ DONE | Copilot | Fact-first materialization đã ghi `MarketAnomalyEvent` (`price_shock`/`stale_quote`) và `AdvisorySignalEvent` trước khi liên kết sang UnifiedAlert; taxonomy feed/filter giữ đúng lane semantics |
+| B02 | Producer plane completion | ✅ DONE | Copilot | Producer/materializer pipeline đã wiring đầy đủ cho market anomaly + AI signal với linkage Fact → UnifiedAlert và regression coverage tương ứng |
 | B03 | OpenAPI alert-center contracts | ✅ DONE | Copilot | Native endpoint family `/core/v1/signals/alert-center/*` + `/core/v1/signals/ai-alerts/*` đã active end-to-end với adapter/UI/backend regression suites pass |
 | C01 | Per-user delivery projection | ✅ DONE | Copilot | Delivery service/state transitions + user-scope ack/mute đã có API coverage, bao gồm cross-user scope block và mute filtering behavior |
 | C02 | packages/web alert hub | ✅ DONE | Copilot | Alert hub đã có full workflow feed/summary/detail/context/ack/mute trên packages/web và có regression test cho adapter contracts |
@@ -30,7 +30,7 @@
 | D05 | Unified-alert frontend bridge hardening | ✅ DONE | Copilot | Frontend bridge đã dùng native feed, browser-side synthesis đã bỏ, runtime path chính đã đổi sang naming `AlertCenterFeed` và giữ alias tương thích để migration an toàn |
 | D06 | Cutover doc-pack sync wave | 🟠 REOPENED | Copilot | Doc pack đầy đủ nhưng một số claim DONE không phản ánh runtime reality sau audit đối chiếu |
 | D07 | packages/web alert-center route + adapter wave | ✅ DONE | Copilot | Adapter + page interaction coverage cho detail/context/ack/mute workflow đã hoàn tất và pass test |
-| D08 | signal_intelligence canonical alert model wave | 🔄 IN PROGRESS | Copilot | R1.1 entities đã bổ sung trong `signal_intelligence/models.py` và migration `0005`; còn pending integration vào views/materializers/tests contract-level |
+| D08 | signal_intelligence canonical alert model wave | ✅ DONE | Copilot | Integration đã hoàn tất ở materializers/tests contract-level: facts được persist và liên kết vào read model; focused signal_intelligence suites pass |
 | D09 | market_data matrix SSOT parity wave | ✅ DONE | Copilot | Completed registry/coverage/planner parity updates for global symbol matrix workflows with focused market_data test suites |
 | D10 | service_ops operator matrix wave | ✅ DONE | Copilot | Added operator-facing registry summary/detail/reconcile-preview coverage and queue-tier runtime dataset parity updates with focused SOC test suites |
 | D11 | SOC prefetch contract stabilization | ✅ DONE | Copilot | Updated prefetch universe-group test contract to match current endpoint behavior (all groups + selected flag) and restored green status for full SOC suites |

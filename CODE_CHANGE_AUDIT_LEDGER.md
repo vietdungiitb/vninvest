@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center B01/B02/D08 closure: fact-first materialization for market anomaly and AI lane | backend + docs
+
+## All Modified Files (8 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/materializers.py` | Implemented fact-first pipeline: upsert `MarketAnomalyEvent` (`price_shock`/`stale_quote`) and `AdvisorySignalEvent` before/with UnifiedAlert linkage |
+| `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` | Added assertions proving Fact → UnifiedAlert linkage for stale quote, market anomaly, and AI signal materializers |
+| `packages/core/backend/src/signal_intelligence/tests/test_market_anomaly_events.py` | Added regression assertions that `MarketAnomalyEvent` rows are persisted and linked for `price_shock` and `stale_quote` families |
+| `packages/core/backend/src/signal_intelligence/tests/test_ai_signal_lane.py` | Added regression assertions that `AdvisorySignalEvent` row is persisted and linked while staying in AI lane |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked `B01`, `B02`, `D08` as `DONE` with fact-first producer/materializer evidence notes |
+| `module_tree_full.md` | Regenerated module tree after this slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this closure audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for B01/B02/D08 closure |
+
+## Validation
+- `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers signal_intelligence.tests.test_market_anomaly_events signal_intelligence.tests.test_ai_signal_lane signal_intelligence.tests.test_alert_center_api signal_intelligence.tests.test_user_alert_delivery signal_intelligence.tests.test_delivery_service --keepdb; Pop-Location` passed (`25` tests) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1211` modules) ✅
+- `Set-Location .; .\start_dev.ps1` completed with `Core API health : OK` and `Frontend health : OK` ✅
+
+## Residual risk
+- Order-flow based AI signals currently derive from `OrderFlowEvent(signal_type=OTHER, metadata.ai_signal)`; full deprecation of this ingestion shim toward native AI producer-only source remains a follow-up hardening task.
+
 # 2026-05-16 | Global Alert Center D01 closure: bridge naming standardization across frontend/mobile | frontend + mobile + docs
 
 ## All Modified Files (6 files)

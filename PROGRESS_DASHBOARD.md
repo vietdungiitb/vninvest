@@ -1,3 +1,29 @@
+# 2026-05-16 — Global Alert Center B01/B02/D08 complete (fact-first materialization wired) ✅
+
+Status: **✅ B01 DONE** | **✅ B02 DONE** | **✅ D08 DONE** | **✅ canonical facts now persisted and linked before read-model delivery**
+
+## What changed
+- Implemented fact-first materialization for market anomaly and AI lanes:
+  - `materialize_market_anomaly_alerts` and `materialize_stale_quote_alerts` now upsert `MarketAnomalyEvent` and link to `UnifiedAlert`.
+  - `materialize_ai_signal_alerts` now upsert `AdvisorySignalEvent` and link to `UnifiedAlert`.
+- Preserved native lane contracts (`main` vs `ai`) while adding forensic-friendly persistent fact rows.
+- Updated taskboard statuses to close `B01`, `B02`, `D08`.
+
+## Validation
+- Focused backend suites:
+  - `test_materializers`
+  - `test_market_anomaly_events`
+  - `test_ai_signal_lane`
+  - `test_alert_center_api`
+  - `test_user_alert_delivery`
+  - `test_delivery_service`
+  - Result: **25 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Next
+- Follow-up hardening: migrate AI producer source away from `OrderFlowEvent(signal_type=OTHER)` shim toward fully native advisory producer path when cutover gate is opened.
+
 # 2026-05-16 — Global Alert Center D01 complete (frontend/mobile bridge naming standardization) ✅
 
 Status: **✅ D01 DONE** | **✅ canonical AlertCenterFeed naming applied on runtime path** | **✅ mobile consumers migrated**

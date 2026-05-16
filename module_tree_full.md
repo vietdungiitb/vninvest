@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 23:02:31`
+Generated at: `2026-05-16 23:09:43`
 
 ## Summary
 
@@ -10,7 +10,7 @@ Generated at: `2026-05-16 23:02:31`
 - Python modules: 689
 - JS/TS modules: 522
 - Total classes: 1364
-- Total functions: 3239
+- Total functions: 3241
 - Total top-level variables: 4732
 
 ## Python Modules
@@ -3990,7 +3990,7 @@ Generated at: `2026-05-16 23:02:31`
 ### `packages/core/backend/src/signal_intelligence/materializers.py`
 
 - Functions:
-  - `_build_alert_evidence`, `_build_snapshot_evidence`, `_map_alert_type`, `_map_direction`, `_map_severity`, `_native_whale_detect`, `_resolve_confidence_from_matched_value`, `materialize_ai_signal_alerts`, `materialize_market_anomaly_alerts`, `materialize_stale_quote_alerts`, `materialize_unified_alerts`, `materialize_whale_feed_aggregate`
+  - `_build_alert_evidence`, `_build_snapshot_evidence`, `_map_alert_type`, `_map_direction`, `_map_severity`, `_native_whale_detect`, `_resolve_confidence_from_matched_value`, `_upsert_advisory_signal_event`, `_upsert_market_anomaly_event`, `materialize_ai_signal_alerts`, `materialize_market_anomaly_alerts`, `materialize_stale_quote_alerts`, `materialize_unified_alerts`, `materialize_whale_feed_aggregate`
 - Top-level variables:
   - `_MARKET_ANOMALY_PCT_THRESHOLD`, `_MAX_ALERTS_PER_RUN`, `_WHALE_VALUE_MAX_VND`, `_WHALE_VALUE_MIN_VND`, `_WHALE_VOLUME_THRESHOLD`, `logger`
 
