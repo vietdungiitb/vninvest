@@ -1,3 +1,22 @@
+# 2026-05-16 — PrefetchPanel registry-first semantics + i18n alignment ✅
+
+Status: **✅ UI slice DONE** | **✅ registry-first semantics surfaced in operator UI** | **🔄 SOC tab test debt remains isolated**
+
+## What changed
+- Updated `PrefetchPanel` to consume `universe_mode` and `hint_group_ids` from backend response.
+- Added explicit registry-first notice and hint metadata labels in the UI.
+- Added visual badges for registry-tier groups and hint-only metadata rows.
+- Moved new status/summary labels to i18n and added corresponding keys in `vi.js` and `en.js`.
+
+## Validation
+- `get_errors` on updated frontend files → **no errors** ✅
+- `npm run test -- src/pages/SOCPage.test.jsx` → **1 failed** (legacy expected tab label `Ma trận` no longer matches runtime label `Runtime KPI`) ⚠️
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Residual risk
+- SOC page tab-label assertion drift is pre-existing test debt relative to current product naming; requires a dedicated test update slice.
+
 # 2026-05-16 — Prefetch registry-first cutover (group_ids -> hint metadata) ✅
 
 Status: **✅ code slice DONE** | **🔄 full legacy sunset vẫn gated bởi D02**

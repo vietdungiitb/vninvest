@@ -42,6 +42,8 @@ const PrefetchPanel = ({ t }) => {
   const [cacheStatus, setCacheStatus] = useState(null);
   const [universeGroups, setUniverseGroups] = useState([]);
   const [selectedGroups, setSelectedGroups] = useState([]);
+  const [universeMode, setUniverseMode] = useState('legacy_group');
+  const [hintGroupIds, setHintGroupIds] = useState([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,6 +65,8 @@ const PrefetchPanel = ({ t }) => {
       setDraft({ ...c });
       setCacheStatus(cache);
       setUniverseGroups(groups.groups || []);
+      setUniverseMode(groups.universe_mode || 'legacy_group');
+      setHintGroupIds(Array.isArray(groups.hint_group_ids) ? groups.hint_group_ids : []);
       // Pre-select groups marked selected in the response (fallback: config's universe_group_ids)
       const preSelected = (groups.groups || [])
         .filter((g) => g.selected)
@@ -170,7 +174,15 @@ const PrefetchPanel = ({ t }) => {
       {/* Universe Groups Multiselect */}
       <div className="p-6 bg-slate-900 rounded-lg border border-slate-700">
         <h3 className="text-lg font-bold text-white mb-1">{t('soc.prefetch.universe_groups')}</h3>
-        <p className="text-xs text-slate-400 mb-4">{t('soc.prefetch.universe_groups_hint')}</p>
+        <p className="text-xs text-slate-400 mb-1">{t('soc.prefetch.universe_groups_hint')}</p>
+        {universeMode === 'registry_first' && (
+          <p className="text-xs text-emerald-300 mb-4">{t('soc.prefetch.universe_groups_registry_first')}</p>
+        )}
+        {hintGroupIds.length > 0 && (
+          <p className="text-xs text-amber-300 mb-4">
+            {t('soc.prefetch.hint_group_ids_label')}: {hintGroupIds.join(', ')}
+          </p>
+        )}
         {groupsLoading ? (
           <p className="text-slate-400 text-sm">{t('soc.prefetch.universe_groups_loading')}</p>
         ) : universeGroups.length === 0 ? (
@@ -180,6 +192,8 @@ const PrefetchPanel = ({ t }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {universeGroups.map((g) => {
                 const isCustom = g.type === 'custom';
+                const isRegistryTier = g.type === 'registry_tier';
+                const isHintOnly = Boolean(g.hint_only);
                 const isSelected = selectedGroups.includes(g.id);
                 const total = g.symbol_count || 0;
                 const covered = g.data_count || 0;
@@ -195,6 +209,8 @@ const PrefetchPanel = ({ t }) => {
                       isSelected
                         ? isCustom
                           ? 'border-teal-500 bg-teal-900/30'
+                          : isHintOnly
+                            ? 'border-amber-500 bg-amber-900/20'
                           : 'border-blue-500 bg-blue-900/30'
                         : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800/50'
                     }`}
@@ -209,12 +225,22 @@ const PrefetchPanel = ({ t }) => {
                         )}
                         className={isCustom ? 'accent-teal-500' : 'accent-blue-500'}
                       />
-                      <span className={`text-sm font-semibold flex-1 ${isCustom ? 'text-teal-200' : 'text-slate-100'}`}>
+                      <span className={`text-sm font-semibold flex-1 ${isCustom ? 'text-teal-200' : isHintOnly ? 'text-amber-200' : 'text-slate-100'}`}>
                         {isCustom ? `★ ${g.name}` : g.name}
                       </span>
+                      {isRegistryTier && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-600/40">
+                          {t('soc.prefetch.badge_registry_tier')}
+                        </span>
+                      )}
+                      {isHintOnly && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/50 text-amber-300 border border-amber-700/40">
+                          {t('soc.prefetch.badge_hint_only')}
+                        </span>
+                      )}
                       {/* Data status dot */}
                       <span
-                        title={hasData ? `Có dữ liệu · cập nhật ${latestDate}` : 'Chưa có dữ liệu'}
+                        title={hasData ? `${t('soc.prefetch.data_available')} · ${t('soc.prefetch.updated_label')} ${latestDate}` : t('soc.prefetch.data_missing')}
                         className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${hasData ? 'bg-emerald-400' : 'bg-slate-600'}`}
                       />
                     </div>
@@ -239,18 +265,21 @@ const PrefetchPanel = ({ t }) => {
                     {/* Latest date */}
                     {latestDate && (
                       <span className="text-[10px] text-slate-500">
-                        Cập nhật: {latestDate}
+                        {t('soc.prefetch.updated_label')}: {latestDate}
                       </span>
                     )}
                     {!hasData && total > 0 && (
-                      <span className="text-[10px] text-slate-600 italic">Chưa có dữ liệu</span>
+                      <span className="text-[10px] text-slate-600 italic">{t('soc.prefetch.data_missing')}</span>
                     )}
                   </label>
                 );
               })}
             </div>
             <p className="mt-3 text-[11px] text-slate-500">
-              {selectedGroups.length} / {universeGroups.length} nhóm được chọn · Lưu qua nút "Xem trước" → Áp dụng
+              {t('soc.prefetch.selected_groups_summary', {
+                selected: selectedGroups.length,
+                total: universeGroups.length,
+              })}
             </p>
           </>
         )}

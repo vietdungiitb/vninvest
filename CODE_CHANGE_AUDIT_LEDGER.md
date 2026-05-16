@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | PrefetchPanel registry-first semantics + i18n alignment | frontend/docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/PrefetchPanel.jsx` | Updated universe-groups panel to reflect `registry_first` mode, show `hint_group_ids`, and render registry/hint badges + status labels through i18n |
+| `frontend/src/i18n/vi.js` | Added Vietnamese translations for new prefetch registry-first semantics labels/messages |
+| `frontend/src/i18n/en.js` | Added English translations for new prefetch registry-first semantics labels/messages |
+| `module_tree_full.md` | Regenerated module tree after this frontend slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for prefetch UI semantics alignment |
+
+## Validation
+- `get_errors` on updated files (`PrefetchPanel.jsx`, `vi.js`, `en.js`) ✅ no errors
+- `Push-Location ./frontend; npm run test -- src/pages/SOCPage.test.jsx; Pop-Location` ❌ 1 failed (`Ma trận` tab assertion mismatch vs current `Runtime KPI` label)
+- `./start_dev.ps1` runtime refresh completed; smoke checks: Core API health OK, Frontend health OK ✅
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+
+## Residual risk
+- `SOCPage.test.jsx` currently asserts legacy tab label (`Ma trận`) and is out of sync with current UI label (`Runtime KPI`); test suite update should be handled in a separate focused test-maintenance slice.
+
 # 2026-05-16 | Prefetch registry-first universe cutover (group_ids as hint metadata) | backend/docs
 
 ## All Modified Files (5 files)

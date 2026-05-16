@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 23:38:45`
+Generated at: `2026-05-16 23:43:48`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Generated at: `2026-05-16 23:38:45`
 - JS/TS modules: 522
 - Total classes: 1364
 - Total functions: 3241
-- Total top-level variables: 4732
+- Total top-level variables: 4734
 
 ## Python Modules
 
@@ -5558,7 +5558,7 @@ Generated at: `2026-05-16 23:38:45`
 - Functions:
   - `PrefetchPanel`, `buildChangeSummary`, `handleApply`, `handleFieldChange`, `handleOpenPreview`, `handlePurgeCache`, `handleWarmNow`
 - Top-level variables:
-  - `CORE_NUMBER_FIELDS`, `PROFILE_FIELDS`, `c`, `changed`, `covered`, `draftWithGroups`, `fetchData`, `hasData`, `isCustom`, `isSelected`, `keys`, `latestDate`, `pct`, `preSelected`, `result`, `total`
+  - `CORE_NUMBER_FIELDS`, `PROFILE_FIELDS`, `c`, `changed`, `covered`, `draftWithGroups`, `fetchData`, `hasData`, `isCustom`, `isHintOnly`, `isRegistryTier`, `isSelected`, `keys`, `latestDate`, `pct`, `preSelected`, `result`, `total`
 
 ### `frontend/src/components/soc/RuntimeKPIPanel.jsx`
 
