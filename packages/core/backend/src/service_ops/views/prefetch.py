@@ -375,29 +375,60 @@ class PrefetchUniverseGroupsView(SOCBaseView):
         },
     )
     def get(self, request):
-        """Return all available symbol groups with selected flag."""
+        """Return all available symbol groups with selected flag and data coverage."""
+        from datetime import timedelta
         from ..matrix_coordinator import PREDEFINED_SYMBOL_GROUPS
         from ..models import CustomSymbolGroup
+        from market_data.models import DailyPrice
+        from market_data.vnbroker_adapter import fetch_symbol_group_members
 
         config = _get_prefetch_config()
         selected_ids = set(config.universe_group_ids or [])
+        cutoff = (timezone.now() - timedelta(days=30)).date()
+
+        def _get_coverage(group_id: str) -> dict:
+            """Return {symbol_count, data_count, latest_date} for a group."""
+            try:
+                syms = fetch_symbol_group_members(group_id)
+                total = len(syms)
+                if total == 0:
+                    return {'symbol_count': 0, 'data_count': 0, 'latest_date': None}
+                qs = DailyPrice.objects.filter(symbol__in=syms, date__gte=cutoff)
+                data_count = qs.values('symbol').distinct().count()
+                latest = (
+                    DailyPrice.objects.filter(symbol__in=syms)
+                    .order_by('-date')
+                    .values_list('date', flat=True)
+                    .first()
+                )
+                return {
+                    'symbol_count': total,
+                    'data_count': data_count,
+                    'latest_date': latest.isoformat() if latest else None,
+                }
+            except Exception:
+                return {'symbol_count': 0, 'data_count': 0, 'latest_date': None}
 
         groups = []
         # Predefined groups
         for pg in PREDEFINED_SYMBOL_GROUPS:
+            cov = _get_coverage(pg['id'])
             groups.append({
                 'id': pg['id'],
                 'name': pg['name'],
                 'type': pg.get('type', 'index'),
                 'selected': pg['id'] in selected_ids,
+                **cov,
             })
         # Custom groups (active only)
         for cg in CustomSymbolGroup.objects.filter(is_active=True).order_by('name'):
+            cov = _get_coverage(cg.group_id)
             groups.append({
                 'id': cg.group_id,
                 'name': cg.name,
                 'type': 'custom',
                 'selected': cg.group_id in selected_ids,
+                **cov,
             })
 
         return Response({

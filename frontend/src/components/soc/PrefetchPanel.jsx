@@ -177,32 +177,74 @@ const PrefetchPanel = ({ t }) => {
           <p className="text-slate-500 text-sm">{t('soc.prefetch.universe_groups_empty', { defaultValue: 'Chưa có nhóm nào. Tạo nhóm trong tab DataOps.' })}</p>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {universeGroups.map((g) => {
                 const isCustom = g.type === 'custom';
                 const isSelected = selectedGroups.includes(g.id);
+                const total = g.symbol_count || 0;
+                const covered = g.data_count || 0;
+                const hasData = covered > 0;
+                const pct = total > 0 ? Math.round((covered / total) * 100) : 0;
+                const latestDate = g.latest_date
+                  ? new Date(g.latest_date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  : null;
                 return (
                   <label
                     key={g.id}
-                    className={`flex items-center gap-2 cursor-pointer p-2 rounded border transition ${
+                    className={`flex flex-col gap-1.5 cursor-pointer p-3 rounded-lg border transition ${
                       isSelected
                         ? isCustom
-                          ? 'border-teal-600 bg-teal-900/30'
-                          : 'border-blue-600 bg-blue-900/30'
-                        : 'border-transparent hover:bg-slate-800'
+                          ? 'border-teal-500 bg-teal-900/30'
+                          : 'border-blue-500 bg-blue-900/30'
+                        : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800/50'
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={(e) => setSelectedGroups((prev) =>
-                        e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
-                      )}
-                      className={isCustom ? 'accent-teal-500' : 'accent-blue-500'}
-                    />
-                    <span className={`text-sm font-medium ${isCustom ? 'text-teal-200' : 'text-slate-200'}`}>
-                      {isCustom ? `★ ${g.name}` : g.name}
-                    </span>
+                    {/* Header row */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => setSelectedGroups((prev) =>
+                          e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
+                        )}
+                        className={isCustom ? 'accent-teal-500' : 'accent-blue-500'}
+                      />
+                      <span className={`text-sm font-semibold flex-1 ${isCustom ? 'text-teal-200' : 'text-slate-100'}`}>
+                        {isCustom ? `★ ${g.name}` : g.name}
+                      </span>
+                      {/* Data status dot */}
+                      <span
+                        title={hasData ? `Có dữ liệu · cập nhật ${latestDate}` : 'Chưa có dữ liệu'}
+                        className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${hasData ? 'bg-emerald-400' : 'bg-slate-600'}`}
+                      />
+                    </div>
+                    {/* Coverage bar */}
+                    {total > 0 && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1 bg-slate-700 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              pct >= 90 ? 'bg-emerald-500' : pct >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className={`text-[10px] font-mono tabular-nums ${
+                          pct >= 90 ? 'text-emerald-400' : pct >= 60 ? 'text-yellow-400' : 'text-red-400'
+                        }`}>
+                          {covered}/{total}
+                        </span>
+                      </div>
+                    )}
+                    {/* Latest date */}
+                    {latestDate && (
+                      <span className="text-[10px] text-slate-500">
+                        Cập nhật: {latestDate}
+                      </span>
+                    )}
+                    {!hasData && total > 0 && (
+                      <span className="text-[10px] text-slate-600 italic">Chưa có dữ liệu</span>
+                    )}
                   </label>
                 );
               })}
