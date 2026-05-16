@@ -1,11 +1,23 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from . import views_health
+
+
+@api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
+def admin_ops_gone(request, *args, **kwargs):
+    """D2: admin-ops endpoints decommissioned — all routes return 410 GONE."""
+    return Response(
+        {'detail': 'admin-ops endpoint has been decommissioned. Use /api/soc/ instead.', 'code': 'ADMIN_OPS_GONE'},
+        status=410,
+    )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -36,7 +48,8 @@ urlpatterns = [
     path('api/', include(('user_workspace.urls', 'user_workspace_api'), namespace='user_workspace_api')),
     path('api/', include(('identity_access.api_urls', 'identity_access_api'), namespace='identity_access_api')),
     path('api/', include(('market_data.urls', 'market_data_api'), namespace='market_data_api')),
-    path('api/admin-ops/', include(('vninvest_core.contracts.admin_ops.urls', 'admin_ops'), namespace='admin_ops')),
+    # D2: admin-ops decommissioned — all sub-paths return 410 GONE
+    re_path(r'^api/admin-ops/.*$', admin_ops_gone),
     path('api/soc/', include(('service_ops.urls', 'service_ops'), namespace='service_ops')),
 
 ]
