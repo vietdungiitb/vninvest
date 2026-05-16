@@ -49,6 +49,156 @@ const BACKFILL_DATASET_FIELDS = {
   intraday_tick:  'soc.dataops.dataset_field_intraday_tick',
 };
 
+// ── Data Inventory Section ─────────────────────────────────────────────────
+const DataInventorySection = ({ inventory, loading }) => {
+  const [open, setOpen] = useState(false);
+
+  const fmtDate = (d) => d
+    ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    : '—';
+  const fmtNum = (n) => (n ?? 0).toLocaleString('vi-VN');
+
+  const maxRows = inventory?.by_year?.length
+    ? Math.max(...inventory.by_year.map((y) => y.rows))
+    : 1;
+
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-900">
+      {/* Header toggle */}
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-base font-bold text-white">📦 Kho dữ liệu thị trường</span>
+          {!loading && inventory?.summary && (
+            <span className="rounded-full bg-emerald-900/50 border border-emerald-700 px-2 py-0.5 text-[11px] text-emerald-300">
+              {fmtNum(inventory.summary.total_rows)} bản ghi · {fmtNum(inventory.summary.total_symbols)} mã
+            </span>
+          )}
+        </div>
+        <span className="text-slate-400 text-sm">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-700 px-5 py-4 space-y-5">
+          {loading ? (
+            <p className="text-slate-400 text-sm">Đang tải...</p>
+          ) : !inventory?.summary ? (
+            <p className="text-slate-500 text-sm">Không có dữ liệu.</p>
+          ) : (
+            <>
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: 'Tổng bản ghi', value: fmtNum(inventory.summary.total_rows) },
+                  { label: 'Số mã', value: fmtNum(inventory.summary.total_symbols) },
+                  { label: 'Ngày đầu tiên', value: fmtDate(inventory.summary.earliest_date) },
+                  { label: 'Ngày gần nhất', value: fmtDate(inventory.summary.latest_date) },
+                ].map((c) => (
+                  <div key={c.label} className="rounded bg-slate-800 p-3 border border-slate-700">
+                    <p className="text-[11px] text-slate-500 mb-1">{c.label}</p>
+                    <p className="text-base font-bold text-white">{c.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Phân bổ theo năm */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Phân bổ theo năm (DailyPrice)</p>
+                <div className="space-y-1.5">
+                  {(inventory.by_year || []).map((y) => {
+                    const pct = maxRows > 0 ? Math.round((y.rows / maxRows) * 100) : 0;
+                    return (
+                      <div key={y.year} className="flex items-center gap-3">
+                        <span className="w-10 text-right text-xs text-slate-400 font-mono">{y.year}</span>
+                        <div className="flex-1 h-4 bg-slate-800 rounded overflow-hidden">
+                          <div
+                            className="h-full bg-blue-600 rounded transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="w-28 text-right text-[11px] text-slate-300 font-mono tabular-nums">
+                          {fmtNum(y.rows)} · {y.symbols} mã
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Coverage theo nhóm */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Coverage theo nhóm</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-slate-300">
+                    <thead>
+                      <tr className="text-slate-500 border-b border-slate-700">
+                        <th className="text-left py-1.5 pr-3 font-medium">Nhóm</th>
+                        <th className="text-right py-1.5 px-2 font-medium">Bản ghi</th>
+                        <th className="text-right py-1.5 px-2 font-medium">Mã có data</th>
+                        <th className="text-right py-1.5 px-2 font-medium">Ngày đầu</th>
+                        <th className="text-right py-1.5 pl-2 font-medium">Ngày cuối</th>
+                        <th className="text-right py-1.5 pl-2 font-medium">Ngày lịch</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(inventory.by_group || []).map((g) => {
+                        const hasFull = g.covered_symbols > 0 && g.covered_symbols >= g.symbol_count;
+                        const hasPartial = g.covered_symbols > 0;
+                        return (
+                          <tr key={g.id} className="border-b border-slate-800 hover:bg-slate-800/40">
+                            <td className="py-1.5 pr-3">
+                              <span className={`font-semibold ${g.type === 'custom' ? 'text-teal-300' : 'text-slate-100'}`}>
+                                {g.type === 'custom' ? `★ ${g.name}` : g.name}
+                              </span>
+                            </td>
+                            <td className="text-right px-2 font-mono">{fmtNum(g.total_rows)}</td>
+                            <td className="text-right px-2">
+                              <span className={hasFull ? 'text-emerald-400' : hasPartial ? 'text-yellow-400' : 'text-slate-600'}>
+                                {g.covered_symbols}/{g.symbol_count}
+                              </span>
+                            </td>
+                            <td className="text-right px-2 text-slate-400">{fmtDate(g.earliest_date)}</td>
+                            <td className="text-right pl-2 text-slate-400">{fmtDate(g.latest_date)}</td>
+                            <td className="text-right pl-2 text-slate-400">{g.calendar_days ? `${g.calendar_days}` : '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Data types */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Loại dữ liệu</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {(inventory.data_types || []).map((dt) => (
+                    <div key={dt.name} className={`rounded border p-3 flex justify-between items-center ${dt.total_rows > 0 ? 'border-emerald-800 bg-emerald-950/30' : 'border-slate-700 bg-slate-800/40'}`}>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-200">{dt.label}</p>
+                        <p className="text-[11px] text-slate-500">{dt.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-base font-bold ${dt.total_rows > 0 ? 'text-emerald-400' : 'text-slate-600'}`}>
+                          {fmtNum(dt.total_rows)}
+                        </p>
+                        <p className="text-[10px] text-slate-500">{dt.symbols} mã</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const BackfillCenterSection = ({ t, canApply, customGroups }) => {
   const [form, setForm] = useState(DEFAULT_BACKFILL_FORM);
   const [status, setStatus] = useState(null);
@@ -483,6 +633,9 @@ const DataOpsPanel = ({ t }) => {
   const [newGroupForm, setNewGroupForm] = useState({ name: '', symbolsText: '', description: '' });
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [groupManagerError, setGroupManagerError] = useState(null);
+  // ── Data Inventory state ────────────────────────────────────────────────────
+  const [inventory, setInventory] = useState(null);
+  const [inventoryLoading, setInventoryLoading] = useState(true);
   // ── UI accordion / toggle state ─────────────────────────────────────────────
   const [showQueueTier, setShowQueueTier] = useState(false);
   const [showRunHistory, setShowRunHistory] = useState(false);
@@ -502,6 +655,9 @@ const DataOpsPanel = ({ t }) => {
         socApi.getMatrixProviders().catch(() => ({ providers: [] })),
         socApi.getSymbolGroups().catch(() => ({ predefined: [], custom: [] })),
       ]);
+      // Inventory loads separately (can be slow) — fire-and-forget
+      setInventoryLoading(true);
+      socApi.getDataOpsInventory().then((inv) => { setInventory(inv); setInventoryLoading(false); }).catch(() => setInventoryLoading(false));
       setQueueSnapshot(tiersPayload || { tiers: [], updated_at: null });
       setRuntimeEnvelope(runtimePayload || { config: {}, ownership: null, updated_at: null });
       setCoverageSummary(coveragePayload || { datasets: [], top_gaps: [], updated_at: null });
@@ -800,6 +956,8 @@ const DataOpsPanel = ({ t }) => {
           t={t}
         />
       )}
+
+      <DataInventorySection inventory={inventory} loading={inventoryLoading} />
 
       <BackfillCenterSection t={t} canApply={!ownership?.write_block_reason} customGroups={customGroups} />
 

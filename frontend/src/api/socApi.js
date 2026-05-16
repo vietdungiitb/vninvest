@@ -228,6 +228,11 @@ export const socApi = {
     return handleResponse(resp);
   },
 
+  getDataOpsInventory: async () => {
+    const resp = await fetch(`${BASE_URL}/dataops/inventory/`);
+    return handleResponse(resp);
+  },
+
   // Prefetch
   getPrefetchConfig: async () => {
     const resp = await fetch(`${BASE_URL}/prefetch/config/`);
