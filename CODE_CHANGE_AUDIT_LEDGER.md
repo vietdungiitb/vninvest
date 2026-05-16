@@ -1,5 +1,57 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | DataOps UX Overhaul + REQ-02/13/24 Audit Gaps | dev branch ✅
+
+**Status:** ✅ 3 commits pushed to dev (`471f3dbf`, `75ddc2e1`, `3ac57866`)
+**Stack:** 14/14 containers healthy | Core API: Healthy | Frontend: OK
+
+---
+
+## Commit `3ac57866` — DataOps Operational Context Strips
+
+### All Modified Files (3 files)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Add `BACKFILL_DATASET_FIELDS` constant; BackfillCenterSection amber LỊCH SỬ badge + purpose line + per-dataset field sub-descriptions; Snapshot emerald LIVE badge + 3-col context grid (fields/scope/time) |
+| `frontend/src/i18n/vi.js` | 19 new keys: `backfill_context_badge/purpose`, 7× `dataset_field_*`, `snapshot_context_badge/fields_label/fields_value/scope_label/time_label/time_value/time_warn` |
+| `frontend/src/i18n/en.js` | Mirror of vi.js additions in English |
+
+### Validation
+- `npm run build`: **Compiled successfully** (852.15 kB gzip) ✅
+- `git push origin dev`: **75ddc2e1..3ac57866** ✅
+- `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
+
+---
+
+## Commit `471f3dbf` — REQ-02 / REQ-13 / REQ-24 Audit Gap Fixes
+
+### All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/PrefetchPanel.jsx` | REQ-02: universe groups multiselect checkbox |
+| `frontend/src/components/soc/ScreenerPanel.jsx` | REQ-13: screener rules pagination |
+| `frontend/src/components/soc/VnbrokerPanel.jsx` | REQ-24: reset confirm dialog |
+| `frontend/src/i18n/vi.js` | i18n keys for REQ-02/13/24 |
+| `frontend/src/i18n/en.js` | Matching English labels |
+
+## Commit `75ddc2e1` — DataOps Tab UX Overhaul (A+B+C+D)
+
+### All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/DataOpsPanel.jsx` | A: gap cap+toggle; B: coverage compact table; C: Matrix "Snapshot Trực tiếp" merge; D: Queue Tier + Run History accordions |
+| `frontend/src/components/soc/SOCDomainTabs.jsx` | Removed matrix tab → 7 tabs |
+| `frontend/src/pages/SOCPage.jsx` | Removed MatrixPanel import/routing; VALID_DOMAINS updated |
+| `frontend/src/i18n/vi.js` | 4 new keys: live_snapshot_title/description, gaps_show_all/collapse |
+| `frontend/src/i18n/en.js` | Matching English for 4 new keys |
+
+### Validation
+- `npm run build`: **Compiled successfully** (850.85 kB gzip) ✅
+- `git push origin dev`: **471f3dbf..75ddc2e1** ✅
+- `./start_dev.ps1`: **14/14 Started; core-api Healthy; smoke checks OK** ✅
+
+---
+
 # 2026-05-15 | Task SOA-T10/T11 | DataOps runtime admin panel + selected-session truth on tape ✅
 
 **Status:** ✅ focused slice complete

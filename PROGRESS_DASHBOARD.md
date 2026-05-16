@@ -1,3 +1,47 @@
+# 2026-05-16 — DataOps Tab UX Overhaul (A+B+C+D+E) + REQ-02/13/24 Audit Gaps ✅
+
+Status: **✅ 3 commits, 10 files changed** | **Dev stack 14/14 healthy** | **Frontend compiled successfully (852 kB gzip)**
+Validation: **✅ `npm run build` Compiled successfully** | **✅ `git push origin dev` (471f3dbf → 75ddc2e1 → 3ac57866)** | **✅ `./start_dev.ps1` 14/14 Started; core-api Healthy; smoke checks OK**
+
+## Commit `3ac57866` — DataOps Operational Context Strips (Backfill + Snapshot)
+
+**What changed**
+- `DataOpsPanel.jsx`: Added `BACKFILL_DATASET_FIELDS` constant mapping each dataset to its i18n field-description key. BackfillCenterSection now shows amber `LỊCH SỬ` badge, purpose line, and per-dataset field sub-lines (e.g. `open · high · low · close · vol · val · NNN mua · NNN bán`). Snapshot section now shows emerald `LIVE` badge plus 3-column context grid: collected fields / symbol scope / amber time-constraint warning (9:00–14:45, stale outside trading hours).
+- `i18n/vi.js`: 19 new keys in `soc.dataops` namespace — `backfill_context_badge`, `backfill_context_purpose`, 7× `dataset_field_*`, `snapshot_context_badge`, `snapshot_context_fields_label`, `snapshot_context_fields_value`, `snapshot_context_scope_label`, `snapshot_context_time_label`, `snapshot_context_time_value`, `snapshot_context_time_warn`.
+- `i18n/en.js`: Mirror of above in English.
+
+**Files changed (3)**
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+
+**Validation:** `npm run build` → Compiled successfully (852.15 kB gzip) | `git push origin dev` → `75ddc2e1..3ac57866` | `./start_dev.ps1` → 14/14 Started, core-api Healthy, smoke checks OK
+
+## Commit `471f3dbf` — REQ-02/13/24 Audit Gap Fixes
+
+**What changed**
+- `PrefetchPanel.jsx`: Universe groups multiselect — REQ-02 checkbox list for selecting multiple symbol groups simultaneously.
+- `ScreenerPanel.jsx`: Screener rules pagination — REQ-13 prev/next controls + page indicator for rules tables > 10 rows.
+- `VnbrokerPanel.jsx`: Reset confirm — REQ-24 confirmation dialog before destructive VnBroker reset action.
+- i18n keys added in `vi.js` + `en.js` for all three new interactions.
+
+## Commit `75ddc2e1` — DataOps Tab UX Overhaul A+B+C+D
+
+**What changed**
+- **A (Gap cap)**: `top_gaps` list capped at 20 items; "Xem tất cả (N)" toggle reveals full list.
+- **B (Coverage table)**: Coverage dataset cards replaced with compact table (Dataset × Freshness states via `COVERAGE_STATE_ORDER` dynamic headers).
+- **C (Matrix merge)**: Matrix tab removed; "Snapshot Trực tiếp" section embedded in DataOps with provider selection + `MatrixScrapeMonitor` heatmap centerpiece.
+- **D (Accordion)**: Queue Tier and Run History sections wrapped in collapsible accordions (default collapsed).
+- `SOCDomainTabs.jsx`: matrix tab removed → 7 tabs.
+- `SOCPage.jsx`: MatrixPanel import + routing removed; `VALID_DOMAINS` updated.
+- i18n: 4 new keys (`live_snapshot_title`, `live_snapshot_description`, `gaps_show_all`, `gaps_collapse`).
+
+**Residual Risk**
+- `MatrixPanel.jsx` is dead code (no longer rendered), kept on disk — harmless.
+- Bundle size 850 kB gzip remains above CRA's recommended 244 kB — existing known issue, unrelated to this slice.
+
+---
+
 # 2026-05-15 — SOA-T10/T11 Admin Panel + Session Truth Slice ✅
 
 Status: **✅ focused slice complete** | **`DataOpsPanel` now previews against backend validation, shows runtime-config audit history, and `WhaleFeedPanel` now stays pinned to the selected chart session**
