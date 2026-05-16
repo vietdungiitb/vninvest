@@ -1,3 +1,4 @@
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -5,7 +6,8 @@ import pandas as pd
 from django.test import TestCase
 from django.utils import timezone
 
-from market_data.models import GlobalSymbolRegistry
+from data_ingest.models import IngestJob, IngestRun
+from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry
 from market_data.vnbroker_adapter import (
     fetch_daily_history,
     fetch_price_board_snapshot,
@@ -185,8 +187,141 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(result['dispatched_cells'], 2)
         self.assertEqual(scrape_cell_delay.call_count, 2)
 
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols')
+    @patch('service_ops.dataops_market_data.fetch_symbol_group_members')
     @patch('service_ops.tasks.create_global_planner_run')
-    def test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy(self, planner_run_mock):
+    def test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty(self, planner_run_mock, fetch_symbol_group_members_mock, fetch_listing_symbols_mock):
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        ServiceConfig.objects.create(
+            service=service,
+            config_schema_version='1.0',
+            config_payload={
+                'cold_full_market': {
+                    'poll_interval_seconds': 120,
+                    'max_batch_size': 3,
+                },
+            },
+            applied_by='test',
+        )
+        fetch_symbol_group_members_mock.side_effect = [
+            ['FPT', 'HPG'],
+            ['FPT', 'HPG', 'TPB'],
+        ]
+        fetch_listing_symbols_mock.side_effect = [
+            [
+                {'symbol': 'FPT'},
+                {'symbol': 'HPG'},
+                {'symbol': 'TPB'},
+                {'symbol': 'VCB'},
+            ],
+            [{'symbol': 'FPT'}],
+            [{'symbol': 'FPT'}],
+        ]
+        planner_run_mock.return_value = {
+            'run_id': 'md-run-cold',
+            'service_run_log_id': 11,
+            'status': 'queued',
+        }
+
+        result = run_market_data_queue_tier_scheduler.run()
+
+        self.assertTrue(result['bootstrap']['bootstrapped'])
+        self.assertEqual(result['bootstrap']['active_symbols'], 4)
+        self.assertEqual(GlobalSymbolRegistry.objects.filter(is_active=True).count(), 4)
+        self.assertTrue(
+            GlobalSymbolDemandSource.objects.filter(
+                source_type=GlobalSymbolDemandSource.SourceTypeChoices.SYSTEM_DEFAULT,
+                source_ref='system_default:vn30',
+                is_active=True,
+            ).exists()
+        )
+        self.assertTrue(
+            GlobalSymbolDemandSource.objects.filter(
+                source_type=GlobalSymbolDemandSource.SourceTypeChoices.SYSTEM_DEFAULT,
+                source_ref='system_default:vn100',
+                is_active=True,
+            ).exists()
+        )
+        self.assertTrue(
+            GlobalSymbolDemandSource.objects.filter(
+                source_type=GlobalSymbolDemandSource.SourceTypeChoices.SYSTEM_DEFAULT,
+                source_ref='system_default:listed_market',
+                is_active=True,
+            ).exists()
+        )
+        planner_run_mock.assert_called_once()
+        warm_call = planner_run_mock.call_args.kwargs
+        self.assertEqual(warm_call['symbols'], ['FPT', 'HPG', 'TPB', 'VCB'])
+        self.assertEqual(warm_call['datasets'], ['daily_prices', 'price_board_snapshot'])
+        self.assertEqual(warm_call['planner_queue'], 'realtime_prefetch')
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols')
+    @patch('service_ops.dataops_market_data.fetch_symbol_group_members')
+    @patch('service_ops.tasks.create_global_planner_run')
+    def test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty(self, planner_run_mock, fetch_symbol_group_members_mock, fetch_listing_symbols_mock):
+        registry, _ = GlobalSymbolDemandSource.objects.get_or_create(
+            registry=GlobalSymbolRegistry.objects.create(
+                symbol='FPT',
+                is_active=True,
+                current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.WARM,
+                priority_score=0.5,
+                demand_source_count=1,
+                freshness_state_summary='unknown',
+                coverage_state_summary='unknown',
+            ),
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.SYSTEM_DEFAULT,
+            source_ref='system_default:vn30',
+            defaults={'is_active': True, 'weight': 0.5},
+        )
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        ServiceConfig.objects.create(
+            service=service,
+            config_schema_version='1.0',
+            config_payload={
+                'warm_liquid_market': {
+                    'poll_interval_seconds': 120,
+                    'max_batch_size': 10,
+                },
+            },
+            applied_by='test',
+        )
+        fetch_listing_symbols_mock.side_effect = [
+            [
+                {'symbol': 'FPT'},
+                {'symbol': 'HPG'},
+                {'symbol': 'TPB'},
+                {'symbol': 'VCB'},
+            ],
+            [{'symbol': 'FPT'}],
+            [{'symbol': 'FPT'}],
+        ]
+        planner_run_mock.return_value = {
+            'run_id': 'md-run-warm',
+            'service_run_log_id': 21,
+            'status': 'queued',
+        }
+
+        result = run_market_data_queue_tier_scheduler.run()
+
+        self.assertTrue(result['bootstrap']['bootstrapped'])
+        self.assertEqual(result['bootstrap']['active_symbols'], 4)
+        self.assertEqual(GlobalSymbolRegistry.objects.filter(is_active=True).count(), 4)
+        self.assertTrue(
+            GlobalSymbolDemandSource.objects.filter(
+                source_type=GlobalSymbolDemandSource.SourceTypeChoices.SYSTEM_DEFAULT,
+                source_ref='system_default:listed_market',
+                is_active=True,
+            ).exists()
+        )
+        fetch_symbol_group_members_mock.assert_not_called()
+        planner_run_mock.assert_called_once()
+        warm_call = planner_run_mock.call_args.kwargs
+        self.assertEqual(warm_call['symbols'], ['FPT', 'HPG', 'TPB', 'VCB'])
+        self.assertEqual(warm_call['planner_queue'], 'realtime_prefetch')
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks.create_global_planner_run')
+    def test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy(self, planner_run_mock, fetch_listing_symbols_mock):
         GlobalSymbolRegistry.objects.bulk_create([
             GlobalSymbolRegistry(
                 symbol='FPT',
@@ -205,6 +340,44 @@ class ServiceOpsTasksTestCase(TestCase):
                 demand_source_count=0,
                 freshness_state_summary='stale',
                 coverage_state_summary='missing',
+            ),
+            GlobalSymbolRegistry(
+                symbol='HPG',
+                is_active=True,
+                current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+                priority_score=6.0,
+                demand_source_count=1,
+                freshness_state_summary='stale',
+                coverage_state_summary='missing',
+            ),
+        ])
+        hot_fpt = GlobalSymbolRegistry.objects.get(symbol='FPT')
+        hot_hpg = GlobalSymbolRegistry.objects.get(symbol='HPG')
+        GlobalSymbolCoverage.objects.bulk_create([
+            GlobalSymbolCoverage(
+                registry=hot_fpt,
+                dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH,
+            ),
+            GlobalSymbolCoverage(
+                registry=hot_fpt,
+                dataset=GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH,
+            ),
+            GlobalSymbolCoverage(
+                registry=hot_fpt,
+                dataset=GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH,
+            ),
+            GlobalSymbolCoverage(
+                registry=hot_fpt,
+                dataset=GlobalSymbolCoverage.DatasetChoices.INTRADAY_BARS,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH,
+            ),
+            GlobalSymbolCoverage(
+                registry=hot_hpg,
+                dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
             ),
         ])
         service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
@@ -233,7 +406,7 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(result['dispatched_runs'], 2)
         self.assertEqual(planner_run_mock.call_count, 2)
         hot_call = planner_run_mock.call_args_list[0].kwargs
-        self.assertEqual(hot_call['symbols'], ['FPT'])
+        self.assertEqual(hot_call['symbols'], ['HPG'])
         self.assertEqual(hot_call['planner_queue'], 'realtime_prefetch')
         self.assertEqual(hot_call['trigger'], 'market_data.queue_tier_scheduler')
         self.assertEqual(hot_call['extra_input_summary']['queue_tier'], 'hot_user_demand')
@@ -242,8 +415,9 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(recovery_call['planner_queue'], 'manual_on_demand')
         self.assertEqual(recovery_call['datasets'], ['daily_prices', 'price_board_snapshot', 'intraday_ticks', 'intraday_bars'])
 
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
     @patch('service_ops.tasks.create_global_planner_run')
-    def test_market_data_queue_tier_scheduler_skips_recent_inflight_tier(self, planner_run_mock):
+    def test_market_data_queue_tier_scheduler_skips_recent_inflight_tier(self, planner_run_mock, fetch_listing_symbols_mock):
         GlobalSymbolRegistry.objects.create(
             symbol='HPG',
             is_active=True,
@@ -270,6 +444,204 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(result['dispatched_runs'], 0)
         self.assertFalse(planner_run_mock.called)
         self.assertTrue(any(item['tier'] == 'hot_user_demand' and item['reason'] == 'inflight' for item in result['skipped_tiers']))
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks._is_celery_task_live', return_value=False)
+    @patch('service_ops.tasks.create_global_planner_run')
+    def test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately(self, planner_run_mock, is_task_live_mock, fetch_listing_symbols_mock):
+        GlobalSymbolRegistry.objects.create(
+            symbol='HPG',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            priority_score=8.0,
+            demand_source_count=1,
+            freshness_state_summary='missing',
+            coverage_state_summary='missing',
+        )
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='running',
+            celery_task_id='orphan-task-1',
+            input_summary={
+                'trigger': 'market_data.queue_tier_scheduler',
+                'queue_tier': 'hot_user_demand',
+            },
+            output_summary={},
+        )
+        ServiceRunLog.objects.filter(pk=run_log.id).update(started_at=timezone.now() - timedelta(seconds=90))
+        planner_run_mock.return_value = {
+            'run_id': 'md-run-hot',
+            'service_run_log_id': 30,
+            'status': 'queued',
+        }
+
+        result = run_market_data_queue_tier_scheduler.run()
+
+        run_log.refresh_from_db()
+        self.assertEqual(result['dispatched_runs'], 1)
+        planner_run_mock.assert_called_once()
+        is_task_live_mock.assert_called_once_with('orphan-task-1')
+        self.assertEqual(run_log.status, 'failed')
+        self.assertEqual(run_log.output_summary['recovery_action'], 'queue_tier_missing_worker_task')
+        self.assertEqual(run_log.output_summary['queue_tier'], 'hot_user_demand')
+        self.assertIn('stored celery_task_id was not present in any live Celery worker', run_log.error_detail)
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks._is_celery_task_live', return_value=False)
+    @patch('service_ops.tasks.create_global_planner_run')
+    def test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists(self, planner_run_mock, is_task_live_mock, fetch_listing_symbols_mock):
+        GlobalSymbolRegistry.objects.create(
+            symbol='HPG',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            priority_score=8.0,
+            demand_source_count=1,
+            freshness_state_summary='missing',
+            coverage_state_summary='missing',
+        )
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        parent_run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='running',
+            celery_task_id='orphan-task-2',
+            input_summary={
+                'trigger': 'market_data.queue_tier_scheduler',
+                'queue_tier': 'hot_user_demand',
+            },
+            output_summary={},
+        )
+        ServiceRunLog.objects.filter(pk=parent_run_log.id).update(started_at=timezone.now() - timedelta(seconds=90))
+        ServiceRunLog.objects.create(
+            service=get_registered_service('vnbroker_history'),
+            status='running',
+            input_summary={
+                'trigger': 'global_market_data_planner_daily_prices',
+                'parent_run_log_id': parent_run_log.id,
+                'parent_service_key': 'matrix_cycle_coordinator',
+            },
+            output_summary={},
+        )
+
+        result = run_market_data_queue_tier_scheduler.run()
+
+        parent_run_log.refresh_from_db()
+        self.assertEqual(result['dispatched_runs'], 0)
+        self.assertFalse(planner_run_mock.called)
+        is_task_live_mock.assert_called_once_with('orphan-task-2')
+        self.assertEqual(parent_run_log.status, 'running')
+        self.assertTrue(any(item['tier'] == 'hot_user_demand' and item['reason'] == 'inflight' for item in result['skipped_tiers']))
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks._is_celery_task_live', return_value=False)
+    @patch('service_ops.tasks.create_global_planner_run')
+    def test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent(self, planner_run_mock, is_task_live_mock, fetch_listing_symbols_mock):
+        GlobalSymbolRegistry.objects.create(
+            symbol='HPG',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            priority_score=8.0,
+            demand_source_count=1,
+            freshness_state_summary='missing',
+            coverage_state_summary='missing',
+        )
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        parent_run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='running',
+            celery_task_id='orphan-task-3',
+            input_summary={
+                'trigger': 'market_data.queue_tier_scheduler',
+                'queue_tier': 'hot_user_demand',
+            },
+            output_summary={},
+        )
+        ingest_job = IngestJob.objects.create(
+            name='daily-price-ingest',
+            source=IngestJob.SourceChoices.VNBROKER_PRICE_BOARD,
+            status=IngestJob.StatusChoices.ACTIVE,
+            schedule_seconds=86400,
+        )
+        ingest_run = IngestRun.objects.create(
+            job=ingest_job,
+            state=IngestRun.StateChoices.RUNNING,
+        )
+        child_run_log = ServiceRunLog.objects.create(
+            service=get_registered_service('vnbroker_history'),
+            status='running',
+            input_summary={
+                'trigger': 'global_market_data_planner_daily_prices',
+                'parent_run_log_id': parent_run_log.id,
+                'parent_service_key': 'matrix_cycle_coordinator',
+            },
+            output_summary={'ingest_run_id': ingest_run.id},
+        )
+        stale_started_at = timezone.now() - timedelta(seconds=1200)
+        ServiceRunLog.objects.filter(pk__in=[parent_run_log.id, child_run_log.id]).update(started_at=stale_started_at)
+        planner_run_mock.return_value = {
+            'run_id': 'md-run-hot',
+            'service_run_log_id': 32,
+            'status': 'queued',
+        }
+
+        result = run_market_data_queue_tier_scheduler.run()
+
+        parent_run_log.refresh_from_db()
+        child_run_log.refresh_from_db()
+        ingest_run.refresh_from_db()
+        self.assertEqual(result['dispatched_runs'], 1)
+        planner_run_mock.assert_called_once()
+        is_task_live_mock.assert_called_once_with('orphan-task-3')
+        self.assertEqual(parent_run_log.status, 'failed')
+        self.assertEqual(parent_run_log.output_summary['recovery_action'], 'queue_tier_stale_inflight_recovered')
+        self.assertEqual(parent_run_log.output_summary['recovered_child_runs'], 1)
+        self.assertEqual(child_run_log.status, 'failed')
+        self.assertEqual(child_run_log.output_summary['recovery_action'], 'queue_tier_parent_recovery_cleanup')
+        self.assertEqual(child_run_log.output_summary['parent_recovery_action'], 'queue_tier_stale_inflight_recovered')
+        self.assertEqual(child_run_log.output_summary['recovered_ingest_run_id'], ingest_run.id)
+        self.assertEqual(ingest_run.state, IngestRun.StateChoices.FAILED)
+        self.assertIsNotNone(ingest_run.finished_at)
+        self.assertIn('planner child run was recovered', ingest_run.error_message)
+        self.assertIn('parent queue-tier run was recovered', child_run_log.error_detail)
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks.create_global_planner_run')
+    def test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier(self, planner_run_mock, fetch_listing_symbols_mock):
+        GlobalSymbolRegistry.objects.create(
+            symbol='HPG',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            priority_score=8.0,
+            demand_source_count=1,
+            freshness_state_summary='missing',
+            coverage_state_summary='missing',
+        )
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='running',
+            input_summary={
+                'trigger': 'market_data.queue_tier_scheduler',
+                'queue_tier': 'hot_user_demand',
+            },
+            output_summary={},
+        )
+        ServiceRunLog.objects.filter(pk=run_log.id).update(started_at=timezone.now() - timedelta(seconds=1200))
+        planner_run_mock.return_value = {
+            'run_id': 'md-run-hot',
+            'service_run_log_id': 31,
+            'status': 'queued',
+        }
+
+        result = run_market_data_queue_tier_scheduler.run()
+
+        run_log.refresh_from_db()
+        self.assertEqual(result['dispatched_runs'], 1)
+        planner_run_mock.assert_called_once()
+        self.assertEqual(run_log.status, 'failed')
+        self.assertEqual(run_log.output_summary['recovery_action'], 'queue_tier_stale_inflight_recovered')
+        self.assertEqual(run_log.output_summary['queue_tier'], 'hot_user_demand')
+        self.assertIn('Auto-recovered stale queue-tier inflight run', run_log.error_detail)
 
 
 class VnbrokerAdapterTaskBridgeTestCase(TestCase):

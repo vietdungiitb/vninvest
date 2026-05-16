@@ -16,6 +16,7 @@ from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
 from .dataops_market_data import (
     QUEUE_TIER_ORDER,
+    ensure_market_data_system_default_baseline,
     get_market_data_queue_tier_config,
     get_market_data_queue_tier_datasets,
     get_market_data_queue_tier_execution_queue,
@@ -28,6 +29,10 @@ from .registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, 
 
 
 logger = logging.getLogger(__name__)
+
+QUEUE_TIER_STALE_INFLIGHT_MULTIPLIER = 6
+QUEUE_TIER_STALE_INFLIGHT_MIN_SECONDS = 900
+QUEUE_TIER_ORPHAN_GRACE_SECONDS = 60
 
 
 def _probe_service_health(service: ServiceDefinition) -> dict:
@@ -365,11 +370,197 @@ def _get_latest_queue_tier_run(service: ServiceDefinition, tier_name: str) -> Se
     ).order_by('-started_at').first()
 
 
+def _get_queue_tier_stale_timeout_seconds(poll_interval_seconds: int) -> int:
+    poll_seconds = max(int(poll_interval_seconds or 0), 0)
+    return max(
+        poll_seconds * QUEUE_TIER_STALE_INFLIGHT_MULTIPLIER,
+        QUEUE_TIER_STALE_INFLIGHT_MIN_SECONDS,
+    )
+
+
+def _is_celery_task_live(task_id: str | None) -> bool | None:
+    normalized_task_id = str(task_id or '').strip()
+    if not normalized_task_id:
+        return None
+
+    try:
+        from vninvest_core.celery import app as celery_app
+
+        inspect = celery_app.control.inspect(timeout=1.5)
+        task_payloads = [inspect.active() or {}, inspect.reserved() or {}, inspect.scheduled() or {}]
+        live_task_ids: set[str] = set()
+
+        for payload in task_payloads:
+            for worker_tasks in payload.values():
+                for task_meta in worker_tasks or []:
+                    if not isinstance(task_meta, dict):
+                        continue
+                    task_value = task_meta.get('id')
+                    if not task_value and isinstance(task_meta.get('request'), dict):
+                        task_value = task_meta['request'].get('id')
+                    if task_value:
+                        live_task_ids.add(str(task_value).strip())
+
+        return normalized_task_id in live_task_ids
+    except Exception as exc:
+        logger.debug(
+            'queue_tier_scheduler celery inspect failed while checking task_id=%s: %s',
+            normalized_task_id,
+            exc,
+        )
+        return None
+
+
+def _has_inflight_child_run(parent_run_log_id: int) -> bool:
+    return ServiceRunLog.objects.filter(
+        input_summary__parent_run_log_id=parent_run_log_id,
+        status__in={'queued', 'running'},
+    ).exists()
+
+
+def _recover_inflight_child_runs(
+    parent_run_log: ServiceRunLog,
+    *,
+    tier_name: str,
+    parent_recovery_action: str,
+    elapsed_seconds: float,
+    stale_after_seconds: int,
+) -> int:
+    recovered = 0
+    child_run_logs = ServiceRunLog.objects.filter(
+        input_summary__parent_run_log_id=parent_run_log.id,
+        status__in={'queued', 'running'},
+    )
+    for child_run_log in child_run_logs:
+        recovered_ingest_run_id = _recover_linked_ingest_run(
+            child_run_log,
+            tier_name=tier_name,
+            parent_recovery_action=parent_recovery_action,
+        )
+        output_summary = dict(child_run_log.output_summary or {})
+        output_summary.update({
+            'recovery_action': 'queue_tier_parent_recovery_cleanup',
+            'parent_run_log_id': parent_run_log.id,
+            'parent_recovery_action': parent_recovery_action,
+            'queue_tier': tier_name,
+            'elapsed_seconds': round(elapsed_seconds, 2),
+            'stale_after_seconds': stale_after_seconds,
+        })
+        if recovered_ingest_run_id is not None:
+            output_summary['recovered_ingest_run_id'] = recovered_ingest_run_id
+        _mark_run_log_finished(
+            child_run_log,
+            status_value='failed',
+            output_summary=output_summary,
+            error_detail=(
+                'Auto-recovered inline planner child run because its parent queue-tier run '
+                f'was recovered for {tier_name} with action={parent_recovery_action}.'
+            ),
+        )
+        recovered += 1
+    return recovered
+
+
+def _recover_linked_ingest_run(
+    child_run_log: ServiceRunLog,
+    *,
+    tier_name: str,
+    parent_recovery_action: str,
+) -> int | None:
+    ingest_run_id = dict(child_run_log.output_summary or {}).get('ingest_run_id')
+    if not ingest_run_id:
+        return None
+
+    from data_ingest.models import IngestRun
+
+    ingest_run = IngestRun.objects.filter(pk=ingest_run_id).first()
+    if ingest_run is None or ingest_run.state != IngestRun.StateChoices.RUNNING:
+        return None
+
+    ingest_run.state = IngestRun.StateChoices.FAILED
+    ingest_run.error_message = (
+        'Auto-recovered linked ingest run because its planner child run '
+        f'was recovered with action={parent_recovery_action} for {tier_name}.'
+    )[:500]
+    ingest_run.finished_at = timezone.now()
+    ingest_run.save(update_fields=['state', 'error_message', 'finished_at'])
+    return ingest_run.id
+
+
+def _recover_stale_queue_tier_run(latest_run: ServiceRunLog, tier_name: str, poll_interval_seconds: int) -> bool:
+    if latest_run.status not in {'queued', 'running'} or latest_run.started_at is None:
+        return False
+
+    elapsed_seconds = max((timezone.now() - latest_run.started_at).total_seconds(), 0.0)
+    stale_after_seconds = _get_queue_tier_stale_timeout_seconds(poll_interval_seconds)
+    task_is_live = _is_celery_task_live(latest_run.celery_task_id)
+    if task_is_live is True:
+        return False
+
+    has_inflight_child_run = _has_inflight_child_run(latest_run.id)
+    recovery_action = ''
+    error_detail = ''
+    if (
+        task_is_live is False
+        and elapsed_seconds >= QUEUE_TIER_ORPHAN_GRACE_SECONDS
+        and not has_inflight_child_run
+    ):
+        recovery_action = 'queue_tier_missing_worker_task'
+        error_detail = (
+            'Auto-recovered queue-tier inflight run because its stored celery_task_id '
+            f'was not present in any live Celery worker for {tier_name} '
+            f'(task_id={latest_run.celery_task_id}).'
+        )
+    else:
+        if elapsed_seconds < stale_after_seconds:
+            return False
+        recovery_action = 'queue_tier_stale_inflight_recovered'
+        error_detail = (
+            'Auto-recovered stale queue-tier inflight run after exceeding the scheduler stale timeout '
+            f'for {tier_name} (elapsed={elapsed_seconds:.2f}s, stale_after={stale_after_seconds}s).'
+        )
+
+    recovered_child_runs = _recover_inflight_child_runs(
+        latest_run,
+        tier_name=tier_name,
+        parent_recovery_action=recovery_action,
+        elapsed_seconds=elapsed_seconds,
+        stale_after_seconds=stale_after_seconds,
+    )
+
+    output_summary = dict(latest_run.output_summary or {})
+    output_summary.update({
+        'recovery_action': recovery_action,
+        'queue_tier': tier_name,
+        'elapsed_seconds': round(elapsed_seconds, 2),
+        'stale_after_seconds': stale_after_seconds,
+        'has_inflight_child_run': has_inflight_child_run,
+        'recovered_child_runs': recovered_child_runs,
+    })
+    _mark_run_log_finished(
+        latest_run,
+        status_value='failed',
+        output_summary=output_summary,
+        error_detail=error_detail,
+    )
+    logger.warning(
+        'queue_tier_scheduler recovered inflight run_log_id=%s tier=%s action=%s elapsed=%.2fs stale_after=%ss',
+        latest_run.id,
+        tier_name,
+        recovery_action,
+        elapsed_seconds,
+        stale_after_seconds,
+    )
+    return True
+
+
 def _queue_tier_due(service: ServiceDefinition, tier_name: str, poll_interval_seconds: int) -> tuple[bool, str | None]:
     latest_run = _get_latest_queue_tier_run(service, tier_name)
     if latest_run is None:
         return True, None
     if latest_run.status in {'queued', 'running'}:
+        if _recover_stale_queue_tier_run(latest_run, tier_name, poll_interval_seconds):
+            return True, None
         return False, 'inflight'
     elapsed_seconds = max((timezone.now() - latest_run.started_at).total_seconds(), 0.0)
     if elapsed_seconds < max(int(poll_interval_seconds or 0), 0):
@@ -381,6 +572,7 @@ def _queue_tier_due(service: ServiceDefinition, tier_name: str, poll_interval_se
 def run_market_data_queue_tier_scheduler(self):
     ensure_service_registry()
     matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+    bootstrap = ensure_market_data_system_default_baseline()
     runtime_config, _ = get_market_data_runtime_config()
 
     dispatches = []
@@ -442,6 +634,7 @@ def run_market_data_queue_tier_scheduler(self):
         })
 
     return {
+        'bootstrap': bootstrap,
         'evaluated_tiers': len(QUEUE_TIER_ORDER),
         'dispatched_runs': len(dispatches),
         'dispatches': dispatches,

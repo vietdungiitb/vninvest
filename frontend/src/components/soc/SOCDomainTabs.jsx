@@ -1,6 +1,6 @@
 /**
- * SOCDomainTabs — Tab navigation cho 6 domains
- * Overview | VNBroker | Prefetch | Signals | Screener | Matrix
+ * SOCDomainTabs — Tab navigation cho 8 domains
+ * Overview | Signals | DataOps | Prefetch | Screener | VNBroker | Runtime KPI | Matrix
  */
 import PropTypes from 'prop-types';
 
@@ -11,12 +11,14 @@ export const SOCDomainTabs = ({ activeDomain, onDomainChange, t }) => {
     { key: 'dataops', label: t('soc.tab.dataops') },
     { key: 'prefetch', label: t('soc.tab.prefetch') },
     { key: 'screener', label: t('soc.tab.screener') },
+    { key: 'vnbroker', label: t('soc.tabs.vnbroker') },
+    { key: 'runtime-kpi', label: t('soc.tabs.runtime_kpi') },
     { key: 'matrix', label: t('soc.tab.matrix') },
   ];
 
   return (
     <div className="border-b border-slate-700">
-      <div className="flex gap-1 p-2 bg-slate-950">
+      <div className="flex flex-wrap gap-1 p-2 bg-slate-950">
         {domains.map(domain => (
           <button
             key={domain.key}

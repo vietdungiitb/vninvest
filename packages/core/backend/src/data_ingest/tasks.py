@@ -68,6 +68,60 @@ def _extract_intraday_datasets_from_plan_items(plan_items: list[dict] | None) ->
     return [dataset for dataset in _INTRADAY_PLAN_DATASETS if dataset in requested]
 
 
+def _refresh_coverage_for_symbols(
+    symbols: list[str] | None,
+    *,
+    reference_trade_date: date | None = None,
+    as_of: datetime | None = None,
+) -> int:
+    normalized_symbols = _normalize_symbols(symbols)
+    if not normalized_symbols:
+        return 0
+
+    from django.utils import timezone
+
+    from market_data.global_symbol_coverage import refresh_global_symbol_coverage
+    from market_data.models import GlobalSymbolRegistry
+
+    registry_symbols = set(
+        GlobalSymbolRegistry.objects
+        .filter(symbol__in=normalized_symbols)
+        .values_list('symbol', flat=True)
+    )
+    if not registry_symbols:
+        return 0
+
+    refreshed = 0
+    effective_trade_date = reference_trade_date or timezone.localdate()
+    effective_as_of = as_of or timezone.now()
+    for symbol in normalized_symbols:
+        if symbol not in registry_symbols:
+            continue
+        try:
+            refresh_global_symbol_coverage(
+                symbol,
+                reference_trade_date=effective_trade_date,
+                as_of=effective_as_of,
+            )
+            refreshed += 1
+        except Exception:
+            logger.exception('Failed to refresh coverage for symbol=%s after ingest.', symbol)
+    return refreshed
+
+
+def _attach_ingest_run_to_service_run_log(service_run_log, run) -> None:
+    if service_run_log is None or run is None:
+        return
+
+    output_summary = dict(service_run_log.output_summary or {})
+    if output_summary.get('ingest_run_id') == run.id:
+        return
+
+    output_summary['ingest_run_id'] = run.id
+    service_run_log.output_summary = output_summary
+    service_run_log.save(update_fields=['output_summary'])
+
+
 def _empty_result_counts() -> dict:
     return {
         'planned_items': 0,
@@ -469,6 +523,7 @@ def fetch_and_upsert_price_board(
             job=job,
             state=IngestRun.StateChoices.RUNNING,
         ) if job else None
+        _attach_ingest_run_to_service_run_log(service_run_log, run)
 
         from market_serving.vnbroker_materializer import materialize_symbol_snapshot_from_vnbroker
         from market_data.models import StockProfile
@@ -504,6 +559,7 @@ def fetch_and_upsert_price_board(
         skipped_existing = int(result.get('skipped_existing') or 0)
         failed_count = int(result.get('failed_count') or 0)
         planned_items = len(plan_items or [])
+        coverage_refreshed_symbols = _refresh_coverage_for_symbols(symbols)
 
         if run:
             run.state = (
@@ -532,6 +588,7 @@ def fetch_and_upsert_price_board(
                     'failed_count': failed_count,
                     'planned_items': planned_items,
                     'symbols_count': len(symbols),
+                    'coverage_refreshed_symbols': coverage_refreshed_symbols,
                     'source': result.get('source'),
                     'ingest_run_id': run.id if run is not None else None,
                 },
@@ -542,6 +599,7 @@ def fetch_and_upsert_price_board(
             'status': 'ok',
             'planned_items': planned_items,
             'symbols_count': len(symbols),
+            'coverage_refreshed_symbols': coverage_refreshed_symbols,
             'upserted': count,
             'inserted': inserted,
             'updated': updated,
@@ -627,7 +685,9 @@ def warm_intraday_universe(
             job=job,
             state=IngestRun.StateChoices.RUNNING,
         )
+        _attach_ingest_run_to_service_run_log(service_run_log, run)
         result = _hydrate_intraday_symbols(symbols, target_datasets, page_size=page_size)
+        coverage_refreshed_symbols = _refresh_coverage_for_symbols(symbols)
 
         total_upserted = int(result.get('inserted') or 0) + int(result.get('updated') or 0)
         total_skipped = int(result.get('skipped_existing') or 0)
@@ -662,6 +722,7 @@ def warm_intraday_universe(
                 output_summary={
                     'planned_items': len(plan_items or []),
                     'symbols_count': len(symbols),
+                    'coverage_refreshed_symbols': coverage_refreshed_symbols,
                     'target_datasets': list(target_datasets),
                     'warmed_up_count': int(result.get('warmed_up_count') or 0),
                     'inserted': int(result.get('inserted') or 0),
@@ -684,6 +745,7 @@ def warm_intraday_universe(
             int(result.get('updated', 0)),
             int(result.get('skipped_existing', 0)),
         )
+        result['coverage_refreshed_symbols'] = coverage_refreshed_symbols
         return result
     except Exception as exc:
         logger.error('warm_intraday_universe failed: %s', exc, exc_info=True)
@@ -788,6 +850,7 @@ def ingest_daily_prices(
             job=job,
             state=IngestRun.StateChoices.RUNNING,
         )
+        _attach_ingest_run_to_service_run_log(service_run_log, run)
         
         unique_symbols = _extract_symbols_from_plan_items(plan_items)
         logger.info(
@@ -800,6 +863,16 @@ def ingest_daily_prices(
         
         upserted = result.get('upserted', 0)
         failed = result.get('failed', [])
+        coverage_symbols = unique_symbols or _normalize_symbols(symbols)
+        if not coverage_symbols and upserted:
+            from market_data.models import StockProfile
+
+            coverage_symbols = list(
+                StockProfile.objects
+                .filter(status=StockProfile.StatusChoices.ACTIVE)
+                .values_list('symbol', flat=True)
+            )
+        coverage_refreshed_symbols = _refresh_coverage_for_symbols(coverage_symbols)
         
         if run:
             run.state = IngestRun.StateChoices.SUCCESS
@@ -819,6 +892,7 @@ def ingest_daily_prices(
                     'updated': int(result.get('updated') or 0),
                     'skipped_existing': int(result.get('skipped_existing') or 0),
                     'upserted': upserted,
+                    'coverage_refreshed_symbols': coverage_refreshed_symbols,
                     'failed_count': int(result.get('failed_count') or len(failed)),
                     'repaired_conflicts': int(result.get('repaired_conflicts') or 0),
                     'providers': result.get('providers', []),
@@ -830,6 +904,7 @@ def ingest_daily_prices(
             f'ingest_daily_prices completed: run_id={run.id if run else "none"}, upserted={upserted}, failed={len(failed)}, '
             f'providers={result.get("providers")}'
         )
+        result['coverage_refreshed_symbols'] = coverage_refreshed_symbols
         return result
     
     except Exception as exc:

@@ -6,6 +6,198 @@ import { ConfigPreviewModal } from './ConfigPreviewModal';
 import { OwnershipBadgeRow } from './OwnershipBadgeRow';
 import { WriteGuardBanner } from './WriteGuardBanner';
 
+const BACKFILL_DATASETS = [
+  { key: 'daily_prices', labelKey: 'soc.dataops.dataset_daily_prices' },
+  { key: 'intraday_bars', labelKey: 'soc.dataops.dataset_intraday_bars' },
+  { key: 'session_facts', labelKey: 'soc.dataops.dataset_session_facts' },
+  { key: 'whale_events', labelKey: 'soc.dataops.dataset_whale_events' },
+  { key: 'order_flow', labelKey: 'soc.dataops.dataset_order_flow' },
+  { key: 'dark_flow', labelKey: 'soc.dataops.dataset_dark_flow' },
+  { key: 'intraday_tick', labelKey: 'soc.dataops.dataset_intraday_ticks' },
+];
+
+const BACKFILL_SYMBOL_GROUPS = [
+  { key: 'VN30', label: 'VN30' },
+  { key: 'VN100', label: 'VN100' },
+  { key: 'all', label: 'All' },
+  { key: 'custom', label: 'Custom' },
+];
+
+const DEFAULT_BACKFILL_FORM = {
+  datasets: ['daily_prices'],
+  symbolGroup: 'VN30',
+  customSymbols: '',
+  fromDate: '',
+  toDate: '',
+  mode: 'missing_only',
+  dryRun: true,
+  executionMode: 'async',
+};
+
+const BackfillCenterSection = ({ t, canApply }) => {
+  const [form, setForm] = useState(DEFAULT_BACKFILL_FORM);
+  const [status, setStatus] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
+
+  const toggleDataset = (key) => {
+    setForm((prev) => ({
+      ...prev,
+      datasets: prev.datasets.includes(key)
+        ? prev.datasets.filter((d) => d !== key)
+        : [...prev.datasets, key],
+    }));
+  };
+
+  const handleRun = async () => {
+    if (!canApply) return;
+    setIsRunning(true);
+    setStatus(null);
+    const symbols = form.symbolGroup === 'custom'
+      ? form.customSymbols.split(/[\s,]+/).map((s) => s.trim().toUpperCase()).filter(Boolean)
+      : [];
+    try {
+      const payload = {
+        datasets: form.datasets,
+        ...(symbols.length ? { symbols } : { symbol_group: form.symbolGroup }),
+        from_date: form.fromDate || undefined,
+        to_date: form.toDate || undefined,
+        mode: form.mode,
+        dry_run: form.dryRun,
+        execution_mode: form.executionMode,
+        reason: 'backfill_center_soc',
+      };
+      const result = await socApi.runDataOpsPlanner(payload);
+      setStatus(result?.message || t('soc.dataops.backfill_queued'));
+    } catch (err) {
+      setStatus(err.message);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-indigo-800 bg-slate-900 p-6">
+      <h3 className="text-lg font-bold text-white mb-4">{t('soc.dataops.backfill_center')}</h3>
+
+      {/* Dataset Checkboxes */}
+      <div className="mb-4">
+        <p className="text-xs text-slate-400 mb-2">{t('soc.dataops.backfill_datasets')}</p>
+        <div className="flex flex-wrap gap-3">
+          {BACKFILL_DATASETS.map(({ key, labelKey }) => (
+            <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.datasets.includes(key)}
+                onChange={() => toggleDataset(key)}
+                className="accent-indigo-500"
+              />
+              <span className="text-sm text-slate-200">{t(labelKey)}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Symbol Group */}
+      <div className="mb-4">
+        <p className="text-xs text-slate-400 mb-2">{t('soc.dataops.backfill_symbol_group')}</p>
+        <div className="flex gap-3">
+          {BACKFILL_SYMBOL_GROUPS.map(({ key, label }) => (
+            <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                name="symbolGroup"
+                value={key}
+                checked={form.symbolGroup === key}
+                onChange={() => setForm((prev) => ({ ...prev, symbolGroup: key }))}
+                className="accent-indigo-500"
+              />
+              <span className="text-sm text-slate-200">{label}</span>
+            </label>
+          ))}
+        </div>
+        {form.symbolGroup === 'custom' && (
+          <input
+            type="text"
+            value={form.customSymbols}
+            onChange={(e) => setForm((prev) => ({ ...prev, customSymbols: e.target.value }))}
+            placeholder="VCB, VNM, ..."
+            className="mt-2 w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+          />
+        )}
+      </div>
+
+      {/* Date Range + Mode */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">{t('soc.dataops.backfill_from_date')}</label>
+          <input
+            type="date"
+            value={form.fromDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, fromDate: e.target.value }))}
+            className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">{t('soc.dataops.backfill_to_date')}</label>
+          <input
+            type="date"
+            value={form.toDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, toDate: e.target.value }))}
+            className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">{t('soc.dataops.backfill_mode')}</label>
+          <select
+            value={form.mode}
+            onChange={(e) => setForm((prev) => ({ ...prev, mode: e.target.value }))}
+            className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="missing_only">{t('soc.dataops.backfill_mode_missing_only')}</option>
+            <option value="force_refresh">{t('soc.dataops.backfill_mode_force_refresh')}</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">{t('soc.dataops.backfill_execution')}</label>
+          <select
+            value={form.executionMode}
+            onChange={(e) => setForm((prev) => ({ ...prev, executionMode: e.target.value }))}
+            className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="async">{t('soc.dataops.backfill_exec_async')}</option>
+            <option value="sync">{t('soc.dataops.backfill_exec_sync')}</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Dry-run + Run Button */}
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.dryRun}
+            onChange={(e) => setForm((prev) => ({ ...prev, dryRun: e.target.checked }))}
+            className="accent-amber-500"
+          />
+          <span className="text-sm text-amber-300">{t('soc.dataops.backfill_dry_run')}</span>
+        </label>
+        <button
+          type="button"
+          onClick={handleRun}
+          disabled={isRunning || !canApply || form.datasets.length === 0}
+          className="rounded bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 px-5 py-2 text-sm font-semibold text-white transition"
+        >
+          {isRunning ? t('soc.dataops.backfill_running') : t('soc.dataops.backfill_run')}
+        </button>
+      </div>
+
+      {status && (
+        <p className="mt-3 text-sm text-indigo-300">{status}</p>
+      )}
+    </div>
+  );
+};
+
 const TIER_LABEL_KEYS = {
   hot_user_demand: 'soc.dataops.tier_hot_user_demand',
   warm_liquid_market: 'soc.dataops.tier_warm_liquid_market',
@@ -381,6 +573,8 @@ const DataOpsPanel = ({ t }) => {
           t={t}
         />
       )}
+
+      <BackfillCenterSection t={t} canApply={!ownership?.write_block_reason} />
 
       <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-lg border border-slate-700 bg-slate-900 p-4">
@@ -958,6 +1152,11 @@ const DataOpsPanel = ({ t }) => {
 
 // NOTE: React 19 no longer runs propTypes validation at runtime.
 // PropTypes kept for documentation and IDE tooling only.
+BackfillCenterSection.propTypes = {
+  t: PropTypes.func.isRequired,
+  canApply: PropTypes.bool.isRequired,
+};
+
 DataOpsPanel.propTypes = {
   t: PropTypes.func.isRequired,
 };

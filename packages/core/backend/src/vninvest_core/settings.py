@@ -174,7 +174,8 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
-    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
+    # URLs already carry the public API version (/core/v1/*), and disabling
+    # namespace-based negotiation keeps drf-spectacular from generating an empty schema.
     # A5 Fix: Custom exception handler for standard error envelopes (Constitution R4)
     'EXCEPTION_HANDLER': 'vninvest_core.exceptions.core_api_exception_handler',
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

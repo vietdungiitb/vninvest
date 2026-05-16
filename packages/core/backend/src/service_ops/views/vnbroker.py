@@ -9,8 +9,10 @@ POST /api/soc/vnbroker/test-connection/ — test provider connection
 GET /api/soc/vnbroker/providers/ — list configured providers
 GET /api/soc/vnbroker/circuit-breaker-status/ — circuit breaker state
 """
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.response import Response
 
 from ..models import ServiceDefinition, ServiceConfig, ServiceHealth
@@ -36,6 +38,130 @@ DEFAULT_VNBROKER_FALLBACK_PROVIDERS = [
     for provider_id in get_default_provider_ids('vnbroker')
     if provider_id != DEFAULT_VNBROKER_PRIMARY_PROVIDER
 ]
+
+
+class ProviderStatusSerializer(serializers.Serializer):
+    provider = serializers.CharField()
+    label = serializers.CharField()
+    enabled = serializers.BooleanField()
+    in_active_cycle = serializers.BooleanField()
+    runtime_ready = serializers.BooleanField()
+    credential_mode = serializers.CharField()
+    requires_runtime_credentials = serializers.BooleanField()
+    required_runtime_envs = serializers.ListField(child=serializers.CharField())
+    runtime_gate = serializers.CharField()
+    readiness_reason = serializers.CharField()
+    default_selected = serializers.BooleanField()
+    supports_matrix = serializers.BooleanField()
+    supports_vnbroker = serializers.BooleanField()
+
+
+class VnbrokerTimeoutSerializer(serializers.Serializer):
+    connect = serializers.FloatField()
+    read = serializers.FloatField()
+    write = serializers.FloatField()
+    pool = serializers.FloatField()
+
+
+class VnbrokerConfigPayloadSerializer(serializers.Serializer):
+    timeout = VnbrokerTimeoutSerializer()
+    max_retries = serializers.IntegerField()
+    retry_delay_seconds = serializers.FloatField()
+    preferred_provider = serializers.CharField()
+    fallback_providers = serializers.ListField(child=serializers.CharField())
+    enabled = serializers.BooleanField()
+    circuit_breaker_threshold = serializers.IntegerField()
+    circuit_breaker_window_seconds = serializers.IntegerField()
+    circuit_breaker_cooldown_seconds = serializers.IntegerField()
+    requests_per_minute = serializers.IntegerField()
+    burst_limit = serializers.IntegerField()
+
+
+class VnbrokerConfigRequestSerializer(serializers.Serializer):
+    config_payload = VnbrokerConfigPayloadSerializer()
+    change_reason = serializers.CharField(required=False, allow_blank=True)
+
+
+class VnbrokerConfigResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False)
+    service = serializers.IntegerField(required=False)
+    service_key = serializers.CharField()
+    config_schema_version = serializers.CharField(required=False)
+    config_payload = VnbrokerConfigPayloadSerializer()
+    config = VnbrokerConfigPayloadSerializer()
+    applied_by = serializers.CharField()
+    applied_at = serializers.DateTimeField(required=False, allow_null=True)
+    change_reason = serializers.CharField(required=False, allow_blank=True)
+    is_current = serializers.BooleanField()
+    providers_catalog = ProviderStatusSerializer(many=True)
+
+
+class VnbrokerPreviewImpactSerializer(serializers.Serializer):
+    providers_changed = serializers.BooleanField()
+    timeout_changed = serializers.BooleanField()
+
+
+class VnbrokerPreviewResponseSerializer(serializers.Serializer):
+    valid = serializers.BooleanField()
+    errors = serializers.ListField(child=serializers.CharField())
+    config_payload = VnbrokerConfigPayloadSerializer()
+    providers_catalog = ProviderStatusSerializer(many=True)
+    impact = VnbrokerPreviewImpactSerializer()
+
+
+class VnbrokerHealthResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False)
+    service = serializers.IntegerField(required=False)
+    service_key = serializers.CharField(required=False)
+    status = serializers.CharField()
+    last_check_at = serializers.DateTimeField(required=False, allow_null=True)
+    last_success_at = serializers.DateTimeField(required=False, allow_null=True)
+    consecutive_failures = serializers.IntegerField(required=False)
+    avg_response_ms = serializers.FloatField(required=False, allow_null=True)
+    detail = serializers.JSONField()
+
+
+class VnbrokerTestConnectionRequestSerializer(serializers.Serializer):
+    provider = serializers.CharField(required=False, allow_blank=True)
+
+
+class VnbrokerTestConnectionResponseSerializer(serializers.Serializer):
+    provider = serializers.CharField()
+    status = serializers.CharField()
+    latency_ms = serializers.IntegerField()
+    timestamp = serializers.DateTimeField()
+
+
+class VnbrokerProvidersResponseSerializer(serializers.Serializer):
+    primary = serializers.CharField()
+    fallback = serializers.ListField(child=serializers.CharField())
+    enabled = serializers.BooleanField()
+    providers = ProviderStatusSerializer(many=True)
+
+
+class VnbrokerCircuitBreakerSummarySerializer(serializers.Serializer):
+    status = serializers.CharField()
+    failures = serializers.IntegerField()
+    threshold = serializers.IntegerField(required=False)
+    window_seconds = serializers.IntegerField(required=False)
+    cooldown_seconds = serializers.IntegerField(required=False)
+
+
+class VnbrokerCircuitBreakerResponseSerializer(serializers.Serializer):
+    circuit_breaker = VnbrokerCircuitBreakerSummarySerializer()
+    per_provider = serializers.DictField(child=serializers.DictField(child=serializers.JSONField()))
+
+
+class VnbrokerOwnershipResponseSerializer(serializers.Serializer):
+    domain = serializers.CharField()
+    mode = serializers.CharField()
+    writer = serializers.CharField()
+    owner_team = serializers.CharField()
+    write_surface = serializers.CharField()
+    can_apply = serializers.BooleanField()
+    locked_fields = serializers.ListField(child=serializers.CharField())
+    compatibility_domains = serializers.ListField(child=serializers.CharField())
+    write_block_reason = serializers.CharField(allow_null=True)
 
 
 def _sanitize_vnbroker_config_payload(payload: dict | None) -> dict:
@@ -85,8 +211,84 @@ def _build_vnbroker_ownership_payload() -> dict:
     return payload
 
 
+@extend_schema_view(
+    get=extend_schema(
+        summary='Lấy runtime config VNBroker',
+        description='Trả về config hiệu lực của VNBroker cùng catalog provider đang áp dụng trong runtime hiện tại.',
+        responses={
+            200: VnbrokerConfigResponseSerializer,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'VNBroker config',
+                value={
+                    'service_key': 'vnbroker_runtime',
+                    'config_schema_version': '1.0',
+                    'config_payload': {
+                        'timeout': {'connect': 10.0, 'read': 30.0, 'write': 10.0, 'pool': 5.0},
+                        'max_retries': 3,
+                        'retry_delay_seconds': 2.0,
+                        'preferred_provider': 'vci',
+                        'fallback_providers': ['kbs', 'dnse'],
+                        'enabled': True,
+                        'circuit_breaker_threshold': 5,
+                        'circuit_breaker_window_seconds': 60,
+                        'circuit_breaker_cooldown_seconds': 300,
+                        'requests_per_minute': 60,
+                        'burst_limit': 10,
+                    },
+                    'config': {
+                        'timeout': {'connect': 10.0, 'read': 30.0, 'write': 10.0, 'pool': 5.0},
+                        'max_retries': 3,
+                        'retry_delay_seconds': 2.0,
+                        'preferred_provider': 'vci',
+                        'fallback_providers': ['kbs', 'dnse'],
+                        'enabled': True,
+                        'circuit_breaker_threshold': 5,
+                        'circuit_breaker_window_seconds': 60,
+                        'circuit_breaker_cooldown_seconds': 300,
+                        'requests_per_minute': 60,
+                        'burst_limit': 10,
+                    },
+                    'applied_by': 'system',
+                    'is_current': True,
+                    'providers_catalog': [
+                        {
+                            'provider': 'vci',
+                            'label': 'VCI',
+                            'enabled': True,
+                            'in_active_cycle': True,
+                            'runtime_ready': True,
+                            'credential_mode': 'builtin',
+                            'requires_runtime_credentials': False,
+                            'required_runtime_envs': [],
+                            'runtime_gate': 'ready',
+                            'readiness_reason': 'Provider sẵn sàng cho runtime hiện tại.',
+                            'default_selected': True,
+                            'supports_matrix': True,
+                            'supports_vnbroker': True,
+                        }
+                    ],
+                },
+            )
+        ],
+    ),
+    post=extend_schema(
+        summary='Apply runtime config VNBroker',
+        description='Áp dụng config mới cho VNBroker và trả về snapshot config đã sanitize cùng provider catalog hiệu lực.',
+        request=VnbrokerConfigRequestSerializer,
+        responses={
+            201: VnbrokerConfigResponseSerializer,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    ),
+)
 class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
-    """GET/POST /api/soc/vnbroker/config/"""
+    """GET/POST VNBroker runtime config."""
 
     def get(self, request):
         """GET current config."""
@@ -111,10 +313,14 @@ class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
         # Return default
         default_config = _sanitize_vnbroker_config_payload(VnbrokerDomainConfig().to_dict())
         return Response({
+            'service_key': SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'],
+            'config_schema_version': '1.0',
             'config_payload': default_config,
             'config': default_config,
             'is_current': True,
             'applied_by': 'system',
+            'applied_at': None,
+            'change_reason': '',
             'providers_catalog': list_provider_statuses(
                 'vnbroker',
                 active_provider_ids=_get_active_vnbroker_provider_ids(default_config),
@@ -135,11 +341,30 @@ class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
             return result
         service, svc_config = result
         serializer = ServiceConfigSerializer(svc_config)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        data = serializer.data
+        sanitized_payload = _sanitize_vnbroker_config_payload(data.get('config_payload'))
+        data['config_payload'] = sanitized_payload
+        data['config'] = sanitized_payload
+        data['providers_catalog'] = list_provider_statuses(
+            'vnbroker',
+            active_provider_ids=_get_active_vnbroker_provider_ids(sanitized_payload),
+        )
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='Preview runtime config VNBroker',
+    description='Validate và preview config VNBroker trước khi apply, bao gồm provider catalog và impact summary.',
+    request=VnbrokerConfigRequestSerializer,
+    responses={
+        200: VnbrokerPreviewResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class VnbrokerConfigPreviewView(SOCBaseView):
-    """GET /api/soc/vnbroker/config/preview/"""
+    """POST preview for VNBroker config."""
 
     def post(self, request):
         """Preview config before apply."""
@@ -165,8 +390,17 @@ class VnbrokerConfigPreviewView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='Lấy health snapshot VNBroker',
+    description='Trả về health snapshot của service VNBroker; nếu chưa có health record thì trả trạng thái `unknown` theo contract ổn định.',
+    responses={
+        200: VnbrokerHealthResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class VnbrokerHealthView(SOCBaseView):
-    """GET /api/soc/vnbroker/health/"""
+    """GET VNBroker health snapshot."""
 
     def get(self, request):
         try:
@@ -175,14 +409,31 @@ class VnbrokerHealthView(SOCBaseView):
             serializer = ServiceHealthSerializer(health)
             return Response(serializer.data)
         except (ServiceDefinition.DoesNotExist, ServiceHealth.DoesNotExist):
+            service_key = SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker']
             return Response({
+                'service_key': service_key,
                 'status': 'unknown',
-                'detail': 'Health record not found',
+                'last_check_at': None,
+                'last_success_at': None,
+                'consecutive_failures': 0,
+                'avg_response_ms': None,
+                'detail': {'message': 'Health record not found'},
             })
 
 
+@extend_schema(
+    summary='Kiểm tra kết nối provider VNBroker',
+    description='Thực hiện test kết nối nhẹ cho provider VNBroker được chọn và trả latency snapshot. Endpoint này validate provider trước khi thử kết nối.',
+    request=VnbrokerTestConnectionRequestSerializer,
+    responses={
+        200: VnbrokerTestConnectionResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class VnbrokerTestConnectionView(SOCBaseView):
-    """POST /api/soc/vnbroker/test-connection/"""
+    """POST provider connectivity test for VNBroker."""
 
     def post(self, request):
         """Test connection to providers."""
@@ -219,8 +470,17 @@ class VnbrokerTestConnectionView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='Lấy provider catalog VNBroker',
+    description='Trả về provider chính, fallback providers, cờ enabled và provider catalog với readiness/runtime metadata.',
+    responses={
+        200: VnbrokerProvidersResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class VnbrokerProvidersView(SOCBaseView):
-    """GET /api/soc/vnbroker/providers/"""
+    """GET configured VNBroker provider catalog."""
 
     def get(self, request):
         """List configured providers."""
@@ -254,8 +514,17 @@ class VnbrokerProvidersView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='Lấy trạng thái circuit breaker VNBroker',
+    description='Trả về trạng thái circuit breaker tổng và theo từng provider của domain VNBroker.',
+    responses={
+        200: VnbrokerCircuitBreakerResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class VnbrokerCircuitBreakerView(SOCBaseView):
-    """GET /api/soc/vnbroker/circuit-breaker-status/"""
+    """GET VNBroker circuit breaker snapshot."""
 
     def get(self, request):
         """Circuit breaker state."""
@@ -274,8 +543,17 @@ class VnbrokerCircuitBreakerView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='Lấy ownership VNBroker',
+    description='Trả về ownership payload của domain VNBroker để operator biết quyền apply và write surface hiện hành.',
+    responses={
+        200: VnbrokerOwnershipResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class VnbrokerOwnershipView(SOCBaseView):
-    """GET /api/soc/vnbroker/ownership/"""
+    """GET VNBroker ownership payload."""
 
     def get(self, request):
         return Response(_build_vnbroker_ownership_payload())

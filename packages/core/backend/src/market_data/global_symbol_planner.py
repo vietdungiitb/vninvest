@@ -133,12 +133,28 @@ def execute_global_planner_run(service_run_log_id: int) -> dict[str, Any]:
         if str(item.get('dataset') or '').strip().lower() == GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT
     ]
     if price_board_items:
+        from data_ingest.models import IngestJob
+
+        price_board_job, _ = IngestJob.objects.get_or_create(
+            name='core-price-board-prefetch',
+            defaults={
+                'source': IngestJob.SourceChoices.VNBROKER_PRICE_BOARD,
+                'status': IngestJob.StatusChoices.ACTIVE,
+                'schedule_seconds': 60,
+                'config': {},
+            },
+        )
+        if price_board_job.source != IngestJob.SourceChoices.VNBROKER_PRICE_BOARD:
+            price_board_job.source = IngestJob.SourceChoices.VNBROKER_PRICE_BOARD
+            price_board_job.save(update_fields=['source', 'updated_at'])
+
         child_run_log = _create_child_run_log(
             'vnbroker_price_board',
             parent_run_log,
             'global_market_data_planner_price_board_snapshot',
         )
         result = fetch_and_upsert_price_board.run(
+            job_id=price_board_job.id,
             plan_items=price_board_items,
             service_run_log_id=child_run_log.id,
         )

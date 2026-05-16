@@ -82,11 +82,13 @@ urlpatterns = [
     path('signals/jobs/status/', signals.SignalsJobStatusView.as_view(), name='soc_signals_jobs_status'),
     path('signals/performance-metrics/', signals.SignalsPerformanceMetricsView.as_view(), name='soc_signals_metrics'),
 
-    # Screener domain (7)
+    # Screener domain (9)
     path('screener/config/', screener.ScreenerConfigView.as_view(), name='soc_screener_config'),
     path('screener/config/apply/', screener.ScreenerConfigView.as_view(), name='soc_screener_config_apply'),
     path('screener/rules/', screener.ScreenerRulesView.as_view(), name='soc_screener_rules'),
     path('screener/rules/run/', screener.ScreenerRulesRunView.as_view(), name='soc_screener_rules_run'),
+    path('screener/rules/<str:rule_id>/', screener.ScreenerRuleUpdateView.as_view(), name='soc_screener_rule_update'),
+    path('screener/rules/<str:rule_id>/delete/', screener.ScreenerRuleDeleteView.as_view(), name='soc_screener_rule_delete'),
     path('screener/results/', screener.ScreenerResultsView.as_view(), name='soc_screener_results'),
     path('screener/alert-history/', screener.ScreenerAlertHistoryView.as_view(), name='soc_screener_alerts'),
     path('screener/manual-scan/', screener.ScreenerManualScanView.as_view(), name='soc_screener_scan'),

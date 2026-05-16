@@ -45,7 +45,7 @@ class MarketDataRuntimeConfig:
         default_factory=lambda: QueueTierRuntimeConfig(poll_interval_seconds=30, max_batch_size=50)
     )
     warm_liquid_market: QueueTierRuntimeConfig = field(
-        default_factory=lambda: QueueTierRuntimeConfig(poll_interval_seconds=120, max_batch_size=100)
+        default_factory=lambda: QueueTierRuntimeConfig(poll_interval_seconds=120, max_batch_size=50)
     )
     cold_full_market: QueueTierRuntimeConfig = field(
         default_factory=lambda: QueueTierRuntimeConfig(poll_interval_seconds=900, max_batch_size=200)

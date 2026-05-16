@@ -1,16 +1,21 @@
 """
-Screener Domain Views (7 endpoints).
+Screener Domain Views (9 endpoints).
 
-GET /api/soc/screener/config/ — get current config
-POST /api/soc/screener/config/ — apply config
-GET /api/soc/screener/rules/ — list active rules
-POST /api/soc/screener/rules/ — add rule
-GET /api/soc/screener/results/ — latest scan results
-GET /api/soc/screener/alert-history/ — alert history
-POST /api/soc/screener/manual-scan/ — trigger manual scan
+GET  /api/soc/screener/config/               — get current config
+POST /api/soc/screener/config/               — apply config
+GET  /api/soc/screener/rules/                — list active rules
+POST /api/soc/screener/rules/                — add rule
+PUT  /api/soc/screener/rules/<rule_id>/      — update rule (S5-BE)
+DELETE /api/soc/screener/rules/<rule_id>/delete/ — delete rule (S5-BE)
+GET  /api/soc/screener/results/              — latest scan results
+GET  /api/soc/screener/alert-history/        — alert history
+POST /api/soc/screener/manual-scan/          — trigger manual scan
 """
+import uuid
+
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.response import Response
@@ -70,9 +75,19 @@ class ScreenerRulesResponseSerializer(serializers.Serializer):
 
 
 class ScreenerRuleCreateRequestSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False, allow_blank=True)
     type = serializers.CharField(required=False, allow_blank=True)
     threshold = serializers.JSONField(required=False, allow_null=True)
     value = serializers.JSONField(required=False, allow_null=True)
+    enabled = serializers.BooleanField(required=False, default=True)
+
+
+class ScreenerRuleUpdateRequestSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False, allow_blank=True)
+    type = serializers.CharField(required=False, allow_blank=True)
+    threshold = serializers.JSONField(required=False, allow_null=True)
+    value = serializers.JSONField(required=False, allow_null=True)
+    enabled = serializers.BooleanField(required=False)
 
 
 class ScreenerRuleCreateResponseSerializer(serializers.Serializer):
@@ -194,6 +209,23 @@ def _build_screener_ownership_payload() -> dict:
     return payload
 
 
+def _save_screener_rules_config(request, updated_rules: list) -> None:
+    """Persist updated rules list back into ServiceConfig (current version)."""
+    service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['screener'])
+    current = ServiceConfig.objects.filter(service=service, is_current=True).first()
+    current_payload = dict(current.config_payload) if current and isinstance(current.config_payload, dict) else {}
+    current_payload['rules'] = updated_rules
+    with transaction.atomic():
+        ServiceConfig.objects.filter(service=service, is_current=True).update(is_current=False)
+        ServiceConfig.objects.create(
+            service=service,
+            config_schema_version='1.0',
+            config_payload=current_payload,
+            applied_by=getattr(request.user, 'username', 'api'),
+            change_reason=request.data.get('change_reason', 'rule_crud'),
+        )
+
+
 def _build_default_screener_config_response() -> dict:
     default = ScreenerDomainConfig()
     return {
@@ -309,15 +341,125 @@ class ScreenerRulesView(SOCBaseView):
         })
 
     def post(self, request):
-        """Add new screening rule."""
-        rule_type = request.data.get('type')
-        threshold = request.data.get('threshold')
+        """Add new screening rule and persist to ServiceConfig."""
+        serializer = ScreenerRuleCreateRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        rule_id = f'rule_{uuid.uuid4().hex[:12]}'
+        now = timezone.now()
+        new_rule = {
+            'id': rule_id,
+            'name': serializer.validated_data.get('name') or serializer.validated_data.get('type') or rule_id,
+            'type': serializer.validated_data.get('type', 'custom'),
+            'threshold': serializer.validated_data.get('threshold'),
+            'value': serializer.validated_data.get('value'),
+            'enabled': serializer.validated_data.get('enabled', True),
+        }
+
+        config = _get_screener_config()
+        updated_rules = list(config.rules) + [new_rule]
+        _save_screener_rules_config(request, updated_rules)
+
         return Response({
-            'rule_id': 'rule_123',
-            'type': rule_type,
-            'threshold': threshold,
-            'created_at': timezone.now().isoformat(),
+            'rule_id': rule_id,
+            'name': new_rule['name'],
+            'type': new_rule['type'],
+            'threshold': new_rule['threshold'],
+            'value': new_rule['value'],
+            'enabled': new_rule['enabled'],
+            'created_at': now.isoformat(),
         }, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(
+    summary='Cập nhật rule Screener',
+    description='Cập nhật một rule Screener theo rule_id. Trả 404 nếu rule không tồn tại.',
+    request=ScreenerRuleUpdateRequestSerializer,
+    responses={
+        200: ScreenerRuleCreateResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
+class ScreenerRuleUpdateView(SOCBaseView):
+    """PUT /api/soc/screener/rules/<rule_id>/"""
+
+    def put(self, request, rule_id):
+        """Update an existing screening rule by rule_id."""
+        serializer = ScreenerRuleUpdateRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        config = _get_screener_config()
+        rules = list(config.rules)
+        target_index = next(
+            (i for i, r in enumerate(rules) if r.get('id') == rule_id),
+            None,
+        )
+        if target_index is None:
+            return Response(
+                {'detail': f"Rule '{rule_id}' không tồn tại.", 'code': 'RULE_NOT_FOUND'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        existing = dict(rules[target_index])
+        data = serializer.validated_data
+        if 'name' in data:
+            existing['name'] = data['name']
+        if 'type' in data:
+            existing['type'] = data['type']
+        if 'threshold' in data:
+            existing['threshold'] = data['threshold']
+        if 'value' in data:
+            existing['value'] = data['value']
+        if 'enabled' in data:
+            existing['enabled'] = data['enabled']
+        rules[target_index] = existing
+
+        _save_screener_rules_config(request, rules)
+
+        return Response({
+            'rule_id': rule_id,
+            'name': existing.get('name'),
+            'type': existing.get('type'),
+            'threshold': existing.get('threshold'),
+            'value': existing.get('value'),
+            'enabled': existing.get('enabled'),
+            'created_at': timezone.now().isoformat(),
+        }, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    summary='Xóa rule Screener',
+    description='Xóa một rule Screener theo rule_id. Trả 204 khi thành công, 404 nếu không tìm thấy.',
+    responses={
+        204: None,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
+class ScreenerRuleDeleteView(SOCBaseView):
+    """DELETE /api/soc/screener/rules/<rule_id>/delete/"""
+
+    def delete(self, request, rule_id):
+        """Delete a screening rule by rule_id."""
+        config = _get_screener_config()
+        rules = list(config.rules)
+        original_len = len(rules)
+        updated_rules = [r for r in rules if r.get('id') != rule_id]
+
+        if len(updated_rules) == original_len:
+            return Response(
+                {'detail': f"Rule '{rule_id}' không tồn tại.", 'code': 'RULE_NOT_FOUND'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        _save_screener_rules_config(request, updated_rules)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(

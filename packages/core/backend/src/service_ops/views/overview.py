@@ -1,7 +1,9 @@
 """SOC overview endpoints aligned with the documented summary and service contracts."""
 
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.response import Response
 
 from ..models import (
@@ -22,6 +24,146 @@ from ..serializers import (
     ServiceRunLogSerializer,
 )
 from .base import SOCBaseView
+
+
+STANDARD_PAGINATION_PARAMETERS = [
+    OpenApiParameter(
+        name='page',
+        type=OpenApiTypes.INT,
+        location=OpenApiParameter.QUERY,
+        description='Trang cần đọc theo pagination chuẩn của SOC. Mặc định 1.',
+        required=False,
+    ),
+    OpenApiParameter(
+        name='page_size',
+        type=OpenApiTypes.INT,
+        location=OpenApiParameter.QUERY,
+        description='Số kết quả mỗi trang. Mặc định 20, tối đa 100.',
+        required=False,
+    ),
+]
+
+
+class OverviewCountsSerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+    healthy = serializers.IntegerField()
+    degraded = serializers.IntegerField()
+    unhealthy = serializers.IntegerField()
+    unknown = serializers.IntegerField()
+    maintenance = serializers.IntegerField()
+
+
+class ServiceSummaryRowSerializer(serializers.Serializer):
+    service_key = serializers.CharField()
+    name = serializers.CharField()
+    domain = serializers.CharField()
+    status = serializers.CharField()
+    last_check_at = serializers.DateTimeField(allow_null=True)
+    avg_response_ms = serializers.FloatField(allow_null=True)
+
+
+class ServiceOwnershipPayloadSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False)
+    domain = serializers.CharField()
+    owner_team = serializers.CharField(required=False, allow_blank=True)
+    write_mode = serializers.CharField(required=False, allow_blank=True)
+    mode = serializers.CharField(required=False, allow_blank=True)
+    writer = serializers.CharField(required=False, allow_blank=True)
+    write_surface = serializers.CharField(required=False, allow_blank=True)
+    can_apply = serializers.BooleanField(required=False)
+    locked_fields = serializers.ListField(child=serializers.CharField(), required=False)
+    compatibility_domains = serializers.ListField(child=serializers.CharField(), required=False)
+    deprecation_notes = serializers.CharField(required=False, allow_blank=True)
+    updated_at = serializers.DateTimeField(required=False, allow_null=True)
+
+
+class ServiceCurrentConfigSnapshotSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False)
+    service = serializers.IntegerField(required=False)
+    service_key = serializers.CharField()
+    config_schema_version = serializers.CharField()
+    config_payload = serializers.JSONField()
+    applied_by = serializers.CharField(allow_blank=True)
+    applied_at = serializers.DateTimeField(allow_null=True)
+    change_reason = serializers.CharField(allow_blank=True)
+    is_current = serializers.BooleanField()
+
+
+class ServiceHealthSnapshotSerializer(serializers.Serializer):
+    service_key = serializers.CharField()
+    status = serializers.CharField()
+    last_check_at = serializers.DateTimeField(allow_null=True)
+    last_success_at = serializers.DateTimeField(allow_null=True)
+    consecutive_failures = serializers.IntegerField()
+    avg_response_ms = serializers.FloatField(allow_null=True)
+    detail = serializers.JSONField()
+
+
+class ServiceDetailResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    service_key = serializers.CharField()
+    name = serializers.CharField()
+    domain = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    owner_team = serializers.CharField()
+    tags = serializers.ListField(child=serializers.CharField(), required=False)
+    is_active = serializers.BooleanField()
+    is_deprecated = serializers.BooleanField()
+    deprecation_note = serializers.CharField(allow_blank=True)
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+    current_config = ServiceCurrentConfigSnapshotSerializer(allow_null=True)
+    health = ServiceHealthSnapshotSerializer()
+    ownership = ServiceOwnershipPayloadSerializer()
+
+
+class OverviewSummaryResponseSerializer(serializers.Serializer):
+    generated_at = serializers.DateTimeField()
+    summary = OverviewCountsSerializer()
+    by_domain = serializers.DictField(child=serializers.DictField(child=serializers.IntegerField()))
+    services = ServiceSummaryRowSerializer(many=True)
+
+
+class HealthStatusResponseSerializer(serializers.Serializer):
+    total_services = serializers.IntegerField()
+    active_services = serializers.IntegerField()
+    health_status_counts = serializers.DictField(child=serializers.IntegerField())
+    services = ServiceHealthSerializer(many=True)
+
+
+class HealthCheckTriggerResponseSerializer(serializers.Serializer):
+    service_key = serializers.CharField()
+    status = serializers.CharField()
+    run_log_id = serializers.IntegerField()
+    requested_at = serializers.DateTimeField()
+
+
+class PaginatedServiceDefinitionResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = ServiceDefinitionSerializer(many=True)
+
+
+class PaginatedServiceConfigResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = ServiceConfigSerializer(many=True)
+
+
+class PaginatedServiceRunLogResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = ServiceRunLogSerializer(many=True)
+
+
+class PaginatedConfigChangeAuditResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = ConfigChangeAuditSerializer(many=True)
 
 
 def _get_service_or_error(view: SOCBaseView, request, service_key: str):
@@ -74,8 +216,53 @@ def _serialize_service_detail(service: ServiceDefinition) -> dict:
     return payload
 
 
+@extend_schema(
+    summary='Lấy tổng quan sức khỏe SOC',
+    description='Trả về snapshot tổng hợp theo domain cho toàn bộ service đang active trong Service Operations Center.',
+    responses={
+        200: OverviewSummaryResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'SOC overview summary',
+            value={
+                'generated_at': '2026-05-15T14:00:00Z',
+                'summary': {
+                    'total': 4,
+                    'healthy': 2,
+                    'degraded': 1,
+                    'unhealthy': 0,
+                    'unknown': 1,
+                    'maintenance': 0,
+                },
+                'by_domain': {
+                    'vnbroker': {
+                        'total': 1,
+                        'healthy': 1,
+                        'degraded': 0,
+                        'unhealthy': 0,
+                        'unknown': 0,
+                        'maintenance': 0,
+                    }
+                },
+                'services': [
+                    {
+                        'service_key': 'vnbroker_runtime',
+                        'name': 'VNBroker Runtime',
+                        'domain': 'vnbroker',
+                        'status': 'healthy',
+                        'last_check_at': '2026-05-15T13:59:00Z',
+                        'avg_response_ms': 25.0,
+                    }
+                ],
+            },
+        )
+    ],
+)
 class OverviewSummaryView(SOCBaseView):
-    """GET /api/soc/overview/ — health summary grouped by domain."""
+    """GET SOC health summary grouped by domain."""
 
     def get(self, request):
         services = list(ServiceDefinition.objects.filter(is_active=True).order_by('domain', 'service_key'))
@@ -130,8 +317,18 @@ class OverviewSummaryView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='Liệt kê danh mục service SOC',
+    description='Trả về danh sách paginated các service active đang được quản lý trong SOC.',
+    parameters=STANDARD_PAGINATION_PARAMETERS,
+    responses={
+        200: PaginatedServiceDefinitionResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceListView(SOCBaseView):
-    """GET /api/soc/services/ — list services + pagination."""
+    """GET paginated SOC service catalog."""
 
     def get(self, request):
         queryset = ServiceDefinition.objects.filter(is_active=True).order_by('domain', 'service_key')
@@ -141,8 +338,18 @@ class ServiceListView(SOCBaseView):
         return Response(ServiceDefinitionSerializer(queryset, many=True).data)
 
 
+@extend_schema(
+    summary='Lấy chi tiết service SOC',
+    description='Trả về metadata service, config hiện tại, health snapshot và ownership payload cho một service cụ thể.',
+    responses={
+        200: ServiceDetailResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceDetailView(SOCBaseView):
-    """GET /api/soc/overview/{service_key}/ — detail 1 service + config + health + ownership."""
+    """GET detail for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -151,8 +358,31 @@ class ServiceDetailView(SOCBaseView):
         return Response(_serialize_service_detail(service))
 
 
+@extend_schema(
+    summary='Queue health check thủ công cho service SOC',
+    description='Tạo một queued run log để operator kích hoạt health probe thủ công cho service được chọn.',
+    request=None,
+    responses={
+        202: HealthCheckTriggerResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Queued health check',
+            value={
+                'service_key': 'vnbroker_runtime',
+                'status': 'queued',
+                'run_log_id': 101,
+                'requested_at': '2026-05-15T14:05:00Z',
+            },
+            response_only=True,
+        )
+    ],
+)
 class ServiceHealthCheckTriggerView(SOCBaseView):
-    """POST /api/soc/services/{service_key}/health-check/ — enqueue a manual health probe."""
+    """POST manual health-check trigger for one SOC service."""
 
     def post(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -176,8 +406,18 @@ class ServiceHealthCheckTriggerView(SOCBaseView):
         }, status=status.HTTP_202_ACCEPTED)
 
 
+@extend_schema(
+    summary='Lấy config hiện tại của service SOC',
+    description='Trả về config snapshot hiện tại của service. Nếu chưa có config current thì trả payload rỗng nhưng vẫn cùng contract.',
+    responses={
+        200: ServiceCurrentConfigSnapshotSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceCurrentConfigView(SOCBaseView):
-    """GET /api/soc/overview/{service_key}/config/ — current config snapshot."""
+    """GET current config snapshot for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -200,8 +440,18 @@ class ServiceCurrentConfigView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='Lấy health snapshot của service SOC',
+    description='Trả về health snapshot hiện tại của service. Nếu chưa có bản ghi health thì trả trạng thái `unknown` theo contract chuẩn.',
+    responses={
+        200: ServiceHealthSnapshotSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceHealthView(SOCBaseView):
-    """GET /api/soc/overview/{service_key}/health/ — service health snapshot."""
+    """GET health snapshot for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -210,8 +460,19 @@ class ServiceHealthView(SOCBaseView):
         return Response(_serialize_health(service))
 
 
+@extend_schema(
+    summary='Lấy audit trail config của service SOC',
+    description='Trả về audit trail paginated cho các lần preview/apply/rollback config của service.',
+    parameters=STANDARD_PAGINATION_PARAMETERS,
+    responses={
+        200: PaginatedConfigChangeAuditResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceAuditView(SOCBaseView):
-    """GET /api/soc/overview/{service_key}/audit/ — config audit trail."""
+    """GET paginated config audit trail for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -225,8 +486,19 @@ class ServiceAuditView(SOCBaseView):
         return Response(ConfigChangeAuditSerializer(audits, many=True).data)
 
 
+@extend_schema(
+    summary='Lấy lịch sử config của service SOC',
+    description='Trả về lịch sử config paginated của service theo thứ tự áp dụng mới nhất trước.',
+    parameters=STANDARD_PAGINATION_PARAMETERS,
+    responses={
+        200: PaginatedServiceConfigResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceConfigHistoryView(SOCBaseView):
-    """GET /api/soc/overview/{service_key}/history/ — config history + pagination."""
+    """GET paginated config history for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -240,8 +512,19 @@ class ServiceConfigHistoryView(SOCBaseView):
         return Response(ServiceConfigSerializer(configs, many=True).data)
 
 
+@extend_schema(
+    summary='Lấy run logs của service SOC',
+    description='Trả về run logs paginated của một service theo thứ tự chạy mới nhất trước.',
+    parameters=STANDARD_PAGINATION_PARAMETERS,
+    responses={
+        200: PaginatedServiceRunLogResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceRunLogsView(SOCBaseView):
-    """GET /api/soc/overview/{service_key}/run-logs/ — recent runs + pagination."""
+    """GET paginated run logs for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -255,8 +538,18 @@ class ServiceRunLogsView(SOCBaseView):
         return Response(ServiceRunLogSerializer(logs, many=True).data)
 
 
+@extend_schema(
+    summary='Lấy ownership của service SOC',
+    description='Trả về ownership payload để xác định writer, quyền apply và compatibility domains của service.',
+    responses={
+        200: ServiceOwnershipPayloadSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceOwnershipView(SOCBaseView):
-    """GET /api/soc/overview/{service_key}/ownership/ — ownership record."""
+    """GET ownership payload for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -265,8 +558,17 @@ class ServiceOwnershipView(SOCBaseView):
         return Response(_get_ownership_payload(service))
 
 
+@extend_schema(
+    summary='Lấy health status tổng hợp của SOC',
+    description='Trả về số lượng service theo trạng thái sức khỏe cùng danh sách health records hiện có.',
+    responses={
+        200: HealthStatusResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class HealthStatusView(SOCBaseView):
-    """GET /api/soc/overview/health-status/ — health summary toàn hệ."""
+    """GET global SOC health-status summary."""
 
     def get(self, request):
         health_records = ServiceHealth.objects.select_related('service').all()
@@ -288,8 +590,34 @@ class HealthStatusView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='Liệt kê run logs toàn SOC',
+    description='Trả về run logs paginated toàn SOC, hỗ trợ filter theo `service_key` và `status`.',
+    parameters=[
+        *STANDARD_PAGINATION_PARAMETERS,
+        OpenApiParameter(
+            name='service_key',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Filter theo service key.',
+            required=False,
+        ),
+        OpenApiParameter(
+            name='status',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Filter theo trạng thái run log như queued, success, failed.',
+            required=False,
+        ),
+    ],
+    responses={
+        200: PaginatedServiceRunLogResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class RunLogListView(SOCBaseView):
-    """GET /api/soc/run-logs/ — paginated recent run logs."""
+    """GET paginated recent run logs across SOC."""
 
     def get(self, request):
         queryset = ServiceRunLog.objects.select_related('service').order_by('-started_at')
@@ -306,8 +634,34 @@ class RunLogListView(SOCBaseView):
         return Response(ServiceRunLogSerializer(queryset, many=True).data)
 
 
+@extend_schema(
+    summary='Liệt kê config audit toàn SOC',
+    description='Trả về audit trail paginated toàn SOC, hỗ trợ filter theo `service_key` và `action`.',
+    parameters=[
+        *STANDARD_PAGINATION_PARAMETERS,
+        OpenApiParameter(
+            name='service_key',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Filter theo service key.',
+            required=False,
+        ),
+        OpenApiParameter(
+            name='action',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Filter theo action audit như apply, preview, rollback.',
+            required=False,
+        ),
+    ],
+    responses={
+        200: PaginatedConfigChangeAuditResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class ChangeAuditListView(SOCBaseView):
-    """GET /api/soc/change-audit/ — paginated config change audit trail."""
+    """GET paginated config change audit trail across SOC."""
 
     def get(self, request):
         queryset = ConfigChangeAudit.objects.select_related('service').order_by('-timestamp')

@@ -3,18 +3,27 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import logging
 
-from django.db.models import Max, Q
+from django.db.models import Exists, Max, OuterRef, Q
 from django.utils import timezone
 
-from market_data.models import GlobalSymbolCoverage, GlobalSymbolRegistry
+from market_data.global_symbol_registry import build_system_default_source_ref, sync_system_default_symbol_group
+from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry
+from market_data.vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
 
 from .domain_configs import MarketDataRuntimeConfig
 from .models import ServiceConfig, ServiceDefinition
 from .registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 
 
+logger = logging.getLogger(__name__)
+
+
 DATAOPS_MARKET_DATA_DOMAIN = 'dataops_market_data'
+SYSTEM_DEFAULT_BOOTSTRAP_GROUP_IDS = ('vn30', 'vn100')
+SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID = 'listed_market'
+LISTING_BOOTSTRAP_PROVIDER_SOURCES = ('KBS', 'VCI', 'DNSE')
 QUEUE_TIER_ORDER = (
     'hot_user_demand',
     'warm_liquid_market',
@@ -58,6 +67,12 @@ PRIORITY_TIER_TO_QUEUE_TIER = {
 
 RECOVERY_COVERAGE_STATES = {'missing', 'partial'}
 RECOVERY_FRESHNESS_STATES = {'stale', 'missing', 'error'}
+PLANNABLE_FRESHNESS_STATES = {
+    GlobalSymbolCoverage.FreshnessChoices.ERROR,
+    GlobalSymbolCoverage.FreshnessChoices.MISSING,
+    GlobalSymbolCoverage.FreshnessChoices.STALE,
+    GlobalSymbolCoverage.FreshnessChoices.UNKNOWN,
+}
 
 
 def get_market_data_runtime_config() -> tuple[MarketDataRuntimeConfig, object | None]:
@@ -69,6 +84,88 @@ def get_market_data_runtime_config() -> tuple[MarketDataRuntimeConfig, object | 
     except (ServiceDefinition.DoesNotExist, ServiceConfig.DoesNotExist):
         pass
     return MarketDataRuntimeConfig(), None
+
+
+def _select_market_data_bootstrap_listing_symbols() -> tuple[list[str], list[dict[str, object]]]:
+    selected_symbols: list[str] = []
+    provider_results: list[dict[str, object]] = []
+
+    for source in LISTING_BOOTSTRAP_PROVIDER_SOURCES:
+        rows = fetch_listing_symbols(source=source)
+        symbols = sorted({str(row.get('symbol') or '').upper().strip() for row in rows if row.get('symbol')})
+        provider_results.append({
+            'source': source,
+            'symbols': len(symbols),
+        })
+        if len(symbols) > len(selected_symbols):
+            selected_symbols = symbols
+
+    return selected_symbols, provider_results
+
+
+def ensure_market_data_system_default_baseline() -> dict[str, object]:
+    active_symbols = GlobalSymbolRegistry.objects.filter(is_active=True).count()
+    baseline_source_ref = build_system_default_source_ref(SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID)
+    has_listing_baseline = GlobalSymbolDemandSource.objects.filter(
+        source_type=GlobalSymbolDemandSource.SourceTypeChoices.SYSTEM_DEFAULT,
+        source_ref=baseline_source_ref,
+        is_active=True,
+    ).exists()
+
+    if active_symbols > 0 and has_listing_baseline:
+        return {
+            'bootstrapped': False,
+            'active_symbols': active_symbols,
+            'groups': [],
+            'listing_sources': [],
+        }
+
+    groups = []
+    if active_symbols <= 0:
+        for group_id in SYSTEM_DEFAULT_BOOTSTRAP_GROUP_IDS:
+            try:
+                symbols = fetch_symbol_group_members(group_id)
+                sync_system_default_symbol_group(group_id, symbols)
+                groups.append({
+                    'group_id': group_id,
+                    'symbols': len(symbols),
+                })
+            except Exception as exc:
+                logger.exception('Failed to bootstrap market-data system default group %s', group_id)
+                groups.append({
+                    'group_id': group_id,
+                    'symbols': 0,
+                    'error': str(exc),
+                })
+
+    listing_symbols, provider_results = _select_market_data_bootstrap_listing_symbols()
+    if listing_symbols:
+        try:
+            sync_system_default_symbol_group(
+                SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID,
+                listing_symbols,
+            )
+            groups.append({
+                'group_id': SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID,
+                'symbols': len(listing_symbols),
+            })
+        except Exception as exc:
+            logger.exception(
+                'Failed to bootstrap market-data listing baseline %s',
+                SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID,
+            )
+            groups.append({
+                'group_id': SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID,
+                'symbols': 0,
+                'error': str(exc),
+            })
+
+    return {
+        'bootstrapped': bool(groups),
+        'active_symbols': GlobalSymbolRegistry.objects.filter(is_active=True).count(),
+        'groups': groups,
+        'listing_sources': provider_results,
+    }
 
 
 def resolve_market_data_queue_tier(registry: GlobalSymbolRegistry) -> str:
@@ -126,7 +223,19 @@ def select_market_data_queue_tier_symbols(tier_name: str, limit: int) -> list[st
     batch_limit = max(int(limit or 0), 0)
     if batch_limit <= 0:
         return []
-    queryset = build_market_data_queue_tier_queryset(tier_name).order_by(
+    tier_datasets = list(get_market_data_queue_tier_datasets(tier_name))
+    coverage_rows = GlobalSymbolCoverage.objects.filter(
+        registry=OuterRef('pk'),
+        dataset__in=tier_datasets,
+    )
+    queryset = build_market_data_queue_tier_queryset(tier_name).annotate(
+        has_plannable_gap=Exists(
+            coverage_rows.filter(freshness_state__in=PLANNABLE_FRESHNESS_STATES)
+        ),
+        has_any_tier_coverage=Exists(coverage_rows),
+    ).order_by(
+        '-has_plannable_gap',
+        'has_any_tier_coverage',
         '-priority_score',
         '-demand_source_count',
         'last_hydrated_at',

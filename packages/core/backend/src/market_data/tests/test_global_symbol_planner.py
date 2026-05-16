@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 from django.test import TestCase
 
+from data_ingest.models import IngestRun
 from market_data.global_symbol_planner import create_global_planner_run
 from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, IntradayTick
 from service_ops.models import ServiceRunLog
@@ -177,6 +178,10 @@ class GlobalSymbolPlannerRunTests(TestCase):
         self.assertEqual(parent_run_log.status, 'success')
         self.assertEqual(child_run_log.service.service_key, 'vnbroker_price_board')
         self.assertEqual(child_run_log.status, 'success')
+        self.assertTrue(child_run_log.output_summary['ingest_run_id'])
+        ingest_run = IngestRun.objects.get(pk=child_run_log.output_summary['ingest_run_id'])
+        self.assertEqual(ingest_run.job.name, 'core-price-board-prefetch')
+        self.assertEqual(ingest_run.state, IngestRun.StateChoices.SUCCESS)
         materialize_mock.assert_called_once_with(symbols=['MWG'])
 
     @patch('data_ingest.tasks.fetch_intraday_tape')

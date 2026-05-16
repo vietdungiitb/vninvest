@@ -271,6 +271,14 @@ export const socApi = {
     return handleResponse(resp);
   },
 
+  warmPrefetchNow: async (mode = 'async') => {
+    const resp = await fetch(`${BASE_URL}/prefetch/warm-now/?mode=${encodeURIComponent(mode)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return handleResponse(resp);
+  },
+
   getPrefetchUniverseGroups: async () => {
     const resp = await fetch(`${BASE_URL}/prefetch/universe-groups/`);
     return handleResponse(resp);
@@ -379,12 +387,38 @@ export const socApi = {
     };
   },
 
-  manualScan: async (ruleIds = []) => {
+  manualScan: async (symbols = []) => {
     const resp = await fetch(`${BASE_URL}/screener/manual-scan/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rule_ids: ruleIds }),
+      body: JSON.stringify({ symbols }),
     });
+    return handleResponse(resp);
+  },
+
+  createScreenerRule: async (payload) => {
+    const resp = await fetch(`${BASE_URL}/screener/rules/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse(resp);
+  },
+
+  updateScreenerRule: async (ruleId, payload) => {
+    const resp = await fetch(`${BASE_URL}/screener/rules/${encodeURIComponent(ruleId)}/`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse(resp);
+  },
+
+  deleteScreenerRule: async (ruleId) => {
+    const resp = await fetch(`${BASE_URL}/screener/rules/${encodeURIComponent(ruleId)}/delete/`, {
+      method: 'DELETE',
+    });
+    if (resp.status === 204) return null;
     return handleResponse(resp);
   },
 

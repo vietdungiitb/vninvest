@@ -1,8 +1,8 @@
-"""Canonical operator scraping routes backed by service_ops matrix views."""
+"""Canonical operator scraping routes backed by service_ops control-plane views."""
 
 from django.urls import path
 
-from .views import matrix
+from .views import dataops, matrix
 
 app_name = 'operator_scraping'
 
@@ -14,4 +14,10 @@ urlpatterns = [
     path('matrix/cycles/<str:cycle_id>/abort/', matrix.MatrixCycleAbortView.as_view(), name='matrix_cycle_abort'),
     path('matrix/providers/', matrix.MatrixProvidersView.as_view(), name='matrix_providers'),
     path('matrix/monitor/', matrix.MatrixMonitorView.as_view(), name='matrix_monitor'),
+    path('dataops/coverage/', dataops.DataOpsCoverageView.as_view(), name='dataops_coverage'),
+    path('dataops/run-logs/', dataops.DataOpsRunLogsView.as_view(), name='dataops_run_logs'),
+    path('dataops/planner/preview/', dataops.DataOpsPlannerPreviewView.as_view(), name='dataops_planner_preview'),
+    path('dataops/planner/run/', dataops.DataOpsPlannerRunView.as_view(), name='dataops_planner_run'),
+    path('dataops/queue-tiers/', dataops.DataOpsQueueTiersView.as_view(), name='dataops_queue_tiers'),
+    path('dataops/runtime-config/', dataops.DataOpsRuntimeConfigView.as_view(), name='dataops_runtime_config'),
 ]

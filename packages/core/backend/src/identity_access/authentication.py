@@ -1,4 +1,5 @@
 """PAT-based authentication for packages/core DRF views."""
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -34,3 +35,16 @@ class CorePATAuthentication(BaseAuthentication):
 
     def authenticate_header(self, request):
         return self.keyword
+
+
+class CorePATAuthenticationScheme(OpenApiAuthenticationExtension):
+    target_class = 'identity_access.authentication.CorePATAuthentication'
+    name = 'CorePATBearer'
+
+    def get_security_definition(self, auto_schema):
+        return {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'PAT',
+            'description': 'Bearer token backed by Core PAT credentials.',
+        }

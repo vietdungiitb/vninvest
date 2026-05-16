@@ -1,7 +1,3 @@
-/**
- * SOCPage.jsx — Service Operations Center main page
- * Route: /operations-center
- */
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
@@ -14,15 +10,17 @@ import PrefetchPanel from '../components/soc/PrefetchPanel';
 import SignalsPanel from '../components/soc/SignalsPanel';
 import ScreenerPanel from '../components/soc/ScreenerPanel';
 import MatrixPanel from '../components/soc/MatrixPanel';
+import VnbrokerPanel from '../components/soc/VnbrokerPanel';
+import RuntimeKPIPanel from '../components/soc/RuntimeKPIPanel';
+
+const VALID_DOMAINS = ['overview', 'signals', 'dataops', 'prefetch', 'screener', 'vnbroker', 'runtime-kpi', 'matrix'];
 
 const SOCPage = ({ t }) => {
   const { t: translate } = useI18n();
   const pageT = typeof t === 'function' ? t : translate;
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab') || searchParams.get('domain') || 'overview';
-  const activeDomain = ['overview', 'signals', 'dataops', 'prefetch', 'screener', 'matrix'].includes(requestedTab)
-    ? requestedTab
-    : 'overview';
+  const activeDomain = VALID_DOMAINS.includes(requestedTab) ? requestedTab : 'overview';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [serviceList, setServiceList] = useState([]);
@@ -57,6 +55,8 @@ const SOCPage = ({ t }) => {
     dataops: <DataOpsPanel t={pageT} />,
     prefetch: <PrefetchPanel t={pageT} />,
     screener: <ScreenerPanel t={pageT} />,
+    vnbroker: <VnbrokerPanel t={pageT} />,
+    'runtime-kpi': <RuntimeKPIPanel t={pageT} />,
     matrix: <MatrixPanel t={pageT} />,
   };
 

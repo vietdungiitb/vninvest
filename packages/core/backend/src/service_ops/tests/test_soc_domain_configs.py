@@ -33,6 +33,7 @@ class DomainConfigValidationTestCase(SimpleTestCase):
         self.assertEqual(config.hot_user_demand.poll_interval_seconds, 15)
         self.assertEqual(config.hot_user_demand.max_batch_size, 25)
         self.assertEqual(config.warm_liquid_market.poll_interval_seconds, 120)
+        self.assertEqual(config.warm_liquid_market.max_batch_size, 50)
 
     def test_market_data_runtime_config_validation_rejects_invalid_queue_settings(self):
         config = MarketDataRuntimeConfig(
