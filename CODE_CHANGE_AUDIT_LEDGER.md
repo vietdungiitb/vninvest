@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D02 readiness kit: production shadow/soak template + parity dashboard checklist | docs
+
+## All Modified Files (8 files)
+| File | Change |
+|------|--------|
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PRODUCTION_SHADOW_SOAK_EVIDENCE_20260516.md` | Added production shadow/soak evidence template for >= 3 real trading days with parity thresholds and sign-off gates |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_DASHBOARD_CHECKLIST_20260516.md` | Added parity dashboard operational checklist with mandatory fields, mismatch categories, PASS criteria, and export requirements |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_SHADOW_EVIDENCE_20260516.md` | Linked required next artifacts and clarified D02 close conditions |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260516.md` | Added explicit pending blockers for production soak horizon and parity dashboard PASS requirement |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Refined D02 note to reference template availability and pending real-data fill requirement |
+| `module_tree_full.md` | Regenerated module tree after this governance-doc slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this D02 readiness-kit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this readiness-kit slice |
+
+## Validation
+- Governance document consistency check completed across taskboard/self-audit/parity evidence/readiness templates ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1211` modules) ✅
+
+## Residual risk
+- D02 remains open until production shadow/soak template is filled with >= 3 trading days and parity dashboard reaches PASS threshold.
+
 # 2026-05-16 | Global Alert Center D02 governance sync: parity/shadow evidence package normalization | docs
 
 ## All Modified Files (6 files)

@@ -1,3 +1,22 @@
+# 2026-05-16 — Global Alert Center D02 readiness kit complete (production soak template + parity dashboard checklist) ✅
+
+Status: **✅ readiness kit DONE** | **🔄 D02 still open by design until real production evidence is filled**
+
+## What changed
+- Added production shadow/soak evidence template with mandatory >= 3 trading-day horizon, parity thresholds, rollback and sign-off blocks.
+- Added parity dashboard checklist template with required KPI fields, mismatch taxonomy, PASS criteria and export checklist.
+- Linked the new templates back into parity evidence, self-audit and taskboard D02 notes.
+
+## Validation
+- Governance docs synchronized across:
+  - parity/shadow evidence
+  - self-audit protocol
+  - taskboard D02 state note
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Next
+- Fill production-run values in the new templates and produce final D02 close evidence package.
+
 # 2026-05-16 — Global Alert Center D02 governance sync complete (parity/shadow evidence normalized) ✅
 
 Status: **🔄 D02 IN PROGRESS (truthful)** | **✅ parity/shadow evidence package now aligned to current code reality** | **🟠 final legacy sunset gate still open**

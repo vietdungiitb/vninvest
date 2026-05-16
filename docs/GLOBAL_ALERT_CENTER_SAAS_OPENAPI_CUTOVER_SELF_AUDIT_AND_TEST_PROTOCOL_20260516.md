@@ -110,8 +110,12 @@ Block merge nếu có một trong các dấu hiệu sau:
 - [x] Taskboard `B01..D08` đã được chuyển trạng thái `REOPENED`
 - [x] Có audit artifact reality-check trong repo
 - [x] Remediation code slices (entity + endpoint + delivery state machine) đã hoàn tất và được chứng minh bằng test/evidence
+- [ ] Production shadow/soak evidence >= 3 ngày trade thật đã được ghi đầy đủ
+- [ ] Parity dashboard checklist đạt PASS theo ngưỡng >= 0.99
 
 ### G. Evidence links
 - [x] `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_SHADOW_EVIDENCE_20260516.md`
+- [ ] `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PRODUCTION_SHADOW_SOAK_EVIDENCE_20260516.md`
+- [ ] `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_DASHBOARD_CHECKLIST_20260516.md`
 - [x] `docs/RUN_CODE_REVIEW_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
 - [x] `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260516.md`

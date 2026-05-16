@@ -123,3 +123,10 @@ Notes:
 
 1. AI advisory ingestion still accepts `OrderFlowEvent(signal_type=OTHER, metadata.ai_signal)` as shim source; a stricter native advisory producer-only cutover is pending.
 2. Program-level soak/shadow evidence for final legacy decommission remains open and must be completed before any irreversible sunset.
+
+---
+
+## 7. Next required artifacts for D02 close
+
+1. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PRODUCTION_SHADOW_SOAK_EVIDENCE_20260516.md` filled with >= 3 real trading days.
+2. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_DASHBOARD_CHECKLIST_20260516.md` filled with parity dashboard outputs and PASS evidence.
