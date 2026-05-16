@@ -28,6 +28,7 @@
 | D05 | Unified-alert frontend bridge hardening | ✅ DONE | Copilot | Bridged legacy `getUnifiedAlerts` to canonical `coreApiAdapter` delivery path and removed browser-side snapshot synthesis fallback while preserving dashboard compatibility fields |
 | D06 | Cutover doc-pack sync wave | ✅ DONE | Copilot | Added full Global Alert Center SaaS OpenAPI cutover handoff/spec/plan/runbook document pack to repository |
 | D07 | packages/web alert-center route + adapter wave | ✅ DONE | Copilot | Added `alert-center` route/navigation/page registry wiring in packages/web and completed adapter delivery endpoint + env-factory behavior with focused tests |
+| D08 | signal_intelligence canonical alert model wave | ✅ DONE | Copilot | Added unified-alert read model fields, evidence-aware materializers, delivery route registration, and focused signal_intelligence regression coverage |
 
 **Legend**: ⬜ NOT STARTED | 🔄 IN PROGRESS | ✅ DONE | ❌ BLOCKED
 

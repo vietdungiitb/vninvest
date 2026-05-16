@@ -4,12 +4,23 @@ from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 
 
 class UnifiedAlertSerializer(serializers.ModelSerializer):
+    lane = serializers.SerializerMethodField()
+
     class Meta:
         model = UnifiedAlert
         fields = [
-            'alert_id', 'alert_type', 'symbol', 'severity', 'title', 'body',
-            'value', 'direction', 'session_date', 'triggered_at', 'source_ref', 'metadata',
+            'alert_id', 'alert_type', 'lane', 'symbol', 'severity', 'confidence', 'freshness_state',
+            'title', 'body', 'value', 'direction', 'session_date', 'triggered_at',
+            'source_ref', 'metadata', 'evidence',
         ]
+
+    def get_lane(self, obj):
+        return 'main' if obj.alert_type in {
+            UnifiedAlert.AlertTypeChoices.WHALE,
+            UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+            UnifiedAlert.AlertTypeChoices.SIGNAL,
+            UnifiedAlert.AlertTypeChoices.SYSTEM,
+        } else 'ai'
 
 
 class WhaleAlertCanonicalSerializer(serializers.ModelSerializer):

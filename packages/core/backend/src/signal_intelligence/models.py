@@ -17,6 +17,8 @@ class UnifiedAlert(models.Model):
         DARK_FLOW = 'dark_flow', 'Dark Flow'
         SIGNAL = 'signal', 'Signal'
         SYSTEM = 'system', 'System'
+        AI_ALERT = 'ai_alert', 'AI Alert'
+        AI_SUGGEST = 'ai_suggest', 'AI Suggest'
 
     class SeverityChoices(models.TextChoices):
         CRITICAL = 'critical', 'Critical'
@@ -33,6 +35,8 @@ class UnifiedAlert(models.Model):
     alert_type = models.CharField(max_length=16, choices=AlertTypeChoices.choices, db_index=True)
     symbol = models.CharField(max_length=32, db_index=True)
     severity = models.CharField(max_length=16, choices=SeverityChoices.choices, default=SeverityChoices.MEDIUM, db_index=True)
+    confidence = models.FloatField(default=0.0, db_index=True)
+    freshness_state = models.CharField(max_length=16, default='fresh', db_index=True)
     title = models.CharField(max_length=255)
     body = models.TextField(blank=True, default='')
     value = models.DecimalField(max_digits=24, decimal_places=2, null=True, blank=True)
@@ -46,6 +50,7 @@ class UnifiedAlert(models.Model):
     triggered_at = models.DateTimeField(db_index=True)
     source_ref = models.CharField(max_length=255, blank=True, default='')
     metadata = models.JSONField(default=dict, blank=True)
+    evidence = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = 'Unified Alert'

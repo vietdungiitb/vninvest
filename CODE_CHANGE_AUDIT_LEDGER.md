@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D08 complete: signal_intelligence canonical alert model wave | backend + docs
+
+## All Modified Files (11 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/models.py` | Expanded unified alert model semantics (confidence/freshness/evidence-ready fields and lane-aware contract support) |
+| `packages/core/backend/src/signal_intelligence/serializers.py` | Updated serializer outputs for canonical alert read model fields |
+| `packages/core/backend/src/signal_intelligence/materializers.py` | Added evidence-aware materialization paths for whale/market anomaly/AI signal flows |
+| `packages/core/backend/src/signal_intelligence/views.py` | Updated API view behavior for canonical alert-center contracts |
+| `packages/core/backend/src/signal_intelligence/urls.py` | Registered canonical delivery endpoints in active URL surface |
+| `packages/core/backend/src/signal_intelligence/api_urls.py` | Aligned API URL declarations with native alert-center contracts |
+| `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` | Added/updated focused regressions for the new materialization and delivery behavior |
+| `packages/core/backend/src/signal_intelligence/migrations/0004_unifiedalert_read_model_fields.py` | Added migration for unified alert read model field expansion |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added D08 row and marked DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added D08 evidence entry |
+| `PROGRESS_DASHBOARD.md` | Added D08 completion snapshot |
+
+## Validation
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test signal_intelligence.tests.test_materializers --keepdb` → **11 tests OK** ✅
+- `./start_dev.ps1` stack state and smoke checks remained healthy in this execution window (Core API health OK; Frontend health OK) ✅
+
+## Residual risk
+- Broader market_data/service_ops parity slices remain pending and are intentionally not bundled into this backend wave.
+
 # 2026-05-16 | Global Alert Center D07 complete: packages/web alert-center route + adapter wave | packages/web + docs
 
 ## All Modified Files (10 files)

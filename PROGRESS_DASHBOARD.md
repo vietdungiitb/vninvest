@@ -1,3 +1,19 @@
+# 2026-05-16 — Global Alert Center D08 complete (signal_intelligence canonical alert model wave) ✅
+
+Status: **✅ D08 DONE** | **✅ canonical unified-alert model/materializer wave landed** | **✅ signal_intelligence focused tests green in core container**
+
+## What changed
+- Completed backend `signal_intelligence` wave for canonical alert-center semantics.
+- Aligned models/serializers/materializers/views/routes plus migration on the native core path.
+- Kept this commit strictly in the signal-intelligence scope (no market_data/service_ops bundling).
+
+## Validation
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test signal_intelligence.tests.test_materializers --keepdb` → **11 tests OK** ✅
+- Runtime smoke from the active `start_dev.ps1` session remains healthy (Core API + Frontend) ✅
+
+## Next
+- Continue with market_data + service_ops parity wave in separate isolated commits.
+
 # 2026-05-16 — Global Alert Center D07 complete (packages/web alert-center route + adapter wave) ✅
 
 Status: **✅ D07 DONE** | **✅ packages/web route/nav/page wiring for alert-center landed** | **✅ adapter delivery endpoint + env-factory tests passed**

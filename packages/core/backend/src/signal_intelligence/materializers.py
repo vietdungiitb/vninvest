@@ -14,6 +14,42 @@ _WHALE_VOLUME_THRESHOLD = 500_000          # min volume để xem xét là whale
 _WHALE_VALUE_MIN_VND = 500_000_000         # 500 triệu VND
 _WHALE_VALUE_MAX_VND = 5_000_000_000       # 5 tỷ VND
 _MAX_ALERTS_PER_RUN = 30                   # max alerts mỗi lần chạy
+_MARKET_ANOMALY_PCT_THRESHOLD = 7.0
+
+
+def _build_snapshot_evidence(*, symbol: str, session_date, price_change_pct, stale: bool, source: str) -> dict:
+    return {
+        'symbol': symbol,
+        'session_date': session_date.isoformat() if hasattr(session_date, 'isoformat') else session_date,
+        'price_change_pct': float(price_change_pct or 0),
+        'stale': bool(stale),
+        'source': source,
+    }
+
+
+def _build_alert_evidence(*, source: str, signal_type: str, event_id: str, whale_intensity: float | None, matched_value: int | None) -> dict:
+    return {
+        'source': source,
+        'signal_type': signal_type,
+        'event_id': event_id,
+        'whale_intensity': whale_intensity,
+        'matched_value': matched_value,
+    }
+
+
+def _resolve_confidence_from_matched_value(matched_value: int | None, *, alert_family: str) -> float:
+    amount = int(matched_value or 0)
+    if alert_family == 'whale':
+        if amount >= 5_000_000_000:
+            return 0.99
+        if amount >= 1_000_000_000:
+            return 0.95
+        return 0.85
+    if amount >= 2_000_000_000:
+        return 0.9
+    if amount >= 1_000_000_000:
+        return 0.85
+    return 0.7
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
@@ -45,8 +81,25 @@ def materialize_unified_alerts(self):
             if alert.session_date != w.session_date:
                 alert.session_date = w.session_date
                 dirty = True
+            whale_confidence = _resolve_confidence_from_matched_value(w.matched_value, alert_family='whale')
+            if alert.confidence != whale_confidence:
+                alert.confidence = whale_confidence
+                dirty = True
+            if alert.freshness_state != 'fresh':
+                alert.freshness_state = 'fresh'
+                dirty = True
+            whale_evidence = _build_alert_evidence(
+                source='native_order_flow_events',
+                signal_type='whale_sync',
+                event_id=str(w.alert_id),
+                whale_intensity=None,
+                matched_value=int(w.matched_value),
+            )
+            if alert.evidence != whale_evidence:
+                alert.evidence = whale_evidence
+                dirty = True
             if dirty:
-                alert.save(update_fields=['source_ref', 'title', 'session_date'])
+                alert.save(update_fields=['source_ref', 'title', 'session_date', 'confidence', 'freshness_state', 'evidence'])
                 synced += 1
 
         dark_synced = 0
@@ -94,6 +147,8 @@ def materialize_unified_alerts(self):
                         'symbol': event.symbol,
                         'alert_type': UnifiedAlert.AlertTypeChoices.DARK_FLOW,
                         'severity': severity,
+                        'confidence': _resolve_confidence_from_matched_value(matched_value, alert_family='dark_flow'),
+                        'freshness_state': 'fresh',
                         'title': title,
                         'body': '',
                         'value': Decimal(str(matched_value)) if matched_value is not None else None,
@@ -102,6 +157,13 @@ def materialize_unified_alerts(self):
                         'triggered_at': event.triggered_at,
                         'source_ref': source_ref,
                         'metadata': metadata,
+                        'evidence': _build_alert_evidence(
+                            source='native_order_flow_events',
+                            signal_type=event.signal_type,
+                            event_id=str(event.event_id),
+                            whale_intensity=event.whale_intensity,
+                            matched_value=matched_value,
+                        ),
                     },
                 )
 
@@ -115,6 +177,13 @@ def materialize_unified_alerts(self):
             if alert.severity != severity:
                 alert.severity = severity
                 dirty_fields.append('severity')
+            confidence = _resolve_confidence_from_matched_value(matched_value, alert_family='dark_flow')
+            if alert.confidence != confidence:
+                alert.confidence = confidence
+                dirty_fields.append('confidence')
+            if alert.freshness_state != 'fresh':
+                alert.freshness_state = 'fresh'
+                dirty_fields.append('freshness_state')
             if alert.title != title:
                 alert.title = title
                 dirty_fields.append('title')
@@ -140,6 +209,16 @@ def materialize_unified_alerts(self):
             if alert.metadata != metadata:
                 alert.metadata = metadata
                 dirty_fields.append('metadata')
+            evidence = _build_alert_evidence(
+                source='native_order_flow_events',
+                signal_type=event.signal_type,
+                event_id=str(event.event_id),
+                whale_intensity=event.whale_intensity,
+                matched_value=matched_value,
+            )
+            if alert.evidence != evidence:
+                alert.evidence = evidence
+                dirty_fields.append('evidence')
             if dirty_fields and not alert_created:
                 alert.save(update_fields=dirty_fields)
 
@@ -166,6 +245,295 @@ def materialize_unified_alerts(self):
     except Exception as exc:
         logger.error("materialize_unified_alerts (native): %s", exc)
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30)
+def materialize_stale_quote_alerts(self, symbol: str | None = None):
+    from market_serving.models import SymbolSnapshot
+    from signal_intelligence.models import UnifiedAlert
+
+    qs = SymbolSnapshot.objects.filter(stale=True).order_by('-fetched_at', '-pk')
+    if symbol:
+        qs = qs.filter(symbol=symbol.upper())
+
+    created = 0
+    for snapshot in qs[:500]:
+        source_ref = f'stale_quote:{snapshot.symbol}:{snapshot.session_date.isoformat()}'
+        severity = UnifiedAlert.SeverityChoices.HIGH if abs(float(snapshot.price_change_pct or 0)) >= 10 else UnifiedAlert.SeverityChoices.MEDIUM
+        confidence = 0.9 if snapshot.stale else 0.7
+        evidence = _build_snapshot_evidence(
+            symbol=snapshot.symbol,
+            session_date=snapshot.session_date,
+            price_change_pct=snapshot.price_change_pct,
+            stale=snapshot.stale,
+            source='market_serving.symbol_snapshot',
+        )
+        alert, alert_created = UnifiedAlert.objects.get_or_create(
+            source_ref=source_ref,
+            defaults={
+                'symbol': snapshot.symbol,
+                'alert_type': UnifiedAlert.AlertTypeChoices.SYSTEM,
+                'severity': severity,
+                'confidence': confidence,
+                'freshness_state': 'stale',
+                'title': f'Bảng giá chậm {snapshot.symbol}',
+                'body': 'Snapshot thị trường đã bị đánh dấu stale.',
+                'value': None,
+                'direction': UnifiedAlert.DirectionChoices.NEUTRAL,
+                'session_date': snapshot.session_date,
+                'triggered_at': snapshot.fetched_at,
+                'source_ref': source_ref,
+                'metadata': {
+                    'source': 'market_serving.symbol_snapshot',
+                    'market_status': snapshot.market_status,
+                    'price_change_pct': float(snapshot.price_change_pct or 0),
+                },
+                'evidence': evidence,
+            },
+        )
+        dirty_fields: list[str] = []
+        if alert.alert_type != UnifiedAlert.AlertTypeChoices.SYSTEM:
+            alert.alert_type = UnifiedAlert.AlertTypeChoices.SYSTEM
+            dirty_fields.append('alert_type')
+        if alert.severity != severity:
+            alert.severity = severity
+            dirty_fields.append('severity')
+        if alert.confidence != confidence:
+            alert.confidence = confidence
+            dirty_fields.append('confidence')
+        if alert.freshness_state != 'stale':
+            alert.freshness_state = 'stale'
+            dirty_fields.append('freshness_state')
+        if alert.title != f'Bảng giá chậm {snapshot.symbol}':
+            alert.title = f'Bảng giá chậm {snapshot.symbol}'
+            dirty_fields.append('title')
+        if alert.body != 'Snapshot thị trường đã bị đánh dấu stale.':
+            alert.body = 'Snapshot thị trường đã bị đánh dấu stale.'
+            dirty_fields.append('body')
+        if alert.session_date != snapshot.session_date:
+            alert.session_date = snapshot.session_date
+            dirty_fields.append('session_date')
+        if alert.triggered_at != snapshot.fetched_at:
+            alert.triggered_at = snapshot.fetched_at
+            dirty_fields.append('triggered_at')
+        if alert.metadata != {
+            'source': 'market_serving.symbol_snapshot',
+            'market_status': snapshot.market_status,
+            'price_change_pct': float(snapshot.price_change_pct or 0),
+        }:
+            alert.metadata = {
+                'source': 'market_serving.symbol_snapshot',
+                'market_status': snapshot.market_status,
+                'price_change_pct': float(snapshot.price_change_pct or 0),
+            }
+            dirty_fields.append('metadata')
+        if alert.evidence != evidence:
+            alert.evidence = evidence
+            dirty_fields.append('evidence')
+        if dirty_fields and not alert_created:
+            alert.save(update_fields=dirty_fields)
+        if alert_created or dirty_fields:
+            created += 1
+
+    return {
+        'status': 'ok',
+        'created': created,
+        'source': 'market_serving.symbol_snapshot',
+    }
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30)
+def materialize_market_anomaly_alerts(self, symbol: str | None = None):
+    from market_serving.models import SymbolSnapshot
+    from signal_intelligence.models import UnifiedAlert
+
+    qs = SymbolSnapshot.objects.exclude(price_change_pct__isnull=True).order_by('-fetched_at', '-pk')
+    if symbol:
+        qs = qs.filter(symbol=symbol.upper())
+
+    created = 0
+    for snapshot in qs[:500]:
+        pct = float(snapshot.price_change_pct or 0)
+        if abs(pct) < _MARKET_ANOMALY_PCT_THRESHOLD:
+            continue
+        severity = UnifiedAlert.SeverityChoices.HIGH if abs(pct) >= 10 else UnifiedAlert.SeverityChoices.MEDIUM
+        confidence = 0.9 if abs(pct) >= 10 else 0.8
+        source_ref = f'market_anomaly:{snapshot.symbol}:{snapshot.session_date.isoformat()}'
+        evidence = _build_snapshot_evidence(
+            symbol=snapshot.symbol,
+            session_date=snapshot.session_date,
+            price_change_pct=snapshot.price_change_pct,
+            stale=snapshot.stale,
+            source='market_serving.symbol_snapshot',
+        )
+        alert, alert_created = UnifiedAlert.objects.get_or_create(
+            source_ref=source_ref,
+            defaults={
+                'symbol': snapshot.symbol,
+                'alert_type': UnifiedAlert.AlertTypeChoices.SIGNAL,
+                'severity': severity,
+                'confidence': confidence,
+                'freshness_state': 'fresh' if not snapshot.stale else 'stale',
+                'title': f'Biến động bất thường {snapshot.symbol}',
+                'body': f'Biến động giá {pct:.2f}%',
+                'value': None,
+                'direction': UnifiedAlert.DirectionChoices.NEUTRAL,
+                'session_date': snapshot.session_date,
+                'triggered_at': snapshot.fetched_at,
+                'source_ref': source_ref,
+                'metadata': {
+                    'source': 'market_serving.symbol_snapshot',
+                    'market_status': snapshot.market_status,
+                    'price_change_pct': pct,
+                },
+                'evidence': evidence,
+            },
+        )
+        dirty_fields: list[str] = []
+        if alert.alert_type != UnifiedAlert.AlertTypeChoices.SIGNAL:
+            alert.alert_type = UnifiedAlert.AlertTypeChoices.SIGNAL
+            dirty_fields.append('alert_type')
+        if alert.severity != severity:
+            alert.severity = severity
+            dirty_fields.append('severity')
+        if alert.confidence != confidence:
+            alert.confidence = confidence
+            dirty_fields.append('confidence')
+        freshness_state = 'fresh' if not snapshot.stale else 'stale'
+        if alert.freshness_state != freshness_state:
+            alert.freshness_state = freshness_state
+            dirty_fields.append('freshness_state')
+        if alert.title != f'Biến động bất thường {snapshot.symbol}':
+            alert.title = f'Biến động bất thường {snapshot.symbol}'
+            dirty_fields.append('title')
+        if alert.body != f'Biến động giá {pct:.2f}%':
+            alert.body = f'Biến động giá {pct:.2f}%'
+            dirty_fields.append('body')
+        if alert.session_date != snapshot.session_date:
+            alert.session_date = snapshot.session_date
+            dirty_fields.append('session_date')
+        if alert.triggered_at != snapshot.fetched_at:
+            alert.triggered_at = snapshot.fetched_at
+            dirty_fields.append('triggered_at')
+        if alert.metadata != {
+            'source': 'market_serving.symbol_snapshot',
+            'market_status': snapshot.market_status,
+            'price_change_pct': pct,
+        }:
+            alert.metadata = {
+                'source': 'market_serving.symbol_snapshot',
+                'market_status': snapshot.market_status,
+                'price_change_pct': pct,
+            }
+            dirty_fields.append('metadata')
+        if alert.evidence != evidence:
+            alert.evidence = evidence
+            dirty_fields.append('evidence')
+        if dirty_fields and not alert_created:
+            alert.save(update_fields=dirty_fields)
+        if alert_created or dirty_fields:
+            created += 1
+
+    return {
+        'status': 'ok',
+        'created': created,
+        'source': 'market_serving.symbol_snapshot',
+    }
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30)
+def materialize_ai_signal_alerts(self, symbol: str | None = None):
+    from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
+
+    qs = OrderFlowEvent.objects.filter(
+        signal_type=OrderFlowEvent.SignalTypeChoices.OTHER,
+    ).order_by('-triggered_at', '-pk')
+    if symbol:
+        qs = qs.filter(symbol=symbol.upper())
+
+    created = 0
+    for event in qs[:500]:
+        metadata = event.metadata if isinstance(event.metadata, dict) else {}
+        if not metadata.get('ai_signal'):
+            continue
+        source_ref = event.source_ref or f'ai_signal:{event.event_id}'
+        confidence = float(metadata.get('confidence') or event.strength or 0.7)
+        severity = UnifiedAlert.SeverityChoices.HIGH if confidence >= 0.85 else UnifiedAlert.SeverityChoices.MEDIUM
+        evidence = {
+            'source': 'signal_intelligence.ai_signal_events',
+            'event_id': str(event.event_id),
+            'ai_signal': metadata.get('ai_signal'),
+            'confidence': confidence,
+        }
+        alert, alert_created = UnifiedAlert.objects.get_or_create(
+            source_ref=source_ref,
+            defaults={
+                'symbol': event.symbol,
+                'alert_type': UnifiedAlert.AlertTypeChoices.AI_ALERT,
+                'severity': severity,
+                'confidence': confidence,
+                'freshness_state': 'fresh',
+                'title': str(metadata.get('title') or f'AI tín hiệu {event.symbol}'),
+                'body': str(metadata.get('body') or ''),
+                'value': None,
+                'direction': UnifiedAlert.DirectionChoices.NEUTRAL,
+                'session_date': event.session_date,
+                'triggered_at': event.triggered_at,
+                'source_ref': source_ref,
+                'metadata': {
+                    **metadata,
+                    'source': 'signal_intelligence.ai_signal_events',
+                },
+                'evidence': evidence,
+            },
+        )
+        dirty_fields: list[str] = []
+        if alert.alert_type != UnifiedAlert.AlertTypeChoices.AI_ALERT:
+            alert.alert_type = UnifiedAlert.AlertTypeChoices.AI_ALERT
+            dirty_fields.append('alert_type')
+        if alert.severity != severity:
+            alert.severity = severity
+            dirty_fields.append('severity')
+        if alert.confidence != confidence:
+            alert.confidence = confidence
+            dirty_fields.append('confidence')
+        if alert.freshness_state != 'fresh':
+            alert.freshness_state = 'fresh'
+            dirty_fields.append('freshness_state')
+        title = str(metadata.get('title') or f'AI tín hiệu {event.symbol}')
+        body = str(metadata.get('body') or '')
+        if alert.title != title:
+            alert.title = title
+            dirty_fields.append('title')
+        if alert.body != body:
+            alert.body = body
+            dirty_fields.append('body')
+        if alert.session_date != event.session_date:
+            alert.session_date = event.session_date
+            dirty_fields.append('session_date')
+        if alert.triggered_at != event.triggered_at:
+            alert.triggered_at = event.triggered_at
+            dirty_fields.append('triggered_at')
+        updated_metadata = {
+            **metadata,
+            'source': 'signal_intelligence.ai_signal_events',
+        }
+        if alert.metadata != updated_metadata:
+            alert.metadata = updated_metadata
+            dirty_fields.append('metadata')
+        if alert.evidence != evidence:
+            alert.evidence = evidence
+            dirty_fields.append('evidence')
+        if dirty_fields and not alert_created:
+            alert.save(update_fields=dirty_fields)
+        if alert_created or dirty_fields:
+            created += 1
+
+    return {
+        'status': 'ok',
+        'created': created,
+        'source': 'signal_intelligence.ai_signal_events',
+    }
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
@@ -222,6 +590,14 @@ def _native_whale_detect(symbol: str | None = None):
 
         label = 'Cá mập mua' if side == 'buy' else 'Cá mập bán'
         severity = 'high' if matched_value >= 2_000_000_000 else 'medium'
+        confidence = _resolve_confidence_from_matched_value(matched_value, alert_family='whale')
+        evidence = _build_alert_evidence(
+            source='native_order_flow_events',
+            signal_type=event.signal_type,
+            event_id=str(event.event_id),
+            whale_intensity=event.whale_intensity,
+            matched_value=matched_value,
+        )
 
         if event.unified_alert_id:
             alert = event.unified_alert
@@ -233,6 +609,8 @@ def _native_whale_detect(symbol: str | None = None):
                     'symbol': event.symbol,
                     'alert_type': UnifiedAlert.AlertTypeChoices.WHALE,
                     'severity': severity,
+                    'confidence': confidence,
+                    'freshness_state': 'fresh',
                     'direction': side,
                     'session_date': session_date,
                     'triggered_at': triggered_at,
@@ -245,6 +623,7 @@ def _native_whale_detect(symbol: str | None = None):
                         'event_id': str(event.event_id),
                         'whale_intensity': event.whale_intensity,
                     },
+                    'evidence': evidence,
                 },
             )
 
@@ -265,6 +644,12 @@ def _native_whale_detect(symbol: str | None = None):
         if alert.severity != severity:
             alert.severity = severity
             alert_dirty_fields.append('severity')
+        if alert.confidence != confidence:
+            alert.confidence = confidence
+            alert_dirty_fields.append('confidence')
+        if alert.freshness_state != 'fresh':
+            alert.freshness_state = 'fresh'
+            alert_dirty_fields.append('freshness_state')
         if alert.direction != side:
             alert.direction = side
             alert_dirty_fields.append('direction')
@@ -290,6 +675,9 @@ def _native_whale_detect(symbol: str | None = None):
         if alert.metadata != alert_metadata:
             alert.metadata = alert_metadata
             alert_dirty_fields.append('metadata')
+        if alert.evidence != evidence:
+            alert.evidence = evidence
+            alert_dirty_fields.append('evidence')
         if alert_dirty_fields and not alert_created:
             alert.save(update_fields=alert_dirty_fields)
 

@@ -1,10 +1,22 @@
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
-from signal_intelligence.materializers import materialize_unified_alerts, materialize_whale_feed_aggregate
+from signal_intelligence.materializers import (
+    materialize_ai_signal_alerts,
+    materialize_market_anomaly_alerts,
+    materialize_stale_quote_alerts,
+    materialize_unified_alerts,
+    materialize_whale_feed_aggregate,
+)
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
+from signal_intelligence.views import UnifiedAlertListView, UserUnifiedAlertDeliveryView
+from market_serving.models import SymbolSnapshot
+from identity_access.models import UserProfile
+from user_workspace.models import Portfolio, Transaction, Watchlist, WatchlistItem
 
 
 class WhaleMaterializerTests(TestCase):
@@ -34,8 +46,11 @@ class WhaleMaterializerTests(TestCase):
         self.assertEqual(result['source'], 'native_order_flow_events')
         self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.WHALE)
         self.assertEqual(alert.direction, UnifiedAlert.DirectionChoices.BUY)
+        self.assertEqual(alert.confidence, 0.95)
+        self.assertEqual(alert.freshness_state, 'fresh')
         self.assertEqual(alert.value, Decimal('1000000000'))
         self.assertEqual(alert.metadata['source'], 'native_order_flow_events')
+        self.assertEqual(alert.evidence['matched_value'], 1000000000)
         self.assertEqual(event.unified_alert_id, alert.pk)
         self.assertEqual(canonical.symbol, 'VCI')
         self.assertEqual(canonical.side, WhaleAlertCanonical.SideChoices.BUY)
@@ -115,8 +130,11 @@ class UnifiedAlertMaterializerTests(TestCase):
         self.assertEqual(result['dark_synced'], 1)
         self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.DARK_FLOW)
         self.assertEqual(alert.direction, UnifiedAlert.DirectionChoices.SELL)
+        self.assertEqual(alert.confidence, 0.85)
+        self.assertEqual(alert.freshness_state, 'fresh')
         self.assertEqual(alert.value, Decimal('1200000000'))
         self.assertEqual(alert.metadata['source'], 'native_order_flow_events')
+        self.assertEqual(alert.evidence['signal_type'], OrderFlowEvent.SignalTypeChoices.DARK_FLOW)
         self.assertEqual(event.unified_alert_id, alert.pk)
 
     def test_materialize_unified_alerts_is_idempotent_for_dark_flow_event(self):
@@ -140,3 +158,224 @@ class UnifiedAlertMaterializerTests(TestCase):
         self.assertEqual(first['dark_synced'], 1)
         self.assertEqual(second['dark_synced'], 0)
         self.assertEqual(UnifiedAlert.objects.filter(source_ref='orderflow-vci-dark').count(), 1)
+
+    def test_unified_alert_list_view_defaults_to_main_lane_and_supports_ai_lane(self):
+        now = timezone.now()
+        main_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.92,
+            freshness_state='fresh',
+            title='Main lane whale',
+            body='',
+            session_date=now.date(),
+            triggered_at=now,
+            evidence={'source': 'native_order_flow_events'},
+        )
+        ai_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.AI_ALERT,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.LOW,
+            confidence=0.66,
+            freshness_state='fresh',
+            title='AI lane suggestion',
+            body='',
+            session_date=now.date(),
+            triggered_at=now,
+            evidence={'source': 'ai_lane'},
+        )
+
+        user = get_user_model().objects.create_user(username='signal-tester', password='password123')
+        factory = APIRequestFactory()
+
+        main_request = factory.get('/signals/unified-alert/')
+        force_authenticate(main_request, user=user)
+        main_response = UnifiedAlertListView.as_view()(main_request)
+        self.assertEqual(main_response.status_code, 200)
+        self.assertEqual(main_response.data['results'][0]['alert_id'], str(main_alert.alert_id))
+        self.assertEqual(main_response.data['results'][0]['lane'], 'main')
+
+        ai_request = factory.get('/signals/unified-alert/?lane=ai')
+        force_authenticate(ai_request, user=user)
+        ai_response = UnifiedAlertListView.as_view()(ai_request)
+        self.assertEqual(ai_response.status_code, 200)
+        self.assertEqual(ai_response.data['results'][0]['alert_id'], str(ai_alert.alert_id))
+        self.assertEqual(ai_response.data['results'][0]['lane'], 'ai')
+
+    def test_materialize_stale_quote_alerts_creates_system_alert_from_snapshot(self):
+        now = timezone.now()
+        snapshot = SymbolSnapshot.objects.create(
+            symbol='SSI',
+            session_date=now.date(),
+            price=Decimal('25000.00'),
+            price_change=Decimal('0.00'),
+            price_change_pct=Decimal('0.00'),
+            volume=1000,
+            market_status=SymbolSnapshot.MarketStatusChoices.OPEN,
+            source=SymbolSnapshot.SourceChoices.CORE,
+            stale=False,
+        )
+        SymbolSnapshot.objects.filter(pk=snapshot.pk).update(stale=True)
+
+        result = materialize_stale_quote_alerts.run(symbol='SSI')
+
+        alert = UnifiedAlert.objects.get(source_ref='stale_quote:SSI:' + now.date().isoformat())
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['created'], 1)
+        self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.SYSTEM)
+        self.assertEqual(alert.freshness_state, 'stale')
+        self.assertEqual(alert.evidence['stale'], True)
+
+    def test_materialize_market_anomaly_alerts_creates_signal_alert_from_snapshot(self):
+        now = timezone.now()
+        snapshot = SymbolSnapshot.objects.create(
+            symbol='VCI',
+            session_date=now.date(),
+            price=Decimal('40000.00'),
+            price_change=Decimal('3500.00'),
+            price_change_pct=Decimal('8.75'),
+            volume=1500,
+            market_status=SymbolSnapshot.MarketStatusChoices.OPEN,
+            source=SymbolSnapshot.SourceChoices.CORE,
+            stale=False,
+        )
+
+        result = materialize_market_anomaly_alerts.run(symbol='VCI')
+
+        alert = UnifiedAlert.objects.get(source_ref='market_anomaly:VCI:' + now.date().isoformat())
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['created'], 1)
+        self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.SIGNAL)
+        self.assertEqual(alert.severity, UnifiedAlert.SeverityChoices.MEDIUM)
+        self.assertEqual(alert.confidence, 0.8)
+        self.assertEqual(alert.evidence['price_change_pct'], 8.75)
+
+    def test_materialize_ai_signal_alerts_creates_ai_lane_alert(self):
+        now = timezone.now()
+        OrderFlowEvent.objects.create(
+            symbol='FPT',
+            session_date=now.date(),
+            signal_type=OrderFlowEvent.SignalTypeChoices.OTHER,
+            side=OrderFlowEvent.SideChoices.NEUTRAL,
+            strength=0.88,
+            whale_intensity=0.2,
+            source_ref='ai-signal-fpt',
+            metadata={
+                'ai_signal': 'price_momentum_breakout',
+                'title': 'AI breakout',
+                'body': 'Momentum breakout detected',
+                'confidence': 0.93,
+            },
+            triggered_at=now,
+        )
+
+        result = materialize_ai_signal_alerts.run(symbol='FPT')
+
+        alert = UnifiedAlert.objects.get(source_ref='ai-signal-fpt')
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['created'], 1)
+        self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.AI_ALERT)
+        self.assertEqual(alert.confidence, 0.93)
+        self.assertEqual(alert.metadata['source'], 'signal_intelligence.ai_signal_events')
+        self.assertEqual(alert.evidence['ai_signal'], 'price_momentum_breakout')
+
+    def test_user_unified_alert_delivery_view_filters_by_user_symbols_and_threshold(self):
+        now = timezone.now()
+        user = get_user_model().objects.create_user(username='delivery-user', password='password123')
+        UserProfile.objects.create(user=user, whale_alert_threshold=700)
+        watchlist = Watchlist.objects.create(user=user, name='Theo dõi', is_default=True)
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='VCI')
+        portfolio = Portfolio.objects.create(user=user, name='Danh mục', is_default=True)
+        Transaction.objects.create(
+            portfolio=portfolio,
+            symbol='FPT',
+            transaction_type=Transaction.TransactionType.BUY,
+            date=now.date(),
+            price=Decimal('10000.00'),
+            quantity=10,
+        )
+        allowed_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.95,
+            freshness_state='fresh',
+            title='Whale VCI',
+            body='',
+            value=Decimal('1000000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='delivery-allowed',
+            evidence={'source': 'test'},
+        )
+        filtered_by_threshold = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            confidence=0.8,
+            freshness_state='fresh',
+            title='Whale nhỏ VCI',
+            body='',
+            value=Decimal('600000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='delivery-threshold',
+            evidence={'source': 'test'},
+        )
+        filtered_by_symbol = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM,
+            symbol='SSI',
+            severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            confidence=0.8,
+            freshness_state='stale',
+            title='SSI stale',
+            body='',
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='delivery-symbol',
+            evidence={'source': 'test'},
+        )
+
+        factory = APIRequestFactory()
+        request = factory.get('/signals/unified-alert/delivery/')
+        force_authenticate(request, user=user)
+
+        response = UserUnifiedAlertDeliveryView.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        result_ids = {item['alert_id'] for item in response.data['results']}
+        self.assertIn(str(allowed_alert.alert_id), result_ids)
+        self.assertNotIn(str(filtered_by_threshold.alert_id), result_ids)
+        self.assertNotIn(str(filtered_by_symbol.alert_id), result_ids)
+
+    def test_user_unified_alert_delivery_route_is_registered_under_core_v1(self):
+        now = timezone.now()
+        user = get_user_model().objects.create_user(username='delivery-route-user', password='password123')
+        UserProfile.objects.create(user=user, whale_alert_threshold=500)
+        watchlist = Watchlist.objects.create(user=user, name='Theo dõi route', is_default=True)
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='VCI')
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.91,
+            freshness_state='fresh',
+            title='Whale route VCI',
+            body='',
+            value=Decimal('800000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='delivery-route-allowed',
+            evidence={'source': 'test'},
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.get('/core/v1/unified-alert/delivery', {'lane': 'main'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()['results']), 1)
