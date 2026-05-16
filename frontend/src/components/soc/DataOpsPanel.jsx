@@ -369,6 +369,11 @@ const DEFAULT_MATRIX_SYMBOL_GROUPS = [
   { id: 'top100', name: 'Top 100' },
   { id: 'vn30', name: 'VN30' },
 ];
+// Danh sách nhóm mã mà backend hỗ trợ cho Matrix cycle (vn30 + vn100/top100)
+const MATRIX_SYMBOL_GROUPS_OPTIONS = [
+  { id: 'vn30', name: 'VN30' },
+  { id: 'vn100', name: 'VN100' },
+];
 const MATRIX_POLL_MS = 5000;
 
 const normalizeMatrixSymbolGroups = (symbolGroups) => {
@@ -450,6 +455,7 @@ const DataOpsPanel = ({ t }) => {
   const [matrixProviders, setMatrixProviders] = useState([]);
   const [matrixSelectedProviders, setMatrixSelectedProviders] = useState([]);
   const [matrixSymbolGroups, setMatrixSymbolGroups] = useState(DEFAULT_MATRIX_SYMBOL_GROUPS);
+  const [matrixSelectedGroups, setMatrixSelectedGroups] = useState(MATRIX_SYMBOL_GROUPS_OPTIONS.map((g) => g.id));
   const [matrixStatus, setMatrixStatus] = useState('idle');
   const [matrixError, setMatrixError] = useState(null);
   const [matrixLoading, setMatrixLoading] = useState(true);
@@ -523,7 +529,10 @@ const DataOpsPanel = ({ t }) => {
     }
     try {
       setMatrixError(null);
-      const data = await socApi.startMatrixCycle({ providers: matrixSelectedProviders });
+      const data = await socApi.startMatrixCycle({
+        providers: matrixSelectedProviders,
+        symbol_group_ids: matrixSelectedGroups,
+      });
       setMatrixCycleId(data.cycle_id || '');
       setMatrixStatus(data.status || 'active');
       setMatrixSelectedProviders(Array.isArray(data.providers) ? data.providers : matrixSelectedProviders);
@@ -554,6 +563,13 @@ const DataOpsPanel = ({ t }) => {
     if (ACTIVE_MATRIX_STATUSES.has(matrixStatus)) return;
     setMatrixSelectedProviders((prev) =>
       prev.includes(providerId) ? prev.filter((id) => id !== providerId) : [...prev, providerId],
+    );
+  };
+
+  const handleMatrixGroupToggle = (groupId) => {
+    if (ACTIVE_MATRIX_STATUSES.has(matrixStatus)) return;
+    setMatrixSelectedGroups((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId],
     );
   };
   // ─────────────────────────────────────────────────────────────────────────────
@@ -760,7 +776,7 @@ const DataOpsPanel = ({ t }) => {
         </div>
 
         {/* Operational context: fields / scope / time constraint */}
-        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <div className="mb-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded border border-slate-700 bg-slate-800/50 p-3">
             <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
               {t('soc.dataops.snapshot_context_fields_label')}
@@ -769,16 +785,30 @@ const DataOpsPanel = ({ t }) => {
               {t('soc.dataops.snapshot_context_fields_value')}
             </p>
           </div>
-          <div className="rounded border border-slate-700 bg-slate-800/50 p-3">
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+          <div className="rounded border border-indigo-800/50 bg-slate-800/50 p-3">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-indigo-400">
               {t('soc.dataops.snapshot_context_scope_label')}
             </p>
             <div className="flex flex-wrap gap-1">
-              {matrixSymbolGroups.map((g) => (
-                <span key={g.id} className="rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-200">
-                  {g.name}
-                </span>
-              ))}
+              {MATRIX_SYMBOL_GROUPS_OPTIONS.map((g) => {
+                const isSelected = matrixSelectedGroups.includes(g.id);
+                const isActive = ACTIVE_MATRIX_STATUSES.has(matrixStatus);
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    disabled={isActive}
+                    onClick={() => handleMatrixGroupToggle(g.id)}
+                    className={`rounded-full border px-2 py-0.5 text-xs font-semibold transition ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-800 text-indigo-100'
+                        : 'border-slate-600 bg-slate-900 text-slate-400 hover:border-indigo-500 hover:text-indigo-200'
+                    } ${isActive ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+                  >
+                    {g.name}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="rounded border border-amber-800/40 bg-amber-950/20 p-3">
@@ -793,6 +823,11 @@ const DataOpsPanel = ({ t }) => {
             </p>
           </div>
         </div>
+
+        {/* F3: Manual operation note */}
+        <p className="mb-4 text-[11px] text-slate-500">
+          {t('soc.dataops.snapshot_manual_note')}
+        </p>
 
         {matrixError && (
           <div className="mb-4 rounded-lg border border-red-700 bg-red-900/50 p-3 text-sm text-red-200">
