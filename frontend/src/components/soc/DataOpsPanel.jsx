@@ -35,6 +35,16 @@ const DEFAULT_BACKFILL_FORM = {
   executionMode: 'async',
 };
 
+const BACKFILL_DATASET_FIELDS = {
+  daily_prices:   'soc.dataops.dataset_field_daily_prices',
+  intraday_bars:  'soc.dataops.dataset_field_intraday_bars',
+  session_facts:  'soc.dataops.dataset_field_session_facts',
+  whale_events:   'soc.dataops.dataset_field_whale_events',
+  order_flow:     'soc.dataops.dataset_field_order_flow',
+  dark_flow:      'soc.dataops.dataset_field_dark_flow',
+  intraday_tick:  'soc.dataops.dataset_field_intraday_tick',
+};
+
 const BackfillCenterSection = ({ t, canApply }) => {
   const [form, setForm] = useState(DEFAULT_BACKFILL_FORM);
   const [status, setStatus] = useState(null);
@@ -78,21 +88,30 @@ const BackfillCenterSection = ({ t, canApply }) => {
 
   return (
     <div className="rounded-lg border border-indigo-800 bg-slate-900 p-6">
-      <h3 className="text-lg font-bold text-white mb-4">{t('soc.dataops.backfill_center')}</h3>
+      <div className="mb-3 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-white">{t('soc.dataops.backfill_center')}</h3>
+        <span className="rounded bg-amber-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-100">
+          {t('soc.dataops.backfill_context_badge')}
+        </span>
+      </div>
+      <p className="mb-4 text-sm text-slate-400">{t('soc.dataops.backfill_context_purpose')}</p>
 
       {/* Dataset Checkboxes */}
       <div className="mb-4">
         <p className="text-xs text-slate-400 mb-2">{t('soc.dataops.backfill_datasets')}</p>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-x-5 gap-y-3">
           {BACKFILL_DATASETS.map(({ key, labelKey }) => (
-            <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+            <label key={key} className="flex items-start gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.datasets.includes(key)}
                 onChange={() => toggleDataset(key)}
-                className="accent-indigo-500"
+                className="mt-0.5 accent-indigo-500"
               />
-              <span className="text-sm text-slate-200">{t(labelKey)}</span>
+              <span>
+                <span className="block text-sm text-slate-200">{t(labelKey)}</span>
+                <span className="block text-[11px] text-slate-500">{t(BACKFILL_DATASET_FIELDS[key] || 'soc.dataops.dataset_unknown')}</span>
+              </span>
             </label>
           ))}
         </div>
@@ -707,7 +726,12 @@ const DataOpsPanel = ({ t }) => {
       <div className="rounded-lg border border-indigo-800 bg-slate-900 p-6">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold text-white">{t('soc.dataops.live_snapshot_title')}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-white">{t('soc.dataops.live_snapshot_title')}</h3>
+              <span className="rounded bg-emerald-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-100">
+                {t('soc.dataops.snapshot_context_badge')}
+              </span>
+            </div>
             <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.live_snapshot_description')}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -732,6 +756,41 @@ const DataOpsPanel = ({ t }) => {
                 {t('soc.matrix.start_cycle')}
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Operational context: fields / scope / time constraint */}
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded border border-slate-700 bg-slate-800/50 p-3">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+              {t('soc.dataops.snapshot_context_fields_label')}
+            </p>
+            <p className="text-xs leading-5 text-slate-300">
+              {t('soc.dataops.snapshot_context_fields_value')}
+            </p>
+          </div>
+          <div className="rounded border border-slate-700 bg-slate-800/50 p-3">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+              {t('soc.dataops.snapshot_context_scope_label')}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {matrixSymbolGroups.map((g) => (
+                <span key={g.id} className="rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-200">
+                  {g.name}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="rounded border border-amber-800/40 bg-amber-950/20 p-3">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-400">
+              {t('soc.dataops.snapshot_context_time_label')}
+            </p>
+            <p className="text-xs font-semibold text-amber-200">
+              {t('soc.dataops.snapshot_context_time_value')}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {t('soc.dataops.snapshot_context_time_warn')}
+            </p>
           </div>
         </div>
 
