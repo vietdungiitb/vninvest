@@ -770,9 +770,7 @@ export const getRealtimeHealth = () =>
   axios.get(`${apiBaseURL.replace(/\/api$/, '')}/api/health/realtime/`);
 export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management/price-alerts/${id}/mark-triggered/`);
 
-// --- Admin Ops (is_staff only) ---
-export const getAdminOpsStats = () => apiClient.get('/admin-ops/stats/');
-export const getAdminRuntimeKPI = () => apiClient.get('/admin-ops/runtime-kpi/');
+// --- Core operator (admin/core routes) ---
 export const getAdminAuditLog = (params = {}) => apiClient.get('/core/v1/audit-log', { params, baseURL: '' });
 export const getCoreOperatorOverview = () => apiClient.get('/core/v1/operator/overview/', { baseURL: '' });
 export const getCoreOperatorHealth = () => apiClient.get('/core/v1/operator/health/', { baseURL: '' });
@@ -780,48 +778,6 @@ export const getCoreOperatorTenants = (params = {}) => apiClient.get('/core/v1/o
 export const getCoreOperatorTenantDetail = (tenantId) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/`);
 export const getCoreOperatorTenantServiceAccounts = (tenantId, params = {}) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/service-accounts/`, { params });
 export const getCoreOperatorTenantPATs = (tenantId, params = {}) => apiClient.get(`/core/v1/operator/tenants/${tenantId}/pats/`, { params });
-export const getAdminSystemAiSettings = () => apiClient.get('/admin-ops/system-ai-settings/');
-export const updateAdminSystemAiSettings = (payload) => apiClient.put('/admin-ops/system-ai-settings/', payload);
-export const getAdminPrefetchRuntimeSettings = () => apiClient.get('/admin-ops/system-ai-settings/');
-export const updateAdminPrefetchRuntimeSettings = (payload) =>
-  apiClient.put('/admin-ops/system-ai-settings/', { prefetch_runtime_settings: payload });
-export const getAdminPrefetchTimePolicy = () => apiClient.get('/admin-ops/system-ai-settings/');
-export const updateAdminPrefetchTimePolicy = (payload) =>
-  apiClient.put('/admin-ops/system-ai-settings/', { prefetch_time_policy: payload });
-export const getAdminVnbrokerConfigCurrent = () => apiClient.get('/admin-ops/vnbroker-config/current/');
-export const updateAdminVnbrokerConfig = (payload) => apiClient.patch('/admin-ops/vnbroker-config/update-config/', payload);
-export const resetAdminVnbrokerConfig = () => apiClient.post('/admin-ops/vnbroker-config/reset-to-defaults/');
-export const getAdminVnbrokerConfigChangelog = (limit = 20, offset = 0) =>
-  apiClient.get(`/admin-ops/vnbroker-config/changelog/?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
-export const getAdminVnbrokerBenchmarkLatest = () =>
-  apiClient.get('/admin-ops/vnbroker-config/benchmark-price-board/latest/');
-export const runAdminVnbrokerBenchmark = (payload) =>
-  apiClient.post('/admin-ops/vnbroker-config/benchmark-price-board/run/', payload || {});
-export const warmTickerPrefetch = (mode = 'async') =>
-  apiClient.post(`/admin-ops/prefetch/warm/?mode=${encodeURIComponent(mode)}`);
-export const syncMarketGroups = (mode = 'all', clear = false) =>
-  apiClient.post(`/admin-ops/market-groups/sync/?mode=${mode}&clear=${clear}`);
-
-export const adminIntradaySideBackfillPreview = (payload) =>
-  apiClient.post('/admin-ops/intraday-side-backfill/preview/', payload);
-export const adminIntradaySideBackfillApply = (payload) =>
-  apiClient.post('/admin-ops/intraday-side-backfill/apply/', payload);
-export const adminIntradaySideBackfillStatus = (taskId) =>
-  apiClient.get(`/admin-ops/intraday-side-backfill/status/${encodeURIComponent(taskId)}/`);
-export const adminIntradayUniverseWarmNow = () =>
-  apiClient.post('/admin-ops/intraday-universe/warm-now/');
-export const getAdminSignalsSummary = () => apiClient.get('/admin-ops/signals/summary/');
-export const getAdminSignalsConfig = () => apiClient.get('/admin-ops/signals/config/');
-export const previewAdminSignalsConfig = (payload) => apiClient.post('/admin-ops/signals/config/preview/', payload);
-export const updateAdminSignalsConfig = (payload) => apiClient.put('/admin-ops/signals/config/', payload);
-export const previewAdminSignalsUniverse = (payload) => apiClient.post('/admin-ops/signals/universe/preview/', payload);
-export const applyAdminSignalsUniverse = (payload) => apiClient.post('/admin-ops/signals/universe/apply/', payload);
-export const previewAdminSignalMaterialization = (payload = {}) => apiClient.post('/admin-ops/signals/money-flow/materialization/preview/', payload);
-export const getAdminSignalJobs = (params = {}) => apiClient.get('/admin-ops/signals/jobs/', { params });
-export const runAdminSignalJob = (payload) => apiClient.post('/admin-ops/signals/jobs/run/', payload);
-export const retryAdminSignalJob = (runId) => apiClient.post(`/admin-ops/signals/jobs/${encodeURIComponent(runId)}/retry/`);
-export const getAdminSignalRecentEvents = (params = {}) => apiClient.get('/admin-ops/signals/events/recent/', { params });
-export const previewAdminSignalRetention = (payload = {}) => apiClient.post('/admin-ops/signals/retention/preview/', payload);
 
 // --- Screener ---
 export const getScreenerRules = () => apiClient.get('/portfolio/screener/rules/');

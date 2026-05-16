@@ -245,10 +245,6 @@ export default function App() {
                     <Route path="*" element={<Navigate to="/admin/core/overview" replace />} />
                   </Route>
                   <Route
-                    path="admin-ops"
-                    element={<Navigate to="/operations-center" replace />}
-                  />
-                  <Route
                     path="admin-crawl-control"
                     element={(
                       <ProtectedRoute action="read" subject="AdminCrawlControl">
