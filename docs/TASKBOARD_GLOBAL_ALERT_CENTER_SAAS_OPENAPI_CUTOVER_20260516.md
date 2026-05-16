@@ -26,6 +26,7 @@
 | D03 | Frontend wrapper removal wave | ✅ DONE | Copilot | Removed `WhaleAlertsHub` and `LegacyDashboard` wrapper pages; router now mounts canonical pages directly while preserving `/admin-ops` compatibility alias |
 | D04 | Dashboard intermediary removal wave | ✅ DONE | Copilot | Removed `frontend/src/pages/Dashboard.jsx` and routed `/dashboard` directly to `ModernDashboard` while preserving existing shell/debug route behavior |
 | D05 | Unified-alert frontend bridge hardening | ✅ DONE | Copilot | Bridged legacy `getUnifiedAlerts` to canonical `coreApiAdapter` delivery path and removed browser-side snapshot synthesis fallback while preserving dashboard compatibility fields |
+| D06 | Cutover doc-pack sync wave | ✅ DONE | Copilot | Added full Global Alert Center SaaS OpenAPI cutover handoff/spec/plan/runbook document pack to repository |
 
 **Legend**: ⬜ NOT STARTED | 🔄 IN PROGRESS | ✅ DONE | ❌ BLOCKED
 

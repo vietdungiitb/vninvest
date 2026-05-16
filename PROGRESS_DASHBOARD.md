@@ -1,3 +1,17 @@
+# 2026-05-16 — Global Alert Center D06 complete (cutover doc-pack sync wave) ✅
+
+Status: **✅ D06 DONE** | **✅ full cutover doc bundle committed** | **✅ taskboard + runbooks + constitutions available in-repo**
+
+## What changed
+- Committed the complete Global Alert Center SaaS OpenAPI cutover documentation pack (handoff/spec/plan/traceability/self-audit/runbooks).
+- Updated taskboard/ledger so documentation slice is explicitly traceable as a standalone wave.
+
+## Validation
+- Documentation consistency check with taskboard and traceability matrix ✅
+
+## Next
+- Continue runtime/code legacy decommission waves on remaining backend/packages files in isolated commits.
+
 # 2026-05-16 — Global Alert Center D05 complete (unified-alert frontend bridge hardening) ✅
 
 Status: **✅ D05 DONE** | **✅ getUnifiedAlerts bridged to canonical core delivery** | **✅ browser-side unified snapshot synthesis removed**
