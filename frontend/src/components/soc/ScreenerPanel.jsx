@@ -46,6 +46,10 @@ const ScreenerPanel = ({ t }) => {
   const [scanStatus, setScanStatus] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
 
+  // Rules pagination
+  const PAGE_SIZE = 10;
+  const [rulesPage, setRulesPage] = useState(1);
+
   const fetchData = useCallback(async () => {
     try {
       const [cfg, rls, rslts, alts, mtr] = await Promise.all([
@@ -174,6 +178,9 @@ const ScreenerPanel = ({ t }) => {
     (k) => JSON.stringify(config?.[k]) !== JSON.stringify(draftConfig[k]),
   );
 
+  const totalRulesPages = Math.max(1, Math.ceil(rules.length / PAGE_SIZE));
+  const pagedRules = rules.slice((rulesPage - 1) * PAGE_SIZE, rulesPage * PAGE_SIZE);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -259,7 +266,7 @@ const ScreenerPanel = ({ t }) => {
               </tr>
             </thead>
             <tbody>
-              {rules.map((rule) => (
+              {pagedRules.map((rule) => (
                 <tr key={rule.id} className="border-b border-slate-800 hover:bg-slate-800/40">
                   <td className="p-2 text-slate-100 font-medium">{rule.name}</td>
                   <td className="p-2 text-slate-300">{rule.type}</td>
@@ -290,6 +297,28 @@ const ScreenerPanel = ({ t }) => {
             </tbody>
           </table>
         </div>
+        {/* Pagination */}
+        {totalRulesPages > 1 && (
+          <div className="flex items-center justify-between mt-3 text-sm text-slate-400">
+            <span>{t('soc.screener.rules_page')} {rulesPage} / {totalRulesPages}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRulesPage((p) => Math.max(1, p - 1))}
+                disabled={rulesPage === 1}
+                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 rounded text-white text-xs"
+              >
+                {t('soc.screener.rules_prev')}
+              </button>
+              <button
+                onClick={() => setRulesPage((p) => Math.min(totalRulesPages, p + 1))}
+                disabled={rulesPage === totalRulesPages}
+                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 rounded text-white text-xs"
+              >
+                {t('soc.screener.rules_next')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Recent Results */}

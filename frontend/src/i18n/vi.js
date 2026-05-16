@@ -288,6 +288,9 @@ const vi = {
       benchmark_title: 'Benchmark provider',
       benchmark_run: 'Chạy benchmark',
       benchmark_running: 'Đang benchmark...',
+      reset_to_defaults: 'Đặt lại mặc định',
+      reset_confirm: 'Xác nhận đặt lại cấu hình VNBroker về mặc định? Thao tác này không thể hoàn tác.',
+      reset_success: 'Đã đặt lại cấu hình về mặc định.',
     },
     runtime_kpi: {
       title: 'Runtime KPI',
@@ -304,6 +307,9 @@ const vi = {
       warm_running: 'Đang khởi động...',
       warm_queued: 'Lệnh warm đã được xếp hàng.',
       interval_placeholder: 'Giây',
+      universe_groups: 'Nhóm universe (Symbol Groups)',
+      universe_groups_hint: 'Chọn các nhóm symbol sẽ được prefetch scheduler kích hoạt.',
+      universe_groups_loading: 'Đang tải nhóm...',
     },
     signals: {
       title: 'Quản lý Signals',
@@ -338,6 +344,9 @@ const vi = {
       rule_value: 'Điều kiện',
       rule_name_required: 'Tên luật là bắt buộc.',
       rule_delete_confirm: 'Bạn có chắc muốn xóa luật này không?',
+      rules_page: 'Trang',
+      rules_prev: 'Trước',
+      rules_next: 'Tiếp',
     },
     matrix: {
       loading: 'Đang tải...',

@@ -288,6 +288,9 @@ const en = {
       benchmark_title: 'Provider benchmark',
       benchmark_run: 'Run benchmark',
       benchmark_running: 'Running...',
+      reset_to_defaults: 'Reset to defaults',
+      reset_confirm: 'Confirm reset VNBroker configuration to defaults? This cannot be undone.',
+      reset_success: 'Configuration reset to defaults.',
     },
     prefetch: {
       title: 'Prefetch management',
@@ -300,6 +303,9 @@ const en = {
       warm_running: 'Warming...',
       warm_queued: 'Warm task queued.',
       interval_placeholder: 'seconds',
+      universe_groups: 'Universe groups (Symbol Groups)',
+      universe_groups_hint: 'Select the symbol groups that the prefetch scheduler will activate.',
+      universe_groups_loading: 'Loading groups...',
     },
     signals: {
       title: 'Signals management',
@@ -334,6 +340,9 @@ const en = {
       rule_value: 'Value / config (JSON)',
       rule_name_required: 'Rule name is required.',
       rule_delete_confirm: 'Delete this rule?',
+      rules_page: 'Page',
+      rules_prev: 'Previous',
+      rules_next: 'Next',
     },
     runtime_kpi: {
       title: 'Runtime KPI',

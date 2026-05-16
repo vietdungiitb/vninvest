@@ -40,6 +40,9 @@ const PrefetchPanel = ({ t }) => {
   const [config, setConfig] = useState(null);
   const [draft, setDraft] = useState({});
   const [cacheStatus, setCacheStatus] = useState(null);
+  const [universeGroups, setUniverseGroups] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -50,19 +53,23 @@ const PrefetchPanel = ({ t }) => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [cfg, cache] = await Promise.all([
+      const [cfg, cache, groups] = await Promise.all([
         socApi.getPrefetchConfig(),
         socApi.getPrefetchCacheStatus(),
+        socApi.getPrefetchUniverseGroups().catch(() => ({ groups: [] })),
       ]);
       const c = cfg.config || {};
       setConfig(c);
       setDraft({ ...c });
       setCacheStatus(cache);
+      setUniverseGroups(groups.groups || []);
+      setSelectedGroups(c.universe_group_ids || []);
       setError(null);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setGroupsLoading(false);
     }
   }, []);
 
@@ -73,7 +80,8 @@ const PrefetchPanel = ({ t }) => {
   };
 
   const handleOpenPreview = () => {
-    const changed = buildChangeSummary(config, draft);
+    const draftWithGroups = { ...draft, universe_group_ids: selectedGroups };
+    const changed = buildChangeSummary({ ...config, universe_group_ids: config?.universe_group_ids || [] }, draftWithGroups);
     setChangeSummary(changed);
     setPreviewErrors(null);
     setShowPreview(true);
@@ -82,8 +90,8 @@ const PrefetchPanel = ({ t }) => {
   const handleApply = async () => {
     try {
       setIsSubmitting(true);
-      await socApi.applyPrefetchConfig(draft);
-      setConfig({ ...draft });
+      await socApi.applyPrefetchConfig({ ...draft, universe_group_ids: selectedGroups });
+      setConfig({ ...draft, universe_group_ids: selectedGroups });
       setShowPreview(false);
       setChangeSummary([]);
       setPreviewErrors(null);
@@ -154,6 +162,33 @@ const PrefetchPanel = ({ t }) => {
           <p className="text-sky-200 text-sm">{warmStatus}</p>
         </div>
       )}
+
+      {/* Universe Groups Multiselect */}
+      <div className="p-6 bg-slate-900 rounded-lg border border-slate-700">
+        <h3 className="text-lg font-bold text-white mb-1">{t('soc.prefetch.universe_groups')}</h3>
+        <p className="text-xs text-slate-400 mb-4">{t('soc.prefetch.universe_groups_hint')}</p>
+        {groupsLoading ? (
+          <p className="text-slate-400 text-sm">{t('soc.prefetch.universe_groups_loading')}</p>
+        ) : universeGroups.length === 0 ? (
+          <p className="text-slate-500 text-sm">—</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {universeGroups.map((g) => (
+              <label key={g.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-800">
+                <input
+                  type="checkbox"
+                  checked={selectedGroups.includes(g.id)}
+                  onChange={(e) => setSelectedGroups((prev) =>
+                    e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
+                  )}
+                  className="accent-blue-500"
+                />
+                <span className="text-sm text-slate-200">{g.name}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Config Form */}
       <div className="p-6 bg-slate-900 rounded-lg border border-slate-700">

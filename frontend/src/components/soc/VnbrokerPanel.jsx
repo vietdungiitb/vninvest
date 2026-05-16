@@ -30,6 +30,7 @@ const VnbrokerPanel = ({ t }) => {
   const [benchmarkProvider, setBenchmarkProvider] = useState('vci');
   const [benchmarkStatus, setBenchmarkStatus] = useState(null);
   const [isBenchmarking, setIsBenchmarking] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -108,6 +109,20 @@ const VnbrokerPanel = ({ t }) => {
     }
   };
 
+  const handleResetToDefaults = async () => {
+    if (!window.confirm(t('soc.vnbroker.reset_confirm'))) return;
+    setIsResetting(true);
+    try {
+      await socApi.applyVnbrokerConfig({});
+      await fetchData();
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   if (loading) return <p className="text-slate-400">{t('soc.pages.status_loading')}</p>;
 
   const timeoutCfg = draft.timeout || {};
@@ -117,12 +132,21 @@ const VnbrokerPanel = ({ t }) => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">{t('soc.vnbroker.title')}</h2>
-        <button
-          onClick={handleOpenPreview}
-          className="px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded text-white text-sm"
-        >
-          {t('soc.actions.preview')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleOpenPreview}
+            className="px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded text-white text-sm"
+          >
+            {t('soc.actions.preview')}
+          </button>
+          <button
+            onClick={handleResetToDefaults}
+            disabled={isResetting}
+            className="px-4 py-2 bg-red-800 hover:bg-red-700 disabled:opacity-50 rounded text-white text-sm"
+          >
+            {t('soc.vnbroker.reset_to_defaults')}
+          </button>
+        </div>
       </div>
 
       {error && (
