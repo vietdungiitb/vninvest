@@ -1,7 +1,43 @@
+# 2026-05-16 — Symbol Group Management A+B (Predefined + Custom CRUD) ✅
+
+Status: **✅ Commit `9359fdd2`, 11 files changed, 595 insertions** | **Frontend compiled successfully (858 kB gzip)** | **Migration applied: `service_ops.0003_add_custom_symbol_group`** | **git push dev → 4804db3e..9359fdd2**
+
+## Commit `9359fdd2` — Symbol Group Management A+B for Backfill + Snapshot
+
+**What changed**
+- Extended `BACKFILL_SYMBOL_GROUPS` with VN50, HOSE, HNX, UPCOM, "Tất cả", "Tuỳ chỉnh"
+- Extended `MATRIX_SYMBOL_GROUPS_OPTIONS` with VN50, HOSE, HNX, UPCOM + `type` field for color coding
+- Snapshot section: predefined + custom groups rendered from merged array; custom groups show `★` prefix in teal
+- SymbolGroupManager collapsible panel (after OwnershipBadgeRow): lists custom groups, delete button, create form (name + description + symbols textarea)
+- `CustomSymbolGroup` Django model + migration `0003_add_custom_symbol_group`
+- `views/symbol_groups.py`: CRUD views (list+create, detail+update+delete) for custom groups
+- `service_ops/urls.py`: routes `/symbol-groups/` and `/symbol-groups/<slug>/`
+- `vnbroker_adapter.py`: `fetch_symbol_group_members` extended — `custom_<slug>` prefix resolves via `CustomSymbolGroup` model; HOSE/HNX/UPCOM filter via listing exchange field
+- `matrix_coordinator.py`: `PREDEFINED_SYMBOL_GROUPS` (6 groups) + `DEFAULT_SYMBOL_GROUPS` (vn30+vn100) constants
+- `socApi.js`: `getSymbolGroups`, `createSymbolGroup`, `updateSymbolGroup`, `deleteSymbolGroup` methods
+- i18n: 13 new `soc.dataops.group_manager_*` keys in vi.js and en.js
+
+**Files changed (11)**
+- `packages/core/backend/src/market_data/vnbroker_adapter.py`
+- `packages/core/backend/src/service_ops/matrix_coordinator.py`
+- `packages/core/backend/src/service_ops/models.py`
+- `packages/core/backend/src/service_ops/migrations/0003_add_custom_symbol_group.py` (**NEW**)
+- `packages/core/backend/src/service_ops/views/symbol_groups.py` (**NEW**)
+- `packages/core/backend/src/service_ops/urls.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+
+**Validation:** `npm run build` → Compiled successfully (858.98 kB) | `manage.py migrate service_ops` → 0003 OK | `git push origin dev` → `4804db3e..9359fdd2`
+
+---
+
 # 2026-05-16 — DataOps Tab UX Overhaul + Snapshot Group Select Fix ✅
 
 Status: **✅ 4 commits, 13 files changed** | **Dev stack 14/14 healthy** | **Frontend compiled successfully (852 kB gzip)**
 Validation: **✅ `npm run build` Compiled successfully** | **✅ `git push origin dev` (471f3dbf → 75ddc2e1 → 3ac57866 → bb8d570b)** | **✅ `./start_dev.ps1` 14/14 Started; core-api Healthy; smoke checks OK**
+
 
 ## Commit `bb8d570b` — Snapshot Section UX Fix (F1+F2+F3)
 

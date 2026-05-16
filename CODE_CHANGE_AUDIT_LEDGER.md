@@ -1,5 +1,35 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Symbol Group Management A+B (Predefined + Custom CRUD) | dev branch ✅
+
+**Status:** ✅ Commit `9359fdd2` pushed to dev
+**Build:** `npm run build` → 858.98 kB ✅ | Migration: `0003_add_custom_symbol_group` OK
+
+---
+
+## Commit `9359fdd2` — Symbol Group Management A+B
+
+### All Modified Files (11 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/vnbroker_adapter.py` | `_LISTING_GROUP_ALIASES` + `_EXCHANGE_BASED_GROUPS`; `fetch_symbol_group_members` handles `custom_<slug>` and HOSE/HNX/UPCOM exchange filter |
+| `packages/core/backend/src/service_ops/matrix_coordinator.py` | `PREDEFINED_SYMBOL_GROUPS` (6 groups) + `DEFAULT_SYMBOL_GROUPS` (vn30+vn100) |
+| `packages/core/backend/src/service_ops/models.py` | `CustomSymbolGroup` model appended |
+| `packages/core/backend/src/service_ops/migrations/0003_add_custom_symbol_group.py` | NEW — creates `CustomSymbolGroup` table |
+| `packages/core/backend/src/service_ops/views/symbol_groups.py` | NEW — `SymbolGroupListView` (list+create) + `SymbolGroupDetailView` (get+update+delete) |
+| `packages/core/backend/src/service_ops/urls.py` | Routes `/symbol-groups/` and `/symbol-groups/<slug>/` |
+| `frontend/src/api/socApi.js` | `getSymbolGroups`, `createSymbolGroup`, `updateSymbolGroup`, `deleteSymbolGroup` |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Expanded predefined groups; merged custom groups in Backfill + Snapshot toggles (★ prefix); SymbolGroupManager collapsible panel; CRUD state + handlers; `customGroups` prop in BackfillCenterSection |
+| `frontend/src/i18n/vi.js` | 13 new `soc.dataops.group_manager_*` keys |
+| `frontend/src/i18n/en.js` | Mirror in English |
+
+### Validation
+- `npm run build`: **Compiled successfully** (858.98 kB gzip) ✅
+- `manage.py migrate service_ops`: `0003_add_custom_symbol_group` OK ✅
+- `git push origin dev`: `4804db3e..9359fdd2` ✅
+
+---
+
 # 2026-05-16 | DataOps UX Overhaul + REQ-02/13/24 Audit Gaps | dev branch ✅
 
 **Status:** ✅ 4 commits pushed to dev (`471f3dbf`, `75ddc2e1`, `3ac57866`, `bb8d570b`)
