@@ -402,12 +402,59 @@ export default function useAlertCenterFeed({
 		});
 	}, [alerts, darkFlowAlerts, filteredUnifiedAlerts, t]);
 
+	const alertSummary = useMemo(() => {
+		const summary = { critical: 0, high: 0, medium: 0, low: 0 };
+		for (const item of mergedUnifiedAlerts) {
+			const severity = normalizeSeverity(item?.severity, 'medium');
+			if (severity === 'critical') summary.critical += 1;
+			else if (severity === 'high') summary.high += 1;
+			else if (severity === 'low') summary.low += 1;
+			else summary.medium += 1;
+		}
+		return summary;
+	}, [mergedUnifiedAlerts]);
+
+	const hotSymbols = useMemo(() => {
+		const symbolMap = new Map();
+		for (const item of mergedUnifiedAlerts) {
+			const symbol = String(item?.symbol || '').trim().toUpperCase();
+			if (!symbol) continue;
+			const current = symbolMap.get(symbol) || {
+				symbol,
+				total: 0,
+				critical: 0,
+				high: 0,
+			};
+			current.total += 1;
+			const severity = normalizeSeverity(item?.severity, 'medium');
+			if (severity === 'critical') current.critical += 1;
+			if (severity === 'high') current.high += 1;
+			symbolMap.set(symbol, current);
+		}
+
+		return Array.from(symbolMap.values())
+			.sort((a, b) => {
+				if (b.critical !== a.critical) return b.critical - a.critical;
+				if (b.high !== a.high) return b.high - a.high;
+				if (b.total !== a.total) return b.total - a.total;
+				return a.symbol.localeCompare(b.symbol);
+			})
+			.slice(0, 5);
+	}, [mergedUnifiedAlerts]);
+
+	const loadMoreUnifiedSnapshot = goToNextUnifiedPage;
+
 	return {
 		unifiedAlerts: mergedUnifiedAlerts,
+		filteredUnifiedAlerts: mergedUnifiedAlerts,
+		alertSummary,
+		hotSymbols,
 		unifiedSnapshot: backendUnifiedSnapshot,
 		unifiedHasMore: backendUnifiedHasMore,
+		backendUnifiedHasMore,
 		unifiedPageIndex: currentPageIndex,
 		loadingMoreUnified,
+		loadMoreUnifiedSnapshot,
 		quoteList,
 		goToFirstUnifiedPage,
 		goToPreviousUnifiedPage,

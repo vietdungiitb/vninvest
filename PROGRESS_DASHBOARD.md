@@ -1,3 +1,21 @@
+# 2026-05-16 — Dashboard black-screen hotfix (useAlertCenterFeed compatibility restored) ✅
+
+Status: **✅ hotfix DONE** | **✅ dashboard contract compatibility restored** | **✅ runtime refreshed and healthy**
+
+## What changed
+- Restored backward-compatible return fields from `useAlertCenterFeed` for existing dashboard consumers.
+- Added compatibility outputs: `filteredUnifiedAlerts`, `alertSummary`, `hotSymbols`, `backendUnifiedHasMore`, `loadMoreUnifiedSnapshot`.
+- Kept canonical feed behavior while preventing crash path caused by undefined `filteredUnifiedAlerts`.
+
+## Validation
+- `get_errors` for affected files → **no errors** ✅
+- `npm run test -- src/components/DashboardRealtimePanel.test.jsx` → **2 tests OK** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Residual risk
+- `SOCPage.test.jsx` label assertion drift remains a separate test-maintenance issue and does not block this hotfix.
+
 # 2026-05-16 — PrefetchPanel registry-first semantics + i18n alignment ✅
 
 Status: **✅ UI slice DONE** | **✅ registry-first semantics surfaced in operator UI** | **🔄 SOC tab test debt remains isolated**

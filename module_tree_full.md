@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 23:43:48`
+Generated at: `2026-05-16 23:47:58`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Generated at: `2026-05-16 23:43:48`
 - JS/TS modules: 522
 - Total classes: 1364
 - Total functions: 3241
-- Total top-level variables: 4734
+- Total top-level variables: 4741
 
 ## Python Modules
 
@@ -5816,7 +5816,7 @@ Generated at: `2026-05-16 23:43:48`
 - Functions:
   - `fetchUnifiedPage`, `fmtBil`, `formatNumberSafe`, `goToFirstUnifiedPage`, `goToLastUnifiedPage`, `goToNextUnifiedPage`, `goToPreviousUnifiedPage`, `localizeUnifiedDetail`, `localizeUnifiedHeadline`, `normalizeAlertText`, `normalizeSeverity`, `normalizedAlerts`, `passesSeverity`, `toStableAlertTimestamp`
 - Top-level variables:
-  - `DEFAULT_ALERT_CENTER_FEED_PAGE_SIZE`, `aScore`, `activeStack`, `bScore`, `base`, `cursor`, `filteredUnifiedAlerts`, `formattedValue`, `hasMore`, `holdingsSet`, `incoming`, `intervalId`, `lastKnownIndex`, `localUnifiedAlerts`, `mappings`, `mergedMap`, `mergedUnifiedAlerts`, `messageCandidate`, `monitoredKey`, `nextCursor`, `normalized`, `normalizedDetail`, `normalizedHeadline`, `normalizedSeverity`, `priceShockMatch`, `quoteList`, `rawValue`, `resetStack`, `response`, `severityDiff`, `severityRank`, `source`, `staleMatch`, `symbol`, `text`, `timeDelta`, `timeDiff`, `trackedSet`, `translated`, `ts`, `unifiedAlerts`, `v`, `value`, `whaleValueMatch`
+  - `DEFAULT_ALERT_CENTER_FEED_PAGE_SIZE`, `aScore`, `activeStack`, `alertSummary`, `bScore`, `base`, `current`, `cursor`, `filteredUnifiedAlerts`, `formattedValue`, `hasMore`, `holdingsSet`, `hotSymbols`, `incoming`, `intervalId`, `lastKnownIndex`, `loadMoreUnifiedSnapshot`, `localUnifiedAlerts`, `mappings`, `mergedMap`, `mergedUnifiedAlerts`, `messageCandidate`, `monitoredKey`, `nextCursor`, `normalized`, `normalizedDetail`, `normalizedHeadline`, `normalizedSeverity`, `priceShockMatch`, `quoteList`, `rawValue`, `resetStack`, `response`, `severity`, `severityDiff`, `severityRank`, `source`, `staleMatch`, `summary`, `symbol`, `symbolMap`, `text`, `timeDelta`, `timeDiff`, `trackedSet`, `translated`, `ts`, `unifiedAlerts`, `v`, `value`, `whaleValueMatch`
 
 ### `frontend/src/hooks/useDashboardAlerts.js`
 

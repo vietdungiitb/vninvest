@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Dashboard black-screen hotfix: restore useAlertCenterFeed compatibility contract | frontend/docs
+
+## All Modified Files (4 files)
+| File | Change |
+|------|--------|
+| `frontend/src/hooks/useAlertCenterFeed.js` | Restored backward-compatible hook return contract (`filteredUnifiedAlerts`, `alertSummary`, `hotSymbols`, `backendUnifiedHasMore`, `loadMoreUnifiedSnapshot`) to prevent dashboard runtime crash |
+| `module_tree_full.md` | Regenerated module tree after this frontend hotfix (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this hotfix audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for dashboard crash hotfix |
+
+## Validation
+- `get_errors` on `useAlertCenterFeed.js` and `DashboardRealtimePanel.jsx` ✅ no errors
+- `Push-Location ./frontend; npm run test -- src/components/DashboardRealtimePanel.test.jsx; Pop-Location` ✅ 2/2 pass
+- `./start_dev.ps1` runtime refresh completed; smoke checks: Core API health OK, Frontend health OK ✅
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+
+## Residual risk
+- `SOCPage.test.jsx` vẫn đang fail ở assertion nhãn tab cũ (`Ma trận`) so với nhãn runtime hiện tại (`Runtime KPI`), là test debt riêng chưa thuộc hotfix này.
+
 # 2026-05-16 | PrefetchPanel registry-first semantics + i18n alignment | frontend/docs
 
 ## All Modified Files (6 files)
