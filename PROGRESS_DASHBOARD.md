@@ -1,3 +1,27 @@
+# 2026-05-16 — Global Alert Center governance status sync complete (taskboard + traceability + self-audit) ✅
+
+Status: **✅ docs sync DONE** | **✅ C01/C02 moved to DONE with evidence** | **🟡 D05 remains IN PROGRESS by design (naming debt)**
+
+## What changed
+- Synchronized taskboard statuses and notes with validated checklist-closure evidence:
+  - `B03` → `DONE`
+  - `C01` → `DONE`
+  - `C02` → `DONE`
+  - `D07` → `DONE`
+  - `D05` kept `IN PROGRESS` (historical naming debt only)
+- Updated traceability reality matrix to reflect current pass-state for endpoint, delivery, AI-lane, and browser-truth requirements.
+- Updated self-audit checklist completion markers for alert fact correctness, delivery controls, schema clarity, and remediation-slice completion.
+
+## Validation
+- Status updates were grounded on the latest execution evidence already recorded in ledger:
+  - backend signal_intelligence suites: **25 tests OK**
+  - packages/web adapter suite: **17 tests OK**
+  - frontend bridge/regression suites: **4 tests OK**
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1210 modules)** ✅
+
+## Next
+- Run dedicated naming-debt cleanup slice for `getUnifiedAlerts` / `useUnifiedAlerts` and close `D05` with isolated commit + focused regressions.
+
 # 2026-05-16 — Global Alert Center checklist-closure wave complete (detail/context + ack/mute + mandatory backend suites) ✅
 
 Status: **✅ checklist validation wave DONE** | **✅ required backend suites added and passing** | **✅ packages/web + frontend regression green** | **✅ runtime refresh completed**

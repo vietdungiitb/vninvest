@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center governance sync: taskboard/traceability/self-audit status alignment after checklist-closure evidence | docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Updated statuses and notes for `B03`, `C01`, `C02`, `D05`, `D07` based on latest validated endpoint/delivery/UI evidence |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260516.md` | Updated reality-check matrix for `GAC-02`, `GAC-03`, `GAC-04`, `GAC-05`, `GAC-07` to reflect current pass-state where evidence exists |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260516.md` | Updated completion checklist items for alert-fact/browser-synthesis, delivery controls, schema clarity, and remediation-slice completion |
+| `module_tree_full.md` | Regenerated module tree after governance sync (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this governance sync audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this governance sync slice |
+
+## Validation
+- Evidence basis: latest validated suites from checklist-closure wave (`25` backend tests, `17` packages/web tests, `4` frontend tests) cross-checked against updated status rows ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1210` modules) ✅
+
+## Residual risk
+- `D05` giữ `IN PROGRESS` do naming debt lịch sử (`getUnifiedAlerts` / `useUnifiedAlerts`) chưa cleanup hoàn toàn, dù contract/runtime behavior đã bám native feed.
+
 # 2026-05-16 | Global Alert Center checklist-closure wave: alert-center detail/context/ack/mute UX + required backend suites | backend + packages/web + frontend + docs
 
 ## All Modified Files (9 files)

@@ -20,16 +20,16 @@
 | A03 | Queue tier/runtime policy cutover | ✅ DONE | Copilot | Warm tier now carries `session_facts`; scheduler/runtime snapshot bám theo priority tier và runtime config với ownership audit hiện có |
 | B01 | Alert taxonomy + canonical fact models | 🔄 IN PROGRESS | Copilot | Đã bổ sung payload-level `alert_family` (`price_shock` / `stale_quote`) + filter `alert_family` ở alert-center feed; còn pending producer/materializer taxonomy emission end-to-end |
 | B02 | Producer plane completion | 🔄 IN PROGRESS | Copilot | R1.1 đã thêm `MarketAnomalyEvent` + `AdvisorySignalEvent` models/migration; còn pending wiring producer/read-path + endpoint family contract |
-| B03 | OpenAPI alert-center contracts | 🔄 IN PROGRESS | Copilot | Backend đã cutover route family sang `/core/v1/signals/alert-center/*` và `/core/v1/signals/ai-alerts/*`, đã bỏ legacy unified-alert backend route; pending parity closure phía client payload/adapter |
-| C01 | Per-user delivery projection | 🔄 IN PROGRESS | Copilot | R1.1 đã thêm `UserAlertDelivery` + `UserAlertPreference` models/migration; còn pending service layer/state transitions + API endpoints |
-| C02 | packages/web alert hub | 🔄 IN PROGRESS | Copilot | packages/web đã dùng native `alert-center/ai-alerts` feed + summary contract; còn pending mở rộng UI actions detail/context/ack/mute đầy đủ |
+| B03 | OpenAPI alert-center contracts | ✅ DONE | Copilot | Native endpoint family `/core/v1/signals/alert-center/*` + `/core/v1/signals/ai-alerts/*` đã active end-to-end với adapter/UI/backend regression suites pass |
+| C01 | Per-user delivery projection | ✅ DONE | Copilot | Delivery service/state transitions + user-scope ack/mute đã có API coverage, bao gồm cross-user scope block và mute filtering behavior |
+| C02 | packages/web alert hub | ✅ DONE | Copilot | Alert hub đã có full workflow feed/summary/detail/context/ack/mute trên packages/web và có regression test cho adapter contracts |
 | D01 | frontend bridge sunset | 🔄 IN PROGRESS | Copilot | Frontend bridge đã call native alert-center feed contract; còn naming debt lịch sử (`getUnifiedAlerts`, `useUnifiedAlerts`) chưa đổi hoàn toàn |
 | D02 | Parity/shadow gates + legacy sunset docs | 🟠 REOPENED | Copilot | Self-audit pass-state đang over-claim so với evidence thực tế delivery/openapi completeness |
 | D03 | Frontend wrapper removal wave | 🟠 REOPENED | Copilot | Wrapper removal done, nhưng acceptance phụ thuộc canonical contract closure từ B03/C01 nên chưa thể close độc lập |
 | D04 | Dashboard intermediary removal wave | 🟠 REOPENED | Copilot | Route simplification done, nhưng downstream alert contract parity chưa đạt gate nên chưa close end-to-end |
-| D05 | Unified-alert frontend bridge hardening | 🔄 IN PROGRESS | Copilot | Bridge contract đã chuyển sang `/core/v1/signals/alert-center/feed`; còn pending cleanup tên gọi legacy và mở rộng capability ack/mute/context ở UI consumer |
+| D05 | Unified-alert frontend bridge hardening | 🔄 IN PROGRESS | Copilot | Bridge đã dùng native feed và không còn browser-side synthesis; còn naming debt lịch sử (`getUnifiedAlerts`/`useUnifiedAlerts`) cần cleanup để close hoàn toàn |
 | D06 | Cutover doc-pack sync wave | 🟠 REOPENED | Copilot | Doc pack đầy đủ nhưng một số claim DONE không phản ánh runtime reality sau audit đối chiếu |
-| D07 | packages/web alert-center route + adapter wave | 🔄 IN PROGRESS | Copilot | Adapter đã hỗ trợ native feed/summary/detail/ack/mute và ai-alerts summary/feed; còn pending full page interaction coverage cho detail/context/mute workflow |
+| D07 | packages/web alert-center route + adapter wave | ✅ DONE | Copilot | Adapter + page interaction coverage cho detail/context/ack/mute workflow đã hoàn tất và pass test |
 | D08 | signal_intelligence canonical alert model wave | 🔄 IN PROGRESS | Copilot | R1.1 entities đã bổ sung trong `signal_intelligence/models.py` và migration `0005`; còn pending integration vào views/materializers/tests contract-level |
 | D09 | market_data matrix SSOT parity wave | ✅ DONE | Copilot | Completed registry/coverage/planner parity updates for global symbol matrix workflows with focused market_data test suites |
 | D10 | service_ops operator matrix wave | ✅ DONE | Copilot | Added operator-facing registry summary/detail/reconcile-preview coverage and queue-tier runtime dataset parity updates with focused SOC test suites |

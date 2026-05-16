@@ -72,6 +72,8 @@ Block merge nếu có một trong các dấu hiệu sau:
 
 ## 5. D01 / D02 completion evidence
 
+> Reality-check update (2026-05-16): mục này đã được hiệu chỉnh theo `docs/AUDIT_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_REALITY_20260516.md`. Các claim vượt bằng chứng hiện tại đã bị hạ trạng thái để tránh governance drift.
+
 ### A. Foundation correctness
 - [x] Detection universe đọc từ global matrix, không tự build riêng
 - [x] Demand source tách riêng khỏi registry row
@@ -96,13 +98,18 @@ Block merge nếu có một trong các dấu hiệu sau:
 - [x] Request/response schema rõ ràng
 - [x] Pagination cho mọi list endpoint
 - [x] Error envelope đúng chuẩn
-- [x] Rate-limit/auth semantics được mô tả
+- [ ] Rate-limit/auth semantics được mô tả
 
 ### F. Cutover correctness
 - [x] Không thêm compat route business logic mới
 - [x] Không có direct legacy proxy mới cho alert-center
 - [x] Có shadow/parity evidence trước cutover
 - [x] Không có tài liệu hoặc code path hợp thức hóa việc bỏ shadow/soak gate
+
+### H. Re-open tracking
+- [x] Taskboard `B01..D08` đã được chuyển trạng thái `REOPENED`
+- [x] Có audit artifact reality-check trong repo
+- [x] Remediation code slices (entity + endpoint + delivery state machine) đã hoàn tất và được chứng minh bằng test/evidence
 
 ### G. Evidence links
 - [x] `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_SHADOW_EVIDENCE_20260516.md`
