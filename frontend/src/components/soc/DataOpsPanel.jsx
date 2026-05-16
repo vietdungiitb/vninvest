@@ -56,6 +56,7 @@ const DATAOPS_SUB_TABS = [
   { id: 'config',  label: '\u2699\uFE0F C\u1EA5u h\u00ECnh' },
 ];
 const GAPS_PAGE_SIZE = 20;
+const PLANNER_PREVIEW_PAGE_SIZE = 12;
 
 // ── Data Inventory Section ─────────────────────────────────────────────────
 const DataInventorySection = ({ inventory, loading }) => {
@@ -655,6 +656,8 @@ const DataOpsPanel = ({ t }) => {
   const [showQueueTier, setShowQueueTier] = useState(false);
   const [showRunHistory, setShowRunHistory] = useState(false);
   const [gapsPage, setGapsPage] = useState(1);
+  const [plannerItemsPage, setPlannerItemsPage] = useState(1);
+  const [plannerSkippedPage, setPlannerSkippedPage] = useState(1);
   // ──────────────────────────────────────────────────────────────────────────────
 
   const loadData = async (page = runLogsPage) => {
@@ -703,6 +706,11 @@ const DataOpsPanel = ({ t }) => {
   useEffect(() => {
     loadData(1);
   }, []);
+
+  useEffect(() => {
+    setPlannerItemsPage(1);
+    setPlannerSkippedPage(1);
+  }, [plannerPreview]);
 
   const handleRunLogsPageChange = async (page) => {
     try {
@@ -1535,24 +1543,60 @@ const DataOpsPanel = ({ t }) => {
             <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
               <h4 className="text-sm font-semibold text-white">{t('soc.dataops.planner_items_title')}</h4>
               {(plannerPreview?.items || []).length > 0 ? (
-                <ul className="mt-4 space-y-3">
-                  {plannerPreview.items.map((item) => (
-                    <li key={`${item.symbol}-${item.dataset}`} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-white">{item.symbol}</p>
-                          <p className="mt-1 text-xs text-slate-400">{t(DATASET_LABEL_KEYS[item.dataset] || 'soc.dataops.dataset_unknown')}</p>
-                        </div>
-                        <span className="rounded-full border border-cyan-700/60 bg-cyan-950/50 px-2 py-1 text-xs font-semibold text-cyan-200">
-                          {t(FRESHNESS_LABEL_KEYS[item.coverage_before] || 'soc.dataops.freshness_unknown')}
-                        </span>
+                (() => {
+                  const total = plannerPreview.items.length;
+                  const maxPage = Math.max(1, Math.ceil(total / PLANNER_PREVIEW_PAGE_SIZE));
+                  const currentPage = Math.min(plannerItemsPage, maxPage);
+                  const visibleItems = plannerPreview.items.slice(
+                    (currentPage - 1) * PLANNER_PREVIEW_PAGE_SIZE,
+                    currentPage * PLANNER_PREVIEW_PAGE_SIZE,
+                  );
+                  return (
+                    <>
+                      <div className="mt-4 max-h-72 overflow-auto rounded-lg border border-slate-800">
+                        <table className="w-full text-sm">
+                          <tbody className="divide-y divide-slate-800">
+                            {visibleItems.map((item) => (
+                              <tr key={`${item.symbol}-${item.dataset}`} className="bg-slate-900/70 align-top">
+                                <td className="px-3 py-2">
+                                  <p className="font-semibold text-white">{item.symbol}</p>
+                                  <p className="text-xs text-slate-400">{t(DATASET_LABEL_KEYS[item.dataset] || 'soc.dataops.dataset_unknown')}</p>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="rounded-full border border-cyan-700/60 bg-cyan-950/50 px-2 py-1 text-xs font-semibold text-cyan-200">
+                                    {t(FRESHNESS_LABEL_KEYS[item.coverage_before] || 'soc.dataops.freshness_unknown')}
+                                  </span>
+                                  {item.reason ? (
+                                    <p className="mt-1 text-xs text-slate-400">{item.reason}</p>
+                                  ) : null}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                      {item.reason ? (
-                        <p className="mt-3 text-xs text-slate-300">{t('soc.dataops.planner_reason_label')}: {item.reason}</p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                      {total > PLANNER_PREVIEW_PAGE_SIZE && (
+                        <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                          <span className="text-slate-500">{currentPage}/{maxPage} · {total}</span>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPlannerItemsPage((p) => Math.max(1, p - 1))}
+                              disabled={currentPage <= 1}
+                              className="rounded border border-slate-700 px-2 py-1 font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
+                            >◀</button>
+                            <button
+                              type="button"
+                              onClick={() => setPlannerItemsPage((p) => Math.min(maxPage, p + 1))}
+                              disabled={currentPage >= maxPage}
+                              className="rounded border border-slate-700 px-2 py-1 font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
+                            >▶</button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()
               ) : (
                 <p className="mt-3 text-sm text-slate-500">{t('soc.dataops.planner_items_empty')}</p>
               )}
@@ -1561,15 +1605,55 @@ const DataOpsPanel = ({ t }) => {
             <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
               <h4 className="text-sm font-semibold text-white">{t('soc.dataops.planner_skipped_title')}</h4>
               {(plannerPreview?.skipped || []).length > 0 ? (
-                <ul className="mt-4 space-y-3">
-                  {plannerPreview.skipped.map((item) => (
-                    <li key={`${item.symbol}-${item.dataset}-skipped`} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
-                      <p className="text-sm font-semibold text-white">{item.symbol}</p>
-                      <p className="mt-1 text-xs text-slate-400">{t(DATASET_LABEL_KEYS[item.dataset] || 'soc.dataops.dataset_unknown')}</p>
-                      <p className="mt-3 text-xs text-slate-300">{t('soc.dataops.planner_reason_label')}: {item.reason}</p>
-                    </li>
-                  ))}
-                </ul>
+                (() => {
+                  const total = plannerPreview.skipped.length;
+                  const maxPage = Math.max(1, Math.ceil(total / PLANNER_PREVIEW_PAGE_SIZE));
+                  const currentPage = Math.min(plannerSkippedPage, maxPage);
+                  const visibleItems = plannerPreview.skipped.slice(
+                    (currentPage - 1) * PLANNER_PREVIEW_PAGE_SIZE,
+                    currentPage * PLANNER_PREVIEW_PAGE_SIZE,
+                  );
+                  return (
+                    <>
+                      <div className="mt-4 max-h-72 overflow-auto rounded-lg border border-slate-800">
+                        <table className="w-full text-sm">
+                          <tbody className="divide-y divide-slate-800">
+                            {visibleItems.map((item) => (
+                              <tr key={`${item.symbol}-${item.dataset}-skipped`} className="bg-slate-900/70 align-top">
+                                <td className="px-3 py-2">
+                                  <p className="font-semibold text-white">{item.symbol}</p>
+                                  <p className="text-xs text-slate-400">{t(DATASET_LABEL_KEYS[item.dataset] || 'soc.dataops.dataset_unknown')}</p>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <p className="text-xs text-slate-300">{item.reason}</p>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {total > PLANNER_PREVIEW_PAGE_SIZE && (
+                        <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                          <span className="text-slate-500">{currentPage}/{maxPage} · {total}</span>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPlannerSkippedPage((p) => Math.max(1, p - 1))}
+                              disabled={currentPage <= 1}
+                              className="rounded border border-slate-700 px-2 py-1 font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
+                            >◀</button>
+                            <button
+                              type="button"
+                              onClick={() => setPlannerSkippedPage((p) => Math.min(maxPage, p + 1))}
+                              disabled={currentPage >= maxPage}
+                              className="rounded border border-slate-700 px-2 py-1 font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
+                            >▶</button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()
               ) : (
                 <p className="mt-3 text-sm text-slate-500">{t('soc.dataops.planner_skipped_empty')}</p>
               )}

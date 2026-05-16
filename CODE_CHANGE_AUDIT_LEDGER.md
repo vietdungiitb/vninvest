@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | DataOps Planner Preview Compact Layout | dev branch 🔄
+
+**Status:** 🔄 Local change ready (chưa commit)
+**Build:** `npm run build` → Compiled successfully (861.41 kB) ✅
+**Runtime refresh:** `./start_dev.ps1` → 14/14 services started, core-api healthy, smoke checks OK ✅
+
+---
+
+## Slice: Planner preview không kéo dài trang
+
+### All Modified Files (1 file)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Planner preview `items` và `skipped` đổi từ card list sang bảng compact có `max-h-72` + scroll nội bộ + phân trang mini (`PLANNER_PREVIEW_PAGE_SIZE = 12`) |
+
+### Validation
+- `npm run build`: **Compiled successfully** ✅
+- `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
+
+---
+
 # 2026-05-16 | Symbol Group Management A+B (Predefined + Custom CRUD) | dev branch ✅
 
 **Status:** ✅ Commit `9359fdd2` pushed to dev

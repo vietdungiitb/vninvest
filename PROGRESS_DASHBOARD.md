@@ -1,3 +1,13 @@
+# 2026-05-16 — DataOps Planner Preview Compact Layout 🔄
+
+Status: **🔄 local change ready** | **Planner preview đã gọn hơn, không kéo dài dọc trang**
+Validation: **✅ `npm run build` Compiled successfully** | **✅ `./start_dev.ps1` 14/14 Started; core-api healthy; smoke checks OK**
+
+## What changed
+- `frontend/src/components/soc/DataOpsPanel.jsx`: phần preview của planner (`Hạng mục sẽ chạy`, `Hạng mục bị bỏ qua`) đổi sang bảng compact có chiều cao cố định, cuộn nội bộ và điều hướng trang nhỏ để operator đọc nhanh hơn mà không bị trang quá dài.
+
+---
+
 # 2026-05-16 — Symbol Group Management A+B (Predefined + Custom CRUD) ✅
 
 Status: **✅ Commit `9359fdd2`, 11 files changed, 595 insertions** | **Frontend compiled successfully (858 kB gzip)** | **Migration applied: `service_ops.0003_add_custom_symbol_group`** | **git push dev → 4804db3e..9359fdd2**
