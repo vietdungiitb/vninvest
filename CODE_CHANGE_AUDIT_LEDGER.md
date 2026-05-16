@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center decommission-ready step 1: legacy inventory + rollback map | docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_LEGACY_DECOMMISSION_READY_INVENTORY_20260516.md` | Added step-1 inventory of alert-center legacy/compat candidates with readiness level, blockers, decommission sequence, and rollback map |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_SHADOW_EVIDENCE_20260516.md` | Added link to decommission-ready inventory as required artifact for D02 close |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Updated D02 note to include completion of inventory/rollback-map preparation |
+| `module_tree_full.md` | Regenerated module tree after this docs slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this decommission-ready step-1 entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for decommission-ready step-1 |
+
+## Validation
+- Legacy/compat surface discovery completed across `frontend/src`, `packages/web/src`, and `packages/core/backend/src` for alert-center related candidates ✅
+- Governance sync completed for parity evidence + taskboard D02 notes ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1211` modules) ✅
+
+## Residual risk
+- Inventory marks deletion as blocked until production shadow/soak and parity dashboard PASS thresholds are filled; no destructive sunset action is included in this slice.
+
 # 2026-05-16 | Global Alert Center D02 readiness kit: production shadow/soak template + parity dashboard checklist | docs
 
 ## All Modified Files (8 files)

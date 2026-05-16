@@ -24,7 +24,7 @@
 | C01 | Per-user delivery projection | ✅ DONE | Copilot | Delivery service/state transitions + user-scope ack/mute đã có API coverage, bao gồm cross-user scope block và mute filtering behavior |
 | C02 | packages/web alert hub | ✅ DONE | Copilot | Alert hub đã có full workflow feed/summary/detail/context/ack/mute trên packages/web và có regression test cho adapter contracts |
 | D01 | frontend bridge sunset | ✅ DONE | Copilot | Runtime path chính đã chuẩn hóa sang naming `AlertCenterFeed` cho frontend bridge và mobile service layer; giữ alias tương thích tạm thời để migration an toàn |
-| D02 | Parity/shadow gates + legacy sunset docs | 🔄 IN PROGRESS | Copilot | Đã có parity/shadow package; đã thêm template production shadow/soak + parity dashboard checklist, còn pending điền dữ liệu thực tế >= 3 ngày trade để close gate |
+| D02 | Parity/shadow gates + legacy sunset docs | 🔄 IN PROGRESS | Copilot | Đã có parity/shadow package, readiness templates, và decommission-ready inventory+rollback map; còn pending dữ liệu production shadow/soak >= 3 ngày trade để close gate |
 | D03 | Frontend wrapper removal wave | 🟠 REOPENED | Copilot | Wrapper removal done, nhưng acceptance phụ thuộc canonical contract closure từ B03/C01 nên chưa thể close độc lập |
 | D04 | Dashboard intermediary removal wave | 🟠 REOPENED | Copilot | Route simplification done, nhưng downstream alert contract parity chưa đạt gate nên chưa close end-to-end |
 | D05 | Unified-alert frontend bridge hardening | ✅ DONE | Copilot | Frontend bridge đã dùng native feed, browser-side synthesis đã bỏ, runtime path chính đã đổi sang naming `AlertCenterFeed` và giữ alias tương thích để migration an toàn |

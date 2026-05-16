@@ -1,3 +1,20 @@
+# 2026-05-16 — Global Alert Center decommission-ready step 1 complete (inventory + rollback map) ✅
+
+Status: **✅ step 1 DONE** | **🔄 destructive legacy sunset still blocked by D02 gates**
+
+## What changed
+- Added a dedicated decommission-ready inventory for alert-center legacy/compat candidates.
+- Captured readiness level per candidate (`READY_AFTER_D02`, `PARTIAL`, `BLOCKED`) and documented blockers.
+- Added rollback map using committed slice hashes for safe revert planning.
+- Linked inventory back to parity/shadow evidence and D02 taskboard note.
+
+## Validation
+- Candidate discovery completed from source layers (`frontend/src`, `packages/web/src`, `packages/core/backend/src`) with alert-center scope filtering.
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Next
+- Move to step 2 by filling production shadow/soak evidence (>= 3 trading days) and parity dashboard PASS package, then execute first safe deletion slice.
+
 # 2026-05-16 — Global Alert Center D02 readiness kit complete (production soak template + parity dashboard checklist) ✅
 
 Status: **✅ readiness kit DONE** | **🔄 D02 still open by design until real production evidence is filled**
