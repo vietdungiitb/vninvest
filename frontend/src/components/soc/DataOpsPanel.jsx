@@ -49,6 +49,14 @@ const BACKFILL_DATASET_FIELDS = {
   intraday_tick:  'soc.dataops.dataset_field_intraday_tick',
 };
 
+const DATAOPS_SUB_TABS = [
+  { id: 'data',    label: '\uD83D\uDCE6 Kho d\u1EEF li\u1EC7u' },
+  { id: 'ops',     label: '\u26A1 \u0110i\u1EC1u ph\u1ED1i' },
+  { id: 'monitor', label: '\uD83D\uDD0D Gi\u00E1m s\u00E1t' },
+  { id: 'config',  label: '\u2699\uFE0F C\u1EA5u h\u00ECnh' },
+];
+const GAPS_PAGE_SIZE = 20;
+
 // ── Data Inventory Section ─────────────────────────────────────────────────
 const DataInventorySection = ({ inventory, loading }) => {
   const [open, setOpen] = useState(false);
@@ -162,7 +170,13 @@ const DataInventorySection = ({ inventory, loading }) => {
                             </td>
                             <td className="text-right px-2 text-slate-400">{fmtDate(g.earliest_date)}</td>
                             <td className="text-right pl-2 text-slate-400">{fmtDate(g.latest_date)}</td>
-                            <td className="text-right pl-2 text-slate-400">{g.calendar_days ? `${g.calendar_days}` : '—'}</td>
+                            <td className="text-right pl-2">
+                              {g.calendar_days
+                                ? <span className={g.calendar_days < 30 ? 'text-amber-400 font-semibold' : 'text-slate-400'}>
+                                    {g.calendar_days.toLocaleString('vi-VN')} ngày{g.calendar_days < 30 ? ' ⚠' : ''}
+                                  </span>
+                                : <span className="text-slate-600">—</span>}
+                            </td>
                           </tr>
                         );
                       })}
@@ -637,9 +651,10 @@ const DataOpsPanel = ({ t }) => {
   const [inventory, setInventory] = useState(null);
   const [inventoryLoading, setInventoryLoading] = useState(true);
   // ── UI accordion / toggle state ─────────────────────────────────────────────
+  const [subTab, setSubTab] = useState('data');
   const [showQueueTier, setShowQueueTier] = useState(false);
   const [showRunHistory, setShowRunHistory] = useState(false);
-  const [showAllGaps, setShowAllGaps] = useState(false);
+  const [gapsPage, setGapsPage] = useState(1);
   // ──────────────────────────────────────────────────────────────────────────────
 
   const loadData = async (page = runLogsPage) => {
@@ -957,11 +972,40 @@ const DataOpsPanel = ({ t }) => {
         />
       )}
 
-      <DataInventorySection inventory={inventory} loading={inventoryLoading} />
+      {/* ── Sub-tab nav ──────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-0.5 rounded-lg bg-slate-800/50 p-1">
+        {DATAOPS_SUB_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setSubTab(tab.id)}
+            className={`flex-1 min-w-max rounded px-4 py-2 text-sm font-semibold transition ${
+              subTab === tab.id
+                ? 'bg-slate-700 text-white shadow'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      <BackfillCenterSection t={t} canApply={!ownership?.write_block_reason} customGroups={customGroups} />
+      {/* ── Tab: Kho dữ liệu ─────────────────────────────────────────────── */}
+      {subTab === 'data' && (
+        <>
+          <DataInventorySection inventory={inventory} loading={inventoryLoading} />
+        </>
+      )}
 
-      {/* ── Snapshot Trực tiếp (Matrix) ──────────────────────────────────── */}
+      {/* ── Tab: Điều phối ───────────────────────────────────────────────── */}
+      {subTab === 'ops' && (
+        <>
+          <BackfillCenterSection t={t} canApply={!ownership?.write_block_reason} customGroups={customGroups} />
+        </>
+      )}
+
+      {/* ── Snapshot Trực tiếp (Matrix) — Tab: Giám sát ─────────────────── */}
+      {subTab === 'monitor' && (
       <div className="rounded-lg border border-indigo-800 bg-slate-900 p-6">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -1113,8 +1157,11 @@ const DataOpsPanel = ({ t }) => {
           t={t}
         />
       </div>
-      {/* ──────────────────────────────────────────────────────────────────── */}
+      )} {/* end subTab === 'monitor' — matrix */}
 
+      {/* ── Tab: Kho dữ liệu — stats grid + Queue Tiers ─────────────────── */}
+      {subTab === 'data' && (
+      <>
       <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-lg border border-slate-700 bg-slate-900 p-4">
           <p className="text-xs uppercase tracking-wide text-slate-400">{t('soc.dataops.total_symbols')}</p>
@@ -1186,7 +1233,11 @@ const DataOpsPanel = ({ t }) => {
           </div>
         )}
       </div>
+      </> )} {/* end subTab === 'data' */}
 
+      {/* ── Tab: Giám sát — Coverage ─────────────────────────────────────── */}
+      {subTab === 'monitor' && (
+      <>
       <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
@@ -1241,7 +1292,7 @@ const DataOpsPanel = ({ t }) => {
             </table>
           </div>
 
-          {/* Top gaps — capped at 20 */}
+          {/* Top gaps — paginated */}
           <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
             <h4 className="text-sm font-semibold text-white">{t('soc.dataops.top_gaps')}</h4>
             <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.top_gaps_description')}</p>
@@ -1249,10 +1300,9 @@ const DataOpsPanel = ({ t }) => {
             {(coverageSummary.top_gaps || []).length > 0 ? (
               <>
                 <ul className="mt-4 space-y-2">
-                  {(showAllGaps
-                    ? (coverageSummary.top_gaps || [])
-                    : (coverageSummary.top_gaps || []).slice(0, 20)
-                  ).map((gap) => (
+                  {(coverageSummary.top_gaps || [])
+                    .slice((gapsPage - 1) * GAPS_PAGE_SIZE, gapsPage * GAPS_PAGE_SIZE)
+                    .map((gap) => (
                     <li key={`${gap.symbol}-${gap.dataset}`} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -1273,16 +1323,27 @@ const DataOpsPanel = ({ t }) => {
                     </li>
                   ))}
                 </ul>
-                {(coverageSummary.top_gaps || []).length > 20 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllGaps((v) => !v)}
-                    className="mt-3 w-full rounded border border-slate-700 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
-                  >
-                    {showAllGaps
-                      ? t('soc.dataops.gaps_collapse')
-                      : `${t('soc.dataops.gaps_show_all')} (${(coverageSummary.top_gaps || []).length})`}
-                  </button>
+                {(coverageSummary.top_gaps || []).length > GAPS_PAGE_SIZE && (
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-500">
+                      Trang {gapsPage} / {Math.ceil((coverageSummary.top_gaps || []).length / GAPS_PAGE_SIZE)}
+                      {' '}· {(coverageSummary.top_gaps || []).length} mục
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setGapsPage((p) => Math.max(1, p - 1))}
+                        disabled={gapsPage <= 1}
+                        className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
+                      >← Trước</button>
+                      <button
+                        type="button"
+                        onClick={() => setGapsPage((p) => Math.min(Math.ceil((coverageSummary.top_gaps || []).length / GAPS_PAGE_SIZE), p + 1))}
+                        disabled={gapsPage >= Math.ceil((coverageSummary.top_gaps || []).length / GAPS_PAGE_SIZE)}
+                        className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
+                      >Tiếp →</button>
+                    </div>
+                  </div>
                 )}
               </>
             ) : (
@@ -1291,7 +1352,10 @@ const DataOpsPanel = ({ t }) => {
           </div>
         </div>
       </div>
+      </> )} {/* end subTab === 'monitor' — coverage */}
 
+      {/* ── Tab: Điều phối — Planner ─────────────────────────────────────── */}
+      {subTab === 'ops' && (
       <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
@@ -1513,7 +1577,11 @@ const DataOpsPanel = ({ t }) => {
           </div>
         </div>
       </div>
+      )} {/* end subTab === 'ops' — planner */}
 
+      {/* ── Tab: Cấu hình — Runtime Config + Audit ──────────────────────── */}
+      {subTab === 'config' && (
+      <>
       <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
@@ -1611,7 +1679,10 @@ const DataOpsPanel = ({ t }) => {
           <p className="text-sm text-slate-500">{t('soc.dataops.audit_empty')}</p>
         )}
       </div>
+      </> )} {/* end subTab === 'config' */}
 
+      {/* ── Tab: Giám sát — Run History ──────────────────────────────────── */}
+      {subTab === 'monitor' && (
       <div className="rounded-lg border border-slate-700 bg-slate-900">
         <button
           type="button"
@@ -1714,12 +1785,14 @@ const DataOpsPanel = ({ t }) => {
           </div>
         )}
       </div>
+      )} {/* end subTab === 'monitor' — run history */}
 
       {ownership && (
         <OwnershipBadgeRow domain={ownership.domain || 'dataops_market_data'} ownership={ownership} t={t} />
       )}
 
-      {/* ── Quản lý nhóm mã tuỳ chỉnh ─────────────────────────────────────── */}
+      {/* ── Tab: Điều phối — Custom Group Manager ────────────────────────── */}
+      {subTab === 'ops' && (
       <div className="rounded-lg border border-teal-800 bg-slate-900 p-6">
         <button
           type="button"
@@ -1833,6 +1906,7 @@ const DataOpsPanel = ({ t }) => {
           </div>
         )}
       </div>
+      )} {/* end subTab === 'ops' — group manager */}
 
       <ConfigPreviewModal
         isOpen={previewOpen}

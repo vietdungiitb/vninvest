@@ -750,6 +750,11 @@ class DataOpsInventoryView(SOCBaseView):
         snapshot_count = SymbolSnapshot.objects.aggregate(
             total=Count('id'), symbols=Count('symbol', distinct=True)
         )
+        from market_serving.models import SessionFacts
+        session_agg = SessionFacts.objects.aggregate(
+            total=Count('id'), symbols=Count('symbol', distinct=True),
+            earliest=Min('session_date'), latest=Max('session_date'),
+        )
         data_types = [
             {
                 'name': 'DailyPrice', 'label': 'Giá ngày (OHLCV)',
@@ -763,6 +768,13 @@ class DataOpsInventoryView(SOCBaseView):
                 'total_rows': snapshot_count['total'] or 0,
                 'symbols': snapshot_count['symbols'] or 0,
                 'earliest_date': None, 'latest_date': None,
+            },
+            {
+                'name': 'SessionFacts', 'label': 'Facts phiên giao dịch',
+                'total_rows': session_agg['total'] or 0,
+                'symbols': session_agg['symbols'] or 0,
+                'earliest_date': session_agg['earliest'].isoformat() if session_agg['earliest'] else None,
+                'latest_date': session_agg['latest'].isoformat() if session_agg['latest'] else None,
             },
         ]
 
