@@ -1,3 +1,21 @@
+# 2026-05-16 — Prefetch registry-first cutover (group_ids -> hint metadata) ✅
+
+Status: **✅ code slice DONE** | **🔄 full legacy sunset vẫn gated bởi D02**
+
+## What changed
+- `PrefetchUniverseGroupsView` chuyển sang output **registry-first** từ `GlobalSymbolRegistry` theo 4 tier (`hot/warm/cold/recovery`).
+- `universe_group_ids` được giữ lại dưới dạng **hint metadata** (`hint_group_ids`) thay vì nguồn universe điều phối chính.
+- Bổ sung hint-group fallback entries để giữ backward-safe selection behavior cho UI hiện tại.
+- Cập nhật test domain cho contract mới (`universe_mode=registry_first`, hint metadata assertions).
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_api_domain --keepdb` ✅ (45 tests pass)
+- `./start_dev.ps1` ✅ (Core API health OK, Frontend health OK)
+- `scripts/ops/generate_module_tree.py` ✅ (1211 modules)
+
+## Residual risk
+- UI/adapter hiện tại vẫn hiển thị checkbox theo group concept; cần slice tiếp theo để chuẩn hóa UX label theo registry-tier semantics.
+
 # 2026-05-16 — Global Alert Center decommission-ready step 1 complete (inventory + rollback map) ✅
 
 Status: **✅ step 1 DONE** | **🔄 destructive legacy sunset still blocked by D02 gates**

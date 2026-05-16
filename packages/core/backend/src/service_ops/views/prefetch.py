@@ -100,11 +100,20 @@ class PrefetchWarmNowResponseSerializer(serializers.Serializer):
 class PrefetchUniverseGroupSerializer(serializers.Serializer):
     id = serializers.CharField()
     name = serializers.CharField()
+    type = serializers.CharField(required=False)
+    source = serializers.CharField(required=False)
+    selected = serializers.BooleanField(required=False)
+    hint_only = serializers.BooleanField(required=False)
+    symbol_count = serializers.IntegerField(required=False)
+    data_count = serializers.IntegerField(required=False)
+    latest_date = serializers.CharField(required=False, allow_null=True)
 
 
 class PrefetchUniverseGroupsResponseSerializer(serializers.Serializer):
     groups = PrefetchUniverseGroupSerializer(many=True)
     active_profile = serializers.CharField()
+    universe_mode = serializers.CharField(required=False)
+    hint_group_ids = serializers.ListField(child=serializers.CharField(), required=False)
 
 
 class PrefetchScheduleItemSerializer(serializers.Serializer):
@@ -367,7 +376,7 @@ class PrefetchUniverseGroupsView(SOCBaseView):
 
     @extend_schema(
         summary='Lấy universe groups Prefetch',
-        description='Trả về tất cả nhóm available (predefined + custom) kèm cờ selected.',
+        description='Trả về snapshot registry-first của global symbol matrix; `universe_group_ids` chỉ còn giữ vai trò hint metadata.',
         responses={
             200: PrefetchUniverseGroupsResponseSerializer,
             401: OpenApiTypes.OBJECT,
@@ -375,65 +384,98 @@ class PrefetchUniverseGroupsView(SOCBaseView):
         },
     )
     def get(self, request):
-        """Return all available symbol groups with selected flag and data coverage."""
-        from datetime import timedelta
-        from ..matrix_coordinator import PREDEFINED_SYMBOL_GROUPS
-        from ..models import CustomSymbolGroup
-        from market_data.models import DailyPrice
-        from market_data.vnbroker_adapter import fetch_symbol_group_members
+        """Return registry-first universe buckets with coverage and optional config hints."""
+        from django.db.models import Max
+        from market_data.models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolRegistry
 
         config = _get_prefetch_config()
         selected_ids = set(config.universe_group_ids or [])
-        cutoff = (timezone.now() - timedelta(days=30)).date()
-
-        def _get_coverage(group_id: str) -> dict:
-            """Return {symbol_count, data_count, latest_date} for a group."""
-            try:
-                syms = fetch_symbol_group_members(group_id)
-                total = len(syms)
-                if total == 0:
-                    return {'symbol_count': 0, 'data_count': 0, 'latest_date': None}
-                qs = DailyPrice.objects.filter(symbol__in=syms, date__gte=cutoff)
-                data_count = qs.values('symbol').distinct().count()
-                latest = (
-                    DailyPrice.objects.filter(symbol__in=syms)
-                    .order_by('-date')
-                    .values_list('date', flat=True)
-                    .first()
-                )
-                return {
-                    'symbol_count': total,
-                    'data_count': data_count,
-                    'latest_date': latest.isoformat() if latest else None,
-                }
-            except Exception:
-                return {'symbol_count': 0, 'data_count': 0, 'latest_date': None}
+        tier_specs = [
+            (
+                GlobalSymbolRegistry.PriorityTierChoices.HOT,
+                'hot_user_demand',
+                'Hot user demand',
+            ),
+            (
+                GlobalSymbolRegistry.PriorityTierChoices.WARM,
+                'warm_liquid_market',
+                'Warm liquid market',
+            ),
+            (
+                GlobalSymbolRegistry.PriorityTierChoices.COLD,
+                'cold_full_market',
+                'Cold full market',
+            ),
+            (
+                GlobalSymbolRegistry.PriorityTierChoices.RECOVERY,
+                'recovery_backlog',
+                'Recovery backlog',
+            ),
+        ]
 
         groups = []
-        # Predefined groups
-        for pg in PREDEFINED_SYMBOL_GROUPS:
-            cov = _get_coverage(pg['id'])
+        known_ids = set()
+        for priority_tier, group_id, group_name in tier_specs:
+            registries = list(
+                GlobalSymbolRegistry.objects.filter(
+                    is_active=True,
+                    current_priority_tier=priority_tier,
+                ).values_list('symbol', flat=True)
+            )
+            symbol_count = len(registries)
+            if symbol_count == 0:
+                data_count = 0
+                latest_date = None
+            else:
+                data_count = GlobalSymbolCoverage.objects.filter(
+                    registry__symbol__in=registries,
+                    dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                ).exclude(
+                    freshness_state__in=[
+                        GlobalSymbolCoverage.FreshnessChoices.ERROR,
+                        GlobalSymbolCoverage.FreshnessChoices.MISSING,
+                        GlobalSymbolCoverage.FreshnessChoices.UNKNOWN,
+                    ]
+                ).values('registry_id').distinct().count()
+                latest = DailyPrice.objects.filter(symbol__in=registries).aggregate(
+                    latest=Max('date')
+                )['latest']
+                latest_date = latest.isoformat() if latest else None
+
             groups.append({
-                'id': pg['id'],
-                'name': pg['name'],
-                'type': pg.get('type', 'index'),
-                'selected': pg['id'] in selected_ids,
-                **cov,
+                'id': group_id,
+                'name': group_name,
+                'type': 'registry_tier',
+                'source': 'global_symbol_registry',
+                'selected': group_id in selected_ids,
+                'hint_only': False,
+                'symbol_count': symbol_count,
+                'data_count': data_count,
+                'latest_date': latest_date,
             })
-        # Custom groups (active only)
-        for cg in CustomSymbolGroup.objects.filter(is_active=True).order_by('name'):
-            cov = _get_coverage(cg.group_id)
+            known_ids.add(group_id)
+
+        # Preserve historical `universe_group_ids` as non-authoritative metadata hints.
+        for hint_id in config.universe_group_ids or []:
+            if hint_id in known_ids:
+                continue
             groups.append({
-                'id': cg.group_id,
-                'name': cg.name,
-                'type': 'custom',
-                'selected': cg.group_id in selected_ids,
-                **cov,
+                'id': hint_id,
+                'name': f'Hint group: {hint_id}',
+                'type': 'hint',
+                'source': 'config_hint',
+                'selected': True,
+                'hint_only': True,
+                'symbol_count': 0,
+                'data_count': 0,
+                'latest_date': None,
             })
 
         return Response({
             'groups': groups,
             'active_profile': config.active_profile,
+            'universe_mode': 'registry_first',
+            'hint_group_ids': config.universe_group_ids or [],
         })
 
 

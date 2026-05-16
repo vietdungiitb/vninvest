@@ -313,12 +313,15 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
 
         self.assertEqual(groups_response.status_code, status.HTTP_200_OK)
         self.assertEqual(schedule_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(groups_response.json().get('universe_mode'), 'registry_first')
+        self.assertEqual(groups_response.json().get('hint_group_ids'), ['vn30', 'banking'])
         selected_group_ids = [
             group['id']
             for group in groups_response.json()['groups']
             if group.get('selected')
         ]
-        self.assertEqual(selected_group_ids, ['vn30'])
+        self.assertIn('vn30', selected_group_ids)
+        self.assertIn('banking', selected_group_ids)
         self.assertEqual(schedule_response.json()['active_profile'], 'pre_open')
         self.assertEqual(len(schedule_response.json()['schedule']), 6)
         market_open_task = next(

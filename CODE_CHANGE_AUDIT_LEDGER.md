@@ -1,5 +1,43 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Prefetch registry-first universe cutover (group_ids as hint metadata) | backend/docs
+
+## All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/views/prefetch.py` | Switched `prefetch/universe-groups` to global-registry-first tier snapshot and downgraded `universe_group_ids` to hint metadata (`hint_group_ids`, `universe_mode=registry_first`) |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Updated prefetch domain assertions for registry-first payload and hint metadata behavior |
+| `module_tree_full.md` | Regenerated module tree after this backend slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for registry-first prefetch cutover |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain --keepdb` ✅ (45 passed)
+- `./start_dev.ps1` runtime refresh completed; smoke checks: Core API health OK, Frontend health OK ✅
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+
+## Residual risk
+- SOC prefetch UI vẫn hiển thị ngữ nghĩa group-centric; dù backend đã registry-first, cần thêm UI wording/label cutover để giảm nhầm lẫn operator.
+
+# 2026-05-16 | Global Alert Center native-first slice: canonical hook ownership with compatibility shim | frontend/docs
+
+## All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `frontend/src/hooks/useAlertCenterFeed.js` | Promoted as canonical implementation owner for alert-center feed hook logic |
+| `frontend/src/hooks/useUnifiedAlerts.js` | Converted to compatibility re-export shim pointing to canonical `useAlertCenterFeed` |
+| `module_tree_full.md` | Regenerated module tree after this code slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for native-first hook ownership cutover |
+
+## Validation
+- `npm run test -- src/api/client.unifiedAlerts.test.js` (frontend) ✅ 3/3 pass
+- `./start_dev.ps1` runtime refresh completed; smoke checks: Core API health OK, Frontend health OK ✅
+- `scripts/ops/generate_module_tree.py` completed (`1211` modules) ✅
+
+## Residual risk
+- Legacy alias module still exists by design as rollback-safe compatibility shim until D02 shadow/parity gate closure; no destructive shim removal in this slice.
+
 # 2026-05-16 | Global Alert Center decommission-ready step 1: legacy inventory + rollback map | docs
 
 ## All Modified Files (6 files)

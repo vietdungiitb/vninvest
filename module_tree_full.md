@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 23:21:40`
+Generated at: `2026-05-16 23:38:45`
 
 ## Summary
 
@@ -5813,7 +5813,10 @@ Generated at: `2026-05-16 23:21:40`
 
 ### `frontend/src/hooks/useAlertCenterFeed.js`
 
-- No parseable top-level symbols found
+- Functions:
+  - `fetchUnifiedPage`, `fmtBil`, `formatNumberSafe`, `goToFirstUnifiedPage`, `goToLastUnifiedPage`, `goToNextUnifiedPage`, `goToPreviousUnifiedPage`, `localizeUnifiedDetail`, `localizeUnifiedHeadline`, `normalizeAlertText`, `normalizeSeverity`, `normalizedAlerts`, `passesSeverity`, `toStableAlertTimestamp`
+- Top-level variables:
+  - `DEFAULT_ALERT_CENTER_FEED_PAGE_SIZE`, `aScore`, `activeStack`, `bScore`, `base`, `cursor`, `filteredUnifiedAlerts`, `formattedValue`, `hasMore`, `holdingsSet`, `incoming`, `intervalId`, `lastKnownIndex`, `localUnifiedAlerts`, `mappings`, `mergedMap`, `mergedUnifiedAlerts`, `messageCandidate`, `monitoredKey`, `nextCursor`, `normalized`, `normalizedDetail`, `normalizedHeadline`, `normalizedSeverity`, `priceShockMatch`, `quoteList`, `rawValue`, `resetStack`, `response`, `severityDiff`, `severityRank`, `source`, `staleMatch`, `symbol`, `text`, `timeDelta`, `timeDiff`, `trackedSet`, `translated`, `ts`, `unifiedAlerts`, `v`, `value`, `whaleValueMatch`
 
 ### `frontend/src/hooks/useDashboardAlerts.js`
 
@@ -5880,10 +5883,7 @@ Generated at: `2026-05-16 23:21:40`
 
 ### `frontend/src/hooks/useUnifiedAlerts.js`
 
-- Functions:
-  - `fetchUnifiedPage`, `fmtBil`, `formatNumberSafe`, `goToFirstUnifiedPage`, `goToLastUnifiedPage`, `goToNextUnifiedPage`, `goToPreviousUnifiedPage`, `localizeUnifiedDetail`, `localizeUnifiedHeadline`, `normalizeAlertText`, `normalizeSeverity`, `normalizedAlerts`, `passesSeverity`, `toStableAlertTimestamp`
-- Top-level variables:
-  - `DEFAULT_UNIFIED_ALERTS_PAGE_SIZE`, `aScore`, `activeStack`, `alertSummary`, `bScore`, `base`, `cursor`, `filtered`, `filteredUnifiedAlerts`, `formattedValue`, `hasMore`, `holdingSet`, `hotSymbols`, `incoming`, `intervalId`, `lastKnownIndex`, `mappings`, `messageCandidate`, `monitoredKey`, `nextCursor`, `normalized`, `normalizedDetail`, `normalizedHeadline`, `normalizedSeverity`, `priceShockMatch`, `quoteList`, `rawValue`, `record`, `resetStack`, `response`, `scopedUnifiedAlerts`, `sev`, `severityRank`, `staleMatch`, `symbolMap`, `text`, `timeDelta`, `translated`, `ts`, `unifiedAlerts`, `v`, `value`, `watchlistSet`, `whaleValueMatch`
+- No parseable top-level symbols found
 
 ### `frontend/src/hooks/useWatchlistProcessor.js`
 
