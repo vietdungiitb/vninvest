@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center remediation R2: SaaS-native endpoint family cutover + legacy unified-alert backend route removal | backend + tests
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/views.py` | Refactored alert feed base classes to SaaS-native naming, added `/signals/alert-center/*` + `/signals/ai-alerts/*` endpoints (feed/summary/detail/context/ack/mute), and expanded OpenAPI metadata for runtime filters/pagination/error/rate-limit semantics |
+| `packages/core/backend/src/signal_intelligence/urls.py` | Removed legacy `unified-alert` backend routes and kept SaaS-native alert-center + ai-alerts route family |
+| `packages/core/backend/src/signal_intelligence/api_urls.py` | Removed legacy `/api/signals/unified-alert/*` routes and aligned with SaaS-native route family |
+| `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` | Migrated tests to new route family, added regression asserting legacy route `404`, and added ack/mute lifecycle API coverage |
+| `module_tree_full.md` | Regenerated module tree after R2 endpoint refactor (`1206` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this R2 implementation entry |
+| `PROGRESS_DASHBOARD.md` | Added R2 progress snapshot |
+
+## Validation
+- `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb; Pop-Location` passed (`17` tests) ✅
+- Regression expectation confirmed in test run: `/core/v1/unified-alert/delivery` now returns `404` by design (legacy backend route removed) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1206` modules) ✅
+- `Set-Location .; .\start_dev.ps1` completed successfully: `No queue drift detected`, Core API health OK, Frontend health OK ✅
+
+## Residual risk
+- Frontend surfaces or adapters still calling legacy `unified-alert` endpoints will fail until D01/D05 compatibility cleanup is finished on client-side route usage.
+
 # 2026-05-16 | Global Alert Center remediation R1.2: delivery service policy + state machine integration | backend + tests
 
 ## All Modified Files (6 files)

@@ -1,3 +1,21 @@
+# 2026-05-16 — Global Alert Center remediation R2 complete (SaaS-native endpoint family convergence) ✅
+
+Status: **✅ R2 DONE (backend scope)** | **✅ legacy unified-alert backend routes removed** | **✅ alert-center/ai-alerts endpoint family active** | **✅ focused tests + runtime refresh green**
+
+## What changed
+- Cut backend routes over to SaaS-native contract family under `/core/v1/signals/alert-center/*` and `/core/v1/signals/ai-alerts/*`.
+- Added endpoint coverage for `feed`, `summary`, `events/{alert_id}`, `symbols/{symbol}/context`, `events/{alert_id}/ack`, `preferences/mute`.
+- Removed legacy backend `unified-alert` routing to enforce native-only convergence.
+- Migrated focused tests to new endpoint family and added explicit regression that old route returns `404`.
+
+## Validation
+- `manage.py test signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb` → **17 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1206 modules)** ✅
+- `./start_dev.ps1` → **No queue drift detected; Core API health OK; Frontend health OK** ✅
+
+## Next
+- Continue R3 taxonomy/payload parity and update frontend adapters to consume only new SaaS-native endpoint family.
+
 # 2026-05-16 — Global Alert Center remediation R1.2 complete (delivery service integration) ✅
 
 Status: **✅ R1.2 DONE** | **✅ delivery policy + state transitions centralized in service layer** | **✅ focused tests green** | **✅ runtime refresh healthy**

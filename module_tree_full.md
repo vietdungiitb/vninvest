@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 22:23:26`
+Generated at: `2026-05-16 22:30:02`
 
 ## Summary
 
 - Total modules: 1206
 - Python modules: 685
 - JS/TS modules: 521
-- Total classes: 1347
-- Total functions: 3234
+- Total classes: 1360
+- Total functions: 3236
 - Total top-level variables: 4729
 
 ## Python Modules
@@ -4067,7 +4067,7 @@ Generated at: `2026-05-16 22:23:26`
 ### `packages/core/backend/src/signal_intelligence/tests/test_materializers.py`
 
 - Classes:
-  - `UnifiedAlertMaterializerTests` -> methods: `test_materialize_ai_signal_alerts_creates_ai_lane_alert`, `test_materialize_market_anomaly_alerts_creates_signal_alert_from_snapshot`, `test_materialize_stale_quote_alerts_creates_system_alert_from_snapshot`, `test_materialize_unified_alerts_creates_dark_flow_alert_from_order_flow_event`, `test_materialize_unified_alerts_is_idempotent_for_dark_flow_event`, `test_unified_alert_list_view_defaults_to_main_lane_and_supports_ai_lane`, `test_user_unified_alert_delivery_route_is_registered_under_core_v1`, `test_user_unified_alert_delivery_view_filters_by_user_symbols_and_threshold`
+  - `UnifiedAlertMaterializerTests` -> methods: `test_alert_center_ack_and_mute_flow`, `test_alert_center_feed_filters_by_user_symbols_and_threshold`, `test_alert_center_routes_are_registered_under_core_v1`, `test_legacy_unified_alert_routes_are_removed`, `test_materialize_ai_signal_alerts_creates_ai_lane_alert`, `test_materialize_market_anomaly_alerts_creates_signal_alert_from_snapshot`, `test_materialize_stale_quote_alerts_creates_system_alert_from_snapshot`, `test_materialize_unified_alerts_creates_dark_flow_alert_from_order_flow_event`, `test_materialize_unified_alerts_is_idempotent_for_dark_flow_event`, `test_unified_alert_list_view_defaults_to_main_lane_and_supports_ai_lane`
   - `WhaleMaterializerTests` -> methods: `test_materialize_whale_feed_aggregate_is_idempotent_for_existing_event`, `test_materialize_whale_feed_aggregate_skips_incomplete_native_facts`, `test_materialize_whale_feed_aggregate_uses_order_flow_facts_only`
 
 ### `packages/core/backend/src/signal_intelligence/tests/test_websocket_consumer.py`
@@ -4084,18 +4084,31 @@ Generated at: `2026-05-16 22:23:26`
 ### `packages/core/backend/src/signal_intelligence/views.py`
 
 - Classes:
+  - `_BaseAlertSummaryView` -> methods: `get`, `get_scoped_queryset`
+  - `AIAlertsFeedView` -> methods: `get_queryset`
+  - `AIAlertsSummaryView`
+  - `AlertCenterAcknowledgeView` -> methods: `post`
+  - `AlertCenterEventDetailView` -> methods: `get`
+  - `AlertCenterFeedView` -> methods: `get_queryset`
+  - `AlertCenterMutePreferenceRequestSerializer` -> methods: `validate`
+  - `AlertCenterMutePreferenceView` -> methods: `post`
+  - `AlertCenterSummaryResponseSerializer`
+  - `AlertCenterSummaryView`
+  - `AlertCenterSymbolContextSerializer`
+  - `AlertCenterSymbolContextView` -> methods: `get`
+  - `AlertFeedBaseListView` -> methods: `get_queryset`
   - `CursorPaginatedOrderFlowEventResponseSerializer`
   - `CursorPaginatedUnifiedAlertResponseSerializer`
   - `OrderFlowEventListView` -> methods: `get_queryset`
-  - `UnifiedAlertListView` -> methods: `get_queryset`
-  - `UserUnifiedAlertDeliveryView` -> methods: `get_queryset`, `list`
+  - `UserAlertDeliveryStateSerializer`
+  - `UserScopedAlertFeedBaseView` -> methods: `get_queryset`, `list`
   - `WhaleAlertCursorPagination`
   - `WhaleFeedAggregateItemSerializer`
   - `WhaleFeedAggregateResponseSerializer`
   - `WhaleFeedAggregateSummarySerializer`
   - `WhaleFeedAggregateView` -> methods: `get`
 - Functions:
-  - `_whale_size_class`
+  - `_apply_common_alert_filters`, `_build_summary_payload`, `_whale_size_class`
 - Top-level variables:
   - `_WHALE_SIDE_MAP`
 

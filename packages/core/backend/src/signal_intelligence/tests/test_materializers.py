@@ -12,8 +12,8 @@ from signal_intelligence.materializers import (
     materialize_unified_alerts,
     materialize_whale_feed_aggregate,
 )
-from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
-from signal_intelligence.views import UnifiedAlertListView, UserUnifiedAlertDeliveryView
+from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical, UserAlertDelivery
+from signal_intelligence.views import AIAlertsFeedView, AlertCenterFeedView
 from market_serving.models import SymbolSnapshot
 from identity_access.models import UserProfile
 from user_workspace.models import Portfolio, Transaction, Watchlist, WatchlistItem
@@ -187,18 +187,20 @@ class UnifiedAlertMaterializerTests(TestCase):
         )
 
         user = get_user_model().objects.create_user(username='signal-tester', password='password123')
+        watchlist = Watchlist.objects.create(user=user, name='Theo doi lane', is_default=True)
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='VCI')
         factory = APIRequestFactory()
 
-        main_request = factory.get('/signals/unified-alert/')
+        main_request = factory.get('/signals/alert-center/feed')
         force_authenticate(main_request, user=user)
-        main_response = UnifiedAlertListView.as_view()(main_request)
+        main_response = AlertCenterFeedView.as_view()(main_request)
         self.assertEqual(main_response.status_code, 200)
         self.assertEqual(main_response.data['results'][0]['alert_id'], str(main_alert.alert_id))
         self.assertEqual(main_response.data['results'][0]['lane'], 'main')
 
-        ai_request = factory.get('/signals/unified-alert/?lane=ai')
+        ai_request = factory.get('/signals/ai-alerts/feed')
         force_authenticate(ai_request, user=user)
-        ai_response = UnifiedAlertListView.as_view()(ai_request)
+        ai_response = AIAlertsFeedView.as_view()(ai_request)
         self.assertEqual(ai_response.status_code, 200)
         self.assertEqual(ai_response.data['results'][0]['alert_id'], str(ai_alert.alert_id))
         self.assertEqual(ai_response.data['results'][0]['lane'], 'ai')
@@ -280,7 +282,7 @@ class UnifiedAlertMaterializerTests(TestCase):
         self.assertEqual(alert.metadata['source'], 'signal_intelligence.ai_signal_events')
         self.assertEqual(alert.evidence['ai_signal'], 'price_momentum_breakout')
 
-    def test_user_unified_alert_delivery_view_filters_by_user_symbols_and_threshold(self):
+    def test_alert_center_feed_filters_by_user_symbols_and_threshold(self):
         now = timezone.now()
         user = get_user_model().objects.create_user(username='delivery-user', password='password123')
         UserProfile.objects.create(user=user, whale_alert_threshold=700)
@@ -340,10 +342,10 @@ class UnifiedAlertMaterializerTests(TestCase):
         )
 
         factory = APIRequestFactory()
-        request = factory.get('/signals/unified-alert/delivery/')
+        request = factory.get('/signals/alert-center/feed')
         force_authenticate(request, user=user)
 
-        response = UserUnifiedAlertDeliveryView.as_view()(request)
+        response = AlertCenterFeedView.as_view()(request)
 
         self.assertEqual(response.status_code, 200)
         result_ids = {item['alert_id'] for item in response.data['results']}
@@ -351,7 +353,7 @@ class UnifiedAlertMaterializerTests(TestCase):
         self.assertNotIn(str(filtered_by_threshold.alert_id), result_ids)
         self.assertNotIn(str(filtered_by_symbol.alert_id), result_ids)
 
-    def test_user_unified_alert_delivery_route_is_registered_under_core_v1(self):
+    def test_alert_center_routes_are_registered_under_core_v1(self):
         now = timezone.now()
         user = get_user_model().objects.create_user(username='delivery-route-user', password='password123')
         UserProfile.objects.create(user=user, whale_alert_threshold=500)
@@ -375,7 +377,56 @@ class UnifiedAlertMaterializerTests(TestCase):
 
         client = APIClient()
         client.force_authenticate(user=user)
-        response = client.get('/core/v1/unified-alert/delivery', {'lane': 'main'})
+        response = client.get('/core/v1/signals/alert-center/feed')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()['results']), 1)
+
+    def test_legacy_unified_alert_routes_are_removed(self):
+        user = get_user_model().objects.create_user(username='legacy-removed-user', password='password123')
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get('/core/v1/unified-alert/delivery')
+        self.assertEqual(response.status_code, 404)
+
+    def test_alert_center_ack_and_mute_flow(self):
+        now = timezone.now()
+        user = get_user_model().objects.create_user(username='ack-mute-user', password='password123')
+        UserProfile.objects.create(user=user, whale_alert_threshold=100)
+        watchlist = Watchlist.objects.create(user=user, name='Theo doi ACK', is_default=True)
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='VCI')
+        alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.9,
+            freshness_state='fresh',
+            title='Whale VCI ACK',
+            body='',
+            value=Decimal('1000000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='ack-mute-vci',
+            evidence={'source': 'test'},
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        ack_response = client.post(f'/core/v1/signals/alert-center/events/{alert.alert_id}/ack')
+        self.assertEqual(ack_response.status_code, 200)
+        self.assertEqual(ack_response.json()['delivery_state'], 'acknowledged')
+        self.assertTrue(UserAlertDelivery.objects.filter(user=user, alert=alert, delivery_state='acknowledged').exists())
+
+        mute_response = client.post(
+            '/core/v1/signals/alert-center/preferences/mute',
+            data={'symbol': 'VCI', 'alert_family': 'whale', 'mute_minutes': 30},
+            format='json',
+        )
+        self.assertEqual(mute_response.status_code, 200)
+
+        feed_response = client.get('/core/v1/signals/alert-center/feed')
+        self.assertEqual(feed_response.status_code, 200)
+        self.assertEqual(len(feed_response.json()['results']), 0)
