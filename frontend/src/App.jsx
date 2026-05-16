@@ -7,7 +7,6 @@ import DashboardShellHost from './pages/DashboardShellHost';
 import StockDetail from './pages/StockDetail';
 import WhaleAdvisory from './pages/WhaleAdvisory';
 import AiAdvisoryShellHost from './pages/AiAdvisoryShellHost';
-import WhaleAlertsHub from './pages/WhaleAlertsHub';
 import WhaleAlertsDashboard from './pages/WhaleAlertsDashboard';
 import WhaleAlertsShellHost from './pages/WhaleAlertsShellHost';
 import Transactions from './pages/Transactions';
@@ -46,6 +45,7 @@ import { LangProvider } from './context/LangContext';
 import { RealtimeProvider } from './context/RealtimeContext';
 import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import { AlertCenterPage } from '@vninvest/web';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -123,7 +123,7 @@ export default function App() {
                       )}
                     />
                   ) : null}
-                  <Route path="whale-alerts" element={<WhaleAlertsHub />} />
+                  <Route path="whale-alerts" element={<AlertCenterPage />} />
                   {packageShellHostEnabled ? (
                     <Route
                       path="whale-alerts/shell"
@@ -302,6 +302,7 @@ export default function App() {
                   />
                   <Route path="tenant-admin" element={<Navigate to="/tenant-admin/home" replace />} />
                   <Route path="screener" element={<Screener />} />
+                  <Route path="admin-ops" element={<Navigate to="/operations-center" replace />} />
                   <Route path="operations-center" element={<SOCPage />} />
                   <Route path="portfolios" element={<PortfoliosShellHost />} />
                   <Route

@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 15:47:12`
+Generated at: `2026-05-16 21:02:18`
 
 ## Summary
 
-- Total modules: 1205
-- Python modules: 681
-- JS/TS modules: 524
-- Total classes: 1327
-- Total functions: 3232
-- Total top-level variables: 4877
+- Total modules: 1204
+- Python modules: 682
+- JS/TS modules: 522
+- Total classes: 1341
+- Total functions: 3226
+- Total top-level variables: 4729
 
 ## Python Modules
 
@@ -2980,9 +2980,9 @@ Generated at: `2026-05-16 15:47:12`
 ### `packages/core/backend/src/market_data/global_symbol_registry.py`
 
 - Functions:
-  - `_build_raw_system_default_source_ref`, `_coerce_metadata`, `_get_decay_days`, `_resolve_priority_tier`, `_resolve_weight`, `_summarize_coverage`, `build_admin_group_source_ref`, `build_holding_source_ref`, `build_price_alert_source_ref`, `build_system_default_source_ref`, `build_tracked_symbol_source_ref`, `build_watchlist_source_ref`, `deactivate_global_symbol_demand`, `normalize_symbol`, `refresh_global_symbol_registry`, `sync_admin_group_symbol_set`, `sync_global_source_symbol_set`, `sync_holding_demand_for_portfolio_symbol`, `sync_price_alert_demand`, `sync_system_default_symbol_group`, `sync_tracked_symbol_demand`, `sync_watchlist_item_demand`, `upsert_global_symbol_demand`
+  - `_build_raw_system_default_source_ref`, `_build_registry_projection`, `_build_registry_state_payload`, `_coerce_metadata`, `_get_decay_days`, `_normalize_source_ref`, `_normalize_source_type`, `_resolve_priority_tier`, `_resolve_registry_drift_fields`, `_resolve_weight`, `_serialize_date`, `_serialize_datetime`, `_summarize_coverage`, `build_admin_group_source_ref`, `build_global_symbol_registry_detail`, `build_global_symbol_registry_reconcile_preview`, `build_global_symbol_registry_summary`, `build_holding_source_ref`, `build_price_alert_source_ref`, `build_system_default_source_ref`, `build_tracked_symbol_source_ref`, `build_watchlist_source_ref`, `deactivate_global_symbol_demand`, `normalize_symbol`, `refresh_global_symbol_registry`, `sync_admin_group_symbol_set`, `sync_global_source_symbol_set`, `sync_holding_demand_for_portfolio_symbol`, `sync_price_alert_demand`, `sync_system_default_symbol_group`, `sync_tracked_symbol_demand`, `sync_watchlist_item_demand`, `upsert_global_symbol_demand`
 - Top-level variables:
-  - `FRESHNESS_RANK`, `HOT_SOURCE_TYPES`, `SYSTEM_DEFAULT_GROUP_ID_ALIASES`, `WARM_SOURCE_TYPES`
+  - `COVERAGE_STATE_ORDER`, `FRESHNESS_RANK`, `FRESHNESS_STATE_ORDER`, `HOT_SOURCE_TYPES`, `PRIORITY_TIER_ORDER`, `REGISTRY_PROJECTION_FIELDS`, `SYSTEM_DEFAULT_GROUP_ID_ALIASES`, `VALID_SOURCE_TYPES`, `WARM_SOURCE_TYPES`
 
 ### `packages/core/backend/src/market_data/legacy_views.py`
 
@@ -3086,17 +3086,17 @@ Generated at: `2026-05-16 15:47:12`
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
 
 - Classes:
-  - `GlobalSymbolCoverageServiceTestCase` -> methods: `_ensure_registry`, `test_build_global_coverage_summary_aggregates_by_dataset`, `test_build_global_planner_preview_requires_explicit_force_refresh`, `test_build_global_planner_preview_uses_missing_only_policy`, `test_refresh_global_symbol_coverage_marks_stale_and_missing_datasets`, `test_refresh_global_symbol_coverage_populates_all_dataset_rows`
+  - `GlobalSymbolCoverageServiceTestCase` -> methods: `_ensure_registry`, `test_build_global_coverage_summary_aggregates_by_dataset`, `test_build_global_planner_preview_requires_explicit_force_refresh`, `test_build_global_planner_preview_uses_missing_only_policy`, `test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm`, `test_refresh_global_symbol_coverage_marks_stale_and_missing_datasets`, `test_refresh_global_symbol_coverage_populates_all_dataset_rows`
 
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
 
 - Classes:
-  - `GlobalSymbolPlannerRunTests` -> methods: `_create_intraday_gaps`, `_create_registry_with_daily_gap`, `_create_snapshot_gap`, `setUpTestData`, `test_create_global_planner_run_carries_scheduler_context_and_queue`, `test_create_global_planner_run_executes_intraday_sync`, `test_create_global_planner_run_executes_price_board_snapshot_sync`, `test_create_global_planner_run_executes_sync_and_updates_audit`, `test_create_global_planner_run_queues_async_run_log`
+  - `GlobalSymbolPlannerRunTests` -> methods: `_create_intraday_gaps`, `_create_registry_with_daily_gap`, `_create_session_facts_gap`, `_create_snapshot_gap`, `setUpTestData`, `test_create_global_planner_run_carries_scheduler_context_and_queue`, `test_create_global_planner_run_executes_intraday_sync`, `test_create_global_planner_run_executes_price_board_snapshot_sync`, `test_create_global_planner_run_executes_session_facts_sync`, `test_create_global_planner_run_executes_sync_and_updates_audit`, `test_create_global_planner_run_queues_async_run_log`
 
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_registry.py`
 
 - Classes:
-  - `GlobalSymbolRegistrySignalTestCase` -> methods: `setUp`, `test_admin_group_sync_deactivates_removed_symbols`, `test_system_default_sync_canonicalizes_vn100_and_deactivates_top100_alias`, `test_transaction_signals_sync_holdings_per_portfolio_symbol`, `test_watchlist_item_signal_creates_and_decays_registry_edge`
+  - `GlobalSymbolRegistrySignalTestCase` -> methods: `setUp`, `test_admin_group_sync_deactivates_removed_symbols`, `test_deactivate_rejects_invalid_source_contract`, `test_price_alert_signal_syncs_and_deactivates_demand_edge`, `test_sync_global_source_symbol_set_normalizes_and_validates_source_contract`, `test_system_default_sync_canonicalizes_vn100_and_deactivates_top100_alias`, `test_tracked_symbol_signal_syncs_and_deactivates_demand_edge`, `test_transaction_signals_sync_holdings_per_portfolio_symbol`, `test_upsert_rejects_empty_source_ref`, `test_upsert_rejects_invalid_source_type`, `test_watchlist_item_signal_creates_and_decays_registry_edge`
 - Top-level variables:
   - `User`
 
@@ -3593,7 +3593,7 @@ Generated at: `2026-05-16 15:47:12`
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
 
 - Classes:
-  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_audit_returns_paginated_change_history`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`, `test_runtime_config_preview_validates_without_saving`
+  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_registry_summary_endpoint_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_registry_detail_endpoint_returns_demand_sources_coverage_and_queue_tier`, `test_registry_reconcile_preview_flags_drift_without_mutating_registry`, `test_registry_summary_endpoint_returns_foundation_aggregates`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_audit_returns_paginated_change_history`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`, `test_runtime_config_preview_validates_without_saving`
   - `MatrixDomainApiTestCase` -> methods: `test_matrix_providers_reflect_active_cycle`, `test_matrix_routes_appear_in_openapi_schema`, `test_start_monitor_and_abort_matrix_cycle`
   - `OverviewDomainApiTestCase` -> methods: `test_overview_routes_appear_in_openapi_schema`, `test_overview_summary_endpoint_returns_grouped_health_snapshot`, `test_service_health_check_endpoint_queues_manual_probe_run_log`
   - `PrefetchDomainApiTestCase` -> methods: `test_apply_prefetch_config_updates_schedule_and_universe`, `test_prefetch_apply_alias_and_ownership_endpoint_match_contract`, `test_prefetch_default_config_response_has_stable_metadata`, `test_prefetch_routes_appear_in_openapi_schema`, `test_prefetch_warm_now_queues_run_log`, `test_profiles_cache_and_purge_endpoints_return_contract`
@@ -3671,7 +3671,7 @@ Generated at: `2026-05-16 15:47:12`
 ### `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
 
 - Classes:
-  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty`, `test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists`, `test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately`, `test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent`, `test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
+  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty`, `test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_includes_session_facts_for_warm_tier`, `test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists`, `test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately`, `test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent`, `test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
   - `VnbrokerAdapterTaskBridgeTestCase` -> methods: `test_fetch_daily_history_uses_requested_source_quote_class`, `test_fetch_listing_symbols_uses_requested_source_listing_adapter`, `test_fetch_price_board_snapshot_passes_explicit_source`, `test_fetch_realtime_price_uses_requested_source_quote_class`, `test_fetch_symbol_group_members_uses_requested_source_group`
 
 ### `packages/core/backend/src/service_ops/urls.py`
@@ -3704,6 +3704,13 @@ Generated at: `2026-05-16 15:47:12`
   - `DataOpsPlannerRunView` -> methods: `post`
   - `DataOpsQueueTiersResponseSerializer`
   - `DataOpsQueueTiersView` -> methods: `get`
+  - `DataOpsRegistryDetailResponseSerializer`
+  - `DataOpsRegistryDetailView` -> methods: `get`
+  - `DataOpsRegistryReconcilePreviewRequestSerializer`
+  - `DataOpsRegistryReconcilePreviewResponseSerializer`
+  - `DataOpsRegistryReconcilePreviewView` -> methods: `post`
+  - `DataOpsRegistrySummaryResponseSerializer`
+  - `DataOpsRegistrySummaryView` -> methods: `get`
   - `DataOpsRunLogsResponseSerializer`
   - `DataOpsRunLogsView` -> methods: `get`
   - `DataOpsRuntimeConfigApplyRequestSerializer`
@@ -3978,9 +3985,9 @@ Generated at: `2026-05-16 15:47:12`
 ### `packages/core/backend/src/signal_intelligence/materializers.py`
 
 - Functions:
-  - `_map_alert_type`, `_map_direction`, `_map_severity`, `_native_whale_detect`, `materialize_unified_alerts`, `materialize_whale_feed_aggregate`
+  - `_build_alert_evidence`, `_build_snapshot_evidence`, `_map_alert_type`, `_map_direction`, `_map_severity`, `_native_whale_detect`, `_resolve_confidence_from_matched_value`, `materialize_ai_signal_alerts`, `materialize_market_anomaly_alerts`, `materialize_stale_quote_alerts`, `materialize_unified_alerts`, `materialize_whale_feed_aggregate`
 - Top-level variables:
-  - `_MAX_ALERTS_PER_RUN`, `_WHALE_VALUE_MAX_VND`, `_WHALE_VALUE_MIN_VND`, `_WHALE_VOLUME_THRESHOLD`, `logger`
+  - `_MARKET_ANOMALY_PCT_THRESHOLD`, `_MAX_ALERTS_PER_RUN`, `_WHALE_VALUE_MAX_VND`, `_WHALE_VALUE_MIN_VND`, `_WHALE_VOLUME_THRESHOLD`, `logger`
 
 ### `packages/core/backend/src/signal_intelligence/migrations/0001_initial.py`
 
@@ -3993,6 +4000,11 @@ Generated at: `2026-05-16 15:47:12`
   - `Migration`
 
 ### `packages/core/backend/src/signal_intelligence/migrations/0003_unifiedalert_source_ref_nonempty_unique.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/signal_intelligence/migrations/0004_unifiedalert_read_model_fields.py`
 
 - Classes:
   - `Migration`
@@ -4012,7 +4024,7 @@ Generated at: `2026-05-16 15:47:12`
 
 - Classes:
   - `OrderFlowEventSerializer`
-  - `UnifiedAlertSerializer`
+  - `UnifiedAlertSerializer` -> methods: `get_lane`
   - `WhaleAlertCanonicalSerializer`
 
 ### `packages/core/backend/src/signal_intelligence/tasks.py`
@@ -4036,7 +4048,7 @@ Generated at: `2026-05-16 15:47:12`
 ### `packages/core/backend/src/signal_intelligence/tests/test_materializers.py`
 
 - Classes:
-  - `UnifiedAlertMaterializerTests` -> methods: `test_materialize_unified_alerts_creates_dark_flow_alert_from_order_flow_event`, `test_materialize_unified_alerts_is_idempotent_for_dark_flow_event`
+  - `UnifiedAlertMaterializerTests` -> methods: `test_materialize_ai_signal_alerts_creates_ai_lane_alert`, `test_materialize_market_anomaly_alerts_creates_signal_alert_from_snapshot`, `test_materialize_stale_quote_alerts_creates_system_alert_from_snapshot`, `test_materialize_unified_alerts_creates_dark_flow_alert_from_order_flow_event`, `test_materialize_unified_alerts_is_idempotent_for_dark_flow_event`, `test_unified_alert_list_view_defaults_to_main_lane_and_supports_ai_lane`, `test_user_unified_alert_delivery_route_is_registered_under_core_v1`, `test_user_unified_alert_delivery_view_filters_by_user_symbols_and_threshold`
   - `WhaleMaterializerTests` -> methods: `test_materialize_whale_feed_aggregate_is_idempotent_for_existing_event`, `test_materialize_whale_feed_aggregate_skips_incomplete_native_facts`, `test_materialize_whale_feed_aggregate_uses_order_flow_facts_only`
 
 ### `packages/core/backend/src/signal_intelligence/tests/test_websocket_consumer.py`
@@ -4053,12 +4065,18 @@ Generated at: `2026-05-16 15:47:12`
 ### `packages/core/backend/src/signal_intelligence/views.py`
 
 - Classes:
+  - `CursorPaginatedOrderFlowEventResponseSerializer`
+  - `CursorPaginatedUnifiedAlertResponseSerializer`
   - `OrderFlowEventListView` -> methods: `get_queryset`
   - `UnifiedAlertListView` -> methods: `get_queryset`
+  - `UserUnifiedAlertDeliveryView` -> methods: `get_queryset`
   - `WhaleAlertCursorPagination`
+  - `WhaleFeedAggregateItemSerializer`
+  - `WhaleFeedAggregateResponseSerializer`
+  - `WhaleFeedAggregateSummarySerializer`
   - `WhaleFeedAggregateView` -> methods: `get`
 - Functions:
-  - `_whale_size_class`
+  - `_resolve_user_delivery_symbols`, `_resolve_user_whale_threshold_vnd`, `_whale_size_class`
 - Top-level variables:
   - `_WHALE_SIDE_MAP`
 
@@ -5027,7 +5045,7 @@ Generated at: `2026-05-16 15:47:12`
 - Functions:
   - `addTrackedSymbol`, `addWatchlistItem`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminAuditLog`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminScreenerConfig`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDNSEConfig`, `getDNSETokenStatus`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getSessionFacts`, `getSessionFactsCvd`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `normalizeTenantPatWritePayload`, `normalizeTenantServiceAccountWritePayload`, `placeDNSEOrder`, `postStockAIAdvisoryObservabilityEvent`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `restoreStockAIAdvisoryComponent`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncDNSEAccounts`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminScreenerConfig`, `updateDNSEConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `withDefaultAuditReason`
 - Top-level variables:
-  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `REQUEST_TIMEOUT_MS`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `rawRows`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `requestUrl`, `response`, `rows`, `scopes`, `status`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
+  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `REQUEST_TIMEOUT_MS`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `nextCursor`, `nextUrl`, `normalizedSymbols`, `normalizedToken`, `now`, `origin`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `rawRows`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `requestUrl`, `response`, `rows`, `scopedResults`, `scopes`, `severity`, `status`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
 ### `frontend/src/api/client.test.js`
 
@@ -5036,7 +5054,7 @@ Generated at: `2026-05-16 15:47:12`
 ### `frontend/src/api/client.unifiedAlerts.test.js`
 
 - Top-level variables:
-  - `axiosModule`, `getUnifiedAlerts`, `mockApiClient`, `mockGet`
+  - `axiosModule`, `getUnifiedAlerts`, `mockApiClient`, `mockGetUnifiedAlertDelivery`, `response`
 
 ### `frontend/src/api/socApi.js`
 
@@ -5807,9 +5825,9 @@ Generated at: `2026-05-16 15:47:12`
 ### `frontend/src/hooks/useUnifiedAlerts.js`
 
 - Functions:
-  - `backendNormalized`, `darkFlowUnified`, `fetchUnifiedPage`, `fmtBil`, `formatNumberSafe`, `goToFirstUnifiedPage`, `goToLastUnifiedPage`, `goToNextUnifiedPage`, `goToPreviousUnifiedPage`, `loadSnapshotAlerts`, `localizeUnifiedDetail`, `localizeUnifiedHeadline`, `normalizeAlertText`, `normalizeSeverity`, `passesSeverity`, `toStableAlertTimestamp`
+  - `fetchUnifiedPage`, `fmtBil`, `formatNumberSafe`, `goToFirstUnifiedPage`, `goToLastUnifiedPage`, `goToNextUnifiedPage`, `goToPreviousUnifiedPage`, `localizeUnifiedDetail`, `localizeUnifiedHeadline`, `normalizeAlertText`, `normalizeSeverity`, `normalizedAlerts`, `passesSeverity`, `toStableAlertTimestamp`
 - Top-level variables:
-  - `DEFAULT_UNIFIED_ALERTS_PAGE_SIZE`, `aScore`, `absPct`, `activeStack`, `alertSummary`, `bScore`, `base`, `cancelled`, `combined`, `combinedWithBackend`, `confidence`, `cursor`, `deduped`, `fallbackId`, `filtered`, `filteredUnifiedAlerts`, `formattedValue`, `hasMore`, `holdingSet`, `hotSymbols`, `incoming`, `intervalId`, `isBuy`, `key`, `lastKnownIndex`, `leftTs`, `mappings`, `mergedAlerts`, `messageCandidate`, `monitoredKey`, `nextCursor`, `normalized`, `normalizedDetail`, `normalizedHeadline`, `normalizedSeverity`, `normalizedTs`, `pct`, `priceShockMatch`, `priceShockUnified`, `quoteList`, `rawValue`, `record`, `resetStack`, `response`, `rightTs`, `scopedUnifiedAlerts`, `seen`, `sev`, `severity`, `severityRank`, `side`, `stableTs`, `staleMatch`, `staleUnified`, `strength`, `symbolMap`, `text`, `timeDelta`, `translated`, `ts`, `unifiedAlerts`, `v`, `value`, `valueText`, `watchlistSet`, `whaleAlerts`, `whaleValueMatch`
+  - `DEFAULT_UNIFIED_ALERTS_PAGE_SIZE`, `aScore`, `activeStack`, `alertSummary`, `bScore`, `base`, `cursor`, `filtered`, `filteredUnifiedAlerts`, `formattedValue`, `hasMore`, `holdingSet`, `hotSymbols`, `incoming`, `intervalId`, `lastKnownIndex`, `mappings`, `messageCandidate`, `monitoredKey`, `nextCursor`, `normalized`, `normalizedDetail`, `normalizedHeadline`, `normalizedSeverity`, `priceShockMatch`, `quoteList`, `rawValue`, `record`, `resetStack`, `response`, `scopedUnifiedAlerts`, `sev`, `severityRank`, `staleMatch`, `symbolMap`, `text`, `timeDelta`, `translated`, `ts`, `unifiedAlerts`, `v`, `value`, `watchlistSet`, `whaleValueMatch`
 
 ### `frontend/src/hooks/useWatchlistProcessor.js`
 
@@ -6044,13 +6062,6 @@ Generated at: `2026-05-16 15:47:12`
 - Top-level variables:
   - `bootstrapLoader`
 
-### `frontend/src/pages/LegacyDashboard.jsx`
-
-- Functions:
-  - `DashboardPanelFallback`, `buildFallbackSparkline`, `handleSync`, `hydrateHeatmapSparkline`, `normalizeSymbol`, `scheduleHydration`, `toArray`
-- Top-level variables:
-  - `AllocationPieChart`, `CONCURRENCY`, `EquityVsBenchmarkChart`, `PortfolioAnalyticsPanel`, `PortfolioDigestPanel`, `avgPositionSize`, `base`, `batch`, `batchResults`, `cancelled`, `changePct`, `current`, `delayTimer`, `delta`, `existing`, `fetchData`, `fetched`, `handleSeverityBarFilter`, `heatmapData`, `held`, `holdingSymbols`, `holdingsMap`, `idleHandle`, `industry`, `industryRaw`, `liveHoldings`, `liveSummary`, `marketValue`, `monitoredQuotes`, `monitoredSymbols`, `next`, `nominalSize`, `payload`, `points`, `prev`, `quote`, `realizedPL`, `realtimeDeltaVsSnapshot`, `realtimeMarketBreadth`, `realtimeStalePositions`, `res`, `resp`, `results`, `settled`, `snapshotMarketValue`, `sparkline24`, `symbolsToHydrate`, `syncButtonLabel`, `total`, `totalHeldValue`, `trackedDisplaySize`, `trackedInfo`, `trackedSymbolMap`, `trackedSymbolNames`, `trades`, `unreadUnifiedCount`, `unrealizedPL`, `unrealizedPLPctValue`, `unrealizedPLValue`
-
 ### `frontend/src/pages/modern/ModernDashboard.jsx`
 
 - Functions:
@@ -6217,20 +6228,6 @@ Generated at: `2026-05-16 15:47:12`
   - `fetchChart`, `fmtBil`, `normalizeSymbol`, `symbolAlerts`, `symbolDarkFlowAlerts`
 - Top-level variables:
   - `BUBBLE_TIMEFRAME_OPTIONS`, `MAX_CHART_FLOW_TRADE_DATES`, `advisoryParams`, `advisoryRequestIdRef`, `bubbleFactsFirstFlowData`, `bubbleOrdersForFlow`, `cancelled`, `chartAnalyticsTimeframe`, `chartFactsFirstFlowData`, `chartHistoryTradeDates`, `conflictState`, `darkFlowItems`, `feedRequestIdRef`, `feedResp`, `fetchAdvisorySession`, `fetchFeed`, `fetchOverview`, `flattenedSnapshotOrders`, `historyTradeDates`, `id`, `liveBoardAlerts`, `lt`, `n`, `nextChartData`, `normalizedSymbol`, `overviewRequestIdRef`, `overviewResp`, `payload`, `prevWhaleRef`, `requestId`, `response`, `rt`, `selectedTradeDate`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `whaleItems`, `whaleSignalsForChart`
-
-### `frontend/src/pages/WhaleAlertsHub.jsx`
-
-- Functions:
-  - `AdvisoryPreviewCard`, `AggregateFeedCard`, `CampaignCard`, `CampaignDetailModal`, `SymbolInvestigationPanel`, `TrackedSymbolCard`, `buildAggregateEventKey`, `buildSymbolStatsFromFeed`, `buildTrackedSymbolBuckets`, `formatCompactMoney`, `formatDuration`, `formatMoney`, `formatTime`, `getAggregateSourceMeta`, `getCampaignSideLabel`, `getCampaignTypeLabel`, `getFrequencyLabel`, `getSeverityLabel`, `getSeverityTone`, `getSideTone`, `getSizeClassLabel`, `getThresholdSourceLabel`, `isCountableWhaleOrder`, `loadInitialCampaigns`, `mergeUniqueAggregateEvents`
-- Top-level variables:
-  - `FEED_PAGE_SIZE_OPTIONS`, `abnormalityScore`, `abnormalityTone`, `activeWatchlistGroup`, `activeWatchlistGroupId`, `advisoryRequest`, `aggregateAbortRef`, `aggregateDisplayedCount`, `aggregateRequestSeqRef`, `aggregateSourceMeta`, `aggregateTotalCount`, `alertTimeRaw`, `avgValue`, `bootstrapRequestSeqRef`, `buyRatio`, `campaignAbortRef`, `campaignRequestSeqRef`, `campaigns`, `canReadAdvisory`, `cancelled`, `candidateTime`, `checkList`, `coObsSummary`, `currentTime`, `fallbackSymbol`, `fetchData`, `filteredCampaigns`, `freq`, `groupedTimeline`, `handleHideLess`, `handleLoadMore`, `handleLoadMoreCampaigns`, `handleSortChange`, `hasExplain`, `hours`, `investigation`, `isBuy`, `isOrderSide`, `key`, `loadAggregateFeed`, `loadCampaigns`, `loadData`, `localController`, `location`, `map`, `merged`, `minutes`, `nextItems`, `normalized`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `normalizedSource`, `packageShellHostEnabled`, `params`, `parsed`, `parsedId`, `payload`, `primaryTime`, `query`, `raw`, `requestSeq`, `requestSignal`, `response`, `scopeLabel`, `seen`, `severityTone`, `shellHostHref`, `side`, `sideTone`, `signals`, `sourceKeys`, `sourceMixLabel`, `st`, `strength`, `sym`, `symbol`, `symbolShortcuts`, `symbolStatsMap`, `tone`, `totalOrders`, `trackedSymbolsRequest`, `type`, `unique`, `watchlistGroupId`, `watchlistGroupsRequest`, `whaleAvgPrice`, `whyList`
-
-### `frontend/src/pages/WhaleAlertsHub.test.jsx`
-
-- Functions:
-  - `renderPage`, `setupCommonMocks`
-- Top-level variables:
-  - `campaignA`, `campaignB`, `secondCall`
 
 ### `frontend/src/pages/WhaleAlertsShellHost.jsx`
 
@@ -7660,16 +7657,16 @@ Generated at: `2026-05-16 15:47:12`
 ### `packages/web/src/adapters/coreApiAdapter.js`
 
 - Functions:
-  - `coreDelete`, `coreGet`, `corePatch`, `corePost`, `generateRequestId`, `getAuthorizationHeader`, `resolveCoreApiBase`
+  - `coreApiAdapter`, `coreDelete`, `coreGet`, `corePatch`, `corePost`, `createCoreApiAdapter`, `createCoreTransport`, `generateRequestId`, `getAuthorizationHeader`, `resolveCoreApiBase`
 - Top-level variables:
-  - `base`, `coreApiAdapter`, `query`, `r`, `requestId`, `response`, `text`, `token`
+  - `base`, `query`, `r`, `requestId`, `response`, `text`, `token`
 
 ### `packages/web/src/adapters/coreApiAdapter.test.js`
 
 - Functions:
   - `mockErrorResponse`, `mockOkResponse`
 - Top-level variables:
-  - `fetchMock`, `payload`, `result`
+  - `adapter`, `fetchMock`, `payload`, `result`
 
 ### `packages/web/src/adapters/vip-app/index.js`
 
@@ -7749,6 +7746,13 @@ Generated at: `2026-05-16 15:47:12`
   - `ShellOperationsCenterPage`
 - Top-level variables:
   - `groupFlags`, `metrics`, `operatorAbilities`, `operatorFlags`, `operatorRoutes`, `routeFlags`, `summaryCards`
+
+### `packages/web/src/pages/AlertCenterPage.js`
+
+- Functions:
+  - `AlertCenterPage`, `formatAlertTimestamp`, `formatAlertValue`, `handleApply`, `load`, `normalizeSymbol`, `renderEvidenceList`, `renderSummaryCard`, `useAlertCenterData`
+- Top-level variables:
+  - `DEFAULT_ENV`, `LANE_OPTIONS`, `adapter`, `aiSuggestCount`, `alerts`, `e`, `entries`, `highSeverityCount`, `mountedRef`, `numericValue`, `payload`, `timestamp`
 
 ### `packages/web/src/pages/coreShellPageHelpers.js`
 

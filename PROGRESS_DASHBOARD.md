@@ -1,3 +1,256 @@
+# 2026-05-16 — Global Alert Center D03 complete (frontend wrapper removal wave) ✅
+
+Status: **✅ D03 DONE** | **✅ removed local whale/dashboard wrapper pages** | **✅ canonical pages mounted directly in router** | **✅ route compatibility alias preserved**
+
+## What changed
+- Removed local wrapper page files for whale hub and legacy dashboard.
+- Updated router to mount canonical `AlertCenterPage` directly for `/whale-alerts`.
+- Simplified dashboard page to render modern dashboard directly.
+- Preserved `/admin-ops` compatibility by explicit redirect to `/operations-center`.
+
+## Validation
+- `src/App.test.jsx` → **2 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1204 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Continue decommission only on explicitly approved legacy routes/surfaces to avoid unauthorized cutover scope expansion.
+
+# 2026-05-16 — Global Alert Center D02 complete (parity/shadow gates + legacy sunset docs) ✅
+
+Status: **✅ D02 DONE** | **✅ parity/shadow evidence pack added** | **✅ self-audit protocol locked in pass-state** | **✅ anti-bypass gate remains explicit**
+
+## What changed
+- Added a dedicated parity/shadow evidence report documenting the non-bypass state of the alert-center cutover.
+- Converted the self-audit protocol into an explicit pass-state checklist so the cutover gate is machine-auditable by humans reviewing the docs.
+- Updated the taskboard and audit ledger so the final legacy sunset gate is now traceable as done.
+
+## Validation
+- Read-back of parity/shadow evidence and self-audit protocol ✅
+- `./start_dev.ps1` smoke remains OK ✅
+
+## Next
+- Final legacy decommission wave, only if additional old surfaces are explicitly approved for removal.
+
+# 2026-05-16 — Global Alert Center D01 complete (frontend bridge sunset) ✅
+
+Status: **✅ D01 DONE** | **✅ browser-side alert synthesis removed** | **✅ WhaleAlertsHub and LegacyDashboard now wrapper bridges** | **✅ 5 bridge tests passed** | **✅ runtime smoke OK**
+
+## What changed
+- `frontend/src` no longer synthesizes unified alerts from local whale/dark-flow/price-shock/stale-quote logic in the browser.
+- The old whale alerts route now delegates to the canonical alert-center page, and the old dashboard monolith now delegates to the modern dashboard.
+- The remaining frontend alert flow now bridges to core delivery and server truth only.
+
+## Validation
+- `src/components/DashboardRealtimePanel.test.jsx` + `src/pages/WhaleAlertsHub.test.jsx` + `src/api/client.unifiedAlerts.test.js` → **5 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **D02 Parity/shadow gates + legacy sunset docs**.
+
+# 2026-05-16 — Global Alert Center C02 complete (packages/web alert hub) ✅
+
+Status: **✅ C02 DONE** | **✅ packages/web now exposes `alert-center` route** | **✅ main lane and AI lane share canonical per-user delivery path** | **✅ 14 web tests + 11 backend tests passed** | **✅ runtime smoke OK**
+
+## What changed
+- Added a dedicated `alert-center` page in packages/web so the SaaS shell has a first-class alert hub instead of forcing users through the whale page.
+- The page reads the canonical per-user delivery endpoint and switches between the main lane and the AI lane without browser-side synthesis.
+- Fixed the underlying adapter drift by making `coreApiAdapter({ env })` work while keeping existing object-style imports stable, then covered that with focused Jest tests.
+- Registered the live backend delivery route in `signal_intelligence/urls.py` and added a regression that hits `/core/v1/unified-alert/delivery` through the actual URL config.
+
+## Validation
+- `packages/web/src/adapters/coreApiAdapter.test.js` → **14 tests OK** ✅
+- `signal_intelligence.tests.test_materializers` → **11 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1207 modules)** ✅
+- `./start_dev.ps1` → **Frontend build compiled successfully; Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **D01 frontend bridge sunset**.
+
+# 2026-05-16 — Global Alert Center C01 complete (per-user delivery projection) ✅
+
+Status: **✅ C01 DONE** | **✅ per-user delivery endpoint added** | **✅ detection remains global while delivery filters by user ownership** | **✅ 10 focused tests passed** | **✅ runtime smoke OK**
+
+## What changed
+- Added a dedicated per-user alert delivery projection that filters canonical alerts using watchlists, tracked symbols, holdings, and the user's whale threshold.
+- The canonical global alert feed remains unchanged; delivery projection is now an explicit backend surface instead of something a client would need to synthesize.
+
+## Validation
+- `signal_intelligence.tests.test_materializers` → **10 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **C02 packages/web alert hub**.
+
+# 2026-05-16 — Global Alert Center B03 complete (OpenAPI alert-center contracts) ✅
+
+Status: **✅ B03 DONE** | **✅ `/api/signals/*` endpoints annotated** | **✅ lane query contract documented** | **✅ 9 focused tests passed** | **✅ runtime smoke OK**
+
+## What changed
+- The core alert endpoints now advertise their contract shape explicitly through OpenAPI, including cursor pagination envelopes and the new `lane` parameter for the unified alert feed.
+- The schema examples now reflect the enriched read-model fields coming from B01/B02.
+
+## Validation
+- `signal_intelligence.tests.test_materializers` → **9 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **C01 Per-user delivery projection**.
+
+# 2026-05-16 — Global Alert Center B02 complete (producer plane completion) ✅
+
+Status: **✅ B02 DONE** | **✅ stale quote / market anomaly / AI signal producer paths added in core** | **✅ unified-alert evidence fields populated** | **✅ 9 focused tests passed** | **✅ runtime smoke OK**
+
+## What changed
+- Core signal intelligence now has explicit producer tasks for stale quotes, market anomalies, and AI signals, in addition to whale/dark-flow production.
+- UnifiedAlert read-model contract from B01 is now used by the new producers as well, keeping evidence/confidence/freshness consistent across lanes.
+- AI signals now land in the AI lane explicitly rather than being mixed into the main feed.
+
+## Validation
+- `signal_intelligence.tests.test_materializers` → **9 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **B03 OpenAPI alert-center contracts**.
+
+# 2026-05-16 — Global Alert Center B01 complete (alert taxonomy + canonical fact models) ✅
+
+Status: **✅ B01 DONE** | **✅ UnifiedAlert exposes confidence/freshness/evidence** | **✅ default feed is main lane, AI lane explicit** | **✅ 6 focused tests passed** | **✅ runtime smoke OK**
+
+## What changed
+- UnifiedAlert đã trở thành read model rõ ràng hơn: severity, confidence, freshness_state, evidence, lane.
+- API list view mặc định trả main lane; AI lane có thể tách bằng query param `lane=ai`.
+- Materializers hiện populate và backfill contract mới để read path ổn định.
+
+## Validation
+- `signal_intelligence.tests.test_materializers` → **6 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **B02 Producer plane completion**.
+
+# 2026-05-16 — Global Alert Center A03 complete (queue tier/runtime policy cutover) ✅
+
+Status: **✅ A03 DONE** | **✅ warm tier now includes `session_facts`** | **✅ scheduler bám theo priority tier + runtime config** | **✅ 24 scheduler tests OK** | **✅ 3 API checks OK** | **✅ runtime smoke OK**
+
+## What changed
+- Warm priority symbols now stay on the shared planner path for `session_facts`, not just hot/recovery tiers.
+- The queue-tier scheduler continues to derive dispatches from SSOT priority tiers and runtime config, with operator ownership auditing intact.
+- Regression coverage now explicitly proves warm-tier dispatch includes `session_facts` and runtime overrides still apply.
+
+## Validation
+- `service_ops.tests.test_soc_tasks` → **24 tests OK** ✅
+- Targeted `service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase` queue-tier/runtime-config tests → **3 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **B01 Alert taxonomy + canonical fact models**.
+
+# 2026-05-16 — Global Alert Center A02 complete (missing-only planner completion) ✅
+
+Status: **✅ A02 DONE** | **✅ `session_facts` now planner executable first-class dataset** | **✅ missing-only default + explicit force-refresh maintained** | **✅ 45 focused tests passed** | **✅ runtime smoke OK**
+
+## What changed
+- Planner execution layer (`global_symbol_planner`) đã mở rộng để thực thi `session_facts` thay vì đẩy vào unsupported bucket.
+- Session-facts planning giờ tạo run logs theo từng symbol và tổng hợp execution summary vào parent planner output.
+- Regression tests được bổ sung để khóa behavior sync execution cho `session_facts`.
+
+## Validation
+- `market_data.tests.test_global_symbol_planner` + `market_data.tests.test_global_symbol_coverage` + `service_ops.tests.test_soc_tasks` + `market_data.tests.test_global_symbol_registry` → **45 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **A03 Queue tier/runtime policy cutover**.
+
+# 2026-05-16 — Global Alert Center A01 complete (coverage/freshness hardening) ✅
+
+Status: **✅ A01 DONE** | **✅ session_facts promoted in hot/recovery tiers** | **✅ snapshot/session_facts warm-window freshness semantics completed** | **✅ 39 focused tests passed** | **✅ runtime smoke OK**
+
+## What changed
+- Queue-tier scheduler policy đã bao gồm `session_facts` cho hot/recovery để đảm bảo planner không bỏ sót dataset phục vụ alert-center.
+- Coverage freshness cho `price_board_snapshot` và `session_facts` đã chuẩn hóa theo fresh/warm/stale windows thay vì nhị phân fresh/stale.
+- Regression suite mới khóa behavior warm-state và next-action tương ứng (`refresh_price_board_snapshot`, `refresh_session_facts`).
+
+## Validation
+- `market_data.tests.test_global_symbol_coverage` + `service_ops.tests.test_soc_tasks` + `market_data.tests.test_global_symbol_registry` → **39 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Next
+- Auto-continue sang **A02 Missing-only planner completion**.
+
+# 2026-05-16 — Global Alert Center A01 sub-slice (session_facts queue-tier hardening) 🔄
+
+Status: **🔄 A01 IN PROGRESS** | **✅ hot/recovery queue-tier datasets now include `session_facts`** | **✅ focused suites passed (33 tests)** | **✅ module tree regenerated** | **✅ `./start_dev.ps1` smoke OK**
+
+## What changed
+- DataOps queue-tier planner policy đã được harden để hot/recovery tiers không bỏ sót `session_facts` dataset trong scheduling payload.
+- Regression test scheduler đã được cập nhật để khóa expectation mới ở recovery tier.
+- A01 chuyển trạng thái sang IN PROGRESS vì mới hoàn thành một sub-slice đầu tiên của coverage/freshness hardening.
+
+## Validation
+- `service_ops.tests.test_soc_tasks` + `market_data.tests.test_global_symbol_registry` → **33 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Residual risk
+- Còn các phần A01 khác cần hoàn tất: mở rộng freshness/coverage semantics đồng bộ hơn giữa planner tiers, coverage summary, và alert-center read models.
+
+# 2026-05-16 — Global Alert Center F01+F02 foundation contract/wiring slice ✅
+
+Status: **✅ source contract hardening shipped** | **✅ demand-source wiring coverage completed** | **✅ focused suite passed (10 tests)** | **✅ module tree regenerated** | **✅ `./start_dev.ps1` smoke OK**
+
+## What changed
+- F01: Registry service boundary giờ chặn mọi write demand edge không hợp lệ (`source_type` ngoài enum hoặc `source_ref` rỗng), tránh drift âm thầm vào `GlobalSymbolDemandSource`.
+- F02: Bổ sung regression coverage đầy đủ cho các nguồn demand chính, đặc biệt `TrackedSymbol` và `PriceAlert` (tạo edge khi active, tự deactivate khi disable/remove).
+- Taskboard đã chuyển F01/F02 sang DONE để giữ traceability theo implementation plan.
+
+## Validation
+- `market_data.tests.test_global_symbol_registry` → **10 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Residual risk
+- Chưa có repair-run endpoint tự reconcile hàng loạt demand edges ngoài signal-path; hiện tại drift mitigation chủ yếu qua sync-on-write + read-only reconcile preview từ F03.
+
+# 2026-05-16 — Global Alert Center F03 foundation read-path slice ✅
+
+Status: **✅ DataOps registry summary/detail/reconcile-preview shipped** | **✅ canonical operator aliases added** | **✅ focused backend suite passed (18 tests)** | **✅ module tree regenerated** | **✅ `./start_dev.ps1` health smoke OK**
+
+## What changed
+- `Global symbol matrix` foundation now có operator read path riêng cho F03: summary aggregates, per-symbol detail, và read-only reconcile preview đều đi qua `service_ops` thay vì suy diễn thủ công.
+- Projection logic cho registry truth được gom vào `market_data.global_symbol_registry`, nên endpoint mới dùng cùng một calculation surface với `refresh_global_symbol_registry` thay vì tạo parallel logic.
+- SOC alias `/api/soc/dataops/registry/*` và canonical alias `/core/v1/operator/scraping/dataops/registry/*` đã được khóa bằng regression tests.
+
+## Validation
+- Focused suite: `service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase` → **18 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated** ✅
+- `./start_dev.ps1` → **Core API health OK; Frontend health OK** ✅
+
+## Residual risk
+- F01/F02 chưa được mở rộng thêm beyond existing groundwork; slice này hoàn tất F03 và khóa read/audit surface, còn registry contract hardening sâu hơn và demand-ledger reconciliation automation vẫn là việc tiếp theo.
+
+# 2026-05-16 — Global Alert Center SaaS OpenAPI Cutover doc-pack ✅
+
+Status: **✅ documentation pack created** | **✅ AGENTS read-first registration added** | **✅ governance explicitly blocks no-soak/no-shadow cutover path**
+
+## What changed
+- Added a 12-file repo-standard handoff pack for `Global Alert Center` covering handoff master, implementation plan, tech spec, taskboard, traceability, self-audit/test protocol, evidence template, config ownership, code quality constitution, code review, integration tests, and spec audit.
+- Registered the new pack in `AGENTS.md` so future sessions must read it before touching `Global Alert Center`, `unified alert center`, `price shock`, `stale quote`, `AI Alerts`, `AI Suggests`, `per-user alert delivery`, or alert-center cutover work.
+- Explicitly documented that any request to bypass shadow/parity/soak validation remains blocked by current SaaS migration and full-independence hard rules.
+
+## Validation
+- `file_search("docs/*GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER*20260516.md")` → **12 files found** ✅
+- `grep_search("skip soak|bỏ qua soak|shadow/parity|no-soak", includePattern="docs/*GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER*20260516.md")` → **mandatory gate wording present** ✅
+- No runtime code changed in this slice, so build/test commands were not applicable.
+
 # 2026-05-16 — Data Sync Bug Fix: Whale Alert Detection Missing ✅
 
 Status: **✅ Root cause identified** | **✅ Fix applied to dev stack** | **⏳ Monitoring: Celery task should populate WhaleAlertEvent within 120-180s**

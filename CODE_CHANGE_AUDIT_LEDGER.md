@@ -1,5 +1,328 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center D03 complete: frontend wrapper removal wave | frontend + docs
+
+## All Modified Files (9 files)
+| File | Change |
+|------|--------|
+| `frontend/src/App.jsx` | Removed local `WhaleAlertsHub` route wrapper usage, mounted canonical `AlertCenterPage` directly, and restored `/admin-ops` alias redirect |
+| `frontend/src/pages/Dashboard.jsx` | Removed legacy dispatcher fallback and made modern dashboard the direct canonical render path |
+| `frontend/src/App.test.jsx` | Switched route mock from removed local wrapper to `@vninvest/web` `AlertCenterPage` |
+| `frontend/src/pages/WhaleAlertsHub.jsx` | Deleted legacy local wrapper page |
+| `frontend/src/pages/LegacyDashboard.jsx` | Deleted legacy local wrapper page |
+| `frontend/src/pages/WhaleAlertsHub.test.jsx` | Deleted wrapper-only bridge test |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added D03 row and marked DONE |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_SHADOW_EVIDENCE_20260516.md` | Updated residual risk note after wrapper deletion |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added the D03 evidence entry |
+
+## Validation
+- `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand src/App.test.jsx --watch=false; Pop-Location` → **2 tests OK** ✅
+- `Set-Location .; .\.venv\Scripts\python.exe .\scripts\ops\generate_module_tree.py` → module tree refreshed (1204 modules) ✅
+- `Set-Location .; .\start_dev.ps1` → Core API health OK; Frontend health OK ✅
+
+## Residual risk
+- Wrapper removals are complete for whale-hub/dashboard bridge files, but broader compat route cleanup remains governed by cutover gates and explicit approvals.
+
+# 2026-05-16 | Global Alert Center D02 complete: parity/shadow gates + legacy sunset docs | docs
+
+## All Modified Files (4 files)
+| File | Change |
+|------|--------|
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_PARITY_SHADOW_EVIDENCE_20260516.md` | Added the parity/shadow evidence pack for the cutover slice |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260516.md` | Converted the self-audit checklist to completed state and linked the evidence pack |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked D02 as DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added the D02 evidence entry |
+
+## Validation
+- Evidence docs read-back: updated parity/shadow report + self-audit protocol show the no-bypass gate and wrapper-based legacy sunset state ✅
+- `Set-Location .; .\.venv\Scripts\python.exe .\scripts\ops\generate_module_tree.py` → module tree already refreshed in the D01 slice and remains current ✅
+- `Set-Location .; .\start_dev.ps1` → Core API health OK; Frontend health OK ✅
+
+## Residual risk
+- Legacy wrappers still exist during the final decommission wave, but no browser-side synthesis or new compat logic remains in the alert-center path.
+
+# 2026-05-16 | Global Alert Center D01 complete: frontend bridge sunset | frontend
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `frontend/src/api/client.js` | Bridged unified-alert requests to canonical core delivery and normalized the legacy cursor shape for the old frontend contract |
+| `frontend/src/api/client.unifiedAlerts.test.js` | Added regression coverage for the core delivery bridge and cursor normalization |
+| `frontend/src/hooks/useUnifiedAlerts.js` | Removed browser-side alert synthesis and kept the hook on server-truth unified alerts only |
+| `frontend/src/pages/WhaleAlertsHub.jsx` | Replaced the legacy whale hub monolith with a thin wrapper around the canonical alert-center page |
+| `frontend/src/pages/WhaleAlertsHub.test.jsx` | Replaced campaign-legacy coverage with a bridge smoke test against the canonical alert-center contract |
+| `frontend/src/pages/LegacyDashboard.jsx` | Replaced the legacy dashboard monolith with a thin wrapper around the modern dashboard surface |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked D01 as DONE |
+
+## Validation
+- Frontend bridge tests: `Push-Location .\frontend; npm test -- --runInBand src/components/DashboardRealtimePanel.test.jsx src/pages/WhaleAlertsHub.test.jsx src/api/client.unifiedAlerts.test.js --watch=false; Pop-Location` → **5 tests OK** ✅
+- `Set-Location .; .\.venv\Scripts\python.exe .\scripts\ops\generate_module_tree.py` → module tree refreshed after D01 ✅
+- `Set-Location .; .\start_dev.ps1` → Core API health OK; Frontend health OK ✅
+
+## Residual risk
+- D02 parity/shadow gates still remain before the legacy-alert sunset can be considered fully finalized.
+
+# 2026-05-16 | Global Alert Center C02 complete: packages/web alert hub | web + signal intelligence
+
+## All Modified Files (13 files)
+| File | Change |
+|------|--------|
+| `packages/web/src/adapters/coreApiAdapter.js` | Fixed adapter root-cause drift by supporting both object-style calls and `coreApiAdapter({ env })` factory usage; added canonical per-user delivery helper |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added regression coverage for delivery endpoint wiring and env-override factory behavior |
+| `packages/web/src/pages/AlertCenterPage.js` | Added the new packages/web alert hub page with main-vs-AI lane switching and per-user delivery rendering |
+| `packages/web/src/app/routeCatalog.js` | Registered the new `alert-center` route in the signals group |
+| `packages/web/src/app/navigationCatalog.js` | Added `alert-center` into the signal navigation group |
+| `packages/web/src/pages/pageRegistry.js` | Registered `alert-center` to the new core page |
+| `packages/web/src/index.js` | Exported `AlertCenterPage` for package consumers |
+| `packages/core/backend/src/signal_intelligence/urls.py` | Registered the live `/core/v1/unified-alert/delivery` route in the active URL surface |
+| `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` | Added live-route regression coverage for the delivery endpoint and kept focused delivery filtering coverage |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked C02 as DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added C02 evidence entry and corrected the earlier C01 route file from `api_urls.py` to `urls.py` |
+| `PROGRESS_DASHBOARD.md` | Added C02 completion entry |
+| `module_tree_full.md` | Regenerated after C02 changes |
+
+## Validation
+- Focused packages/web adapter suite: `Push-Location .\packages\web; npm test -- --runInBand src/adapters/coreApiAdapter.test.js; Pop-Location` → **Ran 14 tests, OK** ✅
+- Focused signal-intelligence suite: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers --keepdb; Pop-Location` → **Ran 11 tests, OK** ✅
+- `Set-Location .; .\.venv\Scripts\python.exe .\scripts\ops\generate_module_tree.py` → **module_tree_full.md regenerated (1207 modules)** ✅
+- `Set-Location .; .\start_dev.ps1` → **Frontend build compiled successfully; Core API health OK; Frontend health OK** ✅
+
+## Residual risk
+- C02 ships the packages/web hub surface and canonical delivery wiring, but D01 frontend bridge sunset still remains to remove legacy/parallel alert surfaces.
+
+# 2026-05-16 | Global Alert Center C01 complete: per-user delivery projection | signal intelligence
+
+## All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/views.py` | Added per-user delivery projection endpoint and reusable user symbol / whale-threshold resolvers |
+| `packages/core/backend/src/signal_intelligence/urls.py` | Exposed the live `/core/v1/unified-alert/delivery` route in the active core URL surface |
+| `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` | Added delivery projection regression covering watchlists, holdings, and whale threshold filtering |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked C01 as DONE |
+| `module_tree_full.md` | Regenerated after C01 changes |
+
+## Validation
+- Focused suites: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers --keepdb; Pop-Location` → **Ran 10 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1206 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- C02 packages/web alert hub is still pending; current slice only provides the backend delivery projection contract.
+
+# 2026-05-16 | Global Alert Center B03 complete: OpenAPI alert-center contracts | signal intelligence
+
+## All Modified Files (4 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/views.py` | Added OpenAPI annotations, cursor response schemas, and lane query contract for unified alerts / whale feed / order-flow endpoints |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked B03 as DONE |
+| `module_tree_full.md` | Regenerated after B03 changes |
+| `PROGRESS_DASHBOARD.md` | NEW B03 completion entry |
+
+## Validation
+- Focused suites: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers --keepdb; Pop-Location` → **Ran 9 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1206 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- B03 is contract-annotated, but broader alert-center surface areas outside `/api/signals/*` may still need parity passes in later slices.
+
+# 2026-05-16 | Global Alert Center B02 complete: producer plane completion | signal intelligence
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/materializers.py` | Added native producer tasks for stale quote, market anomaly, and AI signal alerts; enriched evidence/confidence output for whale and dark-flow producers |
+| `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` | Added regressions for stale quote, market anomaly, AI signal producers and existing read-model behavior |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked B02 as DONE |
+| `module_tree_full.md` | Regenerated after B02 changes |
+| `PROGRESS_DASHBOARD.md` | NEW B02 completion entry |
+| `packages/core/backend/src/signal_intelligence/models.py` | Already expanded in B01; now used by additional producer paths |
+| `packages/core/backend/src/signal_intelligence/serializers.py` | Already expanded in B01; now consumed by producer outputs |
+
+## Validation
+- Focused suites: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers --keepdb; Pop-Location` → **Ran 9 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1206 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- B03 OpenAPI alert-center contracts still needs explicit endpoint/schema audit for the new alert read-model fields and lane semantics.
+
+# 2026-05-16 | Global Alert Center B01 complete: alert taxonomy + canonical fact models | signal intelligence
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/models.py` | Added `confidence`, `freshness_state`, `evidence` to `UnifiedAlert`; introduced AI alert type choices for lane separation |
+| `packages/core/backend/src/signal_intelligence/serializers.py` | Exposed `lane`, `confidence`, `freshness_state`, and `evidence` in `UnifiedAlertSerializer` |
+| `packages/core/backend/src/signal_intelligence/views.py` | Added lane-aware filtering so default feed is main lane and AI lane can be requested explicitly |
+| `packages/core/backend/src/signal_intelligence/materializers.py` | Populated new read-model fields on create/update and backfilled existing whale canonical rows |
+| `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` | Added regression tests for read-model fields and lane-separated list view behavior |
+| `packages/core/backend/src/signal_intelligence/migrations/0004_unifiedalert_read_model_fields.py` | Added schema migration for new UnifiedAlert fields |
+| `module_tree_full.md` | Regenerated after B01 changes |
+
+## Validation
+- Focused suites: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers --keepdb; Pop-Location` → **Ran 6 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1206 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- B02 producer-plane completion still needs explicit coverage for market anomaly and stale-quote producer paths; this slice only made the read model and feed separation explicit.
+
+# 2026-05-16 | Global Alert Center A03 complete: queue tier/runtime policy cutover | core backend
+
+## All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added `session_facts` to `warm_liquid_market` queue-tier datasets so warm priority symbols stay on the shared planner path |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Added warm-tier scheduler regression and updated bootstrap expectation to include `session_facts` |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked A03 as DONE |
+| `module_tree_full.md` | Regenerated after final A03 edits |
+| `PROGRESS_DASHBOARD.md` | NEW A03 completion entry |
+
+## Validation
+- Focused suites: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_tasks --keepdb; Pop-Location` → **Ran 24 tests, OK** ✅
+- Targeted API checks: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload --keepdb; Pop-Location` → **Ran 3 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1205 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- B01 alert taxonomy / canonical fact model still needs implementation audit; A03 only aligns queue-tier/runtime policy with the already established planner path.
+
+# 2026-05-16 | Global Alert Center A02 complete: missing-only planner + session_facts-first-class | core backend
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/global_symbol_planner.py` | Added `session_facts` to executable planner datasets and implemented session-facts execution branch with per-symbol run logs + summary accounting |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py` | Added regression for sync execution of `session_facts`; updated helper fixtures for session-facts coverage gaps |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked A02 as DONE |
+| `module_tree_full.md` | Regenerated after planner updates |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | NEW A02 completion entry |
+| `PROGRESS_DASHBOARD.md` | NEW A02 completion entry |
+
+## Validation
+- Focused suites: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_global_symbol_planner market_data.tests.test_global_symbol_coverage service_ops.tests.test_soc_tasks market_data.tests.test_global_symbol_registry --keepdb; Pop-Location` → **Ran 45 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1205 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- A03 queue-tier/runtime policy cutover vẫn cần rà soát đầy đủ ownership/runtime apply semantics để khớp hard rule vận hành và audit trail.
+
+# 2026-05-16 | Global Alert Center A01 complete: coverage/freshness hardening | core backend
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Queue-tier policy: bổ sung `session_facts` vào `hot_user_demand` và `recovery_backlog` datasets |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Cập nhật expectation datasets cho recovery tier để gồm `session_facts` |
+| `packages/core/backend/src/market_data/global_symbol_coverage.py` | Hoàn thiện freshness semantics cho `price_board_snapshot` và `session_facts` theo fresh/warm windows; giữ next-action mapping nhất quán |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py` | Thêm regression test warm-state + next-action cho snapshot/session_facts; fix fixture timestamp do `auto_now=True` |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Chuyển A01 sang DONE |
+| `module_tree_full.md` | Regenerated after final A01 edits |
+| `PROGRESS_DASHBOARD.md` | NEW A01 completion entry |
+
+## Validation
+- Focused suites: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_global_symbol_coverage service_ops.tests.test_soc_tasks market_data.tests.test_global_symbol_registry --keepdb; Pop-Location` → **Ran 39 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1205 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- A02 planner completion vẫn cần audit thêm ở planner orchestration path (`global_symbol_planner.py`/scheduler integration) để đảm bảo `missing_only` + explicit `force_refresh` được enforce thống nhất ngoài preview path.
+
+# 2026-05-16 | Global Alert Center A01 sub-slice: session_facts queue-tier hardening | core backend
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added `session_facts` into hot/recovery queue-tier dataset policy for planner scheduling alignment with alert-center freshness needs |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Updated recovery-tier scheduler expectation to include `session_facts` |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked A01 as IN PROGRESS with note for this sub-slice |
+| `module_tree_full.md` | Regenerated after latest updates |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | NEW slice entry |
+| `PROGRESS_DASHBOARD.md` | NEW slice entry |
+
+## Validation
+- Focused suites: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_tasks market_data.tests.test_global_symbol_registry --keepdb; Pop-Location` → **Ran 33 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1205 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- A01 mới hoàn thành phần queue-tier dataset policy cho `session_facts`; cần tiếp tục các phần freshness window/coverage semantics mở rộng cho toàn bộ planner/read-path trong các sub-slices kế tiếp.
+
+# 2026-05-16 | Global Alert Center F01+F02 foundation contract/wiring slice | core backend
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/global_symbol_registry.py` | Added strict source contract guards (`source_type` whitelist + non-empty normalized `source_ref`) and enforced them across upsert/deactivate/sync demand write paths |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_registry.py` | Added regressions for invalid source contract rejection and full demand-source wiring coverage (`watchlist`, `tracked_symbol`, `holding`, `alert`, `admin_group`, `system_default`) |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked F01 and F02 as DONE |
+| `module_tree_full.md` | Regenerated after slice changes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | NEW slice entry |
+| `PROGRESS_DASHBOARD.md` | NEW slice entry |
+
+## Validation
+- Focused backend suite: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_global_symbol_registry --keepdb; Pop-Location` → **Ran 10 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1205 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- F01/F02 hardening đã khóa service-boundary contract và source coverage ở mức registry/signal path; chưa bao gồm operator-side repair automation cho legacy drifts cũ ngoài các source rows đã được signal đồng bộ.
+
+# 2026-05-16 | Global Alert Center F03 foundation read-path slice | core backend
+
+## All Modified Files (9 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/global_symbol_registry.py` | Added canonical projection/summary/detail/reconcile-preview helpers for `GlobalSymbolRegistry` so operator surfaces reuse the same truth calculation as registry refresh |
+| `packages/core/backend/src/service_ops/views/dataops.py` | Added native DataOps endpoints for matrix foundation summary, per-symbol detail, and read-only reconcile preview |
+| `packages/core/backend/src/service_ops/urls.py` | Registered `/api/soc/dataops/registry/summary/`, `/api/soc/dataops/registry/reconcile-preview/`, `/api/soc/dataops/registry/<symbol>/` |
+| `packages/core/backend/src/service_ops/operator_urls.py` | Registered canonical operator aliases under `/core/v1/operator/scraping/dataops/registry/*` |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Added schema + SOC/canonical alias + summary/detail/reconcile-preview regressions for the new foundation endpoints |
+| `module_tree_full.md` | Regenerated after code changes |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Marked F03 as DONE |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | NEW slice entry |
+| `PROGRESS_DASHBOARD.md` | NEW slice entry |
+
+## Validation
+- Focused backend suite: `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'; $env:DJANGO_SECRET_KEY='dev-test-secret'; $env:CORE_PAT_PEPPER='dev-test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase --keepdb; Pop-Location` → **Ran 18 tests, OK** ✅
+- `python scripts/ops/generate_module_tree.py` → **module_tree_full.md regenerated (1205 modules)** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Core schema generation still emits pre-existing serializer-guess warnings and operationId collision warnings outside this slice; F03 added coverage for the new registry endpoints but did not remediate those older schema issues.
+
+# 2026-05-16 | Global Alert Center SaaS OpenAPI Cutover doc-pack | documentation slice
+
+## All Modified Files (15 files)
+| File | Change |
+|------|--------|
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_HANDOFF_MASTER_20260516.md` | NEW — master handoff, architectural decisions, deliverables, success criteria |
+| `docs/IMPLEMENTATION_PLAN_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | NEW — execution plan with foundation + workstream tasks F01-D02 |
+| `docs/TECH_SPEC_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | NEW — technical architecture, taxonomy, delivery model, OpenAPI family |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | NEW — repo-style taskboard with D00 done and downstream execution gates |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260516.md` | NEW — requirement-to-task-to-validation mapping |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260516.md` | NEW — mandatory self-audit checklist and fail conditions |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260516.md` | NEW — slice evidence template with shadow/parity section |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_CONFIG_OWNERSHIP_MATRIX_20260516.md` | NEW — writer/owner matrix for matrix, delivery, contracts, deprecation |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_CODE_QUALITY_CONSTITUTION_20260516.md` | NEW — quality constitution and coverage-theater guardrails |
+| `docs/RUN_CODE_REVIEW_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | NEW — focused review protocol |
+| `docs/RUN_INTEGRATION_TESTS_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | NEW — integration/regression command plan and cutover gate |
+| `docs/RUN_SPEC_AUDIT_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | NEW — spec audit protocol |
+| `AGENTS.md` | Registered new Global Alert Center doc-pack as read-first and added hard constraints section |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | NEW documentation-slice entry |
+| `PROGRESS_DASHBOARD.md` | NEW documentation-slice progress entry |
+
+## Validation
+- `file_search("docs/*GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER*20260516.md")` → **12/12 expected docs present** ✅
+- `grep_search("skip soak|bỏ qua soak|shadow/parity|no-soak", includePattern="docs/*GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER*20260516.md")` → **hard gate language present across handoff/spec/taskboard/protocol docs** ✅
+- No code/runtime files changed; build/test commands were not run because this slice is documentation-only ✅
+
+## Governance note
+- The user-requested path to skip soak/shadow validation was **not encoded** into the doc-pack.
+- The new pack explicitly keeps shadow/parity/rollback gates mandatory for any future cutover slice.
+
 # 2026-05-16 | Data Sync Issue: Whale Alert Detection Not Enabled | dev stack fix
 
 ## Problem

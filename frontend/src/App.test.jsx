@@ -42,9 +42,11 @@ jest.mock('./pages/AiAdvisoryShellHost', () => function MockAiAdvisoryShellHost(
   return <div data-testid="ai-advisory-shell-page" />;
 });
 
-jest.mock('./pages/WhaleAlertsHub', () => function MockWhaleAlertsHub() {
-  return <div data-testid="whale-alerts-hub-page" />;
-});
+jest.mock('@vninvest/web', () => ({
+  AlertCenterPage: function MockAlertCenterPage() {
+    return <div data-testid="whale-alerts-hub-page" />;
+  },
+}));
 
 jest.mock('./pages/WhaleAlertsDashboard', () => function MockWhaleAlertsDashboard() {
   return <div data-testid="whale-alerts-dashboard-page" />;
