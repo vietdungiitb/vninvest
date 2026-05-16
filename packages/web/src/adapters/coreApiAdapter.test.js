@@ -82,46 +82,62 @@ describe("coreApiAdapter", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // getUnifiedAlerts
+  // alert-center / ai-alerts endpoints
   // ---------------------------------------------------------------------------
-  test("getUnifiedAlerts calls /core/v1/unified-alert/", async () => {
+  test("getAlertCenterFeed calls /core/v1/signals/alert-center/feed", async () => {
     const payload = { results: [], next: null, previous: null };
     mockOkResponse(payload);
 
-    const result = await coreApiAdapter.getUnifiedAlerts({ symbol: "VCI", severity: "high" });
+    const result = await coreApiAdapter.getAlertCenterFeed({ symbol: "VCI", severity: "high" });
     expect(result).toEqual(payload);
 
     const [url] = fetchMock.mock.calls[0];
-    expect(url).toContain("/unified-alert/");
+    expect(url).toContain("/signals/alert-center/feed");
     expect(url).toContain("symbol=VCI");
     expect(url).toContain("severity=high");
   });
 
-  test("getUnifiedAlerts works with no params", async () => {
+  test("getAlertCenterFeed works with no params", async () => {
     mockOkResponse({ results: [] });
-    await coreApiAdapter.getUnifiedAlerts();
+    await coreApiAdapter.getAlertCenterFeed();
     const [url] = fetchMock.mock.calls[0];
-    expect(url).toMatch(/\/unified-alert\/$/);
+    expect(url).toMatch(/\/signals\/alert-center\/feed$/);
   });
 
-  test("getUnifiedAlertDelivery calls /core/v1/unified-alert/delivery/", async () => {
+  test("getAIAlertsFeed calls /core/v1/signals/ai-alerts/feed", async () => {
     const payload = { results: [], next: null, previous: null };
     mockOkResponse(payload);
 
-    const result = await coreApiAdapter.getUnifiedAlertDelivery({ lane: "ai" });
+    const result = await coreApiAdapter.getAIAlertsFeed({ severity: "high" });
     expect(result).toEqual(payload);
 
     const [url] = fetchMock.mock.calls[0];
-    expect(url).toContain("/unified-alert/delivery/");
-    expect(url).toContain("lane=ai");
+    expect(url).toContain("/signals/ai-alerts/feed");
+    expect(url).toContain("severity=high");
   });
 
   test("coreApiAdapter accepts env override as factory", async () => {
     mockOkResponse({ results: [] });
     const adapter = coreApiAdapter({ env: { CORE_API_BASE_URL: "https://core.example.test/base" } });
-    await adapter.getUnifiedAlerts();
+    await adapter.getAlertCenterFeed();
     const [url] = fetchMock.mock.calls[0];
     expect(url.startsWith("https://core.example.test/base")).toBe(true);
+  });
+
+  test("acknowledgeAlertCenterEvent posts /core/v1/signals/alert-center/events/{id}/ack", async () => {
+    mockOkResponse({ delivery_state: "acknowledged" });
+    await coreApiAdapter.acknowledgeAlertCenterEvent("abc-123");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/signals/alert-center/events/abc-123/ack");
+    expect(init.method).toBe("POST");
+  });
+
+  test("muteAlertCenterPreference posts /core/v1/signals/alert-center/preferences/mute", async () => {
+    mockOkResponse({ mute_until: "2026-05-16T00:00:00Z" });
+    await coreApiAdapter.muteAlertCenterPreference({ symbol: "VCI", alert_family: "whale", mute_minutes: 30 });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/signals/alert-center/preferences/mute");
+    expect(init.method).toBe("POST");
   });
 
   // ---------------------------------------------------------------------------

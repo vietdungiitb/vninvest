@@ -133,7 +133,7 @@ export async function getAggregateWhaleFeed(params: {
   limit?: number;
   cursor?: string;
 } = {}): Promise<WhaleFeedAggregateResponse> {
-  // Use core /core/v1/unified-alert for aggregate feed (multi-symbol).
+  // Use core /core/v1/signals/alert-center/feed for aggregate feed (multi-symbol).
   // For single-symbol feed, use getWhaleFeedAggregate from coreApiClient.
   const coreResponse = await getUnifiedAlerts({
     alert_type: 'whale',
@@ -155,14 +155,14 @@ export async function getAggregateWhaleFeed(params: {
 }
 
 export async function getWhaleAdvisories(): Promise<WhaleAdvisoryItem[]> {
-  // Remapped to core /core/v1/unified-alert?alert_type=whale
+  // Remapped to core /core/v1/signals/alert-center/feed?alert_type=whale
   const coreResponse = await getUnifiedAlerts({ alert_type: 'whale' });
   return coreResponse.results.map((alert) => ({
     alert_id: alert.alert_id,
     symbol: alert.symbol,
     direction: alert.direction,
     severity: alert.severity,
-    message: alert.message,
+    message: alert.message || (alert as unknown as { summary?: string }).summary || '',
     triggered_at: alert.triggered_at,
   })) as unknown as WhaleAdvisoryItem[];
 }

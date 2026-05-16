@@ -430,3 +430,52 @@ class UnifiedAlertMaterializerTests(TestCase):
         feed_response = client.get('/core/v1/signals/alert-center/feed')
         self.assertEqual(feed_response.status_code, 200)
         self.assertEqual(len(feed_response.json()['results']), 0)
+
+    def test_alert_center_feed_supports_alert_family_filter_and_summary_payload(self):
+        now = timezone.now()
+        user = get_user_model().objects.create_user(username='family-filter-user', password='password123')
+        UserProfile.objects.create(user=user, whale_alert_threshold=100)
+        watchlist = Watchlist.objects.create(user=user, name='Theo doi family', is_default=True)
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='VCI')
+
+        price_shock_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.87,
+            freshness_state='fresh',
+            title='Gia tang dot bien VCI',
+            body='Price changed 8.50% in short window',
+            value=Decimal('1500000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='market_anomaly:VCI:' + now.date().isoformat(),
+            evidence={'source': 'test'},
+        )
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.9,
+            freshness_state='fresh',
+            title='Whale VCI',
+            body='Matched value high',
+            value=Decimal('1700000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='family-whale-vci',
+            evidence={'source': 'test'},
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.get('/core/v1/signals/alert-center/feed', {'alert_family': 'price_shock'})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()['results']
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]['alert_id'], str(price_shock_alert.alert_id))
+        self.assertEqual(payload[0]['alert_family'], 'price_shock')
+        self.assertTrue(payload[0]['summary'])

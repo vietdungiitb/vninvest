@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 22:30:02`
+Generated at: `2026-05-16 22:35:28`
 
 ## Summary
 
@@ -4038,7 +4038,7 @@ Generated at: `2026-05-16 22:30:02`
 
 - Classes:
   - `OrderFlowEventSerializer`
-  - `UnifiedAlertSerializer` -> methods: `get_lane`
+  - `UnifiedAlertSerializer` -> methods: `get_alert_family`, `get_lane`, `get_summary`
   - `WhaleAlertCanonicalSerializer`
 
 ### `packages/core/backend/src/signal_intelligence/tasks.py`
@@ -4067,7 +4067,7 @@ Generated at: `2026-05-16 22:30:02`
 ### `packages/core/backend/src/signal_intelligence/tests/test_materializers.py`
 
 - Classes:
-  - `UnifiedAlertMaterializerTests` -> methods: `test_alert_center_ack_and_mute_flow`, `test_alert_center_feed_filters_by_user_symbols_and_threshold`, `test_alert_center_routes_are_registered_under_core_v1`, `test_legacy_unified_alert_routes_are_removed`, `test_materialize_ai_signal_alerts_creates_ai_lane_alert`, `test_materialize_market_anomaly_alerts_creates_signal_alert_from_snapshot`, `test_materialize_stale_quote_alerts_creates_system_alert_from_snapshot`, `test_materialize_unified_alerts_creates_dark_flow_alert_from_order_flow_event`, `test_materialize_unified_alerts_is_idempotent_for_dark_flow_event`, `test_unified_alert_list_view_defaults_to_main_lane_and_supports_ai_lane`
+  - `UnifiedAlertMaterializerTests` -> methods: `test_alert_center_ack_and_mute_flow`, `test_alert_center_feed_filters_by_user_symbols_and_threshold`, `test_alert_center_feed_supports_alert_family_filter_and_summary_payload`, `test_alert_center_routes_are_registered_under_core_v1`, `test_legacy_unified_alert_routes_are_removed`, `test_materialize_ai_signal_alerts_creates_ai_lane_alert`, `test_materialize_market_anomaly_alerts_creates_signal_alert_from_snapshot`, `test_materialize_stale_quote_alerts_creates_system_alert_from_snapshot`, `test_materialize_unified_alerts_creates_dark_flow_alert_from_order_flow_event`, `test_materialize_unified_alerts_is_idempotent_for_dark_flow_event`, `test_unified_alert_list_view_defaults_to_main_lane_and_supports_ai_lane`
   - `WhaleMaterializerTests` -> methods: `test_materialize_whale_feed_aggregate_is_idempotent_for_existing_event`, `test_materialize_whale_feed_aggregate_skips_incomplete_native_facts`, `test_materialize_whale_feed_aggregate_uses_order_flow_facts_only`
 
 ### `packages/core/backend/src/signal_intelligence/tests/test_websocket_consumer.py`
@@ -5086,7 +5086,7 @@ Generated at: `2026-05-16 22:30:02`
 ### `frontend/src/api/client.unifiedAlerts.test.js`
 
 - Top-level variables:
-  - `axiosModule`, `getUnifiedAlerts`, `mockApiClient`, `mockGetUnifiedAlertDelivery`, `response`
+  - `axiosModule`, `getUnifiedAlerts`, `mockApiClient`, `mockGetAlertCenterFeed`, `response`
 
 ### `frontend/src/api/socApi.js`
 
@@ -7780,7 +7780,7 @@ Generated at: `2026-05-16 22:30:02`
 - Functions:
   - `AlertCenterPage`, `formatAlertTimestamp`, `formatAlertValue`, `handleApply`, `load`, `normalizeSymbol`, `renderEvidenceList`, `renderSummaryCard`, `useAlertCenterData`
 - Top-level variables:
-  - `DEFAULT_ENV`, `LANE_OPTIONS`, `adapter`, `aiSuggestCount`, `alerts`, `e`, `entries`, `highSeverityCount`, `mountedRef`, `numericValue`, `payload`, `timestamp`
+  - `DEFAULT_ENV`, `LANE_OPTIONS`, `adapter`, `aiSuggestCount`, `alerts`, `e`, `entries`, `highSeverityCount`, `mountedRef`, `numericValue`, `query`, `timestamp`
 
 ### `packages/web/src/pages/coreShellPageHelpers.js`
 

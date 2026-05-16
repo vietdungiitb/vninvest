@@ -1,4 +1,4 @@
-const mockGetUnifiedAlertDelivery = jest.fn();
+const mockGetAlertCenterFeed = jest.fn();
 
 jest.mock('axios', () => ({
   __esModule: true,
@@ -12,7 +12,7 @@ jest.mock('axios', () => ({
 
 jest.mock('@vninvest/web/adapters/core-api-adapter', () => ({
   coreApiAdapter: {
-    getUnifiedAlertDelivery: mockGetUnifiedAlertDelivery,
+    getAlertCenterFeed: mockGetAlertCenterFeed,
   },
 }), { virtual: true });
 
@@ -22,7 +22,7 @@ describe('getUnifiedAlerts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetModules();
-    mockGetUnifiedAlertDelivery.mockReset();
+    mockGetAlertCenterFeed.mockReset();
 
     const axiosModule = require('axios');
     const mockApiClient = {
@@ -40,13 +40,13 @@ describe('getUnifiedAlerts', () => {
   });
 
   it('bridges multi-symbol requests to server truth and normalizes cursor shape', async () => {
-    mockGetUnifiedAlertDelivery.mockResolvedValue({
+    mockGetAlertCenterFeed.mockResolvedValue({
       results: [
         { alert_id: '1', symbol: 'FPT', severity: 'high' },
         { alert_id: '2', symbol: 'HPG', severity: 'high' },
         { alert_id: '3', symbol: 'SSI', severity: 'low' },
       ],
-      next: 'http://localhost/core/v1/unified-alert/delivery?cursor=cursor_abc&page_size=10',
+      next: 'http://localhost/core/v1/signals/alert-center/feed?cursor=cursor_abc&page_size=10',
       previous: null,
     });
 
@@ -59,10 +59,11 @@ describe('getUnifiedAlerts', () => {
       cursor: 'cursor_abc',
     });
 
-    expect(mockGetUnifiedAlertDelivery).toHaveBeenCalledTimes(1);
-    expect(mockGetUnifiedAlertDelivery).toHaveBeenCalledWith({
+    expect(mockGetAlertCenterFeed).toHaveBeenCalledTimes(1);
+    expect(mockGetAlertCenterFeed).toHaveBeenCalledWith({
       symbol: undefined,
       severity: 'high',
+      alert_family: undefined,
       page_size: 10,
       cursor: 'cursor_abc',
     });
@@ -74,14 +75,14 @@ describe('getUnifiedAlerts', () => {
         ],
         next_cursor: 'cursor_abc',
         has_more: true,
-        next: 'http://localhost/core/v1/unified-alert/delivery?cursor=cursor_abc&page_size=10',
+        next: 'http://localhost/core/v1/signals/alert-center/feed?cursor=cursor_abc&page_size=10',
         previous: null,
       },
     });
   });
 
   it('passes a single symbol with the default page size and keeps empty cursor state', async () => {
-    mockGetUnifiedAlertDelivery.mockResolvedValue({
+    mockGetAlertCenterFeed.mockResolvedValue({
       results: [{ alert_id: '1', symbol: 'VNM' }],
       next: null,
       previous: null,
@@ -89,9 +90,10 @@ describe('getUnifiedAlerts', () => {
 
     const response = await getUnifiedAlerts({ symbols: ['VNM'] });
 
-    expect(mockGetUnifiedAlertDelivery).toHaveBeenCalledWith({
+    expect(mockGetAlertCenterFeed).toHaveBeenCalledWith({
       symbol: 'VNM',
       severity: undefined,
+      alert_family: undefined,
       page_size: 20,
       cursor: undefined,
     });

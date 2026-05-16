@@ -42,7 +42,12 @@ function normalizeSymbol(value) {
 
 function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "" } = {}) {
   const mountedRef = useRef(null);
-  const [state, setState] = useState({ loading: true, error: "", payload: { results: [], next: null, previous: null } });
+  const [state, setState] = useState({
+    loading: true,
+    error: "",
+    payload: { results: [], next: null, previous: null },
+    summary: { total: 0, unseen: 0, by_severity: { critical: 0, high: 0, medium: 0, low: 0 } },
+  });
 
   useEffect(() => {
     mountedRef.current = true;
@@ -51,10 +56,11 @@ function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "" } = 
       try {
         setState((currentState) => ({ ...currentState, loading: true, error: "" }));
         const adapter = coreApiAdapter({ env });
-        const payload = await adapter.getUnifiedAlertDelivery({
-          lane,
-          symbol: symbol || undefined,
-        });
+        const query = { symbol: symbol || undefined };
+        const [payload, summary] = await Promise.all([
+          lane === "ai" ? adapter.getAIAlertsFeed(query) : adapter.getAlertCenterFeed(query),
+          lane === "ai" ? adapter.getAIAlertsSummary(query) : adapter.getAlertCenterSummary(query),
+        ]);
 
         if (!mountedRef.current) {
           return;
@@ -68,6 +74,16 @@ function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "" } = 
             next: payload?.next ?? null,
             previous: payload?.previous ?? null,
           },
+          summary: {
+            total: Number(summary?.total || 0),
+            unseen: Number(summary?.unseen || 0),
+            by_severity: {
+              critical: Number(summary?.by_severity?.critical || 0),
+              high: Number(summary?.by_severity?.high || 0),
+              medium: Number(summary?.by_severity?.medium || 0),
+              low: Number(summary?.by_severity?.low || 0),
+            },
+          },
         });
       } catch (error) {
         if (!mountedRef.current) {
@@ -78,6 +94,7 @@ function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "" } = 
           loading: false,
           error: error?.message || "Không thể tải alert center từ core API.",
           payload: { results: [], next: null, previous: null },
+          summary: { total: 0, unseen: 0, by_severity: { critical: 0, high: 0, medium: 0, low: 0 } },
         });
       }
     }
@@ -117,10 +134,10 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
   const [lane, setLane] = useState("main");
   const [symbolDraft, setSymbolDraft] = useState("");
   const [appliedSymbol, setAppliedSymbol] = useState("");
-  const { loading, error, payload } = useAlertCenterData({ env, lane, symbol: appliedSymbol });
+  const { loading, error, payload, summary } = useAlertCenterData({ env, lane, symbol: appliedSymbol });
   const alerts = payload?.results ?? [];
-  const highSeverityCount = alerts.filter((alert) => alert?.severity === "high").length;
-  const aiSuggestCount = alerts.filter((alert) => alert?.alert_type === "ai_suggest").length;
+  const highSeverityCount = Number(summary?.by_severity?.high || 0);
+  const aiSuggestCount = alerts.filter((alert) => alert?.alert_family === "ai_suggest").length;
 
   function handleApply(event) {
     event.preventDefault();
@@ -167,7 +184,8 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
       )
     ),
     e("section", { key: "summary", className: "core-alert-center-summary-grid" }, [
-      renderSummaryCard("Tổng số alert", String(alerts.length)),
+      renderSummaryCard("Tổng số alert", String(summary?.total ?? alerts.length)),
+      renderSummaryCard("Chưa đọc", String(summary?.unseen ?? 0)),
       renderSummaryCard("Mức cao", String(highSeverityCount)),
       renderSummaryCard("AI suggest", String(aiSuggestCount), lane === "ai" ? "is-highlighted" : ""),
       renderSummaryCard("Bộ lọc mã", appliedSymbol || "Toàn bộ"),
@@ -187,12 +205,12 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
                   e(
                     "p",
                     { key: "meta", className: "core-alert-center-card-meta" },
-                    `${alert.symbol || "—"} · ${alert.alert_type || "—"} · ${alert.lane || lane}`
+                    `${alert.symbol || "—"} · ${alert.alert_family || alert.alert_type || "—"} · ${alert.lane || lane}`
                   ),
                 ]),
                 e("span", { key: "severity", className: `core-alert-center-badge severity-${alert.severity || "unknown"}` }, alert.severity || "unknown"),
               ]),
-              e("p", { key: "summary", className: "core-alert-center-card-summary" }, alert.summary || "Không có tóm tắt."),
+              e("p", { key: "summary", className: "core-alert-center-card-summary" }, alert.summary || alert.body || "Không có tóm tắt."),
               e("div", { key: "metrics", className: "core-alert-center-card-metrics" }, [
                 e("span", { key: "value" }, `Giá trị: ${formatAlertValue(alert.value)}`),
                 e("span", { key: "direction" }, `Chiều: ${alert.direction || "—"}`),

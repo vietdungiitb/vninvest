@@ -185,28 +185,80 @@ export function createCoreApiAdapter({ env = {} } = {}) {
   },
 
   /**
-   * List UnifiedAlerts with optional filters.
-   * Response includes cursor-pagination `next`/`previous` links.
-   * @param {object} [params] - Filters: symbol, alert_type, severity, session_date, cursor
+   * List alert-center feed (main lane) with optional filters.
+   * @param {object} [params] - Filters: symbol, alert_family, severity, session_date, cursor, page_size
    * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
    */
-  getUnifiedAlerts(params = {}) {
+  getAlertCenterFeed(params = {}) {
     const query = new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
     ).toString();
-    return coreGet(`/unified-alert/${query ? `?${query}` : ""}`);
+    return coreGet(`/signals/alert-center/feed${query ? `?${query}` : ""}`);
   },
 
   /**
-   * List per-user projected UnifiedAlerts with optional lane/filter parameters.
-   * @param {object} [params] - Filters: lane, symbol, alert_type, severity, session_date, cursor
-   * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
+   * Get alert-center summary (main lane).
+   * @param {object} [params] - Filters: symbol, alert_family, severity, session_date
+   * @returns {Promise<object>}
    */
-  getUnifiedAlertDelivery(params = {}) {
+  getAlertCenterSummary(params = {}) {
     const query = new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
     ).toString();
-    return coreGet(`/unified-alert/delivery/${query ? `?${query}` : ""}`);
+    return coreGet(`/signals/alert-center/summary${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Get alert-center event detail by alert_id.
+   * @param {string} alertId
+   * @returns {Promise<object>}
+   */
+  getAlertCenterEventDetail(alertId) {
+    if (!alertId) throw new Error("alertId is required for getAlertCenterEventDetail");
+    return coreGet(`/signals/alert-center/events/${encodeURIComponent(alertId)}`);
+  },
+
+  /**
+   * Acknowledge an alert-center event.
+   * @param {string} alertId
+   * @returns {Promise<object>}
+   */
+  acknowledgeAlertCenterEvent(alertId) {
+    if (!alertId) throw new Error("alertId is required for acknowledgeAlertCenterEvent");
+    return corePost(`/signals/alert-center/events/${encodeURIComponent(alertId)}/ack`);
+  },
+
+  /**
+   * Mute alert-center preference by symbol/family scope.
+   * @param {{symbol?: string, alert_family?: string, mute_minutes?: number, cooldown_seconds?: number, metadata?: object}} payload
+   * @returns {Promise<object>}
+   */
+  muteAlertCenterPreference(payload = {}) {
+    return corePost(`/signals/alert-center/preferences/mute`, payload);
+  },
+
+  /**
+   * List AI Alerts lane feed with optional filters.
+   * @param {object} [params] - Filters: symbol, alert_family, severity, session_date, cursor, page_size
+   * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
+   */
+  getAIAlertsFeed(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/signals/ai-alerts/feed${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Get AI Alerts summary (ai lane).
+   * @param {object} [params] - Filters: symbol, alert_family, severity, session_date
+   * @returns {Promise<object>}
+   */
+  getAIAlertsSummary(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/signals/ai-alerts/summary${query ? `?${query}` : ""}`);
   },
 
   /**

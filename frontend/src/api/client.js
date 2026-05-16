@@ -587,9 +587,10 @@ export const getUnifiedAlerts = async ({ symbols, watchlistGroupIds: _watchlistG
     ? symbols.map((symbol) => String(symbol || '').trim().toUpperCase()).filter(Boolean)
     : [];
   const severity = severityMin && severityMin !== 'low' ? severityMin : undefined;
-  const payload = await coreApiAdapter.getUnifiedAlertDelivery({
+  const payload = await coreApiAdapter.getAlertCenterFeed({
     symbol: normalizedSymbols.length === 1 ? normalizedSymbols[0] : undefined,
     severity,
+    alert_family: undefined,
     page_size: Number.isFinite(Number(_limit)) ? Number(_limit) : undefined,
     cursor: cursor || undefined,
   });

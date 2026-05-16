@@ -102,6 +102,7 @@ class AlertCenterMutePreferenceRequestSerializer(serializers.Serializer):
 def _apply_common_alert_filters(qs, params, *, lane: str):
     symbol = params.get('symbol')
     alert_type = params.get('alert_type')
+    alert_family = params.get('alert_family')
     severity = params.get('severity')
     session_date = params.get('session_date')
     main_lane_types = {
@@ -119,6 +120,20 @@ def _apply_common_alert_filters(qs, params, *, lane: str):
         qs = qs.filter(symbol=symbol.upper())
     if alert_type:
         qs = qs.filter(alert_type=alert_type)
+    if alert_family:
+        normalized_family = str(alert_family).strip().lower()
+        if normalized_family == 'price_shock':
+            qs = qs.filter(
+                Q(alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL)
+                & Q(source_ref__startswith='market_anomaly:')
+            )
+        elif normalized_family == 'stale_quote':
+            qs = qs.filter(
+                Q(alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM)
+                & (Q(source_ref__startswith='stale_quote:') | Q(freshness_state='stale'))
+            )
+        else:
+            qs = qs.filter(alert_type=normalized_family)
     if severity:
         qs = qs.filter(severity=severity)
     if session_date:
@@ -196,6 +211,7 @@ class UserScopedAlertFeedBaseView(AlertFeedBaseListView):
         ),
         parameters=[
             OpenApiParameter(name='symbol', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(name='alert_family', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='cursor', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
@@ -221,6 +237,7 @@ class AlertCenterFeedView(UserScopedAlertFeedBaseView):
         ),
         parameters=[
             OpenApiParameter(name='symbol', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(name='alert_family', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='cursor', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),

@@ -1,5 +1,33 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center remediation 1-2-3: frontend contract cutover + integration test wave + R3 taxonomy/payload parity | backend + frontend + packages/web + mobile + docs
+
+## All Modified Files (12 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/serializers.py` | Added `alert_family` + `summary` fields to unified alert serializer for taxonomy/payload parity (`price_shock`, `stale_quote`, AI families) |
+| `packages/core/backend/src/signal_intelligence/views.py` | Added `alert_family` filter support on alert-center feed and OpenAPI metadata updates for new query capability |
+| `packages/core/backend/src/signal_intelligence/tests/test_materializers.py` | Added API regression for `alert_family=price_shock` and payload parity assertions (`alert_family`, `summary`) on native alert-center endpoint |
+| `packages/web/src/adapters/coreApiAdapter.js` | Removed legacy unified-alert adapter methods and added SaaS-native methods (`getAlertCenterFeed`, `getAlertCenterSummary`, `getAIAlertsFeed`, `acknowledgeAlertCenterEvent`, `muteAlertCenterPreference`) |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Migrated tests to new SaaS-native endpoints and added ack/mute method coverage |
+| `packages/web/src/pages/AlertCenterPage.js` | Switched data loading to native alert-center/ai-alerts feed + summary endpoints and consumed backend `summary`/`alert_family` payload fields |
+| `packages/web/src/pages/WhaleAlertsPage.js` | Switched whale list source to native alert-center feed with `alert_family=whale` |
+| `frontend/src/api/client.js` | Updated unified alerts bridge to call `coreApiAdapter.getAlertCenterFeed` |
+| `frontend/src/api/client.unifiedAlerts.test.js` | Updated bridge tests to mock new adapter method and new feed URL shape |
+| `packages/mobile/src/services/coreApiClient.ts` | Updated mobile unified alerts client path to `/core/v1/signals/alert-center/feed` |
+| `packages/mobile/src/services/watchlistApi.ts` | Updated mobile watchlist/advisory mapping comments and message fallback to new payload semantics |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Updated B01/B03/C02/D01/D05/D07 progress notes to reflect native route + client cutover + taxonomy/payload parity implementation state |
+
+## Validation
+- `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb; Pop-Location` passed (`18` tests) ✅
+- `Push-Location ./packages/web; $env:CI='true'; npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false; Pop-Location` passed (`16` tests) ✅
+- `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false; Pop-Location` passed (`4` tests) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1206` modules) ✅
+- `Set-Location .; .\start_dev.ps1` completed successfully: frontend production build OK, `No queue drift detected`, Core API health OK, Frontend health OK ✅
+
+## Residual risk
+- Frontend naming (`getUnifiedAlerts`, `useUnifiedAlerts`) still carries historical terminology even though route contract is native alert-center; naming cleanup remains optional technical-debt follow-up.
+
 # 2026-05-16 | Global Alert Center remediation R2: SaaS-native endpoint family cutover + legacy unified-alert backend route removal | backend + tests
 
 ## All Modified Files (7 files)

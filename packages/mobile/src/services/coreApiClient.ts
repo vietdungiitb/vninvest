@@ -73,6 +73,7 @@ export interface PaginatedResponse<T> {
  */
 export async function getUnifiedAlerts(params: {
   symbol?: string;
+  alert_family?: string;
   alert_type?: string;
   severity?: string;
   session_date?: string;
@@ -85,7 +86,7 @@ export async function getUnifiedAlerts(params: {
   );
   const query = search.toString();
   const response = await coreClient.get<PaginatedResponse<UnifiedAlertItem>>(
-    `/unified-alert/${query ? `?${query}` : ''}`
+    `/signals/alert-center/feed${query ? `?${query}` : ''}`
   );
   return response.data;
 }

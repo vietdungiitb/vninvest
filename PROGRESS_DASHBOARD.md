@@ -1,3 +1,23 @@
+# 2026-05-16 — Global Alert Center remediation 1-2-3 complete (frontend cutover + integration wave + R3 parity) ✅
+
+Status: **✅ 1 DONE** | **✅ 2 DONE** | **✅ 3 DONE** | **✅ native alert-center contract now used across backend + frontend bridges**
+
+## What changed
+- Migrate frontend/packages-web/mobile bridge calls from legacy unified-alert route to native endpoint family `/core/v1/signals/alert-center/*` and `/core/v1/signals/ai-alerts/*`.
+- Expand adapter capability for native feed/summary/detail/ack/mute operations and update page-level consumers.
+- Complete R3 parity foundation by adding `alert_family` and `summary` fields in payload plus `alert_family` filter support in backend feed.
+- Add focused backend regression for `price_shock` family filtering and summary payload presence.
+
+## Validation
+- Backend: `manage.py test signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb` → **18 tests OK** ✅
+- Packages web: `npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false` → **16 tests OK** ✅
+- Frontend: `npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **4 tests OK** ✅
+- Runtime: `./start_dev.ps1` → **frontend build success, No queue drift detected, Core API health OK, Frontend health OK** ✅
+- Inventory: `scripts/ops/generate_module_tree.py` → **module tree refreshed (1206 modules)** ✅
+
+## Next
+- Continue R3 deepening: align materializer taxonomy producers to emit explicit family semantics end-to-end and close remaining naming debt in hooks/apis.
+
 # 2026-05-16 — Global Alert Center remediation R2 complete (SaaS-native endpoint family convergence) ✅
 
 Status: **✅ R2 DONE (backend scope)** | **✅ legacy unified-alert backend routes removed** | **✅ alert-center/ai-alerts endpoint family active** | **✅ focused tests + runtime refresh green**

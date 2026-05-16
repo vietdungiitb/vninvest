@@ -19,7 +19,7 @@ function useWhaleAlerts({ env = DEFAULT_ENV, symbol = "", sessionDate = "" } = {
     async function load() {
       try {
         const adapter = coreApiAdapter({ env });
-        const res = await adapter.getUnifiedAlerts({ symbol, session_date: sessionDate });
+        const res = await adapter.getAlertCenterFeed({ symbol, alert_family: 'whale', session_date: sessionDate });
         if (!mountedRef.current) return;
         setState({ loading: false, error: null, alerts: res?.results ?? res ?? [] });
       } catch (err) {

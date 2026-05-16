@@ -5,13 +5,15 @@ from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 
 class UnifiedAlertSerializer(serializers.ModelSerializer):
     lane = serializers.SerializerMethodField()
+    alert_family = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
 
     class Meta:
         model = UnifiedAlert
         fields = [
-            'alert_id', 'alert_type', 'lane', 'symbol', 'severity', 'confidence', 'freshness_state',
+            'alert_id', 'alert_type', 'alert_family', 'lane', 'symbol', 'severity', 'confidence', 'freshness_state',
             'title', 'body', 'value', 'direction', 'session_date', 'triggered_at',
-            'source_ref', 'metadata', 'evidence',
+            'source_ref', 'metadata', 'evidence', 'summary',
         ]
 
     def get_lane(self, obj):
@@ -21,6 +23,25 @@ class UnifiedAlertSerializer(serializers.ModelSerializer):
             UnifiedAlert.AlertTypeChoices.SIGNAL,
             UnifiedAlert.AlertTypeChoices.SYSTEM,
         } else 'ai'
+
+    def get_alert_family(self, obj):
+        if obj.alert_type == UnifiedAlert.AlertTypeChoices.SIGNAL:
+            if str(obj.source_ref or '').startswith('market_anomaly:'):
+                return 'price_shock'
+            if isinstance(obj.evidence, dict) and obj.evidence.get('price_change_pct') is not None:
+                return 'price_shock'
+        if obj.alert_type == UnifiedAlert.AlertTypeChoices.SYSTEM:
+            if str(obj.source_ref or '').startswith('stale_quote:'):
+                return 'stale_quote'
+            if str(obj.freshness_state or '').lower() == 'stale':
+                return 'stale_quote'
+        return obj.alert_type
+
+    def get_summary(self, obj):
+        body = str(obj.body or '').strip()
+        if body:
+            return body
+        return str(obj.title or '').strip()
 
 
 class WhaleAlertCanonicalSerializer(serializers.ModelSerializer):
