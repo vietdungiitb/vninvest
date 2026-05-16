@@ -288,8 +288,24 @@ class AccountSnapshot(models.Model):
         return self.net_equity
 
 
-# [DELETED: Portfolio - migrated to packages/core/backend/src/user_workspace/models.py]
-# Decommissioned as part of T11 Legacy Code Removal (2026-05-12)
+class Portfolio(models.Model):
+    """Legacy compatibility shim for SubAccount relations."""
+
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='legacy_portfolios')
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'user_workspace_portfolio'
+        verbose_name = 'Legacy Portfolio Shim'
+        verbose_name_plural = 'Legacy Portfolio Shim'
+
+    def __str__(self):
+        return self.name
 
 
 class Transaction(models.Model):

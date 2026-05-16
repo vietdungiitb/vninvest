@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-15 23:16:11`
+Generated at: `2026-05-16 15:47:12`
 
 ## Summary
 
-- Total modules: 1201
-- Python modules: 678
-- JS/TS modules: 523
-- Total classes: 1317
-- Total functions: 3227
-- Total top-level variables: 4801
+- Total modules: 1205
+- Python modules: 681
+- JS/TS modules: 524
+- Total classes: 1327
+- Total functions: 3232
+- Total top-level variables: 4877
 
 ## Python Modules
 
@@ -561,6 +561,7 @@ Generated at: `2026-05-15 23:16:11`
   - `OnboardingPlanPolicy` -> methods: `__str__`, `clean`
   - `OrderFlowSignal` -> methods: `__str__`
   - `PlanAssignmentLog` -> methods: `__str__`
+  - `Portfolio` -> methods: `__str__`
   - `PortfolioNewsDigest` -> methods: `__str__`
   - `RuntimeVnbrokerConfig` -> methods: `__str__`, `append_changelog`, `clean`, `default_fallback_sources`, `default_source_config`, `default_timeout_config`, `get_or_create_singleton`, `to_runtime_dict`
   - `ScreenerRule` -> methods: `__str__`
@@ -1751,7 +1752,7 @@ Generated at: `2026-05-15 23:16:11`
 ### `backend/portfolio/tests/test_partner_admin_api.py`
 
 - Classes:
-  - `PartnerAdminApiTests` -> methods: `setUp`, `test_free_plan_cannot_access_partner_machine_access`, `test_partner_routes_accept_machine_pat_authentication`, `test_partner_tenant_summary_route_returns_current_tenant_snapshot`, `test_partner_usage_and_billing_read_paths`, `test_pat_issue_list_rotate_and_revoke`, `test_rotating_pat_expires_after_grace_window`, `test_service_account_list_and_create`
+  - `PartnerAdminApiTests` -> methods: `setUp`, `test_free_plan_cannot_access_partner_machine_access`, `test_machine_pat_requires_tenant_management_scope`, `test_partner_routes_accept_machine_pat_authentication`, `test_partner_tenant_summary_route_returns_current_tenant_snapshot`, `test_partner_usage_and_billing_read_paths`, `test_pat_issue_list_rotate_and_revoke`, `test_rotating_pat_expires_after_grace_window`, `test_service_account_list_and_create`
 
 ### `backend/portfolio/tests/test_password_reset_templates.py`
 
@@ -2149,9 +2150,9 @@ Generated at: `2026-05-15 23:16:11`
   - `PartnerPATRotateSerializer`
   - `PartnerServiceAccountCreateSerializer`
 - Functions:
-  - `_apply_cursor`, `_build_audit_metadata`, `_build_list_payload`, `_build_plan_lifecycle_summary`, `_build_quota_snapshot_row`, `_build_subscription_summary`, `_build_usage_meter_row`, `_error`, `_paginate_list`, `_request_auth_context`, `_request_id`, `_request_ip`, `_require_idempotency_key`, `_resolve_owned_pat`, `_resolve_owned_service_account`, `_resolve_period_bounds`, `_resolve_risk_state`, `_resolve_subscription_status`, `_resolve_user_config`, `_response`, `_serialize_invoice_summary`, `_serialize_pat_credential`, `_serialize_service_account`, `_serialize_tenant_summary`, `partner_billing_invoices_api`, `partner_billing_subscription_api`, `partner_pat_issue_api`, `partner_pat_list_api`, `partner_pat_revoke_api`, `partner_pat_rotate_api`, `partner_service_accounts_api`, `partner_tenant_api`, `partner_usage_meters_api`, `partner_usage_quotas_api`
+  - `_apply_cursor`, `_build_audit_metadata`, `_build_list_payload`, `_build_plan_lifecycle_summary`, `_build_quota_snapshot_row`, `_build_subscription_summary`, `_build_usage_meter_row`, `_current_pat_scope_codes`, `_error`, `_normalize_scope_codes`, `_paginate_list`, `_request_auth_context`, `_request_id`, `_request_ip`, `_require_idempotency_key`, `_require_pat_scope`, `_require_requested_scopes_within_pat`, `_resolve_owned_pat`, `_resolve_owned_service_account`, `_resolve_period_bounds`, `_resolve_risk_state`, `_resolve_subscription_status`, `_resolve_user_config`, `_response`, `_serialize_invoice_summary`, `_serialize_pat_credential`, `_serialize_service_account`, `_serialize_tenant_summary`, `partner_billing_invoices_api`, `partner_billing_subscription_api`, `partner_pat_issue_api`, `partner_pat_list_api`, `partner_pat_revoke_api`, `partner_pat_rotate_api`, `partner_service_accounts_api`, `partner_tenant_api`, `partner_usage_meters_api`, `partner_usage_quotas_api`
 - Top-level variables:
-  - `PARTNER_AUTH_CLASSES`, `PARTNER_USAGE_METERS`, `partner_authentication_classes`
+  - `PARTNER_AUTH_CLASSES`, `PARTNER_SCOPE_MANAGE_PATS`, `PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS`, `PARTNER_SCOPE_MANAGE_TENANT`, `PARTNER_USAGE_METERS`, `partner_authentication_classes`
 
 ### `backend/portfolio/views_portfolio_watchlist.py`
 
@@ -3148,7 +3149,7 @@ Generated at: `2026-05-15 23:16:11`
 - Functions:
   - `_build_intraday_source_candidates`, `_build_listing_seed_rows`, `_extract_listing_records`, `_fetch_intraday_frame`, `_fetch_realtime_price_with_quote_class`, `_load_listing_adapter_class`, `_load_quote_class`, `_normalize_intraday_trade_rows`, `_normalize_listing_rows`, `_normalize_supported_source`, `_publish_intraday_stream`, `_resolve_realtime_source`, `_slice_listing_symbols`, `fetch_daily_history`, `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `fetch_realtime_price`, `fetch_symbol_group_members`, `get_active_config`, `warm_up_intraday_symbols`
 - Top-level variables:
-  - `_INTRADAY_FALLBACK_SOURCES`, `_LISTING_GROUP_ALIASES`, `_LISTING_SEED_DATA`, `_SUPPORTED_PROVIDER_SOURCES`, `logger`
+  - `_EXCHANGE_BASED_GROUPS`, `_INTRADAY_FALLBACK_SOURCES`, `_LISTING_GROUP_ALIASES`, `_LISTING_SEED_DATA`, `_SUPPORTED_PROVIDER_SOURCES`, `logger`
 
 ### `packages/core/backend/src/market_data/vnbroker_benchmark.py`
 
@@ -3497,7 +3498,7 @@ Generated at: `2026-05-15 23:16:11`
 - Functions:
   - `generate_cycle_id`, `get_latest_monitor_cycle`, `normalize_provider_list`, `normalize_symbol_group_ids`
 - Top-level variables:
-  - `DEFAULT_MATRIX_PROVIDERS`, `DEFAULT_SYMBOL_GROUPS`, `SYMBOL_GROUP_ID_ALIASES`
+  - `DEFAULT_MATRIX_PROVIDERS`, `DEFAULT_SYMBOL_GROUPS`, `PREDEFINED_SYMBOL_GROUPS`, `SYMBOL_GROUP_ID_ALIASES`
 
 ### `packages/core/backend/src/service_ops/migrations/0001_initial.py`
 
@@ -3505,6 +3506,11 @@ Generated at: `2026-05-15 23:16:11`
   - `Migration`
 
 ### `packages/core/backend/src/service_ops/migrations/0002_add_scrape_matrix_models.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/service_ops/migrations/0003_add_custom_symbol_group.py`
 
 - Classes:
   - `Migration`
@@ -3517,6 +3523,7 @@ Generated at: `2026-05-15 23:16:11`
 
 - Classes:
   - `ConfigChangeAudit` -> methods: `__str__`
+  - `CustomSymbolGroup` -> methods: `__str__`, `clean_symbols`, `group_id`
   - `OwnershipRecord` -> methods: `__str__`, `get_write_block_reason`, `is_writable`
   - `ScrapeMatrix` -> methods: `__str__`, `progress_pct`
   - `ScrapeMatrixCell` -> methods: `__str__`
@@ -3575,6 +3582,13 @@ Generated at: `2026-05-15 23:16:11`
 ### `packages/core/backend/src/service_ops/tests/__init__.py`
 
 - No parseable top-level symbols found
+
+### `packages/core/backend/src/service_ops/tests/test_screener_rule_crud.py`
+
+- Classes:
+  - `ScreenerRuleCRUDTestCase` -> methods: `_create_rule`, `setUp`, `setUpTestData`, `test_create_rule_persists_to_config`, `test_create_rule_returns_201`, `test_delete_rule_not_found_returns_404`, `test_delete_rule_removes_from_list`, `test_delete_rule_returns_204`, `test_update_rule_not_found_returns_404`, `test_update_rule_returns_200`
+- Top-level variables:
+  - `User`
 
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
 
@@ -3680,6 +3694,7 @@ Generated at: `2026-05-15 23:16:11`
 - Classes:
   - `DataOpsCoverageResponseSerializer`
   - `DataOpsCoverageView` -> methods: `get`
+  - `DataOpsInventoryView` -> methods: `get`
   - `DataOpsOwnershipSerializer`
   - `DataOpsPlannerPreviewRequestSerializer`
   - `DataOpsPlannerPreviewResponseSerializer`
@@ -3815,12 +3830,15 @@ Generated at: `2026-05-15 23:16:11`
   - `ScreenerResultsView` -> methods: `get`
   - `ScreenerRuleCreateRequestSerializer`
   - `ScreenerRuleCreateResponseSerializer`
+  - `ScreenerRuleDeleteView` -> methods: `delete`
   - `ScreenerRuleSerializer`
   - `ScreenerRulesResponseSerializer`
   - `ScreenerRulesRunView` -> methods: `post`
   - `ScreenerRulesView` -> methods: `get`, `post`
+  - `ScreenerRuleUpdateRequestSerializer`
+  - `ScreenerRuleUpdateView` -> methods: `put`
 - Functions:
-  - `_build_default_screener_config_response`, `_build_screener_ownership_payload`, `_get_recent_signal_alerts`, `_get_screener_config`, `_serialize_signal_alert`
+  - `_build_default_screener_config_response`, `_build_screener_ownership_payload`, `_get_recent_signal_alerts`, `_get_screener_config`, `_save_screener_rules_config`, `_serialize_signal_alert`
 - Top-level variables:
   - `PAGINATION_PARAMETERS`
 
@@ -3881,6 +3899,14 @@ Generated at: `2026-05-15 23:16:11`
   - `SignalsWhaleView` -> methods: `get`
 - Functions:
   - `_build_bridge_write_denied_response`, `_build_materialization_execution_plan`, `_build_signals_ownership_payload`, `_compute_avg_signal_latency_ms`, `_get_latest_signal_job_run`, `_get_signals_domain_config`, `_latest_signal_session_date`, `_materializer_status`, `_serialize_recent_alert`
+
+### `packages/core/backend/src/service_ops/views/symbol_groups.py`
+
+- Classes:
+  - `SymbolGroupDetailView` -> methods: `_get_group_or_404`, `delete`, `get`, `put`
+  - `SymbolGroupListView` -> methods: `get`, `post`
+- Functions:
+  - `_serialize_custom_group`, `_slugify`
 
 ### `packages/core/backend/src/service_ops/views/vnbroker.py`
 
@@ -4598,6 +4624,8 @@ Generated at: `2026-05-15 23:16:11`
 
 ### `packages/core/backend/src/vninvest_core/urls.py`
 
+- Functions:
+  - `admin_ops_gone`
 - Top-level variables:
   - `urlpatterns`
 
@@ -4997,7 +5025,7 @@ Generated at: `2026-05-15 23:16:11`
 ### `frontend/src/api/client.js`
 
 - Functions:
-  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `applyAdminSignalsUniverse`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminAuditLog`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminScreenerConfig`, `getAdminSignalJobs`, `getAdminSignalRecentEvents`, `getAdminSignalsConfig`, `getAdminSignalsSummary`, `getAdminSystemAiSettings`, `getAdminVnbrokerBenchmarkLatest`, `getAdminVnbrokerConfigChangelog`, `getAdminVnbrokerConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDNSEConfig`, `getDNSETokenStatus`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getSessionFacts`, `getSessionFactsCvd`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `normalizeTenantPatWritePayload`, `normalizeTenantServiceAccountWritePayload`, `placeDNSEOrder`, `postStockAIAdvisoryObservabilityEvent`, `previewAdminSignalMaterialization`, `previewAdminSignalRetention`, `previewAdminSignalsConfig`, `previewAdminSignalsUniverse`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnbrokerConfig`, `restoreStockAIAdvisoryComponent`, `retryAdminSignalJob`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runAdminSignalJob`, `runAdminVnbrokerBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncDNSEAccounts`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminScreenerConfig`, `updateAdminSignalsConfig`, `updateAdminSystemAiSettings`, `updateAdminVnbrokerConfig`, `updateDNSEConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`, `withDefaultAuditReason`
+  - `addTrackedSymbol`, `addWatchlistItem`, `attachCoreRequestId`, `buildIdempotencyKey`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createAdminGlobalScreenerRule`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTenantServiceAccount`, `createTransaction`, `createWatchlistGroup`, `deleteAdminGlobalScreenerRule`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminAuditLog`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminGlobalScreenerRules`, `getAdminScreenerConfig`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getCoreOperatorAuditRequestDetail`, `getCoreOperatorAuditRequests`, `getCoreOperatorHealth`, `getCoreOperatorJobs`, `getCoreOperatorOverview`, `getCoreOperatorTenantDetail`, `getCoreOperatorTenantPATs`, `getCoreOperatorTenantServiceAccounts`, `getCoreOperatorTenants`, `getCoreRequestId`, `getDNSEConfig`, `getDNSETokenStatus`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getSessionFacts`, `getSessionFactsCvd`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTenantBillingInvoices`, `getTenantBillingSubscription`, `getTenantPATs`, `getTenantServiceAccounts`, `getTenantSummary`, `getTenantUsageMeters`, `getTenantUsageQuotas`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleFeed`, `hasAuthTokens`, `isAuthPublicEndpoint`, `issueTenantPAT`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `normalizeListResponse`, `normalizeTenantPatWritePayload`, `normalizeTenantServiceAccountWritePayload`, `placeDNSEOrder`, `postStockAIAdvisoryObservabilityEvent`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `restoreStockAIAdvisoryComponent`, `revokeTenantPAT`, `rotateTenantPAT`, `runAdminCrawlJob`, `runAdminGlobalScreenerManual`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncDNSEAccounts`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `updateAICommandCenterConfig`, `updateAdminGlobalScreenerRule`, `updateAdminScreenerConfig`, `updateDNSEConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `withDefaultAuditReason`
 - Top-level variables:
   - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `REQUEST_TIMEOUT_MS`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `payload`, `protocol`, `publicApiClient`, `query`, `queryString`, `rawRows`, `refresh`, `refreshRequestPromise`, `refreshToken`, `requestId`, `requestUrl`, `response`, `rows`, `scopes`, `status`, `suffix`, `symbolList`, `token`, `updateAIConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
@@ -5381,13 +5409,6 @@ Generated at: `2026-05-15 23:16:11`
 - Top-level variables:
   - `mockActions`, `mockQuotes`
 
-### `frontend/src/components/RuntimeKPIPanel.jsx`
-
-- Functions:
-  - `KPIRow`, `StatusDot`, `fmtCount`, `fmtMs`, `fmtPct`, `toneFor5xx`, `toneForP95`
-- Top-level variables:
-  - `celery`, `fetchKPI`, `id`, `intradayFreshness`, `obs`, `overall`, `prefetch`, `res`, `toneClass`, `topEndpoints`
-
 ### `frontend/src/components/RVOLChartPanel.jsx`
 
 - Functions:
@@ -5430,9 +5451,9 @@ Generated at: `2026-05-15 23:16:11`
 ### `frontend/src/components/soc/DataOpsPanel.jsx`
 
 - Functions:
-  - `DataOpsPanel`, `buildChangeSummary`, `buildImpactWarnings`, `buildPlannerPayload`, `getNextActionLabelKey`, `handleApply`, `handleAuditPageChange`, `handlePlannerPreview`, `handlePlannerRun`, `handlePreview`, `handleRunLogsPageChange`, `hasTierRuntimeChange`, `loadData`, `parseSymbolsInput`, `updateManualRunForm`
+  - `BackfillCenterSection`, `DataInventorySection`, `DataOpsPanel`, `active`, `buildChangeSummary`, `buildImpactWarnings`, `buildPlannerPayload`, `fmtDate`, `fmtNum`, `getMatrixReadyProviderIds`, `getMatrixSelectedProviders`, `getMatrixStatusLabel`, `getMatrixStatusTone`, `getNextActionLabelKey`, `handleApply`, `handleAuditPageChange`, `handleCreateGroup`, `handleDeleteGroup`, `handleMatrixAbortCycle`, `handleMatrixCycleComplete`, `handleMatrixGroupToggle`, `handleMatrixProviderToggle`, `handleMatrixStartCycle`, `handlePlannerPreview`, `handlePlannerRun`, `handlePreview`, `handleRun`, `handleRunLogsPageChange`, `hasTierRuntimeChange`, `loadData`, `normalizeMatrixSymbolGroups`, `parseSymbolsInput`, `toggleDataset`, `updateManualRunForm`
 - Top-level variables:
-  - `CONFIG_LABEL_KEYS`, `COVERAGE_STATE_ORDER`, `DATASET_LABEL_KEYS`, `DEFAULT_AUDIT_ENVELOPE`, `DEFAULT_MANUAL_RUN_FORM`, `DEFAULT_RUN_LOGS_ENVELOPE`, `FRESHNESS_LABEL_KEYS`, `MANUAL_RUN_DATASET_OPTIONS`, `NEXT_ACTION_LABEL_KEYS`, `RUN_STATUS_LABEL_KEYS`, `TIER_LABEL_KEYS`, `appliedPayload`, `auditPayload`, `checked`, `coverageUpdatedAt`, `currentConfig`, `lastUpdated`, `nextConfig`, `nextTier`, `nextValidationErrors`, `nextValue`, `ownership`, `parsed`, `previewPayload`, `previousTier`, `runLogsPayload`, `runPayload`, `seenSymbols`, `tierNames`, `totalSymbols`, `uniqueSymbols`, `warnings`
+  - `ACTIVE_MATRIX_STATUSES`, `BACKFILL_DATASETS`, `BACKFILL_DATASET_FIELDS`, `BACKFILL_SYMBOL_GROUPS`, `CONFIG_LABEL_KEYS`, `COVERAGE_STATE_ORDER`, `DATAOPS_SUB_TABS`, `DATASET_LABEL_KEYS`, `DEFAULT_AUDIT_ENVELOPE`, `DEFAULT_BACKFILL_FORM`, `DEFAULT_MANUAL_RUN_FORM`, `DEFAULT_MATRIX_SYMBOL_GROUPS`, `DEFAULT_RUN_LOGS_ENVELOPE`, `FRESHNESS_LABEL_KEYS`, `GAPS_PAGE_SIZE`, `MANUAL_RUN_DATASET_OPTIONS`, `MATRIX_POLL_MS`, `MATRIX_SYMBOL_GROUPS_OPTIONS`, `NEXT_ACTION_LABEL_KEYS`, `PLANNER_PREVIEW_PAGE_SIZE`, `RUN_STATUS_LABEL_KEYS`, `TIER_LABEL_KEYS`, `allGroups`, `appliedPayload`, `auditPayload`, `checked`, `coverageUpdatedAt`, `created`, `currentConfig`, `currentPage`, `data`, `defaults`, `gId`, `groups`, `hasFull`, `hasPartial`, `isActive`, `isCustom`, `isExchange`, `isSelected`, `keys`, `lastUpdated`, `maxPage`, `maxRows`, `monitorProviders`, `name`, `nextConfig`, `nextMatrixStatus`, `nextTier`, `nextValidationErrors`, `nextValue`, `normalized`, `ownership`, `parsed`, `payload`, `pct`, `previewPayload`, `previousTier`, `providerList`, `readyIds`, `result`, `runLogsPayload`, `runPayload`, `seenSymbols`, `symbols`, `tierNames`, `tones`, `total`, `totalSymbols`, `uniqueSymbols`, `visibleItems`, `warnings`
 
 ### `frontend/src/components/soc/MatrixPanel.jsx`
 
@@ -5465,14 +5486,21 @@ Generated at: `2026-05-15 23:16:11`
 ### `frontend/src/components/soc/PrefetchPanel.jsx`
 
 - Functions:
-  - `PrefetchPanel`, `fetchData`, `handlePurgeCache`
+  - `PrefetchPanel`, `buildChangeSummary`, `handleApply`, `handleFieldChange`, `handleOpenPreview`, `handlePurgeCache`, `handleWarmNow`
 - Top-level variables:
-  - `PROFILE_FIELDS`, `profiles`
+  - `CORE_NUMBER_FIELDS`, `PROFILE_FIELDS`, `c`, `changed`, `covered`, `draftWithGroups`, `fetchData`, `hasData`, `isCustom`, `isSelected`, `keys`, `latestDate`, `pct`, `preSelected`, `result`, `total`
+
+### `frontend/src/components/soc/RuntimeKPIPanel.jsx`
+
+- Functions:
+  - `RuntimeKPIPanel`
 
 ### `frontend/src/components/soc/ScreenerPanel.jsx`
 
 - Functions:
-  - `ScreenerPanel`, `fetchData`, `handleManualScan`
+  - `ScreenerPanel`, `handleApplyConfig`, `handleDeleteRule`, `handleManualScan`, `handleOpenConfigPreview`, `handleSaveRule`, `openEditRule`, `openNewRule`, `parseRuleValue`
+- Top-level variables:
+  - `CONFIG_FIELDS`, `DEFAULT_RULE_FORM`, `PAGE_SIZE`, `RULE_TYPES`, `c`, `changeSummary`, `fetchData`, `pagedRules`, `payload`, `result`, `symbols`, `totalRulesPages`
 
 ### `frontend/src/components/soc/ServiceHealthCard.jsx`
 
@@ -5501,9 +5529,9 @@ Generated at: `2026-05-15 23:16:11`
 ### `frontend/src/components/soc/VnbrokerPanel.jsx`
 
 - Functions:
-  - `VnbrokerPanel`, `buildChangeSummary`, `fetchData`, `handleApply`, `handleOpenPreview`
+  - `VnbrokerPanel`, `buildChangeSummary`, `handleApply`, `handleBenchmark`, `handleOpenPreview`, `handleResetToDefaults`, `setField`, `setTimeoutField`
 - Top-level variables:
-  - `currentConfig`, `keys`, `parsedConfig`, `preview`, `warnings`
+  - `PROVIDERS`, `currentConfig`, `fetchData`, `keys`, `preview`, `result`, `timeoutCfg`, `warnings`
 
 ### `frontend/src/components/soc/WriteGuardBanner.jsx`
 
@@ -5862,9 +5890,16 @@ Generated at: `2026-05-15 23:16:11`
 ### `frontend/src/pages/admin/tenant/TenantPATs.jsx`
 
 - Functions:
-  - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleBulkRevoke`, `handleCopyToken`, `handleIssue`, `handleRevoke`, `handleRotate`, `loadData`, `normalizeCommaList`, `resolveErrorMessage`, `toggleSelectAll`, `toggleTokenSelection`
+  - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleBulkRevoke`, `handleCopyToken`, `handleIssue`, `handleRevoke`, `handleRotate`, `loadData`, `normalizeCommaList`, `normalizeSecretReveal`, `resolveErrorMessage`, `resolvePatSecret`, `toggleSelectAll`, `toggleTokenSelection`
 - Top-level variables:
-  - `activeCount`, `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `confirmed`, `isSelected`, `newSelected`, `nextServiceAccounts`, `nextTokens`, `response`, `rotating`, `rotatingCount`, `serviceAccount`, `serviceAccountMap`, `tokenIdsList`, `totalPages`
+  - `activeCount`, `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `confirmed`, `isSelected`, `newSelected`, `nextSecretReveal`, `nextServiceAccounts`, `nextTokens`, `response`, `rotating`, `rotatingCount`, `secret`, `serviceAccount`, `serviceAccountMap`, `tokenIdsList`, `tokenPrefix`, `tokenValue`, `totalPages`
+
+### `frontend/src/pages/admin/tenant/TenantPATs.test.jsx`
+
+- Functions:
+  - `mockTranslations`
+- Top-level variables:
+  - `labels`, `mockGetTenantPATs`, `mockGetTenantServiceAccounts`, `mockIssueTenantPAT`, `mockRotateTenantPAT`, `user`
 
 ### `frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx`
 
@@ -6072,7 +6107,7 @@ Generated at: `2026-05-15 23:16:11`
 - Functions:
   - `SOCPage`, `fetchServices`, `handleDomainChange`
 - Top-level variables:
-  - `activeDomain`, `data`, `nextParams`, `pageT`, `panels`, `requestedTab`
+  - `VALID_DOMAINS`, `activeDomain`, `data`, `nextParams`, `pageT`, `panels`, `requestedTab`
 
 ### `frontend/src/pages/SOCPage.test.jsx`
 

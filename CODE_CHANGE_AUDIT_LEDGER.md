@@ -1,5 +1,38 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Tenant PAT Scope Enforcement Hardening | dev branch
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `backend/portfolio/migrations/0041_tickersessionclose.py` | Ensured `TickerSessionClose` indexes are explicitly named so Django 5.2 migration state can progress without `ModelState` unnamed-index failure |
+| `backend/portfolio/models.py` | Added unmanaged `Portfolio` compatibility shim for legacy `SubAccount` relation so Django checks resolve `SubAccount.portfolio` without pulling full `user_workspace` app into monolith runtime |
+| `backend/portfolio/views_partner_admin.py` | Added PAT scope normalization and enforcement helpers; partner tenant/service-account/PAT/usage/billing routes now reject PAT-authenticated requests missing required scopes; PAT issue now blocks minting scopes outside the caller PAT scope set |
+| `backend/portfolio/tests/test_partner_admin_api.py` | Updated machine-PAT coverage to include required scopes and added regressions for scope escalation and missing tenant-management scope |
+| `module_tree_full.md` | Regenerated after the code changes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | NEW slice entry |
+| `PROGRESS_DASHBOARD.md` | NEW slice entry |
+
+## Validation
+- Live APIClient smoke on partner endpoints: `GET /partner/service-accounts` = 200, `POST /partner/pats/issue` (subset scopes) = 201, escalation request = 403 `insufficient_scope` ✅
+- Local migrate path with dev DB credentials (`manage.py migrate --skip-checks`) progressed through `portfolio.0041` → latest ✅
+- `manage.py check -v 2` with dev DB credentials: **System check identified no issues** ✅
+- `backend/.env.dev` now includes `CORE_PAT_PEPPER` for dev hashing parity ✅
+- `./start_dev.ps1` refresh ✅
+- `scripts/ops/generate_module_tree.py` ✅
+
+# 2026-05-16 | Tenant PAT Secret Reveal Fix | dev branch
+
+## All Modified Files (2 files)
+| File | Change |
+|------|--------|
+| `frontend/src/pages/admin/tenant/TenantPATs.jsx` | Normalize secret reveal contract from issue/rotate responses; support `secret` and nested `new_token.secret`; copy button now copies the resolved secret string |
+| `frontend/src/pages/admin/tenant/TenantPATs.test.jsx` | NEW — RTL coverage for issue and rotate flows to ensure the PAT secret is rendered from backend payloads |
+
+## Validation
+- `npm test -- --runInBand --watch=false src/pages/admin/tenant/TenantPATs.test.jsx` ✅
+- `./start_dev.ps1` refresh after validation if runtime UI changed
+
 # 2026-05-16 | DataOps Planner Preview Collapse/Expand | dev branch ✅
 
 **Status:** ✅ Commit `0ea2a457` pushed to dev  

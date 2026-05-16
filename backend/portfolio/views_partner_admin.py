@@ -10,20 +10,16 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .authentication_partner import CorePartnerPATAuthentication
+from .models import CorePATCredential, CoreServiceAccount, UserConfig
 from .opencore_revenue import DPIInvoice, DPISubscription
 
-# Core models with fallback stubs
 try:
-    from identity_access.models import CoreTenant, CorePATCredential, CoreServiceAccount
+    from identity_access.models import CoreTenant
 except (ImportError, RuntimeError):
     class CoreTenant:
         pass
-    class CorePATCredential:
-        pass
-    class CoreServiceAccount:
-        pass
 
-from .models import UserConfig
+from .models import CoreServiceAccount as PortfolioCoreServiceAccount
 from .partner_tenant_context import resolve_partner_tenant_context
 from .permissions import IsProPlan
 from .quota_service import get_usage
@@ -31,6 +27,72 @@ from .quota_service import get_usage
 
 PARTNER_AUTH_CLASSES = [CorePartnerPATAuthentication, JWTAuthentication]
 partner_authentication_classes = authentication_classes(PARTNER_AUTH_CLASSES)
+
+PARTNER_SCOPE_MANAGE_TENANT = 'manage_tenant'
+PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS = 'manage_service_accounts'
+PARTNER_SCOPE_MANAGE_PATS = 'manage_pats'
+
+
+def _normalize_scope_codes(scope_codes) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw_scope in scope_codes or []:
+        scope = str(raw_scope or '').strip()
+        if not scope or scope in seen:
+            continue
+        seen.add(scope)
+        normalized.append(scope)
+    return normalized
+
+
+def _current_pat_scope_codes(request) -> list[str]:
+    auth = getattr(request, 'auth', None)
+    if not isinstance(auth, CorePATCredential):
+        return []
+    return _normalize_scope_codes(auth.scope_codes)
+
+
+def _require_pat_scope(request, request_id: str, required_scope_codes) -> Response | None:
+    required = _normalize_scope_codes(required_scope_codes)
+    if not required:
+        return None
+
+    auth = getattr(request, 'auth', None)
+    if not isinstance(auth, CorePATCredential):
+        return None
+
+    granted = set(_current_pat_scope_codes(request))
+    missing = [scope for scope in required if scope not in granted]
+    if not missing:
+        return None
+
+    return _error(
+        code='insufficient_scope',
+        message=f'PAT thiếu scope bắt buộc: {", ".join(missing)}.',
+        status_code=status.HTTP_403_FORBIDDEN,
+        request_id=request_id,
+        param='scope_codes',
+    )
+
+
+def _require_requested_scopes_within_pat(request, request_id: str, requested_scope_codes) -> Response | None:
+    auth = getattr(request, 'auth', None)
+    if not isinstance(auth, CorePATCredential):
+        return None
+
+    granted = set(_current_pat_scope_codes(request))
+    requested = _normalize_scope_codes(requested_scope_codes)
+    missing = [scope for scope in requested if scope not in granted]
+    if not missing:
+        return None
+
+    return _error(
+        code='insufficient_scope',
+        message=f'PAT hiện tại không được phép cấp các scope này: {", ".join(missing)}.',
+        status_code=status.HTTP_403_FORBIDDEN,
+        request_id=request_id,
+        param='scope_codes',
+    )
 
 
 def _request_ip(request) -> str:
@@ -404,7 +466,7 @@ def _serialize_tenant_summary(tenant: CoreTenant, *, plan_lifecycle: dict | None
 
 class PartnerServiceAccountCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
-    environment = serializers.ChoiceField(choices=CoreServiceAccount.EnvironmentChoices.choices)
+    environment = serializers.ChoiceField(choices=PortfolioCoreServiceAccount.EnvironmentChoices.choices)
     policy_ids = serializers.ListField(child=serializers.CharField(max_length=80), required=False, allow_empty=True)
     metadata = serializers.DictField(required=False)
     audit_reason = serializers.CharField(max_length=160, required=False, allow_blank=True)
@@ -442,6 +504,10 @@ def _resolve_owned_pat(tenant_context, public_id: str) -> CorePATCredential | No
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_tenant_api(request):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_TENANT])
+    if scope_error is not None:
+        return scope_error
+
     resolve_partner_tenant_context(request.user)
     tenant = CoreTenant.objects.select_related('owner_user').get(owner_user=request.user)
     return _response(
@@ -455,6 +521,14 @@ def partner_tenant_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_service_accounts_api(request):
     request_id = _request_id()
+    scope_error = _require_pat_scope(
+        request,
+        request_id,
+        [PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS],
+    )
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
 
     if request.method == 'GET':
@@ -499,6 +573,10 @@ def partner_service_accounts_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_pat_list_api(request):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_PATS])
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
     queryset = CorePATCredential.objects.select_related('service_account').filter(owner_user=tenant_context.owner_user).order_by('-created_at', '-pk')
 
@@ -527,6 +605,10 @@ def partner_pat_list_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_pat_issue_api(request):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_PATS])
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
     _idempotency_key, error_response = _require_idempotency_key(request, request_id)
     if error_response is not None:
@@ -534,6 +616,11 @@ def partner_pat_issue_api(request):
 
     serializer = PartnerPATIssueSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    requested_scope_codes = _normalize_scope_codes(serializer.validated_data['scope_codes'])
+    scope_error = _require_requested_scopes_within_pat(request, request_id, requested_scope_codes)
+    if scope_error is not None:
+        return scope_error
+
     service_account = _resolve_owned_service_account(tenant_context, serializer.validated_data['service_account_id'])
     if service_account is None:
         return _error(
@@ -547,7 +634,7 @@ def partner_pat_issue_api(request):
     audit_reason = str(serializer.validated_data.get('audit_reason') or 'tenant_admin_issue_pat').strip()
     credential, raw_secret = CorePATCredential.issue_for_service_account(
         service_account=service_account,
-        scope_codes=list(serializer.validated_data['scope_codes']),
+        scope_codes=requested_scope_codes,
         expires_at=serializer.validated_data.get('expires_at'),
         display_name=serializer.validated_data.get('display_name', ''),
         issued_by=request.user,
@@ -570,6 +657,10 @@ def partner_pat_issue_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_pat_rotate_api(request, token_id: str):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_PATS])
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
     _idempotency_key, error_response = _require_idempotency_key(request, request_id)
     if error_response is not None:
@@ -624,6 +715,10 @@ def partner_pat_rotate_api(request, token_id: str):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_pat_revoke_api(request, token_id: str):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_PATS])
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
     _idempotency_key, error_response = _require_idempotency_key(request, request_id)
     if error_response is not None:
@@ -673,6 +768,10 @@ def partner_pat_revoke_api(request, token_id: str):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_usage_meters_api(request):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_TENANT])
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
     period_start, period_end = _resolve_period_bounds()
     data = [
@@ -687,6 +786,10 @@ def partner_usage_meters_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_usage_quotas_api(request):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_TENANT])
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
     period_start, period_end = _resolve_period_bounds()
     data = [
@@ -701,6 +804,10 @@ def partner_usage_quotas_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_billing_subscription_api(request):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_TENANT])
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
     return _response(_build_subscription_summary(request.user, tenant_context), request_id=request_id)
 
@@ -710,6 +817,10 @@ def partner_billing_subscription_api(request):
 @permission_classes([IsAuthenticated, IsProPlan])
 def partner_billing_invoices_api(request):
     request_id = _request_id()
+    scope_error = _require_pat_scope(request, request_id, [PARTNER_SCOPE_MANAGE_TENANT])
+    if scope_error is not None:
+        return scope_error
+
     tenant_context = resolve_partner_tenant_context(request.user)
     invoices = DPIInvoice.objects.filter(user=tenant_context.owner_user).order_by('-issue_date', '-pk')[:50]
     data = [_serialize_invoice_summary(invoice, tenant_context) for invoice in invoices]

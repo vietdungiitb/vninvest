@@ -190,7 +190,13 @@ class PartnerAdminApiTests(APITestCase):
         )
         bootstrap_credential, bootstrap_secret = CorePATCredential.issue_for_service_account(
             service_account=service_account,
-            scope_codes=['market:read', 'signals:read'],
+            scope_codes=[
+                'manage_tenant',
+                'manage_service_accounts',
+                'manage_pats',
+                'market:read',
+                'signals:read',
+            ],
             display_name='bootstrap-machine-token',
             issued_by=self.user,
             metadata={'audit_reason': 'bootstrap_pat', 'auth_mode': 'session'},
@@ -223,6 +229,45 @@ class PartnerAdminApiTests(APITestCase):
         self.assertEqual(issued_credential.metadata['audit_reason'], 'machine_pat_issue')
         self.assertEqual(issued_credential.metadata['auth_mode'], 'pat')
         self.assertEqual(issued_credential.metadata['auth_credential_id'], bootstrap_credential.public_id)
+
+        escalation_response = client.post(
+            '/api/core/v1/partner/pats/issue/',
+            {
+                'service_account_id': service_account.public_id,
+                'scope_codes': ['market:read', 'signals:read', 'ai:invoke'],
+                'display_name': 'machine-auth-escalation-token',
+                'audit_reason': 'machine_pat_escalation_attempt',
+            },
+            format='json',
+            HTTP_IDEMPOTENCY_KEY='issue-pat-machine-2',
+        )
+
+        self.assertEqual(escalation_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(escalation_response.data['error']['code'], 'insufficient_scope')
+
+    def test_machine_pat_requires_tenant_management_scope(self):
+        service_account = CoreServiceAccount.objects.create(
+            owner_user=self.user,
+            created_by=self.user,
+            name='vip-minimal-prod',
+            environment=CoreServiceAccount.EnvironmentChoices.PROD,
+            policy_ids=['pol_market_read'],
+        )
+        bootstrap_credential, bootstrap_secret = CorePATCredential.issue_for_service_account(
+            service_account=service_account,
+            scope_codes=['market:read'],
+            display_name='bootstrap-minimal-token',
+            issued_by=self.user,
+            metadata={'audit_reason': 'bootstrap_minimal_pat', 'auth_mode': 'session'},
+        )
+
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f'Bearer {bootstrap_secret}')
+
+        response = client.get('/api/core/v1/partner/service-accounts/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['error']['code'], 'insufficient_scope')
 
     def test_rotating_pat_expires_after_grace_window(self):
         service_account = CoreServiceAccount.objects.create(

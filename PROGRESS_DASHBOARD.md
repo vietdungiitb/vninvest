@@ -1,3 +1,20 @@
+# 2026-05-16 — Tenant PAT Scope Enforcement Hardening ✅
+
+Status: **✅ scope hardening + import alignment complete** | **✅ live partner endpoint smoke passed (200/201/403)** | **✅ local migrate path unblocked from `portfolio.0041` to latest** | **✅ `manage.py check -v 2` green** | **✅ `CORE_PAT_PEPPER` set in dev env** | **✅ `./start_dev.ps1` refreshed the stack** | **✅ `module_tree_full.md` regenerated**
+
+## What changed
+- `backend/portfolio/views_partner_admin.py`: PAT-authenticated tenant partner routes now require explicit scope codes, and PAT issuance rejects scope escalation beyond the caller PAT’s own scopes.
+- `backend/portfolio/views_partner_admin.py`: aligned model sources (`CoreServiceAccount`/`CorePATCredential` from `portfolio`, `CoreTenant` from `identity_access`) to remove runtime schema mismatch on partner routes.
+- `backend/portfolio/tests/test_partner_admin_api.py`: machine-PAT coverage now proves the scope gate and escalation rejection path.
+- `backend/portfolio/migrations/0041_tickersessionclose.py`: `TickerSessionClose` indexes explicitly named to keep Django 5.2 migration state compatible.
+- `backend/portfolio/models.py`: introduced legacy `Portfolio` unmanaged shim to resolve `SubAccount.portfolio` relation at check-time without forcing `user_workspace` app installation in monolith runtime.
+
+## Validation
+- `./start_dev.ps1` → 14/14 services healthy; core-api + frontend smoke checks OK
+- `scripts/ops/generate_module_tree.py` → regenerated `module_tree_full.md` (1205 modules)
+- `manage.py migrate --skip-checks` with dev DB credentials → passed from `portfolio.0041` through latest portfolio/support migrations
+- Live APIClient smoke: service-account list `200`, PAT issue `201`, scope escalation `403 insufficient_scope`
+
 # 2026-05-16 — DataOps Planner Preview Collapse/Expand Toggle ✅
 
 Status: **✅ Commit `0ea2a457`, 1 file changed, 145 insertions/107 deletions** | **Frontend compiled successfully (861.6 kB gzip)** | **git push dev → `53d533cc..0ea2a457`**
