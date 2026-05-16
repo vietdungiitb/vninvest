@@ -1,3 +1,34 @@
+# 2026-05-16 — Data Sync Bug Fix: Whale Alert Detection Missing ✅
+
+Status: **✅ Root cause identified** | **✅ Fix applied to dev stack** | **⏳ Monitoring: Celery task should populate WhaleAlertEvent within 120-180s**
+
+## Problem
+Frontend displayed:
+- **Whale Alert Center**: 0 alerts (completely empty)
+- **Heatmap**: 0% across all indicators
+- Root cause: `WHALE_ALERT_DETECTION_ENABLED` was not set in `backend/.env.dev` → Celery beat task never scheduled → WhaleAlertEvent table empty
+
+## Fix Applied
+**File:** `backend/.env.dev` (local config, gitignored)
+```ini
+# Whale alert detection (populate WhaleAlertEvent table)
+WHALE_ALERT_DETECTION_ENABLED=True
+WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
+```
+
+## Impact
+- Enables `portfolio.tasks.detect_and_store_global_whale_alerts` Celery beat task
+- Task runs every 120 seconds to detect and persist whale alerts to `WhaleAlertEvent` table
+- API endpoints `/realtime/whale-feed/aggregate/` now have data source
+- Frontend whale alert center + heatmap will populate with live data after first task execution
+
+## Validation
+- Dev stack restarted with `./start_dev.ps1` to apply env settings
+- Celery beat (core-beat service) now includes "detect-global-whale-alerts" in CELERY_BEAT_SCHEDULE
+- Monitor: After ~120s, check if `WhaleAlertEvent.objects.count()` > 0
+
+---
+
 # 2026-05-16 — Tenant PAT Scope Enforcement Hardening ✅
 
 Status: **✅ scope hardening + import alignment complete** | **✅ live partner endpoint smoke passed (200/201/403)** | **✅ local migrate path unblocked from `portfolio.0041` to latest** | **✅ `manage.py check -v 2` green** | **✅ `CORE_PAT_PEPPER` set in dev env** | **✅ `./start_dev.ps1` refreshed the stack** | **✅ `module_tree_full.md` regenerated**

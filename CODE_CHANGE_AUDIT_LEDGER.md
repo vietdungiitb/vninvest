@@ -1,5 +1,41 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Data Sync Issue: Whale Alert Detection Not Enabled | dev stack fix
+
+## Problem
+Frontend showed:
+- Heatmap: 0% across all indicators (CVD, Buy/Sell Strength)
+- Whale Alert Center: 0 alerts, completely empty
+- Watchlist data: OK (populated normally)
+
+Root cause: `WHALE_ALERT_DETECTION_ENABLED` was NOT set in `backend/.env.dev` → Celery beat task `detect-global-whale-alerts` never scheduled → `WhaleAlertEvent` table remained empty → API returned no whale alerts.
+
+## Solution Applied
+**File Changed:** `backend/.env.dev` (not committed; local config)
+
+```
+# Whale alert detection (populate WhaleAlertEvent table)
+WHALE_ALERT_DETECTION_ENABLED=True
+WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
+```
+
+- Enables Celery beat task to run every 120 seconds
+- Task `portfolio.tasks.detect_and_store_global_whale_alerts` populates `WhaleAlertEvent` table
+- API endpoints `/realtime/whale-feed/aggregate/` now have data source
+
+## Validation Steps
+1. Restarted dev stack with `./start_dev.ps1` to pick up new env settings
+2. Celery beat should now schedule task
+3. After ~120-180 seconds, `WhaleAlertEvent.objects.count()` > 0
+4. Frontend whale-feed and heatmap endpoints should return live data
+
+## Notes
+- `.env.dev` is gitignored (correct for environment files)
+- Fix is per-dev-environment; production has this already set
+- Task is safe to run continuously; uses SSOT pattern for detection
+
+---
+
 # 2026-05-16 | Tenant PAT Scope Enforcement Hardening | dev branch
 
 ## All Modified Files (7 files)
