@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center guide pack: coding-by-slice + execution checklist + PR self-audit checklist | docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `docs/GUIDE_CODE_BY_SLICE_GLOBAL_ALERT_CENTER_SAAS_20260516.md` | Added coding playbook by slice (F/A/B/C/D), including scope controls, file map, DoD, validation commands, and hard-stop anti-drift rules |
+| `docs/CHECKLIST_SLICE_EXECUTION_GLOBAL_ALERT_CENTER_SAAS_20260516.md` | Added execution checklist template for every slice to self-control scope, architecture guards, contract guards, validation evidence, and merge gates |
+| `docs/CHECKLIST_SELF_AUDIT_PR_GLOBAL_ALERT_CENTER_SAAS_20260516.md` | Added pre-PR self-audit checklist with fitness checks, anti-regression grep commands, evidence requirements, and explicit merge blockers |
+| `module_tree_full.md` | Regenerated module tree after adding new guidance docs (`1206` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this guide-pack audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for guide-pack delivery |
+
+## Validation
+- Read-back validation against Global Alert Center SaaS doc pack completed (handoff/plan/spec/taskboard/traceability/self-audit/evidence/config ownership/constitution/runbooks) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1206` modules) ✅
+
+## Residual risk
+- Đây là governance/playbook slice, không thay đổi runtime behavior; hiệu quả phụ thuộc việc đội code áp dụng checklist nhất quán ở từng PR slice.
+
 # 2026-05-16 | Global Alert Center remediation 1-2-3: frontend contract cutover + integration test wave + R3 taxonomy/payload parity | backend + frontend + packages/web + mobile + docs
 
 ## All Modified Files (12 files)

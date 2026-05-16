@@ -1,3 +1,24 @@
+# 2026-05-16 — Global Alert Center guide pack complete (coding-by-slice + checklist tự audit) ✅
+
+Status: **✅ DONE** | **✅ tài liệu hướng dẫn theo từng slice đã sẵn sàng cho đội code** | **✅ checklist tự-audit để chống lệch hướng đã đóng gói**
+
+## What changed
+- Tạo playbook hướng dẫn coding theo từng slice F/A/B/C/D với mục tiêu, phạm vi, file map, lệnh validation và DoD.
+- Tạo checklist thực thi cho từng công việc để đội code tự rà scope guardrails, contract guardrails, và merge gate.
+- Tạo checklist tự-audit trước PR với merge blockers rõ ràng và grep checks chống drift.
+
+## Artifacts
+- `docs/GUIDE_CODE_BY_SLICE_GLOBAL_ALERT_CENTER_SAAS_20260516.md`
+- `docs/CHECKLIST_SLICE_EXECUTION_GLOBAL_ALERT_CENTER_SAAS_20260516.md`
+- `docs/CHECKLIST_SELF_AUDIT_PR_GLOBAL_ALERT_CENTER_SAAS_20260516.md`
+
+## Validation
+- Read-back full Global Alert Center SaaS doc pack and synchronized guide content with active taskboard/traceability/self-audit constraints ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1206 modules)** ✅
+
+## Next
+- Team code áp dụng checklist mới vào từng PR slice; nếu cần mình có thể tạo luôn template PR description chuẩn theo checklist này.
+
 # 2026-05-16 — Global Alert Center remediation 1-2-3 complete (frontend cutover + integration wave + R3 parity) ✅
 
 Status: **✅ 1 DONE** | **✅ 2 DONE** | **✅ 3 DONE** | **✅ native alert-center contract now used across backend + frontend bridges**
