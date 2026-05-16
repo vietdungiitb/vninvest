@@ -36,6 +36,57 @@ function formatDateTime(value, locale) {
   }).format(new Date(value));
 }
 
+function resolvePatSecret(payload) {
+  if (!payload) {
+    return '';
+  }
+
+  if (typeof payload === 'string') {
+    return payload.trim();
+  }
+
+  if (typeof payload.secret === 'string' && payload.secret.trim()) {
+    return payload.secret.trim();
+  }
+
+  if (typeof payload.token === 'string' && payload.token.trim()) {
+    return payload.token.trim();
+  }
+
+  if (typeof payload.access === 'string' && payload.access.trim()) {
+    return payload.access.trim();
+  }
+
+  if (payload.new_token) {
+    return resolvePatSecret(payload.new_token);
+  }
+
+  return '';
+}
+
+function normalizeSecretReveal(payload) {
+  if (!payload) {
+    return null;
+  }
+
+  const secret = resolvePatSecret(payload);
+  if (!secret) {
+    return null;
+  }
+
+  const tokenPrefix =
+    typeof payload.token_prefix === 'string' && payload.token_prefix.trim()
+      ? payload.token_prefix.trim()
+      : typeof payload.new_token_prefix === 'string' && payload.new_token_prefix.trim()
+        ? payload.new_token_prefix.trim()
+        : '';
+
+  return {
+    secret,
+    token_prefix: tokenPrefix,
+  };
+}
+
 export default function TenantPATs() {
   const { t, locale } = useI18n();
   const { ability } = usePortfolio();
@@ -140,7 +191,11 @@ export default function TenantPATs() {
         expires_at: issueForm.expiresAt ? new Date(issueForm.expiresAt).toISOString() : null,
         display_name: issueForm.displayName.trim(),
       });
-      setSecretReveal(response.data);
+      const nextSecretReveal = normalizeSecretReveal(response.data);
+      if (!nextSecretReveal) {
+        throw new Error('Backend không trả về secret PAT hợp lệ');
+      }
+      setSecretReveal(nextSecretReveal);
       setIssueForm((current) => ({
         ...current,
         displayName: '',
@@ -163,10 +218,11 @@ export default function TenantPATs() {
     setError('');
     try {
       const response = await rotateTenantPAT(tokenId, { grace_period_seconds: 3600 });
-      setSecretReveal({
-        token: response.data.new_token || response.data.token,
-        token_prefix: response.data.new_token_prefix || response.data.token_prefix,
-      });
+      const nextSecretReveal = normalizeSecretReveal(response.data?.new_token || response.data);
+      if (!nextSecretReveal) {
+        throw new Error('Backend không trả về secret PAT hợp lệ');
+      }
+      setSecretReveal(nextSecretReveal);
       await loadData();
     } catch (nextError) {
       setError(resolveErrorMessage(nextError, t('tenantPats.rotateError')));
@@ -224,7 +280,12 @@ export default function TenantPATs() {
   }
 
   function handleCopyToken(token) {
-    navigator.clipboard.writeText(token).then(() => {
+    const tokenValue = String(token || '').trim();
+    if (!tokenValue) {
+      return;
+    }
+
+    navigator.clipboard.writeText(tokenValue).then(() => {
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     });
@@ -287,7 +348,7 @@ export default function TenantPATs() {
           </div>
         </section>
 
-        {secretReveal?.token ? (
+        {secretReveal?.secret ? (
           <section className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -304,10 +365,10 @@ export default function TenantPATs() {
             </div>
             <div className="mt-4 rounded-2xl border border-emerald-500/25 bg-slate-950/70 p-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="break-all font-mono text-sm text-emerald-100">{secretReveal.token}</p>
+                <p className="break-all font-mono text-sm text-emerald-100">{secretReveal.secret}</p>
                 <button
                   type="button"
-                  onClick={() => handleCopyToken(secretReveal.token)}
+                  onClick={() => handleCopyToken(secretReveal.secret)}
                   className="flex-shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/25"
                 >
                   {copySuccess ? t('tenantPats.copySuccess') : t('tenantPats.copyTokenAction')}
