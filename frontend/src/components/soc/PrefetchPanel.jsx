@@ -63,7 +63,11 @@ const PrefetchPanel = ({ t }) => {
       setDraft({ ...c });
       setCacheStatus(cache);
       setUniverseGroups(groups.groups || []);
-      setSelectedGroups(c.universe_group_ids || []);
+      // Pre-select groups marked selected in the response (fallback: config's universe_group_ids)
+      const preSelected = (groups.groups || [])
+        .filter((g) => g.selected)
+        .map((g) => g.id);
+      setSelectedGroups(preSelected.length > 0 ? preSelected : (c.universe_group_ids || []));
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -170,23 +174,43 @@ const PrefetchPanel = ({ t }) => {
         {groupsLoading ? (
           <p className="text-slate-400 text-sm">{t('soc.prefetch.universe_groups_loading')}</p>
         ) : universeGroups.length === 0 ? (
-          <p className="text-slate-500 text-sm">—</p>
+          <p className="text-slate-500 text-sm">{t('soc.prefetch.universe_groups_empty', { defaultValue: 'Chưa có nhóm nào. Tạo nhóm trong tab DataOps.' })}</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {universeGroups.map((g) => (
-              <label key={g.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-800">
-                <input
-                  type="checkbox"
-                  checked={selectedGroups.includes(g.id)}
-                  onChange={(e) => setSelectedGroups((prev) =>
-                    e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
-                  )}
-                  className="accent-blue-500"
-                />
-                <span className="text-sm text-slate-200">{g.name}</span>
-              </label>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {universeGroups.map((g) => {
+                const isCustom = g.type === 'custom';
+                const isSelected = selectedGroups.includes(g.id);
+                return (
+                  <label
+                    key={g.id}
+                    className={`flex items-center gap-2 cursor-pointer p-2 rounded border transition ${
+                      isSelected
+                        ? isCustom
+                          ? 'border-teal-600 bg-teal-900/30'
+                          : 'border-blue-600 bg-blue-900/30'
+                        : 'border-transparent hover:bg-slate-800'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => setSelectedGroups((prev) =>
+                        e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
+                      )}
+                      className={isCustom ? 'accent-teal-500' : 'accent-blue-500'}
+                    />
+                    <span className={`text-sm font-medium ${isCustom ? 'text-teal-200' : 'text-slate-200'}`}>
+                      {isCustom ? `★ ${g.name}` : g.name}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-[11px] text-slate-500">
+              {selectedGroups.length} / {universeGroups.length} nhóm được chọn · Lưu qua nút "Xem trước" → Áp dụng
+            </p>
+          </>
         )}
       </div>
 

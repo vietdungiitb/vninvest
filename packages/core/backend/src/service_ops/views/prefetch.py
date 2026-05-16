@@ -367,7 +367,7 @@ class PrefetchUniverseGroupsView(SOCBaseView):
 
     @extend_schema(
         summary='Lấy universe groups Prefetch',
-        description='Trả về danh sách group symbol đang được prefetch scheduler sử dụng.',
+        description='Trả về tất cả nhóm available (predefined + custom) kèm cờ selected.',
         responses={
             200: PrefetchUniverseGroupsResponseSerializer,
             401: OpenApiTypes.OBJECT,
@@ -375,15 +375,31 @@ class PrefetchUniverseGroupsView(SOCBaseView):
         },
     )
     def get(self, request):
-        """Configured symbol groups."""
+        """Return all available symbol groups with selected flag."""
+        from ..matrix_coordinator import PREDEFINED_SYMBOL_GROUPS
+        from ..models import CustomSymbolGroup
+
         config = _get_prefetch_config()
-        groups = [
-            {
-                'id': group_id,
-                'name': group_id.replace('_', ' ').upper(),
-            }
-            for group_id in config.universe_group_ids
-        ]
+        selected_ids = set(config.universe_group_ids or [])
+
+        groups = []
+        # Predefined groups
+        for pg in PREDEFINED_SYMBOL_GROUPS:
+            groups.append({
+                'id': pg['id'],
+                'name': pg['name'],
+                'type': pg.get('type', 'index'),
+                'selected': pg['id'] in selected_ids,
+            })
+        # Custom groups (active only)
+        for cg in CustomSymbolGroup.objects.filter(is_active=True).order_by('name'):
+            groups.append({
+                'id': cg.group_id,
+                'name': cg.name,
+                'type': 'custom',
+                'selected': cg.group_id in selected_ids,
+            })
+
         return Response({
             'groups': groups,
             'active_profile': config.active_profile,
