@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 21:36:25`
+Generated at: `2026-05-16 22:23:26`
 
 ## Summary
 
-- Total modules: 1203
-- Python modules: 682
+- Total modules: 1206
+- Python modules: 685
 - JS/TS modules: 521
-- Total classes: 1341
-- Total functions: 3226
+- Total classes: 1347
+- Total functions: 3234
 - Total top-level variables: 4729
 
 ## Python Modules
@@ -3982,6 +3982,11 @@ Generated at: `2026-05-16 21:36:25`
 - Top-level variables:
   - `_SYMBOL_RE`, `logger`
 
+### `packages/core/backend/src/signal_intelligence/delivery_service.py`
+
+- Functions:
+  - `_allowed_transition`, `_delivery_state_rank`, `acknowledge_delivery`, `apply_user_delivery_policy`, `mark_delivery_seen`, `resolve_user_delivery_symbols`, `resolve_user_whale_threshold_vnd`, `sync_user_delivery_rows`, `transition_delivery_state`, `upsert_user_alert_preference`
+
 ### `packages/core/backend/src/signal_intelligence/materializers.py`
 
 - Functions:
@@ -4009,6 +4014,11 @@ Generated at: `2026-05-16 21:36:25`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/signal_intelligence/migrations/0005_advisorysignalevent_marketanomalyevent_and_more.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/signal_intelligence/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -4016,8 +4026,12 @@ Generated at: `2026-05-16 21:36:25`
 ### `packages/core/backend/src/signal_intelligence/models.py`
 
 - Classes:
+  - `AdvisorySignalEvent` -> methods: `__str__`
+  - `MarketAnomalyEvent` -> methods: `__str__`
   - `OrderFlowEvent` -> methods: `__str__`
   - `UnifiedAlert` -> methods: `__str__`
+  - `UserAlertDelivery` -> methods: `__str__`
+  - `UserAlertPreference` -> methods: `__str__`
   - `WhaleAlertCanonical` -> methods: `__str__`
 
 ### `packages/core/backend/src/signal_intelligence/serializers.py`
@@ -4045,6 +4059,11 @@ Generated at: `2026-05-16 21:36:25`
 
 - No parseable top-level symbols found
 
+### `packages/core/backend/src/signal_intelligence/tests/test_delivery_service.py`
+
+- Classes:
+  - `DeliveryServiceTests` -> methods: `_create_alert`, `setUp`, `test_apply_user_delivery_policy_filters_by_threshold_and_preferences`, `test_sync_user_delivery_rows_is_idempotent`, `test_transition_seen_then_acknowledged`, `test_upsert_user_alert_preference_updates_scope`
+
 ### `packages/core/backend/src/signal_intelligence/tests/test_materializers.py`
 
 - Classes:
@@ -4069,14 +4088,14 @@ Generated at: `2026-05-16 21:36:25`
   - `CursorPaginatedUnifiedAlertResponseSerializer`
   - `OrderFlowEventListView` -> methods: `get_queryset`
   - `UnifiedAlertListView` -> methods: `get_queryset`
-  - `UserUnifiedAlertDeliveryView` -> methods: `get_queryset`
+  - `UserUnifiedAlertDeliveryView` -> methods: `get_queryset`, `list`
   - `WhaleAlertCursorPagination`
   - `WhaleFeedAggregateItemSerializer`
   - `WhaleFeedAggregateResponseSerializer`
   - `WhaleFeedAggregateSummarySerializer`
   - `WhaleFeedAggregateView` -> methods: `get`
 - Functions:
-  - `_resolve_user_delivery_symbols`, `_resolve_user_whale_threshold_vnd`, `_whale_size_class`
+  - `_whale_size_class`
 - Top-level variables:
   - `_WHALE_SIDE_MAP`
 

@@ -1,3 +1,93 @@
+# 2026-05-16 — Global Alert Center remediation R1.2 complete (delivery service integration) ✅
+
+Status: **✅ R1.2 DONE** | **✅ delivery policy + state transitions centralized in service layer** | **✅ focused tests green** | **✅ runtime refresh healthy**
+
+## What changed
+- Added `signal_intelligence.delivery_service` as the single policy/state module for per-user delivery filtering and lifecycle transitions.
+- Refactored delivery list view to delegate policy filtering and delivery-row synchronization to the service layer.
+- Added focused tests covering threshold + symbol scope + mute preference behavior, idempotent sync, and transition guard semantics.
+
+## Validation
+- `manage.py test signal_intelligence.tests.test_delivery_service signal_intelligence.tests.test_materializers --keepdb` → **15 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1206 modules)** ✅
+- `./start_dev.ps1` → **No queue drift detected; Core API health OK; Frontend health OK** ✅
+
+## Next
+- Continue R2 endpoint/contract convergence for alert-center path family and OpenAPI-native operations.
+
+# 2026-05-16 — Global Alert Center remediation R1.1 complete (domain entity scaffold) ✅
+
+Status: **✅ R1.1 DONE** | **🔄 B02/C01/D08 in progress** | **✅ focused signal regression green + runtime refresh OK**
+
+## What changed
+- Added four SaaS-native domain entities into `signal_intelligence`:
+  - `MarketAnomalyEvent`
+  - `AdvisorySignalEvent`
+  - `UserAlertDelivery`
+  - `UserAlertPreference`
+- Generated migration `0005_advisorysignalevent_marketanomalyevent_and_more.py` with constraints/indexes.
+- Updated taskboard to mark remediation progress for `B02`, `C01`, `D08`.
+
+## Validation
+- `manage.py makemigrations signal_intelligence` → migration `0005_*` created ✅
+- `manage.py test signal_intelligence.tests.test_materializers --keepdb` → **11 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1204 modules)** ✅
+- `./start_dev.ps1` → **No queue drift detected; Core API health OK; Frontend health OK** ✅
+
+## Next
+- Implement R1.2 service layer (delivery state transitions + preference policy + tenant-safe query guards).
+
+# 2026-05-16 — Global Alert Center governance re-open + remediation checklist published ✅
+
+Status: **✅ GOVERNANCE SLICE DONE** | **🟠 B01..D08 moved to REOPENED** | **✅ remediation checklist in-repo**
+
+## What changed
+- Re-opened taskboard states from `B01` through `D08` with explicit root-cause notes tied to the reality-check audit.
+- Corrected self-audit pass-state items that were over-claimed compared to implementation evidence.
+- Added a requirement-level reality-check section into the traceability matrix.
+- Added a phase-based remediation execution checklist (R1-R4) for implementation teams.
+
+## Validation
+- Cross-document consistency confirmed across taskboard, self-audit, traceability matrix, and reality-check audit artifact.
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1203 modules)** ✅
+
+## Next
+- Start remediation Phase R1 (domain entities + stateful delivery persistence + tests) as code slices.
+
+# 2026-05-16 — Global Alert Center reality-check audit artifact published ✅
+
+Status: **✅ AUDIT ARTIFACT DONE** | **⚠️ architecture/contract gates still FAIL** | **✅ evidence-ready remediation baseline now in-repo**
+
+## What changed
+- Added a formal reality-check audit report that compares Global Alert Center cutover docs against live implementation.
+- Classified findings by severity with explicit SaaS-native and OpenAPI contract violations.
+- Added re-open proposal and remediation phases to raise code quality without lowering documentation standards.
+
+## Validation
+- Audit report was cross-checked against current `signal_intelligence`, `vninvest_core`, and `packages/web` implementation paths.
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1203 modules)** ✅
+
+## Next
+- Re-open implementation tasks (`B01`, `B03`, `C01`, `D02`, `D08`) and execute remediation slices with code + tests + runtime evidence.
+
+# 2026-05-16 — Global Alert Center hotfix complete (unified-alert delivery 404) ✅
+
+Status: **✅ HOTFIX DONE** | **✅ trailing-slash contract mismatch resolved** | **✅ packages/web adapter tests green** | **✅ runtime smoke OK after start_dev refresh**
+
+## What changed
+- Fixed unified alert endpoint contract mismatch in packages/web adapter by removing trailing slash for:
+  - `/core/v1/unified-alert`
+  - `/core/v1/unified-alert/delivery`
+- Updated focused adapter tests to match the backend URL contract.
+
+## Validation
+- `Push-Location ./packages/web; npm test -- --runInBand src/adapters/coreApiAdapter.test.js; Pop-Location` → **14 tests OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1203 modules)** ✅
+- `./start_dev.ps1` → **No queue drift detected; Core API health OK; Frontend health OK** ✅
+
+## Next
+- Monitor alert-center lanes on `/operations-center` and `alert-center` route to confirm no residual 404 in browser network panel.
+
 # 2026-05-16 — Global Alert Center D11 complete (SOC prefetch contract stabilization) ✅
 
 Status: **✅ D11 DONE** | **✅ full SOC suites green trở lại** | **✅ prefetch universe-group test aligned with endpoint contract hiện tại**

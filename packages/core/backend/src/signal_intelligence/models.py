@@ -8,6 +8,7 @@ ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 """
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 
@@ -162,3 +163,163 @@ class OrderFlowEvent(models.Model):
 
     def __str__(self) -> str:
         return f'[{self.signal_type}] {self.symbol} @ {self.session_date}'
+
+
+class MarketAnomalyEvent(models.Model):
+    class EventTypeChoices(models.TextChoices):
+        PRICE_SHOCK = 'price_shock', 'Price Shock'
+        STALE_QUOTE = 'stale_quote', 'Stale Quote'
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True, editable=False)
+    symbol = models.CharField(max_length=32, db_index=True)
+    session_date = models.DateField(db_index=True)
+    event_type = models.CharField(max_length=16, choices=EventTypeChoices.choices, db_index=True)
+    severity = models.CharField(max_length=16, choices=UnifiedAlert.SeverityChoices.choices, db_index=True)
+    confidence = models.FloatField(default=0.0, db_index=True)
+    direction = models.CharField(
+        max_length=8,
+        choices=UnifiedAlert.DirectionChoices.choices,
+        default=UnifiedAlert.DirectionChoices.NEUTRAL,
+        db_index=True,
+    )
+    value = models.DecimalField(max_digits=24, decimal_places=2, null=True, blank=True)
+    source_ref = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    evidence = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    triggered_at = models.DateTimeField(db_index=True)
+    unified_alert = models.ForeignKey(
+        UnifiedAlert,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='market_anomaly_events',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Market Anomaly Event'
+        verbose_name_plural = 'Market Anomaly Events'
+        ordering = ['-triggered_at', '-pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['source_ref'],
+                condition=~models.Q(source_ref=''),
+                name='uq_market_anomaly_event_source_ref_nonempty',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['symbol', 'session_date', 'event_type']),
+            models.Index(fields=['severity', 'triggered_at']),
+        ]
+
+    def __str__(self) -> str:
+        return f'[{self.event_type}] {self.symbol} @ {self.session_date}'
+
+
+class AdvisorySignalEvent(models.Model):
+    class SignalTypeChoices(models.TextChoices):
+        AI_ALERT = 'ai_alert', 'AI Alert'
+        AI_SUGGEST = 'ai_suggest', 'AI Suggest'
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True, editable=False)
+    symbol = models.CharField(max_length=32, db_index=True)
+    session_date = models.DateField(db_index=True)
+    signal_type = models.CharField(max_length=16, choices=SignalTypeChoices.choices, db_index=True)
+    severity = models.CharField(max_length=16, choices=UnifiedAlert.SeverityChoices.choices, db_index=True)
+    confidence = models.FloatField(default=0.0, db_index=True)
+    title = models.CharField(max_length=255)
+    body = models.TextField(blank=True, default='')
+    value = models.DecimalField(max_digits=24, decimal_places=2, null=True, blank=True)
+    source_ref = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    evidence = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    triggered_at = models.DateTimeField(db_index=True)
+    unified_alert = models.ForeignKey(
+        UnifiedAlert,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='advisory_signal_events',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Advisory Signal Event'
+        verbose_name_plural = 'Advisory Signal Events'
+        ordering = ['-triggered_at', '-pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['source_ref'],
+                condition=~models.Q(source_ref=''),
+                name='uq_advisory_signal_event_source_ref_nonempty',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['symbol', 'session_date', 'signal_type']),
+            models.Index(fields=['severity', 'triggered_at']),
+        ]
+
+    def __str__(self) -> str:
+        return f'[{self.signal_type}] {self.symbol} @ {self.session_date}'
+
+
+class UserAlertDelivery(models.Model):
+    class DeliveryStateChoices(models.TextChoices):
+        NEW = 'new', 'New'
+        SEEN = 'seen', 'Seen'
+        ACKNOWLEDGED = 'acknowledged', 'Acknowledged'
+        MUTED = 'muted', 'Muted'
+        SUPPRESSED = 'suppressed', 'Suppressed'
+
+    delivery_id = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='alert_deliveries')
+    alert = models.ForeignKey(UnifiedAlert, on_delete=models.CASCADE, related_name='deliveries')
+    delivery_state = models.CharField(max_length=16, choices=DeliveryStateChoices.choices, default=DeliveryStateChoices.NEW, db_index=True)
+    delivered_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    seen_at = models.DateTimeField(null=True, blank=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    suppression_reason = models.CharField(max_length=255, blank=True, default='')
+    metadata = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'User Alert Delivery'
+        verbose_name_plural = 'User Alert Deliveries'
+        ordering = ['-delivered_at', '-pk']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'alert'], name='uq_user_alert_delivery_user_alert'),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'delivery_state', 'delivered_at']),
+            models.Index(fields=['alert', 'delivery_state']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.user_id}:{self.alert_id}:{self.delivery_state}'
+
+
+class UserAlertPreference(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='alert_preferences')
+    symbol = models.CharField(max_length=32, db_index=True)
+    alert_family = models.CharField(max_length=32, db_index=True)
+    mute_until = models.DateTimeField(null=True, blank=True)
+    cooldown_seconds = models.PositiveIntegerField(default=0)
+    channel_policy = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'User Alert Preference'
+        verbose_name_plural = 'User Alert Preferences'
+        ordering = ['user_id', 'symbol', 'alert_family']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'symbol', 'alert_family'], name='uq_user_alert_preference_scope'),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'symbol', 'alert_family']),
+            models.Index(fields=['mute_until']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.user_id}:{self.symbol}:{self.alert_family}'

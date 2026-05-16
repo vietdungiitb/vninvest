@@ -1,5 +1,102 @@
 # Code Change Audit Ledger
 
+# 2026-05-16 | Global Alert Center remediation R1.2: delivery service policy + state machine integration | backend + tests
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/delivery_service.py` | Added centralized delivery service with user symbol scope resolution, threshold/pref policy filtering, idempotent delivery row sync, and state transition guards (`new -> seen -> acknowledged`) |
+| `packages/core/backend/src/signal_intelligence/views.py` | Refactored `UserUnifiedAlertDeliveryView` to consume `delivery_service.apply_user_delivery_policy` and persist per-page delivery rows via `delivery_service.sync_user_delivery_rows` |
+| `packages/core/backend/src/signal_intelligence/tests/test_delivery_service.py` | Added focused service tests for policy filtering, mute preference enforcement, idempotent sync, state transitions, and preference upsert semantics |
+| `module_tree_full.md` | Regenerated module tree after R1.2 backend/service test changes (`1206` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this R1.2 implementation entry |
+| `PROGRESS_DASHBOARD.md` | Added R1.2 progress snapshot |
+
+## Validation
+- `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_delivery_service signal_intelligence.tests.test_materializers --keepdb; Pop-Location` passed (`15` tests) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1206` modules) ✅
+- `Set-Location .; .\start_dev.ps1` completed successfully: `No queue drift detected`, Core API health OK, Frontend health OK ✅
+
+## Residual risk
+- R1.2 currently integrates service policy and lifecycle persistence on existing endpoint family (`/core/v1/unified-alert/*`); OpenAPI path-family convergence to `/core/v1/signals/*` remains pending in next remediation phases.
+
+# 2026-05-16 | Global Alert Center remediation R1.1: SaaS-native domain entities scaffold | backend + docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/models.py` | Added `MarketAnomalyEvent`, `AdvisorySignalEvent`, `UserAlertDelivery`, `UserAlertPreference` domain entities for SaaS-native alert lifecycle scaffolding |
+| `packages/core/backend/src/signal_intelligence/migrations/0005_advisorysignalevent_marketanomalyevent_and_more.py` | Added migration creating new domain tables, constraints, and indexes |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Updated `B02`, `C01`, `D08` from `REOPENED` to `IN PROGRESS` with R1.1 evidence |
+| `module_tree_full.md` | Regenerated module tree after R1.1 code and docs updates (`1204` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this R1.1 implementation entry |
+| `PROGRESS_DASHBOARD.md` | Added R1.1 progress snapshot |
+
+## Validation
+- `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations signal_intelligence; Pop-Location` created migration `0005_*` ✅
+- `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers --keepdb; Pop-Location` passed (`11` tests) ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1204` modules) ✅
+- `Set-Location .; .\start_dev.ps1` completed successfully: `No queue drift detected`, Core API health OK, Frontend health OK ✅
+
+## Residual risk
+- R1.1 currently scaffolds domain entities only; service layer, state transitions, and alert-center endpoint family contract remain pending in follow-up slices.
+
+# 2026-05-16 | Global Alert Center re-open governance + remediation checklist | docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Re-opened tasks `B01..D08` with explicit reality-check reasons and updated legend/gate note |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260516.md` | Downgraded over-claimed pass-state items and added re-open tracking block |
+| `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260516.md` | Added reality-check pass/fail section by requirement ID |
+| `docs/REMEDIATION_CHECKLIST_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md` | Added execution-ready remediation checklist by phases R1-R4 |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this governance/remediation audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for re-open and remediation governance slice |
+
+## Validation
+- Reality-check alignment confirmed against `docs/AUDIT_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_REALITY_20260516.md` ✅
+- Cross-document consistency updated across taskboard/self-audit/traceability/checklist ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`1203` modules) ✅
+
+## Residual risk
+- This slice is governance/documentation hardening only; runtime architecture and OpenAPI remediation tasks remain pending implementation.
+
+# 2026-05-16 | Global Alert Center reality-check audit artifact | docs
+
+## All Modified Files (4 files)
+| File | Change |
+|------|--------|
+| `docs/AUDIT_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_REALITY_20260516.md` | Added full evidence-ready audit report for SaaS-native and OpenAPI contract drift vs current implementation |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit-entry record |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for the reality-check audit artifact |
+| `module_tree_full.md` | Regenerated module tree after this documentation slice (`1203` modules) |
+
+## Validation
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` → module tree regenerated (`1203` modules) ✅
+- Report content cross-checked against core files under `signal_intelligence`, `vninvest_core`, and `packages/web` before publication ✅
+
+## Residual risk
+- This slice is audit/documentation only and does not remediate runtime gaps; implementation tasks must be re-opened and executed in follow-up slices.
+
+# 2026-05-16 | Global Alert Center hotfix: unified-alert delivery 404 (trailing slash mismatch) | packages/web + docs
+
+## All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `packages/web/src/adapters/coreApiAdapter.js` | Aligned unified alert endpoints to backend contract by removing trailing slash in `getUnifiedAlerts` and `getUnifiedAlertDelivery` |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Updated URL expectations to no-trailing-slash contract for unified alert endpoints |
+| `module_tree_full.md` | Regenerated module tree after this hotfix (`1203` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this hotfix audit entry |
+| `PROGRESS_DASHBOARD.md` | Added hotfix progress snapshot |
+
+## Validation
+- `Push-Location ./packages/web; npm test -- --runInBand src/adapters/coreApiAdapter.test.js; Pop-Location` → **14 tests OK** ✅
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` → module tree regenerated (`1203` modules) ✅
+- `Set-Location .; .\start_dev.ps1` → stack rebuilt/restarted successfully; `No queue drift detected`; Core API health OK; Frontend health OK ✅
+
+## Residual risk
+- This hotfix only resolves endpoint path contract mismatch; it does not change alert delivery business logic.
+
 # 2026-05-16 | Global Alert Center D11 complete: SOC prefetch contract stabilization | tests + docs
 
 ## All Modified Files (5 files)

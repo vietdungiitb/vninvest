@@ -6,10 +6,10 @@ from rest_framework.views import APIView
 
 from vninvest_core.pagination import AlertCursorPagination, OrderFlowCursorPagination
 
-from identity_access.models import UserProfile
+from . import delivery_service
 from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from .serializers import OrderFlowEventSerializer, UnifiedAlertSerializer
-from user_workspace.models import Portfolio, TrackedSymbol, Transaction, WatchlistItem
+from user_workspace.models import Portfolio
 
 
 class CursorPaginatedUnifiedAlertResponseSerializer(serializers.Serializer):
@@ -145,37 +145,6 @@ class UnifiedAlertListView(generics.ListAPIView):
         return qs
 
 
-def _resolve_user_delivery_symbols(user) -> list[str]:
-    symbols = set()
-    if user is None or not getattr(user, 'is_authenticated', False):
-        return []
-
-    watchlist_symbols = WatchlistItem.objects.filter(watchlist__user=user).values_list('symbol', flat=True).distinct()
-    tracked_symbols = TrackedSymbol.objects.filter(user=user).values_list('symbol', flat=True).distinct()
-    holding_symbols = Transaction.objects.filter(portfolio__user=user).values_list('symbol', flat=True).distinct()
-
-    for symbol in watchlist_symbols:
-        if symbol:
-            symbols.add(str(symbol).upper())
-    for symbol in tracked_symbols:
-        if symbol:
-            symbols.add(str(symbol).upper())
-    for symbol in holding_symbols:
-        if symbol:
-            symbols.add(str(symbol).upper())
-    return sorted(symbols)
-
-
-def _resolve_user_whale_threshold_vnd(user) -> int:
-    profile = getattr(user, 'core_profile', None)
-    if isinstance(profile, UserProfile) and profile.whale_alert_threshold is not None:
-        try:
-            return max(int(profile.whale_alert_threshold), 1) * 1_000_000
-        except (TypeError, ValueError):
-            return 500_000_000
-    return 500_000_000
-
-
 @extend_schema_view(
     get=extend_schema(
         summary='Lấy unified alerts dành riêng cho người dùng hiện tại',
@@ -198,16 +167,14 @@ def _resolve_user_whale_threshold_vnd(user) -> int:
 class UserUnifiedAlertDeliveryView(UnifiedAlertListView):
     def get_queryset(self):
         qs = super().get_queryset()
-        user_symbols = _resolve_user_delivery_symbols(self.request.user)
-        if not user_symbols:
-            return qs.none()
-        qs = qs.filter(symbol__in=user_symbols)
-        whale_threshold = _resolve_user_whale_threshold_vnd(self.request.user)
-        return qs.exclude(
-            alert_type__in={UnifiedAlert.AlertTypeChoices.WHALE, UnifiedAlert.AlertTypeChoices.DARK_FLOW},
-            value__isnull=False,
-            value__lt=whale_threshold,
-        )
+        return delivery_service.apply_user_delivery_policy(user=self.request.user, queryset=qs)
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        page = getattr(self, 'page', None)
+        if page is not None:
+            delivery_service.sync_user_delivery_rows(user=request.user, alerts=list(page))
+        return response
 
 
 @extend_schema_view(
