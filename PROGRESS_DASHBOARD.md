@@ -1,3 +1,23 @@
+# 2026-05-17 — CPS P02 complete: planner requested_window contract hardened ✅
+
+Status: **✅ gap-window semantics standardized** | **✅ force-refresh semantics preserved** | **✅ regression + runtime validation passed**
+
+## What changed
+- Hardened planner preview `requested_window` contract in `global_symbol_coverage`:
+  - `force_refresh=true` -> always `{ trade_date }`.
+  - stale/missing with detected coverage gap -> `{ start_date, end_date }`.
+  - daily missing with no coverage row/date -> `{ days }` bootstrap policy.
+- This removes trade-date-only behavior for stale non-daily coverage and aligns planner output with CPS technical spec.
+- Added regression test for stale non-daily (`session_facts`) plus force-refresh fallback to lock contract behavior.
+
+## Validation
+- `manage.py test market_data.tests.test_global_symbol_coverage --keepdb` (with `DJANGO_DEBUG=true`) -> **10 passed** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- Scheduler quota and execution throughput controls are still pending in next slices (P03+).
+
 # 2026-05-17 — CPS P01 complete: daily bootstrap policy lock ✅
 
 Status: **✅ settings policy centralized** | **✅ bootstrap bounds enforced** | **✅ regression + runtime validation passed**

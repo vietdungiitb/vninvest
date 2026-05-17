@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | P00 | Doc-pack khoi tao | DONE | Copilot | Bo tai lieu ban giao day du duoc tao |
 | P01 | Daily bootstrap policy lock | DONE | Core Backend | Da khoa setting default/min/max, test bien pass, runtime smoke pass |
-| P02 | Planner requested_window hardening | TODO | Core Backend | Hoan tat semantics missing/stale/force |
+| P02 | Planner requested_window hardening | DONE | Core Backend | Da chot contract missing/stale/force cho daily va non-daily, test/regression/runtime pass |
 | P03 | Queue-tier quota scheduler | TODO | Service Ops | Them cap dispatch per tier |
 | P04 | Daily provider bucket tuning | TODO | Data Ingest | Toi uu throughput/fail-rate |
 | P05 | Intraday tier depth policy | TODO | Data Ingest | Chot depth theo hot/warm/cold/recovery |
@@ -25,9 +25,9 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 ## Gate checklist by phase
 
 ### Phase A - Foundation (P01, P02)
-- [ ] Planner missing symbol khong con trade_date-only.
-- [ ] daily bootstrap days policy configurable.
-- [ ] regression tests pass.
+- [x] Planner missing symbol khong con trade_date-only.
+- [x] daily bootstrap days policy configurable.
+- [x] regression tests pass.
 
 ### Phase B - CPS execution (P03, P04, P05)
 - [ ] tier dispatch quota active.
@@ -52,10 +52,10 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
 ## Mandatory slice-exit checklist (must pass before auto-next)
 
-- [ ] Focused tests PASS for current slice
-- [ ] start_dev runtime refresh PASS (for runtime/code slices)
-- [ ] Self-audit checklist PASS and documented
-- [ ] Taskboard/plan/spec cross-check PASS
-- [ ] Evidence template updated
-- [ ] Governance docs updated
+- [x] Focused tests PASS for current slice
+- [x] start_dev runtime refresh PASS (for runtime/code slices)
+- [x] Self-audit checklist PASS and documented
+- [x] Taskboard/plan/spec cross-check PASS
+- [x] Evidence template updated
+- [x] Governance docs updated
 - [ ] Commit and push dev completed

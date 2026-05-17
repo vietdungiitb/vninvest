@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P02 - planner requested_window contract hardening | backend/docs
+
+## All Modified Files (8 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/global_symbol_coverage.py` | Hardened `requested_window` builder to prioritize stale/missing gap windows (`start_date/end_date`) for all datasets before fallbacks; preserved force-refresh `trade_date` contract and daily missing bootstrap `days` policy |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py` | Added regression that locks stale non-daily gap window semantics and force-refresh `trade_date` fallback |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Marked P02 DONE and closed Foundation phase gate checklist items |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P02 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P02 |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test market_data.tests.test_global_symbol_coverage --keepdb` ✅ (10 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- P03 quota scheduler and subsequent execution-path slices are still pending; planner contract is now stable but dispatch/backfill throughput behavior is not yet tuned.
+
 # 2026-05-17 | CPS P01 - lock daily bootstrap policy in settings | backend/docs
 
 ## All Modified Files (7 files)

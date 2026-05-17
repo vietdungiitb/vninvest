@@ -275,17 +275,18 @@ def _build_requested_window(
     if force_refresh:
         return {'trade_date': reference_trade_date_str}
 
+    # Apply explicit gap windows first when coverage indicates stale/missing ranges.
+    missing_ranges = list((coverage_row.missing_ranges if coverage_row is not None else []) or [])
+    if missing_ranges:
+        first_range = missing_ranges[0]
+        return {
+            'start_date': str(first_range.get('start') or reference_trade_date_str),
+            'end_date': str(first_range.get('end') or reference_trade_date_str),
+        }
+
     if dataset == GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES:
         if coverage_row is None or coverage_row.latest_complete_trade_date is None:
             return {'days': _resolve_daily_price_bootstrap_days()}
-
-        missing_ranges = list((coverage_row.missing_ranges if coverage_row is not None else []) or [])
-        if missing_ranges:
-            first_range = missing_ranges[0]
-            return {
-                'start_date': str(first_range.get('start') or reference_trade_date_str),
-                'end_date': str(first_range.get('end') or reference_trade_date_str),
-            }
         latest_trade_date = coverage_row.latest_complete_trade_date if coverage_row is not None else None
         if latest_trade_date is not None and latest_trade_date < reference_trade_date:
             return {

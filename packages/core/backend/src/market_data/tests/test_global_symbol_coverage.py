@@ -385,6 +385,53 @@ class GlobalSymbolCoverageServiceTestCase(TestCase):
         self.assertEqual(preview['summary']['planned_items'], 1)
         self.assertEqual(preview['items'][0]['requested_window'], {'days': 400})
 
+    def test_build_global_planner_preview_uses_gap_window_for_stale_non_daily_and_trade_date_for_force(self):
+        today = date(2026, 5, 15)
+        verified_at = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))
+        registry = self._ensure_registry('VNM')
+
+        SessionFacts.objects.create(
+            symbol='VNM',
+            session_date=today - timedelta(days=2),
+            stale=False,
+        )
+
+        refresh_global_symbol_coverage(
+            registry,
+            reference_trade_date=today,
+            as_of=verified_at,
+        )
+
+        stale_preview = build_global_planner_preview(
+            symbols=['VNM'],
+            datasets=['session_facts'],
+            mode='missing_only',
+            force_refresh=False,
+            reason='queue_tier_scheduler:warm_liquid_market',
+            reference_trade_date=today,
+        )
+
+        self.assertEqual(stale_preview['summary']['planned_items'], 1)
+        self.assertEqual(
+            stale_preview['items'][0]['requested_window'],
+            {'start_date': '2026-05-14', 'end_date': '2026-05-15'},
+        )
+        self.assertEqual(stale_preview['items'][0]['reason'], 'stale')
+        self.assertFalse(stale_preview['items'][0]['overwrite_existing'])
+
+        forced_preview = build_global_planner_preview(
+            symbols=['VNM'],
+            datasets=['session_facts'],
+            force_refresh=True,
+            reason='operator_manual_run',
+            reference_trade_date=today,
+        )
+
+        self.assertEqual(forced_preview['summary']['planned_items'], 1)
+        self.assertEqual(forced_preview['items'][0]['requested_window'], {'trade_date': '2026-05-15'})
+        self.assertEqual(forced_preview['items'][0]['reason'], 'manual_force')
+        self.assertTrue(forced_preview['items'][0]['overwrite_existing'])
+
     def test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm(self):
         today = date(2026, 5, 15)
         verified_at = timezone.make_aware(datetime.combine(today, time(hour=15, minute=0)))
