@@ -16,7 +16,7 @@
 | P05 | Intraday tier depth policy | DONE | Data Ingest | Da ap policy hot/warm/cold/recovery vao intraday requested_window va page_size theo tier |
 | P06 | DataOps observability UI/API | DONE | Frontend + Backend | Da co endpoint + widget backlog/fail-rate/starvation, contract test + build/runtime pass |
 | P07 | Shadow run and parity evidence | DONE | Ops + QA | Da co baseline 72h runtime run logs, parity sample 0.99, rollback drill evidence |
-| P08 | Cutover runbook and handoff close | TODO | Tech Lead | Rollback, incident, signoff |
+| P08 | Cutover runbook and handoff close | DONE | Tech Lead | Da ban hanh cutover runbook, rollback playbook, escalation flow va closeout note |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 

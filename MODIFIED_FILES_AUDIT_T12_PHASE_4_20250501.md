@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-05-17 | CPS P08 - cutover runbook and closeout
+
+### Files changed in this session
+- `docs/CUTOVER_RUNBOOK_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_HANDOFF_MASTER_20260517.md`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/RUN_SPEC_AUDIT_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Dong chu trinh CPS bang cutover runbook + rollback playbook + incident escalation + closeout signoff notes, dam bao handoff co the van hanh/audit ngay.
+
+### Validation snapshot
+- `Invoke-RestMethod http://localhost:8001/core/v1/health` ✅ (status ok)
+- Spec-audit checklist R1-R8 + P01-P08 consistency updated ✅
+
+---
+
 ## 2026-05-17 | CPS P07 - shadow run and parity evidence
 
 ### Files changed in this session

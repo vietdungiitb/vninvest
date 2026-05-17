@@ -1,3 +1,21 @@
+# 2026-05-17 — CPS P08 complete: cutover runbook and closeout ✅
+
+Status: **✅ cutover runbook published** | **✅ rollback/escalation flow documented** | **✅ spec-audit closeout aligned**
+
+## What changed
+- Added dedicated cutover closeout doc:
+  - `docs/CUTOVER_RUNBOOK_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- Documented GO/NO-GO gates, cutover sequence, rollback triggers/steps, and incident escalation path.
+- Updated handoff master deliverable index to include cutover runbook.
+- Updated taskboard P08 status and spec-audit checklist to reflect full P01-P08 completion.
+
+## Validation
+- `Invoke-RestMethod http://localhost:8001/core/v1/health` -> **status ok** ✅
+- Documentation cross-check: Implementation plan / Taskboard / Traceability / Spec-audit are consistent for P08 closeout ✅
+
+## Residual risk
+- Production signoff remains conditional on parity interpretation policy: `fresh_or_warm >= 0.99` is satisfied, strict-fresh is not.
+
 # 2026-05-17 — CPS P07 complete: shadow run + parity evidence ✅
 
 Status: **✅ 72h runtime window captured** | **✅ parity sample reached 0.99 (fresh/warm)** | **✅ rollback drill evidence confirmed**

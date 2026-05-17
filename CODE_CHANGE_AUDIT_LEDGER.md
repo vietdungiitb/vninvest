@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P08 - cutover runbook and closeout | docs/governance
+
+## All Modified Files (8 files)
+| File | Change |
+|------|--------|
+| `docs/CUTOVER_RUNBOOK_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Added final cutover runbook with GO/NO-GO gates, rollback playbook, incident escalation, and signoff notes |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_HANDOFF_MASTER_20260517.md` | Added cutover runbook to deliverable index |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Marked P08 DONE |
+| `docs/RUN_SPEC_AUDIT_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Marked final checklist items complete for R1-R8 and P01-P08 consistency |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P08 execution evidence snapshot |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P08 closeout |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest"; Invoke-RestMethod http://localhost:8001/core/v1/health | ConvertTo-Json -Depth 5` ✅ (`status: ok`)
+- Documentation cross-check completed across handoff master / implementation plan / taskboard / traceability / spec-audit ✅
+
+## Residual risk
+- Final production signoff remains conditional on parity policy interpretation (`fresh_or_warm` gate satisfied; strict-fresh not yet satisfied).
+
 # 2026-05-17 | CPS P07 - shadow run and parity evidence | docs/ops
 
 ## All Modified Files (5 files)

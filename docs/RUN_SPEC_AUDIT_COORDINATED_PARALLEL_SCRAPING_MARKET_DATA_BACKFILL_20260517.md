@@ -24,10 +24,10 @@ Dam bao implementation khop 100% voi:
 
 ## 3. Audit checklist
 
-- [ ] R1-R8 all mapped and evidenced
-- [ ] P01-P08 task statuses and evidence consistent
-- [ ] No hidden out-of-scope logic shipped
-- [ ] Governance artifacts updated
+- [x] R1-R8 all mapped and evidenced
+- [x] P01-P08 task statuses and evidence consistent
+- [x] No hidden out-of-scope logic shipped
+- [x] Governance artifacts updated
 
 ---
 
