@@ -1,5 +1,54 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | VNBroker optimized benchmark-to-config flow recovery (all providers + preview-first apply) | frontend/docs
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/VnbrokerPanel.jsx` | Reworked optimized-config synthesis from benchmark results for **all** providers (timeout/retry/rate-limit), derived primary/fallback chain from recommendation, added benchmark results table, and fixed optimized flow to always go through Preview -> Apply with correct payload |
+| `frontend/src/i18n/vi.js` | Added VN labels for benchmark result table columns |
+| `frontend/src/i18n/en.js` | Added EN labels for benchmark result table columns |
+| `module_tree_full.md` | Regenerated module tree after this slice (`1211` modules) |
+| `docs/VNBROKER_OPTIMAL_CONFIG_SAVE_IMPLEMENTATION_PLAN_20260517.md` | Read and used as source plan for optimized-config flow recovery |
+| `docs/VNBROKER_PANEL_UX_AUDIT_AND_IMPROVEMENT_PLAN_20260517.md` | Read and used to recover missing UX intent in current VNBroker flow |
+| `docs/VNBROKER_PER_PROVIDER_CONFIG_IMPLEMENTATION_20260517.md` | Read and used to align per-provider optimization behavior |
+
+## Validation
+- `get_errors` on `VnbrokerPanel.jsx`, `vi.js`, `en.js` ✅ no errors
+- `Push-Location ./frontend; npm run build; Pop-Location` ✅ build passed
+- `./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+- `.\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` ✅ regenerated (`1211` modules)
+
+## Residual risk
+- Benchmark payloads that do not expose `latency_ms` currently fall back to `p95_latency_seconds`/`p50_latency_seconds`; if both are missing, a safe default latency baseline is used.
+
+# 2026-05-17 | Per-provider VNBroker configuration (KBS/VCI/DNSE independent settings) | backend/frontend
+
+## All Modified Files (4 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/domain_configs/vnbroker.py` | Added `VnbrokerProviderConfig` dataclass for provider-specific settings (timeout, retry, rate-limit); extended `VnbrokerDomainConfig` with `per_provider_config: dict[str, VnbrokerProviderConfig]` field; added validation for per-provider overrides |
+| `packages/core/backend/src/service_ops/views/vnbroker.py` | Added `VnbrokerProviderConfigSerializer` for per-provider config serialization; updated `VnbrokerConfigPayloadSerializer` to include `per_provider_config` field with proper nesting |
+| `frontend/src/components/soc/VnbrokerPanel.jsx` | Added `expandedProviders` state to track provider section expansion; added `setPerProviderField()` and `setPerProviderTimeout()` helpers for nested state updates; added per-provider config UI section with collapsible cards for VCI/KBS/DNSE, each with timeout/retry/rate-limit inputs and "Clear Override" button |
+| `frontend/src/i18n/vi.json` | Added 17 new Vietnamese translation keys: `per_provider_config_title`, `per_provider_config_hint`, `timeout_section`, `retry_section`, `rate_limit_section`, field labels, helper text, and action labels for per-provider customization |
+
+## Validation
+- `get_errors` on backend files ✅ no errors
+- `get_errors` on frontend files ✅ no errors
+- `npm run build` from frontend/ ✅ Compiled successfully (849.49 kB main.js, +723 B)
+- `./start_dev.ps1` ✅ rebuild/restart completed; all containers built; health checks: Core API OK, Frontend OK
+- `scripts/ops/generate_module_tree.py` ✅ module tree refreshed (1211 modules)
+
+## Git Deployment
+- Commit: `8c887797` ("feat: Add per-provider VNBroker configuration support")
+- Branch: dev
+- Push: ✅ pushed to origin/dev (23 objects transferred, 13.24 KiB)
+
+## Residual risk
+- **None**: Feature is fully optional; backward compatible; global config continues working unchanged
+
+---
+
 # 2026-05-17 | SOC VNBroker provider correctness + real benchmark endpoint + DNSE credential-aware status | frontend/backend
 
 ## All Modified Files (8 files)

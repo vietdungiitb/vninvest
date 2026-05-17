@@ -1,3 +1,57 @@
+# 2026-05-17 — VNBroker optimized benchmark flow recovered and aligned ✅
+
+Status: **✅ benchmark -> optimized candidate synthesis completed** | **✅ per-provider settings now generated for all benchmarked providers** | **✅ flow enforced as Preview -> Apply (no direct apply)** | **✅ runtime refreshed**
+
+## What changed
+- Recovered and reconnected the previously discussed optimization logic from VNBroker planning docs into runtime UI behavior.
+- `VnbrokerPanel` now synthesizes optimized settings per provider (timeout/retry/rate-limit) from benchmark results, not only for primary provider.
+- Primary provider + fallback chain are now derived from benchmark recommendation with safe normalization.
+- Added benchmark result table in-panel for operator readability before saving optimized config.
+- Fixed preview behavior so optimized save path always previews the **optimized payload** before apply.
+
+## Validation
+- `get_errors` on touched files → **no errors** ✅
+- `npm run build` (frontend) → **compiled successfully** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Residual risk
+- If benchmark payload omits direct latency metrics, timeout synthesis falls back to available percentile fields or safe baseline defaults.
+
+# 2026-05-17 — VNBroker per-provider configuration implementation complete ✅
+
+Status: **✅ per-provider config DONE** | **✅ KBS/VCI/DNSE can now have independent settings** | **✅ runtime refreshed and deployed**
+
+## What changed
+- Extended `VnbrokerDomainConfig` with `per_provider_config: dict[str, VnbrokerProviderConfig]` field.
+- Added `VnbrokerProviderConfig` dataclass supporting per-provider timeout, retry, and rate-limit overrides.
+- Updated backend serializers (`VnbrokerProviderConfigSerializer`) to handle per-provider validation and serialization.
+- Extended VnbrokerPanel UI with collapsible sections for each provider (VCI, KBS, DNSE).
+- Each provider section allows independent configuration of timeout, retry delay, requests_per_minute, and burst_limit.
+- Added Vietnamese i18n: `per_provider_config_title`, `per_provider_config_hint`, `timeout_section`, `retry_section`, `rate_limit_section`, `clear_provider_override`.
+- Backward compatible: blank per-provider fields inherit global config; existing configs continue working.
+
+## Validation
+- Backend: `get_errors` on domain_configs/vnbroker.py + views/vnbroker.py → **no errors** ✅
+- Frontend: `npm run build` → **compiled successfully (849.49 kB main.js)** ✅
+- Docker: All containers rebuilt → **no failures** ✅
+- Runtime: `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- Module tree: `scripts/ops/generate_module_tree.py` → **1211 modules** ✅
+
+## Git
+- Commit: `8c887797` on dev branch
+- Message: "feat: Add per-provider VNBroker configuration support"
+- Deployed: ✅ pushed to origin/dev
+
+## User Impact
+- Operators can now set KBS with high throughput (100 req/min), DNSE with conservative rate-limit (30 req/min), and VCI with balanced settings (60 req/min).
+- UI shows "Được tùy chỉnh" badge when provider has overrides; "Clear Override" button resets to global defaults.
+- Placeholder text "(không ghi đè)" guides users that blank fields inherit global config.
+- Validation enforces per-provider ranges (e.g., connect timeout 1.0-60.0s) to prevent invalid config.
+
+## Residual risk
+- **None**: Feature is fully optional; backward compatible with existing global configs; no API breaking changes.
+
 # 2026-05-17 — SOC VNBroker provider + benchmark correction complete ✅
 
 Status: **✅ provider list corrected (KBS/VCI/DNSE)** | **✅ benchmark now runs via native SOC endpoint** | **✅ DNSE status now reads portfolio LightSpeed credential signal** | **✅ runtime refreshed**

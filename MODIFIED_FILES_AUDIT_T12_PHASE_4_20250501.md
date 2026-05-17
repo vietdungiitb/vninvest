@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-05-17 | VNBroker optimized benchmark flow recovery (per-provider auto-tuning + preview-first apply)
+
+### Files changed in this session
+- `frontend/src/components/soc/VnbrokerPanel.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Recover and operationalize the discussed VNBroker optimization workflow so benchmark results are converted into per-provider runtime settings for **all** providers.
+- Ensure user flow remains governance-safe: `Benchmark -> Badge Ready -> Save Optimized -> Preview -> Apply`.
+
+### Validation snapshot
+- `get_errors` (VnbrokerPanel.jsx, vi.js, en.js) ✅
+- `npm run build` (frontend) ✅
+- `./start_dev.ps1` smoke checks (Core API OK, Frontend OK) ✅
+- `scripts/ops/generate_module_tree.py` ✅
+
+---
+
 ## 2026-05-17 | SOC VNBroker Provider + Benchmark Correction
 
 ### Files changed in this session

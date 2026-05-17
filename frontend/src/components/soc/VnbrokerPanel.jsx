@@ -9,6 +9,169 @@ import { ConfigPreviewModal } from './ConfigPreviewModal';
 
 const DEFAULT_PROVIDER_OPTIONS = ['vci', 'kbs', 'dnse'];
 
+const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const normalizeProviderId = (value) => String(value || '').trim().toLowerCase();
+
+const uniqueProviders = (providers) => {
+  const output = [];
+  providers.forEach((providerId) => {
+    const normalized = normalizeProviderId(providerId);
+    if (normalized && !output.includes(normalized)) {
+      output.push(normalized);
+    }
+  });
+  return output;
+};
+
+const roundHalf = (value) => Math.round(Number(value || 0) * 2) / 2;
+
+const getBenchmarkLatencyMs = (result) => {
+  const directLatency = Number(result?.latency_ms || 0);
+  if (Number.isFinite(directLatency) && directLatency > 0) {
+    return directLatency;
+  }
+
+  const p95LatencySeconds = Number(result?.p95_latency_seconds || 0);
+  if (Number.isFinite(p95LatencySeconds) && p95LatencySeconds > 0) {
+    return p95LatencySeconds * 1000;
+  }
+
+  const p50LatencySeconds = Number(result?.p50_latency_seconds || 0);
+  if (Number.isFinite(p50LatencySeconds) && p50LatencySeconds > 0) {
+    return p50LatencySeconds * 1000;
+  }
+
+  return 1000;
+};
+
+const getBenchmarkErrorPct = (result) => {
+  const explicitErrorPct = Number(result?.error_pct);
+  if (Number.isFinite(explicitErrorPct) && explicitErrorPct >= 0) {
+    return explicitErrorPct;
+  }
+
+  const successPct = Number(result?.success_pct);
+  if (Number.isFinite(successPct)) {
+    return Math.max(0, 100 - successPct);
+  }
+
+  return 0;
+};
+
+const buildProviderOptimizationFromBenchmarkResult = (result) => {
+  const latencyMs = getBenchmarkLatencyMs(result);
+  const successPct = Number(result?.success_pct || 98);
+  const errorPct = getBenchmarkErrorPct(result);
+  const rateLimitedPct = Number(result?.rate_limited_pct || 0);
+  const requestsPerMinuteObserved = Number(result?.requests_per_minute || 0);
+
+  const timeoutSafetyFactor = successPct < 95 ? 2.0 : 1.5;
+  const baseTimeoutSeconds = Math.max(latencyMs / 1000, 1);
+
+  const connectTimeout = clampNumber(roundHalf(baseTimeoutSeconds * timeoutSafetyFactor * 1.2), 1, 60);
+  const readTimeout = clampNumber(roundHalf(baseTimeoutSeconds * timeoutSafetyFactor * 8), 5, 120);
+  const writeTimeout = clampNumber(roundHalf(baseTimeoutSeconds * timeoutSafetyFactor), 1, 60);
+  const poolTimeout = clampNumber(roundHalf(baseTimeoutSeconds * timeoutSafetyFactor * 0.8), 1, 30);
+
+  let maxRetries = 4;
+  if (errorPct < 1) maxRetries = 2;
+  else if (errorPct < 5) maxRetries = 3;
+  if (rateLimitedPct > 15) maxRetries = Math.max(maxRetries, 4);
+
+  const retryDelay = clampNumber(roundHalf(latencyMs / 500), 0.5, 3);
+  const rateLimitFactor = rateLimitedPct > 10 ? 0.8 : 0.9;
+  const safeRequestsPerMinute = clampNumber(Math.floor(requestsPerMinuteObserved * rateLimitFactor), 10, 240);
+  const safeBurstLimit = clampNumber(Math.ceil(safeRequestsPerMinute * 0.2), 2, 40);
+
+  return {
+    timeout: {
+      connect: connectTimeout,
+      read: readTimeout,
+      write: writeTimeout,
+      pool: poolTimeout,
+    },
+    max_retries: maxRetries,
+    retry_delay_seconds: retryDelay,
+    requests_per_minute: safeRequestsPerMinute,
+    burst_limit: safeBurstLimit,
+  };
+};
+
+const pickBestBenchmarkResult = (report, preferredProviderId) => {
+  const results = Array.isArray(report?.results) ? report.results : [];
+  if (!results.length) return null;
+
+  const sorted = [...results]
+    .filter((entry) => normalizeProviderId(entry?.provider))
+    .sort((a, b) => {
+      const rateLimitedDelta = Number(a?.rate_limited_pct || 100) - Number(b?.rate_limited_pct || 100);
+      if (rateLimitedDelta !== 0) return rateLimitedDelta;
+      const rpmDelta = Number(b?.requests_per_minute || 0) - Number(a?.requests_per_minute || 0);
+      if (rpmDelta !== 0) return rpmDelta;
+      return Number(b?.success_pct || 0) - Number(a?.success_pct || 0);
+    });
+
+  if (preferredProviderId) {
+    const matched = sorted.find((entry) => normalizeProviderId(entry?.provider) === preferredProviderId);
+    if (matched) {
+      return matched;
+    }
+  }
+  return sorted[0];
+};
+
+const buildOptimizedConfigFromBenchmark = (currentDraft, report, selectableProviders) => {
+  const recommendation = report?.recommendation || {};
+  const recommendedPrimary = normalizeProviderId(recommendation.primary_provider);
+  const bestResult = pickBestBenchmarkResult(report, recommendedPrimary);
+  const primaryProvider = normalizeProviderId(bestResult?.provider || recommendedPrimary || currentDraft?.preferred_provider);
+  const selectedPrimary = selectableProviders.includes(primaryProvider)
+    ? primaryProvider
+    : (selectableProviders[0] || DEFAULT_PROVIDER_OPTIONS[0]);
+
+  const recommendedFallbacks = recommendation?.runtime_patch?.fallback_sources;
+  const recommendedSingleFallback = recommendation?.fallback_provider;
+  const fallbackFromRecommendation = Array.isArray(recommendedFallbacks)
+    ? recommendedFallbacks
+    : [recommendedSingleFallback].filter(Boolean);
+  const fallbackFromReport = Array.isArray(report?.providers)
+    ? report.providers
+    : (Array.isArray(report?.results) ? report.results.map((entry) => entry?.provider) : []);
+
+  const benchmarkResults = Array.isArray(report?.results) ? report.results : [];
+  const generatedProviderConfig = benchmarkResults.reduce((acc, result) => {
+    const providerId = normalizeProviderId(result?.provider);
+    if (!providerId || !selectableProviders.includes(providerId)) {
+      return acc;
+    }
+    return {
+      ...acc,
+      [providerId]: buildProviderOptimizationFromBenchmarkResult(result),
+    };
+  }, {});
+
+  const fallbackFromCurrent = Array.isArray(currentDraft?.fallback_providers)
+    ? currentDraft.fallback_providers
+    : [];
+
+  const orderedFallbackProviders = uniqueProviders([
+    ...fallbackFromRecommendation,
+    ...fallbackFromReport,
+    ...fallbackFromCurrent,
+  ]).filter((providerId) => providerId !== selectedPrimary && selectableProviders.includes(providerId));
+
+  return {
+    ...currentDraft,
+    preferred_provider: selectedPrimary,
+    fallback_providers: orderedFallbackProviders,
+    per_provider_config: {
+      ...(currentDraft?.per_provider_config || {}),
+      ...generatedProviderConfig,
+    },
+  };
+};
+
 const buildChangeSummary = (currentConfig, nextConfig) => {
   const keys = new Set([...Object.keys(currentConfig || {}), ...Object.keys(nextConfig || {})]);
   return Array.from(keys)
@@ -30,19 +193,23 @@ const VnbrokerPanel = ({ t }) => {
   const [changeSummary, setChangeSummary] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [benchmarkProvider, setBenchmarkProvider] = useState('vci');
+  const [benchmarkReport, setBenchmarkReport] = useState(null);
+  const [optimizedDraft, setOptimizedDraft] = useState(null);
   const [benchmarkStatus, setBenchmarkStatus] = useState(null);
   const [isBenchmarking, setIsBenchmarking] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [expandedProviders, setExpandedProviders] = useState({});
+  const [previewMode, setPreviewMode] = useState('manual');
 
   const fetchData = useCallback(async () => {
     try {
-      const [cfg, hth, mtr, pvd, dnseCfg] = await Promise.all([
+      const [cfg, hth, mtr, pvd, dnseCfg, benchmarkLatest] = await Promise.all([
         socApi.getVnbrokerConfig(),
         socApi.getVnbrokerHealth(),
         socApi.getVnbrokerMetrics(),
         socApi.getVnbrokerProviders().catch(() => ({ results: [] })),
         getDNSEConfig().catch(() => ({ is_configured: false })),
+        socApi.getVnbrokerBenchmarkLatest().catch(() => ({ has_report: false, report: null })),
       ]);
       const currentConfig = cfg.config || {};
       const providerCatalog = pvd.results || pvd.providers || [];
@@ -51,6 +218,7 @@ const VnbrokerPanel = ({ t }) => {
         .filter(Boolean);
       const selectableProviders = providerOptions.length > 0 ? providerOptions : DEFAULT_PROVIDER_OPTIONS;
       const preferredProvider = String(currentConfig.preferred_provider || '').trim().toLowerCase();
+      const latestReport = benchmarkLatest?.report || null;
 
       setConfig(currentConfig);
       setDraft(JSON.parse(JSON.stringify(currentConfig)));
@@ -63,6 +231,12 @@ const VnbrokerPanel = ({ t }) => {
           : selectableProviders[0],
       );
       setDnseCredentialConfigured(Boolean(dnseCfg?.is_configured));
+      setBenchmarkReport(latestReport);
+      setOptimizedDraft(
+        latestReport
+          ? buildOptimizedConfigFromBenchmark(currentConfig, latestReport, selectableProviders)
+          : null,
+      );
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -123,6 +297,7 @@ const VnbrokerPanel = ({ t }) => {
     }
     try {
       const preview = await socApi.previewVnbrokerConfig(draft);
+      setPreviewMode('manual');
       setPreviewWarnings(warnings);
       setPreviewErrors(preview.valid === false ? { config_payload: preview.errors || [] } : null);
       setChangeSummary(buildChangeSummary(config || {}, draft));
@@ -134,14 +309,22 @@ const VnbrokerPanel = ({ t }) => {
   };
 
   const handleApply = async () => {
+    const payloadToApply = previewMode === 'optimized' && optimizedDraft
+      ? optimizedDraft
+      : draft;
     try {
       setIsSubmitting(true);
-      await socApi.applyVnbrokerConfig(draft);
-      setConfig(JSON.parse(JSON.stringify(draft)));
+      await socApi.applyVnbrokerConfig(payloadToApply);
+      setConfig(JSON.parse(JSON.stringify(payloadToApply)));
+      setDraft(JSON.parse(JSON.stringify(payloadToApply)));
       setShowPreview(false);
       setPreviewWarnings([]);
       setPreviewErrors(null);
       setChangeSummary([]);
+      setPreviewMode('manual');
+      if (previewMode === 'optimized') {
+        setBenchmarkStatus(t('soc.vnbroker.optimized_saved_success'));
+      }
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -152,17 +335,49 @@ const VnbrokerPanel = ({ t }) => {
 
   const handleBenchmark = async () => {
     setIsBenchmarking(true);
+    setBenchmarkReport(null);
     setBenchmarkStatus(null);
     try {
       const result = await socApi.runVnbrokerBenchmark({
         provider: benchmarkProvider,
         duration_seconds: 30,
       });
-      setBenchmarkStatus(JSON.stringify(result?.report || result || {}, null, 2));
+      const report = result?.report || null;
+      setBenchmarkReport(report);
+      const nextOptimizedDraft = report
+        ? buildOptimizedConfigFromBenchmark(draft, report, selectableProviders)
+        : null;
+      setOptimizedDraft(nextOptimizedDraft);
+      setBenchmarkStatus(
+        report
+          ? t('soc.vnbroker.benchmark_ready')
+          : t('soc.vnbroker.benchmark_no_report'),
+      );
     } catch (err) {
+      setBenchmarkReport(null);
+      setOptimizedDraft(null);
       setBenchmarkStatus(err.message);
     } finally {
       setIsBenchmarking(false);
+    }
+  };
+
+  const handleOpenOptimizedPreview = async () => {
+    if (!optimizedDraft || !benchmarkReport) {
+      setError(t('soc.vnbroker.benchmark_no_report'));
+      return;
+    }
+
+    try {
+      const preview = await socApi.previewVnbrokerConfig(optimizedDraft);
+      setPreviewMode('optimized');
+      setPreviewWarnings([t('soc.vnbroker.optimized_preview_warning')]);
+      setPreviewErrors(preview.valid === false ? { config_payload: preview.errors || [] } : null);
+      setChangeSummary(buildChangeSummary(config || {}, optimizedDraft));
+      setShowPreview(true);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -187,6 +402,7 @@ const VnbrokerPanel = ({ t }) => {
     .filter((providerId, index, allProviderIds) => providerId && allProviderIds.indexOf(providerId) === index);
   const selectableProviders = providerOptions.length > 0 ? providerOptions : DEFAULT_PROVIDER_OPTIONS;
   const timeoutCfg = draft.timeout || {};
+  const previewAfterConfig = previewMode === 'optimized' && optimizedDraft ? optimizedDraft : draft;
 
   return (
     <div className="space-y-6">
@@ -489,7 +705,7 @@ const VnbrokerPanel = ({ t }) => {
       {/* Benchmark Tool */}
       <div className="p-6 bg-slate-900 rounded-lg border border-slate-700">
         <h3 className="text-lg font-bold text-white mb-4">{t('soc.vnbroker.benchmark_title')}</h3>
-        <div className="flex gap-3 mb-3">
+        <div className="flex flex-wrap gap-3 mb-3">
           <select
             value={benchmarkProvider}
             onChange={(e) => setBenchmarkProvider(e.target.value)}
@@ -504,10 +720,77 @@ const VnbrokerPanel = ({ t }) => {
           >
             {isBenchmarking ? t('soc.vnbroker.benchmark_running') : t('soc.vnbroker.benchmark_run')}
           </button>
+          <button
+            onClick={handleOpenOptimizedPreview}
+            disabled={!optimizedDraft || isBenchmarking}
+            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 rounded text-white text-sm"
+          >
+            {t('soc.vnbroker.optimized_save')}
+          </button>
         </div>
-        {benchmarkStatus && (
+
+        {optimizedDraft && (
+          <p className="mb-2 inline-flex items-center rounded-full border border-emerald-600 bg-emerald-950/40 px-3 py-1 text-xs font-semibold text-emerald-200">
+            {t('soc.vnbroker.optimized_badge_ready')}
+          </p>
+        )}
+
+        {benchmarkReport?.recommendation && (
+          <div className="mb-3 rounded border border-emerald-700 bg-emerald-950/40 p-3 text-sm text-emerald-200">
+            <p>
+              {t('soc.vnbroker.optimized_primary')}:{' '}
+              <strong>{String(benchmarkReport.recommendation.primary_provider || draft.preferred_provider || '').toUpperCase()}</strong>
+            </p>
+            <p>
+              {t('soc.vnbroker.optimized_fallback')}:{' '}
+              <strong>
+                {Array.isArray(benchmarkReport.recommendation.runtime_patch?.fallback_sources)
+                  ? benchmarkReport.recommendation.runtime_patch.fallback_sources.join(', ')
+                  : (draft.fallback_providers || []).join(', ')}
+              </strong>
+            </p>
+          </div>
+        )}
+
+        {benchmarkStatus && <p className="mb-2 text-xs text-slate-300">{benchmarkStatus}</p>}
+
+        {Array.isArray(benchmarkReport?.results) && benchmarkReport.results.length > 0 && (
+          <div className="mb-3 overflow-x-auto rounded border border-slate-700">
+            <table className="min-w-full divide-y divide-slate-700 text-xs text-slate-200">
+              <thead className="bg-slate-800 text-slate-400">
+                <tr>
+                  <th className="px-3 py-2 text-left">{t('soc.vnbroker.benchmark_col_provider')}</th>
+                  <th className="px-3 py-2 text-right">{t('soc.vnbroker.benchmark_col_latency')}</th>
+                  <th className="px-3 py-2 text-right">{t('soc.vnbroker.benchmark_col_rpm')}</th>
+                  <th className="px-3 py-2 text-right">{t('soc.vnbroker.benchmark_col_success')}</th>
+                  <th className="px-3 py-2 text-right">{t('soc.vnbroker.benchmark_col_rate_limited')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {benchmarkReport.results.map((result) => {
+                  const providerId = String(result?.provider || '').toUpperCase();
+                  const latencyMs = Math.round(getBenchmarkLatencyMs(result));
+                  const rpm = Number(result?.requests_per_minute || 0);
+                  const success = Number(result?.success_pct || 0);
+                  const rateLimited = Number(result?.rate_limited_pct || 0);
+                  return (
+                    <tr key={`${providerId}-${result?.concurrency || 'n/a'}`}>
+                      <td className="px-3 py-2 font-semibold">{providerId}</td>
+                      <td className="px-3 py-2 text-right">{latencyMs} ms</td>
+                      <td className="px-3 py-2 text-right">{rpm}</td>
+                      <td className="px-3 py-2 text-right">{success.toFixed(1)}%</td>
+                      <td className="px-3 py-2 text-right">{rateLimited.toFixed(1)}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {benchmarkReport && (
           <pre className="bg-slate-800 p-3 rounded text-xs text-slate-300 overflow-auto max-h-48">
-            {benchmarkStatus}
+            {JSON.stringify(benchmarkReport || {}, null, 2)}
           </pre>
         )}
       </div>
@@ -516,11 +799,12 @@ const VnbrokerPanel = ({ t }) => {
       <ConfigPreviewModal
         isOpen={showPreview}
         before={config}
-        after={draft}
+        after={previewAfterConfig}
         onClose={() => {
           setShowPreview(false);
           setPreviewWarnings([]);
           setPreviewErrors(null);
+          setPreviewMode('manual');
         }}
         onConfirm={handleApply}
         changeSummary={changeSummary}

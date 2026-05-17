@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 09:33:47`
+Generated at: `2026-05-17 10:41:13`
 
 ## Summary
 
 - Total modules: 1211
 - Python modules: 689
 - JS/TS modules: 522
-- Total classes: 1367
-- Total functions: 3241
-- Total top-level variables: 4745
+- Total classes: 1369
+- Total functions: 3254
+- Total top-level variables: 4801
 
 ## Python Modules
 
@@ -3485,6 +3485,7 @@ Generated at: `2026-05-17 09:33:47`
 
 - Classes:
   - `VnbrokerDomainConfig` -> methods: `from_dict`, `to_dict`, `validate`
+  - `VnbrokerProviderConfig` -> methods: `from_dict`, `to_dict`, `validate`
   - `VnbrokerTimeoutConfig` -> methods: `from_dict`, `to_dict`, `validate`
 - Functions:
   - `_is_number`, `_normalize_provider_list`
@@ -3936,6 +3937,7 @@ Generated at: `2026-05-17 09:33:47`
   - `VnbrokerOwnershipView` -> methods: `get`
   - `VnbrokerPreviewImpactSerializer`
   - `VnbrokerPreviewResponseSerializer`
+  - `VnbrokerProviderConfigSerializer`
   - `VnbrokerProvidersResponseSerializer`
   - `VnbrokerProvidersView` -> methods: `get`
   - `VnbrokerTestConnectionRequestSerializer`
@@ -5602,9 +5604,9 @@ Generated at: `2026-05-17 09:33:47`
 ### `frontend/src/components/soc/VnbrokerPanel.jsx`
 
 - Functions:
-  - `VnbrokerPanel`, `buildChangeSummary`, `handleApply`, `handleBenchmark`, `handleOpenPreview`, `handleResetToDefaults`, `setField`, `setTimeoutField`
+  - `VnbrokerPanel`, `buildChangeSummary`, `buildOptimizedConfigFromBenchmark`, `buildProviderOptimizationFromBenchmarkResult`, `clampNumber`, `getBenchmarkErrorPct`, `getBenchmarkLatencyMs`, `handleApply`, `handleBenchmark`, `handleOpenOptimizedPreview`, `handleOpenPreview`, `handleResetToDefaults`, `normalizeProviderId`, `pickBestBenchmarkResult`, `roundHalf`, `setField`, `setPerProviderField`, `setPerProviderTimeout`, `setTimeoutField`, `toggleProviderExpand`, `uniqueProviders`
 - Top-level variables:
-  - `DEFAULT_PROVIDER_OPTIONS`, `currentConfig`, `fetchData`, `keys`, `preferredProvider`, `preview`, `providerCatalog`, `providerOptions`, `result`, `selectableProviders`, `timeoutCfg`, `warnings`
+  - `DEFAULT_PROVIDER_OPTIONS`, `baseTimeoutSeconds`, `benchmarkResults`, `bestResult`, `connectTimeout`, `currentConfig`, `directLatency`, `errorPct`, `explicitErrorPct`, `fallbackFromCurrent`, `fallbackFromRecommendation`, `fallbackFromReport`, `fetchData`, `generatedProviderConfig`, `hasOverride`, `isExpanded`, `keys`, `latencyMs`, `latestReport`, `matched`, `maxRetries`, `nextOptimizedDraft`, `normalized`, `orderedFallbackProviders`, `output`, `p50LatencySeconds`, `p95LatencySeconds`, `payloadToApply`, `perProviderConfig`, `poolTimeout`, `preferredProvider`, `preview`, `previewAfterConfig`, `primaryProvider`, `providerCatalog`, `providerCfg`, `providerConfig`, `providerId`, `providerOptions`, `rateLimitFactor`, `rateLimited`, `rateLimitedDelta`, `rateLimitedPct`, `readTimeout`, `recommendation`, `recommendedFallbacks`, `recommendedPrimary`, `recommendedSingleFallback`, `report`, `requestsPerMinuteObserved`, `result`, `results`, `retryDelay`, `rpm`, `rpmDelta`, `safeBurstLimit`, `safeRequestsPerMinute`, `selectableProviders`, `selectedPrimary`, `sorted`, `success`, `successPct`, `timeout`, `timeoutCfg`, `timeoutSafetyFactor`, `updated`, `warnings`, `writeTimeout`
 
 ### `frontend/src/components/soc/WriteGuardBanner.jsx`
 
