@@ -105,11 +105,13 @@ QUEUE_DOMAIN_MATRIX = {
             'service_ops.scrape_cell_task',
             'service_ops.run_market_data_queue_tier_scheduler',
             'service_ops.cleanup_market_data_parity_snapshots',
+            'service_ops.monitor_market_data_parity_retention_health',
         ),
         'periodic_tasks': (
             'manual_refresh_task',
             'market-data-queue-tier-scheduler-30s',
             'market-data-parity-snapshot-retention-cleanup-hourly',
+            'market-data-parity-retention-health-monitor-2h',
         ),
     },
 }

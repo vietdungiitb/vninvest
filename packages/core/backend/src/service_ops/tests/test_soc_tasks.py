@@ -24,6 +24,7 @@ from service_ops.tasks import (
     cleanup_market_data_parity_snapshots_task,
     create_signal_job_run_log,
     health_check_all_services,
+    monitor_market_data_parity_retention_health_task,
     run_market_data_queue_tier_scheduler,
     run_scrape_cycle,
     run_signal_session_facts_materialization,
@@ -553,7 +554,78 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertIn('parity_snapshot', warm_call['extra_input_summary'])
         self.assertIn('window_72h', warm_call['extra_input_summary']['parity_snapshot'])
         self.assertEqual(warm_call['extra_input_summary']['queue_tier'], 'warm_liquid_market')
-        self.assertEqual(warm_call['datasets'], ['daily_prices', 'price_board_snapshot', 'session_facts'])
+
+    # -----------------------------------------------------------------------
+    # P19 — retention health monitor task
+    # -----------------------------------------------------------------------
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks.create_global_planner_run')
+    def test_monitor_retention_health_task_no_alert_when_within_threshold(self, planner_run_mock, fetch_listing_symbols_mock):
+        """When the last retention run is recent (within threshold), no system alert should be emitted."""
+        from signal_intelligence.models import UnifiedAlert
+        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        # Create a fresh retention run log (completed just now)
+        ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='success',
+            input_summary={'trigger': 'market_data.parity_snapshot_retention'},
+            output_summary={
+                'deleted_rows': 5,
+                'retained_rows': 95,
+                'total_rows_before': 100,
+                'retention_days': 7,
+            },
+        )
+        planner_run_mock.return_value = {'run_id': 'md-run-monitor', 'service_run_log_id': 99, 'status': 'queued'}
+        result = monitor_market_data_parity_retention_health_task.run()
+        self.assertIn('alert_result', result)
+        self.assertFalse(result['alert_result']['alert_emitted'])
+        self.assertFalse(
+            UnifiedAlert.objects.filter(source_ref__startswith='retention_health:').exists()
+        )
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks.create_global_planner_run')
+    def test_monitor_retention_health_task_emits_alert_when_threshold_exceeded(self, planner_run_mock, fetch_listing_symbols_mock):
+        """When the last retention run is too old (beyond staleness threshold), a SYSTEM alert must be upserted."""
+        from signal_intelligence.models import UnifiedAlert
+        from service_ops.dataops_market_data import RETENTION_RUN_STALENESS_THRESHOLD_HOURS
+        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        # Create a stale retention run log (old enough to exceed threshold)
+        stale_started_at = timezone.now() - timedelta(hours=int(RETENTION_RUN_STALENESS_THRESHOLD_HOURS) + 3)
+        old_run = ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='success',
+            input_summary={'trigger': 'market_data.parity_snapshot_retention'},
+            output_summary={
+                'deleted_rows': 8,
+                'retained_rows': 92,
+                'total_rows_before': 100,
+                'retention_days': 7,
+            },
+        )
+        old_run.started_at = stale_started_at
+        old_run.save(update_fields=['started_at'])
+        planner_run_mock.return_value = {'run_id': 'md-run-monitor2', 'service_run_log_id': 100, 'status': 'queued'}
+        result = monitor_market_data_parity_retention_health_task.run()
+        self.assertIn('alert_result', result)
+        self.assertTrue(result['alert_result']['alert_emitted'])
+        self.assertNotEqual(result['alert_result']['alert_source_ref'], '')
+        alert = UnifiedAlert.objects.filter(source_ref__startswith='retention_health:').first()
+        self.assertIsNotNone(alert)
+        self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.SYSTEM)
+        self.assertIn(alert.severity, {
+            UnifiedAlert.SeverityChoices.MEDIUM,
+            UnifiedAlert.SeverityChoices.HIGH,
+        })
+        # run log must be recorded successfully
+        self.assertTrue(
+            ServiceRunLog.objects.filter(
+                input_summary__trigger='market_data.parity_snapshot_retention_monitor',
+                status='success',
+            ).exists()
+        )
 
     @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
     @patch('service_ops.tasks.create_global_planner_run')

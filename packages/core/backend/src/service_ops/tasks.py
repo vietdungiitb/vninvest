@@ -15,6 +15,7 @@ from signal_intelligence.materializers import materialize_unified_alerts, materi
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
 from .dataops_market_data import (
+    build_market_data_observability_summary,
     cleanup_market_data_parity_snapshots,
     QUEUE_TIER_ORDER,
     build_market_data_parity_snapshot,
@@ -746,3 +747,92 @@ def cleanup_market_data_parity_snapshots_task(self):
             },
         )
         raise
+
+
+# ---------------------------------------------------------------------------
+# P19 — Retention health anomaly monitor
+# ---------------------------------------------------------------------------
+
+def _upsert_retention_health_alert(retention_health: dict) -> dict:
+    """Upsert a SYSTEM UnifiedAlert when retention cadence exceeds the staleness threshold."""
+    trend = dict(retention_health.get('trend') or {})
+    within_staleness_threshold = bool(trend.get('within_staleness_threshold'))
+    if within_staleness_threshold:
+        return {'alert_emitted': False, 'alert_source_ref': '', 'alert_id': ''}
+
+    now_value = timezone.now()
+    symbol = 'VCI'
+    source_ref = f"retention_health:{symbol}:{now_value.date().isoformat()}"
+    latest_run_age_hours = float(trend.get('latest_run_age_hours') or 0.0)
+    threshold_hours = float(trend.get('staleness_threshold_hours') or 0.0)
+    severity = (
+        UnifiedAlert.SeverityChoices.HIGH
+        if latest_run_age_hours >= threshold_hours * 2
+        else UnifiedAlert.SeverityChoices.MEDIUM
+    )
+    confidence = 0.95 if severity == UnifiedAlert.SeverityChoices.HIGH else 0.85
+    body = (
+        f"Không có lần chạy retention trong {latest_run_age_hours:.2f} giờ, "
+        f"vượt ngưỡng {threshold_hours:.2f} giờ."
+    )
+    alert, _ = UnifiedAlert.objects.update_or_create(
+        source_ref=source_ref,
+        defaults={
+            'alert_type': UnifiedAlert.AlertTypeChoices.SYSTEM,
+            'symbol': symbol,
+            'severity': severity,
+            'confidence': confidence,
+            'freshness_state': 'stale',
+            'title': 'Retention parity snapshot bị chậm',
+            'body': body,
+            'value': None,
+            'direction': UnifiedAlert.DirectionChoices.NEUTRAL,
+            'session_date': now_value.date(),
+            'triggered_at': now_value,
+            'metadata': {
+                'source': 'service_ops.retention_monitor',
+                'retention_days': int(retention_health.get('retention_days') or 0),
+                'trend': trend,
+            },
+            'evidence': {
+                'source': 'service_ops.retention_monitor',
+                'latest_run': retention_health.get('latest_run') or {},
+                'history_size': len(retention_health.get('history') or []),
+            },
+        },
+    )
+    return {
+        'alert_emitted': True,
+        'alert_source_ref': source_ref,
+        'alert_id': str(alert.alert_id),
+    }
+
+
+@shared_task(bind=True, name='service_ops.monitor_market_data_parity_retention_health', queue='manual_on_demand')
+def monitor_market_data_parity_retention_health_task(self):
+    ensure_service_registry()
+    matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+    task_id = getattr(self.request, 'id', '')
+
+    observability_summary = build_market_data_observability_summary()
+    retention_health = dict(observability_summary.get('retention_health') or {})
+    alert_result = _upsert_retention_health_alert(retention_health)
+
+    run_log = ServiceRunLog.objects.create(
+        service=matrix_service,
+        status='queued',
+        input_summary={
+            'trigger': 'market_data.parity_snapshot_retention_monitor',
+            'scheduler_task_id': task_id,
+        },
+        output_summary={},
+    )
+    _mark_run_log_running(run_log, task_id)
+    output_summary = {
+        'retention_health': retention_health,
+        'alert_result': alert_result,
+        'run_log_id': run_log.id,
+        'task_name': 'service_ops.monitor_market_data_parity_retention_health',
+    }
+    _mark_run_log_finished(run_log, status_value='success', output_summary=output_summary)
+    return output_summary

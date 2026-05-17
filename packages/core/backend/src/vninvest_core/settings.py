@@ -358,6 +358,17 @@ CELERY_BEAT_SCHEDULE = {
             )
         },
     },
+    # P19: monitor retention health anomalies and emit alert-center system alerts every 2h
+    'market-data-parity-retention-health-monitor-2h': {
+        'task': 'service_ops.monitor_market_data_parity_retention_health',
+        'schedule': 7200.0,
+        'options': {
+            'queue': SCHEDULER_QUEUE_MAP.get(
+                'market-data-parity-retention-health-monitor-2h',
+                'manual_on_demand',
+            )
+        },
+    },
 
     # === C1: Native ingest — price board every 60s ===
     # Replaces legacy-worker as sole SymbolSnapshot update source.
