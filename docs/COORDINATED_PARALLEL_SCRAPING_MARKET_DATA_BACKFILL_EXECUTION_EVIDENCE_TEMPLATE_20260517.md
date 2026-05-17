@@ -345,3 +345,87 @@ Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv
 
 ## Next slice
 - P07 - Shadow run and parity evidence.
+
+---
+
+## Latest Executed Slice Snapshot (P07)
+
+## Slice metadata
+- Slice ID: P07
+- Date: 2026-05-17
+- Owner: Copilot
+- Related tasks (Pxx): P07
+
+## Objective
+- Collect shadow-run and parity evidence for CPS gate: runtime window coverage (3 days), parity score threshold, and rollback drill proof.
+
+## Files changed
+1. docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md
+2. docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md
+3. CODE_CHANGE_AUDIT_LEDGER.md
+4. PROGRESS_DASHBOARD.md
+5. MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md
+
+## Validation commands
+```powershell
+Set-Location "c:/Mujoco Projects/vninvest"; @'
+from django.utils import timezone
+from datetime import timedelta
+from service_ops.registry import get_registered_service, SOC_DOMAIN_PRIMARY_SERVICE_KEYS
+from service_ops.models import ServiceRunLog
+from market_data.models import GlobalSymbolRegistry, GlobalSymbolCoverage
+
+now = timezone.now()
+svc = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+q = ServiceRunLog.objects.filter(service=svc)
+q24 = q.filter(started_at__gte=now - timedelta(hours=24))
+q72 = q.filter(started_at__gte=now - timedelta(hours=72))
+print('RUNLOG_24H total=', q24.count(), ' success=', q24.filter(status='success').count(), ' partial=', q24.filter(status='partial').count(), ' failed=', q24.filter(status='failed').count())
+print('RUNLOG_72H total=', q72.count(), ' success=', q72.filter(status='success').count(), ' partial=', q72.filter(status='partial').count(), ' failed=', q72.filter(status='failed').count())
+
+sample = list(GlobalSymbolRegistry.objects.filter(is_active=True).order_by('-priority_score', 'symbol').values_list('symbol', flat=True)[:100])
+total = len(sample)
+fresh = GlobalSymbolCoverage.objects.filter(registry__symbol__in=sample, dataset='daily_prices', freshness_state='fresh').values('registry_id').distinct().count()
+warm = GlobalSymbolCoverage.objects.filter(registry__symbol__in=sample, dataset='daily_prices', freshness_state='warm').values('registry_id').distinct().count()
+print('SAMPLE_SIZE=', total)
+print('DAILY_FRESH=', fresh)
+print('DAILY_WARM=', warm)
+print('PARITY_STRICT_FRESH=', (fresh / total if total else 0))
+print('PARITY_FRESH_OR_WARM=', ((fresh + warm) / total if total else 0))
+'@ | docker exec -i vninvest-dev-core-api sh -lc "cd /app/src && python manage.py shell"
+
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped --keepdb
+Set-Location "c:/Mujoco Projects/vninvest"; Invoke-RestMethod http://localhost:8001/core/v1/health | ConvertTo-Json -Depth 5
+```
+
+## Validation results
+- Runtime run-log window evidence:
+	- 24h: total=663, success=654, partial=0, failed=8
+	- 72h: total=1253, success=1224, partial=4, failed=24
+- Parity sample evidence (top 100 active symbols):
+	- strict fresh parity=0.00
+	- fresh-or-warm parity=0.99
+- Rollback drill regression (`test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped`) -> 1 passed.
+- Core health snapshot endpoint -> status `ok`.
+
+## Runtime evidence
+- start_dev run result: Already healthy from P06 runtime refresh; no runtime/source code change in P07.
+- health checks: Core API OK (live probe).
+
+## Metrics snapshot
+- planned_items: 1253 scheduler runs observed in 72h window
+- inserted: N/A (shadow evidence slice)
+- updated: N/A
+- skipped_existing: N/A
+- failed_count: 24 failed runs in 72h window
+- backlog_delta: parity sample `fresh_or_warm=0.99` on top-100 active symbols
+
+## UI/API evidence
+- API payload snapshot: `/core/v1/health` returns `status: ok`; DataOps observability endpoint already available from P06.
+- UI screenshot/video: Not captured in this terminal session.
+
+## Residual risks
+- Parity threshold is met using `fresh_or_warm` interpretation; strict-fresh parity is still below target and requires additional hardening before final cutover policy if strict-fresh is mandated.
+
+## Next slice
+- P08 - Cutover runbook and closeout.

@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P07 - shadow run and parity evidence | docs/ops
+
+## All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Updated P07 status to DONE and marked phase-gate checklist items for shadow/parity and rollback evidence |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P07 execution evidence snapshot with runtime 24h/72h metrics and parity sample output |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P07 completion |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- Runtime shadow metrics command via `docker exec -i vninvest-dev-core-api ... python manage.py shell` ✅
+   - 24h runs: total=663, success=654, partial=0, failed=8
+   - 72h runs: total=1253, success=1224, partial=4, failed=24
+   - parity sample top-100 active symbols: strict_fresh=0.00, fresh_or_warm=0.99
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped --keepdb` ✅ (1 test passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; Invoke-RestMethod http://localhost:8001/core/v1/health | ConvertTo-Json -Depth 5` ✅ (`status: ok`)
+
+## Residual risk
+- If parity gate is interpreted as strict-fresh only, current sample does not pass and requires additional hardening before final P08 cutover signoff.
+
 # 2026-05-17 | CPS P06 - DataOps observability UI/API | frontend/backend/docs
 
 ## All Modified Files (15 files)

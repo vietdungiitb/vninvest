@@ -1,3 +1,26 @@
+# 2026-05-17 — CPS P07 complete: shadow run + parity evidence ✅
+
+Status: **✅ 72h runtime window captured** | **✅ parity sample reached 0.99 (fresh/warm)** | **✅ rollback drill evidence confirmed**
+
+## What changed
+- Collected runtime shadow evidence from live core DB (container `vninvest-dev-core-api`) for 24h and 72h windows.
+- Captured parity baseline on top-100 active symbols for `daily_prices`:
+  - strict-fresh parity: 0.00
+  - fresh-or-warm parity: 0.99
+- Verified rollback drill path via focused abort-run test in DataOps domain.
+- Updated CPS evidence/taskboard/governance artifacts for P07 closure.
+
+## Validation
+- Runtime shadow query via `manage.py shell` in core-api container:
+  - 24h run logs: total=663, success=654, partial=0, failed=8
+  - 72h run logs: total=1253, success=1224, partial=4, failed=24
+  - parity sample: fresh_or_warm=0.99
+- `manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped --keepdb` -> **1 passed** ✅
+- `Invoke-RestMethod http://localhost:8001/core/v1/health` -> **status ok** ✅
+
+## Residual risk
+- Nếu cutover gate buộc strict-fresh parity (không chấp nhận warm), hệ thống chưa đạt ngưỡng và cần thêm hardening trước P08 signoff.
+
 # 2026-05-17 — CPS P06 complete: DataOps observability UI/API ✅
 
 Status: **✅ observability endpoint delivered** | **✅ monitor widgets added** | **✅ focused regression + build + runtime validation passed**

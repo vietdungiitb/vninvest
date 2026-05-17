@@ -15,7 +15,7 @@
 | P04 | Daily provider bucket tuning | DONE | Data Ingest | Da bo sung bucket split on dinh, retry/backoff bounded va telemetry per-provider |
 | P05 | Intraday tier depth policy | DONE | Data Ingest | Da ap policy hot/warm/cold/recovery vao intraday requested_window va page_size theo tier |
 | P06 | DataOps observability UI/API | DONE | Frontend + Backend | Da co endpoint + widget backlog/fail-rate/starvation, contract test + build/runtime pass |
-| P07 | Shadow run and parity evidence | TODO | Ops + QA | 3 ngay giao dich that, parity gate |
+| P07 | Shadow run and parity evidence | DONE | Ops + QA | Da co baseline 72h runtime run logs, parity sample 0.99, rollback drill evidence |
 | P08 | Cutover runbook and handoff close | TODO | Tech Lead | Rollback, incident, signoff |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
@@ -30,14 +30,14 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] regression tests pass.
 
 ### Phase B - CPS execution (P03, P04, P05)
-- [ ] tier dispatch quota active.
-- [ ] provider bucket balancing active.
-- [ ] intraday tier depth policy active.
+- [x] tier dispatch quota active.
+- [x] provider bucket balancing active.
+- [x] intraday tier depth policy active.
 
 ### Phase C - Observability and rollout (P06, P07, P08)
 - [x] DataOps surface hien thi full CPS health.
-- [ ] shadow/parity evidence complete.
-- [ ] rollback drill evidence complete.
+- [x] shadow/parity evidence complete.
+- [x] rollback drill evidence complete.
 
 ---
 

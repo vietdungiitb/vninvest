@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-17 | CPS P07 - shadow run and parity evidence
+
+### Files changed in this session
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Thu thap va chot evidence P07 tren runtime that: shadow run window 72h, parity sample gate 0.99, va rollback drill proof truoc cutover closeout.
+
+### Validation snapshot
+- Runtime shadow query tren container `vninvest-dev-core-api` ✅
+- `manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped --keepdb` ✅ (1 test)
+- `Invoke-RestMethod http://localhost:8001/core/v1/health` ✅ (status ok)
+
+---
+
 ## 2026-05-17 | CPS P05 - intraday tier depth policy
 
 ## 2026-05-17 | CPS P06 - DataOps observability UI/API
