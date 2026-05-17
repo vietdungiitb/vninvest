@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | DataOps planner run abort API + Backfill stop control | frontend/backend/docs
+
+## All Modified Files (13 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/views/dataops.py` | Added planner run abort endpoint (`POST .../dataops/planner/run/{run_id}/abort/`) with run-id validation, ownership guard, Celery revoke, and terminal state update (`skipped`) |
+| `packages/core/backend/src/service_ops/operator_urls.py` | Registered canonical operator abort route |
+| `packages/core/backend/src/service_ops/urls.py` | Registered SOC alias abort route |
+| `packages/core/backend/src/data_ingest/tasks.py` | Added terminal-state short-circuit in `run_global_market_data_planner` to avoid re-opening a cancelled run |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Added focused test for queued-run abort flow and revoke invocation |
+| `frontend/src/api/socApi.js` | Added `abortDataOpsPlannerRun(runId)` API client method |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Added active-run stop button, stop workflow, abort API wiring, and active-run detail rendering |
+| `frontend/src/i18n/vi.js` | Added Vietnamese i18n keys for stop-run actions and statuses |
+| `frontend/src/i18n/en.js` | Added English i18n keys for stop-run actions and statuses |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for abort-run slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `get_errors` on touched backend/frontend files ✅ no errors
+- `Push-Location ./frontend; npm run build; Pop-Location` ✅ build passed
+- `./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+- `& ".\\venv\\Scripts\\python.exe" "scripts/ops/generate_module_tree.py"` ✅ regenerated (`1211` modules)
+- `manage.py test service_ops.tests.test_soc_api_domain.DataOpsMarketDataDomainTests.test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped --keepdb` ⚠️ blocked by environment guard (`DJANGO_ALLOWED_HOSTS` required)
+
+## Residual risk
+- Force-stop for tasks already executing depends on Celery worker signal handling; endpoint now requests terminate for running tasks, but exact stop latency can vary by worker state.
+
 # 2026-05-17 | DataOps Backfill dataset compatibility + active run guard | frontend/docs
 
 ## All Modified Files (7 files)

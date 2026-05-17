@@ -210,6 +210,13 @@ export const socApi = {
     return handleResponse(resp);
   },
 
+  abortDataOpsPlannerRun: async (runId) => {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/planner/run/${encodeURIComponent(runId)}/abort/`, {
+      method: 'POST',
+    });
+    return handleResponse(resp);
+  },
+
   getDataOpsRuntimeConfig: async () => {
     const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/runtime-config/`);
     return handleResponse(resp);

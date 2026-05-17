@@ -2,10 +2,12 @@
 
 from datetime import date
 
+from celery import current_app
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
 from rest_framework import serializers, status
 from rest_framework.response import Response
+from django.utils import timezone
 
 from market_data.global_symbol_coverage import build_global_coverage_summary, build_global_planner_preview
 from market_data.global_symbol_registry import (
@@ -101,6 +103,16 @@ class DataOpsPlannerRunResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
     run_id = serializers.CharField()
     service_run_log_id = serializers.IntegerField()
+    celery_task_id = serializers.CharField(required=False, allow_blank=True)
+    ownership = DataOpsOwnershipSerializer()
+
+
+class DataOpsPlannerAbortResponseSerializer(serializers.Serializer):
+    cancelled = serializers.BooleanField()
+    status = serializers.CharField()
+    run_id = serializers.CharField()
+    service_run_log_id = serializers.IntegerField()
+    celery_task_id = serializers.CharField(required=False, allow_blank=True)
     ownership = DataOpsOwnershipSerializer()
 
 
@@ -186,6 +198,17 @@ def _get_reference_trade_date(request) -> date | None:
 
 def _format_market_data_run_id(run_log_id: int) -> str:
     return f'md-run-{run_log_id}'
+
+
+def _parse_market_data_run_id(run_id: str) -> int:
+    normalized = str(run_id or '').strip().lower()
+    if not normalized.startswith('md-run-'):
+        raise ValueError(f'Run ID khong hop le: {run_id}')
+    raw_id = normalized.replace('md-run-', '', 1)
+    try:
+        return int(raw_id)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f'Run ID khong hop le: {run_id}') from exc
 
 
 def _build_market_data_run_summary(run_log: ServiceRunLog) -> dict:
@@ -606,6 +629,115 @@ class DataOpsPlannerRunView(SOCBaseView):
             **result,
             'ownership': ownership,
         }, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(
+    summary='Abort planner run DataOps market-data',
+    description=(
+        'Hủy một planner run theo run_id. '
+        'Nếu run đang queued/running, endpoint sẽ revoke Celery task (nếu có) '
+        'và đóng run về trạng thái terminal.'
+    ),
+    responses={
+        200: DataOpsPlannerAbortResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+        409: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Planner run aborted',
+            value={
+                'cancelled': True,
+                'status': 'skipped',
+                'run_id': 'md-run-112',
+                'service_run_log_id': 112,
+                'celery_task_id': '1b2f6f6f-9d31-42ce-b39b-4c2fceec2eee',
+                'ownership': {
+                    'domain': 'dataops_market_data',
+                    'can_apply': True,
+                    'write_surface': 'soc_dataops',
+                },
+            },
+            response_only=True,
+        )
+    ],
+)
+class DataOpsPlannerRunAbortView(SOCBaseView):
+    """POST abort for a queued/running DataOps planner run."""
+
+    def post(self, request, run_id: str):
+        ownership = _build_market_data_ownership_payload()
+        if not ownership.get('can_apply', False):
+            return _build_market_data_write_denied_response(self, request)
+
+        try:
+            run_log_id = _parse_market_data_run_id(run_id)
+        except ValueError as exc:
+            return self.error_response(
+                request,
+                code='PLANNER_RUN_ABORT_INVALID',
+                detail=str(exc),
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        run_log = ServiceRunLog.objects.filter(
+            pk=run_log_id,
+            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+        ).first()
+        if run_log is None:
+            return self.error_response(
+                request,
+                code='PLANNER_RUN_ABORT_NOT_FOUND',
+                detail=f'Khong tim thay run {run_id}',
+                http_status=status.HTTP_404_NOT_FOUND,
+            )
+
+        normalized_status = str(run_log.status or '').lower()
+        if normalized_status not in {'queued', 'running'}:
+            return self.error_response(
+                request,
+                code='PLANNER_RUN_ABORT_CONFLICT',
+                detail=f'Run {run_id} da o trang thai terminal: {run_log.status}',
+                http_status=status.HTTP_409_CONFLICT,
+            )
+
+        if run_log.celery_task_id:
+            try:
+                if normalized_status == 'running':
+                    current_app.control.revoke(run_log.celery_task_id, terminate=True, signal='SIGTERM')
+                else:
+                    current_app.control.revoke(run_log.celery_task_id)
+            except Exception as exc:
+                return self.error_response(
+                    request,
+                    code='PLANNER_RUN_ABORT_REVOKE_FAILED',
+                    detail=f'Khong the revoke task: {exc}',
+                    http_status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        finished_at = timezone.now()
+        run_log.status = 'skipped'
+        run_log.finished_at = finished_at
+        if run_log.started_at is not None:
+            run_log.duration_seconds = max((finished_at - run_log.started_at).total_seconds(), 0.0)
+        existing_output = dict(run_log.output_summary or {})
+        existing_output['cancelled_by_operator'] = True
+        existing_output['cancelled_at'] = finished_at.isoformat()
+        run_log.output_summary = existing_output
+        run_log.error_detail = 'Cancelled by operator via SOC DataOps.'
+        run_log.save(update_fields=['status', 'finished_at', 'duration_seconds', 'output_summary', 'error_detail'])
+
+        return Response({
+            'cancelled': True,
+            'status': run_log.status,
+            'run_id': _format_market_data_run_id(run_log.id),
+            'service_run_log_id': run_log.id,
+            'celery_task_id': run_log.celery_task_id,
+            'ownership': ownership,
+        })
 
 
 @extend_schema_view(

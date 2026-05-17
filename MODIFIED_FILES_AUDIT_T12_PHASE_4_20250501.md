@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-05-17 | DataOps planner abort API + Backfill stop control
+
+### Files changed in this session
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/service_ops/operator_urls.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Bổ sung khả năng dừng run DataOps planner thật sự từ Backfill Center thay vì chỉ hiển thị trạng thái.
+- Đảm bảo backend có endpoint abort chuẩn, revoke Celery task, và khóa run ở trạng thái terminal để tránh chạy lại do race.
+
+### Validation snapshot
+- `get_errors` trên các file thay đổi ✅
+- `npm run build` (frontend) ✅
+- `./start_dev.ps1` smoke checks ✅
+- `scripts/ops/generate_module_tree.py` ✅
+- Focused backend test command bị chặn bởi env guard `DJANGO_ALLOWED_HOSTS` ⚠️
+
+---
+
 ## 2026-05-17 | DataOps Backfill planner compatibility + active run control
 
 ### Files changed in this session

@@ -1073,6 +1073,13 @@ def run_global_market_data_planner(self, service_run_log_id: int) -> dict:
     from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
 
     run_log = ServiceRunLog.objects.select_related('service').get(pk=service_run_log_id)
+    if str(run_log.status or '').lower() in {'success', 'partial', 'failed', 'skipped'}:
+        return {
+            'run_id': f'md-run-{run_log.id}',
+            'status': str(run_log.status or 'skipped').lower(),
+            'summary': dict(run_log.output_summary or {}),
+            'detail': 'Run already in terminal state; task execution skipped.',
+        }
     _mark_run_log_running(run_log, getattr(self.request, 'id', ''))
     try:
         result = execute_global_planner_run(service_run_log_id=run_log.id)

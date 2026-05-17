@@ -1,3 +1,24 @@
+# 2026-05-17 — DataOps Backfill stop-run (abort API) integrated ✅
+
+Status: **✅ planner abort endpoint added** | **✅ Backfill UI now supports stop active run** | **✅ runtime refreshed**
+
+## What changed
+- Added backend endpoint `POST /core/v1/operator/scraping/dataops/planner/run/{run_id}/abort/` (and SOC alias route) to abort queued/running planner runs.
+- Abort flow now validates `run_id`, enforces ownership guard, revokes Celery task id, and sets run log to terminal `skipped` with cancellation metadata.
+- Added safety guard in planner task to skip execution when run is already terminal, preventing cancelled runs from being reopened by race conditions.
+- Wired Backfill Center UI with a real “Dừng run đang chạy” action using the new endpoint.
+- Added i18n keys (vi/en) for stopping states and result messages.
+
+## Validation
+- `get_errors` on touched files → **no errors** ✅
+- `npm run build` (frontend) → **compiled successfully** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+- Focused backend test command for abort endpoint → **blocked by env guard (`DJANGO_ALLOWED_HOSTS`)** ⚠️
+
+## Residual risk
+- Abort for already-running workers is best-effort via Celery terminate signal; hard-stop timing may vary under worker load.
+
 # 2026-05-17 — DataOps Backfill planner compatibility + active run visibility ✅
 
 Status: **✅ backfill dataset mismatch fixed** | **✅ duplicate run spam blocked while active run exists** | **✅ runtime refreshed**

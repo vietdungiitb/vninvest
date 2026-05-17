@@ -1234,6 +1234,40 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
             queue='manual_on_demand',
         )
 
+    @patch('service_ops.views.dataops.current_app.control.revoke')
+    def test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped(self, revoke_mock):
+        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        run_log = ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='queued',
+            celery_task_id='celery-task-queued-123',
+            input_summary={
+                'mode': 'missing_only',
+                'reason': 'operator_manual_run',
+                'execution_mode': 'async',
+                'trigger': 'soc.dataops.planner.run',
+            },
+            output_summary={},
+        )
+
+        response = self.client.post(
+            f'/api/soc/dataops/planner/run/md-run-{run_log.id}/abort/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertTrue(payload['cancelled'])
+        self.assertEqual(payload['status'], 'skipped')
+        self.assertEqual(payload['run_id'], f'md-run-{run_log.id}')
+        revoke_mock.assert_called_once_with('celery-task-queued-123')
+
+        run_log.refresh_from_db()
+        self.assertEqual(run_log.status, 'skipped')
+        self.assertIsNotNone(run_log.finished_at)
+        self.assertTrue(dict(run_log.output_summary or {}).get('cancelled_by_operator'))
+
     def test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides(self):
         GlobalSymbolRegistry.objects.create(
             symbol='VCI',

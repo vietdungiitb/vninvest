@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 11:07:08`
+Generated at: `2026-05-17 11:14:36`
 
 ## Summary
 
 - Total modules: 1211
 - Python modules: 689
 - JS/TS modules: 522
-- Total classes: 1369
-- Total functions: 3255
+- Total classes: 1371
+- Total functions: 3257
 - Total top-level variables: 4806
 
 ## Python Modules
@@ -3594,7 +3594,7 @@ Generated at: `2026-05-17 11:07:08`
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
 
 - Classes:
-  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_registry_summary_endpoint_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_registry_detail_endpoint_returns_demand_sources_coverage_and_queue_tier`, `test_registry_reconcile_preview_flags_drift_without_mutating_registry`, `test_registry_summary_endpoint_returns_foundation_aggregates`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_audit_returns_paginated_change_history`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`, `test_runtime_config_preview_validates_without_saving`
+  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_registry_summary_endpoint_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_registry_detail_endpoint_returns_demand_sources_coverage_and_queue_tier`, `test_registry_reconcile_preview_flags_drift_without_mutating_registry`, `test_registry_summary_endpoint_returns_foundation_aggregates`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_audit_returns_paginated_change_history`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`, `test_runtime_config_preview_validates_without_saving`
   - `MatrixDomainApiTestCase` -> methods: `test_matrix_providers_reflect_active_cycle`, `test_matrix_routes_appear_in_openapi_schema`, `test_start_monitor_and_abort_matrix_cycle`
   - `OverviewDomainApiTestCase` -> methods: `test_overview_routes_appear_in_openapi_schema`, `test_overview_summary_endpoint_returns_grouped_health_snapshot`, `test_service_health_check_endpoint_queues_manual_probe_run_log`
   - `PrefetchDomainApiTestCase` -> methods: `test_apply_prefetch_config_updates_schedule_and_universe`, `test_prefetch_apply_alias_and_ownership_endpoint_match_contract`, `test_prefetch_default_config_response_has_stable_metadata`, `test_prefetch_routes_appear_in_openapi_schema`, `test_prefetch_warm_now_queues_run_log`, `test_profiles_cache_and_purge_endpoints_return_contract`
@@ -3697,9 +3697,11 @@ Generated at: `2026-05-17 11:07:08`
   - `DataOpsCoverageView` -> methods: `get`
   - `DataOpsInventoryView` -> methods: `get`
   - `DataOpsOwnershipSerializer`
+  - `DataOpsPlannerAbortResponseSerializer`
   - `DataOpsPlannerPreviewRequestSerializer`
   - `DataOpsPlannerPreviewResponseSerializer`
   - `DataOpsPlannerPreviewView` -> methods: `post`
+  - `DataOpsPlannerRunAbortView` -> methods: `post`
   - `DataOpsPlannerRunRequestSerializer`
   - `DataOpsPlannerRunResponseSerializer`
   - `DataOpsPlannerRunView` -> methods: `post`
@@ -3724,7 +3726,7 @@ Generated at: `2026-05-17 11:07:08`
   - `DataOpsRuntimeConfigResponseSerializer`
   - `DataOpsRuntimeConfigView` -> methods: `get`, `post`
 - Functions:
-  - `_build_market_data_ownership_payload`, `_build_market_data_run_summary`, `_build_market_data_write_denied_response`, `_format_market_data_run_id`, `_get_reference_trade_date`, `_get_request_datasets`, `_get_request_force_refresh`, `_get_request_symbols`, `_serialize_market_data_run_log`
+  - `_build_market_data_ownership_payload`, `_build_market_data_run_summary`, `_build_market_data_write_denied_response`, `_format_market_data_run_id`, `_get_reference_trade_date`, `_get_request_datasets`, `_get_request_force_refresh`, `_get_request_symbols`, `_parse_market_data_run_id`, `_serialize_market_data_run_log`
 - Top-level variables:
   - `RUN_SUMMARY_KEYS`
 
@@ -5526,7 +5528,7 @@ Generated at: `2026-05-17 11:07:08`
 ### `frontend/src/components/soc/DataOpsPanel.jsx`
 
 - Functions:
-  - `BackfillCenterSection`, `DataInventorySection`, `DataOpsPanel`, `active`, `buildChangeSummary`, `buildImpactWarnings`, `buildPlannerPayload`, `fmtDate`, `fmtNum`, `getMatrixReadyProviderIds`, `getMatrixSelectedProviders`, `getMatrixStatusLabel`, `getMatrixStatusTone`, `getNextActionLabelKey`, `handleApply`, `handleAuditPageChange`, `handleCreateGroup`, `handleDeleteGroup`, `handleMatrixAbortCycle`, `handleMatrixCycleComplete`, `handleMatrixGroupToggle`, `handleMatrixProviderToggle`, `handleMatrixStartCycle`, `handlePlannerPreview`, `handlePlannerRun`, `handlePreview`, `handleRun`, `handleRunLogsPageChange`, `hasTierRuntimeChange`, `loadActiveRun`, `loadData`, `normalizeMatrixSymbolGroups`, `parseSymbolsInput`, `toggleDataset`, `updateManualRunForm`
+  - `BackfillCenterSection`, `DataInventorySection`, `DataOpsPanel`, `active`, `buildChangeSummary`, `buildImpactWarnings`, `buildPlannerPayload`, `fmtDate`, `fmtNum`, `getMatrixReadyProviderIds`, `getMatrixSelectedProviders`, `getMatrixStatusLabel`, `getMatrixStatusTone`, `getNextActionLabelKey`, `handleAbortActiveRun`, `handleApply`, `handleAuditPageChange`, `handleCreateGroup`, `handleDeleteGroup`, `handleMatrixAbortCycle`, `handleMatrixCycleComplete`, `handleMatrixGroupToggle`, `handleMatrixProviderToggle`, `handleMatrixStartCycle`, `handlePlannerPreview`, `handlePlannerRun`, `handlePreview`, `handleRun`, `handleRunLogsPageChange`, `hasTierRuntimeChange`, `loadActiveRun`, `loadData`, `normalizeMatrixSymbolGroups`, `parseSymbolsInput`, `toggleDataset`, `updateManualRunForm`
 - Top-level variables:
   - `ACTIVE_MATRIX_STATUSES`, `BACKFILL_DATASETS`, `BACKFILL_DATASET_FIELDS`, `BACKFILL_SYMBOL_GROUPS`, `CONFIG_LABEL_KEYS`, `COVERAGE_STATE_ORDER`, `DATAOPS_SUB_TABS`, `DATASET_LABEL_KEYS`, `DEFAULT_AUDIT_ENVELOPE`, `DEFAULT_BACKFILL_FORM`, `DEFAULT_MANUAL_RUN_FORM`, `DEFAULT_MATRIX_SYMBOL_GROUPS`, `DEFAULT_RUN_LOGS_ENVELOPE`, `FRESHNESS_LABEL_KEYS`, `GAPS_PAGE_SIZE`, `MANUAL_RUN_DATASET_OPTIONS`, `MATRIX_POLL_MS`, `MATRIX_SYMBOL_GROUPS_OPTIONS`, `NEXT_ACTION_LABEL_KEYS`, `PLANNER_PREVIEW_PAGE_SIZE`, `PLANNER_SUPPORTED_DATASET_KEYS`, `RUN_STATUS_LABEL_KEYS`, `TIER_LABEL_KEYS`, `allGroups`, `appliedPayload`, `auditPayload`, `checked`, `coverageUpdatedAt`, `created`, `currentConfig`, `currentPage`, `data`, `defaults`, `gId`, `groups`, `hasFull`, `hasPartial`, `intervalId`, `isActive`, `isCustom`, `isExchange`, `isSelected`, `keys`, `lastUpdated`, `latestRun`, `maxPage`, `maxRows`, `monitorProviders`, `name`, `nextConfig`, `nextMatrixStatus`, `nextTier`, `nextValidationErrors`, `nextValue`, `normalized`, `ownership`, `parsed`, `payload`, `pct`, `plannerDatasets`, `previewPayload`, `previousTier`, `providerList`, `readyIds`, `result`, `runId`, `runLogsPayload`, `runPayload`, `seenSymbols`, `symbols`, `tierNames`, `tones`, `total`, `totalSymbols`, `uniqueSymbols`, `visibleItems`, `warnings`
 

@@ -112,6 +112,7 @@ urlpatterns = [
     path('dataops/run-logs/', dataops.DataOpsRunLogsView.as_view(), name='soc_dataops_run_logs'),
     path('dataops/planner/preview/', dataops.DataOpsPlannerPreviewView.as_view(), name='soc_dataops_planner_preview'),
     path('dataops/planner/run/', dataops.DataOpsPlannerRunView.as_view(), name='soc_dataops_planner_run'),
+    path('dataops/planner/run/<str:run_id>/abort/', dataops.DataOpsPlannerRunAbortView.as_view(), name='soc_dataops_planner_run_abort'),
     path('dataops/queue-tiers/', dataops.DataOpsQueueTiersView.as_view(), name='soc_dataops_queue_tiers'),
     path('dataops/runtime-config/', dataops.DataOpsRuntimeConfigView.as_view(), name='soc_dataops_runtime_config'),
     path('dataops/runtime-config/preview/', dataops.DataOpsRuntimeConfigPreviewView.as_view(), name='soc_dataops_runtime_config_preview'),

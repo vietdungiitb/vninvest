@@ -224,6 +224,7 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
   const [form, setForm] = useState(DEFAULT_BACKFILL_FORM);
   const [status, setStatus] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
   const [activeRun, setActiveRun] = useState(null);
 
   // Combine static predefined groups + dynamic custom groups
@@ -257,6 +258,7 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
       if (latestRun && ['queued', 'running'].includes(String(latestRun.status || '').toLowerCase())) {
         setActiveRun({
           runId: latestRun.run_id,
+          serviceRunLogId: latestRun.service_run_log_id,
           status: latestRun.status,
           startedAt: latestRun.started_at,
         });
@@ -309,6 +311,7 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
       setStatus(runId ? t('soc.dataops.backfill_queued_with_run', { run_id: runId }) : t('soc.dataops.backfill_queued'));
       setActiveRun({
         runId,
+        serviceRunLogId: result?.service_run_log_id || null,
         status: result?.status || 'queued',
         startedAt: null,
       });
@@ -316,6 +319,24 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
       setStatus(err.message);
     } finally {
       setIsRunning(false);
+    }
+  };
+
+  const handleAbortActiveRun = async () => {
+    if (!activeRun?.runId || !canApply) {
+      return;
+    }
+    try {
+      setIsStopping(true);
+      setStatus(null);
+      const result = await socApi.abortDataOpsPlannerRun(activeRun.runId);
+      setStatus(t('soc.dataops.backfill_stopped_with_run', { run_id: result?.run_id || activeRun.runId }));
+      setActiveRun(null);
+      await loadActiveRun();
+    } catch (err) {
+      setStatus(err.message || t('soc.dataops.backfill_stop_failed'));
+    } finally {
+      setIsStopping(false);
     }
   };
 
@@ -363,7 +384,21 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
             {' · '}
             {t(RUN_STATUS_LABEL_KEYS[String(activeRun.status || '').toLowerCase()] || 'soc.dataops.run_status_unknown')}
           </p>
-          <p className="mt-1 text-amber-300">{t('soc.dataops.backfill_stop_not_supported')}</p>
+          {activeRun?.startedAt && (
+            <p className="mt-1 text-amber-300">
+              {t('soc.dataops.backfill_started_at')}: {new Date(activeRun.startedAt).toLocaleString()}
+            </p>
+          )}
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={handleAbortActiveRun}
+              disabled={isStopping || !canApply}
+              className="rounded bg-rose-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:opacity-50"
+            >
+              {isStopping ? t('soc.dataops.backfill_stopping') : t('soc.dataops.backfill_stop_run')}
+            </button>
+          </div>
         </div>
       )}
 
