@@ -1,5 +1,31 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | /stocks/:symbol full audit + VGC no-data fix + native route cleanup | frontend/backend/docs
+
+## All Modified Files (9 files)
+| File | Change |
+|------|--------|
+| `frontend/src/pages/StockDetail.jsx` | Fixed chart payload mapping to support native envelope field `points` (kept `results` as backward fallback) in both initial fetch and workspace refresh |
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Updated chart existence gate to accept symbols with market data (`DailyPrice`/`IntradayBar`) even when `StockProfile` is missing |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added regressions: chart works when profile is missing but market data exists; unknown symbol still returns 404 |
+| `packages/core/backend/src/market_data/public_urls.py` | Renamed `legacy-*` route names to canonical native `stock-management-*` names to remove architecture ambiguity |
+| `packages/core/backend/src/vninvest_core/compat_views.py` | Removed unused legacy stock-management proxy module |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for /stocks/VGC audit-and-fix slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- DB evidence in running core-api container (`VGC`): `DailyPrice` exists, `IntradayBar` exists, `IntradayTick` exists, while `StockProfile` is missing ✅
+- `docker exec vninvest-dev-core-api sh -lc 'cd /app/src && python manage.py test market_data.tests.test_stock_management_native_api --keepdb'` ✅ (14 tests passed)
+- `Push-Location ./frontend; npm run build; Pop-Location` ✅ build passed
+- `get_errors` on touched files ✅ no errors
+- `./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- `StockManagementOrderFlowView` vẫn đang trả payload tối giản (`order_flow`), chưa đầy đủ fields nâng cao cho `OrderFlowRadarPanel` (`dark_flow`, `tick_rate`, `size_distribution`, ...), nên phần radar metrics có thể còn thấp/ít dữ liệu trên một số mã.
+
 # 2026-05-17 | Stock workspace overview fallback when profile missing | backend/docs
 
 ## All Modified Files (6 files)

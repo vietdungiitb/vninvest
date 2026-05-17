@@ -1,3 +1,23 @@
+# 2026-05-17 — /stocks/VGC full-page audit + no-data fix + native cleanup ✅
+
+Status: **✅ chart no-data root causes fixed** | **✅ native route naming cleaned** | **✅ runtime refreshed**
+
+## What changed
+- Completed full audit for `/stocks/VGC` and confirmed DB data is present even when `StockProfile` is missing.
+- Fixed frontend chart binding in `StockDetail.jsx` to read native chart contract `points` (with backward fallback to `results`).
+- Fixed backend chart availability gate to accept symbols that have market data rows (`DailyPrice`/`IntradayBar`) even when profile row is absent.
+- Added backend regressions for: profile-missing chart success, and strict 404 for symbols absent from all sources.
+- Finished cleanup slice by removing unused `compat_views.py` and renaming `legacy-*` route names in public URLs to canonical native names.
+
+## Validation
+- Focused backend suite: `market_data.tests.test_stock_management_native_api` → **14 passed** ✅
+- Frontend build: `npm run build` → **compiled successfully** ✅
+- Runtime refresh: `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- Module tree: `scripts/ops/generate_module_tree.py` → **1210 modules** ✅
+
+## Residual risk
+- `OrderFlowRadarPanel` still depends on richer order-flow contract than current native `order_flow` payload, so radar detail metrics may remain limited on symbols where SessionFacts does not provide enough enrichment.
+
 # 2026-05-17 — Stock workspace mở lỗi dù DB có dữ liệu: fixed ✅
 
 Status: **✅ workspace overview không còn fail cứng khi thiếu StockProfile** | **✅ runtime refreshed**

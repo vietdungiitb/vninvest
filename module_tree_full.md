@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 11:22:57`
+Generated at: `2026-05-17 11:34:23`
 
 ## Summary
 
-- Total modules: 1211
-- Python modules: 689
+- Total modules: 1210
+- Python modules: 688
 - JS/TS modules: 522
-- Total classes: 1371
-- Total functions: 3257
-- Total top-level variables: 4806
+- Total classes: 1370
+- Total functions: 3258
+- Total top-level variables: 4805
 
 ## Python Modules
 
@@ -3079,7 +3079,7 @@ Generated at: `2026-05-17 11:22:57`
   - `StockManagementTrackedSymbolDetailView` -> methods: `delete`, `patch`
   - `StockManagementTrackedSymbolsView` -> methods: `get`, `post`
 - Functions:
-  - `_aggregate_daily_rows`, `_build_price_change_map`, `_build_profile_map`, `_build_watchlist_membership_payload`, `_compute_chart_technical_payload`, `_compute_rsi14`, `_default_chart_technical_payload`, `_fetch_symbol_snapshot_payload`, `_get_price_alert_or_404_for_user`, `_get_table_column_names`, `_get_tracked_symbol_or_404_for_user`, `_get_watchlist_item_or_404_for_user`, `_get_watchlist_or_404_for_user`, `_group_sort_key`, `_interval_for_timeframe`, `_normalize_timeframe`, `_parse_cooldown_seconds`, `_parse_price_alert_condition`, `_parse_price_alert_target`, `_parse_tracked_symbol_threshold_million`, `_price_alerts_queryset_for_user`, `_resolve_user_tenant`, `_round_or_none`, `_serialize_price_alert_row`, `_serialize_price_point`, `_serialize_stock_management_group`, `_serialize_stock_management_item`, `_serialize_tracked_symbol_row`, `_to_float`, `_to_int`, `_tracked_symbols_queryset_for_user`, `_validate_stock_symbol`, `_watchlist_items_queryset_for_user`, `_watchlists_queryset_for_user`
+  - `_aggregate_daily_rows`, `_build_price_change_map`, `_build_profile_map`, `_build_watchlist_membership_payload`, `_compute_chart_technical_payload`, `_compute_rsi14`, `_default_chart_technical_payload`, `_fetch_symbol_snapshot_payload`, `_get_price_alert_or_404_for_user`, `_get_table_column_names`, `_get_tracked_symbol_or_404_for_user`, `_get_watchlist_item_or_404_for_user`, `_get_watchlist_or_404_for_user`, `_group_sort_key`, `_interval_for_timeframe`, `_normalize_timeframe`, `_parse_cooldown_seconds`, `_parse_price_alert_condition`, `_parse_price_alert_target`, `_parse_tracked_symbol_threshold_million`, `_price_alerts_queryset_for_user`, `_resolve_user_tenant`, `_round_or_none`, `_serialize_price_alert_row`, `_serialize_price_point`, `_serialize_stock_management_group`, `_serialize_stock_management_item`, `_serialize_tracked_symbol_row`, `_symbol_exists_for_stock_chart`, `_to_float`, `_to_int`, `_tracked_symbols_queryset_for_user`, `_validate_stock_symbol`, `_watchlist_items_queryset_for_user`, `_watchlists_queryset_for_user`
 - Top-level variables:
   - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`, `_SYSTEM_DEFAULT_SYMBOL_GROUP_IDS`
 
@@ -3117,7 +3117,7 @@ Generated at: `2026-05-17 11:22:57`
 ### `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
 
 - Classes:
-  - `StockManagementNativeApiTestCase` -> methods: `setUp`, `setUpTestData`, `test_ai_advisory_generate_routes_to_native_manual_trigger`, `test_ai_advisory_session_reads_native_advisory_record`, `test_groups_seed_detail_and_items_are_native`, `test_price_alert_endpoints_are_native`, `test_stock_chart_reads_daily_prices_with_native_envelope`, `test_stock_chart_reads_intraday_bars_from_native_core_tables`, `test_stock_chart_returns_envelope_when_no_native_candles`, `test_stock_overview_maps_native_watchlist_tracking_fields`, `test_stock_overview_prefers_native_tracked_symbol_source_group`, `test_stock_overview_returns_object_envelope_without_snapshot`, `test_stock_overview_works_without_profile_if_daily_price_exists`, `test_stock_search_is_native_and_paginated`, `test_sync_routes_user_scope_through_global_planner`, `test_tracked_symbol_endpoints_are_native`
+  - `StockManagementNativeApiTestCase` -> methods: `setUp`, `setUpTestData`, `test_ai_advisory_generate_routes_to_native_manual_trigger`, `test_ai_advisory_session_reads_native_advisory_record`, `test_groups_seed_detail_and_items_are_native`, `test_price_alert_endpoints_are_native`, `test_stock_chart_reads_daily_prices_with_native_envelope`, `test_stock_chart_reads_intraday_bars_from_native_core_tables`, `test_stock_chart_returns_envelope_when_no_native_candles`, `test_stock_chart_returns_not_found_when_symbol_absent_from_all_sources`, `test_stock_chart_uses_market_data_even_when_profile_missing`, `test_stock_overview_maps_native_watchlist_tracking_fields`, `test_stock_overview_prefers_native_tracked_symbol_source_group`, `test_stock_overview_returns_object_envelope_without_snapshot`, `test_stock_overview_works_without_profile_if_daily_price_exists`, `test_stock_search_is_native_and_paginated`, `test_sync_routes_user_scope_through_global_planner`, `test_tracked_symbol_endpoints_are_native`
 - Top-level variables:
   - `User`
 
@@ -4454,13 +4454,6 @@ Generated at: `2026-05-17 11:22:57`
 
 - Top-level variables:
   - `app`
-
-### `packages/core/backend/src/vninvest_core/compat_views.py`
-
-- Classes:
-  - `LegacyStockManagementProxyView` -> methods: `forward_request`, `get`, `get_legacy_backend_url`
-- Top-level variables:
-  - `logger`
 
 ### `packages/core/backend/src/vninvest_core/contracts/__init__.py`
 

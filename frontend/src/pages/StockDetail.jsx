@@ -1757,7 +1757,7 @@ export default function StockDetail() {
       try {
         const response = await getStockPriceChart(normalizedSymbol, activePeriod, activeTimeframe);
         if (!cancelled) {
-          setChartData(response.data.results || []);
+          setChartData(response.data.points || response.data.results || []);
           setTechnical(response.data.technical || null);
         }
       } catch (err) {
@@ -2049,7 +2049,7 @@ export default function StockDetail() {
       getStockPriceChart(normalizedSymbol, activePeriod, activeTimeframe),
     ]);
     setOverview(overviewResponse.data);
-    setChartData(chartResponse.data.results || []);
+    setChartData(chartResponse.data.points || chartResponse.data.results || []);
     setTechnical(chartResponse.data.technical || null);
   };
 

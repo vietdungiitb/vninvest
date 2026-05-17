@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-05-17 | /stocks/VGC full audit + chart contract fix + native cleanup
+
+### Files changed in this session
+- `frontend/src/pages/StockDetail.jsx`
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `packages/core/backend/src/market_data/public_urls.py`
+- `packages/core/backend/src/vninvest_core/compat_views.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Audit toàn bộ trang `/stocks/VGC` và xử lý lỗi “không có dữ liệu” khi DB đã có dữ liệu thị trường.
+- Dọn dẹp naming/bridge legacy để tránh gây nhầm lẫn kiến trúc native hiện tại.
+
+### Validation snapshot
+- DB check on running core-api: `VGC` có `DailyPrice/IntradayBar/IntradayTick`, thiếu `StockProfile` ✅
+- `python manage.py test market_data.tests.test_stock_management_native_api --keepdb` ✅ (14 tests)
+- `npm run build` (frontend) ✅
+- `./start_dev.ps1` smoke checks ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | Stock workspace overview fallback when profile missing
 
 ### Files changed in this session

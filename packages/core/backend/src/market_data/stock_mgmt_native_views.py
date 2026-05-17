@@ -708,6 +708,14 @@ def _fetch_symbol_snapshot_payload(symbol):
     return queryset.values(*selected_fields).first()
 
 
+def _symbol_exists_for_stock_chart(symbol):
+    return (
+        StockProfile.objects.filter(symbol=symbol).exists()
+        or DailyPrice.objects.filter(symbol=symbol).exists()
+        or IntradayBar.objects.filter(symbol=symbol).exists()
+    )
+
+
 # ---------------------------------------------------------------------------
 # Stock data views
 # ---------------------------------------------------------------------------
@@ -969,7 +977,7 @@ class StockManagementChartView(APIView):
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        if not StockProfile.objects.filter(symbol=symbol).exists():
+        if not _symbol_exists_for_stock_chart(symbol):
             raise NotFound(f'Stock not found: {symbol}')
 
         try:

@@ -236,6 +236,32 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertEqual(payload['points'][-1]['close'], 18.3)
         self.assertIn('latest_close', payload['technical'])
 
+    def test_stock_chart_uses_market_data_even_when_profile_missing(self):
+        today = timezone.localdate()
+        DailyPrice.objects.create(
+            symbol='VGC',
+            date=today,
+            open=43.5,
+            high=44.1,
+            low=43.2,
+            close=43.9,
+            volume=9000,
+            source='core',
+        )
+
+        response = self.client.get('/api/stock-management/stocks/VGC/chart/?timeframe=D&days=30')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'VGC')
+        self.assertEqual(len(payload['points']), 1)
+        self.assertEqual(payload['points'][0]['close'], 43.9)
+
+    def test_stock_chart_returns_not_found_when_symbol_absent_from_all_sources(self):
+        response = self.client.get('/api/stock-management/stocks/ZZZZ/chart/?timeframe=D&days=30')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     @patch('market_data.vnbroker_adapter.fetch_intraday_tape', side_effect=AssertionError('provider path must not run in advisory request path'))
     @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', side_effect=AssertionError('provider path must not run in advisory request path'))
     @patch('market_data.vnbroker_adapter.fetch_daily_history', side_effect=AssertionError('provider path must not run in advisory request path'))
