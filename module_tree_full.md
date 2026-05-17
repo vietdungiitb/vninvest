@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 11:45:52`
+Generated at: `2026-05-17 11:52:43`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-17 11:45:52`
 - Python modules: 688
 - JS/TS modules: 522
 - Total classes: 1370
-- Total functions: 3263
-- Total top-level variables: 4805
+- Total functions: 3264
+- Total top-level variables: 4807
 
 ## Python Modules
 
@@ -2966,9 +2966,9 @@ Generated at: `2026-05-17 11:45:52`
 ### `packages/core/backend/src/market_data/global_symbol_coverage.py`
 
 - Functions:
-  - `_build_daily_prices_payload`, `_build_intraday_payload`, `_build_missing_ranges`, `_build_requested_window`, `_build_session_facts_payload`, `_build_snapshot_payload`, `_normalize_dt`, `_normalize_requested_datasets`, `_normalize_requested_symbols`, `_resolve_daily_price_state`, `_resolve_intraday_state`, `_resolve_next_action`, `_resolve_planner_reason`, `_resolve_registry`, `_resolve_session_facts_state`, `_resolve_snapshot_state`, `_should_plan_dataset`, `_trade_date_to_datetime`, `_upsert_coverage_row`, `build_global_coverage_summary`, `build_global_planner_preview`, `build_symbol_coverage_detail`, `refresh_global_symbol_coverage`
+  - `_build_daily_prices_payload`, `_build_intraday_payload`, `_build_missing_ranges`, `_build_requested_window`, `_build_session_facts_payload`, `_build_snapshot_payload`, `_normalize_dt`, `_normalize_requested_datasets`, `_normalize_requested_symbols`, `_resolve_daily_price_bootstrap_days`, `_resolve_daily_price_state`, `_resolve_intraday_state`, `_resolve_next_action`, `_resolve_planner_reason`, `_resolve_registry`, `_resolve_session_facts_state`, `_resolve_snapshot_state`, `_should_plan_dataset`, `_trade_date_to_datetime`, `_upsert_coverage_row`, `build_global_coverage_summary`, `build_global_planner_preview`, `build_symbol_coverage_detail`, `refresh_global_symbol_coverage`
 - Top-level variables:
-  - `DATASET_ORDER`, `FRESHNESS_ORDER`, `PLANNER_PROVIDER_CHAIN_BY_DATASET`, `PLANNER_SUPPORTED_MODES`, `TOP_GAP_ORDER`, `_DAILY_PRICE_FRESH_DAYS`, `_DAILY_PRICE_WARM_DAYS`, `_INTRADAY_FRESH_WINDOW`, `_INTRADAY_WARM_WINDOW`, `_NEXT_ACTION_BY_DATASET`, `_SESSION_FACTS_FRESH_WINDOW`, `_SESSION_FACTS_WARM_WINDOW`, `_SNAPSHOT_FRESH_WINDOW`, `_SNAPSHOT_WARM_WINDOW`
+  - `DATASET_ORDER`, `FRESHNESS_ORDER`, `PLANNER_PROVIDER_CHAIN_BY_DATASET`, `PLANNER_SUPPORTED_MODES`, `TOP_GAP_ORDER`, `_DAILY_PRICE_FRESH_DAYS`, `_DAILY_PRICE_WARM_DAYS`, `_DEFAULT_DAILY_PRICE_BOOTSTRAP_DAYS`, `_INTRADAY_FRESH_WINDOW`, `_INTRADAY_WARM_WINDOW`, `_MAX_DAILY_PRICE_BOOTSTRAP_DAYS`, `_NEXT_ACTION_BY_DATASET`, `_SESSION_FACTS_FRESH_WINDOW`, `_SESSION_FACTS_WARM_WINDOW`, `_SNAPSHOT_FRESH_WINDOW`, `_SNAPSHOT_WARM_WINDOW`
 
 ### `packages/core/backend/src/market_data/global_symbol_planner.py`
 
@@ -3086,7 +3086,7 @@ Generated at: `2026-05-17 11:45:52`
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
 
 - Classes:
-  - `GlobalSymbolCoverageServiceTestCase` -> methods: `_ensure_registry`, `test_build_global_coverage_summary_aggregates_by_dataset`, `test_build_global_planner_preview_requires_explicit_force_refresh`, `test_build_global_planner_preview_uses_missing_only_policy`, `test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm`, `test_refresh_global_symbol_coverage_marks_stale_and_missing_datasets`, `test_refresh_global_symbol_coverage_populates_all_dataset_rows`
+  - `GlobalSymbolCoverageServiceTestCase` -> methods: `_ensure_registry`, `test_build_global_coverage_summary_aggregates_by_dataset`, `test_build_global_planner_preview_bootstraps_missing_daily_prices_with_days_window`, `test_build_global_planner_preview_requires_explicit_force_refresh`, `test_build_global_planner_preview_uses_missing_only_policy`, `test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm`, `test_refresh_global_symbol_coverage_marks_stale_and_missing_datasets`, `test_refresh_global_symbol_coverage_populates_all_dataset_rows`
 
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
 

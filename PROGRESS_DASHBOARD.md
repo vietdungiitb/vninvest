@@ -1,3 +1,21 @@
+# 2026-05-17 — Planner auto-bootstrap daily candles for sparse symbols ✅
+
+Status: **✅ planner now requests deep daily window when coverage is missing** | **✅ regression test added** | **✅ runtime refreshed**
+
+## What changed
+- Updated global planner preview logic so `daily_prices` no longer defaults to single-day `trade_date` when a symbol has missing daily coverage.
+- New behavior emits `requested_window: { days: N }` using `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS` (default `365`, cap `3650`) for bootstrap scenarios.
+- This allows existing queue-tier prefetch/planner flow to auto-backfill candle history for symbols that were previously hydrated too shallowly.
+- Added regression test to lock the days-window bootstrap contract.
+
+## Validation
+- `manage.py test market_data.tests.test_global_symbol_coverage --keepdb` (with `DJANGO_DEBUG=true`) → **7 passed** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **1210 modules** ✅
+
+## Residual risk
+- Intraday candle density can still be limited by current intraday tape hydration depth (`warm_intraday_universe`), which is outside this daily bootstrap slice.
+
 # 2026-05-17 — Native order-flow contract nâng cấp cho Radar ✅
 
 Status: **✅ order-flow native trả đủ Radar contract** | **✅ regression tests added** | **✅ runtime refreshed**

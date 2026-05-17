@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from market_data.global_symbol_coverage import build_global_coverage_summary, build_global_planner_preview, build_symbol_coverage_detail, refresh_global_symbol_coverage
@@ -321,6 +321,29 @@ class GlobalSymbolCoverageServiceTestCase(TestCase):
         self.assertTrue(item['overwrite_existing'])
         self.assertEqual(item['coverage_before'], 'fresh')
         self.assertEqual(item['requested_window'], {'trade_date': '2026-05-15'})
+
+    @override_settings(GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS=540)
+    def test_build_global_planner_preview_bootstraps_missing_daily_prices_with_days_window(self):
+        today = date(2026, 5, 15)
+        self._ensure_registry('VGC')
+
+        preview = build_global_planner_preview(
+            symbols=['VGC'],
+            datasets=['daily_prices'],
+            mode='missing_only',
+            force_refresh=False,
+            reason='queue_tier_scheduler:hot_user_demand',
+            reference_trade_date=today,
+        )
+
+        self.assertEqual(preview['summary']['planned_items'], 1)
+        item = preview['items'][0]
+        self.assertEqual(item['symbol'], 'VGC')
+        self.assertEqual(item['dataset'], 'daily_prices')
+        self.assertEqual(item['reason'], 'missing')
+        self.assertEqual(item['coverage_before'], 'missing')
+        self.assertEqual(item['requested_window'], {'days': 540})
+        self.assertFalse(item['overwrite_existing'])
 
     def test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm(self):
         today = date(2026, 5, 15)

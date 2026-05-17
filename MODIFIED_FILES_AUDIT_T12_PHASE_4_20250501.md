@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-05-17 | Planner auto-bootstrap daily candles for sparse symbols
+
+### Files changed in this session
+- `packages/core/backend/src/market_data/global_symbol_coverage.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sửa nghẽn planner khiến symbol thiếu coverage daily chỉ nạp `trade_date` (quá nông), dẫn tới chart nến chỉ có vài cột.
+- Bật cơ chế bootstrap tự động theo cửa sổ ngày lớn (`days`) trong chính flow planner/prefetch hiện có để backfill nến daily đầy đủ hơn.
+
+### Validation snapshot
+- `manage.py test market_data.tests.test_global_symbol_coverage --keepdb` (with `DJANGO_DEBUG=true`) ✅ (7 tests)
+- `./start_dev.ps1` smoke checks ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | Native order-flow contract upgrade for StockDetail Radar
 
 ### Files changed in this session

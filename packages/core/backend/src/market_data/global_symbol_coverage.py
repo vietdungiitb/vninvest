@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Max, Min
 from django.utils import timezone
@@ -50,6 +51,8 @@ _SESSION_FACTS_FRESH_WINDOW = timedelta(minutes=30)
 _SESSION_FACTS_WARM_WINDOW = timedelta(hours=2)
 _DAILY_PRICE_FRESH_DAYS = 1
 _DAILY_PRICE_WARM_DAYS = 3
+_DEFAULT_DAILY_PRICE_BOOTSTRAP_DAYS = 365
+_MAX_DAILY_PRICE_BOOTSTRAP_DAYS = 3650
 _NEXT_ACTION_BY_DATASET = {
     GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES: {
         'missing': 'hydrate_daily_prices',
@@ -82,6 +85,19 @@ _NEXT_ACTION_BY_DATASET = {
         'error': 'investigate_session_facts',
     },
 }
+
+
+def _resolve_daily_price_bootstrap_days() -> int:
+    configured_days = getattr(
+        settings,
+        'GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS',
+        _DEFAULT_DAILY_PRICE_BOOTSTRAP_DAYS,
+    )
+    try:
+        normalized_days = int(configured_days)
+    except (TypeError, ValueError):
+        normalized_days = _DEFAULT_DAILY_PRICE_BOOTSTRAP_DAYS
+    return max(min(normalized_days, _MAX_DAILY_PRICE_BOOTSTRAP_DAYS), 1)
 
 
 def _resolve_registry(symbol_or_registry: str | GlobalSymbolRegistry) -> GlobalSymbolRegistry:
@@ -259,6 +275,9 @@ def _build_requested_window(
         return {'trade_date': reference_trade_date_str}
 
     if dataset == GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES:
+        if coverage_row is None or coverage_row.latest_complete_trade_date is None:
+            return {'days': _resolve_daily_price_bootstrap_days()}
+
         missing_ranges = list((coverage_row.missing_ranges if coverage_row is not None else []) or [])
         if missing_ranges:
             first_range = missing_ranges[0]

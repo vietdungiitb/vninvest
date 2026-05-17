@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | Global market data planner daily bootstrap window for sparse candles | backend/docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/global_symbol_coverage.py` | Updated daily planner requested-window semantics: when coverage is missing (or latest daily trade date is missing), planner now emits a deep bootstrap window using `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS` (default `365`, max `3650`) instead of a single `trade_date` fetch |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py` | Added regression test to lock bootstrap days-window behavior for missing daily coverage |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for candle-backfill planner slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test market_data.tests.test_global_symbol_coverage --keepdb` ✅ (7 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+
+## Residual risk
+- This slice deepens daily-candle bootstrap for missing-coverage symbols through the existing planner/prefetch path; intraday bar depth remains governed by `warm_intraday_universe` tape hydration parameters and may still look sparse on some symbols until a dedicated intraday-depth slice is applied.
+
 # 2026-05-17 | Native order-flow contract upgrade for StockDetail Radar | backend/docs
 
 ## All Modified Files (6 files)
