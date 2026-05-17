@@ -40,6 +40,11 @@ Dam bao CPS implementation:
 - [ ] module tree regenerated
 - [ ] audit/progress/modified-files docs updated
 
+### F. Slice completion gate (mandatory before moving next)
+- [ ] Taskboard status, tech spec, implementation plan da doi chieu va khong conflict
+- [ ] Evidence template du command + output + residual risk
+- [ ] Commit and push dev cho slice hien tai da hoan tat
+
 ---
 
 ## 3. Test categories bat buoc
@@ -59,3 +64,4 @@ Dam bao CPS implementation:
 2. queue-tier scheduler khong co quota gate.
 3. provider bucket parallel bi bypass.
 4. khong co evidence shadow/parity cho giai doan cutover.
+5. chuyen sang slice tiep theo khi chua pass slice completion gate.

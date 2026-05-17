@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-05-17 | CPS P01 - daily bootstrap policy lock
+
+### Files changed in this session
+- `packages/core/backend/src/vninvest_core/settings.py`
+- `packages/core/backend/src/market_data/global_symbol_coverage.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
+- `docs/IMPLEMENTATION_PLAN_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_SELF_AUDIT_AND_TEST_PROTOCOL_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Khoa policy bootstrap daily vao settings voi default/min/max va clamp.
+- Khoa gate bat buoc: sau moi slice phai pass test + audit checklist + doi chieu tai lieu day du roi moi duoc tu dong qua slice tiep theo.
+
+### Validation snapshot
+- `manage.py test market_data.tests.test_global_symbol_coverage --keepdb` (with `DJANGO_DEBUG=true`) ✅ (9 tests)
+- `./start_dev.ps1` smoke checks ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | CPS market-data backfill handoff doc-pack
 
 ### Files changed in this session

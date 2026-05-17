@@ -1,3 +1,20 @@
+# 2026-05-17 — CPS P01 complete: daily bootstrap policy lock ✅
+
+Status: **✅ settings policy centralized** | **✅ bootstrap bounds enforced** | **✅ regression + runtime validation passed**
+
+## What changed
+- Centralized daily bootstrap policy in core settings via `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS` with explicit `default/min/max` constants.
+- Updated planner coverage resolver to consume policy bounds from settings instead of local hardcoded constants.
+- Added regression tests to lock both boundary behaviors: clamp to max and fallback when setting value is invalid.
+
+## Validation
+- `manage.py test market_data.tests.test_global_symbol_coverage --keepdb` (with `DJANGO_DEBUG=true`) → **9 passed** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **1210 modules** ✅
+
+## Residual risk
+- CPS queue-tier quota controls and intraday tier-depth policy are tracked in upcoming tasks (P03, P05).
+
 # 2026-05-17 — CPS market-data backfill handoff doc-pack complete ✅
 
 Status: **✅ full handoff package created** | **✅ taskboard/checklist/frontend/backend designs included** | **✅ AGENTS read-first registration completed**

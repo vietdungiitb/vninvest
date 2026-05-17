@@ -166,7 +166,20 @@ P01 Daily bootstrap policy lock
 
 ---
 
-## 6. Risk and mitigation
+## 6. Mandatory slice-exit gate (auto progression rule)
+
+Moi slice Pxx chi duoc chuyen sang slice tiep theo khi da PASS day du 6 buoc sau:
+
+1. Focused tests PASS cho pham vi slice.
+2. Runtime refresh PASS qua ./start_dev.ps1 (neu slice co thay doi runtime/code).
+3. Checklist doi chieu tai lieu PASS (Taskboard + Tech Spec + Self Audit protocol).
+4. Evidence template cho slice duoc dien day du (commands, output, residual risk).
+5. Governance artifacts da cap nhat (ledger/progress/modified-files + module tree neu co source change).
+6. Commit/push dev cho slice hien tai da hoan tat.
+
+Khong dat du 6 buoc tren thi status slice phai giu IN PROGRESS/BLOCKED, cam chuyen tiep.
+
+## 7. Risk and mitigation
 
 | Risk | Muc do | Mitigation |
 |---|---|---|

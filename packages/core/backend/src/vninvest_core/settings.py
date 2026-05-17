@@ -227,6 +227,24 @@ if not DEBUG and not CSRF_TRUSTED_ORIGINS:
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
 
+# CPS-P01: Global market-data daily bootstrap policy for missing coverage symbols.
+GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT = 365
+GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MIN = 1
+GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MAX = 3650
+try:
+    _daily_bootstrap_days_raw = int(
+        os.environ.get(
+            'GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS',
+            str(GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT),
+        )
+    )
+except (TypeError, ValueError):
+    _daily_bootstrap_days_raw = GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT
+GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS = max(
+    min(_daily_bootstrap_days_raw, GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MAX),
+    GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MIN,
+)
+
 # SM-P2.4: Django cache layer using Redis.
 CACHES = {
     'default': {

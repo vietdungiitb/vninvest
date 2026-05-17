@@ -51,8 +51,6 @@ _SESSION_FACTS_FRESH_WINDOW = timedelta(minutes=30)
 _SESSION_FACTS_WARM_WINDOW = timedelta(hours=2)
 _DAILY_PRICE_FRESH_DAYS = 1
 _DAILY_PRICE_WARM_DAYS = 3
-_DEFAULT_DAILY_PRICE_BOOTSTRAP_DAYS = 365
-_MAX_DAILY_PRICE_BOOTSTRAP_DAYS = 3650
 _NEXT_ACTION_BY_DATASET = {
     GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES: {
         'missing': 'hydrate_daily_prices',
@@ -88,16 +86,19 @@ _NEXT_ACTION_BY_DATASET = {
 
 
 def _resolve_daily_price_bootstrap_days() -> int:
+    default_days = getattr(settings, 'GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT', 365)
+    min_days = getattr(settings, 'GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MIN', 1)
+    max_days = getattr(settings, 'GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MAX', 3650)
     configured_days = getattr(
         settings,
         'GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS',
-        _DEFAULT_DAILY_PRICE_BOOTSTRAP_DAYS,
+        default_days,
     )
     try:
         normalized_days = int(configured_days)
     except (TypeError, ValueError):
-        normalized_days = _DEFAULT_DAILY_PRICE_BOOTSTRAP_DAYS
-    return max(min(normalized_days, _MAX_DAILY_PRICE_BOOTSTRAP_DAYS), 1)
+        normalized_days = int(default_days)
+    return max(min(normalized_days, int(max_days)), int(min_days))
 
 
 def _resolve_registry(symbol_or_registry: str | GlobalSymbolRegistry) -> GlobalSymbolRegistry:

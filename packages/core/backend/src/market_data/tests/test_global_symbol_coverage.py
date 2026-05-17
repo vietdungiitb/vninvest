@@ -345,6 +345,46 @@ class GlobalSymbolCoverageServiceTestCase(TestCase):
         self.assertEqual(item['requested_window'], {'days': 540})
         self.assertFalse(item['overwrite_existing'])
 
+    @override_settings(
+        GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS=9999,
+        GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MAX=3650,
+    )
+    def test_build_global_planner_preview_clamps_daily_bootstrap_to_max(self):
+        today = date(2026, 5, 15)
+        self._ensure_registry('SSI')
+
+        preview = build_global_planner_preview(
+            symbols=['SSI'],
+            datasets=['daily_prices'],
+            mode='missing_only',
+            force_refresh=False,
+            reason='queue_tier_scheduler:recovery_backlog',
+            reference_trade_date=today,
+        )
+
+        self.assertEqual(preview['summary']['planned_items'], 1)
+        self.assertEqual(preview['items'][0]['requested_window'], {'days': 3650})
+
+    @override_settings(
+        GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS='invalid-value',
+        GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT=400,
+    )
+    def test_build_global_planner_preview_falls_back_to_default_for_invalid_bootstrap_setting(self):
+        today = date(2026, 5, 15)
+        self._ensure_registry('HCM')
+
+        preview = build_global_planner_preview(
+            symbols=['HCM'],
+            datasets=['daily_prices'],
+            mode='missing_only',
+            force_refresh=False,
+            reason='queue_tier_scheduler:warm_liquid_market',
+            reference_trade_date=today,
+        )
+
+        self.assertEqual(preview['summary']['planned_items'], 1)
+        self.assertEqual(preview['items'][0]['requested_window'], {'days': 400})
+
     def test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm(self):
         today = date(2026, 5, 15)
         verified_at = timezone.make_aware(datetime.combine(today, time(hour=15, minute=0)))

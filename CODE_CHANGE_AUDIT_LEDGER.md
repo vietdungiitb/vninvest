@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P01 - lock daily bootstrap policy in settings | backend/docs
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/vninvest_core/settings.py` | Added centralized CPS policy constants and env-clamped setting for `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS` (`default/min/max`) |
+| `packages/core/backend/src/market_data/global_symbol_coverage.py` | Updated bootstrap resolver to consume policy defaults/bounds from settings instead of hardcoded values |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py` | Added regressions for max-clamp behavior and invalid-setting fallback to default |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P01 |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test market_data.tests.test_global_symbol_coverage --keepdb` ✅ (9 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- P01 locks policy and bounds only; scheduler quota tuning (P03) and intraday depth tier policy (P05) are still pending for full CPS rollout.
+
 # 2026-05-17 | CPS market-data backfill handoff doc-pack complete | docs/governance
 
 ## All Modified Files (19 files)

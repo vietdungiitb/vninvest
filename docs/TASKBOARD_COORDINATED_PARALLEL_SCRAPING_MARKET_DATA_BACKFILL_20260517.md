@@ -9,7 +9,7 @@
 | Task | Ten | Status | Owner | Note |
 |---|---|---|---|---|
 | P00 | Doc-pack khoi tao | DONE | Copilot | Bo tai lieu ban giao day du duoc tao |
-| P01 | Daily bootstrap policy lock | TODO | Core Backend | Khoa setting + clamp + test |
+| P01 | Daily bootstrap policy lock | DONE | Core Backend | Da khoa setting default/min/max, test bien pass, runtime smoke pass |
 | P02 | Planner requested_window hardening | TODO | Core Backend | Hoan tat semantics missing/stale/force |
 | P03 | Queue-tier quota scheduler | TODO | Service Ops | Them cap dispatch per tier |
 | P04 | Daily provider bucket tuning | TODO | Data Ingest | Toi uu throughput/fail-rate |
@@ -47,3 +47,15 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 2. Validation commands and outputs.
 3. Residual risk note.
 4. Governance updates.
+
+---
+
+## Mandatory slice-exit checklist (must pass before auto-next)
+
+- [ ] Focused tests PASS for current slice
+- [ ] start_dev runtime refresh PASS (for runtime/code slices)
+- [ ] Self-audit checklist PASS and documented
+- [ ] Taskboard/plan/spec cross-check PASS
+- [ ] Evidence template updated
+- [ ] Governance docs updated
+- [ ] Commit and push dev completed
