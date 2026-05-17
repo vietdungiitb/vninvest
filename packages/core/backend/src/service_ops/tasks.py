@@ -588,9 +588,6 @@ def run_market_data_queue_tier_scheduler(self):
         scheduler_task_id=getattr(self.request, 'id', ''),
         parity_snapshot=parity_snapshot,
     )
-    parity_snapshot_retention = cleanup_market_data_parity_snapshots(
-        retention_days=runtime_config.parity_snapshot_retention_days,
-    )
 
     dispatches = []
     skipped_tiers = []
@@ -699,5 +696,53 @@ def run_market_data_queue_tier_scheduler(self):
         'skipped_tiers': skipped_tiers,
         'skipped_by_quota': skipped_by_quota_total,
         'scheduler_task_id': getattr(self.request, 'id', ''),
-        'parity_snapshot_retention': parity_snapshot_retention,
     }
+
+
+@shared_task(bind=True, name='service_ops.cleanup_market_data_parity_snapshots', queue='manual_on_demand')
+def cleanup_market_data_parity_snapshots_task(self):
+    ensure_service_registry()
+    matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+    runtime_config, _ = get_market_data_runtime_config()
+    task_id = getattr(self.request, 'id', '')
+
+    run_log = ServiceRunLog.objects.create(
+        service=matrix_service,
+        status='queued',
+        input_summary={
+            'trigger': 'market_data.parity_snapshot_retention',
+            'scheduler_task_id': task_id,
+            'retention_days': runtime_config.parity_snapshot_retention_days,
+        },
+        output_summary={},
+    )
+
+    _mark_run_log_running(run_log, task_id)
+    try:
+        retention_summary = cleanup_market_data_parity_snapshots(
+            retention_days=runtime_config.parity_snapshot_retention_days,
+        )
+        output_summary = {
+            **retention_summary,
+            'run_log_id': run_log.id,
+            'task_name': 'service_ops.cleanup_market_data_parity_snapshots',
+        }
+        _mark_run_log_finished(
+            run_log,
+            status_value='success',
+            output_summary=output_summary,
+        )
+        return output_summary
+    except Exception as exc:
+        logger.exception('cleanup_market_data_parity_snapshots_task failed')
+        _mark_run_log_finished(
+            run_log,
+            status_value='failed',
+            error_detail=str(exc),
+            output_summary={
+                'run_log_id': run_log.id,
+                'task_name': 'service_ops.cleanup_market_data_parity_snapshots',
+                'retention_days': runtime_config.parity_snapshot_retention_days,
+            },
+        )
+        raise

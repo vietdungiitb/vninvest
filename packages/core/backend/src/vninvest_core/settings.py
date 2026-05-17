@@ -348,6 +348,16 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 30.0,
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('market-data-queue-tier-scheduler-30s', 'manual_on_demand')},
     },
+    'market-data-parity-snapshot-retention-cleanup-hourly': {
+        'task': 'service_ops.cleanup_market_data_parity_snapshots',
+        'schedule': 3600.0,
+        'options': {
+            'queue': SCHEDULER_QUEUE_MAP.get(
+                'market-data-parity-snapshot-retention-cleanup-hourly',
+                'manual_on_demand',
+            )
+        },
+    },
 
     # === C1: Native ingest — price board every 60s ===
     # Replaces legacy-worker as sole SymbolSnapshot update source.

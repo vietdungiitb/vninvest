@@ -24,6 +24,7 @@
 | P13 | Persisted parity snapshots | DONE | Core Backend | Scheduler ghi immutable parity_snapshot vao metadata planner-run; observability history uu tien doc persisted snapshots thay vi rolling-only |
 | P14 | Append-only parity snapshot store | DONE | Core Backend | Tach persistence parity history sang bang append-only rieng, observability uu tien doc bang moi va fallback metadata de giu backward compatibility |
 | P15 | Parity snapshot retention cleanup | DONE | Core Backend | Bo sung retention policy cho parity snapshot store, scheduler tu dong cleanup stale rows theo runtime config |
+| P16 | Beat-driven retention task | DONE | Core Backend | Tach cleanup thanh periodic task doc lap qua beat, bo sung run-log telemetry retention health |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
@@ -81,6 +82,11 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] Bo sung runtime config `parity_snapshot_retention_days` cho market-data SSOT.
 - [x] Queue-tier scheduler auto cleanup parity snapshot rows qua retention helper.
 - [x] Regression tests khoa config validation, cleanup execution, va API contract field moi.
+
+### Phase K - Beat-driven retention cleanup (P16)
+- [x] Tach cleanup khoi queue-tier scheduler, tao task `service_ops.cleanup_market_data_parity_snapshots` doc lap.
+- [x] Dang ky periodic schedule beat (`hourly`) + queue policy mapping cho task moi.
+- [x] Bo sung telemetry retention run-log (`total_rows_before`, `retained_rows`, `deleted_rows`) va regression tests.
 
 ---
 

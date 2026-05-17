@@ -21,6 +21,7 @@ from service_ops.models import ServiceConfig, ServiceHealth, ServiceRunLog
 from service_ops.models import MarketDataParitySnapshot
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 from service_ops.tasks import (
+    cleanup_market_data_parity_snapshots_task,
     create_signal_job_run_log,
     health_check_all_services,
     run_market_data_queue_tier_scheduler,
@@ -428,7 +429,7 @@ class ServiceOpsTasksTestCase(TestCase):
 
     @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
     @patch('service_ops.tasks.create_global_planner_run')
-    def test_market_data_queue_tier_scheduler_applies_parity_snapshot_retention_policy(self, planner_run_mock, fetch_listing_symbols_mock):
+    def test_cleanup_market_data_parity_snapshots_task_applies_retention_policy(self, planner_run_mock, fetch_listing_symbols_mock):
         old_time = timezone.now() - timedelta(days=3)
         matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
         MarketDataParitySnapshot.objects.bulk_create([
@@ -483,15 +484,24 @@ class ServiceOpsTasksTestCase(TestCase):
             'status': 'queued',
         }
 
-        result = run_market_data_queue_tier_scheduler.run()
+        scheduler_result = run_market_data_queue_tier_scheduler.run()
+        result = cleanup_market_data_parity_snapshots_task.run()
 
-        self.assertEqual(result['dispatched_runs'], 1)
-        self.assertIn('parity_snapshot_retention', result)
-        self.assertEqual(result['parity_snapshot_retention']['retention_days'], 1)
-        self.assertGreaterEqual(result['parity_snapshot_retention']['deleted_rows'], 2)
+        self.assertEqual(scheduler_result['dispatched_runs'], 1)
+        self.assertEqual(result['retention_days'], 1)
+        self.assertGreaterEqual(result['deleted_rows'], 2)
+        self.assertIn('retained_rows', result)
+        self.assertIn('total_rows_before', result)
         self.assertFalse(
             MarketDataParitySnapshot.objects.filter(
                 scheduler_task_id__in=['legacy-retention-24h', 'legacy-retention-72h']
+            ).exists()
+        )
+        self.assertTrue(
+            ServiceRunLog.objects.filter(
+                service=matrix_service,
+                input_summary__trigger='market_data.parity_snapshot_retention',
+                status='success',
             ).exists()
         )
 

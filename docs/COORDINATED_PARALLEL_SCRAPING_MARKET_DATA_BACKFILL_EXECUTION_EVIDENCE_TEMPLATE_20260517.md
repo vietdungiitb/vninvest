@@ -49,6 +49,66 @@
 
 ---
 
+## Latest Executed Slice Snapshot (P16)
+
+## Slice metadata
+- Slice ID: P16
+- Date: 2026-05-17
+- Owner: Copilot
+- Related tasks (Pxx): P16
+
+## Objective
+- Tach cleanup parity snapshot retention thanh periodic task doc lap (beat-driven) va bo sung telemetry retention health chi tiet.
+
+## Files changed
+1. packages/core/backend/src/service_ops/dataops_market_data.py
+2. packages/core/backend/src/service_ops/tasks.py
+3. packages/core/backend/src/service_ops/tests/test_soc_tasks.py
+4. packages/core/backend/src/vninvest_core/settings.py
+5. packages/core/backend/src/vninvest_core/queue_policy.py
+6. docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md
+7. docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md
+8. module_tree_full.md
+9. CODE_CHANGE_AUDIT_LEDGER.md
+10. PROGRESS_DASHBOARD.md
+11. MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md
+
+## Validation commands
+```powershell
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb
+Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py
+Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1
+```
+
+## Validation results
+- `service_ops.tests.test_soc_domain_configs` + `service_ops.tests.test_soc_tasks` + `service_ops.tests.test_soc_api_domain` -> 83 passed.
+- `scripts/ops/generate_module_tree.py` -> regenerated `module_tree_full.md` with 1211 modules.
+- `start_dev.ps1` -> native stack rebuilt/started successfully, queue drift check pass, smoke checks pass.
+
+## Runtime evidence
+- start_dev run result: PASS
+- health checks: Core API OK, Frontend OK
+
+## Metrics snapshot
+- planned_items: N/A (task wiring/retention telemetry slice)
+- inserted: N/A
+- updated: N/A
+- skipped_existing: N/A
+- failed_count: N/A
+- backlog_delta: N/A
+
+## UI/API evidence
+- API payload snapshot: queue-tier scheduler khong con cleanup side-effect; retention cleanup chay qua task beat doc lap va ghi run-log telemetry.
+- UI screenshot/video: N/A (backend-only slice)
+
+## Residual risks
+- Telemetry retention hien moi o run-log/task result; chua expose dashboard card rieng tren DataOps monitor.
+
+## Next slice
+- P17 - DataOps observability bo sung retention health widget/API fields (deleted/retained trend).
+
+---
+
 ## Latest Executed Slice Snapshot (P15)
 
 ## Slice metadata

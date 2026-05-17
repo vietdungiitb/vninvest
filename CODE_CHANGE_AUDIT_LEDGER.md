@@ -1,5 +1,30 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P16 - beat-driven parity retention cleanup | backend/docs
+
+## All Modified Files (11 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Extended cleanup telemetry with `total_rows_before` and `retained_rows` |
+| `packages/core/backend/src/service_ops/tasks.py` | Removed cleanup side-effect from queue-tier scheduler and added dedicated task `cleanup_market_data_parity_snapshots_task` with run-log tracking |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Migrated retention regression to validate new dedicated cleanup task path and run-log success evidence |
+| `packages/core/backend/src/vninvest_core/settings.py` | Added beat schedule `market-data-parity-snapshot-retention-cleanup-hourly` |
+| `packages/core/backend/src/vninvest_core/queue_policy.py` | Added task route + periodic task mapping for dedicated parity retention cleanup task |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Added and marked P16 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P16 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P16 completion |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (83 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1211` modules)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+
+## Residual risk
+- Retention health telemetry chua duoc expose len DataOps observability dashboard/API summary lane.
+
 # 2026-05-17 | CPS P15 - parity snapshot retention cleanup | backend/docs
 
 ## All Modified Files (13 files)

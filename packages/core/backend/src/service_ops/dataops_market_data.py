@@ -482,11 +482,15 @@ def persist_market_data_parity_snapshot(
 def cleanup_market_data_parity_snapshots(*, retention_days: int) -> dict[str, object]:
     normalized_retention_days = max(int(retention_days or 1), 1)
     cutoff_time = timezone.now() - timedelta(days=normalized_retention_days)
+    total_before = MarketDataParitySnapshot.objects.count()
     stale_queryset = MarketDataParitySnapshot.objects.filter(captured_at__lt=cutoff_time)
     deleted_rows, _ = stale_queryset.delete()
+    total_after = MarketDataParitySnapshot.objects.count()
     return {
         'retention_days': normalized_retention_days,
         'cutoff_at': cutoff_time.isoformat(),
+        'total_rows_before': int(total_before),
+        'retained_rows': int(total_after),
         'deleted_rows': int(deleted_rows or 0),
     }
 

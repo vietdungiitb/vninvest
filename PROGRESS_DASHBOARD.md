@@ -1,3 +1,21 @@
+# 2026-05-17 — CPS P16 complete: beat-driven parity retention cleanup ✅
+
+Status: **✅ cleanup decoupled from scheduler** | **✅ dedicated hourly beat task added** | **✅ retention run-log telemetry expanded**
+
+## What changed
+- Removed parity retention cleanup side-effect from `run_market_data_queue_tier_scheduler`.
+- Added dedicated task `service_ops.cleanup_market_data_parity_snapshots` that reads runtime retention config, executes cleanup, and writes service run-log telemetry.
+- Added hourly beat schedule + queue-policy mapping for the new retention task.
+- Expanded cleanup telemetry fields (`total_rows_before`, `retained_rows`, `deleted_rows`) and updated tests to lock dedicated task behavior.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` -> **83 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Retention telemetry currently available at task/run-log layer only, chưa có lane hiển thị riêng trong DataOps observability UI.
+
 # 2026-05-17 — CPS P15 complete: parity snapshot retention cleanup ✅
 
 Status: **✅ retention field added to runtime config** | **✅ scheduler auto-prunes stale parity rows** | **✅ focused tests + runtime refresh passed**
