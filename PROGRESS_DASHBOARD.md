@@ -1,3 +1,22 @@
+# 2026-05-17 — Native order-flow contract nâng cấp cho Radar ✅
+
+Status: **✅ order-flow native trả đủ Radar contract** | **✅ regression tests added** | **✅ runtime refreshed**
+
+## What changed
+- Upgraded `/api/stock-management/stocks/:symbol/order-flow/` to return frontend Radar-ready fields: `window`, `session_date`, `dark_flow`, `latest_signal`, `signals`, `tick_rate`, `size_distribution`.
+- Preserved legacy `order_flow` list to avoid breaking any existing consumers still reading old shape.
+- Added backend projection logic for signal rows + tick-rate/size distribution from `IntradayTick` (window-first, latest-session fallback).
+- Added tests for rich contract and empty fallback shape.
+
+## Validation
+- `manage.py test market_data.tests.test_stock_management_native_api --keepdb` → **16 passed** ✅
+- `npm run build` (frontend) → **compiled successfully** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **1210 modules** ✅
+
+## Residual risk
+- In low-liquidity windows, inferred tick-rate and bucket ratios may fluctuate because metrics depend on available `IntradayTick` density.
+
 # 2026-05-17 — /stocks/VGC full-page audit + no-data fix + native cleanup ✅
 
 Status: **✅ chart no-data root causes fixed** | **✅ native route naming cleaned** | **✅ runtime refreshed**

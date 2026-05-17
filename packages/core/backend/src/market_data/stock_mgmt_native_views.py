@@ -20,7 +20,7 @@ from rest_framework.views import APIView
 
 from .global_symbol_planner import create_global_planner_run
 from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
-from .models import DailyPrice, IntradayBar, StockProfile
+from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
 from .vnbroker_adapter import fetch_symbol_group_members
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
 
@@ -716,6 +716,138 @@ def _symbol_exists_for_stock_chart(symbol):
     )
 
 
+def _normalize_order_flow_window(value):
+    resolved = str(value or '30m').strip().lower()
+    window_map = {
+        '5m': 5,
+        '15m': 15,
+        '30m': 30,
+        '1h': 60,
+    }
+    if resolved not in window_map:
+        return '30m', 30
+    return resolved, window_map[resolved]
+
+
+def _safe_numeric(value):
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _extract_signal_strength(alert):
+    metadata = alert.metadata if isinstance(alert.metadata, dict) else {}
+    evidence = alert.evidence if isinstance(alert.evidence, dict) else {}
+    raw_strength = (
+        _safe_numeric(metadata.get('strength'))
+        or _safe_numeric(metadata.get('whale_intensity'))
+        or _safe_numeric(evidence.get('whale_intensity'))
+    )
+    if raw_strength is None:
+        raw_strength = _safe_numeric(alert.confidence)
+    if raw_strength is None:
+        return 0.0
+    if raw_strength <= 1:
+        raw_strength *= 100
+    return round(max(0.0, min(100.0, raw_strength)), 1)
+
+
+def _build_tick_distribution_payload(symbol, window_minutes):
+    now = timezone.now()
+    window_start = now - timedelta(minutes=window_minutes)
+    tick_rows = list(
+        IntradayTick.objects.filter(symbol=symbol, timestamp__gte=window_start)
+        .only('timestamp', 'volume')
+        .order_by('-timestamp')
+    )
+
+    stale = False
+    if not tick_rows:
+        latest_tick = (
+            IntradayTick.objects.filter(symbol=symbol)
+            .only('timestamp')
+            .order_by('-timestamp')
+            .first()
+        )
+        if latest_tick is not None:
+            stale = True
+            trade_date = timezone.localdate(latest_tick.timestamp)
+            tick_rows = list(
+                IntradayTick.objects.filter(symbol=symbol, timestamp__date=trade_date)
+                .only('timestamp', 'volume')
+                .order_by('-timestamp')[:500]
+            )
+
+    if not tick_rows:
+        return {
+            'stale': True,
+            'tick_rate_per_min': 0.0,
+            'small_order_ratio': 0.0,
+            'size_distribution': {
+                'small_count': 0,
+                'medium_count': 0,
+                'large_count': 0,
+                'small_ratio': 0.0,
+                'medium_ratio': 0.0,
+                'large_ratio': 0.0,
+            },
+        }
+
+    timestamps = [row.timestamp for row in tick_rows]
+    max_ts = max(timestamps)
+    min_ts = min(timestamps)
+    span_minutes = max((max_ts - min_ts).total_seconds() / 60.0, 1.0)
+    volumes = [max(0, int(row.volume or 0)) for row in tick_rows]
+    sorted_volumes = sorted(volumes)
+    q33_idx = min(len(sorted_volumes) - 1, max(0, int((len(sorted_volumes) - 1) * 0.33)))
+    q66_idx = min(len(sorted_volumes) - 1, max(0, int((len(sorted_volumes) - 1) * 0.66)))
+    q33 = sorted_volumes[q33_idx]
+    q66 = sorted_volumes[q66_idx]
+
+    small_count = sum(1 for volume in volumes if volume <= q33)
+    medium_count = sum(1 for volume in volumes if q33 < volume <= q66)
+    large_count = sum(1 for volume in volumes if volume > q66)
+    total = len(volumes)
+
+    return {
+        'stale': stale,
+        'tick_rate_per_min': round(total / span_minutes, 2),
+        'small_order_ratio': round(small_count / total, 4) if total else 0.0,
+        'size_distribution': {
+            'small_count': small_count,
+            'medium_count': medium_count,
+            'large_count': large_count,
+            'small_ratio': round(small_count / total, 4) if total else 0.0,
+            'medium_ratio': round(medium_count / total, 4) if total else 0.0,
+            'large_ratio': round(large_count / total, 4) if total else 0.0,
+        },
+    }
+
+
+def _serialize_stock_order_flow_signal(alert, tick_rate_per_min, small_order_ratio):
+    metadata = alert.metadata if isinstance(alert.metadata, dict) else {}
+    signal_type = str(metadata.get('signal_type') or alert.alert_type or 'signal').lower()
+    confidence = _safe_numeric(metadata.get('confidence'))
+    if confidence is None:
+        confidence = _safe_numeric(alert.confidence)
+    return {
+        'id': str(alert.alert_id),
+        'symbol': alert.symbol,
+        'signal_type': signal_type,
+        'strength': _extract_signal_strength(alert),
+        'confidence': round(confidence, 2) if confidence is not None else 0.0,
+        'tick_rate': tick_rate_per_min,
+        'small_order_ratio': small_order_ratio,
+        'description': alert.title or alert.body or '',
+        'created_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
+        'direction': alert.direction,
+        'value': str(alert.value) if alert.value is not None else None,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Stock data views
 # ---------------------------------------------------------------------------
@@ -1029,11 +1161,74 @@ class StockManagementOrderFlowView(APIView):
 
     def get(self, request, symbol):
         from signal_intelligence.models import UnifiedAlert
+
         symbol = symbol.upper()
-        limit = min(int(request.query_params.get('limit', 100)), 500)
-        alerts = UnifiedAlert.objects.filter(symbol=symbol).order_by('-triggered_at')[:limit]
+        try:
+            limit = int(request.query_params.get('limit', 30))
+        except (TypeError, ValueError):
+            limit = 30
+        limit = max(1, min(limit, 500))
+
+        window, window_minutes = _normalize_order_flow_window(request.query_params.get('window', '30m'))
+
+        alerts = list(
+            UnifiedAlert.objects.filter(
+                symbol=symbol,
+                alert_type__in=(
+                    UnifiedAlert.AlertTypeChoices.WHALE,
+                    UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+                    UnifiedAlert.AlertTypeChoices.SIGNAL,
+                ),
+            )
+            .order_by('-triggered_at', '-pk')[:limit]
+        )
+
+        tick_payload = _build_tick_distribution_payload(symbol, window_minutes)
+        tick_rate_per_min = tick_payload['tick_rate_per_min']
+        small_order_ratio = tick_payload['small_order_ratio']
+
+        signals = [
+            _serialize_stock_order_flow_signal(alert, tick_rate_per_min, small_order_ratio)
+            for alert in alerts
+        ]
+        latest_signal = signals[0] if signals else None
+
+        dark_alert = next(
+            (alert for alert in alerts if alert.alert_type == UnifiedAlert.AlertTypeChoices.DARK_FLOW),
+            alerts[0] if alerts else None,
+        )
+        dark_flow = {
+            'signal_type': str(
+                (dark_alert.metadata.get('signal_type') if dark_alert and isinstance(dark_alert.metadata, dict) else None)
+                or (dark_alert.alert_type if dark_alert else 'dark_flow')
+            ).lower(),
+            'strength': _extract_signal_strength(dark_alert) if dark_alert else 0.0,
+            'confidence': round(_safe_numeric(dark_alert.confidence) or 0.0, 2) if dark_alert else 0.0,
+            'direction': dark_alert.direction if dark_alert else None,
+            'components': {
+                'absorption': {
+                    'description': (dark_alert.title or dark_alert.body) if dark_alert else '',
+                },
+            },
+        }
+
+        session_date = None
+        if alerts and alerts[0].session_date is not None:
+            session_date = alerts[0].session_date.isoformat()
+
         return Response({
             'symbol': symbol,
+            'window': window,
+            'session_date': session_date,
+            'dark_flow': dark_flow,
+            'latest_signal': latest_signal,
+            'signals': signals,
+            'tick_rate': {
+                'tick_rate_per_min': tick_rate_per_min,
+                'small_order_ratio': small_order_ratio,
+                'stale': tick_payload['stale'],
+            },
+            'size_distribution': tick_payload['size_distribution'],
             'order_flow': [{
                 'id': str(a.alert_id),
                 'type': a.alert_type,

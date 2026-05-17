@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | Native order-flow contract upgrade for StockDetail Radar | backend/docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Upgraded `StockManagementOrderFlowView` to return Radar-ready payload (`window`, `session_date`, `dark_flow`, `latest_signal`, `signals`, `tick_rate`, `size_distribution`) while preserving legacy `order_flow` for backward compatibility |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added regressions for enhanced order-flow contract fields and empty-shape fallback |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for order-flow contract slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `get_errors` on touched backend files ✅ no errors
+- `docker exec vninvest-dev-core-api sh -lc 'cd /app/src && python manage.py test market_data.tests.test_stock_management_native_api --keepdb'` ✅ (16 tests passed)
+- `Push-Location ./frontend; npm run build; Pop-Location` ✅ build passed
+- `./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- Radar metrics `tick_rate`/`size_distribution` currently infer từ `IntradayTick` window hoặc latest session fallback; khi tape quá thưa, độ ổn định metric có thể dao động theo span thời gian.
+
 # 2026-05-17 | /stocks/:symbol full audit + VGC no-data fix + native route cleanup | frontend/backend/docs
 
 ## All Modified Files (9 files)

@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-05-17 | Native order-flow contract upgrade for StockDetail Radar
+
+### Files changed in this session
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Nâng contract native `order-flow` để `OrderFlowRadarPanel` có đầy đủ payload chính (dark_flow/latest_signal/signals/tick_rate/size_distribution) thay vì chỉ `order_flow` tối giản.
+
+### Validation snapshot
+- `manage.py test market_data.tests.test_stock_management_native_api --keepdb` ✅ (16 tests)
+- `npm run build` (frontend) ✅
+- `./start_dev.ps1` smoke checks ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | /stocks/VGC full audit + chart contract fix + native cleanup
 
 ### Files changed in this session

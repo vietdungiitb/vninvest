@@ -11,7 +11,8 @@ from rest_framework.test import APIClient
 
 from advisory.models import AdvisoryRecord
 from identity_access.models import CoreTenant
-from market_data.models import DailyPrice, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, StockProfile
+from market_data.models import DailyPrice, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, IntradayTick, StockProfile
+from signal_intelligence.models import UnifiedAlert
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
 
 User = get_user_model()
@@ -261,6 +262,92 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/api/stock-management/stocks/ZZZZ/chart/?timeframe=D&days=30')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_stock_order_flow_returns_radar_contract_fields(self):
+        now = timezone.now()
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+            symbol='TPB',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.91,
+            title='Dark flow TPB tăng mạnh',
+            body='',
+            value=Decimal('2200000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=timezone.localdate(),
+            triggered_at=now,
+            source_ref='stock-native-order-flow-dark',
+            metadata={'signal_type': 'dark_flow', 'whale_intensity': 0.82},
+            evidence={},
+        )
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='TPB',
+            severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            confidence=0.74,
+            title='Whale buy TPB',
+            body='',
+            value=Decimal('980000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=timezone.localdate(),
+            triggered_at=now - timedelta(minutes=2),
+            source_ref='stock-native-order-flow-whale',
+            metadata={'signal_type': 'whale_buy', 'whale_intensity': 0.68},
+            evidence={},
+        )
+        IntradayTick.objects.create(
+            symbol='TPB',
+            timestamp=now - timedelta(minutes=1),
+            price=18.2,
+            volume=100,
+            side=IntradayTick.SideChoices.BUY,
+            source='core',
+        )
+        IntradayTick.objects.create(
+            symbol='TPB',
+            timestamp=now - timedelta(minutes=2),
+            price=18.21,
+            volume=1200,
+            side=IntradayTick.SideChoices.SELL,
+            source='core',
+        )
+        IntradayTick.objects.create(
+            symbol='TPB',
+            timestamp=now - timedelta(minutes=3),
+            price=18.22,
+            volume=5200,
+            side=IntradayTick.SideChoices.BUY,
+            source='core',
+        )
+
+        response = self.client.get('/api/stock-management/stocks/TPB/order-flow/?window=30m&limit=10')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'TPB')
+        self.assertEqual(payload['window'], '30m')
+        self.assertIn('dark_flow', payload)
+        self.assertIn('latest_signal', payload)
+        self.assertIn('signals', payload)
+        self.assertIn('tick_rate', payload)
+        self.assertIn('size_distribution', payload)
+        self.assertGreaterEqual(len(payload['signals']), 1)
+        self.assertIsNotNone(payload['latest_signal'])
+        self.assertGreater(payload['tick_rate']['tick_rate_per_min'], 0)
+        self.assertIn('small_ratio', payload['size_distribution'])
+
+    def test_stock_order_flow_returns_empty_shape_without_alerts(self):
+        response = self.client.get('/api/stock-management/stocks/FPT/order-flow/?window=15m')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'FPT')
+        self.assertEqual(payload['window'], '15m')
+        self.assertEqual(payload['signals'], [])
+        self.assertIsNone(payload['latest_signal'])
+        self.assertIn('dark_flow', payload)
+        self.assertEqual(payload['tick_rate']['tick_rate_per_min'], 0.0)
+        self.assertEqual(payload['size_distribution']['small_count'], 0)
 
     @patch('market_data.vnbroker_adapter.fetch_intraday_tape', side_effect=AssertionError('provider path must not run in advisory request path'))
     @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', side_effect=AssertionError('provider path must not run in advisory request path'))
