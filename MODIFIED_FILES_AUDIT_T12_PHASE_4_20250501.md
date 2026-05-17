@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-05-17 | CPS P05 - intraday tier depth policy
+
+### Files changed in this session
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `packages/core/backend/src/market_data/global_symbol_planner.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Ap depth policy intraday theo tier hot/warm/cold/recovery vao planner va ingest path, tranh one-size-fits-all depth cho long-tail va giu retrieval sau theo nhu cau.
+
+### Validation snapshot
+- `manage.py test data_ingest.tests.test_tasks market_data.tests.test_global_symbol_planner --keepdb` (with `DJANGO_DEBUG=true`) ✅ (16 tests)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | CPS P04 - daily provider bucket tuning
 
 ### Files changed in this session

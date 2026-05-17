@@ -1,3 +1,25 @@
+# 2026-05-17 — CPS P05 complete: intraday tier depth policy ✅
+
+Status: **✅ tier-aware intraday depth applied** | **✅ planner-to-ingest contract enriched** | **✅ focused regression and runtime validation passed**
+
+## What changed
+- Added queue-tier intraday depth policy in planner:
+  - `hot_user_demand` -> `intraday_depth_tier=hot`, `page_size=120`
+  - `warm_liquid_market` -> `intraday_depth_tier=warm`, `page_size=60`
+  - `cold_full_market` -> `intraday_depth_tier=cold`, `page_size=25`
+  - `recovery_backlog` -> `intraday_depth_tier=recovery`, `page_size=80`
+- Planner now enriches intraday `plan_items` with this depth metadata without overriding explicit window values.
+- Intraday ingestion now resolves per-symbol page size from `requested_window` and fetches tape by symbol-specific depth.
+- Added regressions for policy propagation and per-symbol page size application.
+
+## Validation
+- `manage.py test data_ingest.tests.test_tasks market_data.tests.test_global_symbol_planner --keepdb` (with `DJANGO_DEBUG=true`) -> **16 passed** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- P06 operator observability (backlog trend/fail-rate/starvation indicator) is still pending.
+
 # 2026-05-17 — CPS P04 complete: daily provider bucket tuning ✅
 
 Status: **✅ deterministic provider bucket split** | **✅ bounded retry/backoff applied** | **✅ per-provider counters/latency telemetry added**

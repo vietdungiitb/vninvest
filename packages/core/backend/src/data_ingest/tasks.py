@@ -43,6 +43,12 @@ _DAILY_HISTORY_RETRY_BACKOFF_SECONDS = 0.5
 _DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS = 2.0
 _INTRADAY_PLAN_DATASETS = ('intraday_ticks', 'intraday_bars')
 _INTRADAY_BAR_TIMEFRAMES = ('1m', '5m', '15m', '1H', '2H', '4H')
+_INTRADAY_PAGE_SIZE_BY_DEPTH_TIER = {
+    'hot': 120,
+    'warm': 60,
+    'cold': 25,
+    'recovery': 80,
+}
 
 
 def _normalize_symbols(symbols: list[str] | None) -> list[str]:
@@ -69,6 +75,48 @@ def _extract_intraday_datasets_from_plan_items(plan_items: list[dict] | None) ->
     if not requested:
         return list(_INTRADAY_PLAN_DATASETS)
     return [dataset for dataset in _INTRADAY_PLAN_DATASETS if dataset in requested]
+
+
+def _resolve_intraday_page_size_from_window(requested_window: dict | None, default_page_size: int) -> int:
+    normalized_default = max(int(default_page_size or 50), 1)
+    window = requested_window if isinstance(requested_window, dict) else {}
+
+    explicit_page_size = window.get('page_size')
+    if explicit_page_size is not None:
+        try:
+            return max(int(explicit_page_size), 1)
+        except (TypeError, ValueError):
+            return normalized_default
+
+    depth_tier = str(window.get('intraday_depth_tier') or '').strip().lower()
+    if depth_tier in _INTRADAY_PAGE_SIZE_BY_DEPTH_TIER:
+        return int(_INTRADAY_PAGE_SIZE_BY_DEPTH_TIER[depth_tier])
+
+    return normalized_default
+
+
+def _build_intraday_symbol_plan(plan_items: list[dict] | None, default_page_size: int) -> list[dict[str, int | str]]:
+    symbols = _extract_symbols_from_plan_items(plan_items)
+    if not symbols:
+        return []
+
+    requested_window_by_symbol = {}
+    for item in list(plan_items or []):
+        symbol = str(item.get('symbol') or '').strip().upper()
+        if not symbol:
+            continue
+        requested_window_by_symbol[symbol] = item.get('requested_window') if isinstance(item, dict) else None
+
+    symbol_plan: list[dict[str, int | str]] = []
+    for symbol in symbols:
+        symbol_plan.append({
+            'symbol': symbol,
+            'page_size': _resolve_intraday_page_size_from_window(
+                requested_window_by_symbol.get(symbol),
+                default_page_size,
+            ),
+        })
+    return symbol_plan
 
 
 def _refresh_coverage_for_symbols(
@@ -214,7 +262,7 @@ def _build_intraday_bar_payloads(symbol: str, normalized_trades: list[dict], tim
     return bars_by_key
 
 
-def _hydrate_intraday_symbols(symbols: list[str], target_datasets: list[str], page_size: int = 50) -> dict:
+def _hydrate_intraday_symbols(symbol_plan: list[dict[str, int | str]], target_datasets: list[str], page_size: int = 50) -> dict:
     from market_data.models import IntradayBar, IntradayTick
 
     target_dataset_set = set(target_datasets or _INTRADAY_PLAN_DATASETS)
@@ -224,9 +272,13 @@ def _hydrate_intraday_symbols(symbols: list[str], target_datasets: list[str], pa
     warmed_up_count = 0
     failed_symbols: list[str] = []
 
-    for symbol in symbols:
+    for plan_item in symbol_plan:
+        symbol = str(plan_item.get('symbol') or '').strip().upper()
+        if not symbol:
+            continue
+        symbol_page_size = max(int(plan_item.get('page_size') or page_size), 1)
         try:
-            tape_result = fetch_intraday_tape(symbol, page_size=page_size)
+            tape_result = fetch_intraday_tape(symbol, page_size=symbol_page_size)
             raw_trades = list(tape_result.get('trades') or [])
             source = str(tape_result.get('source') or '').strip()
             if source and source not in sources:
@@ -318,7 +370,7 @@ def _hydrate_intraday_symbols(symbols: list[str], target_datasets: list[str], pa
 
     return {
         'status': 'ok',
-        'symbols_count': len(symbols),
+        'symbols_count': len(symbol_plan),
         'warmed_up_count': warmed_up_count,
         'sources': sources,
         'inserted': tick_counts['inserted'] + bar_counts['inserted'],
@@ -744,12 +796,16 @@ def warm_intraday_universe(
         return {'status': 'skipped', 'reason': 'no_symbols'}
 
     try:
+        symbol_plan = _build_intraday_symbol_plan(plan_items, page_size)
+        if not symbol_plan:
+            symbol_plan = [{'symbol': symbol, 'page_size': max(int(page_size or 50), 1)} for symbol in symbols]
+
         run = IngestRun.objects.create(
             job=job,
             state=IngestRun.StateChoices.RUNNING,
         )
         _attach_ingest_run_to_service_run_log(service_run_log, run)
-        result = _hydrate_intraday_symbols(symbols, target_datasets, page_size=page_size)
+        result = _hydrate_intraday_symbols(symbol_plan, target_datasets, page_size=page_size)
         coverage_refreshed_symbols = _refresh_coverage_for_symbols(symbols)
 
         total_upserted = int(result.get('inserted') or 0) + int(result.get('updated') or 0)
@@ -765,6 +821,7 @@ def warm_intraday_universe(
         run.meta = {
             'symbols_count': len(symbols),
             'page_size': page_size,
+            'symbol_plan': list(symbol_plan),
             'target_datasets': list(target_datasets),
             'tick_counts': dict(result.get('tick_counts') or {}),
             'bar_counts': dict(result.get('bar_counts') or {}),

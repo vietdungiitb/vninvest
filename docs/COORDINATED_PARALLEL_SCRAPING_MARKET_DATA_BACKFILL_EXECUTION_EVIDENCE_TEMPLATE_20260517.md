@@ -220,3 +220,62 @@ Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv
 
 ## Next slice
 - P05 - Intraday tier depth policy.
+
+---
+
+## Latest Executed Slice Snapshot (P05)
+
+## Slice metadata
+- Slice ID: P05
+- Date: 2026-05-17
+- Owner: Copilot
+- Related tasks (Pxx): P05
+
+## Objective
+- Implement tier-aware intraday depth policy so hot/warm/cold/recovery queues hydrate with controlled page sizes instead of one-size-fits-all depth.
+
+## Files changed
+1. packages/core/backend/src/data_ingest/tasks.py
+2. packages/core/backend/src/data_ingest/tests/test_tasks.py
+3. packages/core/backend/src/market_data/global_symbol_planner.py
+4. packages/core/backend/src/market_data/tests/test_global_symbol_planner.py
+5. docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md
+6. docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md
+7. module_tree_full.md
+8. CODE_CHANGE_AUDIT_LEDGER.md
+9. PROGRESS_DASHBOARD.md
+10. MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md
+
+## Validation commands
+```powershell
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test data_ingest.tests.test_tasks market_data.tests.test_global_symbol_planner --keepdb
+Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1
+Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py
+```
+
+## Validation results
+- `data_ingest.tests.test_tasks` + `market_data.tests.test_global_symbol_planner` -> 16 passed.
+- `start_dev.ps1` -> native stack healthy, queue drift check pass, smoke checks pass.
+- module tree regenerated -> 1210 modules.
+
+## Runtime evidence
+- start_dev run result: PASS
+- health checks: Core API OK, Frontend OK
+
+## Metrics snapshot
+- planned_items: available from planner/backfill output
+- inserted: available from intraday result summary
+- updated: available from intraday result summary
+- skipped_existing: available from intraday result summary
+- failed_count: available from intraday result summary
+- backlog_delta: N/A (policy slice)
+
+## UI/API evidence
+- API payload snapshot: planner now enriches intraday plan items with `intraday_depth_tier` and `page_size` by queue tier.
+- UI screenshot/video: N/A (backend-only slice)
+
+## Residual risks
+- P06 observability surface still pending to expose richer CPS metrics directly in operator UI.
+
+## Next slice
+- P06 - DataOps observability widgets.

@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P05 - intraday tier depth policy | backend/docs
+
+## All Modified Files (10 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/data_ingest/tasks.py` | Added per-symbol intraday page-size resolver from requested window and depth-tier policy handling (`hot/warm/cold/recovery`) |
+| `packages/core/backend/src/data_ingest/tests/test_tasks.py` | Added regression for per-symbol intraday page-size application and stabilized boundary-sensitive intraday assertions |
+| `packages/core/backend/src/market_data/global_symbol_planner.py` | Added queue-tier intraday depth policy map and planner enrichment of intraday `requested_window` (`intraday_depth_tier`, `page_size`) |
+| `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py` | Added regression to lock queue-tier policy propagation into intraday hydration plan items |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Marked P05 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P05 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P05 |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test data_ingest.tests.test_tasks market_data.tests.test_global_symbol_planner --keepdb` ✅ (16 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- DataOps observability widgets (P06) are still required for operators to inspect tier starvation and fail-rate directly on UI.
+
 # 2026-05-17 | CPS P04 - daily provider bucket tuning and bounded retry | backend/docs
 
 ## All Modified Files (8 files)

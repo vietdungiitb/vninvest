@@ -248,6 +248,46 @@ class GlobalSymbolPlannerRunTests(TestCase):
         self.assertEqual(child_run_log.output_summary['tick_counts']['inserted'], 2)
         self.assertEqual(child_run_log.output_summary['bar_counts']['inserted'], 7)
 
+    @patch('data_ingest.tasks.warm_intraday_universe.run')
+    def test_create_global_planner_run_applies_queue_tier_intraday_depth_policy(self, warm_intraday_run_mock):
+        registry = GlobalSymbolRegistry.objects.create(symbol='SSI', is_active=True)
+        GlobalSymbolDemandSource.objects.create(
+            registry=registry,
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
+            source_ref='watchlist:ssi',
+            is_active=True,
+        )
+        self._create_intraday_gaps(registry)
+        warm_intraday_run_mock.return_value = {
+            'status': 'ok',
+            'symbols_count': 1,
+            'warmed_up_count': 1,
+            'inserted': 0,
+            'updated': 0,
+            'skipped_existing': 0,
+            'failed': [],
+            'failed_count': 0,
+            'repaired_conflicts': 0,
+            'tick_counts': {'inserted': 0, 'updated': 0, 'skipped_existing': 0, 'failed': 0, 'planned_items': 1, 'repaired_conflicts': 0},
+            'bar_counts': {'inserted': 0, 'updated': 0, 'skipped_existing': 0, 'failed': 0, 'planned_items': 1, 'repaired_conflicts': 0},
+        }
+
+        result = create_global_planner_run(
+            symbols=['SSI'],
+            datasets=['intraday_ticks'],
+            execution_mode='sync',
+            trigger='market_data.queue_tier_scheduler',
+            extra_input_summary={'queue_tier': 'cold_full_market'},
+            reference_trade_date=date(2026, 5, 15),
+        )
+
+        self.assertFalse(result['queued'])
+        warm_intraday_run_mock.assert_called_once()
+        intraday_items = warm_intraday_run_mock.call_args.kwargs['plan_items']
+        self.assertEqual(len(intraday_items), 1)
+        self.assertEqual(intraday_items[0]['requested_window']['intraday_depth_tier'], 'cold')
+        self.assertEqual(intraday_items[0]['requested_window']['page_size'], 25)
+
     @patch('service_ops.tasks.run_signal_session_facts_materialization.run')
     def test_create_global_planner_run_executes_session_facts_sync(self, session_facts_run_mock):
         registry = GlobalSymbolRegistry.objects.create(symbol='VNM', is_active=True)

@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 17:32:04`
+Generated at: `2026-05-17 17:36:06`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-17 17:32:04`
 - Python modules: 688
 - JS/TS modules: 522
 - Total classes: 1370
-- Total functions: 3268
-- Total top-level variables: 4812
+- Total functions: 3271
+- Total top-level variables: 4814
 
 ## Python Modules
 
@@ -2722,9 +2722,9 @@ Generated at: `2026-05-17 17:32:04`
 ### `packages/core/backend/src/data_ingest/tasks.py`
 
 - Functions:
-  - `_attach_ingest_run_to_service_run_log`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_classify_daily_price_rows`, `_compute_latency_percentile_ms`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_fetch_daily_history_with_retry`, `_floor_intraday_bucket`, `_hydrate_intraday_symbols`, `_normalize_daily_plan_items`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_days_from_window`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
+  - `_attach_ingest_run_to_service_run_log`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_build_intraday_symbol_plan`, `_classify_daily_price_rows`, `_compute_latency_percentile_ms`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_fetch_daily_history_with_retry`, `_floor_intraday_bucket`, `_hydrate_intraday_symbols`, `_normalize_daily_plan_items`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_days_from_window`, `_resolve_intraday_page_size_from_window`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
 - Top-level variables:
-  - `_DAILY_HISTORY_RETRY_ATTEMPTS`, `_DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS`, `_DAILY_HISTORY_RETRY_BACKOFF_SECONDS`, `_HISTORY_PROVIDERS`, `_INTRADAY_BAR_TIMEFRAMES`, `_INTRADAY_PLAN_DATASETS`, `logger`
+  - `_DAILY_HISTORY_RETRY_ATTEMPTS`, `_DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS`, `_DAILY_HISTORY_RETRY_BACKOFF_SECONDS`, `_HISTORY_PROVIDERS`, `_INTRADAY_BAR_TIMEFRAMES`, `_INTRADAY_PAGE_SIZE_BY_DEPTH_TIER`, `_INTRADAY_PLAN_DATASETS`, `logger`
 
 ### `packages/core/backend/src/data_ingest/tests/__init__.py`
 
@@ -2733,7 +2733,7 @@ Generated at: `2026-05-17 17:32:04`
 ### `packages/core/backend/src/data_ingest/tests/test_tasks.py`
 
 - Classes:
-  - `DataIngestBackfillTaskTests` -> methods: `setUpTestData`, `test_backfill_daily_prices_consumes_plan_items_with_detailed_counts`, `test_fetch_and_upsert_bucket_retries_with_bounded_attempts`, `test_fetch_and_upsert_bucket_uses_adapter_ssot`, `test_fetch_and_upsert_price_board_consumes_plan_items`, `test_fetch_and_upsert_price_board_updates_service_run_log_when_provided`, `test_ingest_daily_prices_runs_backfill_inline`, `test_ingest_daily_prices_updates_service_run_log_when_provided`, `test_warm_intraday_universe_consumes_plan_items_and_persists_rows`
+  - `DataIngestBackfillTaskTests` -> methods: `setUpTestData`, `test_backfill_daily_prices_consumes_plan_items_with_detailed_counts`, `test_fetch_and_upsert_bucket_retries_with_bounded_attempts`, `test_fetch_and_upsert_bucket_uses_adapter_ssot`, `test_fetch_and_upsert_price_board_consumes_plan_items`, `test_fetch_and_upsert_price_board_updates_service_run_log_when_provided`, `test_ingest_daily_prices_runs_backfill_inline`, `test_ingest_daily_prices_updates_service_run_log_when_provided`, `test_warm_intraday_universe_applies_intraday_page_size_from_plan_window`, `test_warm_intraday_universe_consumes_plan_items_and_persists_rows`
 
 ### `packages/core/backend/src/data_ingest/tests/test_views.py`
 
@@ -2973,9 +2973,9 @@ Generated at: `2026-05-17 17:32:04`
 ### `packages/core/backend/src/market_data/global_symbol_planner.py`
 
 - Functions:
-  - `_build_parent_run_log_input`, `_format_run_id`, `_normalize_execution_mode`, `_partition_plan_items`, `create_global_planner_run`, `execute_global_planner_run`
+  - `_apply_intraday_depth_policy`, `_build_parent_run_log_input`, `_format_run_id`, `_normalize_execution_mode`, `_partition_plan_items`, `create_global_planner_run`, `execute_global_planner_run`
 - Top-level variables:
-  - `SUPPORTED_EXECUTION_DATASETS`, `SUPPORTED_EXECUTION_MODES`
+  - `INTRADAY_DEPTH_POLICY_BY_QUEUE_TIER`, `SUPPORTED_EXECUTION_DATASETS`, `SUPPORTED_EXECUTION_MODES`
 
 ### `packages/core/backend/src/market_data/global_symbol_registry.py`
 
@@ -3091,7 +3091,7 @@ Generated at: `2026-05-17 17:32:04`
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
 
 - Classes:
-  - `GlobalSymbolPlannerRunTests` -> methods: `_create_intraday_gaps`, `_create_registry_with_daily_gap`, `_create_session_facts_gap`, `_create_snapshot_gap`, `setUpTestData`, `test_create_global_planner_run_carries_scheduler_context_and_queue`, `test_create_global_planner_run_executes_intraday_sync`, `test_create_global_planner_run_executes_price_board_snapshot_sync`, `test_create_global_planner_run_executes_session_facts_sync`, `test_create_global_planner_run_executes_sync_and_updates_audit`, `test_create_global_planner_run_queues_async_run_log`
+  - `GlobalSymbolPlannerRunTests` -> methods: `_create_intraday_gaps`, `_create_registry_with_daily_gap`, `_create_session_facts_gap`, `_create_snapshot_gap`, `setUpTestData`, `test_create_global_planner_run_applies_queue_tier_intraday_depth_policy`, `test_create_global_planner_run_carries_scheduler_context_and_queue`, `test_create_global_planner_run_executes_intraday_sync`, `test_create_global_planner_run_executes_price_board_snapshot_sync`, `test_create_global_planner_run_executes_session_facts_sync`, `test_create_global_planner_run_executes_sync_and_updates_audit`, `test_create_global_planner_run_queues_async_run_log`
 
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_registry.py`
 

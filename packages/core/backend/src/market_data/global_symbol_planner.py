@@ -17,6 +17,12 @@ SUPPORTED_EXECUTION_DATASETS = frozenset({
     GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
 })
 SUPPORTED_EXECUTION_MODES = frozenset({'async', 'sync'})
+INTRADAY_DEPTH_POLICY_BY_QUEUE_TIER = {
+    'hot_user_demand': {'intraday_depth_tier': 'hot', 'page_size': 120},
+    'warm_liquid_market': {'intraday_depth_tier': 'warm', 'page_size': 60},
+    'cold_full_market': {'intraday_depth_tier': 'cold', 'page_size': 25},
+    'recovery_backlog': {'intraday_depth_tier': 'recovery', 'page_size': 80},
+}
 
 
 def _format_run_id(run_log_id: int) -> str:
@@ -70,6 +76,27 @@ def _build_parent_run_log_input(
     if isinstance(extra_input_summary, dict):
         payload.update(extra_input_summary)
     return payload
+
+
+def _apply_intraday_depth_policy(
+    intraday_items: list[dict[str, Any]],
+    *,
+    queue_tier: str | None,
+) -> list[dict[str, Any]]:
+    policy = INTRADAY_DEPTH_POLICY_BY_QUEUE_TIER.get(str(queue_tier or '').strip().lower())
+    if not policy:
+        return intraday_items
+
+    enriched_items: list[dict[str, Any]] = []
+    for item in intraday_items:
+        next_item = dict(item)
+        requested_window = dict(next_item.get('requested_window') or {})
+        requested_window.setdefault('intraday_depth_tier', policy['intraday_depth_tier'])
+        requested_window.setdefault('page_size', policy['page_size'])
+        next_item['requested_window'] = requested_window
+        enriched_items.append(next_item)
+
+    return enriched_items
 
 
 def execute_global_planner_run(service_run_log_id: int) -> dict[str, Any]:
@@ -185,6 +212,10 @@ def execute_global_planner_run(service_run_log_id: int) -> dict[str, Any]:
             GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS,
         }
     ]
+    intraday_items = _apply_intraday_depth_policy(
+        intraday_items,
+        queue_tier=input_summary.get('queue_tier'),
+    )
     if intraday_items:
         child_run_log = _create_child_run_log(
             'vnbroker_intraday_tape',

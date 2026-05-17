@@ -13,7 +13,7 @@
 | P02 | Planner requested_window hardening | DONE | Core Backend | Da chot contract missing/stale/force cho daily va non-daily, test/regression/runtime pass |
 | P03 | Queue-tier quota scheduler | DONE | Service Ops | Da them max_dispatch_per_cycle per tier, inflight/cooldown gate giu nguyen, co metric skipped_by_quota |
 | P04 | Daily provider bucket tuning | DONE | Data Ingest | Da bo sung bucket split on dinh, retry/backoff bounded va telemetry per-provider |
-| P05 | Intraday tier depth policy | TODO | Data Ingest | Chot depth theo hot/warm/cold/recovery |
+| P05 | Intraday tier depth policy | DONE | Data Ingest | Da ap policy hot/warm/cold/recovery vao intraday requested_window va page_size theo tier |
 | P06 | DataOps observability UI/API | TODO | Frontend + Backend | Backlog trend, fail-rate, starvation |
 | P07 | Shadow run and parity evidence | TODO | Ops + QA | 3 ngay giao dich that, parity gate |
 | P08 | Cutover runbook and handoff close | TODO | Tech Lead | Rollback, incident, signoff |

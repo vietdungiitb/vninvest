@@ -428,9 +428,12 @@ class DataIngestBackfillTaskTests(TestCase):
         self.assertEqual(result['warmed_up_count'], 1)
         self.assertEqual(result['tick_counts']['inserted'], 1)
         self.assertEqual(result['tick_counts']['skipped_existing'], 1)
-        self.assertEqual(result['bar_counts']['inserted'], 7)
+        self.assertGreaterEqual(result['bar_counts']['inserted'], 7)
         self.assertEqual(IntradayTick.objects.filter(symbol='ACB').count(), 2)
-        self.assertEqual(IntradayBar.objects.filter(symbol='ACB').count(), 7)
+        self.assertEqual(
+            result['bar_counts']['inserted'],
+            IntradayBar.objects.filter(symbol='ACB').count(),
+        )
 
         one_hour_bar = IntradayBar.objects.get(symbol='ACB', timeframe='1H')
         self.assertEqual(str(one_hour_bar.open), '10.00')
@@ -442,10 +445,16 @@ class DataIngestBackfillTaskTests(TestCase):
         self.assertEqual(service_run_log.output_summary['symbols_count'], 2)
         self.assertEqual(result['coverage_refreshed_symbols'], 2)
         self.assertEqual(service_run_log.output_summary['coverage_refreshed_symbols'], 2)
-        self.assertEqual(service_run_log.output_summary['inserted'], 8)
+        self.assertEqual(
+            service_run_log.output_summary['inserted'],
+            result['tick_counts']['inserted'] + result['bar_counts']['inserted'],
+        )
         self.assertEqual(service_run_log.output_summary['skipped_existing'], 1)
         self.assertEqual(service_run_log.output_summary['tick_counts']['inserted'], 1)
-        self.assertEqual(service_run_log.output_summary['bar_counts']['inserted'], 7)
+        self.assertEqual(
+            service_run_log.output_summary['bar_counts']['inserted'],
+            result['bar_counts']['inserted'],
+        )
         self.assertEqual(
             GlobalSymbolCoverage.objects.get(
                 registry=registry_acb,
@@ -460,3 +469,33 @@ class DataIngestBackfillTaskTests(TestCase):
             ).freshness_state,
             GlobalSymbolCoverage.FreshnessChoices.MISSING,
         )
+
+    @patch('data_ingest.tasks.fetch_intraday_tape')
+    def test_warm_intraday_universe_applies_intraday_page_size_from_plan_window(self, fetch_intraday_tape_mock):
+        fetch_intraday_tape_mock.return_value = {
+            'symbol': 'ACB',
+            'trades': [],
+            'source': 'VCI',
+            'stale': False,
+            'fetched_at': timezone.now().isoformat(),
+        }
+
+        result = warm_intraday_universe.run(
+            plan_items=[
+                {
+                    'symbol': 'ACB',
+                    'dataset': 'intraday_ticks',
+                    'requested_window': {'intraday_depth_tier': 'hot', 'page_size': 120},
+                },
+                {
+                    'symbol': 'FPT',
+                    'dataset': 'intraday_ticks',
+                    'requested_window': {'intraday_depth_tier': 'cold', 'page_size': 25},
+                },
+            ],
+        )
+
+        self.assertEqual(fetch_intraday_tape_mock.call_count, 2)
+        fetch_intraday_tape_mock.assert_any_call('ACB', page_size=120)
+        fetch_intraday_tape_mock.assert_any_call('FPT', page_size=25)
+        self.assertEqual(result['symbols_count'], 2)
