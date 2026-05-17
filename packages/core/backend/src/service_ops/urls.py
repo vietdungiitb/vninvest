@@ -45,6 +45,7 @@ urlpatterns = [
     path('vnbroker/health/', vnbroker.VnbrokerHealthView.as_view(), name='soc_vnbroker_health'),
     path('vnbroker/test-connection/', vnbroker.VnbrokerTestConnectionView.as_view(), name='soc_vnbroker_test'),
     path('vnbroker/providers/', vnbroker.VnbrokerProvidersView.as_view(), name='soc_vnbroker_providers'),
+    path('vnbroker/benchmark/', vnbroker.VnbrokerBenchmarkView.as_view(), name='soc_vnbroker_benchmark'),
     path('vnbroker/ownership/', vnbroker.VnbrokerOwnershipView.as_view(), name='soc_vnbroker_ownership'),
     path('vnbroker/circuit-breaker-status/', vnbroker.VnbrokerCircuitBreakerView.as_view(), name='soc_vnbroker_cb'),
 

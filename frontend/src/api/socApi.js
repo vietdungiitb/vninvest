@@ -139,6 +139,20 @@ export const socApi = {
     return handleResponse(resp);
   },
 
+  runVnbrokerBenchmark: async (payload = {}) => {
+    const resp = await fetch(`${BASE_URL}/vnbroker/benchmark/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse(resp);
+  },
+
+  getVnbrokerBenchmarkLatest: async () => {
+    const resp = await fetch(`${BASE_URL}/vnbroker/benchmark/`);
+    return handleResponse(resp);
+  },
+
   getVnbrokerCircuitBreaker: async () => {
     const resp = await fetch(`${BASE_URL}/vnbroker/circuit-breaker-status/`);
     return handleResponse(resp);

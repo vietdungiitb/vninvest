@@ -1,5 +1,30 @@
 # Modified Files Audit - T12 Phase 4 Complete
 
+---
+
+## 2026-05-17 | SOC VNBroker Provider + Benchmark Correction
+
+### Files changed in this session
+- `packages/core/backend/src/service_ops/views/vnbroker.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `frontend/src/api/socApi.js`
+- `frontend/src/components/soc/VnbrokerPanel.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Correct VNBroker provider list in SOC UI to follow backend-supported providers (`KBS`, `VCI`, `DNSE`) instead of deprecated set (`TCBS`, `SSI`, `BSC`).
+- Replace benchmark placeholder flow with native benchmark execution endpoint in SOC.
+- Use DNSE LightSpeed credential state from portfolio connection to avoid false negative provider configuration status.
+
+### Validation snapshot
+- Frontend build: `npm run build` ✅
+- Runtime refresh: `./start_dev.ps1` with smoke checks (Core API OK, Frontend OK) ✅
+- Backend focused test command attempted but blocked by env guard (`DJANGO_ALLOWED_HOSTS`) ⚠️
+- Module tree regenerated: `scripts/ops/generate_module_tree.py` ✅
+
 **Date**: 2025-05-01
 **Session**: T12 Phase 4 - Complete Import Cascade Fix
 **Total Files Changed**: 21

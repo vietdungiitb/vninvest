@@ -30,6 +30,10 @@ from ..provider_catalog import (
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
+from market_data.vnbroker_benchmark import (
+    get_latest_price_board_benchmark_report,
+    run_price_board_provider_benchmark,
+)
 
 
 DEFAULT_VNBROKER_PRIMARY_PROVIDER = 'vci'
@@ -150,6 +154,22 @@ class VnbrokerCircuitBreakerSummarySerializer(serializers.Serializer):
 class VnbrokerCircuitBreakerResponseSerializer(serializers.Serializer):
     circuit_breaker = VnbrokerCircuitBreakerSummarySerializer()
     per_provider = serializers.DictField(child=serializers.DictField(child=serializers.JSONField()))
+
+
+class VnbrokerBenchmarkRequestSerializer(serializers.Serializer):
+    provider = serializers.CharField(required=False, allow_blank=True)
+    providers = serializers.ListField(child=serializers.CharField(), required=False)
+    symbol = serializers.CharField(required=False, allow_blank=True)
+    duration_seconds = serializers.IntegerField(required=False)
+    runs = serializers.IntegerField(required=False)
+    timeout_seconds = serializers.IntegerField(required=False)
+    concurrency_levels = serializers.ListField(child=serializers.IntegerField(), required=False)
+
+
+class VnbrokerBenchmarkResponseSerializer(serializers.Serializer):
+    ok = serializers.BooleanField()
+    has_report = serializers.BooleanField(required=False)
+    report = serializers.JSONField(required=False)
 
 
 class VnbrokerOwnershipResponseSerializer(serializers.Serializer):
@@ -557,3 +577,71 @@ class VnbrokerOwnershipView(SOCBaseView):
 
     def get(self, request):
         return Response(_build_vnbroker_ownership_payload())
+
+
+@extend_schema(
+    summary='Benchmark provider VNBroker',
+    description='Chạy benchmark price-board cho provider VNBroker (KBS/VCI/DNSE) và trả kết quả + runtime recommendation.',
+    request=VnbrokerBenchmarkRequestSerializer,
+    responses={
+        200: VnbrokerBenchmarkResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
+class VnbrokerBenchmarkView(SOCBaseView):
+    """GET latest benchmark report; POST run benchmark and return the latest report."""
+
+    def get(self, request):
+        report = get_latest_price_board_benchmark_report()
+        if not isinstance(report, dict):
+            return Response({'ok': True, 'has_report': False, 'report': None})
+        return Response({'ok': True, 'has_report': True, 'report': report})
+
+    def post(self, request):
+        payload = request.data if isinstance(request.data, dict) else {}
+        supported = set(get_supported_provider_ids('vnbroker'))
+
+        normalized_provider = normalize_provider_id(payload.get('provider'))
+        normalized_providers = [
+            normalize_provider_id(provider_id)
+            for provider_id in (payload.get('providers') or [])
+            if normalize_provider_id(provider_id)
+        ]
+
+        if normalized_provider:
+            normalized_providers = [normalized_provider]
+
+        unsupported = [provider_id for provider_id in normalized_providers if provider_id not in supported]
+        if unsupported:
+            return self.error_response(
+                request,
+                code='VNBROKER_PROVIDER_UNSUPPORTED',
+                detail=(
+                    'SOC chỉ hỗ trợ benchmark cho provider KBS, VCI, DNSE. '
+                    f"Không chấp nhận: {', '.join(unsupported)}."
+                ),
+                http_status=status.HTTP_400_BAD_REQUEST,
+                field_errors={'provider': unsupported},
+            )
+
+        benchmark_payload = {
+            key: value
+            for key, value in payload.items()
+            if key in {'symbol', 'duration_seconds', 'runs', 'timeout_seconds', 'concurrency_levels'}
+        }
+        if normalized_providers:
+            benchmark_payload['providers'] = [provider_id.upper() for provider_id in normalized_providers]
+
+        try:
+            report = run_price_board_provider_benchmark(benchmark_payload)
+        except Exception as exc:  # noqa: BLE001
+            return self.error_response(
+                request,
+                code='VNBROKER_BENCHMARK_FAILED',
+                detail=f'Không thể chạy benchmark VNBroker: {exc}',
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({'ok': True, 'has_report': True, 'report': report})

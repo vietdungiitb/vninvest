@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | SOC VNBroker provider correctness + real benchmark endpoint + DNSE credential-aware status | frontend/backend
+
+## All Modified Files (8 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/views/vnbroker.py` | Added native SOC benchmark endpoint (`GET/POST /api/soc/vnbroker/benchmark/`) with provider validation and runtime report response |
+| `packages/core/backend/src/service_ops/urls.py` | Wired new SOC route `vnbroker/benchmark/` |
+| `frontend/src/api/socApi.js` | Added `runVnbrokerBenchmark()` and `getVnbrokerBenchmarkLatest()` API clients |
+| `frontend/src/components/soc/VnbrokerPanel.jsx` | Replaced hardcoded providers with runtime catalog-driven options, switched benchmark flow to native benchmark endpoint, and mapped DNSE status with portfolio LightSpeed credential signal |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added latest-session centralized modified-file audit section |
+| `module_tree_full.md` | Regenerated module tree after this slice (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for VNBroker provider/benchmark correction |
+
+## Validation
+- `get_errors` on edited files (`vnbroker.py`, `urls.py`, `socApi.js`, `VnbrokerPanel.jsx`) ✅ no errors
+- `Push-Location ./frontend; npm run build; Pop-Location` ✅ build passed
+- `Push-Location ./packages/core/backend; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_admin_ops_contract_api --keepdb; Pop-Location` ❌ blocked by environment guard (`DJANGO_ALLOWED_HOSTS` not set)
+- `./start_dev.ps1` ✅ rebuild/restart completed; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+
+## Residual risk
+- Backend contract test for this slice could not run in current shell due missing required env hard-guards (`DJANGO_ALLOWED_HOSTS`), so endpoint behavior was validated by static checks/build/runtime boot only.
+
 # 2026-05-16 | Dashboard black-screen hotfix: restore useAlertCenterFeed compatibility contract | frontend/docs
 
 ## All Modified Files (4 files)

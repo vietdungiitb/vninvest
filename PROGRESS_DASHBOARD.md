@@ -1,3 +1,24 @@
+# 2026-05-17 — SOC VNBroker provider + benchmark correction complete ✅
+
+Status: **✅ provider list corrected (KBS/VCI/DNSE)** | **✅ benchmark now runs via native SOC endpoint** | **✅ DNSE status now reads portfolio LightSpeed credential signal** | **✅ runtime refreshed**
+
+## What changed
+- Added native benchmark API at `/api/soc/vnbroker/benchmark/` (run + latest report contract) on service-ops backend.
+- Updated SOC VNBroker panel to stop using hardcoded provider list containing deprecated providers (`TCBS`, `SSI`, `BSC`).
+- Provider selectors now derive from provider catalog response, so UI follows backend SSOT.
+- Benchmark button now calls native benchmark API instead of config preview workaround.
+- DNSE provider status now treats user DNSE LightSpeed portfolio credential (`getDNSEConfig`) as configuration signal to avoid false "chưa cấu hình" when credential already exists.
+
+## Validation
+- `get_errors` on all touched files → **no errors** ✅
+- `npm run build` (frontend) → **compiled successfully** ✅
+- `manage.py test tests.test_admin_ops_contract_api --keepdb` (packages/core/backend) → **blocked** by required env guard (`DJANGO_ALLOWED_HOSTS`) ⚠️
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Residual risk
+- Focused backend test execution for new benchmark endpoint is pending an environment with required core settings exported.
+
 # 2026-05-16 — Dashboard black-screen hotfix (useAlertCenterFeed compatibility restored) ✅
 
 Status: **✅ hotfix DONE** | **✅ dashboard contract compatibility restored** | **✅ runtime refreshed and healthy**

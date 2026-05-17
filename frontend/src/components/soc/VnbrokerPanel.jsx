@@ -4,9 +4,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { socApi } from '../../api/socApi';
+import { getDNSEConfig } from '../../api/client';
 import { ConfigPreviewModal } from './ConfigPreviewModal';
 
-const PROVIDERS = ['vci', 'tcbs', 'ssi', 'bsc', 'dnse'];
+const DEFAULT_PROVIDER_OPTIONS = ['vci', 'kbs', 'dnse'];
 
 const buildChangeSummary = (currentConfig, nextConfig) => {
   const keys = new Set([...Object.keys(currentConfig || {}), ...Object.keys(nextConfig || {})]);
@@ -20,6 +21,7 @@ const VnbrokerPanel = ({ t }) => {
   const [health, setHealth] = useState(null);
   const [metrics, setMetrics] = useState(null);
   const [providers, setProviders] = useState([]);
+  const [dnseCredentialConfigured, setDnseCredentialConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -34,18 +36,32 @@ const VnbrokerPanel = ({ t }) => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [cfg, hth, mtr, pvd] = await Promise.all([
+      const [cfg, hth, mtr, pvd, dnseCfg] = await Promise.all([
         socApi.getVnbrokerConfig(),
         socApi.getVnbrokerHealth(),
         socApi.getVnbrokerMetrics(),
         socApi.getVnbrokerProviders().catch(() => ({ results: [] })),
+        getDNSEConfig().catch(() => ({ is_configured: false })),
       ]);
       const currentConfig = cfg.config || {};
+      const providerCatalog = pvd.results || pvd.providers || [];
+      const providerOptions = providerCatalog
+        .map((provider) => String(provider?.provider || provider?.id || provider?.name || '').trim().toLowerCase())
+        .filter(Boolean);
+      const selectableProviders = providerOptions.length > 0 ? providerOptions : DEFAULT_PROVIDER_OPTIONS;
+      const preferredProvider = String(currentConfig.preferred_provider || '').trim().toLowerCase();
+
       setConfig(currentConfig);
       setDraft(JSON.parse(JSON.stringify(currentConfig)));
       setHealth(hth);
       setMetrics(mtr);
-      setProviders(pvd.results || pvd.providers || []);
+      setProviders(providerCatalog);
+      setBenchmarkProvider(
+        selectableProviders.includes(preferredProvider)
+          ? preferredProvider
+          : selectableProviders[0],
+      );
+      setDnseCredentialConfigured(Boolean(dnseCfg?.is_configured));
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -100,8 +116,11 @@ const VnbrokerPanel = ({ t }) => {
     setIsBenchmarking(true);
     setBenchmarkStatus(null);
     try {
-      const result = await socApi.previewVnbrokerConfig({ preferred_provider: benchmarkProvider });
-      setBenchmarkStatus(JSON.stringify(result?.impact || result || {}, null, 2));
+      const result = await socApi.runVnbrokerBenchmark({
+        provider: benchmarkProvider,
+        duration_seconds: 30,
+      });
+      setBenchmarkStatus(JSON.stringify(result?.report || result || {}, null, 2));
     } catch (err) {
       setBenchmarkStatus(err.message);
     } finally {
@@ -125,6 +144,10 @@ const VnbrokerPanel = ({ t }) => {
 
   if (loading) return <p className="text-slate-400">{t('soc.pages.status_loading')}</p>;
 
+  const providerOptions = providers
+    .map((provider) => String(provider?.provider || provider?.id || provider?.name || '').trim().toLowerCase())
+    .filter((providerId, index, allProviderIds) => providerId && allProviderIds.indexOf(providerId) === index);
+  const selectableProviders = providerOptions.length > 0 ? providerOptions : DEFAULT_PROVIDER_OPTIONS;
   const timeoutCfg = draft.timeout || {};
 
   return (
@@ -168,7 +191,7 @@ const VnbrokerPanel = ({ t }) => {
               onChange={(e) => setField('preferred_provider', e.target.value)}
               className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
             >
-              {PROVIDERS.map((p) => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+              {selectableProviders.map((p) => <option key={p} value={p}>{p.toUpperCase()}</option>)}
             </select>
           </div>
           <div>
@@ -244,9 +267,19 @@ const VnbrokerPanel = ({ t }) => {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {providers.map((pv) => (
               <div key={pv.id || pv.name} className="bg-slate-800 p-3 rounded border border-slate-700">
-                <p className="font-semibold text-slate-100 text-sm">{(pv.id || pv.name || '').toUpperCase()}</p>
-                <p className={`text-xs font-medium mt-0.5 ${pv.configured ? 'text-green-400' : 'text-slate-500'}`}>
-                  {pv.configured ? t('soc.vnbroker.provider_configured') : t('soc.vnbroker.provider_not_configured')}
+                <p className="font-semibold text-slate-100 text-sm">{(pv.provider || pv.id || pv.name || '').toUpperCase()}</p>
+                <p
+                  className={`text-xs font-medium mt-0.5 ${(
+                    pv.runtime_ready
+                    || pv.configured
+                    || (String(pv.provider || pv.id || '').toLowerCase() === 'dnse' && dnseCredentialConfigured)
+                  ) ? 'text-green-400' : 'text-slate-500'}`}
+                >
+                  {(
+                    pv.runtime_ready
+                    || pv.configured
+                    || (String(pv.provider || pv.id || '').toLowerCase() === 'dnse' && dnseCredentialConfigured)
+                  ) ? t('soc.vnbroker.provider_configured') : t('soc.vnbroker.provider_not_configured')}
                 </p>
               </div>
             ))}
@@ -301,7 +334,7 @@ const VnbrokerPanel = ({ t }) => {
             onChange={(e) => setBenchmarkProvider(e.target.value)}
             className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
           >
-            {PROVIDERS.map((p) => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+            {selectableProviders.map((p) => <option key={p} value={p}>{p.toUpperCase()}</option>)}
           </select>
           <button
             onClick={handleBenchmark}

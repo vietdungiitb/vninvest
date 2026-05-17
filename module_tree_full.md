@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-16 23:47:58`
+Generated at: `2026-05-17 09:33:47`
 
 ## Summary
 
 - Total modules: 1211
 - Python modules: 689
 - JS/TS modules: 522
-- Total classes: 1364
+- Total classes: 1367
 - Total functions: 3241
-- Total top-level variables: 4741
+- Total top-level variables: 4745
 
 ## Python Modules
 
@@ -3919,6 +3919,9 @@ Generated at: `2026-05-16 23:47:58`
 
 - Classes:
   - `ProviderStatusSerializer`
+  - `VnbrokerBenchmarkRequestSerializer`
+  - `VnbrokerBenchmarkResponseSerializer`
+  - `VnbrokerBenchmarkView` -> methods: `get`, `post`
   - `VnbrokerCircuitBreakerResponseSerializer`
   - `VnbrokerCircuitBreakerSummarySerializer`
   - `VnbrokerCircuitBreakerView` -> methods: `get`
@@ -5601,7 +5604,7 @@ Generated at: `2026-05-16 23:47:58`
 - Functions:
   - `VnbrokerPanel`, `buildChangeSummary`, `handleApply`, `handleBenchmark`, `handleOpenPreview`, `handleResetToDefaults`, `setField`, `setTimeoutField`
 - Top-level variables:
-  - `PROVIDERS`, `currentConfig`, `fetchData`, `keys`, `preview`, `result`, `timeoutCfg`, `warnings`
+  - `DEFAULT_PROVIDER_OPTIONS`, `currentConfig`, `fetchData`, `keys`, `preferredProvider`, `preview`, `providerCatalog`, `providerOptions`, `result`, `selectableProviders`, `timeoutCfg`, `warnings`
 
 ### `frontend/src/components/soc/WriteGuardBanner.jsx`
 
