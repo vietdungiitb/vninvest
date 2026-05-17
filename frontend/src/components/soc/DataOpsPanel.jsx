@@ -625,6 +625,11 @@ const DEFAULT_OBSERVABILITY_SUMMARY = {
     window_24h: [],
     window_72h: [],
   },
+  retention_health: {
+    retention_days: 30,
+    latest_run: null,
+    history: [],
+  },
   starvation: [],
   updated_at: null,
 };
@@ -1574,6 +1579,67 @@ const DataOpsPanel = ({ t }) => {
               </div>
             );
           })}
+        </div>
+
+        <div className="mb-6 rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+          {(() => {
+            const retentionStatus = String(observabilitySummary?.retention_health?.latest_run?.status || '').toLowerCase();
+            const retentionStatusTone = retentionStatus === 'success'
+              ? 'bg-emerald-900 text-emerald-200'
+              : retentionStatus === 'failed'
+                ? 'bg-rose-900 text-rose-200'
+                : 'bg-slate-800 text-slate-300';
+            const retentionStatusLabel = retentionStatus === 'success'
+              ? t('soc.dataops.retention_status_ok')
+              : retentionStatus === 'failed'
+                ? t('soc.dataops.retention_status_failed')
+                : t('soc.dataops.retention_status_unknown');
+            return (
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-400">{t('soc.dataops.retention_health_title')}</p>
+              <p className="mt-2 text-2xl font-bold text-white">
+                {Number(observabilitySummary?.retention_health?.latest_run?.deleted_rows || 0)}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {t('soc.dataops.retention_deleted_line', {
+                  deleted: Number(observabilitySummary?.retention_health?.latest_run?.deleted_rows || 0),
+                  retained: Number(observabilitySummary?.retention_health?.latest_run?.retained_rows || 0),
+                })}
+              </p>
+              <p className="mt-1 text-xs text-amber-300">
+                {t('soc.dataops.retention_policy_line', {
+                  days: Number(observabilitySummary?.retention_health?.retention_days || 0),
+                })}
+              </p>
+            </div>
+            <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${retentionStatusTone}`}>
+              {retentionStatusLabel}
+            </span>
+          </div>
+            );
+          })()}
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {(observabilitySummary?.retention_health?.history || []).slice(0, 5).map((historyPoint, index) => (
+              <span
+                key={`retention-history-${index}`}
+                className="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-[10px] text-slate-300"
+                title={t('soc.dataops.retention_history_point_tooltip', {
+                  deleted: Number(historyPoint.deleted_rows || 0),
+                  retained: Number(historyPoint.retained_rows || 0),
+                  before: Number(historyPoint.total_rows_before || 0),
+                })}
+              >
+                {t('soc.dataops.retention_history_point_label', {
+                  sequence: index + 1,
+                  deleted: Number(historyPoint.deleted_rows || 0),
+                })}
+              </span>
+            ))}
+            {(observabilitySummary?.retention_health?.history || []).length === 0 && (
+              <span className="text-[10px] text-slate-500">{t('soc.dataops.retention_history_empty')}</span>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,1fr)]">

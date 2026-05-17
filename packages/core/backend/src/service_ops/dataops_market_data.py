@@ -673,6 +673,32 @@ def build_market_data_observability_summary() -> dict[str, object]:
         'window_24h': persisted_history_24h or _build_daily_parity_gate_history(hours=24, sample_size=100, points=7),
         'window_72h': persisted_history_72h or _build_daily_parity_gate_history(hours=72, sample_size=100, points=7),
     }
+    retention_runs = list(
+        ServiceRunLog.objects.filter(
+            service=matrix_service,
+            input_summary__trigger='market_data.parity_snapshot_retention',
+        )
+        .order_by('-started_at', '-pk')[:7]
+    )
+    retention_history = [
+        {
+            'status': str(run_log.status or ''),
+            'started_at': run_log.started_at.isoformat() if run_log.started_at else None,
+            'finished_at': run_log.finished_at.isoformat() if run_log.finished_at else None,
+            'duration_seconds': float(run_log.duration_seconds or 0.0),
+            'deleted_rows': int((run_log.output_summary or {}).get('deleted_rows') or 0),
+            'retained_rows': int((run_log.output_summary or {}).get('retained_rows') or 0),
+            'total_rows_before': int((run_log.output_summary or {}).get('total_rows_before') or 0),
+            'retention_days': int((run_log.input_summary or {}).get('retention_days') or config.parity_snapshot_retention_days),
+        }
+        for run_log in retention_runs
+    ]
+    latest_retention_run = retention_history[0] if retention_history else None
+    retention_health = {
+        'retention_days': int(config.parity_snapshot_retention_days or 1),
+        'latest_run': latest_retention_run,
+        'history': retention_history,
+    }
 
     return {
         'backlog': {
@@ -682,6 +708,7 @@ def build_market_data_observability_summary() -> dict[str, object]:
         'fail_rates': fail_rates,
         'parity_gates': parity_gates,
         'parity_history': parity_history,
+        'retention_health': retention_health,
         'starvation': starvation_indicators,
         'updated_at': now_value.isoformat(),
     }

@@ -1100,6 +1100,20 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
             },
             output_summary={},
         )
+        ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='success',
+            started_at=now_value - timezone.timedelta(minutes=5),
+            input_summary={
+                'trigger': 'market_data.parity_snapshot_retention',
+                'retention_days': 30,
+            },
+            output_summary={
+                'deleted_rows': 12,
+                'retained_rows': 80,
+                'total_rows_before': 92,
+            },
+        )
 
         response = self.client.get('/api/soc/dataops/observability/')
 
@@ -1109,6 +1123,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertIn('fail_rates', payload)
         self.assertIn('parity_gates', payload)
         self.assertIn('parity_history', payload)
+        self.assertIn('retention_health', payload)
         self.assertIn('starvation', payload)
         self.assertIn('updated_at', payload)
         self.assertGreaterEqual(len(payload['backlog']['by_dataset']), 1)
@@ -1127,6 +1142,8 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertGreaterEqual(len(payload['parity_history']['window_24h']), 1)
         self.assertIn('strict_fresh_parity', payload['parity_history']['window_24h'][0])
         self.assertGreaterEqual(payload['fail_rates']['window_1h']['failed_runs'], 1)
+        self.assertEqual(payload['retention_health']['latest_run']['deleted_rows'], 12)
+        self.assertEqual(payload['retention_health']['latest_run']['retained_rows'], 80)
         starvation_map = {item['tier']: item for item in payload['starvation']}
         self.assertIn('hot_user_demand', starvation_map)
         self.assertIn('is_starved', starvation_map['hot_user_demand'])
@@ -1143,6 +1160,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(canonical_payload['fail_rates'], alias_payload['fail_rates'])
         self.assertEqual(canonical_payload['parity_gates'], alias_payload['parity_gates'])
         self.assertEqual(canonical_payload['parity_history'], alias_payload['parity_history'])
+        self.assertEqual(canonical_payload['retention_health'], alias_payload['retention_health'])
         self.assertEqual(len(canonical_payload['starvation']), len(alias_payload['starvation']))
         alias_by_tier = {item['tier']: item for item in alias_payload['starvation']}
         canonical_by_tier = {item['tier']: item for item in canonical_payload['starvation']}

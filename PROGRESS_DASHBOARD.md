@@ -1,3 +1,22 @@
+# 2026-05-17 — CPS P17 complete: retention observability lane ✅
+
+Status: **✅ retention_health added to observability API** | **✅ DataOps monitor retention card shipped** | **✅ backend/frontend validation + runtime refresh passed**
+
+## What changed
+- Added `retention_health` lane in DataOps observability summary with retention policy, latest run, and short history.
+- Extended observability response contract and API regression to lock canonical/alias parity for `retention_health`.
+- Updated DataOps Monitor UI to render retention health card with status badge, deleted/retained counts, and history chips.
+- Refined i18n labels (VI/EN) for retention lane readability and failed status tone.
+
+## Validation
+- `DJANGO_DEBUG=true manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` -> **75 passed** ✅
+- `npm run build` (frontend) -> **compiled successfully** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Retention lane currently presents short-window snapshots only; chưa có trend chart và drift threshold alert.
+
 # 2026-05-17 — CPS P16 complete: beat-driven parity retention cleanup ✅
 
 Status: **✅ cleanup decoupled from scheduler** | **✅ dedicated hourly beat task added** | **✅ retention run-log telemetry expanded**

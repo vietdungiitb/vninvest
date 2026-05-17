@@ -90,6 +90,7 @@ class DataOpsObservabilityResponseSerializer(serializers.Serializer):
     fail_rates = serializers.JSONField()
     parity_gates = serializers.JSONField()
     parity_history = serializers.JSONField()
+    retention_health = serializers.JSONField()
     starvation = serializers.ListField(child=serializers.JSONField())
     updated_at = serializers.DateTimeField()
 

@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P17 - retention observability lane | frontend/backend/docs
+
+## All Modified Files (12 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added `retention_health` lane in observability summary using parity retention run logs |
+| `packages/core/backend/src/service_ops/views/dataops.py` | Extended observability response serializer contract with `retention_health` |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Added regression assertions for `retention_health` presence and canonical/alias parity |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Added retention health card (status badge, deleted/retained line, retention history chips) in Monitor tab |
+| `frontend/src/i18n/vi.js` | Added/refined Vietnamese i18n strings for retention health lane |
+| `frontend/src/i18n/en.js` | Added retention health failed-status i18n key |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Added and marked P17 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P17 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P17 completion |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (75 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` ✅ compiled successfully
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1211` modules)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+
+## Residual risk
+- Retention health hien moi la point-in-time + short history chips, chua co trend analytics lane/day-over-day drift threshold.
+
 # 2026-05-17 | CPS P16 - beat-driven parity retention cleanup | backend/docs
 
 ## All Modified Files (11 files)
