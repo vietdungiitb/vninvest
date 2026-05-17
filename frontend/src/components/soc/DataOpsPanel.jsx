@@ -598,6 +598,12 @@ const DEFAULT_OBSERVABILITY_SUMMARY = {
       evaluated_symbols: 0,
       strict_fresh_count: 0,
       fresh_or_warm_count: 0,
+      trend: {
+        strict_fresh_delta_pct_points: 0,
+        strict_fresh_direction: 'flat',
+        fresh_or_warm_delta_pct_points: 0,
+        fresh_or_warm_direction: 'flat',
+      },
     },
     window_72h: {
       strict_fresh_parity: 0,
@@ -607,6 +613,12 @@ const DEFAULT_OBSERVABILITY_SUMMARY = {
       evaluated_symbols: 0,
       strict_fresh_count: 0,
       fresh_or_warm_count: 0,
+      trend: {
+        strict_fresh_delta_pct_points: 0,
+        strict_fresh_direction: 'flat',
+        fresh_or_warm_delta_pct_points: 0,
+        fresh_or_warm_direction: 'flat',
+      },
     },
   },
   starvation: [],
@@ -1472,8 +1484,23 @@ const DataOpsPanel = ({ t }) => {
             },
           ].map((windowConfig) => {
             const parityWindow = observabilitySummary?.parity_gates?.[windowConfig.key] || {};
+            const parityTrend = parityWindow.trend || {};
             const strictParity = Number(parityWindow.strict_fresh_parity || 0) * 100;
             const relaxedParity = Number(parityWindow.fresh_or_warm_parity || 0) * 100;
+            const strictTrendDelta = Number(parityTrend.strict_fresh_delta_pct_points || 0);
+            const relaxedTrendDelta = Number(parityTrend.fresh_or_warm_delta_pct_points || 0);
+            const strictTrendDirection = String(parityTrend.strict_fresh_direction || 'flat');
+            const relaxedTrendDirection = String(parityTrend.fresh_or_warm_direction || 'flat');
+            const strictTrendTone = strictTrendDirection === 'up'
+              ? 'text-emerald-300'
+              : strictTrendDirection === 'down'
+                ? 'text-rose-300'
+                : 'text-slate-400';
+            const relaxedTrendTone = relaxedTrendDirection === 'up'
+              ? 'text-emerald-300'
+              : relaxedTrendDirection === 'down'
+                ? 'text-rose-300'
+                : 'text-slate-400';
             return (
               <div key={windowConfig.key} className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -1489,11 +1516,23 @@ const DataOpsPanel = ({ t }) => {
                     total: Number(parityWindow.evaluated_symbols || 0),
                   })}
                 </p>
+                <p className={`mt-1 text-xs ${strictTrendTone}`}>
+                  {t('soc.dataops.parity_trend_line', {
+                    delta: strictTrendDelta > 0 ? `+${strictTrendDelta.toFixed(2)}` : strictTrendDelta.toFixed(2),
+                    hours: Number(parityTrend.comparison_hours || 0),
+                  })}
+                </p>
                 <p className="mt-1 text-xs text-amber-300">
                   {t('soc.dataops.parity_relaxed_line', {
                     parity: relaxedParity.toFixed(2),
                     count: Number(parityWindow.fresh_or_warm_count || 0),
                     total: Number(parityWindow.evaluated_symbols || 0),
+                  })}
+                </p>
+                <p className={`mt-1 text-xs ${relaxedTrendTone}`}>
+                  {t('soc.dataops.parity_relaxed_trend_line', {
+                    delta: relaxedTrendDelta > 0 ? `+${relaxedTrendDelta.toFixed(2)}` : relaxedTrendDelta.toFixed(2),
+                    hours: Number(parityTrend.comparison_hours || 0),
                   })}
                 </p>
               </div>

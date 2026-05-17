@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-05-17 | CPS P11 - parity trend observability
+
+### Files changed in this session
+- `packages/core/backend/src/service_ops/dataops_market_data.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Bo sung trend delta cho parity 24h/72h de operator thay ngay strict-fresh/fresh-or-warm dang cai thien, di ngang hay suy giam so voi ky truoc cung do dai.
+
+### Validation snapshot
+- `manage.py test service_ops.tests.test_soc_api_domain --keepdb` ✅ (48 tests)
+- `npm run build` (frontend) ✅
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | CPS P10 - strict-fresh execution uplift
 
 ### Files changed in this session

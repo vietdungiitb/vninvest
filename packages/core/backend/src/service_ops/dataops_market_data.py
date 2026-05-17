@@ -328,10 +328,25 @@ def _build_market_data_fail_rate_window(*, service: ServiceDefinition, hours: in
     }
 
 
-def _build_daily_parity_gate_window(*, hours: int, sample_size: int = 100) -> dict[str, float | int | bool]:
+def _build_daily_parity_gate_direction(delta_pct_points: float) -> str:
+    if delta_pct_points > 0:
+        return 'up'
+    if delta_pct_points < 0:
+        return 'down'
+    return 'flat'
+
+
+def _build_daily_parity_gate_window(
+    *,
+    hours: int,
+    sample_size: int = 100,
+    end_offset_hours: int = 0,
+) -> dict[str, float | int | bool]:
     window_hours = max(int(hours or 0), 1)
     capped_sample_size = max(int(sample_size or 0), 1)
-    since = timezone.now() - timedelta(hours=window_hours)
+    normalized_end_offset_hours = max(int(end_offset_hours or 0), 0)
+    window_end = timezone.now() - timedelta(hours=normalized_end_offset_hours)
+    since = window_end - timedelta(hours=window_hours)
 
     sample_symbols = list(
         GlobalSymbolRegistry.objects.filter(is_active=True)
@@ -351,6 +366,7 @@ def _build_daily_parity_gate_window(*, hours: int, sample_size: int = 100) -> di
             'strict_met': False,
             'relaxed_threshold_pct': 99.0,
             'relaxed_met': False,
+            'window_end_offset_hours': normalized_end_offset_hours,
         }
 
     coverage_rows = GlobalSymbolCoverage.objects.filter(
@@ -384,7 +400,37 @@ def _build_daily_parity_gate_window(*, hours: int, sample_size: int = 100) -> di
         'strict_met': strict_fresh_parity >= 0.99,
         'relaxed_threshold_pct': 99.0,
         'relaxed_met': fresh_or_warm_parity >= 0.99,
+        'window_end_offset_hours': normalized_end_offset_hours,
     }
+
+
+def _build_daily_parity_gate_window_with_trend(*, hours: int, sample_size: int = 100) -> dict[str, object]:
+    current_window = _build_daily_parity_gate_window(hours=hours, sample_size=sample_size)
+    previous_window = _build_daily_parity_gate_window(
+        hours=hours,
+        sample_size=sample_size,
+        end_offset_hours=hours,
+    )
+
+    strict_delta_pct_points = round(
+        (float(current_window.get('strict_fresh_parity') or 0.0) - float(previous_window.get('strict_fresh_parity') or 0.0)) * 100.0,
+        2,
+    )
+    relaxed_delta_pct_points = round(
+        (float(current_window.get('fresh_or_warm_parity') or 0.0) - float(previous_window.get('fresh_or_warm_parity') or 0.0)) * 100.0,
+        2,
+    )
+
+    current_window['trend'] = {
+        'comparison_hours': int(hours),
+        'strict_fresh_delta_pct_points': strict_delta_pct_points,
+        'strict_fresh_direction': _build_daily_parity_gate_direction(strict_delta_pct_points),
+        'fresh_or_warm_delta_pct_points': relaxed_delta_pct_points,
+        'fresh_or_warm_direction': _build_daily_parity_gate_direction(relaxed_delta_pct_points),
+        'previous_strict_fresh_parity': float(previous_window.get('strict_fresh_parity') or 0.0),
+        'previous_fresh_or_warm_parity': float(previous_window.get('fresh_or_warm_parity') or 0.0),
+    }
+    return current_window
 
 
 def build_market_data_observability_summary() -> dict[str, object]:
@@ -478,8 +524,8 @@ def build_market_data_observability_summary() -> dict[str, object]:
         'window_24h': _build_market_data_fail_rate_window(service=matrix_service, hours=24),
     }
     parity_gates = {
-        'window_24h': _build_daily_parity_gate_window(hours=24, sample_size=100),
-        'window_72h': _build_daily_parity_gate_window(hours=72, sample_size=100),
+        'window_24h': _build_daily_parity_gate_window_with_trend(hours=24, sample_size=100),
+        'window_72h': _build_daily_parity_gate_window_with_trend(hours=72, sample_size=100),
     }
 
     return {

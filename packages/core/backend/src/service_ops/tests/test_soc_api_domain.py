@@ -1115,6 +1115,9 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertIn('window_72h', payload['parity_gates'])
         self.assertIn('strict_fresh_parity', payload['parity_gates']['window_24h'])
         self.assertIn('fresh_or_warm_parity', payload['parity_gates']['window_24h'])
+        self.assertIn('trend', payload['parity_gates']['window_24h'])
+        self.assertIn('strict_fresh_delta_pct_points', payload['parity_gates']['window_24h']['trend'])
+        self.assertIn('fresh_or_warm_delta_pct_points', payload['parity_gates']['window_24h']['trend'])
         self.assertGreaterEqual(payload['fail_rates']['window_1h']['failed_runs'], 1)
         starvation_map = {item['tier']: item for item in payload['starvation']}
         self.assertIn('hot_user_demand', starvation_map)
@@ -1130,6 +1133,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
 
         self.assertEqual(canonical_payload['backlog'], alias_payload['backlog'])
         self.assertEqual(canonical_payload['fail_rates'], alias_payload['fail_rates'])
+        self.assertEqual(canonical_payload['parity_gates'], alias_payload['parity_gates'])
         self.assertEqual(len(canonical_payload['starvation']), len(alias_payload['starvation']))
         alias_by_tier = {item['tier']: item for item in alias_payload['starvation']}
         canonical_by_tier = {item['tier']: item for item in canonical_payload['starvation']}

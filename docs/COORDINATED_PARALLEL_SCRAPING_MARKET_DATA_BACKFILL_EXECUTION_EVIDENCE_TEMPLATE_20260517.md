@@ -609,3 +609,65 @@ Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv
 
 ## Next slice
 - Optional: add direct DataOps metric card showing strict-fresh uplift trend delta per day.
+
+---
+
+## Latest Executed Slice Snapshot (P11)
+
+## Slice metadata
+- Slice ID: P11
+- Date: 2026-05-17
+- Owner: Copilot
+- Related tasks (Pxx): P11
+
+## Objective
+- Make parity observability directional by exposing and rendering trend deltas for 24h/72h windows versus the previous same-length window.
+
+## Files changed
+1. packages/core/backend/src/service_ops/dataops_market_data.py
+2. packages/core/backend/src/service_ops/tests/test_soc_api_domain.py
+3. frontend/src/components/soc/DataOpsPanel.jsx
+4. frontend/src/i18n/vi.js
+5. frontend/src/i18n/en.js
+6. docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md
+7. docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md
+8. module_tree_full.md
+9. CODE_CHANGE_AUDIT_LEDGER.md
+10. PROGRESS_DASHBOARD.md
+11. MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md
+
+## Validation commands
+```powershell
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain --keepdb
+Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build
+Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1
+Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py
+```
+
+## Validation results
+- `service_ops.tests.test_soc_api_domain` -> 48 passed.
+- `npm run build` -> compiled successfully.
+- `start_dev.ps1` -> native stack healthy, queue drift check pass, smoke checks pass.
+- module tree regenerated -> 1210 modules.
+
+## Runtime evidence
+- start_dev run result: PASS
+- health checks: Core API OK, Frontend OK
+
+## Metrics snapshot
+- planned_items: N/A (observability presentation slice)
+- inserted: N/A
+- updated: N/A
+- skipped_existing: N/A
+- failed_count: N/A
+- backlog_delta: parity windows now include `trend` deltas for strict-fresh and fresh-or-warm vs previous same-length window
+
+## UI/API evidence
+- API payload snapshot: `/core/v1/operator/scraping/dataops/observability/` now includes `parity_gates.window_24h.trend` and `parity_gates.window_72h.trend`.
+- UI snapshot: DataOps monitor parity cards now show signed delta values vs previous window.
+
+## Residual risks
+- Trend values reflect sampled parity windows, so small active-universe shifts can move deltas even when the underlying ingest path is stable.
+
+## Next slice
+- Optional: add time-series sparkline/history persistence if operators need more than previous-window comparison.

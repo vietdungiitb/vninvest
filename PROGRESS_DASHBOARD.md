@@ -1,3 +1,25 @@
+# 2026-05-17 — CPS P11 complete: parity trend observability ✅
+
+Status: **✅ parity windows now include trend deltas** | **✅ DataOps monitor shows signed previous-window delta** | **✅ contract/build/runtime validation passed**
+
+## What changed
+- Extended DataOps observability backend so each parity gate window now includes `trend`.
+- Trend compares the current parity window with the previous same-length window and exposes:
+  - `strict_fresh_delta_pct_points`
+  - `fresh_or_warm_delta_pct_points`
+  - direction (`up`, `down`, `flat`)
+- Updated DataOps monitor parity cards to render signed delta lines for strict-fresh and fresh-or-warm.
+- Added Vietnamese and English labels for the new trend lines.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **48 passed** ✅
+- `npm run build` (frontend) -> **compiled successfully** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- Trend is still based on sampled previous-window comparison, not persisted historical time series.
+
 # 2026-05-17 — CPS P10 complete: strict-fresh execution uplift ✅
 
 Status: **✅ planner mode strict_fresh delivered** | **✅ hot/warm scheduler now dispatches strict_fresh** | **✅ focused regression + runtime refresh passed**

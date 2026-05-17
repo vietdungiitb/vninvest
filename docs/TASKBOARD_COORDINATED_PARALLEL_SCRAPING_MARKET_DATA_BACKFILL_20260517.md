@@ -19,6 +19,7 @@
 | P08 | Cutover runbook and handoff close | DONE | Tech Lead | Da ban hanh cutover runbook, rollback playbook, escalation flow va closeout note |
 | P09 | Strict-fresh parity hardening | DONE | Frontend + Backend | Da bo sung parity_gates 24h/72h (strict_fresh + fresh_or_warm + pass/fail) tren API/DataOps monitor de giam ambiguity gate policy |
 | P10 | Strict-fresh execution uplift | DONE | Core Backend | Scheduler hot/warm chay planner mode strict_fresh; planner cho phep warm daily refresh de nang kha nang dat gate strict-fresh |
+| P11 | Parity trend observability | DONE | Frontend + Backend | Da bo sung trend delta vs ky truoc cho parity 24h/72h tren API/DataOps monitor de operator thay huong cai thien hay suy giam |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
@@ -50,6 +51,11 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] Planner mode `strict_fresh` cho phep plan daily `warm`.
 - [x] Queue-tier scheduler ap mode `strict_fresh` cho hot/warm tiers.
 - [x] Regression tests khoa mode selection va planner behavior.
+
+### Phase F - Parity trend observability (P11)
+- [x] Observability API tra ve `trend` cho moi parity window.
+- [x] DataOps monitor hien thi delta strict-fresh/fresh-or-warm vs ky truoc.
+- [x] Regression tests khoa contract `parity_gates.trend`.
 
 ---
 
