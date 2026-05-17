@@ -37,28 +37,127 @@ function generateRequestId() {
   });
 }
 
-function getAuthorizationHeader() {
-  if (typeof window === "undefined") return {};
-  const token = window.localStorage?.getItem("access_token");
+function getBrowserStorageToken(key) {
+  if (typeof window === "undefined") return null;
+  return window.localStorage?.getItem(key) || null;
+}
+
+function getAuthorizationHeader(getToken) {
+  const token = typeof getToken === "function" ? getToken() : null;
   if (!token) return {};
   return { "Authorization": `Bearer ${token}` };
 }
 
-function createCoreTransport(env = {}) {
-  async function coreGet(path, options = {}) {
+function normalizeRefreshResponsePayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const directAccess = typeof payload.access === "string" ? payload.access : null;
+  const directRefresh = typeof payload.refresh === "string" ? payload.refresh : null;
+  if (directAccess) {
+    return { access: directAccess, refresh: directRefresh };
+  }
+  const nestedData = payload.data;
+  if (nestedData && typeof nestedData === "object" && typeof nestedData.access === "string") {
+    return {
+      access: nestedData.access,
+      refresh: typeof nestedData.refresh === "string" ? nestedData.refresh : null,
+    };
+  }
+  return null;
+}
+
+function createCoreTransport(env = {}, options = {}) {
+  const {
+    getToken = () => null,
+    getRefreshToken = () => null,
+    setTokens = () => {},
+    clearTokens = () => {},
+  } = options;
+  let refreshPromise = null;
+
+  function shouldTryRefresh(path, responseStatus) {
+    return (
+      responseStatus === 401
+      && path !== "/auth/token/refresh/"
+      && typeof getRefreshToken === "function"
+      && Boolean(getRefreshToken())
+    );
+  }
+
+  async function requestTokenRefresh() {
+    if (refreshPromise) {
+      return refreshPromise;
+    }
+
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      return null;
+    }
+
     const base = resolveCoreApiBase(env);
     const requestId = generateRequestId();
 
-    const response = await fetch(`${base}${path}`, {
-      ...options,
+    refreshPromise = fetch(`${base}/auth/token/refresh/`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Request-ID": requestId,
-        ...getAuthorizationHeader(),
-        ...(options.headers || {}),
+      },
+      credentials: "include",
+      body: JSON.stringify({ refresh: refreshToken }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          clearTokens();
+          return null;
+        }
+        const payload = await response.json().catch(() => null);
+        const tokenPayload = normalizeRefreshResponsePayload(payload);
+        if (!tokenPayload || !tokenPayload.access) {
+          clearTokens();
+          return null;
+        }
+        setTokens(tokenPayload);
+        return tokenPayload.access;
+      })
+      .catch(() => {
+        clearTokens();
+        return null;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+
+    return refreshPromise;
+  }
+
+  async function requestWithAuth(path, init = {}, attemptRefresh = true) {
+    const base = resolveCoreApiBase(env);
+    const requestId = generateRequestId();
+    const response = await fetch(`${base}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-ID": requestId,
+        ...getAuthorizationHeader(getToken),
+        ...(init.headers || {}),
       },
       credentials: "include",
     });
+
+    if (attemptRefresh && shouldTryRefresh(path, response.status)) {
+      const nextAccessToken = await requestTokenRefresh();
+      if (nextAccessToken) {
+        return requestWithAuth(path, init, false);
+      }
+    }
+
+    return response;
+  }
+
+  async function coreGet(path, options = {}) {
+    const response = await requestWithAuth(path, options, true);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -71,19 +170,10 @@ function createCoreTransport(env = {}) {
   }
 
   async function corePost(path, body = undefined) {
-    const base = resolveCoreApiBase(env);
-    const requestId = generateRequestId();
-
-    const response = await fetch(`${base}${path}`, {
+    const response = await requestWithAuth(path, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Request-ID": requestId,
-        ...getAuthorizationHeader(),
-      },
-      credentials: "include",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    }, true);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -97,19 +187,10 @@ function createCoreTransport(env = {}) {
   }
 
   async function corePatch(path, body = undefined) {
-    const base = resolveCoreApiBase(env);
-    const requestId = generateRequestId();
-
-    const response = await fetch(`${base}${path}`, {
+    const response = await requestWithAuth(path, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Request-ID": requestId,
-        ...getAuthorizationHeader(),
-      },
-      credentials: "include",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    }, true);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -122,18 +203,9 @@ function createCoreTransport(env = {}) {
   }
 
   async function coreDelete(path) {
-    const base = resolveCoreApiBase(env);
-    const requestId = generateRequestId();
-
-    const response = await fetch(`${base}${path}`, {
+    const response = await requestWithAuth(path, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthorizationHeader(),
-        "X-Request-ID": requestId,
-      },
-      credentials: "include",
-    });
+    }, true);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -155,8 +227,13 @@ function createCoreTransport(env = {}) {
  *   import { coreApiAdapter } from '../../adapters/coreApiAdapter';
  *   const snapshot = await coreApiAdapter.getSymbolSnapshot('VCI');
  */
-export function createCoreApiAdapter({ env = {} } = {}) {
-  const { coreGet, corePost, corePatch, coreDelete } = createCoreTransport(env);
+export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setTokens, clearTokens } = {}) {
+  const { coreGet, corePost, corePatch, coreDelete } = createCoreTransport(env, {
+    getToken,
+    getRefreshToken,
+    setTokens,
+    clearTokens,
+  });
 
   return {
   
@@ -626,8 +703,21 @@ export function createCoreApiAdapter({ env = {} } = {}) {
   };
 }
 
-export function coreApiAdapter(options = undefined) {
-  return createCoreApiAdapter(options || {});
-}
+export const defaultCoreApiAdapter = createCoreApiAdapter({
+  getToken: () => getBrowserStorageToken("access_token"),
+  getRefreshToken: () => getBrowserStorageToken("refresh_token"),
+  setTokens: (tokens) => {
+    if (typeof window === "undefined" || !tokens?.access) return;
+    window.localStorage?.setItem("access_token", tokens.access);
+    if (tokens.refresh) {
+      window.localStorage?.setItem("refresh_token", tokens.refresh);
+    }
+  },
+  clearTokens: () => {
+    if (typeof window === "undefined") return;
+    window.localStorage?.removeItem("access_token");
+    window.localStorage?.removeItem("refresh_token");
+  },
+});
 
-Object.assign(coreApiAdapter, createCoreApiAdapter());
+export const coreApiAdapter = defaultCoreApiAdapter;

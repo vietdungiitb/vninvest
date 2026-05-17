@@ -1,5 +1,141 @@
 # Code Change Audit Ledger
 
+# 2026-05-18 | packages/web frontend audit closure | frontend/packages-web/docs
+
+## All Modified Files (22 files)
+| File | Change |
+|------|--------|
+| `packages/web/src/pages/pageRegistry.js` | Replaced static page imports with dynamic route loaders and deferred components to enable route-level code splitting |
+| `packages/web/src/components/ShellPageTemplate.js` | Introduced named components (`ShellMetric`, `ShellField`, `ShellSelectField`, `ShellPanel`, `ShellPageChrome`) and kept `render*` wrappers for compatibility |
+| `packages/web/src/index.js` | Exported new Shell component APIs, lazy loader API (`getPageLoader`), and feature-slice exports |
+| `packages/web/src/features/community/components/index.js` | Added community feature components slice scaffold |
+| `packages/web/src/features/community/hooks/index.js` | Added community feature hooks slice scaffold |
+| `packages/web/src/features/community/pages/index.js` | Added community feature pages slice scaffold |
+| `packages/web/src/features/community/index.js` | Added community feature barrel export |
+| `packages/web/src/features/saas/components/index.js` | Added SaaS feature components slice scaffold |
+| `packages/web/src/features/saas/hooks/index.js` | Added SaaS feature hooks slice scaffold |
+| `packages/web/src/features/saas/pages/index.js` | Added SaaS feature pages slice scaffold |
+| `packages/web/src/features/saas/index.js` | Added SaaS feature barrel export |
+| `packages/web/src/features/vip/components/index.js` | Added VIP feature components slice scaffold |
+| `packages/web/src/features/vip/hooks/index.js` | Added VIP feature hooks slice scaffold |
+| `packages/web/src/features/vip/pages/index.js` | Added VIP feature pages slice scaffold |
+| `packages/web/src/features/vip/index.js` | Added VIP feature barrel export |
+| `packages/web/src/features/community/README.md` | Documented feature slice structure |
+| `packages/web/src/features/saas/README.md` | Documented feature slice structure |
+| `packages/web/src/features/vip/README.md` | Documented feature slice structure |
+| `docs/FRONTEND_AUDIT_PACKAGES_WEB_20260517.md` | Added remediation status table and marked all findings resolved |
+| `module_tree_full.md` | Regenerated module tree (`1223` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for frontend audit closure |
+
+## Validation
+- `Set-Location 'c:\Mujoco Projects\vninvest\packages\web'; npm test -- --watch=false` -> **20 passed** ✅
+- `Set-Location 'c:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` -> **1223 modules** ✅
+- `Set-Location 'c:\Mujoco Projects\vninvest'; ./start_dev.ps1` -> **Frontend health OK** ✅
+
+## Residual risk
+- `pageRegistry` now lazy-loads routes with deferred wrappers, but no dedicated route-loading UX test exists yet for host apps embedding this package.
+
+# 2026-05-18 | packages/web coreApiAdapter auth hardening | frontend/packages-web
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/web/src/adapters/coreApiAdapter.js` | Removed factory/static-property anti-pattern, introduced explicit `defaultCoreApiAdapter` singleton, injected token providers, and added 401 token-refresh retry (single retry) in transport layer |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Updated factory test to `createCoreApiAdapter` and added regressions for refresh-success retry, refresh-fail handling, and injected token provider auth header |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for packages/web adapter hardening |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location 'c:\Mujoco Projects\vninvest\packages\web'; npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` -> **20 passed** ✅
+- `Set-Location 'c:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `Set-Location 'c:\Mujoco Projects\vninvest'; ./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- This slice hardens auth flow in `coreApiAdapter` only; page-level code splitting and `features/*` verticalization from the audit document remain separate follow-up slices.
+
+# 2026-05-18 | SessionFacts CVD no-data 200 contract | backend/tests
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_serving/views.py` | Updated `SessionFactsCvdView` to return `200` with empty payload (`data_status`, `detail`, `_source=no-data`) when SessionFacts/buckets are missing instead of raising `404` |
+| `packages/core/backend/src/market_serving/tests/test_native_views.py` | Added regressions for two no-data scenarios: missing SessionFacts row and missing bucket rows |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for SessionFacts CVD no-data contract cutover |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+| `frontend/src/hooks/useSessionFactsCvdSeries.js` | Existing 404 retry-suppression path remains compatible with new `200 no-data` response |
+
+## Validation
+- `docker exec -i vninvest-dev-core-api python /app/src/manage.py test market_serving.tests.test_native_views --keepdb` -> **2 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- No-data now surfaces as success payload for CVD endpoint; client code that previously relied on HTTP 404 semantics must use `bucket_count===0` or `data_status` to detect empty-data state.
+
+# 2026-05-17 | SessionFacts CVD 404 retry suppression | frontend/runtime
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `frontend/src/hooks/useSessionFactsCvdSeries.js` | Added 404 miss-cache by `symbol|window|trade_date` so the same missing CVD request is not retried repeatedly in one session |
+| `frontend/src/hooks/useSessionFactsCvdSeries.test.js` | Added regression test to lock no-repeat behavior for repeated 404 CVD responses |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this 404 retry suppression slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `npm test -- --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js --watch=false` -> **2 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- This slice suppresses repeated retries for known 404 CVD misses but does not generate missing `SessionFacts`; data backfill/materialization still required to remove the first 404 for missing symbols/dates.
+
+# 2026-05-17 | Data ingest default registry sweep | backend/docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/data_ingest/tasks.py` | Swapped the remaining price-board and intraday default symbol discovery from `StockProfile` to `GlobalSymbolRegistry` |
+| `packages/core/backend/src/data_ingest/tests/test_tasks.py` | Added/updated regressions for no-symbol price-board and intraday defaults, and fixed the prior price-board seed to use registry data |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for the data_ingest sweep |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this sweep |
+
+## Validation
+- `manage.py test data_ingest.tests.test_tasks.DataIngestBackfillTaskTests --keepdb` -> **12 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- This sweep only normalized the default discovery paths inside `data_ingest`; explicit symbol lists and non-default sync paths were left untouched.
+
+# 2026-05-17 | Daily price backfill registry default | backend/docs
+
+## All Modified Files (5 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/data_ingest/tasks.py` | Swapped the default no-symbols daily backfill source to `GlobalSymbolRegistry` and reused it for ingest coverage fallback |
+| `packages/core/backend/src/data_ingest/tests/test_tasks.py` | Added regression coverage for registry-driven backfill defaults and ingest coverage refresh fallback |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for the backfill registry-default fix |
+
+## Validation
+- `manage.py test data_ingest.tests.test_tasks.DataIngestBackfillTaskTests --keepdb` -> **10 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Default symbol discovery now follows the global registry, but other tasks in `data_ingest` still have their own StockProfile-based defaults and were intentionally left untouched.
+
 # 2026-05-17 | CPS P18 - retention trend analytics | frontend/backend/docs
 
 ## All Modified Files (11 files)

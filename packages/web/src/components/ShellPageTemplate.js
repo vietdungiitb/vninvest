@@ -326,16 +326,16 @@ function joinClassNames(...values) {
   return values.filter(Boolean).join(" ");
 }
 
-export function renderShellMetric(label, value) {
+export function ShellMetric({ label, value }) {
   return renderElement(
     "article",
-    { className: "shellPage__metric", key: label },
+    { className: "shellPage__metric" },
     renderElement("span", { className: "shellPage__metricLabel" }, label),
     renderElement("strong", { className: "shellPage__metricValue" }, value),
   );
 }
 
-export function renderShellField({ label, name, type = "text", value, onChange, placeholder, autoComplete, fieldKey }) {
+export function ShellField({ label, name, type = "text", value, onChange, placeholder, autoComplete, fieldKey }) {
   return renderElement(
     "label",
     { className: "shellPage__field", htmlFor: name, key: fieldKey || name },
@@ -353,7 +353,7 @@ export function renderShellField({ label, name, type = "text", value, onChange, 
   );
 }
 
-export function renderShellSelectField({ label, name, value, options, onChange, fieldKey }) {
+export function ShellSelectField({ label, name, value, options, onChange, fieldKey }) {
   return renderElement(
     "label",
     { className: "shellPage__field", htmlFor: name, key: fieldKey || name },
@@ -378,7 +378,7 @@ export function renderShellSelectField({ label, name, value, options, onChange, 
   );
 }
 
-export function renderShellPanel({ title, subtitle, actions = null, children, className = "", as = "article" }) {
+export function ShellPanel({ title, subtitle, actions = null, children, className = "", as = "article" }) {
   return renderElement(
     as,
     { className: joinClassNames("shellPage__panel", className) },
@@ -399,7 +399,7 @@ export function renderShellPanel({ title, subtitle, actions = null, children, cl
   );
 }
 
-export function renderShellPageChrome({
+export function ShellPageChrome({
   eyebrow,
   title,
   description,
@@ -454,4 +454,25 @@ export function renderShellPageChrome({
       : null,
     children,
   );
+}
+
+// Compatibility wrappers for existing shell pages that still call render* helpers.
+export function renderShellMetric(label, value) {
+  return renderElement(ShellMetric, { key: label, label, value });
+}
+
+export function renderShellField(props) {
+  return renderElement(ShellField, props);
+}
+
+export function renderShellSelectField(props) {
+  return renderElement(ShellSelectField, props);
+}
+
+export function renderShellPanel(props) {
+  return renderElement(ShellPanel, props);
+}
+
+export function renderShellPageChrome(props) {
+  return renderElement(ShellPageChrome, props);
 }

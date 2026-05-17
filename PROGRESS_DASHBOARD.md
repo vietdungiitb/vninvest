@@ -1,3 +1,110 @@
+# 2026-05-18 — packages/web frontend audit closure complete ✅
+
+Status: **✅ page registry lazy loading enabled** | **✅ ShellPageTemplate migrated to component API** | **✅ feature slice scaffolds created**
+
+## What changed
+- Refactored `pageRegistry` to use dynamic imports and per-route deferred components, eliminating eager static imports.
+- Migrated shell template primitives to named components (`ShellMetric`, `ShellField`, `ShellSelectField`, `ShellPanel`, `ShellPageChrome`) while preserving render-helper wrappers for compatibility.
+- Added structured feature slices for `community`, `saas`, `vip` with `components/hooks/pages/index` and documented conventions in each feature README.
+- Updated package entrypoint exports for new component and loader APIs.
+- Updated audit source doc `docs/FRONTEND_AUDIT_PACKAGES_WEB_20260517.md` with remediation status for all findings.
+
+## Validation
+- `npm test -- --watch=false` (packages/web) -> **20 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1223 modules** ✅
+- `./start_dev.ps1` -> **Frontend health OK** ✅
+
+## Residual risk
+- Chua co test mo phong host-router cho deferred page loading path; can bo sung khi cat sang rollout verification.
+
+# 2026-05-18 — packages/web coreApiAdapter auth hardening complete ✅
+
+Status: **✅ factory/static singleton anti-pattern removed** | **✅ 401 refresh/retry path added in adapter transport** | **✅ focused tests + runtime refresh passed**
+
+## What changed
+- Refactored `packages/web/src/adapters/coreApiAdapter.js` to use explicit exports: `createCoreApiAdapter`, `defaultCoreApiAdapter`, and `coreApiAdapter` singleton alias.
+- Added injectable auth dependencies (`getToken`, `getRefreshToken`, `setTokens`, `clearTokens`) to decouple token read/write from hardcoded browser storage access.
+- Added single-flight token refresh logic (`/auth/token/refresh/`) with one retry for failed 401 requests, while avoiding refresh loops on the refresh endpoint itself.
+- Extended unit tests in `packages/web/src/adapters/coreApiAdapter.test.js` for refresh success/failure and injected token provider behavior.
+
+## Validation
+- `npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` -> **20 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Các mục audit về lazy page loading (`pageRegistry`) và vertical feature structure (`features/saas|vip|community`) chưa được triển khai trong slice này để tránh breaking change luồng host hiện tại.
+
+# 2026-05-18 — SessionFacts CVD no-data contract cutover complete ✅
+
+Status: **✅ CVD endpoint no longer throws 404 for missing materialized data** | **✅ backend regression tests added** | **✅ runtime refreshed via start_dev**
+
+## What changed
+- Changed `SessionFactsCvdView` to return `200` with empty payload when:
+  - chưa có `SessionFacts` cho symbol/trade_date,
+  - hoặc có `SessionFacts` nhưng chưa có bucket materialized theo `window`.
+- Empty payload now includes `data_status`, `detail`, `bucket_count=0`, `cvd_series=[]`, and `_source='no-data'`.
+- Added focused backend tests to lock both no-data branches.
+
+## Validation
+- `docker exec -i vninvest-dev-core-api python /app/src/manage.py test market_serving.tests.test_native_views --keepdb` -> **2 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Các client ngoài frontend nếu đang dựa vào HTTP 404 để nhận diện empty state cần cập nhật theo `bucket_count` hoặc `data_status`.
+
+# 2026-05-17 — SessionFacts CVD 404 retry suppression complete ✅
+
+Status: **✅ repeated CVD 404 polling suppressed in hook** | **✅ regression test added** | **✅ runtime refreshed via start_dev**
+
+## What changed
+- Updated CVD hook to cache missing keys by `symbol|window|trade_date` when API returns 404.
+- Follow-up renders/refetch in same session now skip known-missing keys instead of hammering `/api/market/session-facts/:symbol/cvd` repeatedly.
+- Added focused test to ensure one 404 miss is not re-requested on manual refetch.
+
+## Validation
+- `npm test -- --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js --watch=false` -> **2 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Hook-level suppression reduces noisy retries only; when symbol/session genuinely lacks materialized `SessionFacts`, the first request still returns 404 until data is materialized by pipeline.
+
+# 2026-05-17 — Data ingest default registry sweep complete ✅
+
+Status: **✅ price-board default now uses GlobalSymbolRegistry** | **✅ intraday universe default now uses GlobalSymbolRegistry** | **✅ focused backend test + module tree + runtime refresh passed**
+
+## What changed
+- Normalized the remaining no-symbol fallbacks inside `data_ingest` to use active `GlobalSymbolRegistry` symbols.
+- Updated the price-board skip message to reference the real SSOT source.
+- Added regressions for no-symbol price-board and intraday execution, and corrected the older price-board regression to seed registry data.
+
+## Validation
+- `manage.py test data_ingest.tests.test_tasks.DataIngestBackfillTaskTests --keepdb` -> **12 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Other explicit symbol call sites remain by design; only the implicit default-discovery branch was swept here.
+
+# 2026-05-17 — Daily price backfill registry default complete ✅
+
+Status: **✅ backfill_daily_prices now defaults from GlobalSymbolRegistry** | **✅ ingest coverage fallback follows the same registry source** | **✅ focused backend test + module tree + runtime refresh passed**
+
+## What changed
+- Replaced the hardcoded StockProfile-based default symbol source in `backfill_daily_prices` with active `GlobalSymbolRegistry` symbols.
+- Reused the same registry-backed helper for the ingest coverage refresh fallback so no-symbol runs stay on the same SSOT.
+- Added regression coverage for the no-symbol backfill path and the ingest coverage-refresh branch.
+
+## Validation
+- `manage.py test data_ingest.tests.test_tasks.DataIngestBackfillTaskTests --keepdb` -> **10 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Other `data_ingest` tasks still have separate StockProfile defaults by design; this slice only corrected the daily price backfill path.
+
 # 2026-05-17 — CPS P18 complete: retention trend analytics ✅
 
 Status: **✅ retention trend summary added to observability API** | **✅ DataOps monitor now shows mini cleanup chart + cadence threshold** | **✅ focused contract/build/runtime validation passed**

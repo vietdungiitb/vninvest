@@ -5,6 +5,19 @@
 
 ---
 
+## Trạng thái remediation (2026-05-18)
+
+| Mục audit | Trạng thái | Ghi chú triển khai |
+|---|---|---|
+| 3.1 Factory + static properties chồng nhau (`coreApiAdapter`) | ✅ Đã xử lý | `coreApiAdapter.js` đã tách rõ `createCoreApiAdapter`, `defaultCoreApiAdapter`, singleton alias `coreApiAdapter` |
+| 3.2 Thiếu token refresh tự động | ✅ Đã xử lý | Transport đã có single-flight refresh (`/auth/token/refresh/`) + retry 401 một lần |
+| 3.3 Coupling localStorage trực tiếp | ✅ Đã xử lý | Adapter hỗ trợ inject `getToken/getRefreshToken/setTokens/clearTokens` |
+| 3.4 `features/*` còn trống | ✅ Đã xử lý | Đã dựng skeleton chuẩn `components/hooks/pages/index` cho `community`, `saas`, `vip` |
+| 3.5 `pageRegistry` static imports, không code splitting | ✅ Đã xử lý | Chuyển sang `loadComponent` dynamic import + deferred component theo route |
+| 3.6 `ShellPageTemplate` imperative render helpers | ✅ Đã xử lý | Đã bổ sung named components (`ShellMetric`, `ShellPanel`,...) và giữ wrappers tương thích ngược |
+
+---
+
 ## 1. Kiến trúc tổng thể
 
 ```

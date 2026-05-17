@@ -5,7 +5,7 @@
  * Uses jsdom / fetch mock — no real network calls.
  */
 import { jest, describe, test, expect, beforeEach, afterEach } from "@jest/globals";
-import { coreApiAdapter } from "./coreApiAdapter.js";
+import { coreApiAdapter, createCoreApiAdapter } from "./coreApiAdapter.js";
 
 describe("coreApiAdapter", () => {
   let fetchMock;
@@ -33,6 +33,15 @@ describe("coreApiAdapter", () => {
       status,
       statusText,
       text: () => Promise.resolve(""),
+    });
+  }
+
+  function mockErrorResponseWithBody(status, body = "", statusText = "Error") {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status,
+      statusText,
+      text: () => Promise.resolve(body),
     });
   }
 
@@ -118,10 +127,84 @@ describe("coreApiAdapter", () => {
 
   test("coreApiAdapter accepts env override as factory", async () => {
     mockOkResponse({ results: [] });
-    const adapter = coreApiAdapter({ env: { CORE_API_BASE_URL: "https://core.example.test/base" } });
+    const adapter = createCoreApiAdapter({ env: { CORE_API_BASE_URL: "https://core.example.test/base" } });
     await adapter.getAlertCenterFeed();
     const [url] = fetchMock.mock.calls[0];
     expect(url.startsWith("https://core.example.test/base")).toBe(true);
+  });
+
+  test("retries once after successful token refresh on 401", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        text: () => Promise.resolve("expired"),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ access: "next-access", refresh: "next-refresh" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ symbol: "VCI" }),
+      });
+
+    const setTokens = jest.fn();
+    const adapter = createCoreApiAdapter({
+      getToken: () => "expired-access",
+      getRefreshToken: () => "refresh-token",
+      setTokens,
+      clearTokens: jest.fn(),
+    });
+
+    const result = await adapter.getSymbolSnapshot("VCI");
+    expect(result).toEqual({ symbol: "VCI" });
+    expect(setTokens).toHaveBeenCalledWith({ access: "next-access", refresh: "next-refresh" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1][0]).toContain("/auth/token/refresh/");
+  });
+
+  test("clears tokens and throws when refresh fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        text: () => Promise.resolve("expired"),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        text: () => Promise.resolve("invalid refresh"),
+      });
+
+    const clearTokens = jest.fn();
+    const adapter = createCoreApiAdapter({
+      getToken: () => "expired-access",
+      getRefreshToken: () => "invalid-refresh",
+      setTokens: jest.fn(),
+      clearTokens,
+    });
+
+    await expect(adapter.getSymbolSnapshot("VCI")).rejects.toThrow("Core API error 401");
+    expect(clearTokens).toHaveBeenCalledTimes(1);
+  });
+
+  test("uses injected getToken in authorization header", async () => {
+    mockOkResponse({ symbol: "VCI" });
+    const adapter = createCoreApiAdapter({
+      getToken: () => "access-from-injected-provider",
+      getRefreshToken: () => null,
+      setTokens: jest.fn(),
+      clearTokens: jest.fn(),
+    });
+    await adapter.getSymbolSnapshot("VCI");
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers.Authorization).toBe("Bearer access-from-injected-provider");
   });
 
   test("acknowledgeAlertCenterEvent posts /core/v1/signals/alert-center/events/{id}/ack", async () => {

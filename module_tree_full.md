@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 21:58:49`
+Generated at: `2026-05-18 06:34:35`
 
 ## Summary
 
-- Total modules: 1211
+- Total modules: 1223
 - Python modules: 689
-- JS/TS modules: 522
-- Total classes: 1375
-- Total functions: 3284
-- Total top-level variables: 4850
+- JS/TS modules: 534
+- Total classes: 1376
+- Total functions: 3304
+- Total top-level variables: 4877
 
 ## Python Modules
 
@@ -2722,7 +2722,7 @@ Generated at: `2026-05-17 21:58:49`
 ### `packages/core/backend/src/data_ingest/tasks.py`
 
 - Functions:
-  - `_attach_ingest_run_to_service_run_log`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_build_intraday_symbol_plan`, `_classify_daily_price_rows`, `_compute_latency_percentile_ms`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_fetch_daily_history_with_retry`, `_floor_intraday_bucket`, `_hydrate_intraday_symbols`, `_normalize_daily_plan_items`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_days_from_window`, `_resolve_intraday_page_size_from_window`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
+  - `_attach_ingest_run_to_service_run_log`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_build_intraday_symbol_plan`, `_classify_daily_price_rows`, `_compute_latency_percentile_ms`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_fetch_daily_history_with_retry`, `_floor_intraday_bucket`, `_get_default_global_registry_symbols`, `_hydrate_intraday_symbols`, `_normalize_daily_plan_items`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_days_from_window`, `_resolve_intraday_page_size_from_window`, `backfill_daily_prices`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
 - Top-level variables:
   - `_DAILY_HISTORY_RETRY_ATTEMPTS`, `_DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS`, `_DAILY_HISTORY_RETRY_BACKOFF_SECONDS`, `_HISTORY_PROVIDERS`, `_INTRADAY_BAR_TIMEFRAMES`, `_INTRADAY_PAGE_SIZE_BY_DEPTH_TIER`, `_INTRADAY_PLAN_DATASETS`, `logger`
 
@@ -2733,7 +2733,7 @@ Generated at: `2026-05-17 21:58:49`
 ### `packages/core/backend/src/data_ingest/tests/test_tasks.py`
 
 - Classes:
-  - `DataIngestBackfillTaskTests` -> methods: `setUpTestData`, `test_backfill_daily_prices_consumes_plan_items_with_detailed_counts`, `test_fetch_and_upsert_bucket_retries_with_bounded_attempts`, `test_fetch_and_upsert_bucket_uses_adapter_ssot`, `test_fetch_and_upsert_price_board_consumes_plan_items`, `test_fetch_and_upsert_price_board_updates_service_run_log_when_provided`, `test_ingest_daily_prices_runs_backfill_inline`, `test_ingest_daily_prices_updates_service_run_log_when_provided`, `test_warm_intraday_universe_applies_intraday_page_size_from_plan_window`, `test_warm_intraday_universe_consumes_plan_items_and_persists_rows`
+  - `DataIngestBackfillTaskTests` -> methods: `setUpTestData`, `test_backfill_daily_prices_consumes_plan_items_with_detailed_counts`, `test_backfill_daily_prices_defaults_to_global_symbol_registry_when_symbols_missing`, `test_fetch_and_upsert_bucket_retries_with_bounded_attempts`, `test_fetch_and_upsert_bucket_uses_adapter_ssot`, `test_fetch_and_upsert_price_board_consumes_plan_items`, `test_fetch_and_upsert_price_board_defaults_to_global_symbol_registry_when_symbols_missing`, `test_fetch_and_upsert_price_board_updates_service_run_log_when_provided`, `test_ingest_daily_prices_runs_backfill_inline`, `test_ingest_daily_prices_updates_service_run_log_when_provided`, `test_warm_intraday_universe_applies_intraday_page_size_from_plan_window`, `test_warm_intraday_universe_consumes_plan_items_and_persists_rows`, `test_warm_intraday_universe_defaults_to_global_symbol_registry_when_symbols_missing`
 
 ### `packages/core/backend/src/data_ingest/tests/test_views.py`
 
@@ -3299,6 +3299,7 @@ Generated at: `2026-05-17 21:58:49`
 
 - Classes:
   - `RealtimeIntradayViewTestCase` -> methods: `setUp`, `setUpTestData`, `test_realtime_intraday_reads_latest_db_session_without_provider_call`, `test_realtime_intraday_returns_safe_empty_payload_when_db_missing`
+  - `SessionFactsCvdViewTestCase` -> methods: `setUp`, `setUpTestData`, `test_returns_empty_payload_when_session_facts_missing`, `test_returns_empty_payload_when_window_has_no_bucket_rows`
 - Top-level variables:
   - `User`
 
@@ -3317,7 +3318,7 @@ Generated at: `2026-05-17 21:58:49`
   - `SymbolSnapshotDetailView` -> methods: `get_object`, `retrieve`
   - `SymbolSnapshotListView` -> methods: `get_queryset`
 - Functions:
-  - `_delta_strength_pct_from_facts`, `_get_materialized_session_fact_buckets`, `_get_materialized_session_facts`, `_parse_trade_date_param`, `_session_facts_cache_key`, `_snapshot_cache_key`
+  - `_build_empty_cvd_payload`, `_delta_strength_pct_from_facts`, `_get_materialized_session_fact_buckets`, `_get_materialized_session_facts`, `_parse_trade_date_param`, `_session_facts_cache_key`, `_snapshot_cache_key`
 - Top-level variables:
   - `_CVD_SERIES_CACHE_TTL`, `_SESSION_FACTS_TTL`, `_SNAPSHOT_TTL`, `_WINDOW_TO_BUCKET_MINUTES`, `logger`
 
@@ -3582,7 +3583,7 @@ Generated at: `2026-05-17 21:58:49`
 ### `packages/core/backend/src/service_ops/tasks.py`
 
 - Functions:
-  - `_create_child_run_log`, `_fetch_symbols_from_provider`, `_get_latest_queue_tier_run`, `_get_queue_tier_stale_timeout_seconds`, `_get_symbols_for_group`, `_has_inflight_child_run`, `_is_celery_task_live`, `_mark_run_log_finished`, `_mark_run_log_running`, `_probe_service_health`, `_queue_tier_due`, `_recover_inflight_child_runs`, `_recover_linked_ingest_run`, `_recover_stale_queue_tier_run`, `cleanup_market_data_parity_snapshots_task`, `create_signal_job_run_log`, `health_check_all_services`, `run_market_data_queue_tier_scheduler`, `run_scrape_cycle`, `run_signal_session_facts_materialization`, `run_signal_unified_alert_materialization`, `run_signal_whale_materialization`, `run_signals_detection_workflow`, `scrape_cell_task`
+  - `_create_child_run_log`, `_fetch_symbols_from_provider`, `_get_latest_queue_tier_run`, `_get_queue_tier_stale_timeout_seconds`, `_get_symbols_for_group`, `_has_inflight_child_run`, `_is_celery_task_live`, `_mark_run_log_finished`, `_mark_run_log_running`, `_probe_service_health`, `_queue_tier_due`, `_recover_inflight_child_runs`, `_recover_linked_ingest_run`, `_recover_stale_queue_tier_run`, `_upsert_retention_health_alert`, `cleanup_market_data_parity_snapshots_task`, `create_signal_job_run_log`, `health_check_all_services`, `monitor_market_data_parity_retention_health_task`, `run_market_data_queue_tier_scheduler`, `run_scrape_cycle`, `run_signal_session_facts_materialization`, `run_signal_unified_alert_materialization`, `run_signal_whale_materialization`, `run_signals_detection_workflow`, `scrape_cell_task`
 - Top-level variables:
   - `QUEUE_TIER_ORPHAN_GRACE_SECONDS`, `QUEUE_TIER_STALE_INFLIGHT_MIN_SECONDS`, `QUEUE_TIER_STALE_INFLIGHT_MULTIPLIER`, `STRICT_FRESH_MODE_QUEUE_TIERS`, `logger`
 
@@ -3679,7 +3680,7 @@ Generated at: `2026-05-17 21:58:49`
 ### `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
 
 - Classes:
-  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_cleanup_market_data_parity_snapshots_task_applies_retention_policy`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty`, `test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_enforces_max_dispatch_per_cycle_quota`, `test_market_data_queue_tier_scheduler_includes_session_facts_for_warm_tier`, `test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists`, `test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately`, `test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent`, `test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
+  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_cleanup_market_data_parity_snapshots_task_applies_retention_policy`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty`, `test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_enforces_max_dispatch_per_cycle_quota`, `test_market_data_queue_tier_scheduler_includes_session_facts_for_warm_tier`, `test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists`, `test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately`, `test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent`, `test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_monitor_retention_health_task_emits_alert_when_threshold_exceeded`, `test_monitor_retention_health_task_no_alert_when_within_threshold`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
   - `VnbrokerAdapterTaskBridgeTestCase` -> methods: `test_fetch_daily_history_uses_requested_source_quote_class`, `test_fetch_listing_symbols_uses_requested_source_listing_adapter`, `test_fetch_price_board_snapshot_passes_explicit_source`, `test_fetch_realtime_price_uses_requested_source_quote_class`, `test_fetch_symbol_group_members_uses_requested_source_group`
 
 ### `packages/core/backend/src/service_ops/urls.py`
@@ -5877,13 +5878,14 @@ Generated at: `2026-05-17 21:58:49`
 ### `frontend/src/hooks/useSessionFactsCvdSeries.js`
 
 - Functions:
-  - `normalizeTradeDate`
+  - `buildMissingCacheKey`, `getHttpStatus`, `normalizeTradeDate`
 - Top-level variables:
-  - `fetchPayloads`, `normalizedInputTradeDatesKey`, `normalizedSelectedTradeDate`, `normalizedSymbol`, `normalizedTradeDates`, `normalizedValue`, `normalizedValues`, `rejectedResponse`, `requestId`, `requestIdRef`, `requestedTradeDates`, `responses`, `sessionFactsWindow`, `successfulPayloads`, `uniqueTradeDates`
+  - `fetchPayloads`, `missingKeyCacheRef`, `normalizedInputTradeDatesKey`, `normalizedSelectedTradeDate`, `normalizedSymbol`, `normalizedTradeDates`, `normalizedValue`, `normalizedValues`, `pendingTradeDates`, `rejectedResponse`, `rejectedResponses`, `requestId`, `requestIdRef`, `requestedTradeDates`, `responses`, `sessionFactsWindow`, `status`, `successfulPayloads`, `uniqueTradeDates`
 
 ### `frontend/src/hooks/useSessionFactsCvdSeries.test.js`
 
-- No parseable top-level symbols found
+- Top-level variables:
+  - `notFoundError`
 
 ### `frontend/src/hooks/useTrustTelemetry.js`
 
@@ -7718,16 +7720,16 @@ Generated at: `2026-05-17 21:58:49`
 ### `packages/web/src/adapters/coreApiAdapter.js`
 
 - Functions:
-  - `coreApiAdapter`, `coreDelete`, `coreGet`, `corePatch`, `corePost`, `createCoreApiAdapter`, `createCoreTransport`, `generateRequestId`, `getAuthorizationHeader`, `resolveCoreApiBase`
+  - `coreDelete`, `coreGet`, `corePatch`, `corePost`, `createCoreApiAdapter`, `createCoreTransport`, `generateRequestId`, `getAuthorizationHeader`, `getBrowserStorageToken`, `normalizeRefreshResponsePayload`, `requestTokenRefresh`, `requestWithAuth`, `resolveCoreApiBase`, `shouldTryRefresh`
 - Top-level variables:
-  - `base`, `query`, `r`, `requestId`, `response`, `text`, `token`
+  - `base`, `coreApiAdapter`, `defaultCoreApiAdapter`, `directAccess`, `directRefresh`, `nestedData`, `nextAccessToken`, `payload`, `query`, `r`, `refreshPromise`, `refreshToken`, `requestId`, `response`, `text`, `token`, `tokenPayload`
 
 ### `packages/web/src/adapters/coreApiAdapter.test.js`
 
 - Functions:
-  - `mockErrorResponse`, `mockOkResponse`
+  - `mockErrorResponse`, `mockErrorResponseWithBody`, `mockOkResponse`
 - Top-level variables:
-  - `adapter`, `fetchMock`, `payload`, `result`
+  - `adapter`, `clearTokens`, `fetchMock`, `payload`, `result`, `setTokens`
 
 ### `packages/web/src/adapters/vip-app/index.js`
 
@@ -7764,7 +7766,7 @@ Generated at: `2026-05-17 21:58:49`
 ### `packages/web/src/components/ShellPageTemplate.js`
 
 - Functions:
-  - `joinClassNames`, `renderElement`, `renderShellField`, `renderShellMetric`, `renderShellPageChrome`, `renderShellPanel`, `renderShellSelectField`
+  - `ShellField`, `ShellMetric`, `ShellPageChrome`, `ShellPanel`, `ShellSelectField`, `joinClassNames`, `renderElement`, `renderShellField`, `renderShellMetric`, `renderShellPageChrome`, `renderShellPanel`, `renderShellSelectField`
 - Top-level variables:
   - `SHELL_PAGE_TEMPLATE_STYLES`
 
@@ -7795,6 +7797,63 @@ Generated at: `2026-05-17 21:58:49`
   - `createBootstrapClient`, `deriveLegacyAuthState`, `loadShellBootstrap`, `requestJson`, `resolveFetchImpl`, `resolveShellAdapter`
 - Top-level variables:
   - `ADAPTER_REGISTRY`, `adapter`, `capabilities`, `client`, `isStaff`, `isSuperuser`, `principalIdentity`, `request`, `response`, `session`
+
+### `packages/web/src/features/community/components/index.js`
+
+- Top-level variables:
+  - `communityFeatureComponents`
+
+### `packages/web/src/features/community/hooks/index.js`
+
+- Top-level variables:
+  - `communityFeatureHooks`
+
+### `packages/web/src/features/community/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/features/community/pages/index.js`
+
+- Top-level variables:
+  - `communityFeaturePages`
+
+### `packages/web/src/features/saas/components/index.js`
+
+- Top-level variables:
+  - `saasFeatureComponents`
+
+### `packages/web/src/features/saas/hooks/index.js`
+
+- Top-level variables:
+  - `saasFeatureHooks`
+
+### `packages/web/src/features/saas/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/features/saas/pages/index.js`
+
+- Top-level variables:
+  - `saasFeaturePages`
+
+### `packages/web/src/features/vip/components/index.js`
+
+- Top-level variables:
+  - `vipFeatureComponents`
+
+### `packages/web/src/features/vip/hooks/index.js`
+
+- Top-level variables:
+  - `vipFeatureHooks`
+
+### `packages/web/src/features/vip/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/features/vip/pages/index.js`
+
+- Top-level variables:
+  - `vipFeaturePages`
 
 ### `packages/web/src/index.js`
 
@@ -7832,9 +7891,9 @@ Generated at: `2026-05-17 21:58:49`
 ### `packages/web/src/pages/pageRegistry.js`
 
 - Functions:
-  - `getPageComponent`, `getPageRegistryRouteIds`
+  - `DeferredPageComponent`, `createDeferredPageComponent`, `getPageComponent`, `getPageLoader`, `getPageRegistryRouteIds`, `makePageEntry`
 - Top-level variables:
-  - `pageEntry`, `pageRegistry`
+  - `mountedRef`, `pageEntry`, `pageRegistry`
 
 ### `packages/web/src/pages/PortfoliosPage.js`
 

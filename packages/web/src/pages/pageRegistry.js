@@ -1,115 +1,110 @@
-import { ShellOperationsCenterPage } from "./admin/ShellOperationsCenterPage.js";
-import { ShellAiAdvisoryPage } from "./signals/ShellAiAdvisoryPage.js";
-import { ShellWhaleAlertsPage } from "./signals/ShellWhaleAlertsPage.js";
-import { ShellAiCommandCenterPage } from "./system/ShellAiCommandCenterPage.js";
-import { ShellSettingsPage } from "./system/ShellSettingsPage.js";
-import { ShellSupportPage } from "./system/ShellSupportPage.js";
-import { VipLocalControlPage } from "./vip/VipLocalControlPage.js";
-import { ShellDashboardPage } from "./workspace/ShellDashboardPage.js";
-import { ShellPortfoliosPage } from "./workspace/ShellPortfoliosPage.js";
-import { ShellTransactionsPage } from "./workspace/ShellTransactionsPage.js";
-import { ShellWatchlistPage } from "./workspace/ShellWatchlistPage.js";
-// SM-P4 new core user-facing pages
-import { DashboardPage } from "./DashboardPage.js";
-import { AlertCenterPage } from "./AlertCenterPage.js";
-import { WhaleAlertsPage } from "./WhaleAlertsPage.js";
-import { StockDetailPage } from "./StockDetailPage.js";
-import { PortfoliosPage } from "./PortfoliosPage.js";
-import { TransactionsPage } from "./TransactionsPage.js";
-import { UserSettingsPage } from "./UserSettingsPage.js";
+import { createElement, useEffect, useRef, useState } from "react";
+
+function createDeferredPageComponent(loadComponent, routeId) {
+  function DeferredPageComponent(props) {
+    const [resolvedComponent, setResolvedComponent] = useState(null);
+    const [loadError, setLoadError] = useState("");
+    const mountedRef = useRef(null);
+
+    useEffect(() => {
+      mountedRef.current = true;
+      loadComponent()
+        .then((component) => {
+          if (mountedRef.current) {
+            setResolvedComponent(() => component);
+            setLoadError("");
+          }
+        })
+        .catch((error) => {
+          if (mountedRef.current) {
+            setResolvedComponent(null);
+            setLoadError(error instanceof Error ? error.message : "Không thể tải trang shell.");
+          }
+        });
+
+      return () => {
+        mountedRef.current = false;
+      };
+    }, [loadComponent]);
+
+    if (resolvedComponent) {
+      return createElement(resolvedComponent, props);
+    }
+
+    if (loadError) {
+      return createElement(
+        "article",
+        {
+          className: "shellPage__panel",
+          role: "alert",
+        },
+        createElement("h2", { className: "shellPage__panelTitle" }, "Không thể tải trang"),
+        createElement("p", { className: "shellPage__panelSubtitle" }, `Route ${routeId}: ${loadError}`),
+      );
+    }
+
+    return createElement(
+      "article",
+      {
+        className: "shellPage__panel",
+        role: "status",
+        "aria-live": "polite",
+      },
+      createElement("h2", { className: "shellPage__panelTitle" }, "Đang tải trang"),
+      createElement("p", { className: "shellPage__panelSubtitle" }, `Route ${routeId} đang được nạp động.`),
+    );
+  }
+
+  return DeferredPageComponent;
+}
+
+function makePageEntry(routeId, status, loadComponent) {
+  return Object.freeze({
+    routeId,
+    status,
+    loadComponent,
+    component: createDeferredPageComponent(loadComponent, routeId),
+  });
+}
 
 export const pageRegistry = Object.freeze([
-  {
-    routeId: "operations-center",
-    component: ShellOperationsCenterPage,
-    status: "baseline",
-  },
-  {
-    routeId: "ai-command-center",
-    component: ShellAiCommandCenterPage,
-    status: "baseline",
-  },
-  {
-    routeId: "ai-advisory",
-    component: ShellAiAdvisoryPage,
-    status: "baseline",
-  },
-  {
-    routeId: "whale-alerts",
-    component: ShellWhaleAlertsPage,
-    status: "baseline",
-  },
-  {
-    routeId: "dashboard",
-    component: ShellDashboardPage,
-    status: "baseline",
-  },
-  {
-    routeId: "transactions",
-    component: ShellTransactionsPage,
-    status: "baseline",
-  },
-  {
-    routeId: "watchlist",
-    component: ShellWatchlistPage,
-    status: "baseline",
-  },
-  {
-    routeId: "portfolios",
-    component: ShellPortfoliosPage,
-    status: "baseline",
-  },
-  {
-    routeId: "support",
-    component: ShellSupportPage,
-    status: "baseline",
-  },
-  {
-    routeId: "settings",
-    component: ShellSettingsPage,
-    status: "baseline",
-  },
-  {
-    routeId: "vip-local-control",
-    component: VipLocalControlPage,
-    status: "baseline",
-  },
+  makePageEntry("operations-center", "baseline", () =>
+    import("./admin/ShellOperationsCenterPage.js").then((module) => module.ShellOperationsCenterPage)),
+  makePageEntry("ai-command-center", "baseline", () =>
+    import("./system/ShellAiCommandCenterPage.js").then((module) => module.ShellAiCommandCenterPage)),
+  makePageEntry("ai-advisory", "baseline", () =>
+    import("./signals/ShellAiAdvisoryPage.js").then((module) => module.ShellAiAdvisoryPage)),
+  makePageEntry("whale-alerts", "baseline", () =>
+    import("./signals/ShellWhaleAlertsPage.js").then((module) => module.ShellWhaleAlertsPage)),
+  makePageEntry("dashboard", "baseline", () =>
+    import("./workspace/ShellDashboardPage.js").then((module) => module.ShellDashboardPage)),
+  makePageEntry("transactions", "baseline", () =>
+    import("./workspace/ShellTransactionsPage.js").then((module) => module.ShellTransactionsPage)),
+  makePageEntry("watchlist", "baseline", () =>
+    import("./workspace/ShellWatchlistPage.js").then((module) => module.ShellWatchlistPage)),
+  makePageEntry("portfolios", "baseline", () =>
+    import("./workspace/ShellPortfoliosPage.js").then((module) => module.ShellPortfoliosPage)),
+  makePageEntry("support", "baseline", () =>
+    import("./system/ShellSupportPage.js").then((module) => module.ShellSupportPage)),
+  makePageEntry("settings", "baseline", () =>
+    import("./system/ShellSettingsPage.js").then((module) => module.ShellSettingsPage)),
+  makePageEntry("vip-local-control", "baseline", () =>
+    import("./vip/VipLocalControlPage.js").then((module) => module.VipLocalControlPage)),
   // SM-P4 core user-facing pages
-  {
-    routeId: "alert-center",
-    component: AlertCenterPage,
-    status: "core",
-  },
-  {
-    routeId: "core-dashboard",
-    component: DashboardPage,
-    status: "core",
-  },
-  {
-    routeId: "core-whale-alerts",
-    component: WhaleAlertsPage,
-    status: "core",
-  },
-  {
-    routeId: "core-stock-detail",
-    component: StockDetailPage,
-    status: "core",
-  },
-  {
-    routeId: "core-portfolios",
-    component: PortfoliosPage,
-    status: "core",
-  },
-  {
-    routeId: "core-transactions",
-    component: TransactionsPage,
-    status: "core",
-  },
-  {
-    routeId: "core-user-settings",
-    component: UserSettingsPage,
-    status: "core",
-  },
+  makePageEntry("alert-center", "core", () =>
+    import("./AlertCenterPage.js").then((module) => module.AlertCenterPage)),
+  makePageEntry("core-dashboard", "core", () =>
+    import("./DashboardPage.js").then((module) => module.DashboardPage)),
+  makePageEntry("core-whale-alerts", "core", () =>
+    import("./WhaleAlertsPage.js").then((module) => module.WhaleAlertsPage)),
+  makePageEntry("core-stock-detail", "core", () =>
+    import("./StockDetailPage.js").then((module) => module.StockDetailPage)),
+  makePageEntry("core-portfolios", "core", () =>
+    import("./PortfoliosPage.js").then((module) => module.PortfoliosPage)),
+  makePageEntry("core-transactions", "core", () =>
+    import("./TransactionsPage.js").then((module) => module.TransactionsPage)),
+  makePageEntry("core-user-settings", "core", () =>
+    import("./UserSettingsPage.js").then((module) => module.UserSettingsPage)),
 ]);
 
 export function getPageRegistryRouteIds() {
@@ -119,4 +114,9 @@ export function getPageRegistryRouteIds() {
 export function getPageComponent(routeId) {
   const pageEntry = pageRegistry.find((entry) => entry.routeId === routeId);
   return pageEntry ? pageEntry.component : null;
+}
+
+export function getPageLoader(routeId) {
+  const pageEntry = pageRegistry.find((entry) => entry.routeId === routeId);
+  return pageEntry ? pageEntry.loadComponent : null;
 }

@@ -1,8 +1,19 @@
 export { BUILD_TARGETS, DEFAULT_BUILD_TARGET, getBuildTarget, isBuildTarget, normalizeBuildTarget } from "./config/buildTarget.js";
 export { routeCatalog, getRouteCatalogIds, getRoutesForBuildTarget } from "./app/routeCatalog.js";
 export { navigationCatalog, getNavigationGroupIds, getNavigationForBuildTarget } from "./app/navigationCatalog.js";
-export { renderShellField, renderShellMetric, renderShellPageChrome, renderShellPanel, renderShellSelectField } from "./components/ShellPageTemplate.js";
-export { getPageComponent, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
+export {
+	ShellField,
+	ShellMetric,
+	ShellPageChrome,
+	ShellPanel,
+	ShellSelectField,
+	renderShellField,
+	renderShellMetric,
+	renderShellPageChrome,
+	renderShellPanel,
+	renderShellSelectField,
+} from "./components/ShellPageTemplate.js";
+export { getPageComponent, getPageLoader, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
 export { ShellOperationsCenterPage } from "./pages/admin/ShellOperationsCenterPage.js";
 export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.js";
 export { ShellWhaleAlertsPage } from "./pages/signals/ShellWhaleAlertsPage.js";
@@ -42,6 +53,21 @@ export {
 	useShellAuth,
 	useShellAuthRuntime,
 } from "./context/authReact.js";
+export {
+	communityFeatureComponents,
+	communityFeatureHooks,
+	communityFeaturePages,
+} from "./features/community/index.js";
+export {
+	saasFeatureComponents,
+	saasFeatureHooks,
+	saasFeaturePages,
+} from "./features/saas/index.js";
+export {
+	vipFeatureComponents,
+	vipFeatureHooks,
+	vipFeaturePages,
+} from "./features/vip/index.js";
 
 import { coreAdapter } from "./adapters/core/index.js";
 import { vipAppAdapter } from "./adapters/vip-app/index.js";

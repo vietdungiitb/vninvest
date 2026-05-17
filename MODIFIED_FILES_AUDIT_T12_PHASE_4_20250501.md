@@ -2,6 +2,143 @@
 
 ---
 
+## 2026-05-18 | packages/web frontend audit closure
+
+### Files changed in this session
+- `packages/web/src/pages/pageRegistry.js`
+- `packages/web/src/components/ShellPageTemplate.js`
+- `packages/web/src/index.js`
+- `packages/web/src/features/community/components/index.js`
+- `packages/web/src/features/community/hooks/index.js`
+- `packages/web/src/features/community/pages/index.js`
+- `packages/web/src/features/community/index.js`
+- `packages/web/src/features/saas/components/index.js`
+- `packages/web/src/features/saas/hooks/index.js`
+- `packages/web/src/features/saas/pages/index.js`
+- `packages/web/src/features/saas/index.js`
+- `packages/web/src/features/vip/components/index.js`
+- `packages/web/src/features/vip/hooks/index.js`
+- `packages/web/src/features/vip/pages/index.js`
+- `packages/web/src/features/vip/index.js`
+- `packages/web/src/features/community/README.md`
+- `packages/web/src/features/saas/README.md`
+- `packages/web/src/features/vip/README.md`
+- `docs/FRONTEND_AUDIT_PACKAGES_WEB_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Dong tat ca finding con lai trong frontend audit packages web: code splitting page registry, chuan hoa shell template component API, va khoi tao feature-slice structure de tranh page-level monolith.
+
+### Validation snapshot
+- `Set-Location 'c:\Mujoco Projects\vninvest\packages\web'; npm test -- --watch=false` ✅ (20 tests)
+- `Set-Location 'c:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` ✅ (`1223` modules)
+- `Set-Location 'c:\Mujoco Projects\vninvest'; ./start_dev.ps1` ✅ (Frontend health OK)
+
+---
+
+## 2026-05-18 | packages/web coreApiAdapter auth hardening
+
+### Files changed in this session
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chuan hoa adapter singleton/factory cho packages web, bo coupling truc tiep localStorage, va bo sung refresh + retry 401 de shell pages khong fail cung khi access token het han.
+
+### Validation snapshot
+- `Set-Location 'c:\Mujoco Projects\vninvest\packages\web'; npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` ✅ (20 tests)
+- `Set-Location 'c:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+- `Set-Location 'c:\Mujoco Projects\vninvest'; ./start_dev.ps1` ✅ (smoke checks + queue drift check)
+
+---
+
+## 2026-05-18 | SessionFacts CVD no-data contract cutover
+
+### Files changed in this session
+- `packages/core/backend/src/market_serving/views.py`
+- `packages/core/backend/src/market_serving/tests/test_native_views.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chuyen contract endpoint CVD SessionFacts tu 404 sang 200 no-data payload de frontend khong bi failed-resource spam khi data chua materialized.
+
+### Validation snapshot
+- `docker exec -i vninvest-dev-core-api python /app/src/manage.py test market_serving.tests.test_native_views --keepdb` ✅ (2 tests)
+- `scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+
+---
+
+## 2026-05-17 | SessionFacts CVD 404 retry suppression
+
+### Files changed in this session
+- `frontend/src/hooks/useSessionFactsCvdSeries.js`
+- `frontend/src/hooks/useSessionFactsCvdSeries.test.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Giam spam 404 tren route CVD SessionFacts bang cach nho key da miss (`symbol|window|trade_date`) va khong retry lap lai trong cung session UI.
+
+### Validation snapshot
+- `npm test -- --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js --watch=false` ✅ (2 tests)
+- `scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+
+---
+
+## 2026-05-17 | Data ingest default registry sweep
+
+### Files changed in this session
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Dong bo cac default-discovery path con lai trong data_ingest ve GlobalSymbolRegistry de dam bao no-symbol runs khong con phu thuoc StockProfile.
+
+### Validation snapshot
+- `manage.py test data_ingest.tests.test_tasks.DataIngestBackfillTaskTests --keepdb` ✅ (12 tests)
+- `scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+
+---
+
+## 2026-05-17 | Daily price backfill registry default
+
+### Files changed in this session
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chuyen default symbol discovery cua daily backfill sang GlobalSymbolRegistry de task co the tu chay khi khong truyen symbols va giu coverage refresh fallback di cung SSOT.
+
+### Validation snapshot
+- `manage.py test data_ingest.tests.test_tasks.DataIngestBackfillTaskTests --keepdb` ✅ (10 tests)
+- `scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+
+---
+
 ## 2026-05-17 | CPS P18 - retention trend analytics
 
 ### Files changed in this session
