@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 11:52:43`
+Generated at: `2026-05-17 12:05:57`
 
 ## Summary
 

@@ -1,5 +1,37 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS market-data backfill handoff doc-pack complete | docs/governance
+
+## All Modified Files (19 files)
+| File | Change |
+|------|--------|
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_HANDOFF_MASTER_20260517.md` | NEW master handoff for Coordinated Parallel Scraping (CPS) backfill program |
+| `docs/IMPLEMENTATION_PLAN_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | NEW execution plan with P01-P08 tasks and dependency graph |
+| `docs/TECH_SPEC_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | NEW technical spec for planner semantics, tier quota scheduler, and parallel provider buckets |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | NEW taskboard for delivery tracking |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_TRACEABILITY_MATRIX_20260517.md` | NEW requirement-to-task mapping |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_SELF_AUDIT_AND_TEST_PROTOCOL_20260517.md` | NEW self-audit/checklist protocol |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | NEW evidence template for each slice |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_CONFIG_OWNERSHIP_MATRIX_20260517.md` | NEW config ownership matrix |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_CODE_QUALITY_CONSTITUTION_20260517.md` | NEW quality constitution |
+| `docs/FRONTEND_DESIGN_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | NEW frontend design handoff |
+| `docs/BACKEND_DESIGN_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | NEW backend design handoff |
+| `docs/RUN_CODE_REVIEW_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | NEW code-review runbook |
+| `docs/RUN_INTEGRATION_TESTS_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | NEW integration-test runbook |
+| `docs/RUN_SPEC_AUDIT_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | NEW spec-audit runbook |
+| `AGENTS.md` | Registered CPS doc-pack into read-first guidance and quality-read order |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for CPS handoff package |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this docs slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+- Documentation slice only; no runtime code path changed, so backend/frontend test suites were intentionally not executed.
+
+## Residual risk
+- This slice delivers planning and governance artifacts only; execution tasks P01-P08 remain pending implementation.
+
 # 2026-05-17 | Global market data planner daily bootstrap window for sparse candles | backend/docs
 
 ## All Modified Files (6 files)
