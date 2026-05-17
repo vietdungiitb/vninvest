@@ -14,7 +14,7 @@
 | P03 | Queue-tier quota scheduler | DONE | Service Ops | Da them max_dispatch_per_cycle per tier, inflight/cooldown gate giu nguyen, co metric skipped_by_quota |
 | P04 | Daily provider bucket tuning | DONE | Data Ingest | Da bo sung bucket split on dinh, retry/backoff bounded va telemetry per-provider |
 | P05 | Intraday tier depth policy | DONE | Data Ingest | Da ap policy hot/warm/cold/recovery vao intraday requested_window va page_size theo tier |
-| P06 | DataOps observability UI/API | TODO | Frontend + Backend | Backlog trend, fail-rate, starvation |
+| P06 | DataOps observability UI/API | DONE | Frontend + Backend | Da co endpoint + widget backlog/fail-rate/starvation, contract test + build/runtime pass |
 | P07 | Shadow run and parity evidence | TODO | Ops + QA | 3 ngay giao dich that, parity gate |
 | P08 | Cutover runbook and handoff close | TODO | Tech Lead | Rollback, incident, signoff |
 
@@ -35,7 +35,7 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [ ] intraday tier depth policy active.
 
 ### Phase C - Observability and rollout (P06, P07, P08)
-- [ ] DataOps surface hien thi full CPS health.
+- [x] DataOps surface hien thi full CPS health.
 - [ ] shadow/parity evidence complete.
 - [ ] rollback drill evidence complete.
 

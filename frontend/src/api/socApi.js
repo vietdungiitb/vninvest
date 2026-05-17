@@ -187,6 +187,11 @@ export const socApi = {
     return handleResponse(resp);
   },
 
+  getDataOpsObservability: async () => {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/observability/`);
+    return handleResponse(resp);
+  },
+
   getDataOpsRunLogs: async (page = 1) => {
     const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/run-logs/?page=${page}`);
     return handleResponse(resp);

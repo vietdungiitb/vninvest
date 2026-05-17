@@ -22,6 +22,7 @@ from market_data.models import GlobalSymbolRegistry
 from ..domain_configs import MarketDataRuntimeConfig
 from ..dataops_market_data import (
     DATAOPS_MARKET_DATA_DOMAIN,
+    build_market_data_observability_summary,
     build_market_data_queue_tier_snapshot,
     get_market_data_runtime_config,
     resolve_market_data_queue_tier,
@@ -81,6 +82,13 @@ class DataOpsQueueTiersResponseSerializer(serializers.Serializer):
 class DataOpsCoverageResponseSerializer(serializers.Serializer):
     datasets = serializers.ListField(child=serializers.JSONField())
     top_gaps = serializers.ListField(child=serializers.JSONField())
+    updated_at = serializers.DateTimeField()
+
+
+class DataOpsObservabilityResponseSerializer(serializers.Serializer):
+    backlog = serializers.JSONField()
+    fail_rates = serializers.JSONField()
+    starvation = serializers.ListField(child=serializers.JSONField())
     updated_at = serializers.DateTimeField()
 
 
@@ -279,6 +287,25 @@ class DataOpsQueueTiersView(SOCBaseView):
             'tiers': tiers,
             'updated_at': updated_at.isoformat(),
         })
+
+
+@extend_schema(
+    summary='Lấy observability summary DataOps market-data',
+    description=(
+        'Trả về observability summary cho DataOps market-data gồm backlog theo dataset/tier, '
+        'fail-rate cửa sổ 1h/24h và starvation indicators theo queue tier. '
+        'Dùng cho operator monitor dashboard trong SOC Config UI.'
+    ),
+    responses={
+        200: DataOpsObservabilityResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+    },
+)
+class DataOpsObservabilityView(SOCBaseView):
+    """GET canonical DataOps observability summary."""
+
+    def get(self, request):
+        return Response(build_market_data_observability_summary())
 
 
 @extend_schema(

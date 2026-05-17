@@ -701,6 +701,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         schema = _load_openapi_schema(response)
 
         runtime_config_path = schema['paths']['/core/v1/operator/scraping/dataops/runtime-config/']
+        observability_path = schema['paths']['/core/v1/operator/scraping/dataops/observability/']
         planner_preview_path = schema['paths']['/core/v1/operator/scraping/dataops/planner/preview/']
         registry_summary_path = schema['paths']['/core/v1/operator/scraping/dataops/registry/summary/']
         registry_detail_path = schema['paths']['/core/v1/operator/scraping/dataops/registry/{symbol}/']
@@ -711,6 +712,8 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(runtime_config_path['post']['summary'], 'Apply runtime config DataOps market-data')
         self.assertIn('requestBody', runtime_config_path['post'])
         self.assertEqual(runtime_config_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(observability_path['get']['summary'], 'Lấy observability summary DataOps market-data')
+        self.assertEqual(observability_path['get']['security'], [{'CorePATBearer': []}])
         self.assertEqual(planner_preview_path['post']['summary'], 'Preview planner DataOps market-data')
         self.assertIn('requestBody', planner_preview_path['post'])
         self.assertEqual(registry_summary_path['get']['summary'], 'Lấy summary global symbol matrix foundation')
@@ -1039,6 +1042,98 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(payload['top_gaps'][0]['dataset'], 'daily_prices')
         self.assertEqual(payload['top_gaps'][0]['next_recommended_action'], 'backfill_history')
         self.assertIn('updated_at', payload)
+
+    def test_observability_endpoint_returns_backlog_fail_rate_and_starvation(self):
+        now_value = timezone.now()
+        hot_registry = GlobalSymbolRegistry.objects.create(
+            symbol='FPT',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+            freshness_state_summary='stale',
+            coverage_state_summary='missing',
+        )
+        cold_registry = GlobalSymbolRegistry.objects.create(
+            symbol='VNM',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.COLD,
+            freshness_state_summary='stale',
+            coverage_state_summary='missing',
+        )
+        GlobalSymbolCoverage.objects.bulk_create([
+            GlobalSymbolCoverage(
+                registry=hot_registry,
+                dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
+                next_recommended_action='hydrate_daily_prices',
+                last_verified_at=now_value,
+            ),
+            GlobalSymbolCoverage(
+                registry=cold_registry,
+                dataset=GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.STALE,
+                next_recommended_action='warm_intraday',
+                last_verified_at=now_value,
+            ),
+        ])
+
+        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='failed',
+            started_at=now_value - timezone.timedelta(minutes=15),
+            input_summary={
+                'trigger': 'market_data.queue_tier_scheduler',
+                'queue_tier': 'hot_user_demand',
+            },
+            output_summary={},
+        )
+        ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='success',
+            started_at=now_value - timezone.timedelta(hours=2),
+            input_summary={
+                'trigger': 'market_data.queue_tier_scheduler',
+                'queue_tier': 'hot_user_demand',
+            },
+            output_summary={},
+        )
+
+        response = self.client.get('/api/soc/dataops/observability/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('backlog', payload)
+        self.assertIn('fail_rates', payload)
+        self.assertIn('starvation', payload)
+        self.assertIn('updated_at', payload)
+        self.assertGreaterEqual(len(payload['backlog']['by_dataset']), 1)
+        self.assertGreaterEqual(len(payload['backlog']['by_tier']), 1)
+        self.assertIn('window_1h', payload['fail_rates'])
+        self.assertIn('window_24h', payload['fail_rates'])
+        self.assertGreaterEqual(payload['fail_rates']['window_1h']['failed_runs'], 1)
+        starvation_map = {item['tier']: item for item in payload['starvation']}
+        self.assertIn('hot_user_demand', starvation_map)
+        self.assertIn('is_starved', starvation_map['hot_user_demand'])
+
+    def test_operator_canonical_observability_endpoint_matches_soc_alias(self):
+        response_alias = self.client.get('/api/soc/dataops/observability/')
+        response_canonical = self.client.get('/core/v1/operator/scraping/dataops/observability/')
+
+        self.assertEqual(response_canonical.status_code, status.HTTP_200_OK)
+        alias_payload = response_alias.json()
+        canonical_payload = response_canonical.json()
+
+        self.assertEqual(canonical_payload['backlog'], alias_payload['backlog'])
+        self.assertEqual(canonical_payload['fail_rates'], alias_payload['fail_rates'])
+        self.assertEqual(len(canonical_payload['starvation']), len(alias_payload['starvation']))
+        alias_by_tier = {item['tier']: item for item in alias_payload['starvation']}
+        canonical_by_tier = {item['tier']: item for item in canonical_payload['starvation']}
+        self.assertEqual(set(canonical_by_tier.keys()), set(alias_by_tier.keys()))
+        for tier_name, canonical_item in canonical_by_tier.items():
+            alias_item = alias_by_tier[tier_name]
+            self.assertEqual(canonical_item['is_starved'], alias_item['is_starved'])
+            self.assertEqual(canonical_item['poll_interval_seconds'], alias_item['poll_interval_seconds'])
+            self.assertEqual(canonical_item['threshold_seconds'], alias_item['threshold_seconds'])
 
     def test_run_logs_endpoint_returns_paginated_market_data_parent_runs(self):
         matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])

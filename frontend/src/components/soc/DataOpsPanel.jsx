@@ -568,6 +568,30 @@ const DEFAULT_RUN_LOGS_ENVELOPE = {
   previous: null,
   results: [],
 };
+const DEFAULT_OBSERVABILITY_SUMMARY = {
+  backlog: {
+    by_dataset: [],
+    by_tier: [],
+  },
+  fail_rates: {
+    window_1h: {
+      total_runs: 0,
+      failed_runs: 0,
+      partial_runs: 0,
+      fail_rate_pct: 0,
+      degraded_rate_pct: 0,
+    },
+    window_24h: {
+      total_runs: 0,
+      failed_runs: 0,
+      partial_runs: 0,
+      fail_rate_pct: 0,
+      degraded_rate_pct: 0,
+    },
+  },
+  starvation: [],
+  updated_at: null,
+};
 const DEFAULT_AUDIT_ENVELOPE = {
   count: 0,
   next: null,
@@ -717,6 +741,7 @@ const getMatrixStatusTone = (status) => {
 const DataOpsPanel = ({ t }) => {
   const [queueSnapshot, setQueueSnapshot] = useState({ tiers: [], updated_at: null });
   const [coverageSummary, setCoverageSummary] = useState({ datasets: [], top_gaps: [], updated_at: null });
+  const [observabilitySummary, setObservabilitySummary] = useState(DEFAULT_OBSERVABILITY_SUMMARY);
   const [runtimeEnvelope, setRuntimeEnvelope] = useState({ config: {}, ownership: null, updated_at: null });
   const [runLogsEnvelope, setRunLogsEnvelope] = useState(DEFAULT_RUN_LOGS_ENVELOPE);
   const [runLogsPage, setRunLogsPage] = useState(1);
@@ -771,10 +796,21 @@ const DataOpsPanel = ({ t }) => {
   const loadData = async (page = runLogsPage) => {
     try {
       setLoading(true);
-      const [tiersPayload, runtimePayload, coveragePayload, runLogsPayload, auditPayload, matrixMonitor, matrixProviderPayload, symbolGroupsPayload] = await Promise.all([
+      const [
+        tiersPayload,
+        runtimePayload,
+        coveragePayload,
+        observabilityPayload,
+        runLogsPayload,
+        auditPayload,
+        matrixMonitor,
+        matrixProviderPayload,
+        symbolGroupsPayload,
+      ] = await Promise.all([
         socApi.getDataOpsQueueTiers(),
         socApi.getDataOpsRuntimeConfig(),
         socApi.getDataOpsCoverage(),
+        socApi.getDataOpsObservability(),
         socApi.getDataOpsRunLogs(page),
         socApi.getDataOpsRuntimeConfigAudit(1),
         socApi.getMatrixMonitor().catch(() => ({ status: 'idle', cycle_id: '', providers: [], symbol_groups: [] })),
@@ -787,6 +823,7 @@ const DataOpsPanel = ({ t }) => {
       setQueueSnapshot(tiersPayload || { tiers: [], updated_at: null });
       setRuntimeEnvelope(runtimePayload || { config: {}, ownership: null, updated_at: null });
       setCoverageSummary(coveragePayload || { datasets: [], top_gaps: [], updated_at: null });
+      setObservabilitySummary(observabilityPayload || DEFAULT_OBSERVABILITY_SUMMARY);
       setRunLogsEnvelope(runLogsPayload || DEFAULT_RUN_LOGS_ENVELOPE);
       setRunLogsPage(page);
       setAuditEnvelope(auditPayload || DEFAULT_AUDIT_ENVELOPE);
@@ -1356,6 +1393,143 @@ const DataOpsPanel = ({ t }) => {
       {/* ── Tab: Giám sát — Coverage ─────────────────────────────────────── */}
       {subTab === 'monitor' && (
       <>
+      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-white">{t('soc.dataops.observability_title')}</h3>
+            <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.observability_description')}</p>
+          </div>
+          <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-4 py-3 text-right">
+            <p className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.observability_updated_at')}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-100">
+              {observabilitySummary?.updated_at ? new Date(observabilitySummary.updated_at).toLocaleString() : t('common.notAvailable')}
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          {[
+            {
+              key: 'window_1h',
+              titleKey: 'soc.dataops.fail_rate_1h',
+            },
+            {
+              key: 'window_24h',
+              titleKey: 'soc.dataops.fail_rate_24h',
+            },
+          ].map((windowConfig) => {
+            const windowData = observabilitySummary?.fail_rates?.[windowConfig.key] || {};
+            return (
+              <div key={windowConfig.key} className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">{t(windowConfig.titleKey)}</p>
+                <p className="mt-2 text-2xl font-bold text-white">{Number(windowData.fail_rate_pct || 0).toFixed(2)}%</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {t('soc.dataops.fail_rate_runs', {
+                    failed: Number(windowData.failed_runs || 0),
+                    total: Number(windowData.total_runs || 0),
+                  })}
+                </p>
+                <p className="mt-1 text-xs text-amber-300">
+                  {t('soc.dataops.degraded_rate_pct', {
+                    rate: Number(windowData.degraded_rate_pct || 0).toFixed(2),
+                    partial: Number(windowData.partial_runs || 0),
+                  })}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,1fr)]">
+          <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+            <h4 className="text-sm font-semibold text-white">{t('soc.dataops.backlog_by_dataset')}</h4>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-4">{t('soc.dataops.dataset')}</th>
+                    <th className="py-2 text-right">{t('soc.dataops.backlog_count')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {(observabilitySummary?.backlog?.by_dataset || []).map((item) => (
+                    <tr key={item.dataset}>
+                      <td className="py-2 pr-4 text-slate-200">{t(DATASET_LABEL_KEYS[item.dataset] || 'soc.dataops.dataset_unknown')}</td>
+                      <td className="py-2 text-right font-mono text-slate-100">{Number(item.backlog_count || 0)}</td>
+                    </tr>
+                  ))}
+                  {(observabilitySummary?.backlog?.by_dataset || []).length === 0 && (
+                    <tr>
+                      <td colSpan={2} className="py-4 text-center text-xs text-slate-500">{t('soc.dataops.no_backlog')}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+            <h4 className="text-sm font-semibold text-white">{t('soc.dataops.starvation_indicator')}</h4>
+            <div className="mt-3 space-y-2">
+              {(observabilitySummary?.starvation || []).map((item) => {
+                const isStarved = Boolean(item.is_starved);
+                const secondsSince = item.seconds_since_last_progress;
+                return (
+                  <div key={item.tier} className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-100">{t(TIER_LABEL_KEYS[item.tier] || 'soc.dataops.unknown_tier')}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {t('soc.dataops.starvation_last_progress_seconds', {
+                            seconds: secondsSince == null ? '-' : Number(secondsSince || 0),
+                            threshold: Number(item.threshold_seconds || 0),
+                          })}
+                        </p>
+                      </div>
+                      <span className={`rounded-full px-2 py-1 text-xs font-semibold ${isStarved ? 'bg-rose-900 text-rose-200' : 'bg-emerald-900 text-emerald-200'}`}>
+                        {isStarved ? t('soc.dataops.starved_yes') : t('soc.dataops.starved_no')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {(observabilitySummary?.starvation || []).length === 0 && (
+                <p className="text-xs text-slate-500">{t('soc.dataops.no_starvation_data')}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+          <h4 className="text-sm font-semibold text-white">{t('soc.dataops.backlog_by_tier')}</h4>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="py-2 pr-4">{t('soc.dataops.queue_tier')}</th>
+                  <th className="px-3 py-2 text-right">{t('soc.dataops.symbol_count')}</th>
+                  <th className="px-3 py-2 text-right">{t('soc.dataops.backlog_symbols')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {(observabilitySummary?.backlog?.by_tier || []).map((item) => (
+                  <tr key={item.tier}>
+                    <td className="py-2 pr-4 text-slate-200">{t(TIER_LABEL_KEYS[item.tier] || 'soc.dataops.unknown_tier')}</td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-100">{Number(item.symbol_count || 0)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-100">{Number(item.backlog_symbols || 0)}</td>
+                  </tr>
+                ))}
+                {(observabilitySummary?.backlog?.by_tier || []).length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="py-4 text-center text-xs text-slate-500">{t('soc.dataops.no_backlog')}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>

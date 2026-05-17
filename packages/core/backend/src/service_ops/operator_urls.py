@@ -23,5 +23,6 @@ urlpatterns = [
     path('dataops/planner/run/', dataops.DataOpsPlannerRunView.as_view(), name='dataops_planner_run'),
     path('dataops/planner/run/<str:run_id>/abort/', dataops.DataOpsPlannerRunAbortView.as_view(), name='dataops_planner_run_abort'),
     path('dataops/queue-tiers/', dataops.DataOpsQueueTiersView.as_view(), name='dataops_queue_tiers'),
+    path('dataops/observability/', dataops.DataOpsObservabilityView.as_view(), name='dataops_observability'),
     path('dataops/runtime-config/', dataops.DataOpsRuntimeConfigView.as_view(), name='dataops_runtime_config'),
 ]

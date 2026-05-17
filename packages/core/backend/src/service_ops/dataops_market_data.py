@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import timedelta
 import logging
 
-from django.db.models import Exists, Max, OuterRef, Q
+from django.db.models import Count, Exists, Max, OuterRef, Q
 from django.utils import timezone
 
 from market_data.global_symbol_registry import build_system_default_source_ref, sync_system_default_symbol_group
@@ -14,6 +15,7 @@ from market_data.vnbroker_adapter import fetch_listing_symbols, fetch_symbol_gro
 
 from .domain_configs import MarketDataRuntimeConfig
 from .models import ServiceConfig, ServiceDefinition
+from .models import ServiceRunLog
 from .registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 
 
@@ -76,6 +78,7 @@ PLANNABLE_FRESHNESS_STATES = {
     GlobalSymbolCoverage.FreshnessChoices.STALE,
     GlobalSymbolCoverage.FreshnessChoices.UNKNOWN,
 }
+QUEUE_TIER_STARVATION_MULTIPLIER = 3
 
 
 def get_market_data_runtime_config() -> tuple[MarketDataRuntimeConfig, object | None]:
@@ -287,3 +290,141 @@ def build_market_data_queue_tier_snapshot(example_limit: int = 5) -> tuple[list[
     )['latest']
     updated_at = config_updated_at or latest_registry_update or timezone.now()
     return tiers, updated_at
+
+
+def _build_market_data_fail_rate_window(*, service: ServiceDefinition, hours: int) -> dict[str, float | int]:
+    window_hours = max(int(hours or 0), 1)
+    since = timezone.now() - timedelta(hours=window_hours)
+    run_logs = ServiceRunLog.objects.filter(
+        service=service,
+        started_at__gte=since,
+    )
+    total_runs = run_logs.count()
+    failed_runs = run_logs.filter(status='failed').count()
+    partial_runs = run_logs.filter(status='partial').count()
+    success_runs = run_logs.filter(status='success').count()
+    skipped_runs = run_logs.filter(status='skipped').count()
+    if total_runs <= 0:
+        return {
+            'hours': window_hours,
+            'total_runs': 0,
+            'failed_runs': 0,
+            'partial_runs': 0,
+            'success_runs': 0,
+            'skipped_runs': 0,
+            'fail_rate_pct': 0.0,
+            'degraded_rate_pct': 0.0,
+        }
+
+    return {
+        'hours': window_hours,
+        'total_runs': total_runs,
+        'failed_runs': failed_runs,
+        'partial_runs': partial_runs,
+        'success_runs': success_runs,
+        'skipped_runs': skipped_runs,
+        'fail_rate_pct': round((failed_runs / total_runs) * 100.0, 2),
+        'degraded_rate_pct': round(((failed_runs + partial_runs) / total_runs) * 100.0, 2),
+    }
+
+
+def build_market_data_observability_summary() -> dict[str, object]:
+    config, _ = get_market_data_runtime_config()
+    matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+    now_value = timezone.now()
+
+    backlog_by_dataset_rows = list(
+        GlobalSymbolCoverage.objects.filter(
+            registry__is_active=True,
+            freshness_state__in=PLANNABLE_FRESHNESS_STATES,
+        )
+        .values('dataset')
+        .annotate(backlog_count=Count('id'))
+        .order_by('dataset')
+    )
+    backlog_by_dataset = [
+        {
+            'dataset': row['dataset'],
+            'backlog_count': int(row['backlog_count'] or 0),
+        }
+        for row in backlog_by_dataset_rows
+    ]
+
+    backlog_by_tier = []
+    starvation_indicators = []
+    for tier_name in QUEUE_TIER_ORDER:
+        tier_config = get_market_data_queue_tier_config(config, tier_name)
+        tier_queryset = build_market_data_queue_tier_queryset(tier_name)
+        tier_datasets = list(get_market_data_queue_tier_datasets(tier_name))
+
+        plannable_coverage_rows = GlobalSymbolCoverage.objects.filter(
+            registry__in=tier_queryset.values('pk'),
+            dataset__in=tier_datasets,
+            freshness_state__in=PLANNABLE_FRESHNESS_STATES,
+        )
+        backlog_symbols_count = plannable_coverage_rows.values('registry_id').distinct().count()
+        backlog_rows_by_dataset = list(
+            plannable_coverage_rows.values('dataset')
+            .annotate(backlog_count=Count('id'))
+            .order_by('dataset')
+        )
+
+        backlog_by_tier.append({
+            'tier': tier_name,
+            'symbol_count': tier_queryset.count(),
+            'backlog_symbols': backlog_symbols_count,
+            'datasets': [
+                {
+                    'dataset': row['dataset'],
+                    'backlog_count': int(row['backlog_count'] or 0),
+                }
+                for row in backlog_rows_by_dataset
+            ],
+        })
+
+        latest_progress_run = ServiceRunLog.objects.filter(
+            service=matrix_service,
+            input_summary__trigger='market_data.queue_tier_scheduler',
+            input_summary__queue_tier=tier_name,
+            status__in={'success', 'partial'},
+        ).order_by('-started_at', '-pk').first()
+
+        seconds_since_last_progress = None
+        if latest_progress_run is not None and latest_progress_run.started_at is not None:
+            seconds_since_last_progress = max(
+                int((now_value - latest_progress_run.started_at).total_seconds()),
+                0,
+            )
+
+        starvation_threshold_seconds = max(
+            int(tier_config.poll_interval_seconds or 0) * QUEUE_TIER_STARVATION_MULTIPLIER,
+            int(tier_config.poll_interval_seconds or 0),
+        )
+        is_starved = seconds_since_last_progress is None or seconds_since_last_progress > starvation_threshold_seconds
+        starvation_indicators.append({
+            'tier': tier_name,
+            'is_starved': bool(is_starved),
+            'poll_interval_seconds': int(tier_config.poll_interval_seconds or 0),
+            'threshold_seconds': int(starvation_threshold_seconds),
+            'seconds_since_last_progress': seconds_since_last_progress,
+            'latest_progress_started_at': (
+                latest_progress_run.started_at.isoformat()
+                if latest_progress_run is not None and latest_progress_run.started_at is not None
+                else None
+            ),
+        })
+
+    fail_rates = {
+        'window_1h': _build_market_data_fail_rate_window(service=matrix_service, hours=1),
+        'window_24h': _build_market_data_fail_rate_window(service=matrix_service, hours=24),
+    }
+
+    return {
+        'backlog': {
+            'by_dataset': backlog_by_dataset,
+            'by_tier': backlog_by_tier,
+        },
+        'fail_rates': fail_rates,
+        'starvation': starvation_indicators,
+        'updated_at': now_value.isoformat(),
+    }

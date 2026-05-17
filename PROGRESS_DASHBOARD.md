@@ -1,3 +1,31 @@
+# 2026-05-17 — CPS P06 complete: DataOps observability UI/API ✅
+
+Status: **✅ observability endpoint delivered** | **✅ monitor widgets added** | **✅ focused regression + build + runtime validation passed**
+
+## What changed
+- Added canonical DataOps observability endpoint:
+  - `/core/v1/operator/scraping/dataops/observability/`
+  - SOC alias `/api/soc/dataops/observability/`
+- Endpoint now returns:
+  - `backlog.by_dataset` and `backlog.by_tier`
+  - `fail_rates.window_1h` and `fail_rates.window_24h`
+  - `starvation` indicators by queue tier
+- Added OpenAPI coverage and API-domain regressions for route/schema and payload contract.
+- Wired frontend DataOps monitor tab to render:
+  - fail-rate cards (1h/24h),
+  - backlog tables by dataset and queue tier,
+  - starvation status per tier.
+- Added full i18n keys for Vietnamese/English observability labels.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **48 passed** ✅
+- `npm run build` (frontend) -> **compiled successfully** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- Observability windows are time-based and may fluctuate in low-run periods; P07 still needs shadow/parity evidence for rollout gating.
+
 # 2026-05-17 — CPS P05 complete: intraday tier depth policy ✅
 
 Status: **✅ tier-aware intraday depth applied** | **✅ planner-to-ingest contract enriched** | **✅ focused regression and runtime validation passed**

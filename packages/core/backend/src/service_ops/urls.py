@@ -114,6 +114,7 @@ urlpatterns = [
     path('dataops/planner/run/', dataops.DataOpsPlannerRunView.as_view(), name='soc_dataops_planner_run'),
     path('dataops/planner/run/<str:run_id>/abort/', dataops.DataOpsPlannerRunAbortView.as_view(), name='soc_dataops_planner_run_abort'),
     path('dataops/queue-tiers/', dataops.DataOpsQueueTiersView.as_view(), name='soc_dataops_queue_tiers'),
+    path('dataops/observability/', dataops.DataOpsObservabilityView.as_view(), name='soc_dataops_observability'),
     path('dataops/runtime-config/', dataops.DataOpsRuntimeConfigView.as_view(), name='soc_dataops_runtime_config'),
     path('dataops/runtime-config/preview/', dataops.DataOpsRuntimeConfigPreviewView.as_view(), name='soc_dataops_runtime_config_preview'),
     path('dataops/runtime-config/audit/', dataops.DataOpsRuntimeConfigAuditView.as_view(), name='soc_dataops_runtime_config_audit'),

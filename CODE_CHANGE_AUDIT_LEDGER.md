@@ -1,5 +1,35 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P06 - DataOps observability UI/API | frontend/backend/docs
+
+## All Modified Files (15 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added market-data observability aggregation for backlog by dataset/tier, fail-rate windows (1h/24h), and starvation indicators per queue tier |
+| `packages/core/backend/src/service_ops/views/dataops.py` | Added `DataOpsObservabilityView` and OpenAPI response serializer/contract |
+| `packages/core/backend/src/service_ops/operator_urls.py` | Added canonical operator route `dataops/observability/` |
+| `packages/core/backend/src/service_ops/urls.py` | Added SOC alias route `dataops/observability/` |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Added schema/contract/parity regressions for observability endpoint |
+| `frontend/src/api/socApi.js` | Added `getDataOpsObservability()` API client method |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Added observability widgets in Monitor tab: fail-rate cards, backlog tables, starvation indicator panel |
+| `frontend/src/i18n/vi.js` | Added Vietnamese i18n strings for observability UI |
+| `frontend/src/i18n/en.js` | Added English i18n strings for observability UI |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Marked P06 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P06 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P06 |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain --keepdb` ✅ (48 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` ✅ compiled successfully
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- Fail-rate/starvation windows are computed from recent run logs, so short-window values can fluctuate when run volume is low.
+
 # 2026-05-17 | CPS P05 - intraday tier depth policy | backend/docs
 
 ## All Modified Files (10 files)
