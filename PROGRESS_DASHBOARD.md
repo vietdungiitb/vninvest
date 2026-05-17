@@ -1,3 +1,25 @@
+# 2026-05-17 — CPS P09 complete: strict-fresh parity gate hardening ✅
+
+Status: **✅ parity_gates added to observability API** | **✅ DataOps monitor now shows strict-fresh vs fresh-or-warm gates** | **✅ focused regression + build + runtime validation passed**
+
+## What changed
+- Extended DataOps observability backend summary with `parity_gates.window_24h` and `parity_gates.window_72h`.
+- Each window now exposes:
+  - `strict_fresh` score + pass/fail,
+  - `fresh_or_warm` score + pass/fail,
+  - threshold used for gate evaluation.
+- Updated API serializer contract and regression tests to lock `parity_gates` payload.
+- Updated DataOps monitor UI with dedicated parity cards and localized labels (VI/EN).
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **48 passed** ✅
+- `npm run build` (frontend) -> **compiled successfully** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- Slice delivers observability hardening only; strict-fresh parity attainment still depends on follow-up runtime freshness improvements if policy requires strict-fresh gate.
+
 # 2026-05-17 — CPS P08 complete: cutover runbook and closeout ✅
 
 Status: **✅ cutover runbook published** | **✅ rollback/escalation flow documented** | **✅ spec-audit closeout aligned**

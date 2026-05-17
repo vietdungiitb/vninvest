@@ -17,6 +17,7 @@
 | P06 | DataOps observability UI/API | DONE | Frontend + Backend | Da co endpoint + widget backlog/fail-rate/starvation, contract test + build/runtime pass |
 | P07 | Shadow run and parity evidence | DONE | Ops + QA | Da co baseline 72h runtime run logs, parity sample 0.99, rollback drill evidence |
 | P08 | Cutover runbook and handoff close | DONE | Tech Lead | Da ban hanh cutover runbook, rollback playbook, escalation flow va closeout note |
+| P09 | Strict-fresh parity hardening | DONE | Frontend + Backend | Da bo sung parity_gates 24h/72h (strict_fresh + fresh_or_warm + pass/fail) tren API/DataOps monitor de giam ambiguity gate policy |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
@@ -39,6 +40,11 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] shadow/parity evidence complete.
 - [x] rollback drill evidence complete.
 
+### Phase D - Parity gate hardening (P09)
+- [x] DataOps API tra ve parity_gates theo 24h/72h.
+- [x] DataOps monitor hien thi strict-fresh va fresh-or-warm gate status.
+- [x] Regression tests cover parity_gates contract.
+
 ---
 
 ## Mandatory artifacts each task
@@ -58,4 +64,4 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] Taskboard/plan/spec cross-check PASS
 - [x] Evidence template updated
 - [x] Governance docs updated
-- [ ] Commit and push dev completed
+- [x] Commit and push dev completed

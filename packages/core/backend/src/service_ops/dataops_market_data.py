@@ -328,6 +328,65 @@ def _build_market_data_fail_rate_window(*, service: ServiceDefinition, hours: in
     }
 
 
+def _build_daily_parity_gate_window(*, hours: int, sample_size: int = 100) -> dict[str, float | int | bool]:
+    window_hours = max(int(hours or 0), 1)
+    capped_sample_size = max(int(sample_size or 0), 1)
+    since = timezone.now() - timedelta(hours=window_hours)
+
+    sample_symbols = list(
+        GlobalSymbolRegistry.objects.filter(is_active=True)
+        .order_by('-priority_score', '-demand_source_count', 'symbol')
+        .values_list('symbol', flat=True)[:capped_sample_size]
+    )
+    if not sample_symbols:
+        return {
+            'hours': window_hours,
+            'sample_size': capped_sample_size,
+            'evaluated_symbols': 0,
+            'strict_fresh_count': 0,
+            'fresh_or_warm_count': 0,
+            'strict_fresh_parity': 0.0,
+            'fresh_or_warm_parity': 0.0,
+            'strict_threshold_pct': 99.0,
+            'strict_met': False,
+            'relaxed_threshold_pct': 99.0,
+            'relaxed_met': False,
+        }
+
+    coverage_rows = GlobalSymbolCoverage.objects.filter(
+        registry__symbol__in=sample_symbols,
+        dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+        last_verified_at__gte=since,
+    )
+    strict_fresh_count = coverage_rows.filter(
+        freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH,
+    ).values('registry_id').distinct().count()
+    fresh_or_warm_count = coverage_rows.filter(
+        freshness_state__in={
+            GlobalSymbolCoverage.FreshnessChoices.FRESH,
+            GlobalSymbolCoverage.FreshnessChoices.WARM,
+        },
+    ).values('registry_id').distinct().count()
+
+    evaluated_symbols = len(sample_symbols)
+    strict_fresh_parity = strict_fresh_count / evaluated_symbols
+    fresh_or_warm_parity = fresh_or_warm_count / evaluated_symbols
+
+    return {
+        'hours': window_hours,
+        'sample_size': capped_sample_size,
+        'evaluated_symbols': evaluated_symbols,
+        'strict_fresh_count': strict_fresh_count,
+        'fresh_or_warm_count': fresh_or_warm_count,
+        'strict_fresh_parity': round(strict_fresh_parity, 4),
+        'fresh_or_warm_parity': round(fresh_or_warm_parity, 4),
+        'strict_threshold_pct': 99.0,
+        'strict_met': strict_fresh_parity >= 0.99,
+        'relaxed_threshold_pct': 99.0,
+        'relaxed_met': fresh_or_warm_parity >= 0.99,
+    }
+
+
 def build_market_data_observability_summary() -> dict[str, object]:
     config, _ = get_market_data_runtime_config()
     matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
@@ -418,6 +477,10 @@ def build_market_data_observability_summary() -> dict[str, object]:
         'window_1h': _build_market_data_fail_rate_window(service=matrix_service, hours=1),
         'window_24h': _build_market_data_fail_rate_window(service=matrix_service, hours=24),
     }
+    parity_gates = {
+        'window_24h': _build_daily_parity_gate_window(hours=24, sample_size=100),
+        'window_72h': _build_daily_parity_gate_window(hours=72, sample_size=100),
+    }
 
     return {
         'backlog': {
@@ -425,6 +488,7 @@ def build_market_data_observability_summary() -> dict[str, object]:
             'by_tier': backlog_by_tier,
         },
         'fail_rates': fail_rates,
+        'parity_gates': parity_gates,
         'starvation': starvation_indicators,
         'updated_at': now_value.isoformat(),
     }

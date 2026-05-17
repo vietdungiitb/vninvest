@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P09 - strict-fresh parity gate hardening | frontend/backend/docs
+
+## All Modified Files (12 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added parity gate aggregation windows (`24h`, `72h`) with explicit `strict_fresh` and `fresh_or_warm` scores plus pass/fail flags |
+| `packages/core/backend/src/service_ops/views/dataops.py` | Extended observability serializer/contract to expose `parity_gates` in API response |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Extended observability contract regression to assert parity gate payload shape and values |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Added monitor widgets for strict-fresh/fresh-or-warm parity cards and pass/fail badges by window |
+| `frontend/src/i18n/vi.js` | Added Vietnamese i18n labels for parity gate windows/status |
+| `frontend/src/i18n/en.js` | Added English i18n labels for parity gate windows/status |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Added and marked P09 DONE in CPS taskboard |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P09 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P09 completion |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain --keepdb` ✅ (48 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` ✅ compiled successfully
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- This slice improves parity gate transparency only; strict-fresh score uplift still requires follow-up ingest freshness hardening if strict-fresh is mandated as release gate.
+
 # 2026-05-17 | CPS P08 - cutover runbook and closeout | docs/governance
 
 ## All Modified Files (8 files)

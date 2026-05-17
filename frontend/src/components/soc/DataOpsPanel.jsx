@@ -589,6 +589,26 @@ const DEFAULT_OBSERVABILITY_SUMMARY = {
       degraded_rate_pct: 0,
     },
   },
+  parity_gates: {
+    window_24h: {
+      strict_fresh_parity: 0,
+      fresh_or_warm_parity: 0,
+      strict_met: false,
+      relaxed_met: false,
+      evaluated_symbols: 0,
+      strict_fresh_count: 0,
+      fresh_or_warm_count: 0,
+    },
+    window_72h: {
+      strict_fresh_parity: 0,
+      fresh_or_warm_parity: 0,
+      strict_met: false,
+      relaxed_met: false,
+      evaluated_symbols: 0,
+      strict_fresh_count: 0,
+      fresh_or_warm_count: 0,
+    },
+  },
   starvation: [],
   updated_at: null,
 };
@@ -1433,6 +1453,47 @@ const DataOpsPanel = ({ t }) => {
                   {t('soc.dataops.degraded_rate_pct', {
                     rate: Number(windowData.degraded_rate_pct || 0).toFixed(2),
                     partial: Number(windowData.partial_runs || 0),
+                  })}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          {[
+            {
+              key: 'window_24h',
+              titleKey: 'soc.dataops.parity_gate_24h',
+            },
+            {
+              key: 'window_72h',
+              titleKey: 'soc.dataops.parity_gate_72h',
+            },
+          ].map((windowConfig) => {
+            const parityWindow = observabilitySummary?.parity_gates?.[windowConfig.key] || {};
+            const strictParity = Number(parityWindow.strict_fresh_parity || 0) * 100;
+            const relaxedParity = Number(parityWindow.fresh_or_warm_parity || 0) * 100;
+            return (
+              <div key={windowConfig.key} className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs uppercase tracking-wide text-slate-400">{t(windowConfig.titleKey)}</p>
+                  <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${parityWindow.strict_met ? 'bg-emerald-900 text-emerald-200' : 'bg-rose-900 text-rose-200'}`}>
+                    {parityWindow.strict_met ? t('soc.dataops.parity_status_pass') : t('soc.dataops.parity_status_fail')}
+                  </span>
+                </div>
+                <p className="mt-2 text-2xl font-bold text-white">{strictParity.toFixed(2)}%</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {t('soc.dataops.parity_strict_line', {
+                    count: Number(parityWindow.strict_fresh_count || 0),
+                    total: Number(parityWindow.evaluated_symbols || 0),
+                  })}
+                </p>
+                <p className="mt-1 text-xs text-amber-300">
+                  {t('soc.dataops.parity_relaxed_line', {
+                    parity: relaxedParity.toFixed(2),
+                    count: Number(parityWindow.fresh_or_warm_count || 0),
+                    total: Number(parityWindow.evaluated_symbols || 0),
                   })}
                 </p>
               </div>
