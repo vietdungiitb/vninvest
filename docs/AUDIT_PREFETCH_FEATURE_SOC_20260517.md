@@ -125,10 +125,12 @@ The Prefetch feature provides runtime configuration and observability for the ti
 |---------|-----------|--------|
 | Header | Title, Warm Now (async/sync), Purge Cache buttons | 3 actions |
 | Universe Groups | Multiselect grid with coverage bars | Dynamic list |
-| Config Form | 11 number inputs | batch_size, symbol_limit, max_retries, etc. |
-| Profiles Form | 6 number inputs | interval_seconds per profile |
+| Config Form | 11 inputs | `batch_size`, `max_concurrent_workers`, `cache_ttl_seconds`, 6×`*_interval_seconds`, `enabled`, `skip_non_trading_days` |
+| Profiles Form | 6 number inputs | interval_seconds per profile (`pre_open`, `market_open`, `lunch_break`, `pre_close`, `post_close`, `offhours`) |
 | Cache Status | 3 stat cards | Hit Rate, Cache Size, TTL |
 | Preview Modal | Config-diff + Apply confirmation | Change summary |
+
+> ⚠️ **Correction (re-audit 2026-05-17):** Draft gốc liệt kê `symbol_limit`, `max_retries` trong Config Form — **các field này không có trong schema**. Schema chính xác xem Section 3.2.
 
 ### 4.2 Universe Group Card UI
 
@@ -158,8 +160,8 @@ The Prefetch feature provides runtime configuration and observability for the ti
 | Batch change | Number input validation via `handleFieldChange` |
 | Preview | Open `ConfigPreviewModal` with diff |
 | Apply | POST to `/api/soc/prefetch/config/` |
-| Warm Now (async) | POST to `/api/soc/prefetch/warm-now/?mode=async` |
-| Warm Now (sync) | POST to `/api/soc/prefetch/warm-now/?mode=sync` |
+| Warm Now (async) | POST to `/api/soc/prefetch/warm-now/` — ⚠️ query param `?mode=async` **không được backend xử lý**; backend chỉ tạo `ServiceRunLog(status='queued')` không phân biệt mode |
+| Warm Now (sync) | POST to `/api/soc/prefetch/warm-now/` — ⚠️ tương tự, `?mode=sync` không có effect phía server |
 | Purge Cache | POST to `/api/soc/prefetch/purge-cache/` |
 
 ---
@@ -240,7 +242,7 @@ The Prefetch feature provides runtime configuration and observability for the ti
 
 | Metric | Endpoint |
 |--------|----------|
-| Profile hits by type | `/api/soc/prefetch/metrics/` |
+| Profile hits by type | `/api/soc/prefetch/metrics/` — ⚠️ **endpoint này không tồn tại** (không có trong `urls.py`); cần bổ sung hoặc xóa khỏi doc |
 | Cache hit/miss | `/api/soc/prefetch/cache-status/` |
 | 429 cooldown | Calculated from rate_limit_guard |
 
@@ -250,9 +252,11 @@ The Prefetch feature provides runtime configuration and observability for the ti
 
 ### 7.1 Permission Classes
 
-- **View:** `IsAuthenticated` (any authenticated user)
-- **Write:** `IsAdminUser` (staff only for apply config)
+- **All endpoints (GET và POST):** `[IsAuthenticated, IsAdminUser]` — admin-only toàn bộ, không có public read.
+- Permission được enforce tập trung tại `SOCBaseView.permission_classes` (kế thừa bởi mọi prefetch view), không có exception riêng nào.
 - **Ownership Matrix:** Controls write surface
+
+> ✅ **Verified (re-audit 2026-05-17):** Không có endpoint GET nào mở public. Cả read lẫn write đều yêu cầu admin.
 
 ### 7.2 Ownership Fields
 
@@ -289,8 +293,8 @@ The Prefetch feature provides runtime configuration and observability for the ti
    - Calculate hit_ratio dynamically
 
 2. **Implement actual warm-now trigger**:
-   - Dispatch Celery task `tasks_prefetch.prefetch_ticker_price_board`
-   - Pass `universe_group_ids` from config
+   - Task name `tasks_prefetch.prefetch_ticker_price_board` **không tồn tại** — đây là legacy path.
+   - Hướng đúng: dispatch `service_ops.run_market_data_queue_tier_scheduler` với flag `warm_now=True`, hoặc thêm beat polling task chọn các `ServiceRunLog` có `input_summary__trigger='warm_now'` và status=`queued` để forward thực thi.
 
 3. ~~**Add write permission guard**~~:
    > **RESOLVED — re-audit 2026-05-17.** `SOCBaseView.permission_classes = [IsAuthenticated, IsAdminUser]` already guards all endpoints. No action needed.
@@ -393,7 +397,7 @@ The Prefetch feature is a well-structured SOC domain with:
 - ⚠️ No actual execution in warm-now
 - ⚠️ Missing write permission enforcement
 
-**Recommendation:** Prioritize fixing the medium-severity issues (#1-3) to achieve production-ready status.
+**Recommendation:** Prioritize fixing the two remaining medium-severity issues (#1 mock cache data, #2 warm-now dispatch gap) to achieve production-ready status. Permission enforcement (#3) was a false positive — already handled by `SOCBaseView`.
 
 ---
 
