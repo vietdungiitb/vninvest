@@ -433,6 +433,26 @@ def _build_daily_parity_gate_window_with_trend(*, hours: int, sample_size: int =
     return current_window
 
 
+def _build_daily_parity_gate_history(*, hours: int, sample_size: int = 100, points: int = 7) -> list[dict[str, object]]:
+    normalized_points = max(int(points or 0), 1)
+    history = []
+    for index in range(normalized_points):
+        end_offset_hours = int(hours) * index
+        window_data = _build_daily_parity_gate_window(
+            hours=hours,
+            sample_size=sample_size,
+            end_offset_hours=end_offset_hours,
+        )
+        history.append({
+            'sequence': index,
+            'end_offset_hours': end_offset_hours,
+            'strict_fresh_parity': float(window_data.get('strict_fresh_parity') or 0.0),
+            'fresh_or_warm_parity': float(window_data.get('fresh_or_warm_parity') or 0.0),
+            'evaluated_symbols': int(window_data.get('evaluated_symbols') or 0),
+        })
+    return history
+
+
 def build_market_data_observability_summary() -> dict[str, object]:
     config, _ = get_market_data_runtime_config()
     matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
@@ -527,6 +547,10 @@ def build_market_data_observability_summary() -> dict[str, object]:
         'window_24h': _build_daily_parity_gate_window_with_trend(hours=24, sample_size=100),
         'window_72h': _build_daily_parity_gate_window_with_trend(hours=72, sample_size=100),
     }
+    parity_history = {
+        'window_24h': _build_daily_parity_gate_history(hours=24, sample_size=100, points=7),
+        'window_72h': _build_daily_parity_gate_history(hours=72, sample_size=100, points=7),
+    }
 
     return {
         'backlog': {
@@ -535,6 +559,7 @@ def build_market_data_observability_summary() -> dict[str, object]:
         },
         'fail_rates': fail_rates,
         'parity_gates': parity_gates,
+        'parity_history': parity_history,
         'starvation': starvation_indicators,
         'updated_at': now_value.isoformat(),
     }

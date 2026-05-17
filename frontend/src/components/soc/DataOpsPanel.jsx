@@ -621,6 +621,10 @@ const DEFAULT_OBSERVABILITY_SUMMARY = {
       },
     },
   },
+  parity_history: {
+    window_24h: [],
+    window_72h: [],
+  },
   starvation: [],
   updated_at: null,
 };
@@ -1485,6 +1489,9 @@ const DataOpsPanel = ({ t }) => {
           ].map((windowConfig) => {
             const parityWindow = observabilitySummary?.parity_gates?.[windowConfig.key] || {};
             const parityTrend = parityWindow.trend || {};
+            const parityHistory = Array.isArray(observabilitySummary?.parity_history?.[windowConfig.key])
+              ? observabilitySummary.parity_history[windowConfig.key]
+              : [];
             const strictParity = Number(parityWindow.strict_fresh_parity || 0) * 100;
             const relaxedParity = Number(parityWindow.fresh_or_warm_parity || 0) * 100;
             const strictTrendDelta = Number(parityTrend.strict_fresh_delta_pct_points || 0);
@@ -1535,6 +1542,35 @@ const DataOpsPanel = ({ t }) => {
                     hours: Number(parityTrend.comparison_hours || 0),
                   })}
                 </p>
+                <div className="mt-3">
+                  <p className="text-[11px] text-slate-500">{t('soc.dataops.parity_history_title')}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {parityHistory.slice(0, 7).map((historyPoint) => {
+                      const pointSequence = Number(historyPoint.sequence || 0);
+                      const pointStrictPct = Number(historyPoint.strict_fresh_parity || 0) * 100;
+                      const pointRelaxedPct = Number(historyPoint.fresh_or_warm_parity || 0) * 100;
+                      return (
+                        <span
+                          key={`${windowConfig.key}-${pointSequence}`}
+                          className="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-[10px] text-slate-300"
+                          title={t('soc.dataops.parity_history_point_tooltip', {
+                            strict: pointStrictPct.toFixed(2),
+                            relaxed: pointRelaxedPct.toFixed(2),
+                            offset: Number(historyPoint.end_offset_hours || 0),
+                          })}
+                        >
+                          {t('soc.dataops.parity_history_point_label', {
+                            sequence: pointSequence + 1,
+                            strict: pointStrictPct.toFixed(1),
+                          })}
+                        </span>
+                      );
+                    })}
+                    {parityHistory.length === 0 && (
+                      <span className="text-[10px] text-slate-500">{t('soc.dataops.parity_history_empty')}</span>
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })}

@@ -1,3 +1,22 @@
+# 2026-05-17 — CPS P12 complete: parity history multi-window ✅
+
+Status: **✅ parity_history added in observability API** | **✅ DataOps monitor shows 7 recent windows** | **✅ focused test/build/runtime gates passed**
+
+## What changed
+- Added `parity_history` to DataOps observability response for both 24h and 72h windows.
+- Each history point includes sequence index, end-offset, strict-fresh parity, fresh-or-warm parity, and evaluated symbol count.
+- Updated DataOps parity cards to render compact history chips for the latest 7 windows.
+- Added localized labels/tooltips (VI/EN) for history visualization.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **48 passed** ✅
+- `npm run build` (frontend) -> **compiled successfully** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- History points are reconstructed from rolling windows at query time and are not persisted as immutable snapshots.
+
 # 2026-05-17 — CPS P11 complete: parity trend observability ✅
 
 Status: **✅ parity windows now include trend deltas** | **✅ DataOps monitor shows signed previous-window delta** | **✅ contract/build/runtime validation passed**

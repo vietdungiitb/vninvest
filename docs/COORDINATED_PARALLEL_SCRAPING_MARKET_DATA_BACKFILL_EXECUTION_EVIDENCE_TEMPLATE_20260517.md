@@ -671,3 +671,66 @@ Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv
 
 ## Next slice
 - Optional: add time-series sparkline/history persistence if operators need more than previous-window comparison.
+
+---
+
+## Latest Executed Slice Snapshot (P12)
+
+## Slice metadata
+- Slice ID: P12
+- Date: 2026-05-17
+- Owner: Copilot
+- Related tasks (Pxx): P12
+
+## Objective
+- Extend parity observability from single delta to multi-window history by exposing and rendering 7 recent points for 24h/72h windows.
+
+## Files changed
+1. packages/core/backend/src/service_ops/dataops_market_data.py
+2. packages/core/backend/src/service_ops/views/dataops.py
+3. packages/core/backend/src/service_ops/tests/test_soc_api_domain.py
+4. frontend/src/components/soc/DataOpsPanel.jsx
+5. frontend/src/i18n/vi.js
+6. frontend/src/i18n/en.js
+7. docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md
+8. docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md
+9. module_tree_full.md
+10. CODE_CHANGE_AUDIT_LEDGER.md
+11. PROGRESS_DASHBOARD.md
+12. MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md
+
+## Validation commands
+```powershell
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain --keepdb
+Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build
+Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1
+Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py
+```
+
+## Validation results
+- `service_ops.tests.test_soc_api_domain` -> 48 passed.
+- `npm run build` -> compiled successfully.
+- `start_dev.ps1` -> native stack healthy, queue drift check pass, smoke checks pass.
+- module tree regenerated -> 1210 modules.
+
+## Runtime evidence
+- start_dev run result: PASS
+- health checks: Core API OK, Frontend OK
+
+## Metrics snapshot
+- planned_items: N/A (observability slice)
+- inserted: N/A
+- updated: N/A
+- skipped_existing: N/A
+- failed_count: N/A
+- backlog_delta: parity windows now include 7-point history via `parity_history.window_24h` / `parity_history.window_72h`
+
+## UI/API evidence
+- API payload snapshot: observability payload includes `parity_history` lists for each window with sequence/offset/parity values.
+- UI snapshot: parity cards render compact 7-window history chips with strict-fresh percentages and tooltips.
+
+## Residual risks
+- History is computed from rolling snapshots at request time and is not persisted as immutable time-series records.
+
+## Next slice
+- Optional: persist parity snapshots per scheduler cycle for forensic-grade history continuity.
