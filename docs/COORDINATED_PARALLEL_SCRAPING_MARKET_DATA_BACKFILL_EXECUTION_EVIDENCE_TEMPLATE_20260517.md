@@ -49,6 +49,68 @@
 
 ---
 
+## Latest Executed Slice Snapshot (P15)
+
+## Slice metadata
+- Slice ID: P15
+- Date: 2026-05-17
+- Owner: Copilot
+- Related tasks (Pxx): P15
+
+## Objective
+- Bo sung retention policy va cleanup job cho append-only parity snapshot store de kiem soat growth theo thoi gian.
+
+## Files changed
+1. packages/core/backend/src/service_ops/domain_configs/market_data.py
+2. packages/core/backend/src/service_ops/dataops_market_data.py
+3. packages/core/backend/src/service_ops/tasks.py
+4. packages/core/backend/src/service_ops/views/dataops.py
+5. packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py
+6. packages/core/backend/src/service_ops/tests/test_soc_tasks.py
+7. packages/core/backend/src/service_ops/tests/test_soc_api_domain.py
+8. docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md
+9. docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md
+10. module_tree_full.md
+11. CODE_CHANGE_AUDIT_LEDGER.md
+12. PROGRESS_DASHBOARD.md
+13. MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md
+
+## Validation commands
+```powershell
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb
+Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py
+Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1
+```
+
+## Validation results
+- `service_ops.tests.test_soc_domain_configs` + `service_ops.tests.test_soc_tasks` + `service_ops.tests.test_soc_api_domain` -> 83 passed.
+- `scripts/ops/generate_module_tree.py` -> regenerated `module_tree_full.md` with 1211 modules.
+- `start_dev.ps1` -> native stack rebuilt/started successfully, queue drift check pass, smoke checks pass.
+
+## Runtime evidence
+- start_dev run result: PASS
+- health checks: Core API OK, Frontend OK
+
+## Metrics snapshot
+- planned_items: N/A (retention/governance slice)
+- inserted: N/A
+- updated: N/A
+- skipped_existing: N/A
+- failed_count: N/A
+- backlog_delta: N/A
+
+## UI/API evidence
+- API payload snapshot: runtime config payload bo sung field `parity_snapshot_retention_days` cho DataOps market-data config surfaces.
+- UI screenshot/video: N/A (backend-only slice)
+
+## Residual risks
+- Cleanup hien dang chay theo chu ky scheduler queue-tier; neu scheduler bi dung dai han thi stale rows se chua duoc prune cho den cycle tiep theo.
+
+## Next slice
+- P16 - Tach cleanup thanh periodic task rieng (beat-driven) va bo sung telemetry chi tiet cho retention health.
+
+---
+
 ## Latest Executed Slice Snapshot (P14)
 
 ## Slice metadata

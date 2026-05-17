@@ -907,6 +907,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
             config_schema_version='1.0',
             config_payload={
                 'decay_days': 11,
+                'parity_snapshot_retention_days': 21,
                 'hot_user_demand': {
                     'poll_interval_seconds': 20,
                     'max_batch_size': 60,
@@ -920,6 +921,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payload = response.json()
         self.assertEqual(payload['config']['decay_days'], 11)
+        self.assertEqual(payload['config']['parity_snapshot_retention_days'], 21)
         self.assertEqual(payload['config']['hot_user_demand']['poll_interval_seconds'], 20)
         self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
         self.assertTrue(payload['ownership']['can_apply'])

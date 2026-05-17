@@ -786,6 +786,7 @@ class DataOpsPlannerRunAbortView(SOCBaseView):
                 value={
                     'config': {
                         'decay_days': 7,
+                        'parity_snapshot_retention_days': 30,
                         'hot_user_demand': {'poll_interval_seconds': 30, 'max_batch_size': 50},
                     },
                     'ownership': {
@@ -817,6 +818,7 @@ class DataOpsPlannerRunAbortView(SOCBaseView):
                 value={
                     'config_payload': {
                         'decay_days': 9,
+                        'parity_snapshot_retention_days': 14,
                         'hot_user_demand': {'poll_interval_seconds': 20, 'max_batch_size': 40},
                         'warm_liquid_market': {'poll_interval_seconds': 180, 'max_batch_size': 110},
                     }

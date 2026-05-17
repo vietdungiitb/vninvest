@@ -23,6 +23,7 @@
 | P12 | Parity history multi-window | DONE | Frontend + Backend | Da bo sung chuoi 7 moc parity history cho 24h/72h tren API va DataOps monitor de theo doi xu huong nhieu ky |
 | P13 | Persisted parity snapshots | DONE | Core Backend | Scheduler ghi immutable parity_snapshot vao metadata planner-run; observability history uu tien doc persisted snapshots thay vi rolling-only |
 | P14 | Append-only parity snapshot store | DONE | Core Backend | Tach persistence parity history sang bang append-only rieng, observability uu tien doc bang moi va fallback metadata de giu backward compatibility |
+| P15 | Parity snapshot retention cleanup | DONE | Core Backend | Bo sung retention policy cho parity snapshot store, scheduler tu dong cleanup stale rows theo runtime config |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
@@ -75,6 +76,11 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] Queue-tier scheduler persist parity snapshots vao bang moi moi chu ky.
 - [x] Observability `parity_history` uu tien doc bang moi va fallback metadata cu.
 - [x] Regression tests khoa model uniqueness, scheduler write path, va API read path.
+
+### Phase J - Retention cleanup policy (P15)
+- [x] Bo sung runtime config `parity_snapshot_retention_days` cho market-data SSOT.
+- [x] Queue-tier scheduler auto cleanup parity snapshot rows qua retention helper.
+- [x] Regression tests khoa config validation, cleanup execution, va API contract field moi.
 
 ---
 

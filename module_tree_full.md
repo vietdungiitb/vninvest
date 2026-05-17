@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 20:52:54`
+Generated at: `2026-05-17 21:01:52`
 
 ## Summary
 
@@ -10,7 +10,7 @@ Generated at: `2026-05-17 20:52:54`
 - Python modules: 689
 - JS/TS modules: 522
 - Total classes: 1375
-- Total functions: 3281
+- Total functions: 3282
 - Total top-level variables: 4834
 
 ## Python Modules
@@ -3447,7 +3447,7 @@ Generated at: `2026-05-17 20:52:54`
 ### `packages/core/backend/src/service_ops/dataops_market_data.py`
 
 - Functions:
-  - `_build_daily_parity_gate_direction`, `_build_daily_parity_gate_history`, `_build_daily_parity_gate_window`, `_build_daily_parity_gate_window_with_trend`, `_build_market_data_fail_rate_window`, `_build_parity_history_from_persisted_snapshots`, `_build_parity_history_from_scheduler_logs`, `_get_recovery_queryset_filter`, `_select_market_data_bootstrap_listing_symbols`, `build_market_data_observability_summary`, `build_market_data_parity_snapshot`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `count_market_data_queue_tier_symbols`, `ensure_market_data_system_default_baseline`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `persist_market_data_parity_snapshot`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
+  - `_build_daily_parity_gate_direction`, `_build_daily_parity_gate_history`, `_build_daily_parity_gate_window`, `_build_daily_parity_gate_window_with_trend`, `_build_market_data_fail_rate_window`, `_build_parity_history_from_persisted_snapshots`, `_build_parity_history_from_scheduler_logs`, `_get_recovery_queryset_filter`, `_select_market_data_bootstrap_listing_symbols`, `build_market_data_observability_summary`, `build_market_data_parity_snapshot`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `cleanup_market_data_parity_snapshots`, `count_market_data_queue_tier_symbols`, `ensure_market_data_system_default_baseline`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `persist_market_data_parity_snapshot`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
 - Top-level variables:
   - `DATAOPS_MARKET_DATA_DOMAIN`, `LISTING_BOOTSTRAP_PROVIDER_SOURCES`, `PLANNABLE_FRESHNESS_STATES`, `PRIORITY_TIER_TO_QUEUE_TIER`, `QUEUE_TIER_DATASETS`, `QUEUE_TIER_EXECUTION_QUEUES`, `QUEUE_TIER_ORDER`, `QUEUE_TIER_STARVATION_MULTIPLIER`, `RECOVERY_COVERAGE_STATES`, `RECOVERY_FRESHNESS_STATES`, `SYSTEM_DEFAULT_BOOTSTRAP_GROUP_IDS`, `SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID`, `logger`
 
@@ -3679,7 +3679,7 @@ Generated at: `2026-05-17 20:52:54`
 ### `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
 
 - Classes:
-  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty`, `test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_enforces_max_dispatch_per_cycle_quota`, `test_market_data_queue_tier_scheduler_includes_session_facts_for_warm_tier`, `test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists`, `test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately`, `test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent`, `test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
+  - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_applies_parity_snapshot_retention_policy`, `test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty`, `test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_enforces_max_dispatch_per_cycle_quota`, `test_market_data_queue_tier_scheduler_includes_session_facts_for_warm_tier`, `test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists`, `test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately`, `test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent`, `test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
   - `VnbrokerAdapterTaskBridgeTestCase` -> methods: `test_fetch_daily_history_uses_requested_source_quote_class`, `test_fetch_listing_symbols_uses_requested_source_listing_adapter`, `test_fetch_price_board_snapshot_passes_explicit_source`, `test_fetch_realtime_price_uses_requested_source_quote_class`, `test_fetch_symbol_group_members_uses_requested_source_group`
 
 ### `packages/core/backend/src/service_ops/urls.py`

@@ -2,6 +2,33 @@
 
 ---
 
+## 2026-05-17 | CPS P15 - parity snapshot retention cleanup
+
+### Files changed in this session
+- `packages/core/backend/src/service_ops/domain_configs/market_data.py`
+- `packages/core/backend/src/service_ops/dataops_market_data.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Bo sung policy retention va cleanup cho parity snapshot append-only store de han che growth va giu observability history on dinh theo SSOT runtime config.
+
+### Validation snapshot
+- `manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (83 tests)
+- `scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+
+---
+
 ## 2026-05-17 | CPS P14 - append-only parity snapshot store
 
 ### Files changed in this session

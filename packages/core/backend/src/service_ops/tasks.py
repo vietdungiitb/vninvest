@@ -15,6 +15,7 @@ from signal_intelligence.materializers import materialize_unified_alerts, materi
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
 from .dataops_market_data import (
+    cleanup_market_data_parity_snapshots,
     QUEUE_TIER_ORDER,
     build_market_data_parity_snapshot,
     count_market_data_queue_tier_symbols,
@@ -587,6 +588,9 @@ def run_market_data_queue_tier_scheduler(self):
         scheduler_task_id=getattr(self.request, 'id', ''),
         parity_snapshot=parity_snapshot,
     )
+    parity_snapshot_retention = cleanup_market_data_parity_snapshots(
+        retention_days=runtime_config.parity_snapshot_retention_days,
+    )
 
     dispatches = []
     skipped_tiers = []
@@ -695,4 +699,5 @@ def run_market_data_queue_tier_scheduler(self):
         'skipped_tiers': skipped_tiers,
         'skipped_by_quota': skipped_by_quota_total,
         'scheduler_task_id': getattr(self.request, 'id', ''),
+        'parity_snapshot_retention': parity_snapshot_retention,
     }

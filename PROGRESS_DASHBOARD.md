@@ -1,3 +1,21 @@
+# 2026-05-17 — CPS P15 complete: parity snapshot retention cleanup ✅
+
+Status: **✅ retention field added to runtime config** | **✅ scheduler auto-prunes stale parity rows** | **✅ focused tests + runtime refresh passed**
+
+## What changed
+- Added `parity_snapshot_retention_days` into market-data runtime config schema with validation and serialization.
+- Added retention helper for append-only `MarketDataParitySnapshot` store and integrated cleanup into queue-tier scheduler cycle.
+- Scheduler response now includes `parity_snapshot_retention` summary for auditability.
+- Added regressions for config validation, cleanup execution behavior, and runtime-config API contract containing retention field.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` -> **83 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Retention cleanup currently piggybacks on scheduler cycles; if scheduler stops for long windows, cleanup cadence pauses.
+
 # 2026-05-17 — CPS P14 complete: append-only parity snapshot store ✅
 
 Status: **✅ dedicated append-only parity table introduced** | **✅ scheduler persists snapshots to table** | **✅ observability reads table-first with metadata fallback**

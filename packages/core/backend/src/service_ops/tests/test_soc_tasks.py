@@ -428,6 +428,75 @@ class ServiceOpsTasksTestCase(TestCase):
 
     @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
     @patch('service_ops.tasks.create_global_planner_run')
+    def test_market_data_queue_tier_scheduler_applies_parity_snapshot_retention_policy(self, planner_run_mock, fetch_listing_symbols_mock):
+        old_time = timezone.now() - timedelta(days=3)
+        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        MarketDataParitySnapshot.objects.bulk_create([
+            MarketDataParitySnapshot(
+                service=matrix_service,
+                scheduler_task_id='legacy-retention-24h',
+                window_hours=24,
+                strict_fresh_parity=0.5,
+                fresh_or_warm_parity=0.7,
+                captured_at=old_time,
+            ),
+            MarketDataParitySnapshot(
+                service=matrix_service,
+                scheduler_task_id='legacy-retention-72h',
+                window_hours=72,
+                strict_fresh_parity=0.5,
+                fresh_or_warm_parity=0.7,
+                captured_at=old_time,
+            ),
+        ])
+
+        GlobalSymbolRegistry.objects.create(
+            symbol='VCB',
+            is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.WARM,
+            priority_score=7.5,
+            demand_source_count=1,
+            freshness_state_summary='stale',
+            coverage_state_summary='partial',
+        )
+        GlobalSymbolCoverage.objects.create(
+            registry=GlobalSymbolRegistry.objects.get(symbol='VCB'),
+            dataset=GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS,
+            freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
+            next_recommended_action='materialize_session_facts',
+        )
+        ServiceConfig.objects.create(
+            service=matrix_service,
+            config_schema_version='1.0',
+            config_payload={
+                'parity_snapshot_retention_days': 1,
+                'warm_liquid_market': {
+                    'poll_interval_seconds': 60,
+                    'max_batch_size': 5,
+                },
+            },
+            applied_by='test',
+        )
+        planner_run_mock.return_value = {
+            'run_id': 'md-run-warm',
+            'service_run_log_id': 77,
+            'status': 'queued',
+        }
+
+        result = run_market_data_queue_tier_scheduler.run()
+
+        self.assertEqual(result['dispatched_runs'], 1)
+        self.assertIn('parity_snapshot_retention', result)
+        self.assertEqual(result['parity_snapshot_retention']['retention_days'], 1)
+        self.assertGreaterEqual(result['parity_snapshot_retention']['deleted_rows'], 2)
+        self.assertFalse(
+            MarketDataParitySnapshot.objects.filter(
+                scheduler_task_id__in=['legacy-retention-24h', 'legacy-retention-72h']
+            ).exists()
+        )
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks.create_global_planner_run')
     def test_market_data_queue_tier_scheduler_includes_session_facts_for_warm_tier(self, planner_run_mock, fetch_listing_symbols_mock):
         GlobalSymbolRegistry.objects.create(
             symbol='VCB',

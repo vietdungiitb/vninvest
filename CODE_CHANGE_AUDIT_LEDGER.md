@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P15 - parity snapshot retention cleanup | backend/docs
+
+## All Modified Files (13 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/domain_configs/market_data.py` | Added runtime config field `parity_snapshot_retention_days` with parse/validate/serialize support |
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added parity snapshot cleanup helper to delete stale rows before retention cutoff |
+| `packages/core/backend/src/service_ops/tasks.py` | Scheduler now executes parity snapshot cleanup and reports retention summary payload |
+| `packages/core/backend/src/service_ops/views/dataops.py` | Updated DataOps runtime-config OpenAPI examples to include parity retention field |
+| `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py` | Added regressions for retention field parsing and validation |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Added scheduler regression verifying retention cleanup removes stale parity rows |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Added runtime-config contract assertion for `parity_snapshot_retention_days` |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Added and marked P15 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P15 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P15 completion |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (83 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1211` modules)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+
+## Residual risk
+- Cleanup path hien duoc kich hoat theo scheduler cycle; chua co beat-driven cleanup task doc lap khi scheduler tam dung.
+
 # 2026-05-17 | CPS P14 - append-only parity snapshot store | backend/docs
 
 ## All Modified Files (13 files)

@@ -23,6 +23,7 @@ class DomainConfigValidationTestCase(SimpleTestCase):
     def test_market_data_runtime_config_from_dict_accepts_partial_queue_overrides(self):
         config = MarketDataRuntimeConfig.from_dict({
             'decay_days': 9,
+            'parity_snapshot_retention_days': 14,
             'hot_user_demand': {
                 'poll_interval_seconds': 15,
                 'max_batch_size': 25,
@@ -31,6 +32,7 @@ class DomainConfigValidationTestCase(SimpleTestCase):
         })
 
         self.assertEqual(config.decay_days, 9)
+        self.assertEqual(config.parity_snapshot_retention_days, 14)
         self.assertEqual(config.hot_user_demand.poll_interval_seconds, 15)
         self.assertEqual(config.hot_user_demand.max_batch_size, 25)
         self.assertEqual(config.hot_user_demand.max_dispatch_per_cycle, 10)
@@ -41,6 +43,7 @@ class DomainConfigValidationTestCase(SimpleTestCase):
     def test_market_data_runtime_config_validation_rejects_invalid_queue_settings(self):
         config = MarketDataRuntimeConfig(
             decay_days=0,
+            parity_snapshot_retention_days=0,
             hot_user_demand=QueueTierRuntimeConfig(
                 poll_interval_seconds=5,
                 max_batch_size=0,
@@ -51,6 +54,7 @@ class DomainConfigValidationTestCase(SimpleTestCase):
         errors = config.validate()
 
         self.assertTrue(any('decay_days' in error for error in errors))
+        self.assertTrue(any('parity_snapshot_retention_days' in error for error in errors))
         self.assertTrue(any('hot_user_demand.poll_interval_seconds' in error for error in errors))
         self.assertTrue(any('hot_user_demand.max_batch_size' in error for error in errors))
         self.assertTrue(any('hot_user_demand.max_dispatch_per_cycle' in error for error in errors))

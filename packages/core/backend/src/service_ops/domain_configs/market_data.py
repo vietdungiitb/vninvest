@@ -49,6 +49,7 @@ class QueueTierRuntimeConfig:
 @dataclass
 class MarketDataRuntimeConfig:
     decay_days: int = 7
+    parity_snapshot_retention_days: int = 30
     hot_user_demand: QueueTierRuntimeConfig = field(
         default_factory=lambda: QueueTierRuntimeConfig(
             poll_interval_seconds=30,
@@ -83,8 +84,13 @@ class MarketDataRuntimeConfig:
         payload = data if isinstance(data, dict) else {}
         defaults = cls()
         decay_days = int(payload.get('decay_days', defaults.decay_days) or defaults.decay_days)
+        parity_snapshot_retention_days = int(
+            payload.get('parity_snapshot_retention_days', defaults.parity_snapshot_retention_days)
+            or defaults.parity_snapshot_retention_days
+        )
         return cls(
             decay_days=decay_days,
+            parity_snapshot_retention_days=parity_snapshot_retention_days,
             hot_user_demand=QueueTierRuntimeConfig.from_dict(
                 payload.get('hot_user_demand'),
                 default=defaults.hot_user_demand,
@@ -107,6 +113,8 @@ class MarketDataRuntimeConfig:
         errors: list[str] = []
         if self.decay_days < 1:
             errors.append('decay_days phải >= 1')
+        if self.parity_snapshot_retention_days < 1:
+            errors.append('parity_snapshot_retention_days phải >= 1')
         errors.extend(self.hot_user_demand.validate('hot_user_demand'))
         errors.extend(self.warm_liquid_market.validate('warm_liquid_market'))
         errors.extend(self.cold_full_market.validate('cold_full_market'))
@@ -116,6 +124,7 @@ class MarketDataRuntimeConfig:
     def to_dict(self) -> dict[str, Any]:
         return {
             'decay_days': self.decay_days,
+            'parity_snapshot_retention_days': self.parity_snapshot_retention_days,
             'hot_user_demand': self.hot_user_demand.to_dict(),
             'warm_liquid_market': self.warm_liquid_market.to_dict(),
             'cold_full_market': self.cold_full_market.to_dict(),
