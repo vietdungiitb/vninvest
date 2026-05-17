@@ -1103,6 +1103,20 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         ServiceRunLog.objects.create(
             service=matrix_service,
             status='success',
+            started_at=now_value - timezone.timedelta(hours=1, minutes=5),
+            input_summary={
+                'trigger': 'market_data.parity_snapshot_retention',
+                'retention_days': 30,
+            },
+            output_summary={
+                'deleted_rows': 5,
+                'retained_rows': 85,
+                'total_rows_before': 90,
+            },
+        )
+        ServiceRunLog.objects.create(
+            service=matrix_service,
+            status='success',
             started_at=now_value - timezone.timedelta(minutes=5),
             input_summary={
                 'trigger': 'market_data.parity_snapshot_retention',
@@ -1144,6 +1158,13 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertGreaterEqual(payload['fail_rates']['window_1h']['failed_runs'], 1)
         self.assertEqual(payload['retention_health']['latest_run']['deleted_rows'], 12)
         self.assertEqual(payload['retention_health']['latest_run']['retained_rows'], 80)
+        self.assertIn('trend', payload['retention_health'])
+        self.assertEqual(payload['retention_health']['trend']['deleted_rows_delta'], 7)
+        self.assertEqual(payload['retention_health']['trend']['deleted_rows_direction'], 'up')
+        self.assertEqual(payload['retention_health']['trend']['retained_rows_delta'], -5)
+        self.assertEqual(payload['retention_health']['trend']['retained_rows_direction'], 'down')
+        self.assertIn('staleness_threshold_hours', payload['retention_health']['trend'])
+        self.assertTrue(payload['retention_health']['trend']['within_staleness_threshold'])
         starvation_map = {item['tier']: item for item in payload['starvation']}
         self.assertIn('hot_user_demand', starvation_map)
         self.assertIn('is_starved', starvation_map['hot_user_demand'])

@@ -49,6 +49,70 @@
 
 ---
 
+## Latest Executed Slice Snapshot (P18)
+
+## Slice metadata
+- Slice ID: P18
+- Date: 2026-05-17
+- Owner: Copilot
+- Related tasks (Pxx): P18
+
+## Objective
+- Bo sung retention trend analytics vao observability lane de operator thay ngay drift giua hai lan cleanup, nhin chart 7 lan chay gan nhat va biet cadence co vuot nguong cham khong.
+
+## Files changed
+1. packages/core/backend/src/service_ops/dataops_market_data.py
+2. packages/core/backend/src/service_ops/tests/test_soc_api_domain.py
+3. frontend/src/components/soc/DataOpsPanel.jsx
+4. frontend/src/i18n/vi.js
+5. frontend/src/i18n/en.js
+6. docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md
+7. docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md
+8. module_tree_full.md
+9. CODE_CHANGE_AUDIT_LEDGER.md
+10. PROGRESS_DASHBOARD.md
+11. MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md
+
+## Validation commands
+```powershell
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_observability_endpoint_returns_backlog_fail_rate_and_starvation --keepdb
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain --keepdb
+Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build
+Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py
+Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1
+```
+
+## Validation results
+- Focused API contract test -> 1 passed.
+- `service_ops.tests.test_soc_api_domain` -> 49 passed.
+- `frontend npm run build` -> compiled successfully.
+- `scripts/ops/generate_module_tree.py` -> regenerated `module_tree_full.md` with 1211 modules.
+- `start_dev.ps1` -> native stack started successfully, queue drift check pass, smoke checks pass.
+
+## Runtime evidence
+- start_dev run result: PASS
+- health checks: Core API OK, Frontend OK
+
+## Metrics snapshot
+- planned_items: N/A (observability/UI slice)
+- inserted: N/A
+- updated: N/A
+- skipped_existing: N/A
+- failed_count: N/A
+- backlog_delta: N/A
+
+## UI/API evidence
+- API payload snapshot: observability envelope bo sung `retention_health.trend` gom `deleted_rows_delta`, `retained_rows_delta`, direction, `average_deleted_rows`, `latest_run_age_hours`, `staleness_threshold_hours`, `within_staleness_threshold`.
+- UI screenshot/video: DataOps monitor retention card co them delta lines, mini bar chart 7 lan cleanup gan nhat va cadence threshold status.
+
+## Residual risks
+- Slice nay moi hien thi trend va threshold tren dashboard; chua day su kien canh bao retention anomaly vao alert lane rieng.
+
+## Next slice
+- P19 - Retention anomaly alert integration.
+
+---
+
 ## Latest Executed Slice Snapshot (P17)
 
 ## Slice metadata

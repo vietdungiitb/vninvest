@@ -629,6 +629,18 @@ const DEFAULT_OBSERVABILITY_SUMMARY = {
     retention_days: 30,
     latest_run: null,
     history: [],
+    trend: {
+      comparison_runs: 1,
+      deleted_rows_delta: 0,
+      deleted_rows_direction: 'flat',
+      retained_rows_delta: 0,
+      retained_rows_direction: 'flat',
+      latest_run_age_hours: null,
+      staleness_threshold_hours: 2,
+      within_staleness_threshold: false,
+      average_deleted_rows: 0,
+      peak_deleted_rows: 0,
+    },
   },
   starvation: [],
   updated_at: null,
@@ -1584,6 +1596,22 @@ const DataOpsPanel = ({ t }) => {
         <div className="mb-6 rounded-lg border border-slate-700 bg-slate-950/70 p-4">
           {(() => {
             const retentionStatus = String(observabilitySummary?.retention_health?.latest_run?.status || '').toLowerCase();
+            const retentionTrend = observabilitySummary?.retention_health?.trend || {};
+            const retentionHistory = Array.isArray(observabilitySummary?.retention_health?.history)
+              ? observabilitySummary.retention_health.history.slice(0, 7)
+              : [];
+            const retentionBars = [...retentionHistory].reverse();
+            const retentionPeakDeletedRows = Math.max(
+              Number(retentionTrend.peak_deleted_rows || 0),
+              ...retentionBars.map((historyPoint) => Number(historyPoint.deleted_rows || 0)),
+              1,
+            );
+            const retentionDeletedDelta = Number(retentionTrend.deleted_rows_delta || 0);
+            const retentionRetainedDelta = Number(retentionTrend.retained_rows_delta || 0);
+            const retentionLatestRunAgeHours = Number(retentionTrend.latest_run_age_hours || 0);
+            const retentionThresholdTone = retentionTrend.within_staleness_threshold
+              ? 'text-emerald-300'
+              : 'text-amber-300';
             const retentionStatusTone = retentionStatus === 'success'
               ? 'bg-emerald-900 text-emerald-200'
               : retentionStatus === 'failed'
@@ -1612,11 +1640,81 @@ const DataOpsPanel = ({ t }) => {
                   days: Number(observabilitySummary?.retention_health?.retention_days || 0),
                 })}
               </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {t('soc.dataops.retention_trend_line', {
+                  delta: retentionDeletedDelta > 0 ? `+${retentionDeletedDelta}` : `${retentionDeletedDelta}`,
+                  average: Number(retentionTrend.average_deleted_rows || 0).toFixed(2),
+                })}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {t('soc.dataops.retention_retained_delta_line', {
+                  delta: retentionRetainedDelta > 0 ? `+${retentionRetainedDelta}` : `${retentionRetainedDelta}`,
+                })}
+              </p>
             </div>
             <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${retentionStatusTone}`}>
               {retentionStatusLabel}
             </span>
           </div>
+            );
+          })()}
+          {(() => {
+            const retentionTrend = observabilitySummary?.retention_health?.trend || {};
+            const retentionHistory = Array.isArray(observabilitySummary?.retention_health?.history)
+              ? observabilitySummary.retention_health.history.slice(0, 7)
+              : [];
+            const retentionBars = [...retentionHistory].reverse();
+            const retentionPeakDeletedRows = Math.max(
+              Number(retentionTrend.peak_deleted_rows || 0),
+              ...retentionBars.map((historyPoint) => Number(historyPoint.deleted_rows || 0)),
+              1,
+            );
+            const retentionLatestRunAgeHours = Number(retentionTrend.latest_run_age_hours || 0);
+            const retentionThresholdTone = retentionTrend.within_staleness_threshold
+              ? 'text-emerald-300'
+              : 'text-amber-300';
+            return (
+              <>
+                <div className="mt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] text-slate-500">{t('soc.dataops.retention_chart_title')}</p>
+                    <span className={`text-[11px] ${retentionThresholdTone}`}>
+                      {retentionTrend.within_staleness_threshold
+                        ? t('soc.dataops.retention_threshold_ok')
+                        : t('soc.dataops.retention_threshold_breached')}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex h-20 items-end gap-1 rounded border border-slate-800 bg-slate-900/60 px-2 py-2">
+                    {retentionBars.map((historyPoint, index) => {
+                      const deletedRows = Number(historyPoint.deleted_rows || 0);
+                      const retainedRows = Number(historyPoint.retained_rows || 0);
+                      const totalRowsBefore = Number(historyPoint.total_rows_before || 0);
+                      const heightPx = Math.max(12, Math.round((deletedRows / retentionPeakDeletedRows) * 48));
+                      return (
+                        <span
+                          key={`retention-bar-${index}`}
+                          className="flex-1 rounded-t bg-amber-400/80"
+                          style={{ height: `${heightPx}px` }}
+                          title={t('soc.dataops.retention_history_point_tooltip', {
+                            deleted: deletedRows,
+                            retained: retainedRows,
+                            before: totalRowsBefore,
+                          })}
+                        />
+                      );
+                    })}
+                    {retentionBars.length === 0 && (
+                      <span className="text-[10px] text-slate-500">{t('soc.dataops.retention_history_empty')}</span>
+                    )}
+                  </div>
+                  <p className={`mt-2 text-xs ${retentionThresholdTone}`}>
+                    {t('soc.dataops.retention_threshold_line', {
+                      age: retentionLatestRunAgeHours.toFixed(2),
+                      threshold: Number(retentionTrend.staleness_threshold_hours || 0).toFixed(2),
+                    })}
+                  </p>
+                </div>
+              </>
             );
           })()}
           <div className="mt-3 flex flex-wrap gap-1.5">

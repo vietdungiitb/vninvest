@@ -26,6 +26,7 @@
 | P15 | Parity snapshot retention cleanup | DONE | Core Backend | Bo sung retention policy cho parity snapshot store, scheduler tu dong cleanup stale rows theo runtime config |
 | P16 | Beat-driven retention task | DONE | Core Backend | Tach cleanup thanh periodic task doc lap qua beat, bo sung run-log telemetry retention health |
 | P17 | Retention observability lane | DONE | Frontend + Backend | Bo sung retention_health vao observability API/DataOps monitor, lock contract canonical-alias parity va status tone |
+| P18 | Retention trend analytics | DONE | Frontend + Backend | Bo sung `retention_health.trend` tren API/DataOps monitor, them mini chart 7 lan chay gan nhat va drift threshold cho run cadence |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
@@ -93,6 +94,11 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] Observability summary tra ve `retention_health` (latest run + history).
 - [x] DataOps monitor hien thi retention health card va history chips.
 - [x] Regression tests khoa alias/canonical parity cho `retention_health` contract.
+
+### Phase M - Retention trend analytics (P18)
+- [x] Observability summary tra ve `retention_health.trend` (delta, direction, average, staleness threshold).
+- [x] DataOps monitor hien thi trend lines + mini chart 7 lan chay gan nhat + threshold cadence status.
+- [x] Regression tests khoa contract `retention_health.trend`.
 
 ---
 

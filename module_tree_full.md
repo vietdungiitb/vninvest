@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 21:36:45`
+Generated at: `2026-05-17 21:58:49`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-17 21:36:45`
 - Python modules: 689
 - JS/TS modules: 522
 - Total classes: 1375
-- Total functions: 3283
-- Total top-level variables: 4837
+- Total functions: 3284
+- Total top-level variables: 4850
 
 ## Python Modules
 
@@ -3447,9 +3447,9 @@ Generated at: `2026-05-17 21:36:45`
 ### `packages/core/backend/src/service_ops/dataops_market_data.py`
 
 - Functions:
-  - `_build_daily_parity_gate_direction`, `_build_daily_parity_gate_history`, `_build_daily_parity_gate_window`, `_build_daily_parity_gate_window_with_trend`, `_build_market_data_fail_rate_window`, `_build_parity_history_from_persisted_snapshots`, `_build_parity_history_from_scheduler_logs`, `_get_recovery_queryset_filter`, `_select_market_data_bootstrap_listing_symbols`, `build_market_data_observability_summary`, `build_market_data_parity_snapshot`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `cleanup_market_data_parity_snapshots`, `count_market_data_queue_tier_symbols`, `ensure_market_data_system_default_baseline`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `persist_market_data_parity_snapshot`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
+  - `_build_daily_parity_gate_direction`, `_build_daily_parity_gate_history`, `_build_daily_parity_gate_window`, `_build_daily_parity_gate_window_with_trend`, `_build_market_data_fail_rate_window`, `_build_parity_history_from_persisted_snapshots`, `_build_parity_history_from_scheduler_logs`, `_build_retention_health_trend`, `_get_recovery_queryset_filter`, `_select_market_data_bootstrap_listing_symbols`, `build_market_data_observability_summary`, `build_market_data_parity_snapshot`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `cleanup_market_data_parity_snapshots`, `count_market_data_queue_tier_symbols`, `ensure_market_data_system_default_baseline`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `persist_market_data_parity_snapshot`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
 - Top-level variables:
-  - `DATAOPS_MARKET_DATA_DOMAIN`, `LISTING_BOOTSTRAP_PROVIDER_SOURCES`, `PLANNABLE_FRESHNESS_STATES`, `PRIORITY_TIER_TO_QUEUE_TIER`, `QUEUE_TIER_DATASETS`, `QUEUE_TIER_EXECUTION_QUEUES`, `QUEUE_TIER_ORDER`, `QUEUE_TIER_STARVATION_MULTIPLIER`, `RECOVERY_COVERAGE_STATES`, `RECOVERY_FRESHNESS_STATES`, `SYSTEM_DEFAULT_BOOTSTRAP_GROUP_IDS`, `SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID`, `logger`
+  - `DATAOPS_MARKET_DATA_DOMAIN`, `LISTING_BOOTSTRAP_PROVIDER_SOURCES`, `PLANNABLE_FRESHNESS_STATES`, `PRIORITY_TIER_TO_QUEUE_TIER`, `QUEUE_TIER_DATASETS`, `QUEUE_TIER_EXECUTION_QUEUES`, `QUEUE_TIER_ORDER`, `QUEUE_TIER_STARVATION_MULTIPLIER`, `RECOVERY_COVERAGE_STATES`, `RECOVERY_FRESHNESS_STATES`, `RETENTION_RUN_STALENESS_THRESHOLD_HOURS`, `SYSTEM_DEFAULT_BOOTSTRAP_GROUP_IDS`, `SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID`, `logger`
 
 ### `packages/core/backend/src/service_ops/domain_configs/__init__.py`
 
@@ -5532,7 +5532,7 @@ Generated at: `2026-05-17 21:36:45`
 - Functions:
   - `BackfillCenterSection`, `DataInventorySection`, `DataOpsPanel`, `active`, `buildChangeSummary`, `buildImpactWarnings`, `buildPlannerPayload`, `fmtDate`, `fmtNum`, `getMatrixReadyProviderIds`, `getMatrixSelectedProviders`, `getMatrixStatusLabel`, `getMatrixStatusTone`, `getNextActionLabelKey`, `handleAbortActiveRun`, `handleApply`, `handleAuditPageChange`, `handleCreateGroup`, `handleDeleteGroup`, `handleMatrixAbortCycle`, `handleMatrixCycleComplete`, `handleMatrixGroupToggle`, `handleMatrixProviderToggle`, `handleMatrixStartCycle`, `handlePlannerPreview`, `handlePlannerRun`, `handlePreview`, `handleRun`, `handleRunLogsPageChange`, `hasTierRuntimeChange`, `loadActiveRun`, `loadData`, `normalizeMatrixSymbolGroups`, `parseSymbolsInput`, `toggleDataset`, `updateManualRunForm`
 - Top-level variables:
-  - `ACTIVE_MATRIX_STATUSES`, `BACKFILL_DATASETS`, `BACKFILL_DATASET_FIELDS`, `BACKFILL_SYMBOL_GROUPS`, `CONFIG_LABEL_KEYS`, `COVERAGE_STATE_ORDER`, `DATAOPS_SUB_TABS`, `DATASET_LABEL_KEYS`, `DEFAULT_AUDIT_ENVELOPE`, `DEFAULT_BACKFILL_FORM`, `DEFAULT_MANUAL_RUN_FORM`, `DEFAULT_MATRIX_SYMBOL_GROUPS`, `DEFAULT_OBSERVABILITY_SUMMARY`, `DEFAULT_RUN_LOGS_ENVELOPE`, `FRESHNESS_LABEL_KEYS`, `GAPS_PAGE_SIZE`, `MANUAL_RUN_DATASET_OPTIONS`, `MATRIX_POLL_MS`, `MATRIX_SYMBOL_GROUPS_OPTIONS`, `NEXT_ACTION_LABEL_KEYS`, `PLANNER_PREVIEW_PAGE_SIZE`, `PLANNER_SUPPORTED_DATASET_KEYS`, `RUN_STATUS_LABEL_KEYS`, `TIER_LABEL_KEYS`, `allGroups`, `appliedPayload`, `auditPayload`, `checked`, `coverageUpdatedAt`, `created`, `currentConfig`, `currentPage`, `data`, `defaults`, `gId`, `groups`, `hasFull`, `hasPartial`, `intervalId`, `isActive`, `isCustom`, `isExchange`, `isSelected`, `isStarved`, `keys`, `lastUpdated`, `latestRun`, `maxPage`, `maxRows`, `monitorProviders`, `name`, `nextConfig`, `nextMatrixStatus`, `nextTier`, `nextValidationErrors`, `nextValue`, `normalized`, `ownership`, `parityHistory`, `parityTrend`, `parityWindow`, `parsed`, `payload`, `pct`, `plannerDatasets`, `pointRelaxedPct`, `pointSequence`, `pointStrictPct`, `previewPayload`, `previousTier`, `providerList`, `readyIds`, `relaxedParity`, `relaxedTrendDelta`, `relaxedTrendDirection`, `relaxedTrendTone`, `result`, `retentionStatus`, `retentionStatusLabel`, `retentionStatusTone`, `runId`, `runLogsPayload`, `runPayload`, `secondsSince`, `seenSymbols`, `strictParity`, `strictTrendDelta`, `strictTrendDirection`, `strictTrendTone`, `symbols`, `tierNames`, `tones`, `total`, `totalSymbols`, `uniqueSymbols`, `visibleItems`, `warnings`, `windowData`
+  - `ACTIVE_MATRIX_STATUSES`, `BACKFILL_DATASETS`, `BACKFILL_DATASET_FIELDS`, `BACKFILL_SYMBOL_GROUPS`, `CONFIG_LABEL_KEYS`, `COVERAGE_STATE_ORDER`, `DATAOPS_SUB_TABS`, `DATASET_LABEL_KEYS`, `DEFAULT_AUDIT_ENVELOPE`, `DEFAULT_BACKFILL_FORM`, `DEFAULT_MANUAL_RUN_FORM`, `DEFAULT_MATRIX_SYMBOL_GROUPS`, `DEFAULT_OBSERVABILITY_SUMMARY`, `DEFAULT_RUN_LOGS_ENVELOPE`, `FRESHNESS_LABEL_KEYS`, `GAPS_PAGE_SIZE`, `MANUAL_RUN_DATASET_OPTIONS`, `MATRIX_POLL_MS`, `MATRIX_SYMBOL_GROUPS_OPTIONS`, `NEXT_ACTION_LABEL_KEYS`, `PLANNER_PREVIEW_PAGE_SIZE`, `PLANNER_SUPPORTED_DATASET_KEYS`, `RUN_STATUS_LABEL_KEYS`, `TIER_LABEL_KEYS`, `allGroups`, `appliedPayload`, `auditPayload`, `checked`, `coverageUpdatedAt`, `created`, `currentConfig`, `currentPage`, `data`, `defaults`, `deletedRows`, `gId`, `groups`, `hasFull`, `hasPartial`, `heightPx`, `intervalId`, `isActive`, `isCustom`, `isExchange`, `isSelected`, `isStarved`, `keys`, `lastUpdated`, `latestRun`, `maxPage`, `maxRows`, `monitorProviders`, `name`, `nextConfig`, `nextMatrixStatus`, `nextTier`, `nextValidationErrors`, `nextValue`, `normalized`, `ownership`, `parityHistory`, `parityTrend`, `parityWindow`, `parsed`, `payload`, `pct`, `plannerDatasets`, `pointRelaxedPct`, `pointSequence`, `pointStrictPct`, `previewPayload`, `previousTier`, `providerList`, `readyIds`, `relaxedParity`, `relaxedTrendDelta`, `relaxedTrendDirection`, `relaxedTrendTone`, `result`, `retainedRows`, `retentionBars`, `retentionDeletedDelta`, `retentionHistory`, `retentionLatestRunAgeHours`, `retentionPeakDeletedRows`, `retentionRetainedDelta`, `retentionStatus`, `retentionStatusLabel`, `retentionStatusTone`, `retentionThresholdTone`, `retentionTrend`, `runId`, `runLogsPayload`, `runPayload`, `secondsSince`, `seenSymbols`, `strictParity`, `strictTrendDelta`, `strictTrendDirection`, `strictTrendTone`, `symbols`, `tierNames`, `tones`, `total`, `totalRowsBefore`, `totalSymbols`, `uniqueSymbols`, `visibleItems`, `warnings`, `windowData`
 
 ### `frontend/src/components/soc/MatrixPanel.jsx`
 

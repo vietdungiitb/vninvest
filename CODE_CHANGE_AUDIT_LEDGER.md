@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P18 - retention trend analytics | frontend/backend/docs
+
+## All Modified Files (11 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added server-side `retention_health.trend` summary with run deltas, average deleted rows, and staleness threshold analytics |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Extended observability API regression to lock `retention_health.trend` contract values |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Added retention trend lines, mini 7-run chart, and cadence threshold status to the DataOps retention card |
+| `frontend/src/i18n/vi.js` | Added Vietnamese labels for retention trend analytics and threshold states |
+| `frontend/src/i18n/en.js` | Added English labels for retention trend analytics and threshold states |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Added and marked P18 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P18 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P18 completion |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_observability_endpoint_returns_backlog_fail_rate_and_starvation --keepdb` ✅ (1 test passed)
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_api_domain --keepdb` ✅ (49 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` ✅ compiled successfully
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1211` modules)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+
+## Residual risk
+- Retention drift da duoc hien thi tren monitor nhung chua duoc day vao alert delivery lane rieng cho operator.
+
 # 2026-05-17 | CPS P17 - retention observability lane | frontend/backend/docs
 
 ## All Modified Files (12 files)

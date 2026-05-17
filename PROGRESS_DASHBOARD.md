@@ -1,3 +1,23 @@
+# 2026-05-17 — CPS P18 complete: retention trend analytics ✅
+
+Status: **✅ retention trend summary added to observability API** | **✅ DataOps monitor now shows mini cleanup chart + cadence threshold** | **✅ focused contract/build/runtime validation passed**
+
+## What changed
+- Extended DataOps observability backend so `retention_health` now includes `trend`.
+- Trend exposes signed deltas for deleted/retained rows, average deleted rows, peak deleted rows, latest run age, and staleness-threshold status.
+- Updated DataOps monitor retention card to render trend lines, a compact 7-run deleted-rows chart, and a cadence-threshold status label.
+- Added Vietnamese and English labels for the new retention analytics lines.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_observability_endpoint_returns_backlog_fail_rate_and_starvation --keepdb` -> **1 passed** ✅
+- `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **49 passed** ✅
+- `npm run build` (frontend) -> **compiled successfully** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Threshold breach hien chi duoc hien thi trong DataOps monitor; chua co alert-center/operator delivery tu dong cho retention anomaly.
+
 # 2026-05-17 — CPS P17 complete: retention observability lane ✅
 
 Status: **✅ retention_health added to observability API** | **✅ DataOps monitor retention card shipped** | **✅ backend/frontend validation + runtime refresh passed**

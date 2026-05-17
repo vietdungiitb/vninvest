@@ -79,6 +79,7 @@ PLANNABLE_FRESHNESS_STATES = {
     GlobalSymbolCoverage.FreshnessChoices.UNKNOWN,
 }
 QUEUE_TIER_STARVATION_MULTIPLIER = 3
+RETENTION_RUN_STALENESS_THRESHOLD_HOURS = 2.0
 
 
 def get_market_data_runtime_config() -> tuple[MarketDataRuntimeConfig, object | None]:
@@ -433,6 +434,48 @@ def _build_daily_parity_gate_window_with_trend(*, hours: int, sample_size: int =
     return current_window
 
 
+def _build_retention_health_trend(
+    *,
+    retention_history: list[dict[str, object]],
+    now_value,
+) -> dict[str, object]:
+    latest_run = retention_history[0] if retention_history else None
+    previous_run = retention_history[1] if len(retention_history) > 1 else None
+
+    latest_deleted_rows = int((latest_run or {}).get('deleted_rows') or 0)
+    previous_deleted_rows = int((previous_run or {}).get('deleted_rows') or 0)
+    latest_retained_rows = int((latest_run or {}).get('retained_rows') or 0)
+    previous_retained_rows = int((previous_run or {}).get('retained_rows') or 0)
+
+    deleted_rows_delta = latest_deleted_rows - previous_deleted_rows
+    retained_rows_delta = latest_retained_rows - previous_retained_rows
+
+    latest_started_at = None
+    if latest_run and latest_run.get('started_at'):
+        latest_started_at = parse_datetime(str(latest_run.get('started_at')))
+
+    latest_run_age_hours = None
+    within_staleness_threshold = False
+    if latest_started_at is not None:
+        latest_run_age_hours = round(max((now_value - latest_started_at).total_seconds(), 0.0) / 3600.0, 2)
+        within_staleness_threshold = latest_run_age_hours <= RETENTION_RUN_STALENESS_THRESHOLD_HOURS
+
+    deleted_history = [int(item.get('deleted_rows') or 0) for item in retention_history]
+
+    return {
+        'comparison_runs': 1,
+        'deleted_rows_delta': int(deleted_rows_delta),
+        'deleted_rows_direction': _build_daily_parity_gate_direction(float(deleted_rows_delta)),
+        'retained_rows_delta': int(retained_rows_delta),
+        'retained_rows_direction': _build_daily_parity_gate_direction(float(retained_rows_delta)),
+        'latest_run_age_hours': latest_run_age_hours,
+        'staleness_threshold_hours': float(RETENTION_RUN_STALENESS_THRESHOLD_HOURS),
+        'within_staleness_threshold': bool(within_staleness_threshold),
+        'average_deleted_rows': round(sum(deleted_history) / len(deleted_history), 2) if deleted_history else 0.0,
+        'peak_deleted_rows': max(deleted_history) if deleted_history else 0,
+    }
+
+
 def build_market_data_parity_snapshot(*, sample_size: int = 100) -> dict[str, object]:
     now_value = timezone.now()
     return {
@@ -698,6 +741,7 @@ def build_market_data_observability_summary() -> dict[str, object]:
         'retention_days': int(config.parity_snapshot_retention_days or 1),
         'latest_run': latest_retention_run,
         'history': retention_history,
+        'trend': _build_retention_health_trend(retention_history=retention_history, now_value=now_value),
     }
 
     return {
