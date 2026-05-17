@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 18:12:58`
+Generated at: `2026-05-17 18:18:46`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Generated at: `2026-05-17 18:12:58`
 - JS/TS modules: 522
 - Total classes: 1372
 - Total functions: 3274
-- Total top-level variables: 4822
+- Total top-level variables: 4823
 
 ## Python Modules
 
@@ -3086,7 +3086,7 @@ Generated at: `2026-05-17 18:12:58`
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
 
 - Classes:
-  - `GlobalSymbolCoverageServiceTestCase` -> methods: `_ensure_registry`, `test_build_global_coverage_summary_aggregates_by_dataset`, `test_build_global_planner_preview_bootstraps_missing_daily_prices_with_days_window`, `test_build_global_planner_preview_clamps_daily_bootstrap_to_max`, `test_build_global_planner_preview_falls_back_to_default_for_invalid_bootstrap_setting`, `test_build_global_planner_preview_requires_explicit_force_refresh`, `test_build_global_planner_preview_uses_gap_window_for_stale_non_daily_and_trade_date_for_force`, `test_build_global_planner_preview_uses_missing_only_policy`, `test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm`, `test_refresh_global_symbol_coverage_marks_stale_and_missing_datasets`, `test_refresh_global_symbol_coverage_populates_all_dataset_rows`
+  - `GlobalSymbolCoverageServiceTestCase` -> methods: `_ensure_registry`, `test_build_global_coverage_summary_aggregates_by_dataset`, `test_build_global_planner_preview_bootstraps_missing_daily_prices_with_days_window`, `test_build_global_planner_preview_clamps_daily_bootstrap_to_max`, `test_build_global_planner_preview_falls_back_to_default_for_invalid_bootstrap_setting`, `test_build_global_planner_preview_requires_explicit_force_refresh`, `test_build_global_planner_preview_strict_fresh_includes_warm_daily_only`, `test_build_global_planner_preview_uses_gap_window_for_stale_non_daily_and_trade_date_for_force`, `test_build_global_planner_preview_uses_missing_only_policy`, `test_refresh_global_symbol_coverage_marks_snapshot_and_session_facts_warm`, `test_refresh_global_symbol_coverage_marks_stale_and_missing_datasets`, `test_refresh_global_symbol_coverage_populates_all_dataset_rows`
 
 ### `packages/core/backend/src/market_data/tests/test_global_symbol_planner.py`
 
@@ -3578,7 +3578,7 @@ Generated at: `2026-05-17 18:12:58`
 - Functions:
   - `_create_child_run_log`, `_fetch_symbols_from_provider`, `_get_latest_queue_tier_run`, `_get_queue_tier_stale_timeout_seconds`, `_get_symbols_for_group`, `_has_inflight_child_run`, `_is_celery_task_live`, `_mark_run_log_finished`, `_mark_run_log_running`, `_probe_service_health`, `_queue_tier_due`, `_recover_inflight_child_runs`, `_recover_linked_ingest_run`, `_recover_stale_queue_tier_run`, `create_signal_job_run_log`, `health_check_all_services`, `run_market_data_queue_tier_scheduler`, `run_scrape_cycle`, `run_signal_session_facts_materialization`, `run_signal_unified_alert_materialization`, `run_signal_whale_materialization`, `run_signals_detection_workflow`, `scrape_cell_task`
 - Top-level variables:
-  - `QUEUE_TIER_ORPHAN_GRACE_SECONDS`, `QUEUE_TIER_STALE_INFLIGHT_MIN_SECONDS`, `QUEUE_TIER_STALE_INFLIGHT_MULTIPLIER`, `logger`
+  - `QUEUE_TIER_ORPHAN_GRACE_SECONDS`, `QUEUE_TIER_STALE_INFLIGHT_MIN_SECONDS`, `QUEUE_TIER_STALE_INFLIGHT_MULTIPLIER`, `STRICT_FRESH_MODE_QUEUE_TIERS`, `logger`
 
 ### `packages/core/backend/src/service_ops/tests/__init__.py`
 

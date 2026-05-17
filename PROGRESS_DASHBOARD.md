@@ -1,3 +1,25 @@
+# 2026-05-17 — CPS P10 complete: strict-fresh execution uplift ✅
+
+Status: **✅ planner mode strict_fresh delivered** | **✅ hot/warm scheduler now dispatches strict_fresh** | **✅ focused regression + runtime refresh passed**
+
+## What changed
+- Added planner mode `strict_fresh` to global planner preview/execution path.
+- In `strict_fresh`, warm `daily_prices` entries are now planned for refresh (while preserving existing missing/stale/error planning rules).
+- Queue-tier scheduler now chooses mode by tier:
+  - `hot_user_demand` -> `strict_fresh`
+  - `warm_liquid_market` -> `strict_fresh`
+  - other tiers keep `missing_only`
+- Added scheduler metadata `planner_mode` in dispatch input summary for operator auditability.
+- Updated DataOps planner serializer mode choices to include `strict_fresh`.
+
+## Validation
+- `manage.py test market_data.tests.test_global_symbol_coverage service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` -> **84 passed** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- Strict-fresh parity improvement is cumulative by scheduler cycles and provider freshness; short windows may still fluctuate before converging.
+
 # 2026-05-17 — CPS P09 complete: strict-fresh parity gate hardening ✅
 
 Status: **✅ parity_gates added to observability API** | **✅ DataOps monitor now shows strict-fresh vs fresh-or-warm gates** | **✅ focused regression + build + runtime validation passed**

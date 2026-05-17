@@ -407,11 +407,14 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(planner_run_mock.call_count, 2)
         hot_call = planner_run_mock.call_args_list[0].kwargs
         self.assertEqual(hot_call['symbols'], ['HPG'])
+        self.assertEqual(hot_call['mode'], 'strict_fresh')
         self.assertEqual(hot_call['planner_queue'], 'realtime_prefetch')
         self.assertEqual(hot_call['trigger'], 'market_data.queue_tier_scheduler')
+        self.assertEqual(hot_call['extra_input_summary']['planner_mode'], 'strict_fresh')
         self.assertEqual(hot_call['extra_input_summary']['queue_tier'], 'hot_user_demand')
         recovery_call = planner_run_mock.call_args_list[1].kwargs
         self.assertEqual(recovery_call['symbols'], ['AAA'])
+        self.assertEqual(recovery_call['mode'], 'missing_only')
         self.assertEqual(recovery_call['planner_queue'], 'manual_on_demand')
         self.assertEqual(
             recovery_call['datasets'],
@@ -460,7 +463,9 @@ class ServiceOpsTasksTestCase(TestCase):
         planner_run_mock.assert_called_once()
         warm_call = planner_run_mock.call_args.kwargs
         self.assertEqual(warm_call['symbols'], ['VCB'])
+        self.assertEqual(warm_call['mode'], 'strict_fresh')
         self.assertEqual(warm_call['planner_queue'], 'realtime_prefetch')
+        self.assertEqual(warm_call['extra_input_summary']['planner_mode'], 'strict_fresh')
         self.assertEqual(warm_call['extra_input_summary']['queue_tier'], 'warm_liquid_market')
         self.assertEqual(warm_call['datasets'], ['daily_prices', 'price_board_snapshot', 'session_facts'])
 

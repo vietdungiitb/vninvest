@@ -283,6 +283,47 @@ class GlobalSymbolCoverageServiceTestCase(TestCase):
         self.assertEqual(skipped_by_key[('FPT', 'daily_prices')]['reason'], 'coverage_ok')
         self.assertEqual(skipped_by_key[('FPT', 'session_facts')]['reason'], 'coverage_ok')
 
+    def test_build_global_planner_preview_strict_fresh_includes_warm_daily_only(self):
+        today = date(2026, 5, 15)
+        verified_at = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))
+
+        registry = self._ensure_registry('VCI')
+        DailyPrice.objects.create(
+            symbol='VCI',
+            date=today - timedelta(days=2),
+            open=Decimal('31.00'),
+            high=Decimal('31.50'),
+            low=Decimal('30.80'),
+            close=Decimal('31.20'),
+            volume=1200,
+        )
+        SessionFacts.objects.create(
+            symbol='VCI',
+            session_date=today,
+            stale=False,
+            computed_at=verified_at - timedelta(minutes=90),
+        )
+
+        refresh_global_symbol_coverage(registry, reference_trade_date=today, as_of=verified_at)
+
+        preview = build_global_planner_preview(
+            symbols=['VCI'],
+            datasets=['daily_prices', 'session_facts'],
+            mode='strict_fresh',
+            force_refresh=False,
+            reason='queue_tier_scheduler:hot_user_demand',
+            reference_trade_date=today,
+        )
+
+        self.assertEqual(preview['mode'], 'strict_fresh')
+        self.assertEqual(preview['summary']['planned_items'], 1)
+        self.assertEqual(preview['summary']['skipped_items'], 1)
+        self.assertEqual(preview['items'][0]['dataset'], 'daily_prices')
+        self.assertEqual(preview['items'][0]['coverage_before'], 'warm')
+        self.assertEqual(preview['items'][0]['reason'], 'warm_refresh')
+        self.assertEqual(preview['items'][0]['requested_window'], {'start_date': '2026-05-14', 'end_date': '2026-05-15'})
+        self.assertEqual(preview['skipped'][0]['dataset'], 'session_facts')
+
     def test_build_global_planner_preview_requires_explicit_force_refresh(self):
         today = date(2026, 5, 15)
         verified_at = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))

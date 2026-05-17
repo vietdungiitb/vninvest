@@ -60,7 +60,7 @@ class DataOpsOwnershipSerializer(serializers.Serializer):
 class DataOpsPlannerPreviewRequestSerializer(serializers.Serializer):
     symbols = serializers.ListField(child=serializers.CharField(), required=False)
     datasets = serializers.ListField(child=serializers.CharField(), required=False)
-    mode = serializers.ChoiceField(choices=['missing_only'], default='missing_only', required=False)
+    mode = serializers.ChoiceField(choices=['missing_only', 'strict_fresh'], default='missing_only', required=False)
     force_refresh = serializers.BooleanField(default=False, required=False)
     reason = serializers.CharField(required=False, allow_blank=True)
     reference_trade_date = serializers.DateField(required=False)

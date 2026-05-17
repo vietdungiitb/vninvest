@@ -35,7 +35,7 @@ TOP_GAP_ORDER = {
     GlobalSymbolCoverage.FreshnessChoices.FRESH: 4,
     GlobalSymbolCoverage.FreshnessChoices.UNKNOWN: 5,
 }
-PLANNER_SUPPORTED_MODES = frozenset({'missing_only'})
+PLANNER_SUPPORTED_MODES = frozenset({'missing_only', 'strict_fresh'})
 PLANNER_PROVIDER_CHAIN_BY_DATASET = {
     GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES: ['vnbroker'],
     GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT: ['vnbroker'],
@@ -248,13 +248,27 @@ def _resolve_planner_reason(freshness_state: str, *, force_refresh: bool) -> str
     return {
         GlobalSymbolCoverage.FreshnessChoices.ERROR: 'repair',
         GlobalSymbolCoverage.FreshnessChoices.MISSING: 'missing',
+        GlobalSymbolCoverage.FreshnessChoices.WARM: 'warm_refresh',
         GlobalSymbolCoverage.FreshnessChoices.STALE: 'stale',
         GlobalSymbolCoverage.FreshnessChoices.UNKNOWN: 'missing',
     }.get(freshness_state, 'coverage_ok')
 
 
-def _should_plan_dataset(freshness_state: str, *, force_refresh: bool) -> bool:
+def _should_plan_dataset(
+    freshness_state: str,
+    *,
+    dataset: str,
+    mode: str,
+    force_refresh: bool,
+) -> bool:
     if force_refresh:
+        return True
+    normalized_mode = str(mode or '').strip().lower() or 'missing_only'
+    if (
+        normalized_mode == 'strict_fresh'
+        and dataset == GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES
+        and freshness_state == GlobalSymbolCoverage.FreshnessChoices.WARM
+    ):
         return True
     return freshness_state in {
         GlobalSymbolCoverage.FreshnessChoices.ERROR,
@@ -566,7 +580,12 @@ def build_global_planner_preview(
         for dataset in normalized_datasets:
             coverage_row = coverage_by_key.get((symbol, dataset))
             coverage_before = coverage_row.freshness_state if coverage_row is not None else GlobalSymbolCoverage.FreshnessChoices.MISSING
-            if _should_plan_dataset(coverage_before, force_refresh=force_refresh):
+            if _should_plan_dataset(
+                coverage_before,
+                dataset=dataset,
+                mode=normalized_mode,
+                force_refresh=force_refresh,
+            ):
                 items.append({
                     'symbol': symbol,
                     'dataset': dataset,

@@ -18,6 +18,7 @@
 | P07 | Shadow run and parity evidence | DONE | Ops + QA | Da co baseline 72h runtime run logs, parity sample 0.99, rollback drill evidence |
 | P08 | Cutover runbook and handoff close | DONE | Tech Lead | Da ban hanh cutover runbook, rollback playbook, escalation flow va closeout note |
 | P09 | Strict-fresh parity hardening | DONE | Frontend + Backend | Da bo sung parity_gates 24h/72h (strict_fresh + fresh_or_warm + pass/fail) tren API/DataOps monitor de giam ambiguity gate policy |
+| P10 | Strict-fresh execution uplift | DONE | Core Backend | Scheduler hot/warm chay planner mode strict_fresh; planner cho phep warm daily refresh de nang kha nang dat gate strict-fresh |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
@@ -44,6 +45,11 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] DataOps API tra ve parity_gates theo 24h/72h.
 - [x] DataOps monitor hien thi strict-fresh va fresh-or-warm gate status.
 - [x] Regression tests cover parity_gates contract.
+
+### Phase E - Strict-fresh execution uplift (P10)
+- [x] Planner mode `strict_fresh` cho phep plan daily `warm`.
+- [x] Queue-tier scheduler ap mode `strict_fresh` cho hot/warm tiers.
+- [x] Regression tests khoa mode selection va planner behavior.
 
 ---
 

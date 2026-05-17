@@ -34,6 +34,10 @@ logger = logging.getLogger(__name__)
 QUEUE_TIER_STALE_INFLIGHT_MULTIPLIER = 6
 QUEUE_TIER_STALE_INFLIGHT_MIN_SECONDS = 900
 QUEUE_TIER_ORPHAN_GRACE_SECONDS = 60
+STRICT_FRESH_MODE_QUEUE_TIERS = {
+    'hot_user_demand',
+    'warm_liquid_market',
+}
 
 
 def _probe_service_health(service: ServiceDefinition) -> dict:
@@ -638,10 +642,11 @@ def run_market_data_queue_tier_scheduler(self):
 
         datasets = list(get_market_data_queue_tier_datasets(tier_name))
         planner_queue = get_market_data_queue_tier_execution_queue(tier_name)
+        planner_mode = 'strict_fresh' if tier_name in STRICT_FRESH_MODE_QUEUE_TIERS else 'missing_only'
         planner_result = create_global_planner_run(
             symbols=symbols,
             datasets=datasets,
-            mode='missing_only',
+            mode=planner_mode,
             force_refresh=False,
             reason=f'queue_tier_scheduler:{tier_name}',
             execution_mode='async',
@@ -654,6 +659,7 @@ def run_market_data_queue_tier_scheduler(self):
                 'poll_interval_seconds': tier_config.poll_interval_seconds,
                 'max_batch_size': tier_config.max_batch_size,
                 'max_dispatch_per_cycle': dispatch_quota,
+                'planner_mode': planner_mode,
                 'eligible_symbols': eligible_symbols,
                 'skipped_by_quota': skipped_by_quota,
             },
@@ -666,6 +672,7 @@ def run_market_data_queue_tier_scheduler(self):
             'run_id': planner_result.get('run_id'),
             'service_run_log_id': planner_result.get('service_run_log_id'),
             'status': planner_result.get('status'),
+            'mode': planner_mode,
             'max_dispatch_per_cycle': dispatch_quota,
             'eligible_symbols': eligible_symbols,
             'skipped_by_quota': skipped_by_quota,

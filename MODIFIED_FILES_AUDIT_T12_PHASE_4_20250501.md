@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-05-17 | CPS P10 - strict-fresh execution uplift
+
+### Files changed in this session
+- `packages/core/backend/src/market_data/global_symbol_coverage.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/views/dataops.py`
+- `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Nang kha nang dat strict-fresh parity gate bang execution path thuc te: scheduler hot/warm dispatch planner mode `strict_fresh`, planner cho phep warm daily duoc refresh theo chu ky.
+
+### Validation snapshot
+- `manage.py test market_data.tests.test_global_symbol_coverage service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (84 tests)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | CPS P09 - strict-fresh parity gate hardening
 
 ### Files changed in this session

@@ -548,3 +548,64 @@ Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv
 
 ## Next slice
 - Follow-up hardening: improve strict-fresh parity achievement path (planner/ingest/runtime), if cutover policy mandates strict-fresh gate.
+
+---
+
+## Latest Executed Slice Snapshot (P10)
+
+## Slice metadata
+- Slice ID: P10
+- Date: 2026-05-17
+- Owner: Copilot
+- Related tasks (Pxx): P10
+
+## Objective
+- Improve strict-fresh parity attainment path by enabling scheduler/planner to actively refresh warm daily coverage for hot/warm tiers.
+
+## Files changed
+1. packages/core/backend/src/market_data/global_symbol_coverage.py
+2. packages/core/backend/src/service_ops/tasks.py
+3. packages/core/backend/src/service_ops/views/dataops.py
+4. packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py
+5. packages/core/backend/src/service_ops/tests/test_soc_tasks.py
+6. docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md
+7. docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md
+8. module_tree_full.md
+9. CODE_CHANGE_AUDIT_LEDGER.md
+10. PROGRESS_DASHBOARD.md
+11. MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md
+
+## Validation commands
+```powershell
+Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test market_data.tests.test_global_symbol_coverage service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb
+Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1
+Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py
+```
+
+## Validation results
+- Focused suites (`global_symbol_coverage`, `soc_tasks`, `soc_api_domain`) -> 84 passed.
+- `start_dev.ps1` -> native stack healthy, queue drift check pass, smoke checks pass.
+- module tree regenerated -> 1210 modules.
+
+## Runtime evidence
+- start_dev run result: PASS
+- health checks: Core API OK, Frontend OK
+
+## Metrics snapshot
+- planned_items: N/A (execution policy slice)
+- inserted: N/A
+- updated: N/A
+- skipped_existing: N/A
+- failed_count: N/A
+- backlog_delta: expected to improve strict-fresh over successive scheduler cycles via warm-daily refresh path
+
+## UI/API evidence
+- API contract update: planner request serializers now accept mode `strict_fresh`.
+- Runtime policy update: scheduler dispatch payload includes `planner_mode` and run dispatch `mode`.
+- UI screenshot/video: N/A (backend/runtime slice).
+
+## Residual risks
+- Strict-fresh uplift is gradual and depends on scheduler cadence + provider freshness; immediate parity jump is not guaranteed in a single cycle window.
+
+## Next slice
+- Optional: add direct DataOps metric card showing strict-fresh uplift trend delta per day.
