@@ -1,3 +1,26 @@
+# 2026-05-17 — CPS P04 complete: daily provider bucket tuning ✅
+
+Status: **✅ deterministic provider bucket split** | **✅ bounded retry/backoff applied** | **✅ per-provider counters/latency telemetry added**
+
+## What changed
+- Daily backfill plan-items are now normalized and stably partitioned into provider buckets before parallel execution.
+- Added bounded retry/backoff around `fetch_daily_history` per symbol:
+  - maximum retry attempts is capped,
+  - exponential backoff is bounded by a max delay.
+- Extended backfill output telemetry:
+  - aggregate `total_retries_used`,
+  - `per_provider` counters (`inserted`, `updated`, `skipped_existing`, `failed_count`),
+  - provider latency percentiles (`provider_latency_p50_ms`, `provider_latency_p95_ms`).
+- Added/updated tests to lock retry and telemetry behavior and stabilized an existing intraday timestamp edge-case in tests.
+
+## Validation
+- `manage.py test data_ingest.tests.test_tasks --keepdb` (with `DJANGO_DEBUG=true`) -> **8 passed** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- Tier-specific intraday depth policy remains pending in P05.
+
 # 2026-05-17 — CPS P03 complete: queue-tier quota scheduler controls ✅
 
 Status: **✅ per-tier dispatch quota enforced** | **✅ skipped_by_quota metric emitted** | **✅ regression + runtime validation passed**

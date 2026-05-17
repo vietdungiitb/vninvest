@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-05-17 | CPS P04 - daily provider bucket tuning
+
+### Files changed in this session
+- `packages/core/backend/src/data_ingest/tasks.py`
+- `packages/core/backend/src/data_ingest/tests/test_tasks.py`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Toi uu path backfill daily theo CPS P04 bang bucket split on dinh, retry/backoff co gioi han, va bo sung metric chi tiet theo provider de theo doi fail-rate/latency.
+
+### Validation snapshot
+- `manage.py test data_ingest.tests.test_tasks --keepdb` (with `DJANGO_DEBUG=true`) ✅ (8 tests)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | CPS P03 - queue-tier scheduler quota and metric
 
 ### Files changed in this session

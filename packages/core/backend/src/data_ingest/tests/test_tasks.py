@@ -44,6 +44,34 @@ class DataIngestBackfillTaskTests(TestCase):
         row = DailyPrice.objects.get(symbol='ACB', date=date(2026, 5, 14))
         self.assertEqual(str(row.close), '12.30')
         self.assertEqual(row.source, 'vnbroker_kbs')
+        self.assertEqual(result['total_retries_used'], 0)
+        self.assertIn('provider_latency_p50_ms', result)
+        self.assertIn('provider_latency_p95_ms', result)
+
+    @patch('data_ingest.tasks.fetch_daily_history')
+    def test_fetch_and_upsert_bucket_retries_with_bounded_attempts(self, fetch_daily_history_mock):
+        fetch_daily_history_mock.side_effect = [
+            RuntimeError('temporary upstream failure'),
+            [
+                {
+                    'symbol': 'ACB',
+                    'date': date(2026, 5, 14),
+                    'open': 12.0,
+                    'high': 12.4,
+                    'low': 11.8,
+                    'close': 12.3,
+                    'volume': 4567,
+                    'source': 'KBS',
+                }
+            ],
+        ]
+
+        result = _fetch_and_upsert_bucket(['ACB'], 'kbs', days=5, inter_symbol_delay=0)
+
+        self.assertEqual(fetch_daily_history_mock.call_count, 2)
+        self.assertEqual(result['upserted'], 1)
+        self.assertEqual(result['failed_count'], 0)
+        self.assertEqual(result['total_retries_used'], 1)
 
     @patch('data_ingest.tasks.fetch_daily_history')
     def test_backfill_daily_prices_consumes_plan_items_with_detailed_counts(self, fetch_daily_history_mock):
@@ -117,6 +145,9 @@ class DataIngestBackfillTaskTests(TestCase):
         self.assertEqual(result['updated'], 1)
         self.assertEqual(result['skipped_existing'], 1)
         self.assertEqual(result['failed_count'], 0)
+        self.assertIn('per_provider', result)
+        self.assertIn('VCI', result['per_provider'])
+        self.assertIn('KBS', result['per_provider'])
 
         updated_row = DailyPrice.objects.get(symbol='ACB', date=date(2026, 5, 15))
         inserted_row = DailyPrice.objects.get(symbol='ACB', date=date(2026, 5, 16))
@@ -328,6 +359,8 @@ class DataIngestBackfillTaskTests(TestCase):
     @patch('data_ingest.tasks.fetch_intraday_tape')
     def test_warm_intraday_universe_consumes_plan_items_and_persists_rows(self, fetch_intraday_tape_mock):
         first_trade_ts = timezone.now().astimezone(timezone.get_current_timezone()).replace(second=0, microsecond=0)
+        if first_trade_ts.minute >= 58:
+            first_trade_ts = first_trade_ts - timedelta(minutes=10)
         second_trade_ts = first_trade_ts + timedelta(minutes=1)
         registry_acb = GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
         registry_fpt = GlobalSymbolRegistry.objects.create(symbol='FPT', is_active=True)

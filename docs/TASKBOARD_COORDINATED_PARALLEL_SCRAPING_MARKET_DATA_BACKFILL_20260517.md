@@ -12,7 +12,7 @@
 | P01 | Daily bootstrap policy lock | DONE | Core Backend | Da khoa setting default/min/max, test bien pass, runtime smoke pass |
 | P02 | Planner requested_window hardening | DONE | Core Backend | Da chot contract missing/stale/force cho daily va non-daily, test/regression/runtime pass |
 | P03 | Queue-tier quota scheduler | DONE | Service Ops | Da them max_dispatch_per_cycle per tier, inflight/cooldown gate giu nguyen, co metric skipped_by_quota |
-| P04 | Daily provider bucket tuning | TODO | Data Ingest | Toi uu throughput/fail-rate |
+| P04 | Daily provider bucket tuning | DONE | Data Ingest | Da bo sung bucket split on dinh, retry/backoff bounded va telemetry per-provider |
 | P05 | Intraday tier depth policy | TODO | Data Ingest | Chot depth theo hot/warm/cold/recovery |
 | P06 | DataOps observability UI/API | TODO | Frontend + Backend | Backlog trend, fail-rate, starvation |
 | P07 | Shadow run and parity evidence | TODO | Ops + QA | 3 ngay giao dich that, parity gate |

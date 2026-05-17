@@ -38,6 +38,9 @@ _HISTORY_PROVIDERS = [
     'VCI',
     'KBS',
 ]
+_DAILY_HISTORY_RETRY_ATTEMPTS = 3
+_DAILY_HISTORY_RETRY_BACKOFF_SECONDS = 0.5
+_DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS = 2.0
 _INTRADAY_PLAN_DATASETS = ('intraday_ticks', 'intraday_bars')
 _INTRADAY_BAR_TIMEFRAMES = ('1m', '5m', '15m', '1H', '2H', '4H')
 
@@ -364,6 +367,57 @@ def _build_default_daily_price_plan_items(symbols: list[str], days: int) -> list
     ]
 
 
+def _normalize_daily_plan_items(plan_items: list[dict], default_days: int) -> list[dict]:
+    normalized_items: list[dict] = []
+    for raw_item in plan_items:
+        symbol = str(raw_item.get('symbol') or '').strip().upper()
+        if not symbol:
+            continue
+        requested_window = raw_item.get('requested_window') if isinstance(raw_item, dict) else None
+        normalized_days = _resolve_history_days_from_window(requested_window, default_days)
+        normalized_items.append({
+            'symbol': symbol,
+            'requested_window': requested_window if isinstance(requested_window, dict) else {'days': normalized_days},
+            'normalized_days': normalized_days,
+        })
+
+    normalized_items.sort(
+        key=lambda item: (
+            item['symbol'],
+            int(item['normalized_days']),
+        )
+    )
+    return normalized_items
+
+
+def _compute_latency_percentile_ms(latencies_ms: list[float], percentile: float) -> float:
+    if not latencies_ms:
+        return 0.0
+    sorted_values = sorted(float(value) for value in latencies_ms)
+    index = int(round((len(sorted_values) - 1) * max(min(percentile, 1.0), 0.0)))
+    return round(sorted_values[index], 2)
+
+
+def _fetch_daily_history_with_retry(symbol: str, provider: str, requested_days: int) -> tuple[list[dict], int, float]:
+    attempts = max(int(_DAILY_HISTORY_RETRY_ATTEMPTS), 1)
+    for attempt in range(1, attempts + 1):
+        started_at = time.perf_counter()
+        try:
+            rows = fetch_daily_history(symbol, days=requested_days, source=provider)
+            latency_ms = (time.perf_counter() - started_at) * 1000.0
+            return list(rows or []), attempt, latency_ms
+        except Exception:
+            if attempt >= attempts:
+                raise
+            backoff_seconds = min(
+                _DAILY_HISTORY_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)),
+                _DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS,
+            )
+            time.sleep(backoff_seconds)
+
+    return [], attempts, 0.0
+
+
 def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[dict], normalized_provider: str) -> tuple[list, int, int, int]:
     from market_data.models import DailyPrice
 
@@ -427,14 +481,19 @@ def _fetch_and_upsert_bucket(
     failed: list[str] = []
     normalized_provider = str(provider or '').strip().upper()
     normalized_plan_items = plan_items or _build_default_daily_price_plan_items(list(symbols or []), days)
+    total_retries_used = 0
+    latencies_ms: list[float] = []
+    failed_count = 0
 
     for plan_item in normalized_plan_items:
         symbol = str(plan_item.get('symbol') or '').strip().upper()
         if not symbol:
             continue
         try:
-            requested_days = _resolve_history_days_from_window(plan_item.get('requested_window'), days)
-            history_rows = fetch_daily_history(symbol, days=requested_days, source=normalized_provider)
+            requested_days = int(plan_item.get('normalized_days') or _resolve_history_days_from_window(plan_item.get('requested_window'), days))
+            history_rows, attempts_used, latency_ms = _fetch_daily_history_with_retry(symbol, normalized_provider, requested_days)
+            latencies_ms.append(float(latency_ms))
+            total_retries_used += max(int(attempts_used) - 1, 0)
             if not history_rows:
                 logger.debug('backfill bucket [%s] %s: empty', normalized_provider, symbol)
                 time.sleep(inter_symbol_delay)
@@ -471,6 +530,7 @@ def _fetch_and_upsert_bucket(
         except Exception as exc:
             logger.warning('backfill [%s] %s failed: %s', normalized_provider, symbol, exc)
             failed.append(symbol)
+            failed_count += 1
 
     return {
         'inserted': inserted,
@@ -478,8 +538,11 @@ def _fetch_and_upsert_bucket(
         'skipped_existing': skipped_existing,
         'upserted': inserted + updated,
         'failed': failed,
-        'failed_count': len(failed),
+        'failed_count': failed_count,
         'provider': normalized_provider,
+        'total_retries_used': total_retries_used,
+        'provider_latency_p50_ms': _compute_latency_percentile_ms(latencies_ms, 0.5),
+        'provider_latency_p95_ms': _compute_latency_percentile_ms(latencies_ms, 0.95),
     }
 
 
@@ -963,6 +1026,8 @@ def backfill_daily_prices(
     if plan_items is None:
         plan_items = _build_default_daily_price_plan_items(list(symbols or []), days)
 
+    plan_items = _normalize_daily_plan_items(list(plan_items or []), days)
+
     if not plan_items:
         return {'status': 'skipped', 'reason': 'no_symbols'}
 
@@ -989,6 +1054,19 @@ def backfill_daily_prices(
     total_skipped_existing = 0
     total_upserted = 0
     all_failed: list[str] = []
+    total_retries_used = 0
+    per_provider_stats: dict[str, dict[str, float | int]] = {
+        provider: {
+            'inserted': 0,
+            'updated': 0,
+            'skipped_existing': 0,
+            'failed_count': 0,
+            'total_retries_used': 0,
+            'provider_latency_p50_ms': 0.0,
+            'provider_latency_p95_ms': 0.0,
+        }
+        for provider in providers
+    }
 
     non_empty_buckets = [
         (provider, bucket)
@@ -1010,6 +1088,17 @@ def backfill_daily_prices(
             total_skipped_existing += int(result.get('skipped_existing') or 0)
             total_upserted += result['upserted']
             all_failed.extend(result['failed'])
+            total_retries_used += int(result.get('total_retries_used') or 0)
+            provider_key = str(result.get('provider') or provider).strip().upper() or provider
+            per_provider_stats[provider_key] = {
+                'inserted': int(result.get('inserted') or 0),
+                'updated': int(result.get('updated') or 0),
+                'skipped_existing': int(result.get('skipped_existing') or 0),
+                'failed_count': int(result.get('failed_count') or 0),
+                'total_retries_used': int(result.get('total_retries_used') or 0),
+                'provider_latency_p50_ms': float(result.get('provider_latency_p50_ms') or 0.0),
+                'provider_latency_p95_ms': float(result.get('provider_latency_p95_ms') or 0.0),
+            }
             logger.info(
                 'backfill [%s] done: inserted=%d updated=%d skipped_existing=%d failed=%d',
                 provider,
@@ -1041,6 +1130,17 @@ def backfill_daily_prices(
                     total_skipped_existing += int(result.get('skipped_existing') or 0)
                     total_upserted += result['upserted']
                     all_failed.extend(result['failed'])
+                    total_retries_used += int(result.get('total_retries_used') or 0)
+                    provider_key = str(result.get('provider') or provider).strip().upper() or provider
+                    per_provider_stats[provider_key] = {
+                        'inserted': int(result.get('inserted') or 0),
+                        'updated': int(result.get('updated') or 0),
+                        'skipped_existing': int(result.get('skipped_existing') or 0),
+                        'failed_count': int(result.get('failed_count') or 0),
+                        'total_retries_used': int(result.get('total_retries_used') or 0),
+                        'provider_latency_p50_ms': float(result.get('provider_latency_p50_ms') or 0.0),
+                        'provider_latency_p95_ms': float(result.get('provider_latency_p95_ms') or 0.0),
+                    }
                     logger.info(
                         'backfill [%s] done: inserted=%d updated=%d skipped_existing=%d failed=%d',
                         provider,
@@ -1062,6 +1162,8 @@ def backfill_daily_prices(
         'failed': all_failed,
         'failed_count': len(all_failed),
         'repaired_conflicts': 0,
+        'total_retries_used': total_retries_used,
+        'per_provider': per_provider_stats,
         'providers': providers,
     }
 

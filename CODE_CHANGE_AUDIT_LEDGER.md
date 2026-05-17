@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P04 - daily provider bucket tuning and bounded retry | backend/docs
+
+## All Modified Files (8 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/data_ingest/tasks.py` | Added deterministic plan-item normalization and provider bucket split, bounded retry/backoff for daily history fetch, and per-provider telemetry (`total_retries_used`, `provider_latency_p50_ms`, `provider_latency_p95_ms`) |
+| `packages/core/backend/src/data_ingest/tests/test_tasks.py` | Added regressions for bucket retry behavior and telemetry fields; stabilized intraday timestamp setup to avoid boundary-time flakiness |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Marked P04 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P04 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P04 |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test data_ingest.tests.test_tasks --keepdb` ✅ (8 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- P05 intraday depth policy is still pending for hot/warm/cold tier-specific optimization.
+
 # 2026-05-17 | CPS P03 - queue-tier scheduler quota and skipped_by_quota metric | backend/docs
 
 ## All Modified Files (11 files)
