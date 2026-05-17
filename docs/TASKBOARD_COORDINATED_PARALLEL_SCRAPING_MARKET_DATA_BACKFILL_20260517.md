@@ -21,6 +21,7 @@
 | P10 | Strict-fresh execution uplift | DONE | Core Backend | Scheduler hot/warm chay planner mode strict_fresh; planner cho phep warm daily refresh de nang kha nang dat gate strict-fresh |
 | P11 | Parity trend observability | DONE | Frontend + Backend | Da bo sung trend delta vs ky truoc cho parity 24h/72h tren API/DataOps monitor de operator thay huong cai thien hay suy giam |
 | P12 | Parity history multi-window | DONE | Frontend + Backend | Da bo sung chuoi 7 moc parity history cho 24h/72h tren API va DataOps monitor de theo doi xu huong nhieu ky |
+| P13 | Persisted parity snapshots | DONE | Core Backend | Scheduler ghi immutable parity_snapshot vao metadata planner-run; observability history uu tien doc persisted snapshots thay vi rolling-only |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
@@ -62,6 +63,11 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] Observability API tra ve `parity_history` cho window 24h/72h.
 - [x] DataOps monitor hien thi 7 moc gan nhat cho moi window.
 - [x] Regression tests khoa contract `parity_history`.
+
+### Phase H - Persisted parity snapshots (P13)
+- [x] Queue-tier scheduler gan `parity_snapshot` vao metadata cua planner-run.
+- [x] Observability `parity_history` uu tien nguon persisted snapshots.
+- [x] Regression tests khoa metadata persistence path.
 
 ---
 

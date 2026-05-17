@@ -16,6 +16,7 @@ from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
 from .dataops_market_data import (
     QUEUE_TIER_ORDER,
+    build_market_data_parity_snapshot,
     count_market_data_queue_tier_symbols,
     ensure_market_data_system_default_baseline,
     get_market_data_queue_tier_config,
@@ -579,6 +580,7 @@ def run_market_data_queue_tier_scheduler(self):
     matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
     bootstrap = ensure_market_data_system_default_baseline()
     runtime_config, _ = get_market_data_runtime_config()
+    parity_snapshot = build_market_data_parity_snapshot(sample_size=100)
 
     dispatches = []
     skipped_tiers = []
@@ -656,6 +658,7 @@ def run_market_data_queue_tier_scheduler(self):
                 'queue_tier': tier_name,
                 'scheduler_task_id': getattr(self.request, 'id', ''),
                 'scheduler_task_name': 'service_ops.run_market_data_queue_tier_scheduler',
+                'parity_snapshot': parity_snapshot,
                 'poll_interval_seconds': tier_config.poll_interval_seconds,
                 'max_batch_size': tier_config.max_batch_size,
                 'max_dispatch_per_cycle': dispatch_quota,

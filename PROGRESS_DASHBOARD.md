@@ -1,3 +1,21 @@
+# 2026-05-17 — CPS P13 complete: persisted parity snapshots ✅
+
+Status: **✅ scheduler now emits parity_snapshot metadata** | **✅ observability history prefers persisted source** | **✅ focused backend + runtime gates passed**
+
+## What changed
+- Added parity snapshot payload generation for scheduler cycles.
+- Queue-tier scheduler now attaches `parity_snapshot` into planner-run `extra_input_summary`.
+- Observability history resolver now reads persisted snapshots from scheduler-triggered planner run logs first, then falls back to rolling reconstruction when absent.
+- Added test assertions to lock metadata persistence path.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` -> **73 passed** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- Persistence currently rides on run-log metadata; for long-term forensics still needs dedicated append-only snapshot storage.
+
 # 2026-05-17 — CPS P12 complete: parity history multi-window ✅
 
 Status: **✅ parity_history added in observability API** | **✅ DataOps monitor shows 7 recent windows** | **✅ focused test/build/runtime gates passed**

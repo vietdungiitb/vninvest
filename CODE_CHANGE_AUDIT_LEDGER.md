@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P13 - persisted parity snapshots | backend/docs
+
+## All Modified Files (9 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added persisted parity-history resolver from scheduler-triggered planner run metadata and fallback behavior |
+| `packages/core/backend/src/service_ops/tasks.py` | Attached immutable `parity_snapshot` payload to every queue-tier scheduler planner-run dispatch metadata |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Added regressions asserting scheduler dispatch metadata includes `parity_snapshot` payload |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Added and marked P13 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P13 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P13 completion |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (73 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- Persisted snapshots are currently stored in planner run metadata; no dedicated append-only table for long-term retention/forensic querying yet.
+
 # 2026-05-17 | CPS P12 - parity history multi-window | frontend/backend/docs
 
 ## All Modified Files (12 files)

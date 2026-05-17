@@ -411,6 +411,8 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(hot_call['planner_queue'], 'realtime_prefetch')
         self.assertEqual(hot_call['trigger'], 'market_data.queue_tier_scheduler')
         self.assertEqual(hot_call['extra_input_summary']['planner_mode'], 'strict_fresh')
+        self.assertIn('parity_snapshot', hot_call['extra_input_summary'])
+        self.assertIn('window_24h', hot_call['extra_input_summary']['parity_snapshot'])
         self.assertEqual(hot_call['extra_input_summary']['queue_tier'], 'hot_user_demand')
         recovery_call = planner_run_mock.call_args_list[1].kwargs
         self.assertEqual(recovery_call['symbols'], ['AAA'])
@@ -466,6 +468,8 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(warm_call['mode'], 'strict_fresh')
         self.assertEqual(warm_call['planner_queue'], 'realtime_prefetch')
         self.assertEqual(warm_call['extra_input_summary']['planner_mode'], 'strict_fresh')
+        self.assertIn('parity_snapshot', warm_call['extra_input_summary'])
+        self.assertIn('window_72h', warm_call['extra_input_summary']['parity_snapshot'])
         self.assertEqual(warm_call['extra_input_summary']['queue_tier'], 'warm_liquid_market')
         self.assertEqual(warm_call['datasets'], ['daily_prices', 'price_board_snapshot', 'session_facts'])
 

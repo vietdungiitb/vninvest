@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-05-17 | CPS P13 - persisted parity snapshots
+
+### Files changed in this session
+- `packages/core/backend/src/service_ops/dataops_market_data.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Persist nguon parity history o cap scheduler run metadata (`parity_snapshot`) de giam phu thuoc rolling reconstruction va tang auditability qua run logs.
+
+### Validation snapshot
+- `manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (73 tests)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | CPS P12 - parity history multi-window
 
 ### Files changed in this session
