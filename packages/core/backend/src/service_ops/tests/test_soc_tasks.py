@@ -466,6 +466,86 @@ class ServiceOpsTasksTestCase(TestCase):
 
     @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
     @patch('service_ops.tasks.create_global_planner_run')
+    def test_market_data_queue_tier_scheduler_enforces_max_dispatch_per_cycle_quota(self, planner_run_mock, fetch_listing_symbols_mock):
+        GlobalSymbolRegistry.objects.bulk_create([
+            GlobalSymbolRegistry(
+                symbol='HPG',
+                is_active=True,
+                current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+                priority_score=8.0,
+                demand_source_count=2,
+                freshness_state_summary='missing',
+                coverage_state_summary='missing',
+            ),
+            GlobalSymbolRegistry(
+                symbol='FPT',
+                is_active=True,
+                current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT,
+                priority_score=7.0,
+                demand_source_count=1,
+                freshness_state_summary='stale',
+                coverage_state_summary='partial',
+            ),
+        ])
+        hot_hpg = GlobalSymbolRegistry.objects.get(symbol='HPG')
+        hot_fpt = GlobalSymbolRegistry.objects.get(symbol='FPT')
+        GlobalSymbolCoverage.objects.bulk_create([
+            GlobalSymbolCoverage(
+                registry=hot_hpg,
+                dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.MISSING,
+            ),
+            GlobalSymbolCoverage(
+                registry=hot_fpt,
+                dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+                freshness_state=GlobalSymbolCoverage.FreshnessChoices.STALE,
+            ),
+        ])
+
+        service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        ServiceConfig.objects.create(
+            service=service,
+            config_schema_version='1.0',
+            config_payload={
+                'hot_user_demand': {
+                    'poll_interval_seconds': 30,
+                    'max_batch_size': 5,
+                    'max_dispatch_per_cycle': 1,
+                },
+                'warm_liquid_market': {
+                    'poll_interval_seconds': 3600,
+                    'max_batch_size': 5,
+                },
+                'cold_full_market': {
+                    'poll_interval_seconds': 3600,
+                    'max_batch_size': 5,
+                },
+                'recovery_backlog': {
+                    'poll_interval_seconds': 3600,
+                    'max_batch_size': 5,
+                },
+            },
+            applied_by='test',
+        )
+        planner_run_mock.return_value = {
+            'run_id': 'md-run-hot',
+            'service_run_log_id': 61,
+            'status': 'queued',
+        }
+
+        result = run_market_data_queue_tier_scheduler.run()
+
+        planner_run_mock.assert_called_once()
+        call_kwargs = planner_run_mock.call_args.kwargs
+        self.assertEqual(call_kwargs['symbols'], ['HPG'])
+        self.assertEqual(call_kwargs['extra_input_summary']['max_dispatch_per_cycle'], 1)
+        self.assertEqual(call_kwargs['extra_input_summary']['eligible_symbols'], 2)
+        self.assertEqual(call_kwargs['extra_input_summary']['skipped_by_quota'], 1)
+        self.assertEqual(result['skipped_by_quota'], 1)
+        self.assertTrue(any(item['tier'] == 'hot_user_demand' and item['reason'] == 'quota' for item in result['skipped_tiers']))
+
+    @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
+    @patch('service_ops.tasks.create_global_planner_run')
     def test_market_data_queue_tier_scheduler_skips_recent_inflight_tier(self, planner_run_mock, fetch_listing_symbols_mock):
         GlobalSymbolRegistry.objects.create(
             symbol='HPG',

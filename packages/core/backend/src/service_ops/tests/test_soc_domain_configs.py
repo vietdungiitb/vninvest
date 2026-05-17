@@ -26,19 +26,26 @@ class DomainConfigValidationTestCase(SimpleTestCase):
             'hot_user_demand': {
                 'poll_interval_seconds': 15,
                 'max_batch_size': 25,
+                'max_dispatch_per_cycle': 10,
             },
         })
 
         self.assertEqual(config.decay_days, 9)
         self.assertEqual(config.hot_user_demand.poll_interval_seconds, 15)
         self.assertEqual(config.hot_user_demand.max_batch_size, 25)
+        self.assertEqual(config.hot_user_demand.max_dispatch_per_cycle, 10)
         self.assertEqual(config.warm_liquid_market.poll_interval_seconds, 120)
         self.assertEqual(config.warm_liquid_market.max_batch_size, 50)
+        self.assertEqual(config.warm_liquid_market.max_dispatch_per_cycle, 50)
 
     def test_market_data_runtime_config_validation_rejects_invalid_queue_settings(self):
         config = MarketDataRuntimeConfig(
             decay_days=0,
-            hot_user_demand=QueueTierRuntimeConfig(poll_interval_seconds=5, max_batch_size=0),
+            hot_user_demand=QueueTierRuntimeConfig(
+                poll_interval_seconds=5,
+                max_batch_size=0,
+                max_dispatch_per_cycle=0,
+            ),
         )
 
         errors = config.validate()
@@ -46,6 +53,7 @@ class DomainConfigValidationTestCase(SimpleTestCase):
         self.assertTrue(any('decay_days' in error for error in errors))
         self.assertTrue(any('hot_user_demand.poll_interval_seconds' in error for error in errors))
         self.assertTrue(any('hot_user_demand.max_batch_size' in error for error in errors))
+        self.assertTrue(any('hot_user_demand.max_dispatch_per_cycle' in error for error in errors))
 
     def test_vnbroker_from_dict_builds_nested_timeout_schema_and_accepts_legacy_aliases(self):
         config = VnbrokerDomainConfig.from_dict({

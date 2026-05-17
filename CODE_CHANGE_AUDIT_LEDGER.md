@@ -1,5 +1,30 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P03 - queue-tier scheduler quota and skipped_by_quota metric | backend/docs
+
+## All Modified Files (11 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/domain_configs/market_data.py` | Added `max_dispatch_per_cycle` to queue-tier runtime config with parsing, validation, and serialization |
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added queue-tier eligible-symbol counter helper and exposed `max_dispatch_per_cycle` in tier snapshot payload |
+| `packages/core/backend/src/service_ops/tasks.py` | Enforced dispatch quota per tier (`max_dispatch_per_cycle`) and emitted scheduler metric `skipped_by_quota` with tier-level breakdown |
+| `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py` | Extended config tests for `max_dispatch_per_cycle` parse/default/validation behaviors |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Added regression test for quota enforcement and `skipped_by_quota` metric path |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Marked P03 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P03 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1210` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P03 |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='true'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks --keepdb` ✅ (33 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1210` modules)
+
+## Residual risk
+- P04/P05 execution-plane tuning is still required to improve ingest throughput and depth behavior after quota controls.
+
 # 2026-05-17 | CPS P02 - planner requested_window contract hardening | backend/docs
 
 ## All Modified Files (8 files)

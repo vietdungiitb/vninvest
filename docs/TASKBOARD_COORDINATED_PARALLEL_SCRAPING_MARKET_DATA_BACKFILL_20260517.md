@@ -11,7 +11,7 @@
 | P00 | Doc-pack khoi tao | DONE | Copilot | Bo tai lieu ban giao day du duoc tao |
 | P01 | Daily bootstrap policy lock | DONE | Core Backend | Da khoa setting default/min/max, test bien pass, runtime smoke pass |
 | P02 | Planner requested_window hardening | DONE | Core Backend | Da chot contract missing/stale/force cho daily va non-daily, test/regression/runtime pass |
-| P03 | Queue-tier quota scheduler | TODO | Service Ops | Them cap dispatch per tier |
+| P03 | Queue-tier quota scheduler | DONE | Service Ops | Da them max_dispatch_per_cycle per tier, inflight/cooldown gate giu nguyen, co metric skipped_by_quota |
 | P04 | Daily provider bucket tuning | TODO | Data Ingest | Toi uu throughput/fail-rate |
 | P05 | Intraday tier depth policy | TODO | Data Ingest | Chot depth theo hot/warm/cold/recovery |
 | P06 | DataOps observability UI/API | TODO | Frontend + Backend | Backlog trend, fail-rate, starvation |

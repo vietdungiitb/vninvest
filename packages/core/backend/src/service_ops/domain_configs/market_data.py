@@ -8,6 +8,7 @@ from typing import Any
 class QueueTierRuntimeConfig:
     poll_interval_seconds: int = 300
     max_batch_size: int = 100
+    max_dispatch_per_cycle: int = 100
 
     @classmethod
     def from_dict(
@@ -21,6 +22,10 @@ class QueueTierRuntimeConfig:
         return cls(
             poll_interval_seconds=int(payload.get('poll_interval_seconds', baseline.poll_interval_seconds) or baseline.poll_interval_seconds),
             max_batch_size=int(payload.get('max_batch_size', baseline.max_batch_size) or baseline.max_batch_size),
+            max_dispatch_per_cycle=int(
+                payload.get('max_dispatch_per_cycle', baseline.max_dispatch_per_cycle)
+                or baseline.max_dispatch_per_cycle
+            ),
         )
 
     def validate(self, field_prefix: str) -> list[str]:
@@ -29,12 +34,15 @@ class QueueTierRuntimeConfig:
             errors.append(f'{field_prefix}.poll_interval_seconds phải >= 10 giây')
         if self.max_batch_size < 1:
             errors.append(f'{field_prefix}.max_batch_size phải >= 1')
+        if self.max_dispatch_per_cycle < 1:
+            errors.append(f'{field_prefix}.max_dispatch_per_cycle phải >= 1')
         return errors
 
     def to_dict(self) -> dict[str, int]:
         return {
             'poll_interval_seconds': self.poll_interval_seconds,
             'max_batch_size': self.max_batch_size,
+            'max_dispatch_per_cycle': self.max_dispatch_per_cycle,
         }
 
 
@@ -42,16 +50,32 @@ class QueueTierRuntimeConfig:
 class MarketDataRuntimeConfig:
     decay_days: int = 7
     hot_user_demand: QueueTierRuntimeConfig = field(
-        default_factory=lambda: QueueTierRuntimeConfig(poll_interval_seconds=30, max_batch_size=50)
+        default_factory=lambda: QueueTierRuntimeConfig(
+            poll_interval_seconds=30,
+            max_batch_size=50,
+            max_dispatch_per_cycle=50,
+        )
     )
     warm_liquid_market: QueueTierRuntimeConfig = field(
-        default_factory=lambda: QueueTierRuntimeConfig(poll_interval_seconds=120, max_batch_size=50)
+        default_factory=lambda: QueueTierRuntimeConfig(
+            poll_interval_seconds=120,
+            max_batch_size=50,
+            max_dispatch_per_cycle=50,
+        )
     )
     cold_full_market: QueueTierRuntimeConfig = field(
-        default_factory=lambda: QueueTierRuntimeConfig(poll_interval_seconds=900, max_batch_size=200)
+        default_factory=lambda: QueueTierRuntimeConfig(
+            poll_interval_seconds=900,
+            max_batch_size=200,
+            max_dispatch_per_cycle=200,
+        )
     )
     recovery_backlog: QueueTierRuntimeConfig = field(
-        default_factory=lambda: QueueTierRuntimeConfig(poll_interval_seconds=600, max_batch_size=50)
+        default_factory=lambda: QueueTierRuntimeConfig(
+            poll_interval_seconds=600,
+            max_batch_size=50,
+            max_dispatch_per_cycle=50,
+        )
     )
 
     @classmethod

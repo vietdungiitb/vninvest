@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-05-17 | CPS P03 - queue-tier scheduler quota and metric
+
+### Files changed in this session
+- `packages/core/backend/src/service_ops/domain_configs/market_data.py`
+- `packages/core/backend/src/service_ops/dataops_market_data.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_domain_configs.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Them quota dispatch per-tier (`max_dispatch_per_cycle`) va metric `skipped_by_quota` cho scheduler de tranh flood queue va co observability ro rang khi bi cat theo quota.
+
+### Validation snapshot
+- `manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks --keepdb` (with `DJANGO_DEBUG=true`) ✅ (33 tests)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+- `scripts/ops/generate_module_tree.py` ✅ (`1210` modules)
+
+---
+
 ## 2026-05-17 | CPS P02 - planner requested_window contract hardening
 
 ### Files changed in this session

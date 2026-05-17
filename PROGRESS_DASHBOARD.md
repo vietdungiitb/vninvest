@@ -1,3 +1,23 @@
+# 2026-05-17 — CPS P03 complete: queue-tier quota scheduler controls ✅
+
+Status: **✅ per-tier dispatch quota enforced** | **✅ skipped_by_quota metric emitted** | **✅ regression + runtime validation passed**
+
+## What changed
+- Added `max_dispatch_per_cycle` to market-data queue-tier runtime config and kept backward compatibility by defaulting it to existing `max_batch_size` values.
+- Updated queue-tier scheduler to:
+  - apply effective quota `min(max_batch_size, max_dispatch_per_cycle)` per tier,
+  - compute and emit `skipped_by_quota` per tier and total,
+  - include quota metadata (`eligible_symbols`, `max_dispatch_per_cycle`) in dispatch summaries.
+- Kept existing inflight/cooldown recovery gates intact.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_tasks --keepdb` (with `DJANGO_DEBUG=true`) -> **33 passed** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
+
+## Residual risk
+- Throughput and retry behavior of execution workers remain for P04; intraday depth policy remains for P05.
+
 # 2026-05-17 — CPS P02 complete: planner requested_window contract hardened ✅
 
 Status: **✅ gap-window semantics standardized** | **✅ force-refresh semantics preserved** | **✅ regression + runtime validation passed**

@@ -247,6 +247,21 @@ def select_market_data_queue_tier_symbols(tier_name: str, limit: int) -> list[st
     return list(queryset.values_list('symbol', flat=True)[:batch_limit])
 
 
+def count_market_data_queue_tier_symbols(tier_name: str) -> int:
+    tier_datasets = list(get_market_data_queue_tier_datasets(tier_name))
+    coverage_rows = GlobalSymbolCoverage.objects.filter(
+        registry=OuterRef('pk'),
+        dataset__in=tier_datasets,
+    )
+    queryset = build_market_data_queue_tier_queryset(tier_name).annotate(
+        has_plannable_gap=Exists(
+            coverage_rows.filter(freshness_state__in=PLANNABLE_FRESHNESS_STATES)
+        ),
+        has_any_tier_coverage=Exists(coverage_rows),
+    )
+    return queryset.count()
+
+
 def build_market_data_queue_tier_snapshot(example_limit: int = 5) -> tuple[list[dict], object]:
     config, config_updated_at = get_market_data_runtime_config()
     registries = list(GlobalSymbolRegistry.objects.filter(is_active=True).order_by('symbol'))
@@ -263,6 +278,7 @@ def build_market_data_queue_tier_snapshot(example_limit: int = 5) -> tuple[list[
             'symbol_count': len(symbols),
             'poll_interval_seconds': tier_config.poll_interval_seconds,
             'max_batch_size': tier_config.max_batch_size,
+            'max_dispatch_per_cycle': int(getattr(tier_config, 'max_dispatch_per_cycle', tier_config.max_batch_size) or tier_config.max_batch_size),
             'examples': symbols[:example_limit],
         })
 

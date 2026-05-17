@@ -16,6 +16,7 @@ from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
 from .dataops_market_data import (
     QUEUE_TIER_ORDER,
+    count_market_data_queue_tier_symbols,
     ensure_market_data_system_default_baseline,
     get_market_data_queue_tier_config,
     get_market_data_queue_tier_datasets,
@@ -577,6 +578,7 @@ def run_market_data_queue_tier_scheduler(self):
 
     dispatches = []
     skipped_tiers = []
+    skipped_by_quota_total = 0
 
     for tier_name in QUEUE_TIER_ORDER:
         tier_config = get_market_data_queue_tier_config(runtime_config, tier_name)
@@ -591,18 +593,48 @@ def run_market_data_queue_tier_scheduler(self):
                 'reason': skip_reason,
                 'poll_interval_seconds': tier_config.poll_interval_seconds,
                 'max_batch_size': tier_config.max_batch_size,
+                'max_dispatch_per_cycle': int(
+                    getattr(tier_config, 'max_dispatch_per_cycle', tier_config.max_batch_size)
+                    or tier_config.max_batch_size
+                ),
+                'skipped_by_quota': 0,
             })
             continue
 
-        symbols = select_market_data_queue_tier_symbols(tier_name, tier_config.max_batch_size)
+        dispatch_quota = max(
+            1,
+            min(
+                int(getattr(tier_config, 'max_dispatch_per_cycle', tier_config.max_batch_size) or tier_config.max_batch_size),
+                int(tier_config.max_batch_size or 1),
+            ),
+        )
+        eligible_symbols = count_market_data_queue_tier_symbols(tier_name)
+        symbols = select_market_data_queue_tier_symbols(tier_name, dispatch_quota)
+        skipped_by_quota = max(eligible_symbols - len(symbols), 0)
+        skipped_by_quota_total += skipped_by_quota
+
         if not symbols:
             skipped_tiers.append({
                 'tier': tier_name,
                 'reason': 'no_symbols',
                 'poll_interval_seconds': tier_config.poll_interval_seconds,
                 'max_batch_size': tier_config.max_batch_size,
+                'max_dispatch_per_cycle': dispatch_quota,
+                'skipped_by_quota': 0,
             })
             continue
+
+        if skipped_by_quota > 0:
+            skipped_tiers.append({
+                'tier': tier_name,
+                'reason': 'quota',
+                'poll_interval_seconds': tier_config.poll_interval_seconds,
+                'max_batch_size': tier_config.max_batch_size,
+                'max_dispatch_per_cycle': dispatch_quota,
+                'eligible_symbols': eligible_symbols,
+                'dispatched_symbols': len(symbols),
+                'skipped_by_quota': skipped_by_quota,
+            })
 
         datasets = list(get_market_data_queue_tier_datasets(tier_name))
         planner_queue = get_market_data_queue_tier_execution_queue(tier_name)
@@ -621,6 +653,9 @@ def run_market_data_queue_tier_scheduler(self):
                 'scheduler_task_name': 'service_ops.run_market_data_queue_tier_scheduler',
                 'poll_interval_seconds': tier_config.poll_interval_seconds,
                 'max_batch_size': tier_config.max_batch_size,
+                'max_dispatch_per_cycle': dispatch_quota,
+                'eligible_symbols': eligible_symbols,
+                'skipped_by_quota': skipped_by_quota,
             },
         )
         dispatches.append({
@@ -631,6 +666,9 @@ def run_market_data_queue_tier_scheduler(self):
             'run_id': planner_result.get('run_id'),
             'service_run_log_id': planner_result.get('service_run_log_id'),
             'status': planner_result.get('status'),
+            'max_dispatch_per_cycle': dispatch_quota,
+            'eligible_symbols': eligible_symbols,
+            'skipped_by_quota': skipped_by_quota,
         })
 
     return {
@@ -639,5 +677,6 @@ def run_market_data_queue_tier_scheduler(self):
         'dispatched_runs': len(dispatches),
         'dispatches': dispatches,
         'skipped_tiers': skipped_tiers,
+        'skipped_by_quota': skipped_by_quota_total,
         'scheduler_task_id': getattr(self.request, 'id', ''),
     }
