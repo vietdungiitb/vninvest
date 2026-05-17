@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-05-17 | DataOps Backfill planner compatibility + active run control
+
+### Files changed in this session
+- `frontend/src/components/soc/DataOpsPanel.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sửa lỗi `Dataset không hợp lệ` ở Backfill Center bằng cách đồng bộ dataset frontend với contract planner backend.
+- Chặn bấm chạy nhiều lần khi đã có run `queued/running` và hiển thị rõ `run_id`/trạng thái để operator biết tiến trình.
+- Bổ sung thông điệp rõ ràng về giới hạn hiện tại: chưa hỗ trợ stop/cancel trực tiếp từ UI DataOps.
+
+### Validation snapshot
+- `get_errors` (DataOpsPanel + i18n files) ✅
+- `npm run build` (frontend) ✅
+- `./start_dev.ps1` smoke checks ✅
+- `scripts/ops/generate_module_tree.py` ✅
+
+---
+
 ## 2026-05-17 | VNBroker i18n raw-key fix
 
 ### Files changed in this session

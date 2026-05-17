@@ -8,14 +8,19 @@ import { OwnershipBadgeRow } from './OwnershipBadgeRow';
 import { WriteGuardBanner } from './WriteGuardBanner';
 
 const BACKFILL_DATASETS = [
-  { key: 'daily_prices', labelKey: 'soc.dataops.dataset_daily_prices' },
-  { key: 'intraday_bars', labelKey: 'soc.dataops.dataset_intraday_bars' },
-  { key: 'session_facts', labelKey: 'soc.dataops.dataset_session_facts' },
-  { key: 'whale_events', labelKey: 'soc.dataops.dataset_whale_events' },
-  { key: 'order_flow', labelKey: 'soc.dataops.dataset_order_flow' },
-  { key: 'dark_flow', labelKey: 'soc.dataops.dataset_dark_flow' },
-  { key: 'intraday_tick', labelKey: 'soc.dataops.dataset_intraday_ticks' },
+  { key: 'daily_prices', labelKey: 'soc.dataops.dataset_daily_prices', supportedByPlanner: true },
+  { key: 'price_board_snapshot', labelKey: 'soc.dataops.dataset_price_board_snapshot', supportedByPlanner: true },
+  { key: 'intraday_bars', labelKey: 'soc.dataops.dataset_intraday_bars', supportedByPlanner: true },
+  { key: 'intraday_ticks', labelKey: 'soc.dataops.dataset_intraday_ticks', supportedByPlanner: true },
+  { key: 'session_facts', labelKey: 'soc.dataops.dataset_session_facts', supportedByPlanner: true },
+  { key: 'whale_events', labelKey: 'soc.dataops.dataset_whale_events', supportedByPlanner: false },
+  { key: 'order_flow', labelKey: 'soc.dataops.dataset_order_flow', supportedByPlanner: false },
+  { key: 'dark_flow', labelKey: 'soc.dataops.dataset_dark_flow', supportedByPlanner: false },
 ];
+
+const PLANNER_SUPPORTED_DATASET_KEYS = new Set(
+  BACKFILL_DATASETS.filter((dataset) => dataset.supportedByPlanner).map((dataset) => dataset.key),
+);
 
 const BACKFILL_SYMBOL_GROUPS = [
   { key: 'VN30',  label: 'VN30' },
@@ -41,12 +46,13 @@ const DEFAULT_BACKFILL_FORM = {
 
 const BACKFILL_DATASET_FIELDS = {
   daily_prices:   'soc.dataops.dataset_field_daily_prices',
+  price_board_snapshot: 'soc.dataops.dataset_field_price_board_snapshot',
   intraday_bars:  'soc.dataops.dataset_field_intraday_bars',
   session_facts:  'soc.dataops.dataset_field_session_facts',
   whale_events:   'soc.dataops.dataset_field_whale_events',
   order_flow:     'soc.dataops.dataset_field_order_flow',
   dark_flow:      'soc.dataops.dataset_field_dark_flow',
-  intraday_tick:  'soc.dataops.dataset_field_intraday_tick',
+  intraday_ticks:  'soc.dataops.dataset_field_intraday_tick',
 };
 
 const DATAOPS_SUB_TABS = [
@@ -218,6 +224,7 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
   const [form, setForm] = useState(DEFAULT_BACKFILL_FORM);
   const [status, setStatus] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [activeRun, setActiveRun] = useState(null);
 
   // Combine static predefined groups + dynamic custom groups
   const allGroups = [
@@ -230,6 +237,9 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
   ];
 
   const toggleDataset = (key) => {
+    if (!PLANNER_SUPPORTED_DATASET_KEYS.has(key)) {
+      return;
+    }
     setForm((prev) => ({
       ...prev,
       datasets: prev.datasets.includes(key)
@@ -238,8 +248,46 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
     }));
   };
 
+  const loadActiveRun = async () => {
+    try {
+      const payload = await socApi.getDataOpsRunLogs(1);
+      const latestRun = Array.isArray(payload?.results) && payload.results.length > 0
+        ? payload.results[0]
+        : null;
+      if (latestRun && ['queued', 'running'].includes(String(latestRun.status || '').toLowerCase())) {
+        setActiveRun({
+          runId: latestRun.run_id,
+          status: latestRun.status,
+          startedAt: latestRun.started_at,
+        });
+      } else {
+        setActiveRun(null);
+      }
+    } catch {
+      // Keep UI resilient if run-log fetch fails.
+    }
+  };
+
+  useEffect(() => {
+    loadActiveRun();
+    const intervalId = setInterval(loadActiveRun, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
+
   const handleRun = async () => {
     if (!canApply) return;
+
+    if (activeRun?.runId) {
+      setStatus(t('soc.dataops.backfill_active_run_blocked', { run_id: activeRun.runId }));
+      return;
+    }
+
+    const plannerDatasets = form.datasets.filter((dataset) => PLANNER_SUPPORTED_DATASET_KEYS.has(dataset));
+    if (plannerDatasets.length === 0) {
+      setStatus(t('soc.dataops.backfill_dataset_not_supported'));
+      return;
+    }
+
     setIsRunning(true);
     setStatus(null);
     const symbols = form.symbolGroup === 'custom'
@@ -247,7 +295,7 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
       : [];
     try {
       const payload = {
-        datasets: form.datasets,
+        datasets: plannerDatasets,
         ...(symbols.length ? { symbols } : { symbol_group: form.symbolGroup }),
         from_date: form.fromDate || undefined,
         to_date: form.toDate || undefined,
@@ -257,7 +305,13 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
         reason: 'backfill_center_soc',
       };
       const result = await socApi.runDataOpsPlanner(payload);
-      setStatus(result?.message || t('soc.dataops.backfill_queued'));
+      const runId = result?.run_id || '';
+      setStatus(runId ? t('soc.dataops.backfill_queued_with_run', { run_id: runId }) : t('soc.dataops.backfill_queued'));
+      setActiveRun({
+        runId,
+        status: result?.status || 'queued',
+        startedAt: null,
+      });
     } catch (err) {
       setStatus(err.message);
     } finally {
@@ -279,22 +333,39 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
       <div className="mb-4">
         <p className="text-xs text-slate-400 mb-2">{t('soc.dataops.backfill_datasets')}</p>
         <div className="flex flex-wrap gap-x-5 gap-y-3">
-          {BACKFILL_DATASETS.map(({ key, labelKey }) => (
+          {BACKFILL_DATASETS.map(({ key, labelKey, supportedByPlanner }) => (
             <label key={key} className="flex items-start gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.datasets.includes(key)}
+                disabled={!supportedByPlanner}
                 onChange={() => toggleDataset(key)}
                 className="mt-0.5 accent-indigo-500"
               />
               <span>
-                <span className="block text-sm text-slate-200">{t(labelKey)}</span>
+                <span className={`block text-sm ${supportedByPlanner ? 'text-slate-200' : 'text-slate-500'}`}>
+                  {t(labelKey)}
+                </span>
                 <span className="block text-[11px] text-slate-500">{t(BACKFILL_DATASET_FIELDS[key] || 'soc.dataops.dataset_unknown')}</span>
+                {!supportedByPlanner && (
+                  <span className="block text-[10px] text-amber-400">{t('soc.dataops.backfill_dataset_coming_soon')}</span>
+                )}
               </span>
             </label>
           ))}
         </div>
       </div>
+
+      {activeRun?.runId && (
+        <div className="mb-4 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+          <p>
+            {t('soc.dataops.backfill_active_run_label')}: <span className="font-semibold">{activeRun.runId}</span>
+            {' · '}
+            {t(RUN_STATUS_LABEL_KEYS[String(activeRun.status || '').toLowerCase()] || 'soc.dataops.run_status_unknown')}
+          </p>
+          <p className="mt-1 text-amber-300">{t('soc.dataops.backfill_stop_not_supported')}</p>
+        </div>
+      )}
 
       {/* Symbol Group */}
       <div className="mb-4">
@@ -383,7 +454,7 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
         <button
           type="button"
           onClick={handleRun}
-          disabled={isRunning || !canApply || form.datasets.length === 0}
+          disabled={isRunning || !canApply || form.datasets.filter((dataset) => PLANNER_SUPPORTED_DATASET_KEYS.has(dataset)).length === 0 || Boolean(activeRun?.runId)}
           className="rounded bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 px-5 py-2 text-sm font-semibold text-white transition"
         >
           {isRunning ? t('soc.dataops.backfill_running') : t('soc.dataops.backfill_run')}

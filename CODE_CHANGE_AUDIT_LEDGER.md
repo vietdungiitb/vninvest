@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | DataOps Backfill dataset compatibility + active run guard | frontend/docs
+
+## All Modified Files (7 files)
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/DataOpsPanel.jsx` | Aligned Backfill datasets with planner-supported contract, added unsupported-dataset disable state, added active-run polling card, blocked duplicate submits while run is queued/running, and surfaced run_id/status feedback |
+| `frontend/src/i18n/vi.js` | Added VN locale strings for active-run visibility, run queue message with run_id, unsupported planner dataset guidance, and stop-control note |
+| `frontend/src/i18n/en.js` | Added matching EN locale strings to keep locale parity |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for DataOps backfill reliability slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `get_errors` on touched files ✅ no errors
+- `Push-Location ./frontend; npm run build; Pop-Location` ✅ build passed
+- `./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+- `& ".\\venv\\Scripts\\python.exe" "scripts/ops/generate_module_tree.py"` ✅ regenerated (`1211` modules)
+
+## Residual risk
+- DataOps planner currently has no cancel endpoint exposed in SOC; operators can monitor run status in UI but cannot force-stop from Backfill Center yet.
+
 # 2026-05-17 | VNBroker i18n raw-key fix for per-provider section | frontend/docs
 
 ## All Modified Files (6 files)

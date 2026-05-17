@@ -1,3 +1,23 @@
+# 2026-05-17 — DataOps Backfill planner compatibility + active run visibility ✅
+
+Status: **✅ backfill dataset mismatch fixed** | **✅ duplicate run spam blocked while active run exists** | **✅ runtime refreshed**
+
+## What changed
+- Updated Backfill dataset options in SOC DataOps to match planner-supported datasets (`daily_prices`, `price_board_snapshot`, `intraday_bars`, `intraday_ticks`, `session_facts`).
+- Disabled unsupported datasets (`whale_events`, `order_flow`, `dark_flow`) with explicit “chưa hỗ trợ” guidance to prevent `Dataset không hợp lệ` errors.
+- Added active-run status card (run id + status) by polling run logs and blocking new submissions while a run is `queued/running`.
+- Added clear operator guidance that stop/cancel from Backfill UI is currently not supported.
+- Added new i18n keys in both Vietnamese and English dictionaries for all new messages.
+
+## Validation
+- `get_errors` on touched files → **no errors** ✅
+- `npm run build` (frontend) → **compiled successfully** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Residual risk
+- Planner cancel/abort API is not yet wired for DataOps backfill runs; current UX provides visibility + duplicate-trigger prevention, but not force stop.
+
 # 2026-05-17 — VNBroker i18n per-provider section fixed ✅
 
 Status: **✅ raw i18n keys no longer shown in VNBroker per-provider UI** | **✅ runtime refreshed**
