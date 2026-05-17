@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 11:14:36`
+Generated at: `2026-05-17 11:22:57`
 
 ## Summary
 
@@ -3117,7 +3117,7 @@ Generated at: `2026-05-17 11:14:36`
 ### `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
 
 - Classes:
-  - `StockManagementNativeApiTestCase` -> methods: `setUp`, `setUpTestData`, `test_ai_advisory_generate_routes_to_native_manual_trigger`, `test_ai_advisory_session_reads_native_advisory_record`, `test_groups_seed_detail_and_items_are_native`, `test_price_alert_endpoints_are_native`, `test_stock_chart_reads_daily_prices_with_native_envelope`, `test_stock_chart_reads_intraday_bars_from_native_core_tables`, `test_stock_chart_returns_envelope_when_no_native_candles`, `test_stock_overview_maps_native_watchlist_tracking_fields`, `test_stock_overview_prefers_native_tracked_symbol_source_group`, `test_stock_overview_returns_object_envelope_without_snapshot`, `test_stock_search_is_native_and_paginated`, `test_sync_routes_user_scope_through_global_planner`, `test_tracked_symbol_endpoints_are_native`
+  - `StockManagementNativeApiTestCase` -> methods: `setUp`, `setUpTestData`, `test_ai_advisory_generate_routes_to_native_manual_trigger`, `test_ai_advisory_session_reads_native_advisory_record`, `test_groups_seed_detail_and_items_are_native`, `test_price_alert_endpoints_are_native`, `test_stock_chart_reads_daily_prices_with_native_envelope`, `test_stock_chart_reads_intraday_bars_from_native_core_tables`, `test_stock_chart_returns_envelope_when_no_native_candles`, `test_stock_overview_maps_native_watchlist_tracking_fields`, `test_stock_overview_prefers_native_tracked_symbol_source_group`, `test_stock_overview_returns_object_envelope_without_snapshot`, `test_stock_overview_works_without_profile_if_daily_price_exists`, `test_stock_search_is_native_and_paginated`, `test_sync_routes_user_scope_through_global_planner`, `test_tracked_symbol_endpoints_are_native`
 - Top-level variables:
   - `User`
 

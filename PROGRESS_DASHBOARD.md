@@ -1,3 +1,22 @@
+# 2026-05-17 — Stock workspace mở lỗi dù DB có dữ liệu: fixed ✅
+
+Status: **✅ workspace overview không còn fail cứng khi thiếu StockProfile** | **✅ runtime refreshed**
+
+## What changed
+- Root cause: endpoint `/api/stock-management/stocks/{symbol}/overview/` trả `404` ngay khi thiếu `StockProfile`, dù dữ liệu thị trường (`DailyPrice`/snapshot) đã có.
+- Updated `StockManagementOverviewView` to fallback from available market data instead of raising NotFound immediately.
+- Now only return NotFound when symbol thiếu toàn bộ dữ liệu (`StockProfile` + snapshot + DailyPrice đều trống).
+- Added regression test to lock the behavior.
+
+## Validation
+- `get_errors` on touched backend files → **no errors** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+- Focused Django test command → **blocked by env guard (`DJANGO_ALLOWED_HOSTS` + `DJANGO_SECRET_KEY`)** ⚠️
+
+## Residual risk
+- Với mã chưa có cả profile lẫn dữ liệu giá/snapshot, UI vẫn hiển thị “workspace chưa có dữ liệu” theo đúng logic.
+
 # 2026-05-17 — DataOps Backfill stop-run (abort API) integrated ✅
 
 Status: **✅ planner abort endpoint added** | **✅ Backfill UI now supports stop active run** | **✅ runtime refreshed**

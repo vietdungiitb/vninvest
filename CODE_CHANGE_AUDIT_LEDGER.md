@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | Stock workspace overview fallback when profile missing | backend/docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Updated `StockManagementOverviewView` to fallback to available market data (`DailyPrice`/snapshot) when `StockProfile` is missing, instead of returning NotFound immediately |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added regression test for overview success without `StockProfile` when `DailyPrice` exists |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for workspace-open fix |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `get_errors` on touched backend files ✅ no errors
+- `./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+- `& ".\\venv\\Scripts\\python.exe" "scripts/ops/generate_module_tree.py"` ✅ regenerated (`1211` modules)
+- Focused test command for new regression test ⚠️ blocked by local env guards (`DJANGO_ALLOWED_HOSTS` and `DJANGO_SECRET_KEY` required)
+
+## Residual risk
+- If a symbol has neither `StockProfile` nor any market rows (`DailyPrice`/snapshot), endpoint still returns NotFound as intended.
+
 # 2026-05-17 | DataOps planner run abort API + Backfill stop control | frontend/backend/docs
 
 ## All Modified Files (13 files)

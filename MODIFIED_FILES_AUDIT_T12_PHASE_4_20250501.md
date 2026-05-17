@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-05-17 | Stock workspace overview fallback when profile missing
+
+### Files changed in this session
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sửa lỗi trang Stock Workspace báo không mở được trong trường hợp DB đã có dữ liệu giá nhưng thiếu bản ghi `StockProfile` cho mã.
+
+### Validation snapshot
+- `get_errors` (backend touched files) ✅
+- `./start_dev.ps1` smoke checks ✅
+- `scripts/ops/generate_module_tree.py` ✅
+- Focused Django test command bị chặn bởi env guard local (`DJANGO_ALLOWED_HOSTS`, `DJANGO_SECRET_KEY`) ⚠️
+
+---
+
 ## 2026-05-17 | DataOps planner abort API + Backfill stop control
 
 ### Files changed in this session

@@ -883,16 +883,15 @@ class StockManagementOverviewView(APIView):
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        try:
-            profile = StockProfile.objects.get(symbol=symbol)
-        except StockProfile.DoesNotExist:
-            raise NotFound(f'Stock not found: {symbol}')
         snap = _fetch_symbol_snapshot_payload(symbol)
 
         today = timezone.localdate()
         trailing_rows = list(
             DailyPrice.objects.filter(symbol=symbol, date__lte=today).order_by('-date')[:366]
         )
+        profile = StockProfile.objects.filter(symbol=symbol).first()
+        if profile is None and snap is None and not trailing_rows:
+            raise NotFound(f'Stock not found: {symbol}')
         latest_daily = trailing_rows[0] if trailing_rows else None
         previous_daily = trailing_rows[1] if len(trailing_rows) > 1 else None
 
@@ -932,12 +931,12 @@ class StockManagementOverviewView(APIView):
         payload = {
             'tracked_symbol_id': membership_payload['tracked_symbol_id'],
             'symbol': symbol,
-            'company_name': profile.company_name,
-            'industry': profile.industry,
-            'exchange': profile.exchange,
+            'company_name': profile.company_name if profile else symbol,
+            'industry': profile.industry if profile else '',
+            'exchange': profile.exchange if profile else '',
             'listed_date': None,
-            'is_active': profile.status == StockProfile.StatusChoices.ACTIVE,
-            'updated_at': profile.updated_at.isoformat() if profile.updated_at else None,
+            'is_active': profile.status == StockProfile.StatusChoices.ACTIVE if profile else True,
+            'updated_at': profile.updated_at.isoformat() if profile and profile.updated_at else None,
             'current_price': _round_or_none(current_price),
             'prev_price': _round_or_none(reference_price),
             'change_value': _round_or_none(change_value),

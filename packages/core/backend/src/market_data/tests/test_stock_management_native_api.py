@@ -66,6 +66,28 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertIn('watchlist_memberships', payload)
         self.assertFalse(payload['is_tracked'])
 
+    def test_stock_overview_works_without_profile_if_daily_price_exists(self):
+        today = timezone.localdate()
+        DailyPrice.objects.create(
+            symbol='ZZZ',
+            date=today,
+            open=10.0,
+            high=10.5,
+            low=9.9,
+            close=10.2,
+            volume=42000,
+            source='core',
+        )
+
+        response = self.client.get('/api/stock-management/stocks/ZZZ/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'ZZZ')
+        self.assertEqual(payload['company_name'], 'ZZZ')
+        self.assertEqual(payload['current_price'], 10.2)
+        self.assertTrue(payload['is_active'])
+
     def test_stock_overview_maps_native_watchlist_tracking_fields(self):
         watchlist = Watchlist.objects.create(user=self.user, name='Danh mục theo dõi', description='')
         item = WatchlistItem.objects.create(watchlist=watchlist, symbol='TPB')
