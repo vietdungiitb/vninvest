@@ -72,12 +72,67 @@ class VnbrokerTimeoutConfig:
 
 
 @dataclass
+class VnbrokerProviderConfig:
+    """Cấu hình riêng cho từng provider."""
+    timeout: VnbrokerTimeoutConfig | None = None
+    max_retries: int | None = None
+    retry_delay_seconds: float | None = None
+    requests_per_minute: int | None = None
+    burst_limit: int | None = None
+
+    def validate(self, provider_id: str) -> list[str]:
+        errors = []
+        if self.timeout:
+            errors.extend([f'{provider_id}: {err}' for err in self.timeout.validate()])
+        if self.max_retries is not None and (not isinstance(self.max_retries, int) or not (0 <= self.max_retries <= 10)):
+            errors.append(f'{provider_id}: max_retries phải trong khoảng [0, 10]')
+        if self.retry_delay_seconds is not None and (not _is_number(self.retry_delay_seconds) or float(self.retry_delay_seconds) < 0):
+            errors.append(f'{provider_id}: retry_delay_seconds phải >= 0')
+        if self.requests_per_minute is not None and (not isinstance(self.requests_per_minute, int) or self.requests_per_minute < 1):
+            errors.append(f'{provider_id}: requests_per_minute phải >= 1')
+        if self.burst_limit is not None and (not isinstance(self.burst_limit, int) or self.burst_limit < 1):
+            errors.append(f'{provider_id}: burst_limit phải >= 1')
+        return errors
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> 'VnbrokerProviderConfig':
+        if not data:
+            return cls()
+        payload = dict(data or {})
+        timeout_payload = payload.get('timeout')
+        return cls(
+            timeout=VnbrokerTimeoutConfig.from_dict(timeout_payload) if timeout_payload else None,
+            max_retries=payload.get('max_retries'),
+            retry_delay_seconds=payload.get('retry_delay_seconds'),
+            requests_per_minute=payload.get('requests_per_minute'),
+            burst_limit=payload.get('burst_limit'),
+        )
+
+    def to_dict(self) -> dict[str, Any] | None:
+        result = {}
+        if self.timeout:
+            result['timeout'] = self.timeout.to_dict()
+        if self.max_retries is not None:
+            result['max_retries'] = self.max_retries
+        if self.retry_delay_seconds is not None:
+            result['retry_delay_seconds'] = self.retry_delay_seconds
+        if self.requests_per_minute is not None:
+            result['requests_per_minute'] = self.requests_per_minute
+        if self.burst_limit is not None:
+            result['burst_limit'] = self.burst_limit
+        return result if result else None
+
+
+@dataclass
 class VnbrokerDomainConfig:
     """Typed config cho VNBroker data adapter."""
 
     timeout: VnbrokerTimeoutConfig = field(default_factory=VnbrokerTimeoutConfig)
     max_retries: int = 3
     retry_delay_seconds: float = 2.0
+
+    # Per-provider overrides
+    per_provider_config: dict[str, VnbrokerProviderConfig] = field(default_factory=dict)
 
     # Providers
     preferred_provider: str = DEFAULT_VNBROKER_PREFERRED_PROVIDER
@@ -96,6 +151,8 @@ class VnbrokerDomainConfig:
     def validate(self) -> list[str]:
         """Trả về danh sách lỗi; list rỗng = valid."""
         errors = self.timeout.validate()
+        for provider_id, provider_cfg in self.per_provider_config.items():
+            errors.extend(provider_cfg.validate(provider_id))
         if not isinstance(self.max_retries, int) or not (0 <= self.max_retries <= 10):
             errors.append('max_retries phải trong khoảng [0, 10]')
         if not _is_number(self.retry_delay_seconds) or float(self.retry_delay_seconds) < 0:
@@ -148,6 +205,10 @@ class VnbrokerDomainConfig:
             enabled=payload.get('enabled', True),
             requests_per_minute=payload.get('requests_per_minute', 60),
             burst_limit=payload.get('burst_limit', 10),
+            per_provider_config={
+                provider_id: VnbrokerProviderConfig.from_dict(cfg_dict)
+                for provider_id, cfg_dict in (payload.get('per_provider_config') or {}).items()
+            },
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -163,4 +224,9 @@ class VnbrokerDomainConfig:
             'circuit_breaker_cooldown_seconds': self.circuit_breaker_cooldown_seconds,
             'requests_per_minute': self.requests_per_minute,
             'burst_limit': self.burst_limit,
+            'per_provider_config': {
+                provider_id: cfg.to_dict()
+                for provider_id, cfg in self.per_provider_config.items()
+                if cfg.to_dict()
+            },
         }

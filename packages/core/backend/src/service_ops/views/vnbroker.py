@@ -67,6 +67,15 @@ class VnbrokerTimeoutSerializer(serializers.Serializer):
     pool = serializers.FloatField()
 
 
+class VnbrokerProviderConfigSerializer(serializers.Serializer):
+    """Cấu hình riêng cho từng provider."""
+    timeout = VnbrokerTimeoutSerializer(required=False, allow_null=True)
+    max_retries = serializers.IntegerField(required=False, allow_null=True)
+    retry_delay_seconds = serializers.FloatField(required=False, allow_null=True)
+    requests_per_minute = serializers.IntegerField(required=False, allow_null=True)
+    burst_limit = serializers.IntegerField(required=False, allow_null=True)
+
+
 class VnbrokerConfigPayloadSerializer(serializers.Serializer):
     timeout = VnbrokerTimeoutSerializer()
     max_retries = serializers.IntegerField()
@@ -79,6 +88,10 @@ class VnbrokerConfigPayloadSerializer(serializers.Serializer):
     circuit_breaker_cooldown_seconds = serializers.IntegerField()
     requests_per_minute = serializers.IntegerField()
     burst_limit = serializers.IntegerField()
+    per_provider_config = serializers.DictField(
+        child=VnbrokerProviderConfigSerializer(required=False, allow_null=True),
+        required=False
+    )
 
 
 class VnbrokerConfigRequestSerializer(serializers.Serializer):

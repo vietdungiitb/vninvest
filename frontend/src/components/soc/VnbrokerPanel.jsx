@@ -33,6 +33,7 @@ const VnbrokerPanel = ({ t }) => {
   const [benchmarkStatus, setBenchmarkStatus] = useState(null);
   const [isBenchmarking, setIsBenchmarking] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [expandedProviders, setExpandedProviders] = useState({});
 
   const fetchData = useCallback(async () => {
     try {
@@ -77,6 +78,43 @@ const VnbrokerPanel = ({ t }) => {
     ...prev,
     timeout: { ...(prev.timeout || {}), [key]: value === '' ? '' : Number(value) },
   }));
+
+  const setPerProviderField = (providerId, key, value) => setDraft((prev) => {
+    const perProviderConfig = prev.per_provider_config || {};
+    const providerConfig = perProviderConfig[providerId] || {};
+    const updated = { ...providerConfig, [key]: value === '' ? null : value };
+    return {
+      ...prev,
+      per_provider_config: {
+        ...perProviderConfig,
+        [providerId]: updated,
+      },
+    };
+  });
+
+  const setPerProviderTimeout = (providerId, timeoutKey, value) => setDraft((prev) => {
+    const perProviderConfig = prev.per_provider_config || {};
+    const providerConfig = perProviderConfig[providerId] || {};
+    const timeout = providerConfig.timeout || {};
+    const updated = {
+      ...providerConfig,
+      timeout: { ...timeout, [timeoutKey]: value === '' ? '' : Number(value) },
+    };
+    return {
+      ...prev,
+      per_provider_config: {
+        ...perProviderConfig,
+        [providerId]: updated,
+      },
+    };
+  });
+
+  const toggleProviderExpand = (providerId) => {
+    setExpandedProviders((prev) => ({
+      ...prev,
+      [providerId]: !prev[providerId],
+    }));
+  };
 
   const handleOpenPreview = async () => {
     const warnings = [];
@@ -257,6 +295,129 @@ const VnbrokerPanel = ({ t }) => {
               />
             </div>
           ))}
+        </div>
+
+        {/* Per-Provider Configuration Section */}
+        <div className="mt-6 pt-6 border-t border-slate-700">
+          <h4 className="text-sm font-semibold text-slate-300 mb-3">{t('soc.vnbroker.per_provider_config_title')}</h4>
+          <p className="text-xs text-slate-400 mb-4">{t('soc.vnbroker.per_provider_config_hint')}</p>
+          <div className="space-y-3">
+            {selectableProviders.map((providerId) => {
+              const isExpanded = expandedProviders[providerId];
+              const providerCfg = draft.per_provider_config?.[providerId] || {};
+              const hasOverride = Object.keys(providerCfg).length > 0;
+              return (
+                <div key={providerId} className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleProviderExpand(providerId)}
+                    className="w-full px-4 py-3 flex justify-between items-center hover:bg-slate-750 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold text-white">{providerId.toUpperCase()}</span>
+                      {hasOverride && <span className="text-xs bg-blue-700 text-white px-2 py-0.5 rounded">Được tùy chỉnh</span>}
+                    </span>
+                    <span className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-4 py-4 bg-slate-750 border-t border-slate-700 space-y-4">
+                      {/* Timeout for this provider */}
+                      <div>
+                        <h5 className="text-xs font-semibold text-slate-400 mb-2 uppercase">{t('soc.vnbroker.timeout_section')}</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {[['connect', t('soc.vnbroker.timeout_connect')], ['read', t('soc.vnbroker.timeout_read')], ['write', t('soc.vnbroker.timeout_write')], ['pool', t('soc.vnbroker.timeout_pool')]].map(([key, label]) => (
+                            <div key={`${providerId}-timeout-${key}`}>
+                              <label className="block text-xs text-slate-500 mb-1">{label} (s)</label>
+                              <input
+                                type="number"
+                                step="0.5"
+                                placeholder="(không ghi đè)"
+                                value={providerCfg.timeout?.[key] ?? ''}
+                                onChange={(e) => setPerProviderTimeout(providerId, key, e.target.value)}
+                                className="w-full rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Retry settings for this provider */}
+                      <div>
+                        <h5 className="text-xs font-semibold text-slate-400 mb-2 uppercase">{t('soc.vnbroker.retry_section')}</h5>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">{t('soc.vnbroker.max_retries')}</label>
+                            <input
+                              type="number"
+                              placeholder="(không ghi đè)"
+                              value={providerCfg.max_retries ?? ''}
+                              onChange={(e) => setPerProviderField(providerId, 'max_retries', e.target.value === '' ? null : Number(e.target.value))}
+                              className="w-full rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">{t('soc.vnbroker.retry_delay_seconds')}</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="(không ghi đè)"
+                              value={providerCfg.retry_delay_seconds ?? ''}
+                              onChange={(e) => setPerProviderField(providerId, 'retry_delay_seconds', e.target.value === '' ? null : Number(e.target.value))}
+                              className="w-full rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rate limiting for this provider */}
+                      <div>
+                        <h5 className="text-xs font-semibold text-slate-400 mb-2 uppercase">{t('soc.vnbroker.rate_limit_section')}</h5>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">{t('soc.vnbroker.requests_per_minute')}</label>
+                            <input
+                              type="number"
+                              placeholder="(không ghi đè)"
+                              value={providerCfg.requests_per_minute ?? ''}
+                              onChange={(e) => setPerProviderField(providerId, 'requests_per_minute', e.target.value === '' ? null : Number(e.target.value))}
+                              className="w-full rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">{t('soc.vnbroker.burst_limit')}</label>
+                            <input
+                              type="number"
+                              placeholder="(không ghi đè)"
+                              value={providerCfg.burst_limit ?? ''}
+                              onChange={(e) => setPerProviderField(providerId, 'burst_limit', e.target.value === '' ? null : Number(e.target.value))}
+                              className="w-full rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Clear override button */}
+                      {hasOverride && (
+                        <button
+                          type="button"
+                          onClick={() => setDraft((prev) => ({
+                            ...prev,
+                            per_provider_config: {
+                              ...prev.per_provider_config,
+                              [providerId]: {},
+                            },
+                          }))}
+                          className="text-xs px-2 py-1 text-slate-300 hover:text-slate-100 border border-slate-600 hover:border-slate-400 rounded transition-colors"
+                        >
+                          {t('soc.vnbroker.clear_provider_override')}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

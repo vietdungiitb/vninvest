@@ -99,7 +99,30 @@
       "metrics": "Số liệu",
       "timeout_config": "Cấu hình hết thời gian chờ",
       "max_retries": "Số lần thử tối đa",
-      "circuit_breaker_status": "Trạng thái cầu gây gián đoạn"
+      "circuit_breaker_status": "Trạng thái cầu gây gián đoạn",
+      "preferred_provider": "Nhà cung cấp ưu tiên",
+      "retry_delay_seconds": "Độ trễ thử lại (s)",
+      "requests_per_minute": "Yêu cầu trên phút",
+      "burst_limit": "Giới hạn ghỉ bộ",
+      "circuit_breaker_threshold": "Ngưỡng cầu gây gián đoạn",
+      "timeout_section": "Hết thời gian chờ",
+      "timeout_connect": "Kết nối",
+      "timeout_read": "Đọc",
+      "timeout_write": "Ghi",
+      "timeout_pool": "Nhóm kết nối",
+      "providers_status": "Trạng thái nhà cung cấp",
+      "provider_configured": "Đã cấu hình",
+      "provider_not_configured": "Chưa cấu hình",
+      "reset_to_defaults": "Đặt lại mặc định",
+      "reset_confirm": "Bạn có chắc chắn muốn đặt lại cấu hình VNBroker về mặc định?",
+      "per_provider_config_title": "Cấu hình riêng từng nhà cung cấp",
+      "per_provider_config_hint": "Tùy chỉnh timeout, số lần thử, và rate limit cho từng nhà cung cấp (VCI, KBS, DNSE). Để trống để sử dụng giá trị toàn cục.",
+      "retry_section": "Thử lại",
+      "rate_limit_section": "Giới hạn tốc độ",
+      "clear_provider_override": "Xóa tùy chỉnh",
+      "benchmark_title": "Công cụ so sánh hiệu năng",
+      "benchmark_run": "Chạy so sánh",
+      "benchmark_running": "Đang chạy..."
     },
     "prefetch": {
       "title": "Tải trước",
@@ -152,7 +175,14 @@
       "view": "Xem",
       "refresh": "Làm mới",
       "close": "Đóng",
-      "export": "Xuất khẩu"
+      "export": "Xuất khẩu",
+      "preview": "Xem trước"
+    },
+    "dataops": {
+      "preview_failed": "Xem trước không thành công",
+      "metrics": "Số liệu",
+      "throughput": "Thông lượng",
+      "error_rate": "Tỷ lệ lỗi"
     },
     "errors": {
       "network_error": "Lỗi mạng",

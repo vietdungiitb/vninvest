@@ -70,6 +70,21 @@ Với task liên quan `global market data matrix`, `global symbol matrix`, `mark
 7. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_CODE_QUALITY_CONSTITUTION_20260515.md`
 8. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_EXECUTION_EVIDENCE_TEMPLATE_20260515.md`
 
+Với task liên quan `Global Alert Center`, `unified alert center`, `alert-center feed`, `alert-center summary`, `price shock`, `stale quote`, `AI Alerts`, `AI Suggests`, `per-user alert delivery`, `alert-center cutover`, đọc gói:
+
+1. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_HANDOFF_MASTER_20260516.md`
+2. `docs/IMPLEMENTATION_PLAN_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+3. `docs/TECH_SPEC_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+4. `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+5. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260516.md`
+6. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260516.md`
+7. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260516.md`
+8. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_CONFIG_OWNERSHIP_MATRIX_20260516.md`
+9. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_CODE_QUALITY_CONSTITUTION_20260516.md`
+10. `docs/RUN_CODE_REVIEW_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+11. `docs/RUN_INTEGRATION_TESTS_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+12. `docs/RUN_SPEC_AUDIT_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+
 Với task liên quan `SOC Config UI`, `Global Screener quản trị`, `PrefetchPanel`, `DataOps backfill`, `VnbrokerPanel`, `screener rule CRUD`, `admin-ops decommission`, `410 GONE`, đọc gói:
 
 1. `docs/SOC_CONFIG_UI_ADMIN_OPS_DECOMMISSION_HANDOFF_MASTER_20260516.md`
@@ -165,6 +180,20 @@ Trước mọi thay đổi liên quan `global market data matrix`, `global symbo
 5. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_TRACEABILITY_MATRIX_20260515.md`
 6. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_CODE_QUALITY_CONSTITUTION_20260515.md`
 7. `docs/GLOBAL_MARKET_DATA_MATRIX_SSOT_SELF_AUDIT_AND_TEST_PROTOCOL_20260515.md`
+
+Trước mọi thay đổi liên quan `Global Alert Center`, `unified alert center`, `price shock`, `stale quote`, `AI Alerts`, `AI Suggests`, `per-user alert delivery`, `alert-center summary`, `alert-center cutover`, hoặc chuẩn hóa native alert feed trong `core-api`, đọc theo thứ tự:
+
+1. `quality/QUALITY.md`
+2. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_HANDOFF_MASTER_20260516.md`
+3. `docs/TECH_SPEC_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+4. `docs/IMPLEMENTATION_PLAN_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+5. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260516.md`
+6. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_CONFIG_OWNERSHIP_MATRIX_20260516.md`
+7. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_CODE_QUALITY_CONSTITUTION_20260516.md`
+8. `docs/GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260516.md`
+9. `docs/RUN_CODE_REVIEW_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+10. `docs/RUN_INTEGRATION_TESTS_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
+11. `docs/RUN_SPEC_AUDIT_GLOBAL_ALERT_CENTER_SAAS_OPENAPI_CUTOVER_20260516.md`
 
 Trước mọi thay đổi liên quan `SOC Config UI`, `Global Screener quản trị`, `PrefetchPanel`, `DataOps backfill`, `VnbrokerPanel`, `screener rule CRUD`, `admin-ops decommission`, hoặc `410 GONE`, đọc theo thứ tự:
 
@@ -333,3 +362,15 @@ Template chuẩn nằm tại:
 8. **Một mã chỉ được hạ ưu tiên hoặc rời active crawl set khi toàn bộ demand sources hết hiệu lực và qua decay window vận hành**, không được drop ngay vì một user bỏ theo dõi.
 9. **Thứ tự ưu tiên khi có trade-off**: giữ đúng shared SSOT trước, tránh crawl lặp sau, rồi mới tối ưu UX/SLA/chi phí.
 10. Mọi exception khỏi hard rule phải có ticket, owner, expiry; quá hạn thì block merge.
+
+## 13. Hard constraints for Global Alert Center SaaS OpenAPI Cutover
+
+1. `Global symbol matrix` là foundation SSOT duy nhất cho detection universe của alert-center.
+2. Detection chạy toàn cục; delivery phải lọc theo holdings/watchlists/tracked/preferences của từng user.
+3. Main alert feed chỉ chứa `whale`, `dark_flow`, `price_shock`, `stale_quote`, `system`; `AI Alerts / AI Suggests` là lane riêng mặc định.
+4. Mọi API contract mới của alert-center phải nằm ở `/core/v1/` và có OpenAPI metadata đầy đủ.
+5. `packages/web` chỉ được gọi alert-center qua `coreApiAdapter.js`; cấm direct fetch hoặc adapter song song.
+6. Browser-side synthesis cho `price_shock`, `stale_quote` hoặc audience truth là cấm; client chỉ render server truth.
+7. Không tạo compat route hoặc proxy route business logic mới cho alert-center.
+8. Không được bypass shadow/parity/soak gates khi cutover hoặc legacy sunset; mọi yêu cầu lệch chuẩn phải bị block mặc định.
+9. Không xóa legacy alert code trước khi shadow run, parity evidence và rollback path đã được xác nhận.
