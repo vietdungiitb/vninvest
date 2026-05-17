@@ -18,6 +18,7 @@ from market_data.vnbroker_adapter import (
 from service_ops.matrix_coordinator import MatrixCoordinator, generate_cycle_id
 from service_ops.models import ScrapeMatrixCell
 from service_ops.models import ServiceConfig, ServiceHealth, ServiceRunLog
+from service_ops.models import MarketDataParitySnapshot
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 from service_ops.tasks import (
     create_signal_job_run_log,
@@ -414,6 +415,8 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertIn('parity_snapshot', hot_call['extra_input_summary'])
         self.assertIn('window_24h', hot_call['extra_input_summary']['parity_snapshot'])
         self.assertEqual(hot_call['extra_input_summary']['queue_tier'], 'hot_user_demand')
+        self.assertEqual(MarketDataParitySnapshot.objects.filter(window_hours=24).count(), 1)
+        self.assertEqual(MarketDataParitySnapshot.objects.filter(window_hours=72).count(), 1)
         recovery_call = planner_run_mock.call_args_list[1].kwargs
         self.assertEqual(recovery_call['symbols'], ['AAA'])
         self.assertEqual(recovery_call['mode'], 'missing_only')

@@ -22,6 +22,7 @@
 | P11 | Parity trend observability | DONE | Frontend + Backend | Da bo sung trend delta vs ky truoc cho parity 24h/72h tren API/DataOps monitor de operator thay huong cai thien hay suy giam |
 | P12 | Parity history multi-window | DONE | Frontend + Backend | Da bo sung chuoi 7 moc parity history cho 24h/72h tren API va DataOps monitor de theo doi xu huong nhieu ky |
 | P13 | Persisted parity snapshots | DONE | Core Backend | Scheduler ghi immutable parity_snapshot vao metadata planner-run; observability history uu tien doc persisted snapshots thay vi rolling-only |
+| P14 | Append-only parity snapshot store | DONE | Core Backend | Tach persistence parity history sang bang append-only rieng, observability uu tien doc bang moi va fallback metadata de giu backward compatibility |
 
 Legend: TODO | IN PROGRESS | DONE | BLOCKED
 
@@ -68,6 +69,12 @@ Legend: TODO | IN PROGRESS | DONE | BLOCKED
 - [x] Queue-tier scheduler gan `parity_snapshot` vao metadata cua planner-run.
 - [x] Observability `parity_history` uu tien nguon persisted snapshots.
 - [x] Regression tests khoa metadata persistence path.
+
+### Phase I - Append-only parity snapshot store (P14)
+- [x] Them model append-only `MarketDataParitySnapshot` + migration schema.
+- [x] Queue-tier scheduler persist parity snapshots vao bang moi moi chu ky.
+- [x] Observability `parity_history` uu tien doc bang moi va fallback metadata cu.
+- [x] Regression tests khoa model uniqueness, scheduler write path, va API read path.
 
 ---
 

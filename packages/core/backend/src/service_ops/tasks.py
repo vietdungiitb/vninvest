@@ -23,6 +23,7 @@ from .dataops_market_data import (
     get_market_data_queue_tier_datasets,
     get_market_data_queue_tier_execution_queue,
     get_market_data_runtime_config,
+    persist_market_data_parity_snapshot,
     select_market_data_queue_tier_symbols,
 )
 from .matrix_coordinator import MatrixCoordinator, normalize_provider_list, normalize_symbol_group_ids
@@ -581,6 +582,11 @@ def run_market_data_queue_tier_scheduler(self):
     bootstrap = ensure_market_data_system_default_baseline()
     runtime_config, _ = get_market_data_runtime_config()
     parity_snapshot = build_market_data_parity_snapshot(sample_size=100)
+    persist_market_data_parity_snapshot(
+        service=matrix_service,
+        scheduler_task_id=getattr(self.request, 'id', ''),
+        parity_snapshot=parity_snapshot,
+    )
 
     dispatches = []
     skipped_tiers = []

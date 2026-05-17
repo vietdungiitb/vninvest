@@ -179,6 +179,51 @@ class ServiceRunLog(models.Model):
         return f'{self.service.service_key} run {self.status} @ {self.started_at}'
 
 
+class MarketDataParitySnapshot(models.Model):
+    """Append-only persisted parity snapshot captured during market-data scheduler execution."""
+
+    service = models.ForeignKey(
+        ServiceDefinition,
+        on_delete=models.CASCADE,
+        related_name='parity_snapshots',
+    )
+    run_log = models.ForeignKey(
+        ServiceRunLog,
+        on_delete=models.SET_NULL,
+        related_name='parity_snapshots',
+        null=True,
+        blank=True,
+    )
+
+    scheduler_task_id = models.CharField(max_length=200, db_index=True)
+    window_hours = models.IntegerField()
+    sample_size = models.IntegerField(default=100)
+    evaluated_symbols = models.IntegerField(default=0)
+    strict_fresh_count = models.IntegerField(default=0)
+    fresh_or_warm_count = models.IntegerField(default=0)
+    strict_fresh_parity = models.FloatField(default=0.0)
+    fresh_or_warm_parity = models.FloatField(default=0.0)
+    strict_met = models.BooleanField(default=False)
+    relaxed_met = models.BooleanField(default=False)
+    captured_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ['-captured_at', '-id']
+        indexes = [
+            models.Index(fields=['service', 'window_hours', 'captured_at']),
+            models.Index(fields=['scheduler_task_id', 'window_hours']),
+        ]
+        unique_together = [('scheduler_task_id', 'window_hours')]
+        verbose_name = 'Market Data Parity Snapshot'
+        verbose_name_plural = 'Market Data Parity Snapshots'
+
+    def __str__(self):
+        return (
+            f'{self.service.service_key} parity {self.window_hours}h '
+            f'({self.strict_fresh_parity:.4f}/{self.fresh_or_warm_parity:.4f})'
+        )
+
+
 class OwnershipRecord(models.Model):
     """Khai báo tường minh write ownership của domain."""
 

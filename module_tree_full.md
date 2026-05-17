@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-17 20:46:36`
+Generated at: `2026-05-17 20:52:54`
 
 ## Summary
 
-- Total modules: 1210
-- Python modules: 688
+- Total modules: 1211
+- Python modules: 689
 - JS/TS modules: 522
-- Total classes: 1372
-- Total functions: 3279
+- Total classes: 1375
+- Total functions: 3281
 - Total top-level variables: 4834
 
 ## Python Modules
@@ -3447,7 +3447,7 @@ Generated at: `2026-05-17 20:46:36`
 ### `packages/core/backend/src/service_ops/dataops_market_data.py`
 
 - Functions:
-  - `_build_daily_parity_gate_direction`, `_build_daily_parity_gate_history`, `_build_daily_parity_gate_window`, `_build_daily_parity_gate_window_with_trend`, `_build_market_data_fail_rate_window`, `_build_parity_history_from_scheduler_logs`, `_get_recovery_queryset_filter`, `_select_market_data_bootstrap_listing_symbols`, `build_market_data_observability_summary`, `build_market_data_parity_snapshot`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `count_market_data_queue_tier_symbols`, `ensure_market_data_system_default_baseline`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
+  - `_build_daily_parity_gate_direction`, `_build_daily_parity_gate_history`, `_build_daily_parity_gate_window`, `_build_daily_parity_gate_window_with_trend`, `_build_market_data_fail_rate_window`, `_build_parity_history_from_persisted_snapshots`, `_build_parity_history_from_scheduler_logs`, `_get_recovery_queryset_filter`, `_select_market_data_bootstrap_listing_symbols`, `build_market_data_observability_summary`, `build_market_data_parity_snapshot`, `build_market_data_queue_tier_queryset`, `build_market_data_queue_tier_snapshot`, `count_market_data_queue_tier_symbols`, `ensure_market_data_system_default_baseline`, `get_market_data_queue_tier_config`, `get_market_data_queue_tier_datasets`, `get_market_data_queue_tier_execution_queue`, `get_market_data_runtime_config`, `persist_market_data_parity_snapshot`, `resolve_market_data_queue_tier`, `select_market_data_queue_tier_symbols`
 - Top-level variables:
   - `DATAOPS_MARKET_DATA_DOMAIN`, `LISTING_BOOTSTRAP_PROVIDER_SOURCES`, `PLANNABLE_FRESHNESS_STATES`, `PRIORITY_TIER_TO_QUEUE_TIER`, `QUEUE_TIER_DATASETS`, `QUEUE_TIER_EXECUTION_QUEUES`, `QUEUE_TIER_ORDER`, `QUEUE_TIER_STARVATION_MULTIPLIER`, `RECOVERY_COVERAGE_STATES`, `RECOVERY_FRESHNESS_STATES`, `SYSTEM_DEFAULT_BOOTSTRAP_GROUP_IDS`, `SYSTEM_DEFAULT_BOOTSTRAP_LISTING_GROUP_ID`, `logger`
 
@@ -3516,6 +3516,11 @@ Generated at: `2026-05-17 20:46:36`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/service_ops/migrations/0004_add_market_data_parity_snapshot.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/service_ops/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -3525,6 +3530,7 @@ Generated at: `2026-05-17 20:46:36`
 - Classes:
   - `ConfigChangeAudit` -> methods: `__str__`
   - `CustomSymbolGroup` -> methods: `__str__`, `clean_symbols`, `group_id`
+  - `MarketDataParitySnapshot` -> methods: `__str__`
   - `OwnershipRecord` -> methods: `__str__`, `get_write_block_reason`, `is_writable`
   - `ScrapeMatrix` -> methods: `__str__`, `progress_pct`
   - `ScrapeMatrixCell` -> methods: `__str__`
@@ -3594,7 +3600,7 @@ Generated at: `2026-05-17 20:46:36`
 ### `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
 
 - Classes:
-  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_observability_endpoint_returns_backlog_fail_rate_and_starvation`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_observability_endpoint_matches_soc_alias`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_registry_summary_endpoint_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_registry_detail_endpoint_returns_demand_sources_coverage_and_queue_tier`, `test_registry_reconcile_preview_flags_drift_without_mutating_registry`, `test_registry_summary_endpoint_returns_foundation_aggregates`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_audit_returns_paginated_change_history`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`, `test_runtime_config_preview_validates_without_saving`
+  - `DataOpsDomainApiTestCase` -> methods: `test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps`, `test_observability_endpoint_returns_backlog_fail_rate_and_starvation`, `test_observability_parity_history_prefers_persisted_snapshot_store`, `test_operator_canonical_dataops_routes_appear_in_openapi_schema`, `test_operator_canonical_observability_endpoint_matches_soc_alias`, `test_operator_canonical_planner_preview_matches_soc_alias`, `test_operator_canonical_registry_summary_endpoint_matches_soc_alias`, `test_operator_canonical_runtime_config_endpoint_applies_market_data_config`, `test_operator_canonical_runtime_config_endpoint_matches_soc_alias`, `test_planner_preview_endpoint_returns_missing_only_plan_and_skips`, `test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped`, `test_planner_run_endpoint_creates_audited_manual_on_demand_run`, `test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution`, `test_queue_tiers_endpoint_uses_current_matrix_runtime_config_overrides`, `test_registry_detail_endpoint_returns_demand_sources_coverage_and_queue_tier`, `test_registry_reconcile_preview_flags_drift_without_mutating_registry`, `test_registry_summary_endpoint_returns_foundation_aggregates`, `test_run_logs_endpoint_returns_paginated_market_data_parent_runs`, `test_runtime_config_audit_returns_paginated_change_history`, `test_runtime_config_endpoint_applies_market_data_config_with_ownership_payload`, `test_runtime_config_get_endpoint_returns_current_config_and_ownership_payload`, `test_runtime_config_preview_validates_without_saving`
   - `MatrixDomainApiTestCase` -> methods: `test_matrix_providers_reflect_active_cycle`, `test_matrix_routes_appear_in_openapi_schema`, `test_start_monitor_and_abort_matrix_cycle`
   - `OverviewDomainApiTestCase` -> methods: `test_overview_routes_appear_in_openapi_schema`, `test_overview_summary_endpoint_returns_grouped_health_snapshot`, `test_service_health_check_endpoint_queues_manual_probe_run_log`
   - `PrefetchDomainApiTestCase` -> methods: `test_apply_prefetch_config_updates_schedule_and_universe`, `test_prefetch_apply_alias_and_ownership_endpoint_match_contract`, `test_prefetch_default_config_response_has_stable_metadata`, `test_prefetch_routes_appear_in_openapi_schema`, `test_prefetch_warm_now_queues_run_log`, `test_profiles_cache_and_purge_endpoints_return_contract`
@@ -3657,6 +3663,7 @@ Generated at: `2026-05-17 20:46:36`
 
 - Classes:
   - `ConfigChangeAuditModelTestCase` -> methods: `setUp`, `test_config_change_audit_persists_before_and_after_snapshots`
+  - `MarketDataParitySnapshotModelTestCase` -> methods: `setUp`, `test_unique_scheduler_task_id_and_window_hours`
   - `OwnershipRecordModelTestCase` -> methods: `test_ownership_record_writability_and_block_reason`
   - `ScrapeMatrixModelTestCase` -> methods: `test_scrape_matrix_progress_pct_and_cell_string`
   - `ServiceConfigModelTestCase` -> methods: `setUp`, `test_applied_at_is_set_on_create`, `test_new_current_config_marks_previous_config_inactive`

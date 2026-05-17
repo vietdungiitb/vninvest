@@ -2,6 +2,33 @@
 
 ---
 
+## 2026-05-17 | CPS P14 - append-only parity snapshot store
+
+### Files changed in this session
+- `packages/core/backend/src/service_ops/models.py`
+- `packages/core/backend/src/service_ops/migrations/0004_add_market_data_parity_snapshot.py`
+- `packages/core/backend/src/service_ops/dataops_market_data.py`
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_models.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py`
+- `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md`
+- `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chot persistence append-only cho parity snapshots de observability co nguon lich su on dinh hon metadata run-log va giu backward compatibility qua fallback.
+
+### Validation snapshot
+- `manage.py test service_ops.tests.test_soc_models service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (83 tests)
+- `scripts/ops/generate_module_tree.py` ✅ (`1211` modules)
+- `./start_dev.ps1` smoke checks + queue drift check ✅
+
+---
+
 ## 2026-05-17 | CPS P13 - persisted parity snapshots
 
 ### Files changed in this session

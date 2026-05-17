@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | CPS P14 - append-only parity snapshot store | backend/docs
+
+## All Modified Files (13 files)
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/models.py` | Added append-only model `MarketDataParitySnapshot` for dedicated parity persistence |
+| `packages/core/backend/src/service_ops/migrations/0004_add_market_data_parity_snapshot.py` | Added schema migration for parity snapshot table, indexes, and uniqueness guard |
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | Added parity snapshot persistence helper + persisted-table parity history resolver with metadata fallback |
+| `packages/core/backend/src/service_ops/tasks.py` | Scheduler now persists parity snapshots into append-only table each cycle |
+| `packages/core/backend/src/service_ops/tests/test_soc_models.py` | Added model-level uniqueness regression for `(scheduler_task_id, window_hours)` |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Added scheduler regression asserting append-only snapshot rows are written |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` | Added observability regression asserting parity_history can be served from persisted snapshot store |
+| `docs/TASKBOARD_COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_20260517.md` | Added and marked P14 DONE |
+| `docs/COORDINATED_PARALLEL_SCRAPING_MARKET_DATA_BACKFILL_EXECUTION_EVIDENCE_TEMPLATE_20260517.md` | Added concrete P14 execution evidence snapshot |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for P14 completion |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+
+## Validation
+- `Set-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test service_ops.tests.test_soc_models service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` ✅ (83 tests passed)
+- `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` ✅ regenerated (`1211` modules)
+- `Set-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1` ✅ runtime refreshed; queue drift check pass; smoke checks: Core API health OK, Frontend health OK
+
+## Residual risk
+- Append-only parity table chua co retention pruning policy; co nguy co growth theo thoi gian neu khong bo sung cleanup job.
+
 # 2026-05-17 | CPS P13 - persisted parity snapshots | backend/docs
 
 ## All Modified Files (9 files)

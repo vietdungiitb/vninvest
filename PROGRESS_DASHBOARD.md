@@ -1,3 +1,21 @@
+# 2026-05-17 — CPS P14 complete: append-only parity snapshot store ✅
+
+Status: **✅ dedicated append-only parity table introduced** | **✅ scheduler persists snapshots to table** | **✅ observability reads table-first with metadata fallback**
+
+## What changed
+- Added `MarketDataParitySnapshot` model and migration to persist parity snapshots independently from run-log metadata.
+- Queue-tier scheduler now writes parity snapshot records per cycle (24h + 72h windows).
+- DataOps observability parity-history now prefers persisted table reads and falls back to metadata history only when table data is absent.
+- Added regressions for model uniqueness, scheduler persistence path, and API contract from persisted snapshots.
+
+## Validation
+- `manage.py test service_ops.tests.test_soc_models service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` -> **83 passed** ✅
+- `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
+- `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
+
+## Residual risk
+- Table retention lifecycle/chinh sach pruning chua duoc bo sung; can them cleanup policy o slice tiep theo de kiem soat growth.
+
 # 2026-05-17 — CPS P13 complete: persisted parity snapshots ✅
 
 Status: **✅ scheduler now emits parity_snapshot metadata** | **✅ observability history prefers persisted source** | **✅ focused backend + runtime gates passed**

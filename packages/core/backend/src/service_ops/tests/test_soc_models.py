@@ -1,10 +1,12 @@
 """Model coverage for the current SOC schema."""
 
+from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
 from service_ops.models import (
     ConfigChangeAudit,
+    MarketDataParitySnapshot,
     OwnershipRecord,
     ScrapeMatrix,
     ScrapeMatrixCell,
@@ -129,6 +131,36 @@ class ServiceRunLogModelTestCase(TestCase):
         self.assertEqual(success_log.output_summary['processed'], 10)
         self.assertEqual(failed_log.error_detail, 'Connection timeout')
         self.assertIn('run_log_test_service run', str(success_log))
+
+
+class MarketDataParitySnapshotModelTestCase(TestCase):
+    def setUp(self):
+        self.service = ServiceDefinition.objects.create(
+            service_key='parity_snapshot_test_service',
+            name='Parity Snapshot Test Service',
+            domain='matrix',
+            description='Parity snapshot test service',
+            owner_team='core',
+            tags=[],
+        )
+
+    def test_unique_scheduler_task_id_and_window_hours(self):
+        MarketDataParitySnapshot.objects.create(
+            service=self.service,
+            scheduler_task_id='sched-001',
+            window_hours=24,
+            strict_fresh_parity=0.99,
+            fresh_or_warm_parity=1.0,
+        )
+
+        with self.assertRaises(IntegrityError):
+            MarketDataParitySnapshot.objects.create(
+                service=self.service,
+                scheduler_task_id='sched-001',
+                window_hours=24,
+                strict_fresh_parity=0.95,
+                fresh_or_warm_parity=0.97,
+            )
 
 
 class OwnershipRecordModelTestCase(TestCase):

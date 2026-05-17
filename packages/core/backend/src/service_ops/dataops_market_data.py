@@ -7,6 +7,7 @@ from datetime import timedelta
 import logging
 
 from django.db.models import Count, Exists, Max, OuterRef, Q
+from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 
 from market_data.global_symbol_registry import build_system_default_source_ref, sync_system_default_symbol_group
@@ -14,8 +15,7 @@ from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, G
 from market_data.vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
 
 from .domain_configs import MarketDataRuntimeConfig
-from .models import ServiceConfig, ServiceDefinition
-from .models import ServiceRunLog
+from .models import MarketDataParitySnapshot, ServiceConfig, ServiceDefinition, ServiceRunLog
 from .registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 
 
@@ -442,6 +442,43 @@ def build_market_data_parity_snapshot(*, sample_size: int = 100) -> dict[str, ob
     }
 
 
+def persist_market_data_parity_snapshot(
+    *,
+    service: ServiceDefinition,
+    scheduler_task_id: str,
+    parity_snapshot: dict[str, object],
+) -> None:
+    normalized_task_id = str(scheduler_task_id or '').strip()
+
+    captured_at = parse_datetime(str(parity_snapshot.get('captured_at') or ''))
+    if captured_at is None:
+        captured_at = timezone.now()
+    elif timezone.is_naive(captured_at):
+        captured_at = timezone.make_aware(captured_at, timezone.get_current_timezone())
+
+    if not normalized_task_id:
+        normalized_task_id = f'manual-{captured_at.isoformat()}'
+
+    for window_key, window_hours in (('window_24h', 24), ('window_72h', 72)):
+        payload = dict(parity_snapshot.get(window_key) or {})
+        MarketDataParitySnapshot.objects.update_or_create(
+            scheduler_task_id=normalized_task_id,
+            window_hours=window_hours,
+            defaults={
+                'service': service,
+                'sample_size': int(payload.get('sample_size') or 100),
+                'evaluated_symbols': int(payload.get('evaluated_symbols') or 0),
+                'strict_fresh_count': int(payload.get('strict_fresh_count') or 0),
+                'fresh_or_warm_count': int(payload.get('fresh_or_warm_count') or 0),
+                'strict_fresh_parity': float(payload.get('strict_fresh_parity') or 0.0),
+                'fresh_or_warm_parity': float(payload.get('fresh_or_warm_parity') or 0.0),
+                'strict_met': bool(payload.get('strict_met', False)),
+                'relaxed_met': bool(payload.get('relaxed_met', False)),
+                'captured_at': captured_at,
+            },
+        )
+
+
 def _build_daily_parity_gate_history(*, hours: int, sample_size: int = 100, points: int = 7) -> list[dict[str, object]]:
     normalized_points = max(int(points or 0), 1)
     history = []
@@ -460,6 +497,24 @@ def _build_daily_parity_gate_history(*, hours: int, sample_size: int = 100, poin
             'evaluated_symbols': int(window_data.get('evaluated_symbols') or 0),
         })
     return history
+
+
+def _build_parity_history_from_persisted_snapshots(*, window_hours: int, points: int = 7) -> list[dict[str, object]]:
+    normalized_points = max(int(points or 0), 1)
+    snapshots = list(
+        MarketDataParitySnapshot.objects.filter(window_hours=int(window_hours)).order_by('-captured_at', '-id')[:normalized_points]
+    )
+    return [
+        {
+            'sequence': index,
+            'captured_at': snapshot.captured_at.isoformat() if snapshot.captured_at else None,
+            'end_offset_hours': 0,
+            'strict_fresh_parity': float(snapshot.strict_fresh_parity or 0.0),
+            'fresh_or_warm_parity': float(snapshot.fresh_or_warm_parity or 0.0),
+            'evaluated_symbols': int(snapshot.evaluated_symbols or 0),
+        }
+        for index, snapshot in enumerate(snapshots)
+    ]
 
 
 def _build_parity_history_from_scheduler_logs(*, window_key: str, points: int = 7) -> list[dict[str, object]]:
@@ -592,8 +647,12 @@ def build_market_data_observability_summary() -> dict[str, object]:
         'window_24h': dict(parity_snapshot.get('window_24h') or {}),
         'window_72h': dict(parity_snapshot.get('window_72h') or {}),
     }
-    persisted_history_24h = _build_parity_history_from_scheduler_logs(window_key='window_24h', points=7)
-    persisted_history_72h = _build_parity_history_from_scheduler_logs(window_key='window_72h', points=7)
+    persisted_history_24h = _build_parity_history_from_persisted_snapshots(window_hours=24, points=7)
+    persisted_history_72h = _build_parity_history_from_persisted_snapshots(window_hours=72, points=7)
+    if not persisted_history_24h:
+        persisted_history_24h = _build_parity_history_from_scheduler_logs(window_key='window_24h', points=7)
+    if not persisted_history_72h:
+        persisted_history_72h = _build_parity_history_from_scheduler_logs(window_key='window_72h', points=7)
     parity_history = {
         'window_24h': persisted_history_24h or _build_daily_parity_gate_history(hours=24, sample_size=100, points=7),
         'window_72h': persisted_history_72h or _build_daily_parity_gate_history(hours=72, sample_size=100, points=7),

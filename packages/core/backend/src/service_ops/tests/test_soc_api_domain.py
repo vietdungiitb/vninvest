@@ -15,6 +15,7 @@ from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, G
 from signal_intelligence.models import UnifiedAlert
 from service_ops.models import (
     ConfigChangeAudit,
+    MarketDataParitySnapshot,
     ScrapeMatrix,
     ServiceConfig,
     ServiceDefinition,
@@ -1149,6 +1150,35 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
             self.assertEqual(canonical_item['is_starved'], alias_item['is_starved'])
             self.assertEqual(canonical_item['poll_interval_seconds'], alias_item['poll_interval_seconds'])
             self.assertEqual(canonical_item['threshold_seconds'], alias_item['threshold_seconds'])
+
+    def test_observability_parity_history_prefers_persisted_snapshot_store(self):
+        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        snapshot_time = timezone.now() - timezone.timedelta(minutes=5)
+        MarketDataParitySnapshot.objects.create(
+            service=matrix_service,
+            scheduler_task_id='persisted-parity-001',
+            window_hours=24,
+            sample_size=100,
+            evaluated_symbols=50,
+            strict_fresh_count=49,
+            fresh_or_warm_count=50,
+            strict_fresh_parity=0.98,
+            fresh_or_warm_parity=1.0,
+            strict_met=False,
+            relaxed_met=True,
+            captured_at=snapshot_time,
+        )
+
+        response = self.client.get('/api/soc/dataops/observability/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('window_24h', payload['parity_history'])
+        self.assertGreaterEqual(len(payload['parity_history']['window_24h']), 1)
+        first_point = payload['parity_history']['window_24h'][0]
+        self.assertEqual(first_point['captured_at'], snapshot_time.isoformat())
+        self.assertAlmostEqual(first_point['strict_fresh_parity'], 0.98)
+        self.assertAlmostEqual(first_point['fresh_or_warm_parity'], 1.0)
 
     def test_run_logs_endpoint_returns_paginated_market_data_parent_runs(self):
         matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
