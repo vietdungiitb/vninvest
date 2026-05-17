@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-17 | VNBroker i18n raw-key fix
+
+### Files changed in this session
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sửa lỗi hiển thị raw i18n keys ở section per-provider của VNBroker bằng cách bổ sung đầy đủ key locale còn thiếu.
+
+### Validation snapshot
+- `npm run build` (frontend) ✅
+- `./start_dev.ps1` smoke checks ✅
+
+---
+
 ## 2026-05-17 | VNBroker planning docs archival
 
 ### Files changed in this session

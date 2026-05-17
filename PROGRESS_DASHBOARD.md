@@ -1,3 +1,20 @@
+# 2026-05-17 — VNBroker i18n per-provider section fixed ✅
+
+Status: **✅ raw i18n keys no longer shown in VNBroker per-provider UI** | **✅ runtime refreshed**
+
+## What changed
+- Added missing locale keys for VNBroker per-provider section in both Vietnamese and English dictionaries.
+- Fixed labels that were previously rendered as raw keys (title/hint/retry section/rate-limit section/clear override).
+
+## Validation
+- `get_errors` on touched files → **no errors** ✅
+- `npm run build` (frontend) → **compiled successfully** ✅
+- `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
+- `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
+
+## Residual risk
+- None.
+
 # 2026-05-17 — VNBroker design docs archival synced to dev ✅
 
 Status: **✅ 3 VNBroker planning documents now tracked in git** | **✅ anti-loss archival completed**

@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | VNBroker i18n raw-key fix for per-provider section | frontend/docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `frontend/src/i18n/vi.js` | Added missing VNBroker keys: `per_provider_config_title`, `per_provider_config_hint`, `retry_section`, `rate_limit_section`, `clear_provider_override` |
+| `frontend/src/i18n/en.js` | Added matching EN keys to keep locale parity |
+| `module_tree_full.md` | Regenerated module tree (`1211` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for i18n fix |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified files list for this slice |
+
+## Validation
+- `get_errors` on touched files ✅ no errors
+- `Push-Location ./frontend; npm run build; Pop-Location` ✅ build passed
+- `./start_dev.ps1` ✅ runtime refreshed; smoke checks: Core API health OK, Frontend health OK
+- `.\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` ✅ regenerated (`1211` modules)
+
+## Residual risk
+- None. Issue came from missing locale keys and is fully resolved at source.
+
 # 2026-05-17 | VNBroker planning docs archival and tracking sync | docs
 
 ## All Modified Files (6 files)
