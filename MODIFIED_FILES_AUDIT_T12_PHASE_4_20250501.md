@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-05-17 | VNBroker planning docs archival
+
+### Files changed in this session
+- `docs/VNBROKER_OPTIMAL_CONFIG_SAVE_IMPLEMENTATION_PLAN_20260517.md`
+- `docs/VNBROKER_PANEL_UX_AUDIT_AND_IMPROVEMENT_PLAN_20260517.md`
+- `docs/VNBROKER_PER_PROVIDER_CONFIG_IMPLEMENTATION_20260517.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Đưa 3 tài liệu VNBroker vào git để tránh thất lạc ngữ cảnh thiết kế/triển khai đã thống nhất.
+
+### Validation snapshot
+- `git status --short` xác nhận 3 file docs đã được tracking trong commit archival ✅
+
+---
+
 ## 2026-05-17 | VNBroker optimized benchmark flow recovery (per-provider auto-tuning + preview-first apply)
 
 ### Files changed in this session

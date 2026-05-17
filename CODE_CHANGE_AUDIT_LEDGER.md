@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+# 2026-05-17 | VNBroker planning docs archival and tracking sync | docs
+
+## All Modified Files (6 files)
+| File | Change |
+|------|--------|
+| `docs/VNBROKER_OPTIMAL_CONFIG_SAVE_IMPLEMENTATION_PLAN_20260517.md` | Added to git tracking to preserve agreed benchmark-to-optimal-config implementation plan |
+| `docs/VNBROKER_PANEL_UX_AUDIT_AND_IMPROVEMENT_PLAN_20260517.md` | Added to git tracking to preserve VNBroker UX audit and improvement roadmap |
+| `docs/VNBROKER_PER_PROVIDER_CONFIG_IMPLEMENTATION_20260517.md` | Added to git tracking to preserve per-provider implementation record |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this archival tracking entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for docs archival slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified files list for this slice |
+
+## Validation
+- `git status --short` before commit confirmed only targeted docs remained untracked ✅
+- No runtime code changed in this slice, so build/runtime refresh is not required ✅
+
+## Residual risk
+- None. This slice only archives already-created planning documents for auditability.
+
 # 2026-05-17 | VNBroker optimized benchmark-to-config flow recovery (all providers + preview-first apply) | frontend/docs
 
 ## All Modified Files (7 files)

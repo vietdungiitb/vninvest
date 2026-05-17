@@ -1,3 +1,18 @@
+# 2026-05-17 — VNBroker design docs archival synced to dev ✅
+
+Status: **✅ 3 VNBroker planning documents now tracked in git** | **✅ anti-loss archival completed**
+
+## What changed
+- Added previously untracked VNBroker design/plan documents into repository tracking so implementation context is not lost between sessions.
+- Synced governance logs (`CODE_CHANGE_AUDIT_LEDGER.md`, modified-files audit list) for this archival slice.
+
+## Validation
+- `git status --short` confirmed docs were previously untracked and are now staged for archival commit ✅
+- No code/runtime changes in this slice, so build/restart was intentionally skipped ✅
+
+## Residual risk
+- None.
+
 # 2026-05-17 — VNBroker optimized benchmark flow recovered and aligned ✅
 
 Status: **✅ benchmark -> optimized candidate synthesis completed** | **✅ per-provider settings now generated for all benchmarked providers** | **✅ flow enforced as Preview -> Apply (no direct apply)** | **✅ runtime refreshed**
