@@ -1,91 +1,160 @@
 /**
- * SM-P4.3 — DashboardPage
- * Trang tổng quan chính, hiển thị danh mục và watchlist từ core API.
- * Không dùng JSX — tuân theo convention packages/web (createElement).
+ * DashboardPage — DM-03
+ *
+ * Trang tổng quan SaaS native. Không dùng JSX.
+ * Nhận 5 render-prop slot từ PackageDashboardHost (frontend/src) để hiển thị
+ * các component legacy mà không import trực tiếp.
+ *
+ * Slots:
+ *   renderStats({ summary, holdings, loading, realtimeBreadth, onRefresh })
+ *   renderDeck({ holdings, technicals, analytics, quotesBySymbol, alerts, loading })
+ *   renderAlerts({ alertProps, loading })
+ *   renderHeatmap({ holdings, quotesBySymbol, technicals, analytics, loading })
+ *   renderBubble({ holdings, quotesBySymbol, technicals, loading })
  */
-import { createElement, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
 
-const DEFAULT_ENV = {};
 const e = createElement;
+const NOOP = () => null;
 
-function useCoreDashboard({ env = DEFAULT_ENV } = {}) {
-  const [state, setState] = useState({ loading: true, error: null, portfolios: [], watchlists: [], profile: null });
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    async function load() {
-      try {
-        const adapter = coreApiAdapter({ env });
-        const [portfoliosRes, watchlistsRes, profileRes] = await Promise.all([
-          adapter.getPortfolios(),
-          adapter.getWatchlists(),
-          adapter.getUserProfile(),
-        ]);
-        if (!mountedRef.current) return;
-        setState({
-          loading: false, error: null,
-          portfolios: portfoliosRes?.results ?? portfoliosRes ?? [],
-          watchlists: watchlistsRes?.results ?? watchlistsRes ?? [],
-          profile: profileRes ?? null,
-        });
-      } catch (err) {
-        if (!mountedRef.current) return;
-        setState((s) => ({ ...s, loading: false, error: err?.message || "Không thể tải dữ liệu tổng quan." }));
-      }
-    }
-    load();
-    return () => { mountedRef.current = false; };
-  }, [env]);
-
-  return state;
-}
-
-export function DashboardPage({ env = DEFAULT_ENV, className = "" }) {
-  const { loading, error, portfolios, watchlists, profile } = useCoreDashboard({ env });
-
-  if (loading) return e("div", { className: "core-dashboard-page " + className },
-    e("p", { className: "core-loading" }, "Đang tải tổng quan…")
-  );
-
-  if (error) return e("div", { className: "core-dashboard-page " + className },
-    e("p", { className: "core-error" }, error)
-  );
-
-  return e("div", { className: "core-dashboard-page " + className },
-    e("header", { className: "core-dashboard-header" },
-      e("h1", null, "Tổng quan"),
-      profile ? e("span", { className: "core-dashboard-welcome" },
-        "Xin chào, " + (profile.display_name || profile.username)
-      ) : null
-    ),
-    e("section", { className: "core-dashboard-section" },
-      e("h2", null, "Danh mục (" + portfolios.length + ")"),
-      portfolios.length === 0
-        ? e("p", { className: "core-empty" }, "Chưa có danh mục nào.")
-        : e("ul", { className: "core-portfolio-list" },
-            portfolios.map((p) =>
-              e("li", { key: p.id ?? p.name, className: "core-portfolio-item" },
-                e("span", { className: "core-portfolio-name" }, p.name),
-                e("span", { className: "core-portfolio-currency" }, p.currency),
-                e("span", { className: "core-portfolio-status core-status-" + p.status }, p.status)
-              )
-            )
-          )
-    ),
-    e("section", { className: "core-dashboard-section" },
-      e("h2", null, "Danh sách theo dõi (" + watchlists.length + ")"),
-      watchlists.length === 0
-        ? e("p", { className: "core-empty" }, "Chưa có danh sách theo dõi nào.")
-        : e("ul", { className: "core-watchlist-list" },
-            watchlists.map((w) =>
-              e("li", { key: w.id ?? w.name, className: "core-watchlist-item" },
-                e("span", { className: "core-watchlist-name" }, w.name)
-              )
-            )
-          )
+function LoadingSkeleton({ rows = 3 }) {
+  return e(
+    "div",
+    { className: "core-dashboard-skeleton" },
+    ...Array.from({ length: rows }, (_, i) =>
+      e("div", { key: i, className: "core-dashboard-skeleton-row" })
     )
   );
 }
+
+function ErrorBanner({ message }) {
+  return e(
+    "div",
+    { className: "core-dashboard-error" },
+    e("span", { className: "core-dashboard-error-icon" }, "⚠"),
+    e("span", null, message || "Không thể tải dữ liệu tổng quan.")
+  );
+}
+
+/**
+ * @param {{
+ *   portfolioId: string|number|null,
+ *   enabled?: boolean,
+ *   quotesBySymbol?: object,
+ *   alerts?: object[],
+ *   darkFlowAlerts?: object[],
+ *   realtimeBreadth?: { up: number, down: number, flat: number },
+ *   alertProps?: object,
+ *   renderStats?: function,
+ *   renderDeck?: function,
+ *   renderAlerts?: function,
+ *   renderHeatmap?: function,
+ *   renderBubble?: function,
+ *   className?: string,
+ * }} props
+ */
+export function DashboardPage({
+  portfolioId,
+  enabled = true,
+  quotesBySymbol = {},
+  alerts = [],
+  darkFlowAlerts = [],
+  realtimeBreadth = { up: 0, down: 0, flat: 0 },
+  alertProps = {},
+  renderStats = NOOP,
+  renderDeck = NOOP,
+  renderAlerts = NOOP,
+  renderHeatmap = NOOP,
+  renderBubble = NOOP,
+  onDataReady = null,
+  className = "",
+}) {
+  const {
+    loading,
+    error,
+    holdings,
+    summary,
+    analytics,
+    technicals,
+    trackedSymbols,
+    watchlistGroups,
+    refresh,
+  } = useCoreDashboardData({ portfolioId, enabled });
+
+  // Notify parent (PackageDashboardHost) when core data is ready
+  const prevHoldingsRef = useRef(null);
+  useEffect(() => {
+    if (!loading && !error && onDataReady && holdings !== prevHoldingsRef.current) {
+      prevHoldingsRef.current = holdings;
+      onDataReady({ holdings, trackedSymbols, watchlistGroups });
+    }
+  }, [loading, error, holdings, trackedSymbols, watchlistGroups, onDataReady]);
+
+  if (!enabled || !portfolioId) {
+    return e(
+      "div",
+      { className: "core-dashboard-page core-dashboard-page--empty " + className },
+      e("p", { className: "core-dashboard-empty-hint" }, "Chọn danh mục để xem tổng quan.")
+    );
+  }
+
+  if (error) {
+    return e(
+      "div",
+      { className: "core-dashboard-page " + className },
+      e(ErrorBanner, { message: error })
+    );
+  }
+
+  return e(
+    "div",
+    { className: "core-dashboard-page " + className },
+
+    // ── Slot: Stats header ────────────────────────────────────────────────
+    e(
+      "div",
+      { className: "core-dashboard-slot core-dashboard-slot--stats" },
+      loading
+        ? e(LoadingSkeleton, { rows: 1 })
+        : renderStats({ summary, holdings, loading, realtimeBreadth, onRefresh: refresh })
+    ),
+
+    // ── Slot: Position deck ───────────────────────────────────────────────
+    e(
+      "div",
+      { className: "core-dashboard-slot core-dashboard-slot--deck" },
+      loading
+        ? e(LoadingSkeleton, { rows: 4 })
+        : renderDeck({ holdings, technicals, analytics, quotesBySymbol, alerts, loading })
+    ),
+
+    // ── Slot: Alert center ────────────────────────────────────────────────
+    e(
+      "div",
+      { className: "core-dashboard-slot core-dashboard-slot--alerts" },
+      renderAlerts({ alertProps, loading })
+    ),
+
+    // ── Slot: Portfolio heatmap ───────────────────────────────────────────
+    e(
+      "div",
+      { className: "core-dashboard-slot core-dashboard-slot--heatmap" },
+      loading
+        ? e(LoadingSkeleton, { rows: 3 })
+        : renderHeatmap({ holdings, quotesBySymbol, technicals, analytics, loading })
+    ),
+
+    // ── Slot: Bubble / position bubble ───────────────────────────────────
+    e(
+      "div",
+      { className: "core-dashboard-slot core-dashboard-slot--bubble" },
+      loading
+        ? e(LoadingSkeleton, { rows: 2 })
+        : renderBubble({ holdings, quotesBySymbol, technicals, loading })
+    )
+  );
+}
+
