@@ -37,7 +37,16 @@ logger = logging.getLogger(__name__)
 
 QUEUE_TIER_STALE_INFLIGHT_MULTIPLIER = 6
 QUEUE_TIER_STALE_INFLIGHT_MIN_SECONDS = 900
-QUEUE_TIER_ORPHAN_GRACE_SECONDS = 60
+# Increased from 60 → 300s: tasks sitting in a backlogged queue easily exceed 60s before
+# being prefetched by a worker. At 60s the recover monitor falsely marked them as orphans,
+# creating a cascade of 21k+ zombie tasks. 300s gives enough time for the queue to drain.
+QUEUE_TIER_ORPHAN_GRACE_SECONDS = 300
+# After an orphan-recovery event, wait at least this many seconds before dispatching again
+# to avoid immediately re-queuing into a still-backlogged queue.
+QUEUE_TIER_RECOVERY_COOLDOWN_SECONDS = 120
+# Maximum number of pending tasks in a target queue before the scheduler skips dispatching
+# to that queue. Prevents unbounded queue growth when workers can't keep up.
+REALTIME_PREFETCH_MAX_QUEUE_DEPTH = 20
 STRICT_FRESH_MODE_QUEUE_TIERS = {
     'hot_user_demand',
     'warm_liquid_market',
@@ -387,6 +396,57 @@ def _get_queue_tier_stale_timeout_seconds(poll_interval_seconds: int) -> int:
     )
 
 
+def _task_in_redis_queue(task_id: str, queue_names: tuple[str, ...]) -> bool:
+    """Scan named Redis queues for a pending task by id.
+
+    Celery inspect only sees tasks that have already been prefetched by a worker
+    (active / reserved / scheduled). Tasks sitting in the Redis list waiting to be
+    fetched are invisible to inspect. This function fills that gap by scanning the
+    raw queue lists for the task UUID string.
+
+    Only safe when queue depths are bounded by the backpressure guard
+    (REALTIME_PREFETCH_MAX_QUEUE_DEPTH).
+    """
+    try:
+        import redis as redis_module
+        from django.conf import settings
+
+        broker_url = getattr(settings, 'CELERY_BROKER_URL', None) or getattr(settings, 'REDIS_URL', None)
+        if not broker_url:
+            return False
+
+        client = redis_module.from_url(broker_url)
+        task_id_bytes = task_id.encode('ascii', errors='replace')
+        for queue_name in queue_names:
+            depth = client.llen(queue_name)
+            if not depth:
+                continue
+            messages = client.lrange(queue_name, 0, depth - 1)
+            for msg in messages:
+                if task_id_bytes in msg:
+                    return True
+        return False
+    except Exception as exc:
+        logger.debug('_task_in_redis_queue scan failed for task_id=%s: %s', task_id, exc)
+        return False
+
+
+def _get_redis_queue_depth(queue_name: str) -> int:
+    """Return the current number of pending tasks in a Redis Celery queue list."""
+    try:
+        import redis as redis_module
+        from django.conf import settings
+
+        broker_url = getattr(settings, 'CELERY_BROKER_URL', None) or getattr(settings, 'REDIS_URL', None)
+        if not broker_url:
+            return 0
+        client = redis_module.from_url(broker_url)
+        return int(client.llen(queue_name) or 0)
+    except Exception as exc:
+        logger.debug('_get_redis_queue_depth failed for queue=%s: %s', queue_name, exc)
+        return 0
+
+
 def _is_celery_task_live(task_id: str | None) -> bool | None:
     normalized_task_id = str(task_id or '').strip()
     if not normalized_task_id:
@@ -410,7 +470,22 @@ def _is_celery_task_live(task_id: str | None) -> bool | None:
                     if task_value:
                         live_task_ids.add(str(task_value).strip())
 
-        return normalized_task_id in live_task_ids
+        if normalized_task_id in live_task_ids:
+            return True
+
+        # Inspect only sees prefetched tasks. If the task is still sitting in the Redis
+        # queue waiting to be fetched, it is invisible to inspect but it is alive.
+        # Check the raw Redis queue lists before concluding the task is an orphan.
+        if _task_in_redis_queue(normalized_task_id, (
+            'realtime_prefetch',
+            'manual_on_demand',
+            'enrichment_offhours',
+            'analytics_heavy',
+            'celery',
+        )):
+            return True
+
+        return False
     except Exception as exc:
         logger.debug(
             'queue_tier_scheduler celery inspect failed while checking task_id=%s: %s',
@@ -569,8 +644,19 @@ def _queue_tier_due(service: ServiceDefinition, tier_name: str, poll_interval_se
         return True, None
     if latest_run.status in {'queued', 'running'}:
         if _recover_stale_queue_tier_run(latest_run, tier_name, poll_interval_seconds):
-            return True, None
+            # Do NOT dispatch immediately after a recovery — wait for the next beat cycle.
+            # Dispatching right away risks sending another task into a still-backlogged queue.
+            return False, 'post_recovery_cooldown'
         return False, 'inflight'
+    # Apply an extra cooldown window when the last run was recovered as a missing-worker orphan.
+    # This prevents the scheduler from hammering the queue right after clearing an orphan.
+    recovery_action = dict(latest_run.output_summary or {}).get('recovery_action', '')
+    if recovery_action == 'queue_tier_missing_worker_task':
+        finished_at = latest_run.finished_at or latest_run.started_at
+        if finished_at is not None:
+            elapsed_since_recovery = max((timezone.now() - finished_at).total_seconds(), 0.0)
+            if elapsed_since_recovery < QUEUE_TIER_RECOVERY_COOLDOWN_SECONDS:
+                return False, 'recovery_cooldown'
     elapsed_seconds = max((timezone.now() - latest_run.started_at).total_seconds(), 0.0)
     if elapsed_seconds < max(int(poll_interval_seconds or 0), 0):
         return False, 'cooldown'
@@ -631,6 +717,32 @@ def run_market_data_queue_tier_scheduler(self):
             skipped_tiers.append({
                 'tier': tier_name,
                 'reason': 'no_symbols',
+                'poll_interval_seconds': tier_config.poll_interval_seconds,
+                'max_batch_size': tier_config.max_batch_size,
+                'max_dispatch_per_cycle': dispatch_quota,
+                'skipped_by_quota': 0,
+            })
+            continue
+
+        # Backpressure guard: skip dispatch if the target queue is already backlogged.
+        # An unbounded queue causes tasks to sit for minutes/hours before execution,
+        # which triggers orphan-recovery and creates a vicious cycle of failed runs.
+        planner_queue_name = get_market_data_queue_tier_execution_queue(tier_name)
+        queue_depth = _get_redis_queue_depth(planner_queue_name)
+        if queue_depth > REALTIME_PREFETCH_MAX_QUEUE_DEPTH:
+            logger.warning(
+                'queue_tier_scheduler: skipping dispatch for tier=%s — queue=%s depth=%d > max=%d',
+                tier_name,
+                planner_queue_name,
+                queue_depth,
+                REALTIME_PREFETCH_MAX_QUEUE_DEPTH,
+            )
+            skipped_tiers.append({
+                'tier': tier_name,
+                'reason': 'queue_backpressure',
+                'planner_queue': planner_queue_name,
+                'queue_depth': queue_depth,
+                'max_queue_depth': REALTIME_PREFETCH_MAX_QUEUE_DEPTH,
                 'poll_interval_seconds': tier_config.poll_interval_seconds,
                 'max_batch_size': tier_config.max_batch_size,
                 'max_dispatch_per_cycle': dispatch_quota,
