@@ -362,6 +362,18 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   },
 
   /**
+   * Get the portfolio news digest used by the legacy AI sidebar.
+   * @param {object} [params]
+   * @returns {Promise<object>}
+   */
+  getPortfolioNewsDigest(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return legacyApiGet(`/stock-management/portfolio/news-digest${query ? `?${query}` : ""}`);
+  },
+
+  /**
    * Get WhaleAlertCanonical feed for a symbol.
    * Response includes cursor-pagination `next`/`previous` links.
    * @param {string} symbol
@@ -719,7 +731,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getPortfolioHoldings(portfolioId) {
     if (!portfolioId) throw new Error("portfolioId is required for getPortfolioHoldings");
-    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/holdings/`);
+    return legacyApiGet(`/portfolio/portfolios/${encodeURIComponent(portfolioId)}/holdings/`);
   },
 
   /**
@@ -729,7 +741,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getPortfolioSummary(portfolioId) {
     if (!portfolioId) throw new Error("portfolioId is required for getPortfolioSummary");
-    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/summary/`);
+    return legacyApiGet(`/portfolio/portfolios/${encodeURIComponent(portfolioId)}/summary/`);
   },
 
   /**
@@ -740,7 +752,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getPortfolioAnalytics(portfolioId, days = 30) {
     if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAnalytics");
-    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/analytics/?days=${days}`);
+    return legacyApiGet(`/portfolio/portfolios/${encodeURIComponent(portfolioId)}/analytics/?days=${days}`);
   },
 
   /**
@@ -750,7 +762,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getPortfolioTechnicals(portfolioId) {
     if (!portfolioId) throw new Error("portfolioId is required for getPortfolioTechnicals");
-    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/technicals/`);
+    return legacyApiGet(`/portfolio/portfolios/${encodeURIComponent(portfolioId)}/technicals/`);
   },
 
   /**
@@ -770,7 +782,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    * @returns {Promise<{results: object[]}>}
    */
   getTrackedSymbols() {
-    return coreGet("/workspace/tracked-symbols/");
+    return legacyApiGet("/stock-management/tracked-symbols/");
   },
 
   /**
@@ -778,7 +790,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    * @returns {Promise<{results: object[]}>}
    */
   getLegacyWatchlistGroups() {
-    return coreGet("/workspace/watchlist/groups/");
+    return legacyApiGet("/portfolio/watchlist/groups/");
   },
   };
 }

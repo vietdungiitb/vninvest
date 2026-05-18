@@ -1,5 +1,46 @@
 # Code Change Audit Ledger
 
+# 2026-05-18 | Dashboard SaaS native data bridge — legacy UI preserved
+
+## Modified Files
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/web/src/adapters/coreApiAdapter.js` | ADD — `getPortfolioNewsDigest` native bridge for legacy AI sidebar digest | Dashboard native bridge |
+| `frontend/src/api/client.js` | FIX — route portfolio/summary/holdings/analytics/technicals/tracked/watchlist/digest through core adapter while preserving `{ data }` contract | Dashboard native bridge |
+| `frontend/src/pages/modern/ModernDashboard.jsx` | FIX — remove hard gate on `activePortfolioId`, allow market feed/alerts/AI to load from tracked/watchlist universe, keep legacy UI intact | Dashboard native bridge |
+| `frontend/src/App.jsx` | FIX — remove dashboard legacy shadow route; `/dashboard` stays on legacy UI shell only | Dashboard native bridge |
+| `module_tree_full.md` | REGENERATED — module tree refreshed after dashboard bridge changes | Dashboard native bridge |
+
+## Validation
+- `npm run build` → PASS (Compiled successfully, no errors)
+- `./start_dev.ps1` → PASS (Core API health OK, Frontend health OK)
+- Browser smoke at `/dashboard` → PASS; legacy UI rendered, AI Alerts/AI News panel present, alert center and market sections active
+
+# 2026-05-18 | DM-05 hotfix — Dashboard route restored to original layout
+
+## Modified Files
+| File | Change | Slice |
+|------|--------|-------|
+| `frontend/src/App.jsx` | REVERT — `/dashboard` and `/dashboard/legacy` now both render `ModernDashboard` again so the main site matches the original legacy dashboard layout | DM-05 hotfix |
+
+## Validation
+- `npm run build` → PASS (Compiled successfully, no errors)
+- `/dashboard` route now resolves to `ModernDashboard` directly, matching the old website layout requested by the user
+- Browser smoke pending after stack refresh
+
+# 2026-05-18 | DM-05 hotfix — Dashboard portfolio route contract correction
+
+## Modified Files
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/web/src/adapters/coreApiAdapter.js` | FIX — redirect dashboard portfolio analytics + universe calls to legacy `/api/...` routes that exist in current core backend (`getPortfolioHoldings`, `getPortfolioSummary`, `getPortfolioAnalytics`, `getPortfolioTechnicals`, `getTrackedSymbols`, `getLegacyWatchlistGroups`) | DM-05 hotfix |
+
+## Validation
+- `npm run build` → PASS (Compiled successfully, no errors)
+- Root cause confirmed: `core/v1/workspace/portfolios/<id>/summary/` is not mounted in current core backend; legacy `/api/portfolio/portfolios/<id>/summary/` is mounted and now used
+- `./start_dev.ps1` → PASS (stack healthy, Core API health OK, Frontend health OK)
+- Browser smoke at `http://localhost/dashboard` → PASS, dashboard shell rendered for `admin` and no summary 404 visible
+
 # 2026-05-18 | DM-00..DM-05 — Dashboard SaaS Native Migration
 
 ## Modified Files

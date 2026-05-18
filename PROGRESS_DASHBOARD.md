@@ -1,4 +1,28 @@
+# 2026-05-18 — Dashboard SaaS native data bridge complete ✅
+
+Status: **✅ legacy UI preserved** | **✅ core-native data bridge wired** | **✅ dashboard renders without hard portfolio gate**
+
+## What changed
+- Preserved the original `ModernDashboard` UI shell and moved its data fetches to the core/native adapter path.
+- Removed the dashboard’s hard dependency on `activePortfolioId` so tracked symbols, watchlists, alert center and AI sidebar can load from the shared market universe.
+- Added native bridge for portfolio news digest and kept the existing `{ data }` contract expected by the legacy dashboard components.
+
+## Validation
+- `npm run build` → **PASS** (no errors)
+- `./start_dev.ps1` → **PASS** (Core API health OK, Frontend health OK)
+- Browser smoke at `/dashboard` → **PASS** (legacy UI visible, AI Alerts/AI News panel visible, market/alert sections active)
+
+## Residual risk
+- No portfolio holdings were present in the smoke session, so the position table stayed empty by data reality rather than render failure.
+- If future users have no tracked/watchlist universe, market/alert panels can still be sparse until seed data or portfolio selection exists.
+
 # 2026-05-18 — Dashboard SaaS Native Migration DM-00..DM-05 COMPLETE ✅
+
+## Hotfix update
+- `packages/web/src/adapters/coreApiAdapter.js` now sends dashboard portfolio analytics and universe fetches to the legacy `/api/...` routes that exist in the current core backend.
+- This removes the 404 on portfolio summary seen in `/dashboard` and keeps the DM-05 route swap intact.
+- `frontend/src/App.jsx` now routes `/dashboard` back to `ModernDashboard`, so the main dashboard matches the original legacy layout.
+- Validation completed: `npm run build` PASS; browser smoke pending after the latest route restore.
 
 Status: **✅ DM-00 Bug fixes** | **✅ DM-01 coreApiAdapter** | **✅ DM-02 useCoreDashboardData** | **✅ DM-03 DashboardPage render-props** | **✅ DM-04 PackageDashboardHost** | **✅ DM-05 Route swap**
 

@@ -189,7 +189,7 @@ export default function ModernDashboard() {
     quotesBySymbol,
     holdings,
     trackedSymbolNames,
-    enableSnapshot: isAuthenticated && Boolean(activePortfolioId),
+    enableSnapshot: isAuthenticated,
     lastEventAt,
     sourceFilter,
     severityFilter,
@@ -222,7 +222,7 @@ export default function ModernDashboard() {
 
   const requestPortfolioDigest = useCallback(async () => {
     const requestToken = fetchRequestTokenRef.current;
-    if (!isAuthenticated || !activePortfolioId) return;
+    if (!isAuthenticated) return;
     if (digest !== null || digestFetchInFlightRef.current) return;
 
     digestFetchInFlightRef.current = true;
@@ -268,9 +268,9 @@ export default function ModernDashboard() {
 
     const bulkSymbols = Array.from(symbolSet);
 
-    const analyticsResult = await Promise.allSettled([
-      getAnalytics(portfolioId),
-    ]);
+    const analyticsResult = portfolioId
+      ? await Promise.allSettled([getAnalytics(portfolioId)])
+      : [{ status: 'fulfilled', value: { data: null } }];
 
     if (fetchRequestTokenRef.current !== requestToken) {
       return;
@@ -293,6 +293,13 @@ export default function ModernDashboard() {
       setTechnicals(bulkResp.data?.technicals || []);
     } catch (bulkErr) {
       console.warn('Bulk technicals fallback to portfolio endpoint:', bulkErr);
+      if (!portfolioId) {
+        if (fetchRequestTokenRef.current !== requestToken) {
+          return;
+        }
+        setTechnicals([]);
+        return;
+      }
       try {
         const fallbackResp = await getPortfolioTechnicals(portfolioId);
         if (fetchRequestTokenRef.current !== requestToken) {
@@ -310,7 +317,7 @@ export default function ModernDashboard() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    if (!isAuthenticated || !activePortfolioId) return;
+    if (!isAuthenticated) return;
     const requestToken = fetchRequestTokenRef.current + 1;
     fetchRequestTokenRef.current = requestToken;
     clearDeferredAuxFetch();
@@ -321,9 +328,15 @@ export default function ModernDashboard() {
     digestFetchInFlightRef.current = false;
 
     try {
+      const summaryRequest = activePortfolioId
+        ? getSummary(activePortfolioId)
+        : Promise.resolve({ data: null });
+      const holdingsRequest = activePortfolioId
+        ? getHoldings(activePortfolioId)
+        : Promise.resolve({ data: [] });
       const results = await Promise.allSettled([
-        getSummary(activePortfolioId),
-        getHoldings(activePortfolioId),
+        summaryRequest,
+        holdingsRequest,
         getTrackedSymbols(),
         getWatchlistGroups(),
       ]);
@@ -378,14 +391,6 @@ export default function ModernDashboard() {
   useEffect(() => () => {
     clearDeferredAuxFetch();
   }, [clearDeferredAuxFetch]);
-
-  if (!activePortfolioId) {
-    return (
-      <div className="flex h-full items-center justify-center text-slate-500 italic">
-        Vui lòng chọn hoặc tạo danh mục để bắt đầu.
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-950 text-slate-200">

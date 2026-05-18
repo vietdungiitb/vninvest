@@ -372,9 +372,9 @@ export const deleteTransaction = (id) =>
 
 // --- Analytics APIs ---
 export const getHoldings = (portfolioId) =>
-  apiClient.get(`/portfolio/portfolios/${portfolioId}/holdings/`);
+  Promise.resolve(coreApiAdapter.getPortfolioHoldings(portfolioId)).then((data) => ({ data }));
 export const getSummary = (portfolioId) =>
-  apiClient.get(`/portfolio/portfolios/${portfolioId}/summary/`);
+  Promise.resolve(coreApiAdapter.getPortfolioSummary(portfolioId)).then((data) => ({ data }));
 export const getChartData = (portfolioId, days = 90) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/chart/?days=${days}`);
 
@@ -385,11 +385,23 @@ export const getAllocation = (portfolioId) =>
 export const getAllocationBySector = (portfolioId) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/allocation/?by=sector`);
 export const getAnalytics = (portfolioId, days = 365) =>
-  apiClient.get(`/portfolio/portfolios/${portfolioId}/analytics/?days=${days}`);
+  Promise.resolve(coreApiAdapter.getPortfolioAnalytics(portfolioId, days)).then((data) => ({ data }));
 export const getPortfolioTechnicals = (portfolioId) =>
-  apiClient.get(`/portfolio/portfolios/${portfolioId}/technicals/`);
+  Promise.resolve(coreApiAdapter.getPortfolioTechnicals(portfolioId)).then((data) => ({
+    data: { technicals: Array.isArray(data) ? data : Array.isArray(data?.technicals) ? data.technicals : Array.isArray(data?.results) ? data.results : [] },
+  }));
 export const getBulkTechnicalsBySymbols = (symbols = []) =>
-  apiClient.post('/stock-management/technicals/bulk/', { symbols });
+  Promise.resolve(coreApiAdapter.getBulkTechnicalsBySymbols(symbols)).then((data) => ({
+    data: {
+      technicals: Array.isArray(data)
+        ? data
+        : Array.isArray(data?.technicals)
+          ? data.technicals
+          : Array.isArray(data?.results)
+            ? data.results
+            : [],
+    },
+  }));
 
 // --- Sync ---
 export const syncPrices = (portfolioId, days = 30) =>
@@ -413,11 +425,11 @@ export const getWatchlistGroups = () => {
     return Promise.resolve({ data: watchlistGroupsCache });
   }
 
-  return apiClient.get('/portfolio/watchlist/groups/')
-    .then((response) => {
-      watchlistGroupsCache = response.data || [];
+  return Promise.resolve(coreApiAdapter.getLegacyWatchlistGroups())
+    .then((data) => {
+      watchlistGroupsCache = data || [];
       watchlistGroupsCacheTimestamp = now;
-      return response;
+      return { data: watchlistGroupsCache };
     })
     .catch((err) => {
       console.error('getWatchlistGroups failed:', err);
@@ -453,7 +465,7 @@ export const generateStockNewsAISummary = (symbol, { force = false } = {}) =>
     force_refresh: Boolean(force),
   });
 export const getPortfolioNewsDigest = (params = {}) =>
-  apiClient.get('/stock-management/portfolio/news-digest/', { params });
+  Promise.resolve(coreApiAdapter.getPortfolioNewsDigest(params)).then((data) => ({ data }));
 export const getStockAIAdvisorySession = (symbol, params = {}) =>
   apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`, { params });
 export const getStockAIAdvisoryObservability = (symbol, params = {}) =>
@@ -736,7 +748,7 @@ export const getTrackedSymbols = () => {
   if (!hasAuthTokens()) {
     return Promise.resolve({ data: [] });
   }
-  return apiClient.get('/stock-management/tracked-symbols/').catch((error) => {
+  return Promise.resolve(coreApiAdapter.getTrackedSymbols()).then((data) => ({ data })).catch((error) => {
     const status = error?.response?.status;
     if (status === 503 || status === 502 || status === 504) {
       console.warn('getTrackedSymbols fallback empty due to service unavailability:', status);
