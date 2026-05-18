@@ -46,6 +46,7 @@ import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AlertCenterPage } from '@vninvest/web';
 import ModernDashboard from './pages/modern/ModernDashboard';
+import PackageDashboardHost from './pages/PackageDashboardHost';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -98,8 +99,10 @@ export default function App() {
                 <Route path="reset-password" element={<ResetPassword />} />
                 <Route path="/" element={<ProtectedLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
-                  {/* /dashboard always uses ModernDashboard dispatcher — DashboardShellHost only at /dashboard/shell */}
-                  <Route path="dashboard" element={<ModernDashboard />} />
+                  {/* /dashboard → PackageDashboardHost (SaaS native, DM-05) */}
+                  {/* /dashboard/legacy → ModernDashboard (shadow route, active 3 days) */}
+                  <Route path="dashboard" element={<PackageDashboardHost />} />
+                  <Route path="dashboard/legacy" element={<ModernDashboard />} />
                   {packageShellHostEnabled ? (
                     <Route path="dashboard/shell" element={<DashboardShellHost />} />
                   ) : null}
