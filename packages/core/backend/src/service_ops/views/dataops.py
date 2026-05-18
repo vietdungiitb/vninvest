@@ -526,6 +526,62 @@ class DataOpsRunLogsView(SOCBaseView):
 
 
 @extend_schema(
+    summary='Xóa lịch sử run-log DataOps',
+    description=(
+        'Xóa các ServiceRunLog cũ của DataOps market-data planner. '
+        'Giữ lại N bản ghi mới nhất (mặc định 50), xóa toàn bộ bản ghi còn lại. '
+        'Chỉ dành cho operator/admin.'
+    ),
+    request=None,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+    },
+    parameters=[
+        OpenApiParameter(
+            name='keep',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Số bản ghi mới nhất cần giữ lại. Mặc định 50.',
+            required=False,
+        ),
+    ],
+    examples=[
+        OpenApiExample(
+            'Purge result',
+            value={'deleted': 2654, 'kept': 50},
+        )
+    ],
+)
+class DataOpsRunLogsPurgeView(SOCBaseView):
+    """POST xóa lịch sử run-log cũ của DataOps planner, giữ lại N bản mới nhất."""
+
+    def post(self, request):
+        try:
+            keep = int(request.query_params.get('keep', 50))
+            if keep < 0:
+                keep = 0
+        except (TypeError, ValueError):
+            keep = 50
+
+        base_qs = ServiceRunLog.objects.filter(
+            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+        )
+        total = base_qs.count()
+
+        if total <= keep:
+            return Response({'deleted': 0, 'kept': total})
+
+        # Lấy PK của N bản mới nhất cần giữ lại
+        keep_ids = list(
+            base_qs.order_by('-started_at', '-pk').values_list('pk', flat=True)[:keep]
+        )
+        deleted_count, _ = base_qs.exclude(pk__in=keep_ids).delete()
+
+        return Response({'deleted': deleted_count, 'kept': keep})
+
+
+@extend_schema(
     summary='Preview planner DataOps market-data',
     description=(
         'Preview kế hoạch planner cho market-data global matrix mà không queue execution. '

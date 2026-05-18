@@ -110,6 +110,7 @@ urlpatterns = [
     path('dataops/registry/reconcile-preview/', dataops.DataOpsRegistryReconcilePreviewView.as_view(), name='soc_dataops_registry_reconcile_preview'),
     path('dataops/registry/<str:symbol>/', dataops.DataOpsRegistryDetailView.as_view(), name='soc_dataops_registry_detail'),
     path('dataops/run-logs/', dataops.DataOpsRunLogsView.as_view(), name='soc_dataops_run_logs'),
+    path('dataops/run-logs/purge/', dataops.DataOpsRunLogsPurgeView.as_view(), name='soc_dataops_run_logs_purge'),
     path('dataops/planner/preview/', dataops.DataOpsPlannerPreviewView.as_view(), name='soc_dataops_planner_preview'),
     path('dataops/planner/run/', dataops.DataOpsPlannerRunView.as_view(), name='soc_dataops_planner_run'),
     path('dataops/planner/run/<str:run_id>/abort/', dataops.DataOpsPlannerRunAbortView.as_view(), name='soc_dataops_planner_run_abort'),

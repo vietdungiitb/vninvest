@@ -2,11 +2,17 @@
 
 from django.urls import path
 
-from .views import dataops, matrix
+from .views import dataops, matrix, scheduler
 
 app_name = 'operator_scraping'
 
 urlpatterns = [
+    # === Scheduler Control Center ===
+    path('dataops/scheduler/plan/', scheduler.SchedulerPlanView.as_view(), name='scheduler_plan'),
+    path('dataops/scheduler/health/', scheduler.SchedulerHealthView.as_view(), name='scheduler_health'),
+    path('dataops/scheduler/jobs/<str:job_key>/history/', scheduler.SchedulerJobHistoryView.as_view(), name='scheduler_job_history'),
+    path('dataops/scheduler/jobs/<str:job_key>/actions/', scheduler.SchedulerJobActionView.as_view(), name='scheduler_job_actions'),
+
     path('matrix/cycles/', matrix.MatrixCycleListView.as_view(), name='matrix_cycle_list'),
     path('matrix/cycles/start/', matrix.MatrixCycleStartView.as_view(), name='matrix_cycle_start'),
     path('matrix/cycles/<str:cycle_id>/', matrix.MatrixCycleDetailView.as_view(), name='matrix_cycle_detail'),
@@ -19,6 +25,7 @@ urlpatterns = [
     path('dataops/registry/reconcile-preview/', dataops.DataOpsRegistryReconcilePreviewView.as_view(), name='dataops_registry_reconcile_preview'),
     path('dataops/registry/<str:symbol>/', dataops.DataOpsRegistryDetailView.as_view(), name='dataops_registry_detail'),
     path('dataops/run-logs/', dataops.DataOpsRunLogsView.as_view(), name='dataops_run_logs'),
+    path('dataops/run-logs/purge/', dataops.DataOpsRunLogsPurgeView.as_view(), name='dataops_run_logs_purge'),
     path('dataops/planner/preview/', dataops.DataOpsPlannerPreviewView.as_view(), name='dataops_planner_preview'),
     path('dataops/planner/run/', dataops.DataOpsPlannerRunView.as_view(), name='dataops_planner_run'),
     path('dataops/planner/run/<str:run_id>/abort/', dataops.DataOpsPlannerRunAbortView.as_view(), name='dataops_planner_run_abort'),

@@ -197,6 +197,13 @@ export const socApi = {
     return handleResponse(resp);
   },
 
+  purgeDataOpsRunLogs: async (keep = 50) => {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/run-logs/purge/?keep=${keep}`, {
+      method: 'POST',
+    });
+    return handleResponse(resp);
+  },
+
   previewDataOpsPlanner: async (payload) => {
     const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/planner/preview/`, {
       method: 'POST',

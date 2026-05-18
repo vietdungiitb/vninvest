@@ -841,6 +841,8 @@ const DataOpsPanel = ({ t }) => {
   const [subTab, setSubTab] = useState('data');
   const [showQueueTier, setShowQueueTier] = useState(false);
   const [showRunHistory, setShowRunHistory] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeMessage, setPurgeMessage] = useState(null);
   const [gapsPage, setGapsPage] = useState(1);
   const [plannerItemsPage, setPlannerItemsPage] = useState(1);
   const [plannerSkippedPage, setPlannerSkippedPage] = useState(1);
@@ -925,6 +927,26 @@ const DataOpsPanel = ({ t }) => {
       setError(err.message);
     } finally {
       setIsRunLogsLoading(false);
+    }
+  };
+
+  const handlePurgeRunLogs = async (keep = 50) => {
+    if (!window.confirm(
+      `Xóa lịch sử chạy cũ, chỉ giữ lại ${keep} bản ghi mới nhất?\nThao tác này không thể hoàn tác.`
+    )) return;
+    try {
+      setIsPurging(true);
+      setPurgeMessage(null);
+      const result = await socApi.purgeDataOpsRunLogs(keep);
+      setPurgeMessage(`Đã xóa ${result?.deleted ?? 0} bản ghi, giữ lại ${result?.kept ?? keep} bản ghi mới nhất.`);
+      // Reload page 1 after purge
+      const runLogsPayload = await socApi.getDataOpsRunLogs(1);
+      setRunLogsEnvelope(runLogsPayload || DEFAULT_RUN_LOGS_ENVELOPE);
+      setRunLogsPage(1);
+    } catch (err) {
+      setPurgeMessage(`Lỗi: ${err.message}`);
+    } finally {
+      setIsPurging(false);
     }
   };
 
@@ -2393,22 +2415,35 @@ const DataOpsPanel = ({ t }) => {
       {/* ── Tab: Giám sát — Run History ──────────────────────────────────── */}
       {subTab === 'monitor' && (
       <div className="rounded-lg border border-slate-700 bg-slate-900">
-        <button
-          type="button"
-          onClick={() => setShowRunHistory((v) => !v)}
-          className="flex w-full items-center justify-between gap-3 p-6 text-left"
-        >
-          <div>
-            <h3 className="text-lg font-bold text-white">{t('soc.dataops.run_history_title')}</h3>
-            <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.run_history_description')}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-200">
-              {runLogsEnvelope.count || 0}
-            </span>
+        <div className="flex w-full items-center justify-between gap-3 px-6 py-4">
+          <button
+            type="button"
+            onClick={() => setShowRunHistory((v) => !v)}
+            className="flex flex-1 items-center justify-between gap-3 text-left"
+          >
+            <div>
+              <h3 className="text-lg font-bold text-white">{t('soc.dataops.run_history_title')}</h3>
+              <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.run_history_description')}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-200">
+                {runLogsEnvelope.count || 0}
+              </span>
             <span className="text-slate-400 transition-transform" style={{ transform: showRunHistory ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
           </div>
-        </button>
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePurgeRunLogs(50)}
+            disabled={isPurging || (runLogsEnvelope.count || 0) === 0}
+            className="shrink-0 rounded border border-red-800 bg-red-950/60 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-900/60 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPurging ? 'Đang xóa…' : '🗑 Xóa lịch sử cũ'}
+          </button>
+        </div>
+        {purgeMessage && (
+          <p className="px-6 pb-2 text-xs text-slate-400">{purgeMessage}</p>
+        )}
         {showRunHistory && (
           <div className="px-6 pb-6">
             {(runLogsEnvelope.results || []).length > 0 ? (
