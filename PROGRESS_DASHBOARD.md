@@ -1,3 +1,34 @@
+# 2026-05-18 — Dashboard SaaS Native Migration DM-00..DM-05 COMPLETE ✅
+
+Status: **✅ DM-00 Bug fixes** | **✅ DM-01 coreApiAdapter** | **✅ DM-02 useCoreDashboardData** | **✅ DM-03 DashboardPage render-props** | **✅ DM-04 PackageDashboardHost** | **✅ DM-05 Route swap**
+
+## What changed
+- **DM-00**: Fixed 4 bugs: `useAlertCenterFeed` missing pagination keys, audience enum mismatch (`holdings`→`holdings_only`), `session_date` dropped in `client.js`, `SmartStatsHeader` hardcoded string → `t('dashboard.breadthLabel')`.
+- **DM-01**: Added `legacyApiGet` private transport + 7 new methods to `coreApiAdapter` (`getPortfolioHoldings`, `getPortfolioSummary`, `getPortfolioAnalytics`, `getPortfolioTechnicals`, `getBulkTechnicalsBySymbols`, `getTrackedSymbols`, `getLegacyWatchlistGroups`).
+- **DM-02**: Created `packages/web/src/features/dashboard/useCoreDashboardData.js` — AbortController, Phase-1 parallel, Phase-2 bulk technicals, `refresh()`.
+- **DM-03**: Rewrote `packages/web/src/pages/DashboardPage.js` with 5 render-prop slots + `onDataReady` callback.
+- **DM-04**: Created `frontend/src/pages/PackageDashboardHost.jsx` — injects SmartStatsHeader, FactsFirstModularPositionDeck, UnifiedAlertCenter, PortfolioHeatmap via render props.
+- **DM-05**: Route swap: `/dashboard` → `PackageDashboardHost`; shadow `/dashboard/legacy` → `ModernDashboard` (3-day parity window).
+
+## Validation
+- `npm run build` → **PASS** (no errors, both DM-00 and DM-01..05)
+- `coreApiAdapter` node import → **48 methods, OK**
+- Git: 6 commits pushed to `origin/dev` (`749882b2`..`0b0216df`)
+
+## Files changed (DM-00..DM-05)
+- `frontend/src/hooks/useAlertCenterFeed.js`
+- `frontend/src/components/UnifiedAlertCenter.jsx`
+- `frontend/src/api/client.js`
+- `frontend/src/components/modern/SmartStatsHeader.jsx`
+- `frontend/src/i18n/vi.js`
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/features/dashboard/useCoreDashboardData.js` (NEW)
+- `packages/web/src/pages/DashboardPage.js`
+- `frontend/src/pages/PackageDashboardHost.jsx` (NEW)
+- `frontend/src/App.jsx`
+
+---
+
 # 2026-05-18 — Scheduler Control Center S01-S09 COMPLETE ✅
 
 Status: **✅ S01-S04 backend 55/55 tests** | **✅ S05 OpenAPI gate PASS** | **✅ S06/S07 Frontend SchedulerBoard** | **✅ S08 read-only soak PASS** | **✅ S09 rollback drill PASS**

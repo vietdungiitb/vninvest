@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+# 2026-05-18 | DM-00..DM-05 — Dashboard SaaS Native Migration
+
+## Modified Files
+| File | Change | Slice |
+|------|--------|-------|
+| `frontend/src/hooks/useAlertCenterFeed.js` | ADD — `currentUnifiedPage`, `hasPreviousUnifiedPage`, `hasLastUnifiedPage` to return object | DM-00 |
+| `frontend/src/components/UnifiedAlertCenter.jsx` | FIX — audience filter enum `'holdings'`→`'holdings_only'`, `'watchlist'`→`'watchlist_only'` | DM-00 |
+| `frontend/src/api/client.js` | FIX — `session_date` param forwarded when `window === 'session'` in `getAlertCenterFeed` | DM-00 |
+| `frontend/src/components/modern/SmartStatsHeader.jsx` | FIX — `"Độ rộng danh mục"` hardcode → `{t('dashboard.breadthLabel')}` | DM-00 |
+| `frontend/src/i18n/vi.js` | ADD — `dashboard.breadthLabel: 'Độ rộng danh mục'` | DM-00 |
+| `packages/web/src/adapters/coreApiAdapter.js` | ADD — `legacyApiGet` private transport + 7 new methods: `getPortfolioHoldings`, `getPortfolioSummary`, `getPortfolioAnalytics`, `getPortfolioTechnicals`, `getBulkTechnicalsBySymbols`, `getTrackedSymbols`, `getLegacyWatchlistGroups` | DM-01 |
+| `packages/web/src/features/dashboard/useCoreDashboardData.js` | NEW — Phase-1 parallel fetch + Phase-2 bulk technicals + AbortController + `refresh()` | DM-02 |
+| `packages/web/src/pages/DashboardPage.js` | REWRITE — 5 render-prop slots, `onDataReady` callback, loading skeleton, error banner | DM-03 |
+| `frontend/src/pages/PackageDashboardHost.jsx` | NEW — Slot-inject SmartStatsHeader, FactsFirstModularPositionDeck, UnifiedAlertCenter, PortfolioHeatmap into DashboardPage | DM-04 |
+| `frontend/src/App.jsx` | FIX — `/dashboard` → `<PackageDashboardHost>`; shadow `/dashboard/legacy` → `<ModernDashboard>` | DM-05 |
+
+## Validation
+- `npm run build` → PASS (Compiled successfully, no errors)
+- `node --eval "import('./src/adapters/coreApiAdapter.js').then(m => ...)"` → 48 methods, OK
+- Git commits: `749882b2` (DM-00) → `e2769a73` (DM-01) → `b709b49a` (DM-02) → `8c6e2f87` (DM-03) → `b38469ff` (DM-04) → `0b0216df` (DM-05)
+- All pushed to `origin/dev`
+
 # 2026-05-18 | S07+S08+S09 — Prefetch scheduler board + Soak + Rollback drill
 
 ## Modified Files
