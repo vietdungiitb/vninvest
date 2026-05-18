@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { socApi } from '../../api/socApi';
 import { ConfigPreviewModal } from './ConfigPreviewModal';
+import SchedulerBoard from './SchedulerBoard';
 
 const PROFILE_FIELDS = [
   { name: 'pre_open', field: 'pre_open_interval_seconds' },
@@ -365,6 +366,16 @@ const PrefetchPanel = ({ t }) => {
         isSubmitting={isSubmitting}
         t={t}
       />
+
+      {/* ── Scheduler jobs cho prefetch domain ───────────────────────────── */}
+      <details className="rounded-lg border border-slate-700 bg-slate-900">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-slate-200 hover:text-white">
+          ⏱ {t('soc.prefetch.scheduler_section_title', { defaultValue: 'Lịch chạy Prefetch' })}
+        </summary>
+        <div className="px-5 pb-5">
+          <SchedulerBoard t={t} domainFilter="prefetch" />
+        </div>
+      </details>
     </div>
   );
 };

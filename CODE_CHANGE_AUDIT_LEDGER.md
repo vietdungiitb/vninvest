@@ -1,5 +1,20 @@
 # Code Change Audit Ledger
 
+# 2026-05-18 | S07+S08+S09 — Prefetch scheduler board + Soak + Rollback drill
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/PrefetchPanel.jsx` | MODIFIED — Added collapsible scheduler section with `<SchedulerBoard domainFilter="prefetch">` |
+| `frontend/src/components/soc/SchedulerBoard.jsx` | MODIFIED — Added optional `domainFilter` prop + `embedded` mode (hides health strip + domain selector) |
+| `PROGRESS_DASHBOARD.md` | UPDATED — Full S01-S09 completion record |
+
+## Validation
+- `npm run build` → PASS (no errors)
+- **S08 Read-only soak**: 3/3 endpoints 200 OK (plan, health, history); 55/55 no-regression PASS
+- **S09 Rollback drill**: `disable → disabled → enable → enabled` on `market-data-queue-tier-scheduler-30s` → `ROLLBACK DRILL PASS`
+- Prefetch scheduler section renders via `<details>` collapsible in PrefetchPanel
+
 # 2026-05-18 | S06/S07 — Frontend Scheduler Board | DataOpsPanel + SchedulerBoard
 
 ## Modified Files

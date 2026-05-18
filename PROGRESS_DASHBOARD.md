@@ -1,3 +1,54 @@
+# 2026-05-18 — Scheduler Control Center S01-S09 COMPLETE ✅
+
+Status: **✅ S01-S04 backend 55/55 tests** | **✅ S05 OpenAPI gate PASS** | **✅ S06/S07 Frontend SchedulerBoard** | **✅ S08 read-only soak PASS** | **✅ S09 rollback drill PASS**
+
+## What changed
+- **S01-S04**: `scheduler_catalog.py` unified beat/runtime catalog (19 jobs), `views/scheduler.py` 4 operator endpoints (plan/health/jobs history/actions), ServiceRunLog inflight enrichment.
+- **S05**: OpenAPI audit — 4/4 endpoints tagged `Operator - Scheduler`, standard error envelope, pagination on history.
+- **S06/S07**: `SchedulerBoard.jsx` (health strip, job table, action buttons, confirm modal, history drawer) added as DataOps sub-tab + PrefetchPanel collapsible section.
+- **S08**: Read-only soak — 3/3 endpoints return 200, 55/55 no-regression tests pass on live container.
+- **S09**: Write-mode rollback drill — disable→disabled, enable→enabled, plan reflects state, `ROLLBACK DRILL PASS`.
+- i18n: `soc.scheduler.*` keys full Vietnamese diacritics.
+
+## Validation
+- `docker exec manage.py test ... --keepdb` → **55/55 OK**
+- `npm run build` → **PASS** (no errors)
+- Live container smoke: plan/health/history → **200 OK**, jobs_total=19
+- Rollback drill: disable→enable on `market-data-queue-tier-scheduler-30s` → **PASS**
+
+## Files changed
+- `packages/core/backend/src/service_ops/scheduler_catalog.py`
+- `packages/core/backend/src/service_ops/views/scheduler.py`
+- `packages/core/backend/src/service_ops/operator_urls.py`
+- `packages/core/backend/src/service_ops/tests/test_scheduler_catalog.py` (30 tests)
+- `packages/core/backend/src/service_ops/tests/test_scheduler_action.py` (16 tests)
+- `packages/core/backend/src/service_ops/tests/test_scheduler_s04.py` (9 tests)
+- `frontend/src/components/soc/SchedulerBoard.jsx` (NEW)
+- `frontend/src/components/soc/DataOpsPanel.jsx` (scheduler tab)
+- `frontend/src/components/soc/PrefetchPanel.jsx` (scheduler section)
+- `frontend/src/api/socApi.js` (4 scheduler methods)
+- `frontend/src/i18n/vi.json` (scheduler i18n keys)
+
+## Residual risk
+- S08 soak period is developer-day (2026-05-18); production soak should continue 3+ trading days before write-mode full rollout.
+- `market_data` domain jobs fully controlled; `signals/platform` domain remains write-blocked per hard constraint.
+
+# 2026-05-18 — Scheduler Control Center SaaS Native OpenAPI doc-pack complete ✅
+
+Status: **✅ full handoff documentation pack created in docs** | **✅ taskboard/checklists/design/test/audit artifacts delivered** | **✅ SaaS native + OpenAPI governance encoded**
+
+## What changed
+- Created a complete 15-document handoff pack for Scheduler Control Center under `docs/` with a consistent naming prefix.
+- Included required artifacts for execution handoff: handoff master, implementation plan, tech spec, taskboard, traceability matrix, self-audit protocol, execution evidence template, config ownership matrix, code quality constitution, frontend design, backend design, run code review, run integration tests, run spec audit, and cutover runbook.
+- Encoded architecture constraints for SaaS native operator surface and OpenAPI-first contract discipline.
+
+## Validation
+- Documentation pack reviewed for internal consistency and cross-reference completeness.
+- This was a documentation-only slice; no runtime/build/test command execution required.
+
+## Residual risk
+- Planning artifacts are ready for coding handoff, but S01-S09 implementation evidence is still pending until engineering execution begins.
+
 # 2026-05-18 — packages/web frontend audit closure complete ✅
 
 Status: **✅ page registry lazy loading enabled** | **✅ ShellPageTemplate migrated to component API** | **✅ feature slice scaffolds created**

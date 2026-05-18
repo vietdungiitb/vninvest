@@ -247,12 +247,13 @@ SchedulerHealthStrip.propTypes = {
 // ─── Main SchedulerBoard ──────────────────────────────────────────────────────
 const DOMAIN_FILTER_OPTIONS = ['all', 'market_data', 'signals', 'whale', 'platform', 'maintenance'];
 
-export default function SchedulerBoard({ t }) {
+export default function SchedulerBoard({ t, domainFilter: domainFilterProp }) {
+  const embedded = domainFilterProp != null;
   const [plan, setPlan] = useState(null);
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [domainFilter, setDomainFilter] = useState('all');
+  const [domainFilter, setDomainFilter] = useState(domainFilterProp ?? 'all');
   const [confirmModal, setConfirmModal] = useState(null); // { job, action }
   const [historyJob, setHistoryJob] = useState(null);
   const [actionBanner, setActionBanner] = useState(null); // { type: 'success'|'error', msg, requestId }
@@ -309,14 +310,15 @@ export default function SchedulerBoard({ t }) {
   // bind ref so handleAction can call without stale closure
   executeActionRef.current = executeAction;
 
+  const activeDomainFilter = embedded ? domainFilterProp : domainFilter;
   const filteredJobs = plan?.jobs?.filter(
-    (j) => domainFilter === 'all' || j.domain === domainFilter,
+    (j) => activeDomainFilter === 'all' || j.domain === activeDomainFilter,
   ) ?? [];
 
   return (
     <div className="space-y-4">
-      {/* Health strip */}
-      <SchedulerHealthStrip health={health} t={t} />
+      {/* Health strip — hidden in embedded mode */}
+      {!embedded && <SchedulerHealthStrip health={health} t={t} />}
 
       {/* Action banner */}
       {actionBanner && (
@@ -346,7 +348,8 @@ export default function SchedulerBoard({ t }) {
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Domain filter */}
+          {/* Domain filter — hidden in embedded mode */}
+          {!embedded && (
           <select
             value={domainFilter}
             onChange={(e) => setDomainFilter(e.target.value)}
@@ -356,6 +359,7 @@ export default function SchedulerBoard({ t }) {
               <option key={d} value={d}>{d === 'all' ? t('soc.scheduler.filter_all_domains') : d}</option>
             ))}
           </select>
+          )}
           <button
             type="button"
             onClick={load}
@@ -464,4 +468,9 @@ export default function SchedulerBoard({ t }) {
 
 SchedulerBoard.propTypes = {
   t: PropTypes.func.isRequired,
+  domainFilter: PropTypes.string,
+};
+
+SchedulerBoard.defaultProps = {
+  domainFilter: undefined,
 };
