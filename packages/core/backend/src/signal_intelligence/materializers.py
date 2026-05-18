@@ -97,7 +97,7 @@ def _upsert_market_anomaly_event(
         'source_ref': source_ref,
         'evidence': evidence,
         'metadata': metadata,
-        'triggered_at': triggered_at,
+        # triggered_at is intentionally omitted — preserve first-seen semantics
         'unified_alert': unified_alert,
     }
     for field_name, expected_value in expected_values.items():
@@ -163,7 +163,7 @@ def _upsert_advisory_signal_event(
         'source_ref': source_ref,
         'evidence': evidence,
         'metadata': metadata,
-        'triggered_at': triggered_at,
+        # triggered_at is intentionally omitted — preserve first-seen semantics
         'unified_alert': unified_alert,
     }
     for field_name, expected_value in expected_values.items():
@@ -442,9 +442,7 @@ def materialize_stale_quote_alerts(self, symbol: str | None = None):
         if alert.session_date != snapshot.session_date:
             alert.session_date = snapshot.session_date
             dirty_fields.append('session_date')
-        if alert.triggered_at != snapshot.fetched_at:
-            alert.triggered_at = snapshot.fetched_at
-            dirty_fields.append('triggered_at')
+        # triggered_at intentionally not updated — preserve first-seen semantics
         if alert.metadata != {
             'source': 'market_serving.symbol_snapshot',
             'market_status': snapshot.market_status,
@@ -567,9 +565,7 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
         if alert.session_date != snapshot.session_date:
             alert.session_date = snapshot.session_date
             dirty_fields.append('session_date')
-        if alert.triggered_at != snapshot.fetched_at:
-            alert.triggered_at = snapshot.fetched_at
-            dirty_fields.append('triggered_at')
+        # triggered_at intentionally not updated — preserve first-seen semantics
         if alert.metadata != {
             'source': 'market_serving.symbol_snapshot',
             'market_status': snapshot.market_status,
@@ -698,9 +694,7 @@ def materialize_ai_signal_alerts(self, symbol: str | None = None):
         if alert.session_date != event.session_date:
             alert.session_date = event.session_date
             dirty_fields.append('session_date')
-        if alert.triggered_at != event.triggered_at:
-            alert.triggered_at = event.triggered_at
-            dirty_fields.append('triggered_at')
+        # triggered_at intentionally not updated — preserve first-seen semantics
         if alert.metadata != updated_metadata:
             alert.metadata = updated_metadata
             dirty_fields.append('metadata')

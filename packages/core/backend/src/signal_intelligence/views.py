@@ -1,6 +1,6 @@
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework import generics, permissions, serializers
@@ -9,6 +9,25 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from vninvest_core.pagination import AlertCursorPagination, OrderFlowCursorPagination
+
+
+def _type_priority_annotation():
+    """CASE expression: whale=0, dark_flow=1, ai_alert=2, ai_suggest=3, signal=4, system=5, other=6."""
+    return Case(
+        When(alert_type=UnifiedAlert.AlertTypeChoices.WHALE, then=Value(0)),
+        When(alert_type=UnifiedAlert.AlertTypeChoices.DARK_FLOW, then=Value(1)),
+        When(alert_type=UnifiedAlert.AlertTypeChoices.AI_ALERT, then=Value(2)),
+        When(alert_type=UnifiedAlert.AlertTypeChoices.AI_SUGGEST, then=Value(3)),
+        When(alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL, then=Value(4)),
+        When(alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM, then=Value(5)),
+        default=Value(6),
+        output_field=IntegerField(),
+    )
+
+
+class AlertCenterFeedCursorPagination(AlertCursorPagination):
+    """Cursor pagination for alert center feed ordered by type priority then recency."""
+    ordering = ('type_priority', '-triggered_at', '-pk')
 
 from . import delivery_service
 from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
@@ -221,8 +240,14 @@ class UserScopedAlertFeedBaseView(AlertFeedBaseListView):
     )
 )
 class AlertCenterFeedView(UserScopedAlertFeedBaseView):
+    pagination_class = AlertCenterFeedCursorPagination
+
     def get_queryset(self):
-        qs = UnifiedAlert.objects.all().order_by('-triggered_at')
+        qs = (
+            UnifiedAlert.objects
+            .annotate(type_priority=_type_priority_annotation())
+            .order_by('type_priority', '-triggered_at', '-pk')
+        )
         qs = _apply_common_alert_filters(qs, self.request.query_params, lane='main')
         return delivery_service.apply_user_delivery_policy(user=self.request.user, queryset=qs)
 
