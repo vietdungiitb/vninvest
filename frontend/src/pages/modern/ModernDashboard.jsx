@@ -107,9 +107,9 @@ export default function ModernDashboard() {
     const avgPositionSize = liveHoldings.length > 0 ? totalHeldValue / liveHoldings.length : 10000;
     const nominalSize = Math.max(avgPositionSize * 0.4, 2000);
 
-    const buildFallbackSparkline = (quote, held) => {
-      const current = Number(quote?.current_price || held?.live_current_price || held?.current_price || 0);
-      const prev = Number(quote?.prev_price || held?.prev_close || current || 0);
+    const buildFallbackSparkline = (quote, held, tracked) => {
+      const current = Number(quote?.current_price || held?.live_current_price || held?.current_price || tracked?.current_price || 0);
+      const prev = Number(quote?.prev_price || held?.prev_close || tracked?.prev_price || current || 0);
       if (!(current > 0) || !(prev > 0)) return [];
       const delta = current - prev;
       const base = prev;
@@ -121,9 +121,10 @@ export default function ModernDashboard() {
     return monitoredSymbols.map((symbol) => {
       const held = holdingsMap.get(symbol);
       const quote = quotesBySymbol[symbol] || {};
-      const changePct = quote.change_pct ?? held?.live_change_pct ?? 0;
-      const sparkline24 = buildFallbackSparkline(quote, held);
       const trackedInfo = trackedMap.get(symbol);
+      // Fallback chain: WS quote → live holding → tracked API response → 0
+      const changePct = quote.change_pct ?? held?.live_change_pct ?? trackedInfo?.change_pct ?? 0;
+      const sparkline24 = buildFallbackSparkline(quote, held, trackedInfo);
       const industry = String(held?.industry || trackedInfo?.industry || 'Khác').trim() || 'Khác';
 
       if (held) {
@@ -133,7 +134,7 @@ export default function ModernDashboard() {
           industry,
           company_name: held.company_name || held.name || symbol,
           market_cap_bn: held.market_cap_bn ?? trackedInfo?.market_cap_bn ?? null,
-          live_current_price: Number(quote.current_price || held.live_current_price || held.current_price || 0),
+          live_current_price: Number(quote.current_price || held.live_current_price || held.current_price || trackedInfo?.current_price || 0),
           live_market_cap: Number(quote.market_cap || held.live_market_cap || held.market_cap || 0),
           live_volume: Number(quote.volume || held.live_volume || held.volume || 0),
           live_market_value: Number(held.live_market_value || held.market_value || 0),
@@ -147,7 +148,7 @@ export default function ModernDashboard() {
         industry,
         company_name: trackedInfo?.name || trackedInfo?.company_name || symbol,
         market_cap_bn: trackedInfo?.market_cap_bn ?? null,
-        live_current_price: Number(quote.current_price || 0),
+        live_current_price: Number(quote.current_price || trackedInfo?.current_price || 0),
         live_market_cap: Number(quote.market_cap || 0),
         live_volume: Number(quote.volume || 0),
         live_market_value: Number(quote.market_cap || 0) || nominalSize,

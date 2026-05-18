@@ -1,3 +1,23 @@
+# 2026-05-19 — Dashboard 3-surface fix: heatmap colors + alert center data ✅
+
+Status: **✅ heatmap shows real % changes** | **✅ alert center: 21 alerts (8 medium, 13 low)** | **✅ stack rebuilt with new images**
+
+## What changed
+- **Backend**: `_MARKET_ANOMALY_PCT_THRESHOLD` lowered 7%→1% with tiered severity; alerts now cover all 1%+ moves (21 for admin's 59-symbol universe)
+- **Backend**: Weekend reference-price bug fixed in `vnbroker_materializer.py`; no longer uses calendar yesterday when market closed
+- **Backend**: `detect-market-anomaly-alerts-5m` added to `CELERY_BEAT_SCHEDULE`; runs every 5 minutes automatically  
+- **Frontend**: `changePct` fallback chain in `ModernDashboard.jsx` now includes `trackedInfo?.change_pct` for tracked symbols not in holdings
+
+## Validation
+- Alert center: `/core/v1/signals/alert-center/summary` → `{total: 21, medium: 8, low: 13}` ✅
+- Heatmap symbols with color: BID +5.47%, ACB -1.29%, BMP -1.72%, CTG +1.40% ✅
+- `npm run build` → PASS (`main.9c6895b5.js`) ✅
+- `./start_dev.ps1` → PASS (14 containers healthy) ✅
+
+## Notes
+- Weekend limitation: symbols where vnbroker returns flat close price show 0% (market closed). Live-day behavior will be correct.
+- 300 total `UnifiedAlert` records today, 21 scoped to admin's delivery universe
+
 # 2026-05-18 — Dashboard SaaS native data bridge complete ✅
 
 Status: **✅ legacy UI preserved** | **✅ core-native data bridge wired** | **✅ dashboard renders without hard portfolio gate**

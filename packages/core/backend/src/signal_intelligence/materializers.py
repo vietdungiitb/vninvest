@@ -14,7 +14,7 @@ _WHALE_VOLUME_THRESHOLD = 500_000          # min volume để xem xét là whale
 _WHALE_VALUE_MIN_VND = 500_000_000         # 500 triệu VND
 _WHALE_VALUE_MAX_VND = 5_000_000_000       # 5 tỷ VND
 _MAX_ALERTS_PER_RUN = 30                   # max alerts mỗi lần chạy
-_MARKET_ANOMALY_PCT_THRESHOLD = 7.0
+_MARKET_ANOMALY_PCT_THRESHOLD = 1.0        # 1%+ move = minimum trigger; severity is tiered (LOW/MEDIUM/HIGH)
 
 
 def _build_snapshot_evidence(*, symbol: str, session_date, price_change_pct, stale: bool, source: str) -> dict:
@@ -504,8 +504,15 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
         pct = float(snapshot.price_change_pct or 0)
         if abs(pct) < _MARKET_ANOMALY_PCT_THRESHOLD:
             continue
-        severity = UnifiedAlert.SeverityChoices.HIGH if abs(pct) >= 10 else UnifiedAlert.SeverityChoices.MEDIUM
-        confidence = 0.9 if abs(pct) >= 10 else 0.8
+        if abs(pct) >= 7:
+            severity = UnifiedAlert.SeverityChoices.HIGH
+            confidence = 0.95
+        elif abs(pct) >= 3:
+            severity = UnifiedAlert.SeverityChoices.MEDIUM
+            confidence = 0.85
+        else:  # 1–3%: LOW severity
+            severity = UnifiedAlert.SeverityChoices.LOW
+            confidence = 0.75
         source_ref = f'market_anomaly:{snapshot.symbol}:{snapshot.session_date.isoformat()}'
         evidence = _build_snapshot_evidence(
             symbol=snapshot.symbol,

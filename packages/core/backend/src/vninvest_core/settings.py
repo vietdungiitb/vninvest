@@ -387,6 +387,17 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('daily-backfill-prices-1700', 'enrichment_offhours')},
     },
 
+    # === Deep history bootstrap — weekly Sun 03:00 ICT (Sat 20:00 UTC) ===
+    # Fills OHLCV coverage gaps for all active global registry symbols.
+    # Uses days=1825 (5 years) so newly registered symbols always get full depth.
+    # Runs only once per week (off-market, off-peak) to avoid API quota pressure.
+    'deep-history-bootstrap-weekly': {
+        'task': 'data_ingest.tasks.backfill_daily_prices',
+        'schedule': crontab(hour=20, minute=0, day_of_week=6),  # Sat 20:00 UTC = Sun 03:00 ICT
+        'kwargs': {'days': 1825},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('deep-history-bootstrap-weekly', 'enrichment_offhours')},
+    },
+
     # === P3-T03: Daily ingest_daily_prices (shadow run) ===
     # Wrapper around backfill_daily_prices with observability/monitoring.
     # Disabled by default; enable during shadow run (3-day parity testing).
@@ -397,6 +408,15 @@ CELERY_BEAT_SCHEDULE = {
         'kwargs': {'days': 1},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-daily-prices-1705', 'enrichment_offhours')},
         'enabled': False,  # Disabled by default for P3-T03 (enable during shadow run)
+    },
+
+    # === Signal intelligence: market anomaly (price shock) detection — every 5 minutes ===
+    # Generates UnifiedAlert for symbols with abs(price_change_pct) >= 7% from SymbolSnapshot.
+    # Previously missing from schedule → alert center was always empty on dev.
+    'detect-market-anomaly-alerts-5m': {
+        'task': 'signal_intelligence.materializers.materialize_market_anomaly_alerts',
+        'schedule': 300.0,  # every 5 minutes
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('detect-market-anomaly-alerts-5m', 'manual_on_demand')},
     },
 }
 

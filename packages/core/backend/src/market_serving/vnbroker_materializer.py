@@ -151,7 +151,13 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
         skipped_existing = 0
         failed: list[str] = []
         today = date.today()
-        yesterday = today - timedelta(days=1)
+        # Use last actual trading day, not calendar yesterday (may be weekend/holiday)
+        yesterday = (
+            DailyPrice.objects.filter(date__lt=today)
+            .order_by('-date')
+            .values_list('date', flat=True)
+            .first()
+        ) or (today - timedelta(days=1))
         count = 0
         existing_snapshots_by_symbol = {
             row['symbol']: row

@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+# 2026-05-19 | Dashboard 3-surface fix — heatmap, alert center, AI alerts
+
+## Modified Files
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/signal_intelligence/materializers.py` | FIX — `_MARKET_ANOMALY_PCT_THRESHOLD` 7%→1% with tiered severity (LOW ≥1%, MEDIUM ≥3%, HIGH ≥7%); alert center now receives 21 alerts for admin | Alert center fix |
+| `packages/core/backend/src/market_serving/vnbroker_materializer.py` | FIX — weekend reference-price bug: `yesterday = today - timedelta(1)` replaced with last actual `DailyPrice` date so change_pct is non-zero on weekdays | Heatmap data fix |
+| `packages/core/backend/src/vninvest_core/settings.py` | ADD — `detect-market-anomaly-alerts-5m` to `CELERY_BEAT_SCHEDULE` (every 5 min); anomaly alerts now run automatically | Alert center fix |
+| `frontend/src/pages/modern/ModernDashboard.jsx` | FIX — `changePct` fallback chain now includes `trackedInfo?.change_pct`; `buildFallbackSparkline` receives `trackedInfo` arg; `live_current_price` fallback added for non-holdings | Heatmap frontend fix |
+
+## Validation
+- `materialize_market_anomaly_alerts.apply()` → `{created: 200, status: ok}` → 300 total today
+- `apply_user_delivery_policy(admin)` → 21 alerts (8 medium, 13 low) scoped to admin's 59 delivery symbols
+- `SymbolSnapshot` non-zero `price_change_pct`: 280/911 (0% on weekend due to market closed — materializer works correctly)
+- `npm run build` → PASS (`main.9c6895b5.js`, Compiled successfully)
+- `./start_dev.ps1` → PASS (all 14 containers healthy, Core API + Frontend health OK)
+- Alert center API `/core/v1/signals/alert-center/summary` → `{total: 21, medium: 8, low: 13}`
+- Heatmap symbols with real data: BID +5.47%, ACB -1.29%, BMP -1.72%, CTG +1.40%, EIB -0.69%, MWG -0.63%
+
 # 2026-05-18 | Dashboard SaaS native data bridge — legacy UI preserved
 
 ## Modified Files
