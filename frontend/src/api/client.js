@@ -587,9 +587,11 @@ export const getAlertCenterFeed = async ({ symbols, watchlistGroupIds: _watchlis
     ? symbols.map((symbol) => String(symbol || '').trim().toUpperCase()).filter(Boolean)
     : [];
   const severity = severityMin && severityMin !== 'low' ? severityMin : undefined;
+  const session_date = _window === 'session' ? new Date().toISOString().slice(0, 10) : undefined;
   const payload = await coreApiAdapter.getAlertCenterFeed({
     symbol: normalizedSymbols.length === 1 ? normalizedSymbols[0] : undefined,
     severity,
+    session_date,
     alert_family: undefined,
     page_size: Number.isFinite(Number(_limit)) ? Number(_limit) : undefined,
     cursor: cursor || undefined,

@@ -48,7 +48,7 @@ export default function SmartStatsHeader({ summary, loading, realtimeBreadth, on
           {/* Market Breadth */}
           <div className="flex flex-col items-end">
             <span className="text-[10px] text-slate-500 uppercase tracking-wider leading-none mb-1">
-              Độ rộng danh mục
+              {t('dashboard.breadthLabel')}
             </span>
             <div className="flex items-center gap-1">
                <div className="flex h-1.5 w-32 rounded-full overflow-hidden bg-slate-800">

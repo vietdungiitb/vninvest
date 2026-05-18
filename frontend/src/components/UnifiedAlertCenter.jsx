@@ -297,8 +297,8 @@ export default function UnifiedAlertCenter({
               <span className="text-slate-500">{t('dashboardRealtime.filterByAudience')}</span>
               {[
                 { value: 'all', label: t('dashboardRealtime.filterAll') },
-                { value: 'holdings', label: t('dashboardRealtime.filterHoldingsOnly') },
-                { value: 'watchlist', label: t('dashboardRealtime.filterWatchlistOnly') },
+                { value: 'holdings_only', label: t('dashboardRealtime.filterHoldingsOnly') },
+                { value: 'watchlist_only', label: t('dashboardRealtime.filterWatchlistOnly') },
               ].map((item) => (
                 <button
                   key={item.value}
