@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+# 2026-05-19 | Whale/Dark Flow pipeline — implement missing OrderFlowEvent detection tasks
+
+## Modified Files
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/signal_intelligence/tasks.py` | REWRITTEN — implemented `detect_and_store_global_whale_alerts` (aggregates IntradayTick by symbol, creates whale_buy/whale_sell/dark_flow OrderFlowEvents), `detect_order_flow` (ORDER_IMBALANCE events), `_upsert_order_flow_event` (idempotent upsert helper), `_get_latest_session_date` (latest session lookup) | Whale pipeline fix |
+| `packages/core/backend/src/vninvest_core/settings.py` | ADD — 4 new `CELERY_BEAT_SCHEDULE` entries: `detect-whale-alerts-5m`, `detect-order-flow-5m`, `materialize-whale-feed-5m`, `materialize-unified-alerts-signal-2m` (calls real signal_intelligence materializer, not the market_serving NOOP) | Beat schedule fix |
+
+## Validation
+- Manual task run: `detect_and_store_global_whale_alerts.apply()` → 846 OrderFlowEvents created from 1,426,190 IntradayTick records (session 2026-05-15)
+- `detect_order_flow.apply()` → 61 ORDER_IMBALANCE events
+- `materialize_whale_feed_aggregate.apply()` → 30 WhaleAlertCanonical created
+- `materialize_unified_alerts.apply()` → 30 UnifiedAlert(whale) + 134 UnifiedAlert(dark_flow) synced
+- DB state: 917 OrderFlowEvent, 30 WhaleAlertCanonical, 582 UnifiedAlert total
+- Beat schedule verified in `vninvest-dev-core-beat`: `detect-whale-alerts-5m`, `detect-order-flow-5m`, `materialize-whale-feed-5m`, `materialize-unified-alerts-signal-2m` all present
+- `./start_dev.ps1` → PASS (all 14 containers healthy)
+- Alert center API `GET /core/v1/signals/alert-center/summary` → `{total: 59, high: 23, medium: 16, low: 20}`
+- Alert center feed → dark_flow alerts confirmed: MSB 2.9T VND, CTG 1.75T VND, EIB 1.73T VND with `source_ref: tick_session:{symbol}:2026-05-15:dark_flow`
+
 # 2026-05-19 | Dashboard 3-surface fix — heatmap, alert center, AI alerts
 
 ## Modified Files

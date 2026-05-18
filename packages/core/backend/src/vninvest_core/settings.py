@@ -411,12 +411,44 @@ CELERY_BEAT_SCHEDULE = {
     },
 
     # === Signal intelligence: market anomaly (price shock) detection — every 5 minutes ===
-    # Generates UnifiedAlert for symbols with abs(price_change_pct) >= 7% from SymbolSnapshot.
-    # Previously missing from schedule → alert center was always empty on dev.
+    # Generates UnifiedAlert for symbols with abs(price_change_pct) >= 1% from SymbolSnapshot.
     'detect-market-anomaly-alerts-5m': {
         'task': 'signal_intelligence.materializers.materialize_market_anomaly_alerts',
         'schedule': 300.0,  # every 5 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('detect-market-anomaly-alerts-5m', 'manual_on_demand')},
+    },
+
+    # === Signal intelligence: whale / dark flow detection from IntradayTick — every 5 minutes ===
+    # Reads IntradayTick aggregates and creates OrderFlowEvent records (whale_buy, whale_sell, dark_flow).
+    # Required for alert center to surface whale and dark flow alerts.
+    'detect-whale-alerts-5m': {
+        'task': 'signal_intelligence.tasks.detect_and_store_global_whale_alerts',
+        'schedule': 300.0,  # every 5 minutes
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('detect_and_store_global_whale_alerts', 'analytics_heavy')},
+    },
+
+    # === Signal intelligence: order flow imbalance detection — every 5 minutes ===
+    'detect-order-flow-5m': {
+        'task': 'signal_intelligence.tasks.detect_order_flow',
+        'schedule': 300.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('detect_order_flow', 'analytics_heavy')},
+    },
+
+    # === Signal intelligence: materialize whale feed → WhaleAlertCanonical + UnifiedAlert — every 5 min ===
+    # Runs AFTER detect-whale-alerts-5m to convert OrderFlowEvent(whale_buy/sell) → WhaleAlertCanonical.
+    'materialize-whale-feed-5m': {
+        'task': 'signal_intelligence.materializers.materialize_whale_feed_aggregate',
+        'schedule': 300.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('detect_and_store_global_whale_alerts', 'analytics_heavy')},
+    },
+
+    # === Signal intelligence: materialize unified alerts (real) — every 2 minutes ===
+    # NOTE: Overrides the NOOP placeholder in market_serving.materializers.
+    # This is the real task that syncs WhaleAlertCanonical + OrderFlowEvent(dark_flow) → UnifiedAlert.
+    'materialize-unified-alerts-signal-2m': {
+        'task': 'signal_intelligence.materializers.materialize_unified_alerts',
+        'schedule': 120.0,  # every 2 minutes
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-2m', 'analytics_heavy')},
     },
 }
 

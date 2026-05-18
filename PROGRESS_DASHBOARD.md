@@ -13671,3 +13671,39 @@ Delta highlights:
 **Next Update**: after Redis-backed validation
 **Target**: close Sprint 12 validation checklist
 
+
+---
+
+## 2026-05-19 | Whale/Dark Flow Pipeline — Full Implementation
+
+### Status: COMPLETED
+
+**Problem**: OrderFlowEvent table had 0 rows from tick data. No whale or dark flow alerts were being generated because detect_and_store_global_whale_alerts and detect_order_flow tasks were referenced in queue_policy.py but never implemented.
+
+### Root Cause
+- signal_intelligence/tasks.py was a stub shim with no detection logic
+- CELERY_BEAT_SCHEDULE had no entries for whale/dark flow detection or materializers
+- materialize-unified-alerts-2m schedule called the NOOP in market_serving.materializers, not the real one in signal_intelligence.materializers
+
+### Fix Applied
+- **signal_intelligence/tasks.py**: Fully implemented detect_and_store_global_whale_alerts (aggregates IntradayTick → whale_buy/whale_sell/dark_flow OrderFlowEvents), detect_order_flow (ORDER_IMBALANCE events), plus _upsert_order_flow_event and _get_latest_session_date helpers
+- **settings.py**: Added 4 beat schedule entries: detect-whale-alerts-5m, detect-order-flow-5m, materialize-whale-feed-5m, materialize-unified-alerts-signal-2m
+
+### Thresholds
+- Whale buy/sell: >= 500M VND total side value per symbol per session
+- Dark flow: buy_ratio >= 65% AND buy_value >= 250M VND
+
+### Validation Results
+- OrderFlowEvent: 917 rows (846 whale/dark_flow + 61 order_imbalance from 1.4M IntradayTick records)
+- WhaleAlertCanonical: 30 rows
+- UnifiedAlert: 582 total (30 whale + 134 dark_flow + 417 signal + 1 system)
+- Alert center API: {total: 59, high: 23, medium: 16, low: 20}
+- Sample dark flow alerts: MSB 2.9T VND, CTG 1.75T VND, EIB 1.73T VND
+
+### Modified Files
+- packages/core/backend/src/signal_intelligence/tasks.py
+- packages/core/backend/src/vninvest_core/settings.py
+- CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+**Last Updated**: 2026-05-19
