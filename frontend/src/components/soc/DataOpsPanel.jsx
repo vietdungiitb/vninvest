@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 
 import { socApi } from '../../api/socApi';
 import { ConfigPreviewModal } from './ConfigPreviewModal';
+import SchedulerBoard from './SchedulerBoard';
 import { MatrixScrapeMonitor } from './MatrixScrapeMonitor';
 import { OwnershipBadgeRow } from './OwnershipBadgeRow';
 import { WriteGuardBanner } from './WriteGuardBanner';
@@ -56,10 +57,11 @@ const BACKFILL_DATASET_FIELDS = {
 };
 
 const DATAOPS_SUB_TABS = [
-  { id: 'data',    label: '\uD83D\uDCE6 Kho d\u1EEF li\u1EC7u' },
-  { id: 'ops',     label: '\u26A1 \u0110i\u1EC1u ph\u1ED1i' },
-  { id: 'monitor', label: '\uD83D\uDD0D Gi\u00E1m s\u00E1t' },
-  { id: 'config',  label: '\u2699\uFE0F C\u1EA5u h\u00ECnh' },
+  { id: 'data',      label: '\uD83D\uDCE6 Kho d\u1EEF li\u1EC7u' },
+  { id: 'ops',       label: '\u26A1 \u0110i\u1EC1u ph\u1ED1i' },
+  { id: 'monitor',   label: '\uD83D\uDD0D Gi\u00E1m s\u00E1t' },
+  { id: 'scheduler', label: '\u23F1 L\u1ECBch ch\u1EA1y' },
+  { id: 'config',    label: '\u2699\uFE0F C\u1EA5u h\u00ECnh' },
 ];
 const GAPS_PAGE_SIZE = 20;
 const PLANNER_PREVIEW_PAGE_SIZE = 12;
@@ -2382,6 +2384,11 @@ const DataOpsPanel = ({ t }) => {
         )}
       </div>
       </> )} {/* end subTab === 'config' */}
+
+      {/* ── Tab: Lịch chạy — Scheduler Control Center ───────────────────── */}
+      {subTab === 'scheduler' && (
+        <SchedulerBoard t={t} />
+      )}
 
       {/* ── Tab: Giám sát — Run History ──────────────────────────────────── */}
       {subTab === 'monitor' && (

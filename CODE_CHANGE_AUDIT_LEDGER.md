@@ -1,5 +1,118 @@
 # Code Change Audit Ledger
 
+# 2026-05-18 | S06/S07 — Frontend Scheduler Board | DataOpsPanel + SchedulerBoard
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `frontend/src/components/soc/SchedulerBoard.jsx` | NEW — SchedulerBoard with health strip, job table, action buttons, confirm modal, history drawer |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | MODIFIED — Added `scheduler` sub-tab + import SchedulerBoard |
+| `frontend/src/api/socApi.js` | MODIFIED — Added `getSchedulerPlan`, `getSchedulerHealth`, `getSchedulerJobHistory`, `postSchedulerJobAction` |
+| `frontend/src/i18n/vi.json` | MODIFIED — Added `soc.scheduler.*` i18n keys (full Vietnamese diacritics) |
+
+## Validation
+- `npm run build` — PASS, no compile errors
+- Scheduler tab renders in DataOps panel when `subTab === 'scheduler'`
+- Risky actions (disable/abort) require confirm modal + reason field
+- History drawer shows paginated ServiceRunLog per job
+- All new text via i18n, no hardcoded strings
+
+# 2026-05-18 | S04 — Runtime Status Aggregator | service_ops backend
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/scheduler_catalog.py` | MODIFIED — Added ServiceRunLog inflight detection: `inflight_service_keys` set from queued/running logs, `is_inflight` per job via `service_key` metadata |
+| `packages/core/backend/src/service_ops/views/scheduler.py` | MODIFIED — SchedulerJobHistoryView: real ServiceRunLog query via `service__service_key=service_key`, pagination, 404 for unknown job |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_s04.py` | NEW — 9 tests: history pagination fields, empty history, run log appears, inflight=True when running, inflight=False when no running logs |
+
+## Validation
+- 55/55 tests PASS (S01+S02+S03+S04 combined)
+- inflight enrichment correct when ServiceRunLog status=running
+- history pagination: count, page, page_size, total_pages, results, next/previous
+- 404 code `SCHEDULER_JOB_NOT_FOUND` for unknown job_key
+
+# 2026-05-18 | S05 — OpenAPI Canonical Audit | service_ops backend
+
+## Modified Files
+| File | Change |
+|------|--------|
+| (no code change — audit only) | All 4 scheduler endpoints confirmed: `@extend_schema` with `tags=['Operator - Scheduler']`, error_response via SOCBaseView helper with standard envelope `{detail, code, timestamp, request_id, field_errors}` |
+
+## Validation
+- 4/4 views have `tags=['Operator - Scheduler']`
+- Error envelope: `detail, code, timestamp, request_id` standard across all error paths
+- History endpoint has pagination (`page`, `page_size`, `total_pages`, `next`, `previous`)
+- Auth: IsAuthenticated + IsAdminUser on all endpoints (SOCBaseView)
+- S05 gate: PASS
+
+# 2026-05-18 | S02+S03 — Capability Matrix + Action Executor | service_ops backend
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/views/scheduler.py` | MODIFIED — Added SchedulerJobActionView (S02 guard + S03 executor), `_execute_scheduler_action()`, `_get_client_ip()` |
+| `packages/core/backend/src/service_ops/operator_urls.py` | MODIFIED — Added route: `jobs/<job_key>/actions/` |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_action.py` | NEW — 16 tests: ownership guard, capability whitelist, PeriodicTask toggle, run_now, abort |
+
+## Validation
+- 46/46 tests PASS (S01+S02+S03 combined)
+- `enable/disable` toggles `PeriodicTask.enabled` via `.update()`
+- `run_now` sends Celery task via `send_task()` + creates `ServiceRunLog(queued)`
+- `abort` revokes inflight tasks + marks `ServiceRunLog.status=failed`
+- Platform domain guard: 403 `SCHEDULER_ACTION_OWNERSHIP_DENIED`
+- beat_read_only whitelist: only `run_now` allowed
+- platform_managed whitelist: no actions allowed
+- Auth guards: 401 unauthenticated, 403 non-admin
+
+# 2026-05-18 | S01 — Scheduler Catalog Contract | service_ops backend
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/scheduler_catalog.py` | NEW — Unified scheduler job catalog: `build_scheduler_catalog()`, `build_scheduler_health_summary()`, `CATALOG_JOB_METADATA` for 19 beat jobs |
+| `packages/core/backend/src/service_ops/views/scheduler.py` | NEW — Three SOCBaseView endpoints: SchedulerPlanView, SchedulerHealthView, SchedulerJobHistoryView (stub S01, full in S04) |
+| `packages/core/backend/src/service_ops/operator_urls.py` | MODIFIED — Added 3 scheduler routes: plan/, health/, jobs/<job_key>/history/ |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_catalog.py` | NEW — 30 tests across 5 classes covering catalog unit, health summary, and 3 API endpoints |
+
+## Validation
+- 30/30 tests PASS (`service_ops.tests.test_scheduler_catalog`)
+- Bug fixed: `schedule_map or settings` with empty dict `{}` fell through to settings; fixed with explicit `is None` check.
+- Auth guards verified: 401 for unauthenticated, 403 for non-admin.
+- 404 with `SCHEDULER_JOB_NOT_FOUND` code for unknown job_key.
+- `@extend_schema` on all 3 views.
+
+# 2026-05-18 | Scheduler Control Center doc-pack handoff | docs/governance
+
+## All Modified Files (18 files)
+| File | Change |
+|------|--------|
+| `docs/SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_HANDOFF_MASTER_20260518.md` | Added master handoff document for scheduler control center scope and hard decisions |
+| `docs/IMPLEMENTATION_PLAN_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added execution plan with S01-S09 dependency graph and DoD gates |
+| `docs/TECH_SPEC_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added technical specification for scheduler catalog, control semantics, status aggregation, and OpenAPI contracts |
+| `docs/TASKBOARD_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added taskboard with task statuses, gates, and mandatory slice-exit checklist |
+| `docs/SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_TRACEABILITY_MATRIX_20260518.md` | Added Req-to-task-to-validation mapping |
+| `docs/SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_SELF_AUDIT_AND_TEST_PROTOCOL_20260518.md` | Added self-audit and mandatory test checklist |
+| `docs/SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_EXECUTION_EVIDENCE_TEMPLATE_20260518.md` | Added execution evidence template for slice-by-slice proof |
+| `docs/SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_CONFIG_OWNERSHIP_MATRIX_20260518.md` | Added ownership matrix for scheduler config and control actions |
+| `docs/SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_CODE_QUALITY_CONSTITUTION_20260518.md` | Added quality constitution and non-negotiable rules |
+| `docs/FRONTEND_DESIGN_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added frontend design for DataOps/Prefetch scheduler boards |
+| `docs/BACKEND_DESIGN_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added backend design for catalog, action executor, and status aggregation |
+| `docs/RUN_CODE_REVIEW_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added code review protocol and hotspot map |
+| `docs/RUN_INTEGRATION_TESTS_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added integration-test protocol including OpenAPI validation and runtime smoke |
+| `docs/RUN_SPEC_AUDIT_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added spec-audit procedure and fail conditions |
+| `docs/CUTOVER_RUNBOOK_SCHEDULER_CONTROL_CENTER_SAAS_NATIVE_OPENAPI_20260518.md` | Added phased cutover + rollback runbook |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this doc-pack handoff |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this doc-pack |
+
+## Validation
+- Documentation handoff pack created and cross-referenced to existing project governance patterns.
+- No runtime/code execution was required for this documentation-only slice.
+
+## Residual risk
+- This slice delivers planning/governance docs only; implementation and validation evidence must be produced per S01-S09 when coding begins.
+
 # 2026-05-18 | packages/web frontend audit closure | frontend/packages-web/docs
 
 ## All Modified Files (22 files)

@@ -259,6 +259,36 @@ export const socApi = {
     return handleResponse(resp);
   },
 
+  // Scheduler Control Center
+  getSchedulerPlan: async () => {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/scheduler/plan/`);
+    return handleResponse(resp);
+  },
+
+  getSchedulerHealth: async () => {
+    const resp = await fetch(`${CANONICAL_DATAOPS_BASE_URL}/scheduler/health/`);
+    return handleResponse(resp);
+  },
+
+  getSchedulerJobHistory: async (jobKey, page = 1, pageSize = 20) => {
+    const resp = await fetch(
+      `${CANONICAL_DATAOPS_BASE_URL}/scheduler/jobs/${encodeURIComponent(jobKey)}/history/?page=${page}&page_size=${pageSize}`,
+    );
+    return handleResponse(resp);
+  },
+
+  postSchedulerJobAction: async (jobKey, action, reason = '') => {
+    const resp = await fetch(
+      `${CANONICAL_DATAOPS_BASE_URL}/scheduler/jobs/${encodeURIComponent(jobKey)}/actions/`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, reason }),
+      },
+    );
+    return handleResponse(resp);
+  },
+
   // Prefetch
   getPrefetchConfig: async () => {
     const resp = await fetch(`${BASE_URL}/prefetch/config/`);
