@@ -235,6 +235,15 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     clearTokens,
   });
 
+  // Private transport for legacy /api/* endpoints (e.g. bulk technicals) that are NOT
+  // mounted under /core/v1/. NEVER export this function.
+  const { coreGet: legacyApiGet } = createCoreTransport({ CORE_API_BASE_URL: "/api" }, {
+    getToken,
+    getRefreshToken,
+    setTokens,
+    clearTokens,
+  });
+
   return {
   
   /**
@@ -699,6 +708,77 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getDNSETokenStatus() {
     return coreGet("/broker/dnse/token-status/");
+  },
+
+  // ─── Portfolio Native Views ───────────────────────────────────────────────
+
+  /**
+   * Get current holdings for a portfolio.
+   * @param {number|string} portfolioId
+   * @returns {Promise<{results: object[]}>}
+   */
+  getPortfolioHoldings(portfolioId) {
+    if (!portfolioId) throw new Error("portfolioId is required for getPortfolioHoldings");
+    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/holdings/`);
+  },
+
+  /**
+   * Get portfolio summary (P&L, market value, cost basis).
+   * @param {number|string} portfolioId
+   * @returns {Promise<object>}
+   */
+  getPortfolioSummary(portfolioId) {
+    if (!portfolioId) throw new Error("portfolioId is required for getPortfolioSummary");
+    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/summary/`);
+  },
+
+  /**
+   * Get portfolio performance analytics.
+   * @param {number|string} portfolioId
+   * @param {number} [days=30]
+   * @returns {Promise<object>}
+   */
+  getPortfolioAnalytics(portfolioId, days = 30) {
+    if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAnalytics");
+    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/analytics/?days=${days}`);
+  },
+
+  /**
+   * Get technicals for all holdings in a portfolio.
+   * @param {number|string} portfolioId
+   * @returns {Promise<{results: object[]}>}
+   */
+  getPortfolioTechnicals(portfolioId) {
+    if (!portfolioId) throw new Error("portfolioId is required for getPortfolioTechnicals");
+    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/technicals/`);
+  },
+
+  /**
+   * Get bulk technicals for an explicit list of symbols.
+   * Calls /api/stock-management/technicals/bulk/ (legacy market-data route, not /core/v1/).
+   * @param {string[]} symbols
+   * @returns {Promise<object[]>}
+   */
+  getBulkTechnicalsBySymbols(symbols) {
+    if (!symbols || symbols.length === 0) return Promise.resolve([]);
+    const q = symbols.map((s) => encodeURIComponent(String(s).toUpperCase())).join(",");
+    return legacyApiGet(`/stock-management/technicals/bulk/?symbols=${q}`);
+  },
+
+  /**
+   * Get the list of symbols tracked by the current user.
+   * @returns {Promise<{results: object[]}>}
+   */
+  getTrackedSymbols() {
+    return coreGet("/workspace/tracked-symbols/");
+  },
+
+  /**
+   * Get legacy watchlist groups (used for symbol universe construction).
+   * @returns {Promise<{results: object[]}>}
+   */
+  getLegacyWatchlistGroups() {
+    return coreGet("/workspace/watchlist/groups/");
   },
   };
 }
