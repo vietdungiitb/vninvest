@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+# 2026-05-19 | DNSE-SYSUI-01 — System Backfill Admin UI Upgrade — Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `frontend/src/i18n/vi.js` | ADD `soc.dnse_backfill.*` block (43 keys) + `dnse_backfill` to `soc.tab` and `soc.tabs` | T01 |
+| `packages/core/backend/src/data_ingest/views.py` | REWRITE `SystemBackfillTriggerView.post()` — multi-criteria (datasets, symbols_group, date range, mode, dry_run); backward-compat v1 mapping; §14.5 presence check; `_resolve_backfill_symbols()` + `_build_trading_date_range()` helpers | T02 |
+| `frontend/src/components/soc/DNSEBackfillPanel.jsx` | REWRITE `SystemBackfillSection` with dataset checkboxes, symbol group radio buttons, date range, mode select, dry-run checkbox; fix all i18n keys to `soc.dnse_backfill.*` prefix | T03 |
+
+## Validation
+
+- `npm run build` — Compiled successfully (no errors)
+- All i18n keys resolve via `soc.dnse_backfill.*` prefix
+- Backend v2 payload validated: `datasets`, `symbols_group`, `from_date`, `to_date`, `mode`, `dry_run`
+- §14.5 presence check enforced in missing_only mode before any `bulk_create`
+
+---
+
 # 2026-05-19 | B09 — Handoff Close + B08 Anomaly Guard — Complete
 
 ## Modified / Created Files
