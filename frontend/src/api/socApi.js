@@ -574,4 +574,19 @@ export const socApi = {
     if (resp.status === 204) return null;
     return handleResponse(resp);
   },
+
+  // B03 — Backfill Progress API
+  getBackfillRuns: async ({ status: statusFilter, jobKey, limit = 20 } = {}) => {
+    const params = new URLSearchParams();
+    if (statusFilter) params.set('status', statusFilter);
+    if (jobKey) params.set('job_key', jobKey);
+    if (limit) params.set('limit', String(limit));
+    const resp = await fetch(`${BASE_URL}/dataops/backfill/runs/?${params.toString()}`);
+    return handleResponse(resp);
+  },
+
+  getBackfillRunDetail: async (runId) => {
+    const resp = await fetch(`${BASE_URL}/dataops/backfill/runs/${encodeURIComponent(runId)}/`);
+    return handleResponse(resp);
+  },
 };

@@ -1144,3 +1144,107 @@ class DataOpsInventoryView(SOCBaseView):
             'by_group': groups_data,
             'data_types': data_types,
         })
+
+
+# ---------------------------------------------------------------------------
+# B03 — Backfill Progress API
+# ---------------------------------------------------------------------------
+
+
+class BackfillRunListView(SOCBaseView):
+    """GET /api/core/v1/operator/scraping/dataops/backfill/runs/ — danh sách run gần nhất."""
+
+    @extend_schema(
+        summary='Danh sách lần chạy backfill gần nhất',
+        description=(
+            'Trả về danh sách BackfillExecutionRun theo thứ tự mới nhất trước. '
+            'Hỗ trợ lọc theo status và job_key qua query params.'
+        ),
+        parameters=[
+            OpenApiParameter('status', OpenApiTypes.STR, description='Lọc theo status (running/success/partial/failed)'),
+            OpenApiParameter('job_key', OpenApiTypes.STR, description='Lọc theo job_key'),
+            OpenApiParameter('limit', OpenApiTypes.INT, description='Số bản ghi tối đa (mặc định 20)'),
+        ],
+        responses={200: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
+    )
+    def get(self, request):
+        from ..models import BackfillExecutionBatch, BackfillExecutionRun
+        qs = BackfillExecutionRun.objects.all().order_by('-started_at')
+        status_filter = request.query_params.get('status', '').strip()
+        job_key_filter = request.query_params.get('job_key', '').strip()
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        if job_key_filter:
+            qs = qs.filter(job_key=job_key_filter)
+        try:
+            limit = max(1, min(int(request.query_params.get('limit', 20)), 100))
+        except (ValueError, TypeError):
+            limit = 20
+        runs = list(qs[:limit])
+        return Response({
+            'count': len(runs),
+            'results': [_serialize_backfill_run(r) for r in runs],
+        })
+
+
+class BackfillRunDetailView(SOCBaseView):
+    """GET /api/core/v1/operator/scraping/dataops/backfill/runs/<run_id>/ — chi tiết một run."""
+
+    @extend_schema(
+        summary='Chi tiết một lần chạy backfill',
+        description='Trả về BackfillExecutionRun và tất cả BackfillExecutionBatch của run đó.',
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
+    )
+    def get(self, request, run_id):
+        from ..models import BackfillExecutionBatch, BackfillExecutionRun
+        try:
+            run = BackfillExecutionRun.objects.get(run_id=run_id)
+        except BackfillExecutionRun.DoesNotExist:
+            return Response({'detail': 'Không tìm thấy run.'}, status=status.HTTP_404_NOT_FOUND)
+        batches = list(BackfillExecutionBatch.objects.filter(run=run).order_by('batch_index'))
+        data = _serialize_backfill_run(run)
+        data['batches'] = [_serialize_backfill_batch(b) for b in batches]
+        return Response(data)
+
+
+def _serialize_backfill_run(run) -> dict:
+    return {
+        'run_id': run.run_id,
+        'job_key': run.job_key,
+        'mode': run.mode,
+        'trigger': run.trigger,
+        'status': run.status,
+        'requested_days': run.requested_days,
+        'planned_symbols_count': run.planned_symbols_count,
+        'completed_symbols_count': run.completed_symbols_count,
+        'failed_symbols_count': run.failed_symbols_count,
+        'inserted_rows': run.inserted_rows,
+        'updated_rows': run.updated_rows,
+        'skipped_existing_rows': run.skipped_existing_rows,
+        'progress_pct': run.progress_pct,
+        'started_at': run.started_at.isoformat() if run.started_at else None,
+        'finished_at': run.finished_at.isoformat() if run.finished_at else None,
+        'duration_seconds': run.duration_seconds,
+        'eta_seconds': run.eta_seconds,
+        'error_summary': run.error_summary,
+        'summary': run.summary,
+    }
+
+
+def _serialize_backfill_batch(batch) -> dict:
+    return {
+        'provider': batch.provider,
+        'batch_index': batch.batch_index,
+        'state': batch.state,
+        'symbols_count': batch.symbols_count,
+        'completed_symbols_count': batch.completed_symbols_count,
+        'inserted_rows': batch.inserted_rows,
+        'updated_rows': batch.updated_rows,
+        'skipped_existing_rows': batch.skipped_existing_rows,
+        'failed_symbols_count': batch.failed_symbols_count,
+        'failed_symbols': batch.failed_symbols[:20],
+        'latency_p50_ms': batch.latency_p50_ms,
+        'latency_p95_ms': batch.latency_p95_ms,
+        'started_at': batch.started_at.isoformat() if batch.started_at else None,
+        'finished_at': batch.finished_at.isoformat() if batch.finished_at else None,
+    }
