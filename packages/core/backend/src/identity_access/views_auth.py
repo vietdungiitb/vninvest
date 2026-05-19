@@ -15,7 +15,8 @@ from django.core.cache import cache
 from rest_framework import permissions, status
 
 logger = logging.getLogger(__name__)
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.response import Response
 
 from .authentication import CorePATAuthentication
@@ -30,6 +31,14 @@ from vninvest_core.exceptions import (
 
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
+
+
+class AuthBootstrapThrottle(UserRateThrottle):
+    """Independent bucket for auth-bootstrap endpoints (/auth/me/, capabilities).
+    Isolated from the global 'user' bucket so that operational polling can never
+    starve critical session-initialization calls.
+    """
+    scope = 'auth_bootstrap'
 
 
 _DEFAULT_USER_CONFIG = {
@@ -356,6 +365,7 @@ def refresh_token_view(request):
 @api_view(['GET'])
 @authentication_classes([CorePATAuthentication])
 @permission_classes(TENANT_PERMISSION_CLASSES)
+@throttle_classes([AuthBootstrapThrottle])
 def profile_view(request):
     """
     GET /core/v1/auth/profile
@@ -402,6 +412,7 @@ def profile_view(request):
 @api_view(['GET'])
 @authentication_classes([CorePATAuthentication])
 @permission_classes([permissions.AllowAny])
+@throttle_classes([AuthBootstrapThrottle])
 def capabilities_view(request):
     user = request.user
     if not user or not user.is_authenticated:

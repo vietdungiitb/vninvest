@@ -188,6 +188,13 @@ REST_FRAMEWORK = {
         # D03/D04: DNSE backfill throttle (AGENTS §14.9)
         'system_backfill_trigger': '30/hour',
         'user_backfill_trigger': '5/hour',
+        # Independent realtime polling bucket — does not consume 'user' quota
+        'realtime_data': '120/min',
+        # Independent SOC operator read bucket — does not consume 'user' quota
+        'soc_operator_read': '120/min',
+        # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never
+        # be blocked by operational polling exhausting the global 'user' bucket
+        'auth_bootstrap': '60/min',
     },
 }
 

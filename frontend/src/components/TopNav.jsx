@@ -68,7 +68,7 @@ export default function TopNav() {
   );
   const tenantSurfaceEnabled = capabilitySnapshot?.surfaces?.tenant_admin?.enabled;
   const canNavigateTo = (route, fallback) => (hasCapabilityMenus ? visibleRoutes.has(route) : fallback);
-  const canReadSOC = canNavigateTo('/operations-center', ability.can('read', 'ServiceOpsCenter'));
+  const canReadSOC = canNavigateTo('/operations-center', ability.can('read', 'ServiceOpsCenter') || Boolean(userIdentity?.isStaff));
   const canReadTenantHome = canNavigateTo('/tenant-admin/home', ability.can('read', 'TenantAdminHome'));
   const canReadTenantCapabilities = canNavigateTo('/tenant-admin/capabilities', ability.can('read', 'TenantCapabilityView'));
   const canReadTenantUsage = canNavigateTo('/tenant-admin/usage', ability.can('read', 'TenantUsageView'));

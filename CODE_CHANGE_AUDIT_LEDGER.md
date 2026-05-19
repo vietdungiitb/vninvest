@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+# 2026-05-19 | SOC Nav Throttle Isolation Fix — Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/identity_access/views_auth.py` | ADD `AuthBootstrapThrottle(UserRateThrottle)` class with `scope='auth_bootstrap'`; apply `@throttle_classes([AuthBootstrapThrottle])` to `profile_view` and `capabilities_view` | SOC-NAV-FIX |
+| `packages/core/backend/src/vninvest_core/settings.py` | ADD `'auth_bootstrap': '60/min'` to `DEFAULT_THROTTLE_RATES` | SOC-NAV-FIX |
+| `frontend/src/components/TopNav.jsx` | FIX `canReadSOC` line 71: add `\|\| Boolean(userIdentity?.isStaff)` fallback so SOC nav survives transient throttle failures for staff users | SOC-NAV-FIX |
+
+## Root Cause
+
+Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data polling (~720–1200 req/hour). `/auth/me/` and `/api/core/v1/access/capabilities/` share this bucket, so both returned 429 simultaneously → CASL `ability` stayed empty → `ability.can('read','ServiceOpsCenter')` = false → SOC nav item hidden.
+
+## Fix Summary
+
+- **Backend**: `AuthBootstrapThrottle` isolates auth bootstrap endpoints into their own Redis key (`auth_bootstrap: 60/min`), completely separate from the `user` bucket. Realtime polling can never exhaust this new bucket.
+- **Frontend**: `|| Boolean(userIdentity?.isStaff)` defensive fallback — if ability is empty (throttle outage), staff users still see SOC nav.
+
+## Validation
+
+- `AuthBootstrapThrottle.scope = 'auth_bootstrap'` confirmed in running container
+- `capabilities_view.cls.throttle_classes = [AuthBootstrapThrottle]` confirmed
+- `profile_view.cls.throttle_classes = [AuthBootstrapThrottle]` confirmed
+- All 14 containers healthy after rebuild
+- Commit: pushed to `origin/dev`
+
+---
+
 # 2026-05-19 | B01 Scheduler Run Truth Hardening — Complete
 
 ## Modified / Created Files

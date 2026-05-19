@@ -1,3 +1,24 @@
+# 2026-05-19 — SOC Nav Throttle Isolation Fix ✅
+
+Status: **✅ COMPLETE** | Backend + Frontend deployed | All 14 containers healthy
+
+## Root Cause & Fix
+- Global `user` throttle bucket (1000/hour) exhausted by realtime polling → `/auth/me/` + `capabilities/` both returned 429 → `ability` empty → SOC nav hidden.
+- **Backend**: `AuthBootstrapThrottle(scope='auth_bootstrap', rate='60/min')` applied to `profile_view` + `capabilities_view`. Isolated from `user` bucket.
+- **Frontend**: `canReadSOC = ... || Boolean(userIdentity?.isStaff)` fallback in TopNav.jsx line 71.
+
+## Files Changed
+- `packages/core/backend/src/identity_access/views_auth.py`
+- `packages/core/backend/src/vninvest_core/settings.py`
+- `frontend/src/components/TopNav.jsx`
+
+## Validation
+- `AuthBootstrapThrottle.scope = 'auth_bootstrap'` ✅ confirmed in container
+- `capabilities_view.cls.throttle_classes = [AuthBootstrapThrottle]` ✅ confirmed
+- `profile_view.cls.throttle_classes = [AuthBootstrapThrottle]` ✅ confirmed
+
+---
+
 # 2026-05-19 — B01 Scheduler Run Truth Hardening ✅
 
 Status: **✅ COMPLETE** | 14/14 tests pass | pushed `af7ab93c` → `origin/dev`
