@@ -288,6 +288,31 @@ def build_scheduler_catalog(
         ).values_list('service__service_key', flat=True).distinct()
     )
 
+    # S04-ext: Build last_finished_at lookup — service_key → finished_at (datetime).
+    # Dùng finished_at của run vừa hoàn thành làm last_run_at thay vì start time,
+    # tránh false-positive degraded ngay sau khi task chạy dài vừa xong.
+    # Chỉ query cho service_keys thực sự tồn tại trong schedule_map hiện tại.
+    _relevant_service_keys: set[str] = {
+        CATALOG_JOB_METADATA.get(jk, {}).get('service_key', '')
+        for jk in schedule_map
+        if CATALOG_JOB_METADATA.get(jk, {}).get('service_key')
+    }
+    from django.db.models import Max
+    _finished_qs = (
+        ServiceRunLog.objects.filter(
+            finished_at__isnull=False,
+            status__in=['completed', 'failed', 'partial'],
+            service__service_key__in=_relevant_service_keys,
+        )
+        .values('service__service_key')
+        .annotate(latest_finished=Max('finished_at'))
+    ) if _relevant_service_keys else []
+    last_finished_by_key: dict[str, Any] = {
+        row['service__service_key']: row['latest_finished']
+        for row in _finished_qs
+        if row['service__service_key']
+    }
+
     catalog: list[dict[str, Any]] = []
 
     for job_key in sorted(schedule_map.keys()):
@@ -351,6 +376,16 @@ def build_scheduler_catalog(
                 is_inflight = bool(_cache.get(f'scheduler:inflight:{job_key}'))
             except Exception:
                 pass
+
+        # S04-ext: Dùng ServiceRunLog.finished_at của run vừa hoàn thành làm last_run_at.
+        # Manual-run cache lưu START TIME, không phải completion time — gây false-positive
+        # "stale/degraded" ngay sau khi task chạy dài (deep-history, db-backup) vừa xong.
+        if not is_inflight and service_key and service_key in last_finished_by_key:
+            _finished_at = last_finished_by_key[service_key]
+            if _finished_at and (last_run_at is None or _finished_at > last_run_at):
+                last_run_at = _finished_at
+                lag_seconds = max(int((now - last_run_at).total_seconds()), 0)
+                freshness = _freshness_state(lag_seconds)
 
         job_status, status_reason = _derive_status(enabled, is_inflight, freshness, lag_seconds)
 
