@@ -1,3 +1,43 @@
+# 2026-05-19 — B01 Scheduler Run Truth Hardening ✅
+
+Status: **✅ COMPLETE** | 14/14 tests pass | pushed `af7ab93c` → `origin/dev`
+
+## What changed
+- Added `service_key: 'backfill_daily_prices'` and `service_key: 'deep_history_bootstrap'` to `CATALOG_JOB_METADATA` for both backfill jobs.
+- Added `('dataops', 'DataOps Scheduler')` to `ServiceDefinition.DOMAIN_CHOICES` + Django migration `0005_add_dataops_domain_choice`.
+- Added two `ServiceDefinition` entries (`backfill_daily_prices`, `deep_history_bootstrap`) to `CANONICAL_SOC_SERVICES` in `registry.py`.
+- Fixed `_execute_scheduler_action` run_now path: resolves `ServiceDefinition` via `meta.get('service_key')` (not job_key), pre-creates `ServiceRunLog(queued)`, passes `service_run_log_id` + `_scheduler_job_key` to task kwargs.
+- Updated `backfill_daily_prices` task: accepts `service_run_log_id` and `_scheduler_job_key`, manages run log lifecycle (queued→running→success/partial/skipped/failed), clears `scheduler:inflight:{job_key}` cache on terminal state.
+- Added `_b01_clear_inflight_cache` helper in `data_ingest/tasks.py`.
+- Added `_scheduler_job_key` to beat schedule kwargs in `settings.py` so beat-triggered runs also auto-create observability run logs.
+- 14 new B01 tests in `test_scheduler_s04.py`; 39/39 total suite OK.
+
+## Fixes
+- Root cause of false "ĐANG CHẠY": inflight cache marker now cleared by task terminal state, not just by operator abort or 2h TTL.
+- Root cause of empty history for backfill jobs: `service_key` now wired in catalog + `ServiceDefinition` rows seeded.
+
+## Next
+- B02 Backfill progress persistence
+- B03 Operator progress API/UI
+
+# 2026-05-19 — Global Market Data Backfill Effectiveness Hardening doc-pack complete ✅
+
+Status: **✅ 14-doc handoff package created** | **✅ SSOT/OpenAPI/SaaS constraints encoded** | **✅ ready for implementation handoff B01-B09**
+
+## What changed
+- Created a complete 14-document execution pack for hardening market-data backfill completeness, speed, observability and operator truth.
+- Locked architecture around GlobalSymbolRegistry SSOT, coverage-gap planner semantics, run progress truth, fast-path bootstrap and multi-mode repair.
+- Encoded OpenAPI and SaaS native rules into taskboard, tech spec, review checklist, integration test plan and spec audit materials so the coding team can execute without reopening scope questions.
+
+## Validation
+- Documentation-only slice; file-pack completeness verified at 14/14 docs under `docs/*BACKFILL_EFFECTIVENESS_HARDENING*_20260519.md`.
+- No runtime/build/test command execution required because this slice changed documentation only.
+
+## Next
+- B01 Scheduler run truth hardening
+- B02 Backfill progress persistence
+- B03 Operator progress API/UI
+
 # 2026-05-19 — DNSE Backfill Whale & Dark Flow — Documentation Package COMPLETE ✅
 
 Status: **✅ 14-doc handoff package created** | **✅ All implementation slices D01–D07 COMPLETE**

@@ -1,5 +1,58 @@
 # Code Change Audit Ledger
 
+# 2026-05-19 | B01 Scheduler Run Truth Hardening — Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/service_ops/scheduler_catalog.py` | ADD `service_key: 'backfill_daily_prices'` to `daily-backfill-prices-1700`; ADD `service_key: 'deep_history_bootstrap'` to `deep-history-bootstrap-weekly` | B01 |
+| `packages/core/backend/src/service_ops/models.py` | ADD `('dataops', 'DataOps Scheduler')` to `ServiceDefinition.DOMAIN_CHOICES` | B01 |
+| `packages/core/backend/src/service_ops/migrations/0005_add_dataops_domain_choice.py` | CREATE — Django migration for dataops domain choice | B01 |
+| `packages/core/backend/src/service_ops/registry.py` | ADD `backfill_daily_prices` and `deep_history_bootstrap` entries to `CANONICAL_SOC_SERVICES` | B01 |
+| `packages/core/backend/src/service_ops/views/scheduler.py` | FIX `_execute_scheduler_action` run_now path: resolve `ServiceDefinition` via `meta.get('service_key')`, pre-create `ServiceRunLog(queued)`, pass `service_run_log_id` + `_scheduler_job_key` to task kwargs | B01 |
+| `packages/core/backend/src/data_ingest/tasks.py` | UPDATE `backfill_daily_prices`: add `service_run_log_id` + `_scheduler_job_key` params, add run log lifecycle (running→success/partial/skipped/failed), add `_b01_clear_inflight_cache` helper | B01 |
+| `packages/core/backend/src/vninvest_core/settings.py` | ADD `_scheduler_job_key` to beat schedule kwargs for both backfill jobs | B01 |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_s04.py` | ADD 14 B01 tests: service_key mapping, ServiceDefinition existence, run_now run log creation, id pass-through, history endpoint results, inflight cache clearing | B01 |
+
+## Validation
+
+- 14 new B01 tests: **14/14 PASS**
+- Full S04 + action suite regression: **39/39 PASS**
+- Commit: `af7ab93c` pushed to `origin/dev`
+
+## Residual Risk
+
+- Beat-triggered runs that were in-flight at deployment time (before B01) will still not have pre-existing `ServiceRunLog` rows; their inflight markers will expire after TTL. This is acceptable warm-up behaviour and resolves automatically after the first beat cycle.
+- `ingest-daily-prices-1705` (shadow run, disabled by default) already had full observability via `ingest_daily_prices` and is unaffected by B01.
+
+# 2026-05-19 | Global Market Data Backfill Effectiveness Hardening — Documentation Pack Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `docs/GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_HANDOFF_MASTER_20260519.md` | CREATE — handoff master locking scope, hard rules, target architecture, success criteria and delivery pack | B00 |
+| `docs/IMPLEMENTATION_PLAN_GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_20260519.md` | CREATE — execution plan with B01-B09 dependency graph, DoD and slice-exit gates | B00 |
+| `docs/TECH_SPEC_GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_20260519.md` | CREATE — technical spec for run progress models, planner semantics, execution modes and API contracts | B00 |
+| `docs/TASKBOARD_GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_20260519.md` | CREATE — taskboard and phase gates for implementation handoff | B00 |
+| `docs/GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_TRACEABILITY_MATRIX_20260519.md` | CREATE — requirement-to-task/test mapping | B00 |
+| `docs/GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md` | CREATE — self-audit checklist and block-merge rules | B00 |
+| `docs/GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_EXECUTION_EVIDENCE_TEMPLATE_20260519.md` | CREATE — slice evidence template | B00 |
+| `docs/GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_CONFIG_OWNERSHIP_MATRIX_20260519.md` | CREATE — config ownership and mutation rules | B00 |
+| `docs/GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_CODE_QUALITY_CONSTITUTION_20260519.md` | CREATE — quality constitution and banned/required patterns | B00 |
+| `docs/BACKEND_DESIGN_GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_20260519.md` | CREATE — backend design for planner, progress, coordinator and executor flow | B00 |
+| `docs/FRONTEND_DESIGN_GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_20260519.md` | CREATE — frontend design for SchedulerBoard/DataOps truth rendering and UX | B00 |
+| `docs/RUN_CODE_REVIEW_GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_20260519.md` | CREATE — code review checklist and hotspot files | B00 |
+| `docs/RUN_INTEGRATION_TESTS_GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_20260519.md` | CREATE — focused integration/runtime validation plan | B00 |
+| `docs/RUN_SPEC_AUDIT_GLOBAL_MARKET_DATA_BACKFILL_EFFECTIVENESS_HARDENING_20260519.md` | CREATE — spec-audit checklist mapped to requirements | B00 |
+
+## Validation
+
+- Documentation-only slice; no source/runtime changes were made.
+- 14/14 planning docs created successfully under `docs/` with consistent naming.
+- Pack content aligned to Global Market Data SSOT hard rules and Core API OpenAPI constitution.
+
 # 2026-05-19 | DNSE Backfill Whale & Dark Flow — D01–D07 Implementation Complete
 
 ## Modified / Created Files
