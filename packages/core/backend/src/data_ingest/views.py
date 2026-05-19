@@ -406,64 +406,61 @@ class SystemBackfillTriggerView(APIView):
         if not trade_dates:
             return Response({'detail': 'Không có ngày giao dịch hợp lệ trong khoảng ngày đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ── Build (symbol, date) slots & apply missing-only filter ───────────
+        # ── Build (symbol, date) slots & apply missing-only filter via pandas ──
+        import pandas as pd
         from .tasks import backfill_intraday_tick_system
         from market_data.models import IntradayTick  # §14.5 presence check
 
-        tasks_queued = 0
-        skipped = 0
-        slots_preview = 0
-        skipped_preview = 0
-        total_slots = len(symbols) * len(trade_dates)
+        # All candidate slots as DataFrame
+        all_slots = pd.DataFrame(
+            [(s, d) for s in symbols for d in trade_dates],
+            columns=['symbol', 'trade_date'],
+        )
 
         if mode == 'missing_only':
-            # §14.5 bulk presence check — single query instead of per-slot loop (performance)
-            from django.db.models import DateField
-            from django.db.models.functions import TruncDate
-            existing_pairs = set(
+            # §14.5 one bulk query → pandas anti-join to get only missing slots
+            existing_qs = (
                 IntradayTick.objects
                 .filter(symbol__in=symbols, timestamp__date__in=trade_dates)
-                .annotate(trade_date_val=TruncDate('timestamp'))
-                .values_list('symbol', 'trade_date_val')
+                .values_list('symbol', 'timestamp__date')
                 .distinct()
             )
-            # Normalize existing pairs to str dates for comparison
-            existing_pairs_str = {(s, str(d)) for s, d in existing_pairs}
+            existing_df = pd.DataFrame(list(existing_qs), columns=['symbol', 'trade_date'])
+            if not existing_df.empty:
+                existing_df['trade_date'] = existing_df['trade_date'].astype(str)
+                merged = all_slots.merge(existing_df, on=['symbol', 'trade_date'], how='left', indicator=True)
+                missing_slots = merged.loc[merged['_merge'] == 'left_only', ['symbol', 'trade_date']]
+                skipped_count = len(all_slots) - len(missing_slots)
+            else:
+                missing_slots = all_slots
+                skipped_count = 0
         else:
-            existing_pairs_str = set()
+            missing_slots = all_slots
+            skipped_count = 0
 
         if dry_run:
-            for symbol in symbols:
-                for trade_date in trade_dates:
-                    if (symbol, trade_date) in existing_pairs_str:
-                        skipped_preview += 1
-                    else:
-                        slots_preview += 1
             return Response(
                 {
                     'dry_run': True,
-                    'slots_preview': slots_preview,
-                    'skipped_preview': skipped_preview,
+                    'slots_preview': len(missing_slots),
+                    'skipped_preview': skipped_count,
                     'symbols_count': len(symbols),
                     'dates_count': len(trade_dates),
                 },
                 status=status.HTTP_200_OK,
             )
 
-        for symbol in symbols:
-            for trade_date in trade_dates:
-                if (symbol, trade_date) in existing_pairs_str:
-                    skipped += 1
-                    continue
-                backfill_intraday_tick_system.apply_async(
-                    kwargs={'symbol': symbol, 'trade_date': trade_date},
-                )
-                tasks_queued += 1
+        tasks_queued = 0
+        for row in missing_slots.itertuples(index=False):
+            backfill_intraday_tick_system.apply_async(
+                kwargs={'symbol': row.symbol, 'trade_date': row.trade_date},
+            )
+            tasks_queued += 1
 
         return Response(
             {
                 'tasks_queued': tasks_queued,
-                'skipped': skipped,
+                'skipped': skipped_count,
                 'symbols_count': len(symbols),
                 'from_date': from_date_str,
                 'to_date': to_date_str,
