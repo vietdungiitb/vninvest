@@ -70,6 +70,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Daily price backfill (17:00 ICT)',
         'service_key': 'backfill_daily_prices',
+        'max_expected_run_seconds': 10800,  # 3h — 1 năm × toàn bộ symbol
     },
     'ingest-daily-prices-1705': {
         'domain': 'dataops',
@@ -87,6 +88,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Deep history bootstrap — 5 năm (Chủ nhật 03:00)',
         'service_key': 'deep_history_bootstrap',
+        'max_expected_run_seconds': 28800,  # 8h — 5 năm × toàn bộ symbol
     },
     # === Materializers ===
     'materialize-symbol-snapshot-60s': {
@@ -195,6 +197,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Daily DB backup (02:00)',
+        'max_expected_run_seconds': 3600,  # 1h — DB dump full
     },
 }
 
@@ -228,14 +231,20 @@ def _derive_status(
     is_inflight: bool,
     freshness_state: str,
     lag_seconds: int | None,
+    is_possibly_stuck: bool = False,
 ) -> tuple[str, str | None]:
     """
     Trả (status, status_reason).
 
     Trạng thái priority:
       running > paused > disabled > degraded > idle > enabled
+
+    is_possibly_stuck=True: task đang chạy nhưng vượt max_expected_run_seconds —
+    có thể worker bị crash/OOM. Status = degraded với warning rõ ràng.
     """
     if is_inflight:
+        if is_possibly_stuck:
+            return 'degraded', 'Đang chạy vượt thời gian dự kiến — kiểm tra worker'
         return 'running', None
     if not enabled:
         return 'disabled', None
@@ -281,12 +290,24 @@ def build_scheduler_catalog(
         )
     }
 
-    # S04: Build inflight set from ServiceRunLog — service_key → bool
-    inflight_service_keys: set[str] = set(
+    # S04: Build inflight set từ ServiceRunLog — service_key → bool.
+    # Đồng thời lấy started_at của run đang chạy để phát hiện stuck runs.
+    from django.db.models import Min as _DjMin
+    _inflight_qs = (
         ServiceRunLog.objects.filter(
             status__in=['queued', 'running'],
-        ).values_list('service__service_key', flat=True).distinct()
+            service__service_key__isnull=False,
+        )
+        .values('service__service_key')
+        .annotate(earliest_started=_DjMin('started_at'))
     )
+    # service_key → earliest started_at trong số các run đang chạy
+    inflight_run_started_at: dict[str, Any] = {
+        row['service__service_key']: row['earliest_started']
+        for row in _inflight_qs
+        if row['service__service_key']
+    }
+    inflight_service_keys: set[str] = set(inflight_run_started_at.keys())
 
     # S04-ext: Build last_finished_at lookup — service_key → finished_at (datetime).
     # Dùng finished_at của run vừa hoàn thành làm last_run_at thay vì start time,
@@ -387,7 +408,23 @@ def build_scheduler_catalog(
                 lag_seconds = max(int((now - last_run_at).total_seconds()), 0)
                 freshness = _freshness_state(lag_seconds)
 
-        job_status, status_reason = _derive_status(enabled, is_inflight, freshness, lag_seconds)
+        # S04-ext2: Stuck run detection.
+        # Nếu task đang chạy (is_inflight) nhưng vượt max_expected_run_seconds thì
+        # khả năng cao worker đã crash (OOM/SIGKILL) và ServiceRunLog không được cập nhật.
+        # Hiển thị 'degraded' với cảnh báo rõ để operator kiểm tra, tránh nhầm lẫm khi run_now.
+        is_possibly_stuck = False
+        inflight_elapsed_seconds: int | None = None
+        if is_inflight and service_key:
+            _max_secs = meta.get('max_expected_run_seconds')
+            _inflight_started = inflight_run_started_at.get(service_key)
+            if _inflight_started:
+                inflight_elapsed_seconds = max(int((now - _inflight_started).total_seconds()), 0)
+                if _max_secs and inflight_elapsed_seconds > _max_secs:
+                    is_possibly_stuck = True
+
+        job_status, status_reason = _derive_status(
+            enabled, is_inflight, freshness, lag_seconds, is_possibly_stuck
+        )
 
         # next_run_at: estimated from last_run_at + interval (best effort for interval jobs)
         next_run_at: str | None = None
@@ -420,6 +457,9 @@ def build_scheduler_catalog(
             'status_reason': status_reason,
             'enabled': enabled,
             'is_inflight': is_inflight,
+            'is_possibly_stuck': is_possibly_stuck,
+            'inflight_elapsed_seconds': inflight_elapsed_seconds,
+            'max_expected_run_seconds': meta.get('max_expected_run_seconds'),
             'next_run_at': next_run_at,
             'last_run_at': last_run_at.isoformat() if last_run_at else None,
             'lag_seconds': lag_seconds,

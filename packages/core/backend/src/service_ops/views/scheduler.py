@@ -549,10 +549,12 @@ def _execute_scheduler_action(
                     f"Celery task ID: {celery_task_id}."
                 )
                 # Đánh dấu inflight trong cache để catalog hiển thị 'ĐANG CHẠY' ngay lập tức.
-                # TTL = 7200s (2h) — đủ cho backfill dài; task sẽ xóa sau khi hoàn thành.
+                # TTL dùng max_expected_run_seconds của job (nếu có), fallback 7200s (2h).
+                # Chỉ là early-detection cho jobs chưa có ServiceRunLog; jobs có service_key
+                # dùng ServiceRunLog.status='running' là source chính (không bị TTL expire).
                 try:
                     from django.core.cache import cache
-                    _INFLIGHT_TTL = 7200  # 2 giờ
+                    _INFLIGHT_TTL = int(meta.get('max_expected_run_seconds') or 7200)
                     cache.set(f'scheduler:inflight:{job_key}', celery_task_id, timeout=_INFLIGHT_TTL)
                     cache.set(f'scheduler:manual_run:{job_key}', executed_at.isoformat(), timeout=86400)
                 except Exception:
