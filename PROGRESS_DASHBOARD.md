@@ -1,4 +1,55 @@
+# 2026-05-19 — DNSE Backfill Whale & Dark Flow — Documentation Package COMPLETE ✅
+
+Status: **✅ 14-doc handoff package created** | **✅ All implementation slices D01–D07 COMPLETE**
+
+## Implementation Slices — Status
+
+| Slice | Task | Commit | Status |
+|---|---|---|---|
+| D01 | `fetch_intraday_tape_history()` trong `vnbroker_adapter.py` + 16 unit tests | `03ac8ee1` | ✅ DONE |
+| D02 | `UserDNSECredential` model + Fernet + CRUD API + migration + 11 tests | `d0e70908` | ✅ DONE |
+| D03+D04 | Backfill tasks + API endpoints + throttle + 9 tests | `b5fc1121` | ✅ DONE |
+| D05 | `detect_and_store_global_whale_alerts` + `session_date` param + 4 tests | `e3b13f82` | ✅ DONE |
+| D06 | 10 integration tests (T-E1..T-G3) | `004dc507` | ✅ DONE |
+| D07 | Frontend: SOC Backfill panel + User DNSE credential settings + i18n | `423bf233` | ✅ DONE |
+
+## What changed (doc-pack only, no runtime changes)
+
+14 tài liệu bàn giao đã được tạo trong `docs/`:
+
+| Doc | File |
+|---|---|
+| Handoff Master | `DNSE_BACKFILL_WHALE_DARK_FLOW_HANDOFF_MASTER_20260519.md` |
+| Implementation Plan | `IMPLEMENTATION_PLAN_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md` |
+| Tech Spec | `TECH_SPEC_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md` |
+| Taskboard | `TASKBOARD_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md` |
+| Traceability Matrix | `DNSE_BACKFILL_WHALE_DARK_FLOW_TRACEABILITY_MATRIX_20260519.md` |
+| Self Audit & Test Protocol | `DNSE_BACKFILL_WHALE_DARK_FLOW_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md` |
+| Execution Evidence Template | `DNSE_BACKFILL_WHALE_DARK_FLOW_EXECUTION_EVIDENCE_TEMPLATE_20260519.md` |
+| Config Ownership Matrix | `DNSE_BACKFILL_WHALE_DARK_FLOW_CONFIG_OWNERSHIP_MATRIX_20260519.md` |
+| Code Quality Constitution | `DNSE_BACKFILL_WHALE_DARK_FLOW_CODE_QUALITY_CONSTITUTION_20260519.md` |
+| Backend Design | `BACKEND_DESIGN_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md` |
+| Frontend Design | `FRONTEND_DESIGN_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md` |
+| Run Code Review | `RUN_CODE_REVIEW_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md` |
+| Run Integration Tests | `RUN_INTEGRATION_TESTS_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md` |
+| Run Spec Audit | `RUN_SPEC_AUDIT_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md` |
+
+`AGENTS.md` cũng đã được cập nhật với entry mới cho workstream DNSE Backfill (§14 hard constraints + read-first section).
+
+## Next: Implementation Slices
+
+| Slice | Task | Owner |
+|---|---|---|
+| D01 | `fetch_intraday_tape_history()` trong `vnbroker_adapter.py` | Core Backend |
+| D02 | `UserDNSECredential` model + migration + CRUD API | Core Backend |
+| D03 | `backfill_intraday_tick_system` task + SOC endpoint | Core Backend |
+| D04 | `backfill_intraday_tick_user` task + user endpoint | Core Backend |
+| D05 | Extend `detect_and_store_global_whale_alerts` với `session_date` param | Core Backend |
+| D06 | 13 integration test cases | QA/Core Backend |
+| D07 | Frontend: SOC backfill panel + User DNSE settings tab | Frontend |
+
 # 2026-05-19 — Dashboard 3-surface fix: heatmap colors + alert center data ✅
+
 
 Status: **✅ heatmap shows real % changes** | **✅ alert center: 21 alerts (8 medium, 13 low)** | **✅ stack rebuilt with new images**
 
