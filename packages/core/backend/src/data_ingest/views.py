@@ -414,28 +414,31 @@ class SystemBackfillTriggerView(APIView):
         skipped = 0
         slots_preview = 0
         skipped_preview = 0
+        total_slots = len(symbols) * len(trade_dates)
 
-        for symbol in symbols:
-            for trade_date in trade_dates:
-                if mode == 'missing_only':
-                    # §14.5: presence check before enqueue (IntradayTick uses timestamp DateTimeField)
-                    already_exists = IntradayTick.objects.filter(
-                        symbol=symbol, timestamp__date=trade_date
-                    ).exists()
-                    if already_exists:
-                        skipped += 1
-                        skipped_preview += 1
-                        continue
-
-                if dry_run:
-                    slots_preview += 1
-                else:
-                    backfill_intraday_tick_system.apply_async(
-                        kwargs={'symbol': symbol, 'trade_date': trade_date},
-                    )
-                    tasks_queued += 1
+        if mode == 'missing_only':
+            # §14.5 bulk presence check — single query instead of per-slot loop (performance)
+            from django.db.models import DateField
+            from django.db.models.functions import TruncDate
+            existing_pairs = set(
+                IntradayTick.objects
+                .filter(symbol__in=symbols, timestamp__date__in=trade_dates)
+                .annotate(trade_date_val=TruncDate('timestamp'))
+                .values_list('symbol', 'trade_date_val')
+                .distinct()
+            )
+            # Normalize existing pairs to str dates for comparison
+            existing_pairs_str = {(s, str(d)) for s, d in existing_pairs}
+        else:
+            existing_pairs_str = set()
 
         if dry_run:
+            for symbol in symbols:
+                for trade_date in trade_dates:
+                    if (symbol, trade_date) in existing_pairs_str:
+                        skipped_preview += 1
+                    else:
+                        slots_preview += 1
             return Response(
                 {
                     'dry_run': True,
@@ -446,6 +449,16 @@ class SystemBackfillTriggerView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
+
+        for symbol in symbols:
+            for trade_date in trade_dates:
+                if (symbol, trade_date) in existing_pairs_str:
+                    skipped += 1
+                    continue
+                backfill_intraday_tick_system.apply_async(
+                    kwargs={'symbol': symbol, 'trade_date': trade_date},
+                )
+                tasks_queued += 1
 
         return Response(
             {
