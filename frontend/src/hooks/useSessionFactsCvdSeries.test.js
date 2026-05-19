@@ -38,4 +38,33 @@ describe('useSessionFactsCvdSeries', () => {
     expect(getSessionFactsCvd).toHaveBeenCalledTimes(1);
     expect(getSessionFactsCvd).toHaveBeenCalledWith('HPG', '15m', '2026-05-15');
   });
+
+  it('caches 404 CVD misses and skips repeated requests for the same trade date', async () => {
+    const notFoundError = {
+      response: {
+        status: 404,
+        data: {
+          code: 'not_found',
+        },
+      },
+    };
+    getSessionFactsCvd.mockRejectedValue(notFoundError);
+
+    const { result } = renderHook(() => useSessionFactsCvdSeries('VCB', '30m', {
+      selectedTradeDate: '2026-05-15',
+      tradeDates: ['2026-05-15'],
+    }));
+
+    await waitFor(() => {
+      expect(getSessionFactsCvd).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(getSessionFactsCvd).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBeNull();
+    expect(result.current.payloads).toEqual([]);
+  });
 });

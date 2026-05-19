@@ -8,11 +8,21 @@ function normalizeTradeDate(value) {
   return normalizedValue || null;
 }
 
+function getHttpStatus(errorLike) {
+  const status = Number(errorLike?.response?.status);
+  return Number.isFinite(status) ? status : null;
+}
+
+function buildMissingCacheKey(symbol, window, tradeDate) {
+  return [String(symbol || '').trim().toUpperCase(), String(window || '').trim().toLowerCase(), normalizeTradeDate(tradeDate) || 'latest'].join('|');
+}
+
 export default function useSessionFactsCvdSeries(symbol, flowTimeframe, {
   selectedTradeDate = null,
   tradeDates = [],
 } = {}) {
   const requestIdRef = useRef(0);
+  const missingKeyCacheRef = useRef(new Set());
   const [payloads, setPayloads] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -59,8 +69,15 @@ export default function useSessionFactsCvdSeries(symbol, flowTimeframe, {
 
     try {
       const requestedTradeDates = normalizedTradeDates.length ? normalizedTradeDates : [normalizedSelectedTradeDate || null];
+      const pendingTradeDates = requestedTradeDates.filter((tradeDate) => !missingKeyCacheRef.current.has(buildMissingCacheKey(normalizedSymbol, sessionFactsWindow, tradeDate)));
+      if (!pendingTradeDates.length) {
+        setPayloads([]);
+        setLoading(false);
+        return;
+      }
+
       const responses = await Promise.allSettled(
-        requestedTradeDates.map((tradeDate) => getSessionFactsCvd(normalizedSymbol, sessionFactsWindow, tradeDate)),
+        pendingTradeDates.map((tradeDate) => getSessionFactsCvd(normalizedSymbol, sessionFactsWindow, tradeDate)),
       );
 
       if (requestId !== requestIdRef.current) {
@@ -71,7 +88,16 @@ export default function useSessionFactsCvdSeries(symbol, flowTimeframe, {
         .filter((response) => response.status === 'fulfilled')
         .map((response) => response.value?.data || null)
         .filter((payload) => Array.isArray(payload?.cvd_series));
-      const rejectedResponse = responses.find((response) => response.status === 'rejected');
+      const rejectedResponses = responses.filter((response) => response.status === 'rejected');
+
+      rejectedResponses.forEach((response, index) => {
+        const status = getHttpStatus(response?.reason);
+        if (status === 404) {
+          missingKeyCacheRef.current.add(buildMissingCacheKey(normalizedSymbol, sessionFactsWindow, pendingTradeDates[index] || null));
+        }
+      });
+
+      const rejectedResponse = rejectedResponses.find((response) => getHttpStatus(response?.reason) !== 404);
 
       setPayloads(successfulPayloads);
       if (!successfulPayloads.length && rejectedResponse?.reason) {

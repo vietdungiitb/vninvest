@@ -90,6 +90,23 @@ def _get_materialized_session_fact_buckets(facts: SessionFacts, window: str) -> 
     )
 
 
+def _build_empty_cvd_payload(symbol: str, window: str, bucket_minutes: int, trade_date, detail: str, *, session_date=None, code: str = 'no_data') -> dict:
+    resolved_session_date = session_date or trade_date or dj_timezone.localdate()
+    return {
+        'symbol': symbol,
+        'session_date': resolved_session_date.isoformat(),
+        'window': window,
+        'bucket_minutes': bucket_minutes,
+        'cvd_normalized': 0.0,
+        'delta_strength_pct': 0.0,
+        'whale_net_flow': 0,
+        'cvd_series': [],
+        'bucket_count': 0,
+        'data_status': code,
+        'detail': detail,
+    }
+
+
 class SymbolSnapshotListView(generics.ListAPIView):
     serializer_class = SymbolSnapshotSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -287,14 +304,13 @@ _CVD_SERIES_CACHE_TTL = 30   # seconds — same as SessionFacts
             name='trade_date',
             type=OpenApiTypes.DATE,
             location=OpenApiParameter.QUERY,
-            description='Ngày phiên cần lấy theo định dạng YYYY-MM-DD. Nếu truyền, endpoint chỉ trả đúng phiên đó hoặc 404.',
+            description='Ngày phiên cần lấy theo định dạng YYYY-MM-DD. Nếu truyền, endpoint khóa đúng selected session; nếu chưa có dữ liệu thì trả payload rỗng.',
             required=False,
         ),
     ],
     responses={
         200: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
-        404: OpenApiTypes.OBJECT,
     },
     examples=[
         OpenApiExample(
@@ -351,13 +367,22 @@ class SessionFactsCvdView(APIView):
 
         facts = _get_materialized_session_facts(symbol, trade_date=requested_trade_date)
         if facts is None:
-            raise NotFound({
-                'detail': (
-                    f'Không có dữ liệu SessionFacts cho {symbol} ở phiên {requested_trade_date.isoformat()}.'
-                    if requested_trade_date is not None
-                    else f'Không có dữ liệu SessionFacts cho {symbol}.'
+            detail = (
+                f'Không có dữ liệu SessionFacts cho {symbol} ở phiên {requested_trade_date.isoformat()}.'
+                if requested_trade_date is not None
+                else f'Không có dữ liệu SessionFacts cho {symbol}.'
+            )
+            return Response({
+                **_build_empty_cvd_payload(
+                    symbol,
+                    window,
+                    bucket_minutes,
+                    requested_trade_date,
+                    detail,
+                    session_date=requested_trade_date,
+                    code='missing_session_facts',
                 ),
-                'code': 'not_found',
+                '_source': 'no-data',
             })
 
         cache_key = f'core:cvd_series:v2:{symbol}:{facts.session_date}:{bucket_minutes}'
@@ -373,9 +398,17 @@ class SessionFactsCvdView(APIView):
 
         bucket_rows = _get_materialized_session_fact_buckets(facts, window)
         if not bucket_rows:
-            raise NotFound({
-                'detail': f'Không có dữ liệu CVD materialized cho {symbol} ở window {window}.',
-                'code': 'not_found',
+            return Response({
+                **_build_empty_cvd_payload(
+                    symbol,
+                    window,
+                    bucket_minutes,
+                    requested_trade_date,
+                    f'Không có dữ liệu CVD materialized cho {symbol} ở window {window}.',
+                    session_date=facts.session_date,
+                    code='missing_cvd_buckets',
+                ),
+                '_source': 'no-data',
             })
 
         data = {

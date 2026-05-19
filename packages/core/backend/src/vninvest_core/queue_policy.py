@@ -94,6 +94,8 @@ QUEUE_DOMAIN_MATRIX = {
             'materialize-pre-open-snapshots-20m',
             # Daily price backfill at 17:00 ICT (after HOSE close)
             'daily-backfill-prices-1700',
+            # Deep history bootstrap: Sun 03:00 ICT (5 years) — gap-fill for all active symbols
+            'deep-history-bootstrap-weekly',
         ),
     },
     'manual_operations': {

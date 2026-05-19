@@ -9,6 +9,7 @@ Cung cấp:
 """
 import uuid
 from django.utils import timezone
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
@@ -16,6 +17,11 @@ from rest_framework import status
 
 from ..registry import ensure_service_registry
 from vninvest_core.pagination import StandardPageNumberPagination
+
+
+class SOCOperatorReadThrottle(UserRateThrottle):
+    """Independent bucket for SOC operator read endpoints — does not share the global 'user' quota."""
+    scope = 'soc_operator_read'
 
 
 class SOCRegistryBootstrapMixin:
@@ -30,6 +36,7 @@ class SOCBaseView(SOCRegistryBootstrapMixin, APIView):
     """Base view cho tất cả SOC endpoints."""
 
     permission_classes = [IsAuthenticated, IsAdminUser]
+    throttle_classes = [SOCOperatorReadThrottle]
 
     @staticmethod
     def _stringify_error_detail(detail) -> str:

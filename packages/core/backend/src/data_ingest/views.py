@@ -282,32 +282,181 @@ class UserBackfillThrottle(UserRateThrottle):
     rate = '5/hour'
 
 
+_SYSTEM_BACKFILL_SUPPORTED_DATASETS = frozenset(['tape_intraday'])
+_SYSTEM_BACKFILL_MAX_DATE_RANGE_DAYS = 365
+_VALID_MODES = frozenset(['missing_only', 'force_refresh'])
+
+
+def _resolve_backfill_symbols(symbols_group: str, custom_symbol: str) -> list[str] | None:
+    """
+    Resolve a symbols_group string to a flat list of symbol strings.
+    Returns None if resolution fails (caller should return 400).
+    """
+    group = str(symbols_group or '').strip().lower()
+    if group == 'custom':
+        sym = str(custom_symbol or '').strip().upper()
+        if not sym:
+            return None
+        return [sym]
+    from market_data.vnbroker_adapter import fetch_symbol_group_members
+    try:
+        members = fetch_symbol_group_members(group)
+        return [s.upper() for s in members if s] if members else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning('_resolve_backfill_symbols group=%s failed: %s', group, exc)
+        return None
+
+
+def _build_trading_date_range(from_date_str: str, to_date_str: str):
+    """
+    Return list of date strings (YYYY-MM-DD) from from_date to to_date,
+    excluding weekends. Raises ValueError on bad input.
+    """
+    from datetime import date, timedelta
+    from_date = date.fromisoformat(from_date_str)
+    to_date = date.fromisoformat(to_date_str)
+    if from_date > to_date:
+        raise ValueError('from_date phải trước hoặc bằng to_date.')
+    if (to_date - from_date).days > _SYSTEM_BACKFILL_MAX_DATE_RANGE_DAYS:
+        raise ValueError(f'Khoảng ngày không được vượt quá {_SYSTEM_BACKFILL_MAX_DATE_RANGE_DAYS} ngày.')
+    dates = []
+    current = from_date
+    while current <= to_date:
+        if current.weekday() < 5:  # Mon–Fri only
+            dates.append(current.isoformat())
+        current += timedelta(days=1)
+    return dates
+
+
 class SystemBackfillTriggerView(APIView):
     """
     POST /core/v1/data-ingest/backfill/system/
-    Admin-only: queue backfill_intraday_tick_system task.
+    Admin-only: queue backfill_intraday_tick_system tasks for a symbol group × date range.
 
-    Request body: { "symbol": "HPG", "trade_date": "2026-05-10" }
+    Request body (v2):
+    {
+        "datasets": ["tape_intraday"],
+        "symbols_group": "vn30",        # or "custom"
+        "symbol": "HPG",                # required when symbols_group == "custom"
+        "from_date": "2026-05-01",
+        "to_date": "2026-05-19",
+        "mode": "missing_only",         # or "force_refresh"
+        "dry_run": false
+    }
+
+    Backward-compat (v1): { "symbol": "HPG", "trade_date": "2026-05-10" }
+    → auto-mapped to v2 with symbols_group=custom, from_date=to_date=trade_date.
     """
     permission_classes = [IsAdminUser]
     throttle_classes = [SystemBackfillThrottle]
 
     def post(self, request):
-        symbol = str(request.data.get('symbol') or '').strip().upper()
-        trade_date = str(request.data.get('trade_date') or '').strip()
+        data = request.data
 
-        if not symbol or not trade_date:
+        # ── Backward-compat: v1 payload { symbol, trade_date } ──────────────
+        if 'trade_date' in data and 'from_date' not in data:
+            data = {
+                'datasets': ['tape_intraday'],
+                'symbols_group': 'custom',
+                'symbol': str(data.get('symbol') or '').strip().upper(),
+                'from_date': str(data.get('trade_date') or '').strip(),
+                'to_date': str(data.get('trade_date') or '').strip(),
+                'mode': 'missing_only',
+                'dry_run': False,
+            }
+
+        # ── Validate datasets ────────────────────────────────────────────────
+        datasets = data.get('datasets') or []
+        if not isinstance(datasets, list) or not datasets:
+            return Response({'detail': 'datasets phải là list không rỗng.'}, status=status.HTTP_400_BAD_REQUEST)
+        unsupported = [d for d in datasets if d not in _SYSTEM_BACKFILL_SUPPORTED_DATASETS]
+        if unsupported:
             return Response(
-                {'detail': 'symbol và trade_date là bắt buộc.'},
+                {'detail': f'Dataset chưa hỗ trợ: {unsupported}. Hiện chỉ hỗ trợ: {list(_SYSTEM_BACKFILL_SUPPORTED_DATASETS)}.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # ── Validate mode ────────────────────────────────────────────────────
+        mode = str(data.get('mode') or 'missing_only').strip()
+        if mode not in _VALID_MODES:
+            return Response({'detail': f'mode phải là một trong: {list(_VALID_MODES)}.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        dry_run = bool(data.get('dry_run', False))
+
+        # ── Resolve symbols ──────────────────────────────────────────────────
+        symbols_group = str(data.get('symbols_group') or 'custom').strip().lower()
+        custom_symbol = str(data.get('symbol') or '').strip().upper()
+        symbols = _resolve_backfill_symbols(symbols_group, custom_symbol)
+        if not symbols:
+            return Response(
+                {'detail': 'Không thể xác định danh sách mã. Kiểm tra lại symbols_group hoặc symbol.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Validate & build date range ──────────────────────────────────────
+        from_date_str = str(data.get('from_date') or '').strip()
+        to_date_str = str(data.get('to_date') or '').strip()
+        if not from_date_str or not to_date_str:
+            return Response({'detail': 'from_date và to_date là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            trade_dates = _build_trading_date_range(from_date_str, to_date_str)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not trade_dates:
+            return Response({'detail': 'Không có ngày giao dịch hợp lệ trong khoảng ngày đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ── Build (symbol, date) slots & apply missing-only filter ───────────
         from .tasks import backfill_intraday_tick_system
-        result = backfill_intraday_tick_system.apply_async(
-            kwargs={'symbol': symbol, 'trade_date': trade_date},
+        from market_data.models import IntradayTick  # §14.5 presence check
+
+        tasks_queued = 0
+        skipped = 0
+        slots_preview = 0
+        skipped_preview = 0
+
+        for symbol in symbols:
+            for trade_date in trade_dates:
+                if mode == 'missing_only':
+                    # §14.5: presence check before enqueue
+                    already_exists = IntradayTick.objects.filter(
+                        symbol=symbol, trade_date=trade_date
+                    ).exists()
+                    if already_exists:
+                        skipped += 1
+                        skipped_preview += 1
+                        continue
+
+                if dry_run:
+                    slots_preview += 1
+                else:
+                    backfill_intraday_tick_system.apply_async(
+                        kwargs={'symbol': symbol, 'trade_date': trade_date},
+                    )
+                    tasks_queued += 1
+
+        if dry_run:
+            return Response(
+                {
+                    'dry_run': True,
+                    'slots_preview': slots_preview,
+                    'skipped_preview': skipped_preview,
+                    'symbols_count': len(symbols),
+                    'dates_count': len(trade_dates),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {
+                'tasks_queued': tasks_queued,
+                'skipped': skipped,
+                'symbols_count': len(symbols),
+                'from_date': from_date_str,
+                'to_date': to_date_str,
+            },
+            status=status.HTTP_202_ACCEPTED,
         )
-        return Response({'task_id': result.id, 'symbol': symbol, 'trade_date': trade_date},
-                        status=status.HTTP_202_ACCEPTED)
 
 
 class UserBackfillTriggerView(APIView):

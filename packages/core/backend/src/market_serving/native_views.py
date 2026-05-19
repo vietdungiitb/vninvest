@@ -14,13 +14,21 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from rest_framework.throttling import UserRateThrottle
+
 from market_data.models import IntradayTick
 from .models import SymbolSnapshot
+
+
+class RealtimeDataThrottle(UserRateThrottle):
+    """Independent bucket for realtime ticker polling — does not share the global 'user' quota."""
+    scope = 'realtime_data'
 
 
 class RealtimeTickerView(APIView):
     """GET /api/realtime/ticker/<symbol>/ — latest snapshot for a single symbol."""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [RealtimeDataThrottle]
 
     def get(self, request, symbol):
         symbol = symbol.upper()
@@ -52,6 +60,7 @@ class RealtimeTickerView(APIView):
 class RealtimeTickerListView(APIView):
     """GET /api/realtime/tickers/?symbols=VCB,HPG — batch snapshot lookup."""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [RealtimeDataThrottle]
 
     _MAX_SYMBOLS = 100
 

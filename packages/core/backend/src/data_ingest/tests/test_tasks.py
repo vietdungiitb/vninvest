@@ -9,7 +9,7 @@ from django.utils.dateparse import parse_datetime
 from data_ingest.models import IngestJob, IngestRun
 from data_ingest.tasks import backfill_daily_prices, fetch_and_upsert_price_board, ingest_daily_prices, warm_intraday_universe
 from data_ingest.tasks import _fetch_and_upsert_bucket
-from market_data.models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolRegistry, IntradayBar, IntradayTick, StockProfile
+from market_data.models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolRegistry, IntradayBar, IntradayTick
 from market_serving.models import SymbolSnapshot
 from service_ops.models import ServiceRunLog
 from service_ops.registry import ensure_service_registry, get_registered_service
@@ -154,6 +154,37 @@ class DataIngestBackfillTaskTests(TestCase):
         self.assertEqual(str(updated_row.close), '12.60')
         self.assertEqual(str(inserted_row.close), '12.70')
 
+    @patch('data_ingest.tasks.fetch_daily_history')
+    def test_backfill_daily_prices_defaults_to_global_symbol_registry_when_symbols_missing(self, fetch_daily_history_mock):
+        GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
+        GlobalSymbolRegistry.objects.create(symbol='FPT', is_active=True)
+
+        def _fetch_side_effect(symbol, days=365, source='VCI'):
+            return [
+                {
+                    'symbol': symbol,
+                    'date': date(2026, 5, 16),
+                    'open': 12.0 if symbol == 'ACB' else 110.0,
+                    'high': 12.4 if symbol == 'ACB' else 111.0,
+                    'low': 11.8 if symbol == 'ACB' else 109.5,
+                    'close': 12.3 if symbol == 'ACB' else 110.5,
+                    'volume': 4567 if symbol == 'ACB' else 9876,
+                    'source': source,
+                }
+            ]
+
+        fetch_daily_history_mock.side_effect = _fetch_side_effect
+
+        result = backfill_daily_prices.run(days=2, max_workers=1)
+
+        self.assertEqual(result['planned_items'], 2)
+        self.assertEqual(result['upserted'], 2)
+        self.assertEqual(result['failed_count'], 0)
+        self.assertEqual(fetch_daily_history_mock.call_count, 2)
+        self.assertCountEqual([call.args[0] for call in fetch_daily_history_mock.call_args_list], ['ACB', 'FPT'])
+        self.assertTrue(DailyPrice.objects.filter(symbol='ACB', date=date(2026, 5, 16)).exists())
+        self.assertTrue(DailyPrice.objects.filter(symbol='FPT', date=date(2026, 5, 16)).exists())
+
     @patch('data_ingest.tasks.backfill_daily_prices.apply_async')
     @patch('data_ingest.tasks.backfill_daily_prices.run')
     def test_ingest_daily_prices_runs_backfill_inline(self, backfill_run_mock, backfill_apply_async_mock):
@@ -220,7 +251,7 @@ class DataIngestBackfillTaskTests(TestCase):
             output_summary={},
         )
 
-        result = ingest_daily_prices.run(days=2, symbols=['ACB'], service_run_log_id=service_run_log.id)
+        result = ingest_daily_prices.run(days=2, symbols=None, service_run_log_id=service_run_log.id)
 
         service_run_log.refresh_from_db()
         self.assertEqual(result['upserted'], 4)
@@ -233,6 +264,7 @@ class DataIngestBackfillTaskTests(TestCase):
         self.assertEqual(result['coverage_refreshed_symbols'], 1)
         self.assertEqual(service_run_log.output_summary['coverage_refreshed_symbols'], 1)
         self.assertEqual(service_run_log.output_summary['providers'], ['VCI', 'KBS'])
+        backfill_run_mock.assert_called_once_with(days=2, symbols=None, plan_items=None)
         coverage_row = GlobalSymbolCoverage.objects.get(
             registry=registry,
             dataset=GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
@@ -256,7 +288,7 @@ class DataIngestBackfillTaskTests(TestCase):
             status=IngestJob.StatusChoices.ACTIVE,
             schedule_seconds=60,
         )
-        StockProfile.objects.create(symbol='ACB', status=StockProfile.StatusChoices.ACTIVE)
+        GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
         service_run_log = ServiceRunLog.objects.create(
             service=get_registered_service('vnbroker_price_board'),
             status='queued',
@@ -355,6 +387,47 @@ class DataIngestBackfillTaskTests(TestCase):
             ).count(),
             2,
         )
+
+    @patch('market_serving.vnbroker_materializer.materialize_symbol_snapshot_from_vnbroker')
+    def test_fetch_and_upsert_price_board_defaults_to_global_symbol_registry_when_symbols_missing(self, materialize_mock):
+        GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
+        GlobalSymbolRegistry.objects.create(symbol='FPT', is_active=True)
+
+        materialize_mock.return_value = {
+            'upserted': 2,
+            'inserted': 1,
+            'updated': 1,
+            'skipped_existing': 0,
+            'failed': [],
+            'failed_count': 0,
+            'source': 'vnbroker_native',
+        }
+
+        result = fetch_and_upsert_price_board.run()
+
+        materialize_mock.assert_called_once_with(symbols=['ACB', 'FPT'])
+        self.assertEqual(result['symbols_count'], 2)
+        self.assertEqual(result['status'], 'ok')
+
+    @patch('data_ingest.tasks.fetch_intraday_tape')
+    def test_warm_intraday_universe_defaults_to_global_symbol_registry_when_symbols_missing(self, fetch_intraday_tape_mock):
+        GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
+        GlobalSymbolRegistry.objects.create(symbol='FPT', is_active=True)
+
+        fetch_intraday_tape_mock.return_value = {
+            'symbol': 'ACB',
+            'trades': [],
+            'source': 'VCI',
+            'stale': False,
+            'fetched_at': timezone.now().isoformat(),
+        }
+
+        result = warm_intraday_universe.run()
+
+        self.assertEqual(fetch_intraday_tape_mock.call_count, 2)
+        fetch_intraday_tape_mock.assert_any_call('ACB', page_size=50)
+        fetch_intraday_tape_mock.assert_any_call('FPT', page_size=50)
+        self.assertEqual(result['symbols_count'], 2)
 
     @patch('data_ingest.tasks.fetch_intraday_tape')
     def test_warm_intraday_universe_consumes_plan_items_and_persists_rows(self, fetch_intraday_tape_mock):

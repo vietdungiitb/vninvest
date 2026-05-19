@@ -117,6 +117,22 @@ Với task liên quan `SOC Config UI`, `Global Screener quản trị`, `Prefetch
 11. `docs/RUN_INTEGRATION_TESTS_SOC_CONFIG_UI_ADMIN_OPS_DECOMMISSION_20260516.md`
 12. `docs/RUN_SPEC_AUDIT_SOC_CONFIG_UI_ADMIN_OPS_DECOMMISSION_20260516.md`
 
+Với task liên quan `Dashboard SaaS Native Migration`, `DashboardPage`, `PackageDashboardHost`, `ModernDashboard decommission`, `useCoreDashboardData`, `coreApiAdapter portfolio analytics`, `dashboard route swap`, `dashboard parity`, đọc gói:
+
+1. `docs/DASHBOARD_SAAS_NATIVE_MIGRATION_HANDOFF_MASTER_20260518.md`
+2. `docs/IMPLEMENTATION_PLAN_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
+3. `docs/TECH_SPEC_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
+4. `docs/TASKBOARD_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
+5. `docs/DASHBOARD_SAAS_NATIVE_MIGRATION_TRACEABILITY_MATRIX_20260518.md`
+6. `docs/DASHBOARD_SAAS_NATIVE_MIGRATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260518.md`
+7. `docs/DASHBOARD_SAAS_NATIVE_MIGRATION_CODE_QUALITY_CONSTITUTION_20260518.md`
+8. `docs/DASHBOARD_SAAS_NATIVE_MIGRATION_EXECUTION_EVIDENCE_TEMPLATE_20260518.md`
+9. `docs/FRONTEND_DESIGN_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
+10. `docs/BACKEND_DESIGN_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
+11. `docs/RUN_CODE_REVIEW_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
+12. `docs/RUN_INTEGRATION_TESTS_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
+13. `docs/RUN_SPEC_AUDIT_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
+
 ## 2. Read-first quality docs
 
 Trước mọi thay đổi có liên quan feature này, đọc theo thứ tự:
@@ -408,3 +424,49 @@ Template chuẩn nằm tại:
 7. Không tạo compat route hoặc proxy route business logic mới cho alert-center.
 8. Không được bypass shadow/parity/soak gates khi cutover hoặc legacy sunset; mọi yêu cầu lệch chuẩn phải bị block mặc định.
 9. Không xóa legacy alert code trước khi shadow run, parity evidence và rollback path đã được xác nhận.
+
+Với task liên quan `DNSE backfill`, `lịch sử tape DNSE`, `UserDNSECredential`, `system backfill`, `user self-serve backfill`, `backfill whale/dark flow`, `Fernet encrypt credential`, `backfill_intraday_tick_system`, `backfill_intraday_tick_user`, đọc gói:
+
+1. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_HANDOFF_MASTER_20260519.md`
+2. `docs/IMPLEMENTATION_PLAN_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+3. `docs/TECH_SPEC_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+4. `docs/TASKBOARD_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+5. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_TRACEABILITY_MATRIX_20260519.md`
+6. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md`
+7. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_EXECUTION_EVIDENCE_TEMPLATE_20260519.md`
+8. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_CONFIG_OWNERSHIP_MATRIX_20260519.md`
+9. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_CODE_QUALITY_CONSTITUTION_20260519.md`
+10. `docs/FRONTEND_DESIGN_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+11. `docs/BACKEND_DESIGN_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+12. `docs/RUN_CODE_REVIEW_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+13. `docs/RUN_INTEGRATION_TESTS_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+14. `docs/RUN_SPEC_AUDIT_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+
+## 2. Read-first quality docs (DNSE Backfill additions)
+
+Trước mọi thay đổi liên quan `DNSE backfill`, `UserDNSECredential`, `Fernet encrypt credential`, `backfill_intraday_tick_system`, `backfill_intraday_tick_user`, `user self-serve backfill`, đọc theo thứ tự:
+
+1. `quality/QUALITY.md`
+2. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_HANDOFF_MASTER_20260519.md`
+3. `docs/TECH_SPEC_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+4. `docs/IMPLEMENTATION_PLAN_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+5. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_TRACEABILITY_MATRIX_20260519.md`
+6. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_CONFIG_OWNERSHIP_MATRIX_20260519.md`
+7. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_CODE_QUALITY_CONSTITUTION_20260519.md`
+8. `docs/DNSE_BACKFILL_WHALE_DARK_FLOW_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md`
+9. `docs/RUN_CODE_REVIEW_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+10. `docs/RUN_INTEGRATION_TESTS_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+11. `docs/RUN_SPEC_AUDIT_DNSE_BACKFILL_WHALE_DARK_FLOW_20260519.md`
+
+## Hard constraints for DNSE Backfill (§14)
+
+1. **`fetch_intraday_tape_history()` trong `market_data/vnbroker_adapter.py` là SSOT duy nhất** cho mọi truy cập tape lịch sử DNSE — tuyệt đối không import `DNSEQuote` từ ngoài adapter.
+2. **Credentials tuyệt đối không được log, serialize vào response, hay truyền qua Celery args dưới dạng plain text** — Celery task chỉ nhận `user_id: int`.
+3. **`UserDNSECredential` phải dùng Fernet encryption** từ `DNSE_CREDENTIAL_FERNET_KEY` env var — không plaintext, không SHA-256 alone.
+4. **System backfill phải abort ngay** khi `get_system_provider_credentials()` trả về None — không fallback env var.
+5. **Presence check `IntradayTick.filter(symbol, date).exists()`** là bắt buộc trước mọi `bulk_create` trong backfill tasks.
+6. **`is_system_provider=True` chỉ admin (`is_staff`) mới được set** — enforce tại view layer, không tự set trong code.
+7. **User backfill ghi vào shared `IntradayTick` table** — tuyệt đối không tạo per-user data silo.
+8. **`days_back` user clamp max 180** tại view layer trước khi đưa vào task.
+9. **Rate limit `UserBackfillThrottle`** phải được đăng ký trong `settings.py` và enforce tại endpoint — không bypass.
+10. Mọi exception khỏi hard rule phải có ticket, owner, expiry; quá hạn thì block merge.
