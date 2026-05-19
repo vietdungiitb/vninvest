@@ -616,3 +616,101 @@ class PasswordResetToken(models.Model):
             used=False
         ).delete()
         return expired_count
+
+
+# ---------------------------------------------------------------------------
+# DNSE Backfill Credentials (D02)
+# ---------------------------------------------------------------------------
+
+def _get_fernet():
+    """Trả về Fernet instance từ DNSE_CREDENTIAL_FERNET_KEY env var. Raise nếu thiếu key."""
+    from cryptography.fernet import Fernet
+    key = os.environ.get('DNSE_CREDENTIAL_FERNET_KEY', '').strip()
+    if not key:
+        raise RuntimeError('DNSE_CREDENTIAL_FERNET_KEY env var is required but not set')
+    return Fernet(key.encode() if isinstance(key, str) else key)
+
+
+def _encrypt_credential(plaintext: str) -> bytes:
+    """Mã hoá credential string → Fernet bytes. Raise nếu thiếu key."""
+    if not plaintext:
+        raise ValueError('Credential plaintext must not be empty')
+    return _get_fernet().encrypt(plaintext.encode('utf-8'))
+
+
+def _decrypt_credential(ciphertext: bytes) -> str:
+    """Giải mã Fernet bytes → plaintext string. Raise nếu sai key hoặc corrupt."""
+    return _get_fernet().decrypt(ciphertext).decode('utf-8')
+
+
+class UserDNSECredential(models.Model):
+    """
+    Lưu trữ DNSE API credential của user (hoặc system provider) dưới dạng Fernet-encrypted.
+
+    Hard rules (AGENTS.md §14):
+    - Không log api_key / api_secret ở bất kỳ đâu.
+    - is_system_provider=True chỉ admin (is_staff) được set — enforce ở view layer.
+    - DNSE_CREDENTIAL_FERNET_KEY là bắt buộc trong environment.
+    - Credential không được truyền qua Celery args — task chỉ nhận user_id.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='core_dnse_credential',
+        verbose_name='Người dùng',
+    )
+    api_key_encrypted = models.BinaryField(verbose_name='API Key (Fernet-encrypted)')
+    api_secret_encrypted = models.BinaryField(verbose_name='API Secret (Fernet-encrypted)')
+    is_system_provider = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name='Là system provider (chỉ admin set)',
+    )
+    is_verified = models.BooleanField(
+        default=False,
+        verbose_name='Đã xác minh kết nối DNSE',
+    )
+    last_verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Xác minh lần cuối')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'User DNSE Credential'
+        verbose_name_plural = 'User DNSE Credentials'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['is_system_provider'],
+                condition=models.Q(is_system_provider=True),
+                name='unique_active_system_provider',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        tag = '[SYSTEM]' if self.is_system_provider else ''
+        return f'UserDNSECredential({self.user.username}{tag})'
+
+    def set_credentials(self, api_key: str, api_secret: str) -> None:
+        """Mã hoá và lưu api_key, api_secret. Không log giá trị thực."""
+        self.api_key_encrypted = _encrypt_credential(api_key)
+        self.api_secret_encrypted = _encrypt_credential(api_secret)
+
+    def get_api_key(self) -> str:
+        """Giải mã và trả về api_key. Raise nếu sai key."""
+        return _decrypt_credential(bytes(self.api_key_encrypted))
+
+    def get_api_secret(self) -> str:
+        """Giải mã và trả về api_secret. Raise nếu sai key."""
+        return _decrypt_credential(bytes(self.api_secret_encrypted))
+
+
+def get_system_provider_credentials() -> 'tuple[str, str] | None':
+    """
+    Trả về (api_key, api_secret) của system provider, hoặc None nếu chưa set.
+    Task backfill phải abort khi hàm này trả về None.
+    """
+    try:
+        cred = UserDNSECredential.objects.get(is_system_provider=True)
+        return cred.get_api_key(), cred.get_api_secret()
+    except UserDNSECredential.DoesNotExist:
+        return None

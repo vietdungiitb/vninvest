@@ -6,6 +6,7 @@ from vninvest_core.utils.legacy_stubs import GenericEmptyListView, GenericEmptyS
 from . import views_auth
 from . import onboarding_views
 from . import tenant_member_views
+from .dnse_credential_views import DNSECredentialView
 
 urlpatterns = [
     # SFI-B2 native PAT login — used by both legacy frontend (compat) and new clients.
@@ -36,6 +37,8 @@ urlpatterns = [
     path('core/v1/tenant-members/', tenant_member_views.TenantMemberListView.as_view(), name='api-tenant-members-list'),
     # Partner / tenant-admin native mount — frontend calls /api/core/v1/partner/*
     path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner_api'), namespace='identity_access_partner_api')),
+    # D02: DNSE credential management
+    path('core/v1/dnse-credential/', DNSECredentialView.as_view(), name='api-dnse-credential'),
 
     # =========================================================================
     # Misc legacy stubs (migrated from compat_urls.py)
