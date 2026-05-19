@@ -14,6 +14,7 @@ export const SOCDomainTabs = ({ activeDomain, onDomainChange, t }) => {
     { key: 'screener', label: t('soc.tab.screener') },
     { key: 'vnbroker', label: t('soc.tabs.vnbroker') },
     { key: 'runtime-kpi', label: t('soc.tabs.runtime_kpi') },
+    { key: 'dnse-backfill', label: t('soc.tab.dnse_backfill') },
   ];
 
   return (

@@ -11,9 +11,10 @@ import SignalsPanel from '../components/soc/SignalsPanel';
 import ScreenerPanel from '../components/soc/ScreenerPanel';
 import VnbrokerPanel from '../components/soc/VnbrokerPanel';
 import RuntimeKPIPanel from '../components/soc/RuntimeKPIPanel';
+import DNSEBackfillPanel from '../components/soc/DNSEBackfillPanel';
 
 // 'matrix' redirect → 'dataops' (Matrix hợp nhất vào DataOps tab kể từ 20260516)
-const VALID_DOMAINS = ['overview', 'signals', 'dataops', 'prefetch', 'screener', 'vnbroker', 'runtime-kpi'];
+const VALID_DOMAINS = ['overview', 'signals', 'dataops', 'prefetch', 'screener', 'vnbroker', 'runtime-kpi', 'dnse-backfill'];
 
 const SOCPage = ({ t }) => {
   const { t: translate } = useI18n();
@@ -57,6 +58,7 @@ const SOCPage = ({ t }) => {
     screener: <ScreenerPanel t={pageT} />,
     vnbroker: <VnbrokerPanel t={pageT} />,
     'runtime-kpi': <RuntimeKPIPanel t={pageT} />,
+    'dnse-backfill': <DNSEBackfillPanel t={pageT} />,
   };
 
   return (

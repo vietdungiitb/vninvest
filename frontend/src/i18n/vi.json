@@ -1,4 +1,21 @@
 {
+  "settings": {
+    "dnse_cred_title": "Credentials DNSE Data",
+    "dnse_cred_desc": "Nhập API key và secret của tài khoản DNSE để hệ thống tải tape lịch sử cho bạn.",
+    "dnse_cred_active": "Đã cấu hình",
+    "dnse_cred_verified": "Đã xác minh",
+    "dnse_cred_api_key": "API Key",
+    "dnse_cred_api_secret": "API Secret",
+    "dnse_cred_save_btn": "Lưu Credentials",
+    "dnse_cred_saving": "Đang lưu...",
+    "dnse_cred_saved": "Credentials đã được lưu an toàn.",
+    "dnse_cred_save_error": "Không thể lưu credentials.",
+    "dnse_cred_delete_btn": "Xóa Credentials",
+    "dnse_cred_deleting": "Đang xóa...",
+    "dnse_cred_deleted": "Credentials đã được xóa.",
+    "dnse_cred_delete_error": "Không thể xóa credentials.",
+    "dnse_cred_delete_confirm": "Bạn có chắc muốn xóa credentials DNSE không?"
+  },
   "layout": {
     "nav": {
       "adminOps": "Hoạt động quản trị",
@@ -228,6 +245,30 @@
       "validation_error": "Lỗi xác thực",
       "server_error": "Lỗi máy chủ",
       "config_apply_failed": "Cấu hình áp dụng không thành công"
+    },
+    "tab": {
+      "overview": "Tổng quan",
+      "signals": "Tín hiệu",
+      "dataops": "DataOps",
+      "prefetch": "Tải trước",
+      "screener": "Bộ lọc",
+      "dnse_backfill": "DNSE Backfill",
+      "runtime_kpi": "Runtime KPI"
+    },
+    "dnse_backfill": {
+      "info_banner": "Panel này cho phép admin kích hoạt tải lịch sử tape DNSE vào IntradayTick. Dữ liệu chia sẻ toàn hệ thống — không phải per-user.",
+      "system_section_title": "Backfill hệ thống (Admin)",
+      "system_section_desc": "Kích hoạt backfill dùng credentials hệ thống (is_system_provider). Chỉ admin mới thực hiện được.",
+      "user_section_title": "Backfill user (self-serve)",
+      "user_section_desc": "Dùng credentials DNSE đã cấu hình của bạn để tải dữ liệu tape. Giới hạn 180 ngày trở lại.",
+      "field_symbol": "Mã cổ phiếu",
+      "field_trade_date": "Ngày giao dịch",
+      "btn_trigger_system": "Kích hoạt Backfill Hệ thống",
+      "btn_trigger_user": "Kích hoạt Backfill",
+      "btn_triggering": "Đang kích hoạt...",
+      "result_status": "Trạng thái",
+      "result_ticks": "Ticks",
+      "error_generic": "Lỗi khi kích hoạt backfill"
     }
   }
 }
