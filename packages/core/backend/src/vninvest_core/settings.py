@@ -179,6 +179,16 @@ REST_FRAMEWORK = {
     # A5 Fix: Custom exception handler for standard error envelopes (Constitution R4)
     'EXCEPTION_HANDLER': 'vninvest_core.exceptions.core_api_exception_handler',
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '1000/hour',
+        'ingest_admin_trigger': '10/hour',
+        # D03/D04: DNSE backfill throttle (AGENTS §14.9)
+        'system_backfill_trigger': '30/hour',
+        'user_backfill_trigger': '5/hour',
+    },
 }
 
 SPECTACULAR_SETTINGS = {

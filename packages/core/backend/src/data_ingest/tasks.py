@@ -57,6 +57,17 @@ def _normalize_symbols(symbols: list[str] | None) -> list[str]:
     return sorted({str(symbol).strip().upper() for symbol in symbols if str(symbol).strip()})
 
 
+def _get_default_global_registry_symbols() -> list[str]:
+    from market_data.models import GlobalSymbolRegistry
+
+    return list(
+        GlobalSymbolRegistry.objects
+        .filter(is_active=True)
+        .order_by('symbol')
+        .values_list('symbol', flat=True)
+    )
+
+
 def _extract_symbols_from_plan_items(plan_items: list[dict] | None) -> list[str]:
     if not plan_items:
         return []
@@ -641,22 +652,17 @@ def fetch_and_upsert_price_board(
         _attach_ingest_run_to_service_run_log(service_run_log, run)
 
         from market_serving.vnbroker_materializer import materialize_symbol_snapshot_from_vnbroker
-        from market_data.models import StockProfile
 
         # SM-P2.3 Native: Fetch price board from vnbroker adapter.
         # When explicit planner items exist, restrict writes to that subset.
         symbols = _extract_symbols_from_plan_items(plan_items)
         if not symbols:
-            symbols = list(
-                StockProfile.objects
-                .filter(status=StockProfile.StatusChoices.ACTIVE)
-                .values_list('symbol', flat=True)
-            )
+            symbols = _get_default_global_registry_symbols()
 
         if not symbols:
             if run:
                 run.state = IngestRun.StateChoices.SKIPPED
-                run.error_message = 'No active symbols found in StockProfile'
+                run.error_message = 'No active symbols found in GlobalSymbolRegistry'
                 run.finished_at = now()
                 run.save(update_fields=['state', 'error_message', 'finished_at'])
             if service_run_log is not None:
@@ -754,7 +760,6 @@ def warm_intraday_universe(
     Warm native intraday cache and hydrate canonical intraday rows.
     """
     from data_ingest.models import IngestJob, IngestRun
-    from market_data.models import StockProfile
 
     service_run_log = None
     if service_run_log_id is not None:
@@ -780,11 +785,7 @@ def warm_intraday_universe(
     target_datasets = _extract_intraday_datasets_from_plan_items(plan_items)
 
     if not symbols:
-        symbols = list(
-            StockProfile.objects
-            .filter(status=StockProfile.StatusChoices.ACTIVE)
-            .values_list('symbol', flat=True)
-        )
+        symbols = _get_default_global_registry_symbols()
 
     if not symbols:
         if service_run_log is not None:
@@ -892,7 +893,7 @@ def warm_intraday_universe(
 def sync_market_groups(self):
     """
     Native: Đồng bộ danh sách symbol niêm yết từ vnbroker.
-    Cập nhật hoặc tạo mới StockProfile.
+    Cập nhật hoặc tạo mới registry-backed market data profiles.
     """
     from market_data.vnbroker_adapter import fetch_listing_symbols
     from market_data.models import StockProfile
@@ -935,7 +936,7 @@ def ingest_daily_prices(
     
     Args:
         days: number of days to backfill (default 1 for same-day or previous day catch-up)
-        symbols: specific symbol list; None = all active StockProfile
+        symbols: specific symbol list; None = all active GlobalSymbolRegistry symbols
     
     Returns:
         dict with 'status', 'upserted', 'failed', 'providers' keys
@@ -985,13 +986,7 @@ def ingest_daily_prices(
         failed = result.get('failed', [])
         coverage_symbols = unique_symbols or _normalize_symbols(symbols)
         if not coverage_symbols and upserted:
-            from market_data.models import StockProfile
-
-            coverage_symbols = list(
-                StockProfile.objects
-                .filter(status=StockProfile.StatusChoices.ACTIVE)
-                .values_list('symbol', flat=True)
-            )
+            coverage_symbols = _get_default_global_registry_symbols()
         coverage_refreshed_symbols = _refresh_coverage_for_symbols(coverage_symbols)
         
         if run:
@@ -1068,17 +1063,11 @@ def backfill_daily_prices(
 
     Args:
         days: số ngày lịch sử cần backfill (mặc định 365).
-        symbols: danh sách symbol cụ thể; None = tất cả active StockProfile.
+        symbols: danh sách symbol cụ thể; None = tất cả active GlobalSymbolRegistry symbols.
         max_workers: số thread song song; None = số provider khả dụng.
     """
-    from market_data.models import StockProfile
-
     if plan_items is None and symbols is None:
-        symbols = list(
-            StockProfile.objects
-            .filter(status=StockProfile.StatusChoices.ACTIVE)
-            .values_list('symbol', flat=True)
-        )
+        symbols = _get_default_global_registry_symbols()
 
     if plan_items is None:
         plan_items = _build_default_daily_price_plan_items(list(symbols or []), days)
@@ -1347,3 +1336,152 @@ def send_password_reset_email(self, email: str, token: str, frontend_url: str = 
         except Exception as retry_exc:
             logger.error(f'Password reset email retry exhausted for {email}: {retry_exc}')
             return {'status': 'failed', 'email': email, 'error': str(retry_exc)}
+
+
+# ---------------------------------------------------------------------------
+# D03: System backfill intraday tick from DNSE
+# ---------------------------------------------------------------------------
+
+_BACKFILL_BATCH_SIZE = 500
+_MAX_BACKFILL_DAYS = 30  # system default; user-facing clamped tighter
+
+
+@shared_task(bind=True, name='data_ingest.tasks.backfill_intraday_tick_system', queue='manual_on_demand')
+def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict:
+    """
+    System backfill: fetch DNSE tape cho một symbol/date và upsert vào IntradayTick.
+
+    Hard rules (AGENTS.md §14):
+    - Abort ngay khi get_system_provider_credentials() trả về None.
+    - Presence check IntradayTick.filter(symbol, date).exists() trước bulk_create.
+    - Không log api_key / api_secret.
+    """
+    from market_data.models import IntradayTick
+    from market_data.vnbroker_adapter import fetch_intraday_tape_history
+    from identity_access.models import get_system_provider_credentials
+
+    symbol_upper = str(symbol or '').strip().upper()
+    if not symbol_upper or not trade_date:
+        return {'status': 'error', 'reason': 'symbol và trade_date là bắt buộc'}
+
+    # §14.4: Abort khi không có system provider credentials
+    creds = get_system_provider_credentials()
+    if creds is None:
+        logger.warning('backfill_intraday_tick_system: no system provider credentials — abort. symbol=%s date=%s',
+                       symbol_upper, trade_date)
+        return {'status': 'aborted', 'reason': 'no_system_credentials', 'symbol': symbol_upper, 'date': trade_date}
+
+    api_key, api_secret = creds  # không log
+
+    # §14.5: Presence check trước bulk_create
+    try:
+        existing = IntradayTick.objects.filter(symbol=symbol_upper, timestamp__date=trade_date).exists()
+    except Exception as exc:
+        logger.error('backfill_intraday_tick_system: DB check error: %s', exc)
+        return {'status': 'error', 'reason': str(exc), 'symbol': symbol_upper, 'date': trade_date}
+
+    if existing:
+        logger.info('backfill_intraday_tick_system: skip (data exists) symbol=%s date=%s', symbol_upper, trade_date)
+        return {'status': 'skipped', 'reason': 'already_exists', 'symbol': symbol_upper, 'date': trade_date}
+
+    ticks = fetch_intraday_tape_history(
+        symbol_upper, trade_date,
+        api_key=api_key, api_secret=api_secret,
+        source='dnse_system',
+    )
+    if not ticks:
+        return {'status': 'empty', 'symbol': symbol_upper, 'date': trade_date, 'ticks': 0}
+
+    objs = [
+        IntradayTick(
+            symbol=symbol_upper,
+            timestamp=t['timestamp'],
+            price=t['price'],
+            volume=t['volume'],
+            side=t['side'].upper(),
+            match_type=t.get('match_type', 'NormalMatch'),
+            source=t.get('source', 'dnse_system'),
+        )
+        for t in ticks
+    ]
+
+    created = 0
+    for i in range(0, len(objs), _BACKFILL_BATCH_SIZE):
+        batch = objs[i:i + _BACKFILL_BATCH_SIZE]
+        IntradayTick.objects.bulk_create(batch, ignore_conflicts=True)
+        created += len(batch)
+
+    logger.info('backfill_intraday_tick_system: done symbol=%s date=%s created=%d', symbol_upper, trade_date, created)
+    return {'status': 'ok', 'symbol': symbol_upper, 'date': trade_date, 'ticks': created}
+
+
+# ---------------------------------------------------------------------------
+# D04: User self-serve backfill intraday tick from DNSE
+# ---------------------------------------------------------------------------
+
+_USER_BACKFILL_MAX_DAYS = 180  # §14.8: clamp tại view layer
+
+
+@shared_task(bind=True, name='data_ingest.tasks.backfill_intraday_tick_user', queue='manual_on_demand')
+def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: str) -> dict:
+    """
+    User self-serve backfill: dùng credential của user để fetch DNSE tape.
+
+    Hard rules (AGENTS.md §14):
+    - Chỉ nhận user_id (int) — không nhận api_key/api_secret qua Celery args.
+    - Ghi vào shared IntradayTick — không tạo per-user silo.
+    - Presence check trước bulk_create.
+    """
+    from market_data.models import IntradayTick
+    from market_data.vnbroker_adapter import fetch_intraday_tape_history
+    from identity_access.models import UserDNSECredential
+
+    symbol_upper = str(symbol or '').strip().upper()
+    if not symbol_upper or not trade_date:
+        return {'status': 'error', 'reason': 'symbol và trade_date là bắt buộc'}
+
+    # Lấy credential của user — không truyền qua Celery args
+    try:
+        cred = UserDNSECredential.objects.get(user_id=user_id)
+        api_key = cred.get_api_key()
+        api_secret = cred.get_api_secret()
+    except UserDNSECredential.DoesNotExist:
+        return {'status': 'error', 'reason': 'no_user_credential', 'user_id': user_id}
+    except Exception as exc:
+        logger.error('backfill_intraday_tick_user: credential decrypt error user_id=%s: %s', user_id, exc)
+        return {'status': 'error', 'reason': 'credential_error', 'user_id': user_id}
+
+    # §14.5: Presence check
+    if IntradayTick.objects.filter(symbol=symbol_upper, timestamp__date=trade_date).exists():
+        return {'status': 'skipped', 'reason': 'already_exists', 'symbol': symbol_upper, 'date': trade_date}
+
+    ticks = fetch_intraday_tape_history(
+        symbol_upper, trade_date,
+        api_key=api_key, api_secret=api_secret,
+        source='dnse_user',
+    )
+    if not ticks:
+        return {'status': 'empty', 'symbol': symbol_upper, 'date': trade_date, 'ticks': 0}
+
+    objs = [
+        IntradayTick(
+            symbol=symbol_upper,
+            timestamp=t['timestamp'],
+            price=t['price'],
+            volume=t['volume'],
+            side=t['side'].upper(),
+            match_type=t.get('match_type', 'NormalMatch'),
+            source=t.get('source', 'dnse_user'),
+        )
+        for t in ticks
+    ]
+
+    created = 0
+    for i in range(0, len(objs), _BACKFILL_BATCH_SIZE):
+        batch = objs[i:i + _BACKFILL_BATCH_SIZE]
+        IntradayTick.objects.bulk_create(batch, ignore_conflicts=True)
+        created += len(batch)
+
+    logger.info('backfill_intraday_tick_user: done user=%s symbol=%s date=%s created=%d',
+                user_id, symbol_upper, trade_date, created)
+    return {'status': 'ok', 'symbol': symbol_upper, 'date': trade_date, 'ticks': created, 'user_id': user_id}

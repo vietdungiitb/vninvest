@@ -10,9 +10,10 @@ Endpoints:
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
+from rest_framework.views import APIView
 
 from vninvest_core.pagination import StandardPageNumberPagination
 from .models import IngestJob, IngestRun
@@ -22,7 +23,7 @@ from .serializers import (
     TriggerIngestRequestSerializer,
     IngestTriggerResponseSerializer,
 )
-from .tasks import ingest_daily_prices
+from .tasks import ingest_daily_prices, _USER_BACKFILL_MAX_DAYS
 from service_ops.models import ServiceRunLog
 from service_ops.registry import ensure_service_registry, get_registered_service
 
@@ -262,3 +263,96 @@ class DataIngestAdminViewSet(viewsets.ViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+# ---------------------------------------------------------------------------
+# D03: SOC endpoint — trigger system backfill
+# D04: User endpoint — trigger user backfill
+# ---------------------------------------------------------------------------
+
+class SystemBackfillThrottle(UserRateThrottle):
+    """Rate limit cho SOC system backfill trigger: 30 lần/giờ."""
+    scope = 'system_backfill_trigger'
+    rate = '30/hour'
+
+
+class UserBackfillThrottle(UserRateThrottle):
+    """Rate limit cho user self-serve backfill: 5 lần/giờ (AGENTS §14.9)."""
+    scope = 'user_backfill_trigger'
+    rate = '5/hour'
+
+
+class SystemBackfillTriggerView(APIView):
+    """
+    POST /core/v1/data-ingest/backfill/system/
+    Admin-only: queue backfill_intraday_tick_system task.
+
+    Request body: { "symbol": "HPG", "trade_date": "2026-05-10" }
+    """
+    permission_classes = [IsAdminUser]
+    throttle_classes = [SystemBackfillThrottle]
+
+    def post(self, request):
+        symbol = str(request.data.get('symbol') or '').strip().upper()
+        trade_date = str(request.data.get('trade_date') or '').strip()
+
+        if not symbol or not trade_date:
+            return Response(
+                {'detail': 'symbol và trade_date là bắt buộc.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .tasks import backfill_intraday_tick_system
+        result = backfill_intraday_tick_system.apply_async(
+            kwargs={'symbol': symbol, 'trade_date': trade_date},
+        )
+        return Response({'task_id': result.id, 'symbol': symbol, 'trade_date': trade_date},
+                        status=status.HTTP_202_ACCEPTED)
+
+
+class UserBackfillTriggerView(APIView):
+    """
+    POST /core/v1/data-ingest/backfill/user/
+    Authenticated user: queue backfill_intraday_tick_user task cho chính user đó.
+
+    Request body: { "symbol": "HPG", "trade_date": "2026-05-10" }
+    §14.8: days_back clamp max 180 enforced tại view layer.
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [UserBackfillThrottle]
+
+    def post(self, request):
+        from datetime import date, timedelta
+
+        symbol = str(request.data.get('symbol') or '').strip().upper()
+        trade_date_str = str(request.data.get('trade_date') or '').strip()
+
+        if not symbol or not trade_date_str:
+            return Response(
+                {'detail': 'symbol và trade_date là bắt buộc.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # §14.8: clamp trade_date không được quá 180 ngày trước hôm nay
+        try:
+            from datetime import datetime
+            trade_date = datetime.strptime(trade_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'detail': 'trade_date phải có định dạng YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        min_allowed = date.today() - timedelta(days=_USER_BACKFILL_MAX_DAYS)
+        if trade_date < min_allowed:
+            return Response(
+                {'detail': f'trade_date không được trước {min_allowed.isoformat()} (tối đa {_USER_BACKFILL_MAX_DAYS} ngày).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .tasks import backfill_intraday_tick_user
+        result = backfill_intraday_tick_user.apply_async(
+            kwargs={'user_id': request.user.id, 'symbol': symbol, 'trade_date': trade_date_str},
+        )
+        return Response({'task_id': result.id, 'symbol': symbol, 'trade_date': trade_date_str},
+                        status=status.HTTP_202_ACCEPTED)
