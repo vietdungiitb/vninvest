@@ -23,6 +23,21 @@ const FRESHNESS_TONE = {
 };
 const freshTone = (f) => FRESHNESS_TONE[f] || 'text-slate-400';
 
+// ─── Lag formatter ───────────────────────────────────────────────────────────
+function formatLag(seconds) {
+  if (seconds == null) return '—';
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}p ${s % 60}s`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  if (h < 24) return rem > 0 ? `${h}h ${rem}p` : `${h}h`;
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return rh > 0 ? `${d} ngày ${rh}h` : `${d} ngày`;
+}
+
 // ─── Confirm action modal ────────────────────────────────────────────────────
 const RISKY_ACTIONS = new Set(['disable', 'abort']);
 
@@ -343,7 +358,7 @@ export default function SchedulerBoard({ t, domainFilter: domainFilterProp }) {
           <h3 className="text-lg font-bold text-white">{t('soc.scheduler.board_title')}</h3>
           {plan && (
             <p className="text-xs text-slate-400">
-              {t('soc.scheduler.board_generated_at')}: {plan.generated_at}
+              {t('soc.scheduler.board_generated_at')}: {new Date(plan.generated_at).toLocaleString('vi-VN')}
             </p>
           )}
         </div>
@@ -411,22 +426,35 @@ export default function SchedulerBoard({ t, domainFilter: domainFilterProp }) {
                   <td className="px-4 py-3 text-xs text-slate-300">{job.domain}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded px-2 py-0.5 text-xs font-bold uppercase ${statusTone(job.status)}`}>
-                      {job.status}
+                      {t(`soc.scheduler.status_${job.status}`, { defaultValue: job.status })}
                     </span>
                     {job.is_inflight && (
                       <span className="ml-1 inline-block animate-pulse rounded bg-emerald-700/50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-300">
                         live
                       </span>
                     )}
+                    {job.is_possibly_stuck && (
+                      <span
+                        title={t('soc.scheduler.tooltip_stuck')}
+                        className="ml-1 inline-block rounded bg-amber-700/60 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-200"
+                      >
+                        {t('soc.scheduler.badge_stuck')}
+                      </span>
+                    )}
+                    {job.is_possibly_stuck && job.inflight_elapsed_seconds != null && (
+                      <p className="mt-0.5 text-[9px] text-amber-400">
+                        {`${Math.floor(job.inflight_elapsed_seconds / 3600)}h${Math.floor((job.inflight_elapsed_seconds % 3600) / 60)}m`}
+                      </p>
+                    )}
                   </td>
                   <td className={`px-4 py-3 text-xs font-semibold ${freshTone(job.freshness_state)}`}>
-                    {job.freshness_state || '—'}
+                    {job.freshness_state ? t(`soc.scheduler.freshness_${job.freshness_state}`, { defaultValue: job.freshness_state }) : '—'}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-300">
                     {job.next_run_at ? new Date(job.next_run_at).toLocaleTimeString('vi-VN') : '—'}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-300">
-                    {job.lag_seconds != null ? `${job.lag_seconds}s` : '—'}
+                    {formatLag(job.lag_seconds)}
                   </td>
                   <td className="px-4 py-3">
                     <JobActionButtons job={job} onAction={handleAction} t={t} />
