@@ -1762,7 +1762,7 @@ def enqueue_dnse_quarterly_backfill(
     self,
     *,
     days_back: int = 90,
-    symbols_group: str = 'vn100',
+    symbols_group: str = 'global',
     _scheduler_job_key: str = 'dnse-quarterly-backfill-intraday',
 ) -> dict:
     """
@@ -1772,6 +1772,8 @@ def enqueue_dnse_quarterly_backfill(
     Không ghi dữ liệu trực tiếp — chỉ dispatch subtasks.
 
     Hard rules:
+    - symbols_group='global' (mặc định) → dùng GlobalSymbolRegistry SSOT toàn bộ.
+    - symbols_group khác → fetch_symbol_group_members, fallback về global registry.
     - Presence check per (symbol, date) để tránh duplicate.
     - Chỉ queue 'missing_only' slots.
     - days_back hard-cap = 180 (DNSE tape retention window).
@@ -1779,20 +1781,22 @@ def enqueue_dnse_quarterly_backfill(
     from datetime import date, timedelta
 
     from market_data.models import IntradayTick
-    from market_data.vnbroker_adapter import fetch_symbol_group_members
 
     days_back = max(1, min(int(days_back or 90), 180))
 
-    # 1. Resolve symbols
-    try:
-        raw_members = fetch_symbol_group_members(symbols_group)
-        symbols = sorted({s.strip().upper() for s in raw_members if s and s.strip()})
-    except Exception as exc:
-        logger.warning('enqueue_dnse_quarterly_backfill: cannot resolve %s: %s', symbols_group, exc)
-        symbols = []
-    if not symbols:
-        # Fallback: toàn bộ global registry
+    # 1. Resolve symbols — global matrix là SSOT mặc định
+    if not symbols_group or symbols_group == 'global':
         symbols = _get_default_global_registry_symbols()
+    else:
+        try:
+            from market_data.vnbroker_adapter import fetch_symbol_group_members
+            raw_members = fetch_symbol_group_members(symbols_group)
+            symbols = sorted({s.strip().upper() for s in raw_members if s and s.strip()})
+        except Exception as exc:
+            logger.warning('enqueue_dnse_quarterly_backfill: cannot resolve group %s: %s', symbols_group, exc)
+            symbols = []
+        if not symbols:
+            symbols = _get_default_global_registry_symbols()
     if not symbols:
         return {'status': 'error', 'reason': 'no_symbols', 'symbols_group': symbols_group}
 

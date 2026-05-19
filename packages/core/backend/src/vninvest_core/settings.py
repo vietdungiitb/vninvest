@@ -411,7 +411,7 @@ CELERY_BEAT_SCHEDULE = {
     'dnse-quarterly-backfill-intraday': {
         'task': 'data_ingest.tasks.enqueue_dnse_quarterly_backfill',
         'schedule': crontab(hour=18, minute=0, day_of_week=6),  # Sat 18:00 UTC = Sun 01:00 ICT
-        'kwargs': {'days_back': 90, 'symbols_group': 'vn100', '_scheduler_job_key': 'dnse-quarterly-backfill-intraday'},
+        'kwargs': {'days_back': 90, 'symbols_group': 'global', '_scheduler_job_key': 'dnse-quarterly-backfill-intraday'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('dnse-quarterly-backfill-intraday', 'enrichment_offhours')},
     },
 
