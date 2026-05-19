@@ -1,6 +1,42 @@
 # Code Change Audit Ledger
 
-# 2026-05-19 | B02 — Backfill Progress Persistence — Complete
+# 2026-05-19 | B09 — Handoff Close + B08 Anomaly Guard — Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/service_ops/dataops_market_data.py` | ADD `_build_anomaly_guard()` helper (critical_gap_symbols, hot_tier_breach, promotion_backlog, repair_backlog_age); inject `anomaly_guard` key into `build_market_data_observability_summary()` return | B08 |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_b08.py` | NEW — 12 regression tests for anomaly guard rules | B08 |
+| `frontend/src/components/soc/DataOpsPanel.jsx` | ADD Anomaly Guard section with critical_gap_symbols table, hot_tier_breach table, promotion_backlog + repair_backlog_age KPI cards | B08 |
+| `frontend/src/i18n/vi.json` | ADD 13 soc.dataops anomaly guard i18n keys (Vietnamese) | B08 |
+| `AUDIT_BACKFILL_EFFECTIVENESS_B09_HANDOFF_20260519.md` | NEW — shadow run evidence, completeness KPI, rollback playbook, governance sign-off | B09 |
+| `PROGRESS_DASHBOARD.md` | UPDATE — B07/B08/B09 entries | B09 |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | UPDATE — this entry | B09 |
+
+## Validation
+
+- 12/12 B08 tests PASS
+- 67/67 total B02–B08 tests PASS
+- `py_compile` clean on all modified Python files
+- All commits on origin/dev: fa5a3755 (B08), 0885d1c9 (B07), 9c564d0a (B06), 13699e80 (B05), 4564df6f (B04)
+
+---
+
+# 2026-05-19 | B07 — Multi-mode Backfill Execution — Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/data_ingest/tasks.py` | ADD `mode` + `trigger` params to `backfill_daily_prices`; record in `BackfillExecutionRun` | B07 |
+| `packages/core/backend/src/service_ops/views/dataops.py` | ADD `BackfillRunNowView` POST endpoint with mode validation | B07 |
+| `packages/core/backend/src/service_ops/operator_urls.py` | ADD `backfill_run_now` route | B07 |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_b07.py` | NEW — 8 tests: mode validation, trigger recording, 202 response | B07 |
+
+---
+
+
 
 ## Modified / Created Files
 

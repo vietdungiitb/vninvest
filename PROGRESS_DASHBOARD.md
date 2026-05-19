@@ -1,4 +1,38 @@
-# 2026-05-19 — B02 Backfill Progress Persistence ✅
+# 2026-05-19 — B09 Backfill Effectiveness Handoff Close ✅
+
+Status: **✅ COMPLETE** | 67/67 tests PASS across B02–B08 | All commits on origin/dev
+
+## Summary
+- B08 anomaly guard: `_build_anomaly_guard()` in `dataops_market_data.py` — 4 new KPIs in observability summary
+- B09 shadow evidence: `AUDIT_BACKFILL_EFFECTIVENESS_B09_HANDOFF_20260519.md` created
+- Full B-series (B00–B09) complete. No breaking changes, all migrations additive.
+
+---
+
+# 2026-05-19 — B08 Coverage Anomaly Guard ✅
+
+Status: **✅ COMPLETE** | 12/12 tests PASS | commit fa5a3755
+
+## Summary
+- `_build_anomaly_guard()` added to `service_ops/dataops_market_data.py`
+- Returns: `critical_gap_symbols`, `hot_tier_breach`, `promotion_backlog`, `repair_backlog_age_hours`
+- Injected into `build_market_data_observability_summary()` return as `anomaly_guard` key
+- `DataOpsPanel.jsx` updated with anomaly section + `vi.json` i18n keys
+
+---
+
+# 2026-05-19 — B07 Multi-mode Backfill Execution ✅
+
+Status: **✅ COMPLETE** | 8/8 tests PASS | commit 0885d1c9
+
+## Summary
+- `backfill_daily_prices` task now accepts `mode` + `trigger` params
+- `BackfillRunNowView` operator endpoint: POST `/core/v1/operator/scraping/dataops/backfill/run-now/`
+- 4 modes: `daily_delta`, `repair_missing`, `deep_bootstrap`, `targeted_symbol_repair`
+
+---
+
+
 
 Status: **✅ COMPLETE** | 13/13 tests PASS | Migration 0006 applied
 
