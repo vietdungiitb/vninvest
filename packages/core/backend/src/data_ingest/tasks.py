@@ -1096,6 +1096,9 @@ def backfill_daily_prices(
     plan_items: list[dict] | None = None,
     service_run_log_id: int | None = None,
     _scheduler_job_key: str | None = None,
+    # B07 — explicit mode and trigger
+    mode: str = 'daily_delta',
+    trigger: str = 'beat_schedule',
 ):
     """
     Backfill DailyPrice cho tất cả active symbols (hoặc danh sách truyền vào).
@@ -1179,12 +1182,16 @@ def backfill_daily_prices(
         from django.utils import timezone as _tz
         from service_ops.models import BackfillExecutionBatch, BackfillExecutionRun
         _run_id = f'backfill-{_uuid_mod.uuid4().hex[:16]}'
-        _trigger = 'beat_schedule' if _scheduler_job_key else 'operator_run_now'
+        # B07 — use explicit mode/trigger params; fall back to inferred values
+        _b07_mode = str(mode or 'daily_delta').strip() or 'daily_delta'
+        _trigger = str(trigger or '').strip() or (
+            'beat_schedule' if _scheduler_job_key else 'operator_run_now'
+        )
         _exec_run = BackfillExecutionRun.objects.create(
             run_id=_run_id,
             job_key=_scheduler_job_key or '',
             service_run_log=service_run_log,
-            mode='daily_delta',
+            mode=_b07_mode,
             trigger=_trigger,
             status='running',
             requested_days=days,

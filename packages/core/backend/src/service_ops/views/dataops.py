@@ -1248,3 +1248,80 @@ def _serialize_backfill_batch(batch) -> dict:
         'started_at': batch.started_at.isoformat() if batch.started_at else None,
         'finished_at': batch.finished_at.isoformat() if batch.finished_at else None,
     }
+
+
+# B07 — Operator manual trigger with explicit mode
+_B07_ALLOWED_MODES = frozenset({
+    'daily_delta',
+    'repair_missing',
+    'deep_bootstrap',
+    'targeted_symbol_repair',
+})
+
+
+class BackfillRunNowView(SOCBaseView):
+    """POST /dataops/backfill/run-now/ — Operator manual trigger.
+
+    Yêu cầu mode rõ ràng. Force refresh là override explicit (requires force_refresh=true).
+    Body JSON:
+      {
+        "mode": "repair_missing",          # bắt buộc, một trong 4 canonical modes
+        "symbols": ["VCB", "FPT"],         # tùy chọn; null = all active symbols
+        "days": 30,                        # tùy chọn; mặc định 30
+        "force_refresh": false             # tùy chọn; mặc định false
+      }
+    """
+
+    def post(self, request):
+        import json as _json
+
+        try:
+            body = _json.loads(request.body or b'{}')
+        except Exception:
+            return self.error_response(request, 'invalid_json', 'Body không phải JSON hợp lệ.', http_status=400)
+
+        mode = str(body.get('mode') or '').strip()
+        if not mode:
+            return self.error_response(
+                request, 'mode_required',
+                f'Trường mode bắt buộc. Các mode hợp lệ: {sorted(_B07_ALLOWED_MODES)}',
+                http_status=400,
+            )
+        if mode not in _B07_ALLOWED_MODES:
+            return self.error_response(
+                request, 'invalid_mode',
+                f'Mode "{mode}" không hợp lệ. Các mode hợp lệ: {sorted(_B07_ALLOWED_MODES)}',
+                http_status=400,
+            )
+
+        symbols = body.get('symbols') or None
+        if symbols is not None:
+            if not isinstance(symbols, list):
+                return self.error_response(request, 'symbols_must_be_list', 'symbols phải là danh sách string.', http_status=400)
+            symbols = [str(s).strip().upper() for s in symbols if s]
+            if not symbols:
+                symbols = None
+
+        days = int(body.get('days') or 30)
+
+        try:
+            from data_ingest.tasks import backfill_daily_prices
+            task_result = backfill_daily_prices.apply_async(
+                kwargs={
+                    'symbols': symbols,
+                    'days': days,
+                    'mode': mode,
+                    'trigger': 'operator_run_now',
+                },
+            )
+        except Exception as exc:
+            return self.error_response(request, 'enqueue_failed', str(exc), http_status=500)
+
+        return Response({
+            'status': 'queued',
+            'task_id': task_result.id,
+            'mode': mode,
+            'symbols': symbols,
+            'days': days,
+            'queued_at': timezone.now().isoformat(),
+        }, status=202)

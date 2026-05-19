@@ -35,4 +35,5 @@ urlpatterns = [
     # === B03 — Backfill Progress API ===
     path('dataops/backfill/runs/', dataops.BackfillRunListView.as_view(), name='backfill_run_list'),
     path('dataops/backfill/runs/<str:run_id>/', dataops.BackfillRunDetailView.as_view(), name='backfill_run_detail'),
+    path('dataops/backfill/run-now/', dataops.BackfillRunNowView.as_view(), name='backfill_run_now'),
 ]
