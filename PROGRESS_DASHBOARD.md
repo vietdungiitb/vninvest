@@ -1,3 +1,16 @@
+# 2026-05-19 — B02 Backfill Progress Persistence ✅
+
+Status: **✅ COMPLETE** | 13/13 tests PASS | Migration 0006 applied
+
+## Summary
+- `BackfillExecutionRun` + `BackfillExecutionBatch` models added to `service_ops/models.py`
+- Migration `0006_add_backfill_execution_models.py` created and applied
+- `backfill_daily_prices` task instrumented: creates Run row at start, Batch rows per provider, finalizes counters at end
+- Crash-safety via Celery `task_failure` signal → marks run `failed` on unhandled exception
+- **13/13 B02 tests PASS** in `service_ops/tests/test_scheduler_b02.py`
+
+---
+
 # 2026-05-19 — SOC Nav Throttle Isolation Fix ✅
 
 Status: **✅ COMPLETE** | Backend + Frontend deployed | All 14 containers healthy

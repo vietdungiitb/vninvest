@@ -443,3 +443,167 @@ class CustomSymbolGroup(models.Model):
     def group_id(self) -> str:
         """group_id nhận dạng bởi vnbroker_adapter: 'custom_<slug>'."""
         return f'custom_{self.slug}'
+
+
+# ---------------------------------------------------------------------------
+# B02 — Backfill Progress Persistence
+# ---------------------------------------------------------------------------
+
+
+class BackfillExecutionRun(models.Model):
+    """Source-of-truth cho mỗi lần chạy backfill (manual hoặc scheduled).
+
+    Operator và UI đọc progress từ model này — không suy diễn từ log text hay cache-only marker.
+    Crash an toàn: task exception handler phải update status → 'failed' để lại evidence.
+    """
+
+    MODE_CHOICES = [
+        ('daily_delta', 'Daily Delta'),
+        ('repair_missing', 'Repair Missing'),
+        ('deep_bootstrap', 'Deep Bootstrap'),
+        ('targeted_symbol_repair', 'Targeted Symbol Repair'),
+    ]
+
+    TRIGGER_CHOICES = [
+        ('beat_schedule', 'Beat Schedule'),
+        ('operator_run_now', 'Operator Run Now'),
+        ('auto_promotion_fast_path', 'Auto Promotion Fast Path'),
+        ('repair_guard', 'Repair Guard'),
+    ]
+
+    STATUS_CHOICES = [
+        ('queued', 'Queued'),
+        ('running', 'Running'),
+        ('partial', 'Partial Success'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('aborted', 'Aborted'),
+    ]
+
+    # Định danh
+    run_id = models.CharField(max_length=120, unique=True, db_index=True)
+    job_key = models.CharField(max_length=120, blank=True, db_index=True)
+
+    # Liên kết tới ServiceRunLog (B01 model) — nullable vì có thể chạy standalone
+    service_run_log = models.OneToOneField(
+        ServiceRunLog,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='backfill_execution_run',
+    )
+
+    # Phân loại
+    mode = models.CharField(max_length=40, choices=MODE_CHOICES, default='daily_delta')
+    trigger = models.CharField(max_length=40, choices=TRIGGER_CHOICES, default='beat_schedule')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='queued', db_index=True)
+
+    # Input spec
+    requested_days = models.IntegerField(default=0)
+    planned_symbols_count = models.IntegerField(default=0)
+
+    # Counters (cập nhật incremental)
+    completed_symbols_count = models.IntegerField(default=0)
+    failed_symbols_count = models.IntegerField(default=0)
+    inserted_rows = models.IntegerField(default=0)
+    updated_rows = models.IntegerField(default=0)
+    skipped_existing_rows = models.IntegerField(default=0)
+
+    # Timing
+    started_at = models.DateTimeField(default=timezone.now, db_index=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    eta_seconds = models.FloatField(null=True, blank=True)
+
+    # Tóm tắt kết quả
+    summary = models.JSONField(default=dict)
+    error_summary = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['job_key', 'status']),
+            models.Index(fields=['job_key', 'started_at']),
+            models.Index(fields=['status', 'started_at']),
+        ]
+        verbose_name = 'Backfill Execution Run'
+        verbose_name_plural = 'Backfill Execution Runs'
+
+    def __str__(self) -> str:
+        return f'{self.run_id} ({self.status})'
+
+    @property
+    def progress_pct(self) -> float:
+        if self.planned_symbols_count <= 0:
+            return 0.0
+        done = self.completed_symbols_count + self.failed_symbols_count
+        return round(min(done / self.planned_symbols_count * 100.0, 100.0), 2)
+
+    @property
+    def duration_seconds(self) -> float | None:
+        if self.finished_at is None:
+            return None
+        delta = self.finished_at - self.started_at
+        return round(delta.total_seconds(), 2)
+
+
+class BackfillExecutionBatch(models.Model):
+    """Progress per-provider batch trong một BackfillExecutionRun.
+
+    Mỗi provider nhận một batch row. Cập nhật khi batch complete/fail.
+    """
+
+    STATE_CHOICES = [
+        ('pending', 'Pending'),
+        ('running', 'Running'),
+        ('done', 'Done'),
+        ('failed', 'Failed'),
+        ('skipped', 'Skipped'),
+    ]
+
+    run = models.ForeignKey(
+        BackfillExecutionRun,
+        on_delete=models.CASCADE,
+        related_name='batches',
+    )
+
+    # Metadata
+    provider = models.CharField(max_length=40, db_index=True)
+    batch_index = models.IntegerField(default=0)
+
+    # State
+    state = models.CharField(max_length=20, choices=STATE_CHOICES, default='pending', db_index=True)
+    current_symbol = models.CharField(max_length=20, blank=True)
+
+    # Input
+    symbols_count = models.IntegerField(default=0)
+
+    # Counters
+    completed_symbols_count = models.IntegerField(default=0)
+    inserted_rows = models.IntegerField(default=0)
+    updated_rows = models.IntegerField(default=0)
+    skipped_existing_rows = models.IntegerField(default=0)
+    failed_symbols = models.JSONField(default=list)
+
+    # Latency telemetry (ms)
+    latency_p50_ms = models.FloatField(default=0.0)
+    latency_p95_ms = models.FloatField(default=0.0)
+
+    # Timing
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [('run', 'provider')]
+        indexes = [
+            models.Index(fields=['run', 'state']),
+        ]
+        ordering = ['batch_index']
+        verbose_name = 'Backfill Execution Batch'
+        verbose_name_plural = 'Backfill Execution Batches'
+
+    def __str__(self) -> str:
+        return f'{self.run.run_id} / {self.provider} ({self.state})'
+
+    @property
+    def failed_symbols_count(self) -> int:
+        return len(self.failed_symbols or [])

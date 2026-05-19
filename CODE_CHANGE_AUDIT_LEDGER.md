@@ -1,6 +1,52 @@
 # Code Change Audit Ledger
 
+# 2026-05-19 | B02 — Backfill Progress Persistence — Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/service_ops/models.py` | ADD `BackfillExecutionRun` model (status, counters, timing, summary) and `BackfillExecutionBatch` model (per-provider batch progress) at end of file | B02 |
+| `packages/core/backend/src/service_ops/migrations/0006_add_backfill_execution_models.py` | NEW migration creating `service_ops_backfillexecutionrun` and `service_ops_backfillexecutionbatch` tables | B02 |
+| `packages/core/backend/src/data_ingest/tasks.py` | ADD B02 instrumentation to `backfill_daily_prices`: create `BackfillExecutionRun` row at task start, create `BackfillExecutionBatch` per provider before execution, update batch counters after each thread completes, finalize run counters at task end; ADD `_b02_mark_run_failed_on_crash` Celery `task_failure` signal for crash-safety | B02 |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_b02.py` | NEW — 13 tests: model CRUD, progress_pct/duration_seconds properties, unique_together constraint, task instrumentation (run created, batches per provider, counters finalized, partial status, skipped early exit) | B02 |
+
+## Validation
+
+- 13/13 B02 tests PASS (0 errors, 0 failures)
+- Migration 0006 applied cleanly
+- Syntax check: `py_compile` both `models.py` and `tasks.py` exit 0
+
+---
+
 # 2026-05-19 | SOC Nav Throttle Isolation Fix — Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/identity_access/views_auth.py` | ADD `AuthBootstrapThrottle(UserRateThrottle)` class with `scope='auth_bootstrap'`; apply `@throttle_classes([AuthBootstrapThrottle])` to `profile_view` and `capabilities_view` | SOC-NAV-FIX |
+| `packages/core/backend/src/vninvest_core/settings.py` | ADD `'auth_bootstrap': '60/min'` to `DEFAULT_THROTTLE_RATES` | SOC-NAV-FIX |
+| `frontend/src/components/TopNav.jsx` | FIX `canReadSOC` line 71: add `\|\| Boolean(userIdentity?.isStaff)` fallback so SOC nav survives transient throttle failures for staff users | SOC-NAV-FIX |
+
+## Root Cause
+
+Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data polling (~720–1200 req/hour). `/auth/me/` and `/api/core/v1/access/capabilities/` share this bucket, so both returned 429 simultaneously → CASL `ability` stayed empty → `ability.can('read','ServiceOpsCenter')` = false → SOC nav item hidden.
+
+## Fix Summary
+
+- **Backend**: `AuthBootstrapThrottle` isolates auth bootstrap endpoints into their own Redis key (`auth_bootstrap: 60/min`), completely separate from the `user` bucket. Realtime polling can never exhaust this new bucket.
+- **Frontend**: `|| Boolean(userIdentity?.isStaff)` defensive fallback — if ability is empty (throttle outage), staff users still see SOC nav.
+
+## Validation
+
+- `AuthBootstrapThrottle.scope = 'auth_bootstrap'` confirmed in running container
+- `capabilities_view.cls.throttle_classes = [AuthBootstrapThrottle]` confirmed
+- `profile_view.cls.throttle_classes = [AuthBootstrapThrottle]` confirmed
+- All 14 containers healthy after rebuild
+- Commit: pushed to `origin/dev`
+
+---
 
 ## Modified / Created Files
 

@@ -24,6 +24,36 @@ from market_data.vnbroker_adapter import fetch_daily_history, fetch_intraday_tap
 logger = logging.getLogger(__name__)
 
 
+def _b02_mark_run_failed_on_crash(task_id, exc, traceback, *args, **kwargs):
+    """Celery task_failure signal handler — B02 crash-safety for backfill_daily_prices."""
+    sender = kwargs.get('sender')
+    if sender is None or getattr(sender, 'name', '') != 'data_ingest.tasks.backfill_daily_prices':
+        return
+    try:
+        exec_run_id = kwargs.get('einfo') or getattr(traceback, '_b02_exec_run_id', None)
+        # The exec_run_id is stored in the request context — access via kwargs['headers']
+        headers = kwargs.get('headers') or {}
+        exec_run_pk = headers.get('_b02_exec_run_id')
+        if exec_run_pk is None:
+            return
+        from django.utils import timezone as _tz
+        from service_ops.models import BackfillExecutionRun
+        BackfillExecutionRun.objects.filter(pk=exec_run_pk, status='running').update(
+            status='failed',
+            finished_at=_tz.now(),
+            error_summary=str(exc)[:2000],
+        )
+    except Exception:
+        pass
+
+
+try:
+    from celery.signals import task_failure
+    task_failure.connect(_b02_mark_run_failed_on_crash, weak=False)
+except Exception:
+    pass
+
+
 @shared_task(bind=True, name='data_ingest.tasks.run_vnbroker_price_board_benchmark', queue='manual_on_demand')
 def run_vnbroker_price_board_benchmark(self, payload: dict | None = None) -> dict:
     from market_data.vnbroker_benchmark import run_price_board_provider_benchmark
@@ -1142,6 +1172,31 @@ def backfill_daily_prices(
         _b01_clear_inflight_cache(_scheduler_job_key)
         return {'status': 'skipped', 'reason': 'no_symbols'}
 
+    # B02: create BackfillExecutionRun row — persists even on crash
+    _exec_run = None
+    try:
+        import uuid as _uuid_mod
+        from django.utils import timezone as _tz
+        from service_ops.models import BackfillExecutionBatch, BackfillExecutionRun
+        _run_id = f'backfill-{_uuid_mod.uuid4().hex[:16]}'
+        _trigger = 'beat_schedule' if _scheduler_job_key else 'operator_run_now'
+        _exec_run = BackfillExecutionRun.objects.create(
+            run_id=_run_id,
+            job_key=_scheduler_job_key or '',
+            service_run_log=service_run_log,
+            mode='daily_delta',
+            trigger=_trigger,
+            status='running',
+            requested_days=days,
+            planned_symbols_count=len(plan_items),
+        )
+    except Exception:
+        _exec_run = None
+
+    # Store exec_run ref on request so on_failure handler can access it
+    if _exec_run is not None:
+        self.request.update({'_b02_exec_run_id': _exec_run.pk})
+
     providers = _HISTORY_PROVIDERS
     n = len(providers)
     workers = max_workers or n
@@ -1184,6 +1239,25 @@ def backfill_daily_prices(
         for provider, bucket in buckets.items()
         if bucket
     ]
+
+    # B02: create BackfillExecutionBatch row per provider (before execution starts)
+    _batch_rows: dict[str, object] = {}
+    if _exec_run is not None:
+        try:
+            from django.utils import timezone as _tz
+            from service_ops.models import BackfillExecutionBatch
+            for _bi, (_prov, _bucket) in enumerate(non_empty_buckets):
+                _batch = BackfillExecutionBatch.objects.create(
+                    run=_exec_run,
+                    provider=_prov,
+                    batch_index=_bi,
+                    symbols_count=len(_bucket),
+                    state='running',
+                    started_at=_tz.now(),
+                )
+                _batch_rows[_prov] = _batch
+        except Exception:
+            _batch_rows = {}
 
     if workers <= 1 or len(non_empty_buckets) <= 1:
         for provider, bucket in non_empty_buckets:
@@ -1260,8 +1334,40 @@ def backfill_daily_prices(
                         int(result.get('skipped_existing') or 0),
                         len(result['failed']),
                     )
+                    # B02: update batch row
+                    _batch_obj = _batch_rows.get(provider)
+                    if _batch_obj is not None:
+                        try:
+                            from django.utils import timezone as _tz
+                            _failed_syms = result.get('failed') or []
+                            _batch_obj.state = 'failed' if _failed_syms and not int(result.get('inserted') or 0) and not int(result.get('updated') or 0) else ('done' if not _failed_syms else 'done')
+                            _batch_obj.completed_symbols_count = len(result.get('failed') or []) + int(result.get('inserted') or 0) + int(result.get('updated') or 0) + int(result.get('skipped_existing') or 0)
+                            _batch_obj.inserted_rows = int(result.get('inserted') or 0)
+                            _batch_obj.updated_rows = int(result.get('updated') or 0)
+                            _batch_obj.skipped_existing_rows = int(result.get('skipped_existing') or 0)
+                            _batch_obj.failed_symbols = _failed_syms[:200]
+                            _batch_obj.latency_p50_ms = float(result.get('provider_latency_p50_ms') or 0.0)
+                            _batch_obj.latency_p95_ms = float(result.get('provider_latency_p95_ms') or 0.0)
+                            _batch_obj.finished_at = _tz.now()
+                            _batch_obj.save(update_fields=[
+                                'state', 'completed_symbols_count',
+                                'inserted_rows', 'updated_rows', 'skipped_existing_rows',
+                                'failed_symbols', 'latency_p50_ms', 'latency_p95_ms', 'finished_at',
+                            ])
+                        except Exception:
+                            pass
                 except Exception as exc:
                     logger.error('backfill thread [%s] raised: %s', provider, exc)
+                    # B02: mark batch failed
+                    _batch_obj = _batch_rows.get(provider)
+                    if _batch_obj is not None:
+                        try:
+                            from django.utils import timezone as _tz
+                            _batch_obj.state = 'failed'
+                            _batch_obj.finished_at = _tz.now()
+                            _batch_obj.save(update_fields=['state', 'finished_at'])
+                        except Exception:
+                            pass
 
     result = {
         'status': 'ok',
@@ -1277,6 +1383,32 @@ def backfill_daily_prices(
         'per_provider': per_provider_stats,
         'providers': providers,
     }
+
+    # B02: finalize BackfillExecutionRun
+    if _exec_run is not None:
+        try:
+            from django.utils import timezone as _tz
+            _final_status = 'partial' if all_failed else 'success'
+            _exec_run.status = _final_status
+            _exec_run.completed_symbols_count = len(symbols) - len(all_failed)
+            _exec_run.failed_symbols_count = len(all_failed)
+            _exec_run.inserted_rows = total_inserted
+            _exec_run.updated_rows = total_updated
+            _exec_run.skipped_existing_rows = total_skipped_existing
+            _exec_run.finished_at = _tz.now()
+            _exec_run.summary = {
+                'planned_items': len(plan_items),
+                'upserted': total_upserted,
+                'total_retries_used': total_retries_used,
+                'providers': providers,
+            }
+            _exec_run.save(update_fields=[
+                'status', 'completed_symbols_count', 'failed_symbols_count',
+                'inserted_rows', 'updated_rows', 'skipped_existing_rows',
+                'finished_at', 'summary',
+            ])
+        except Exception:
+            pass
     # B01: transition run log to success/partial and clear inflight cache marker.
     if service_run_log is not None:
         try:
