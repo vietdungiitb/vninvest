@@ -45,7 +45,11 @@ def _get_latest_session_date():
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
-def detect_and_store_global_whale_alerts(self, symbol: str | None = None):
+def detect_and_store_global_whale_alerts(
+    self,
+    symbol: str | None = None,
+    session_date: str | None = None,   # D05: "YYYY-MM-DD" để backfill ngày cụ thể
+):
     """
     Phát hiện whale buy/sell và dark flow từ IntradayTick.
 
@@ -57,7 +61,11 @@ def detect_and_store_global_whale_alerts(self, symbol: str | None = None):
     4. Ghi aggregate OrderFlowEvent cho whale_buy / whale_sell / dark_flow.
 
     Idempotent: source_ref unique constraint trên UnifiedAlert đảm bảo không trùng.
+
+    D05: session_date (str "YYYY-MM-DD") cho phép backfill ngày lịch sử cụ thể.
+         Nếu None, dùng session gần nhất như cũ (_get_latest_session_date()).
     """
+    from datetime import date as _date_type
     from django.utils.timezone import now
     from market_data.models import IntradayTick
     from signal_intelligence.models import OrderFlowEvent
@@ -69,10 +77,22 @@ def detect_and_store_global_whale_alerts(self, symbol: str | None = None):
         invalidate_cvd_cache,
     )
 
-    session_date = _get_latest_session_date()
-    if session_date is None:
+    # D05: resolve session_date
+    if session_date is not None:
+        try:
+            from datetime import datetime
+            resolved_date = datetime.strptime(session_date, '%Y-%m-%d').date()
+        except ValueError:
+            logger.error('detect_and_store_global_whale_alerts: invalid session_date=%s', session_date)
+            return {'status': 'error', 'reason': f'invalid session_date: {session_date}'}
+    else:
+        resolved_date = _get_latest_session_date()
+
+    if resolved_date is None:
         logger.warning('detect_and_store_global_whale_alerts: no IntradayTick data, skipping')
         return {'status': 'skipped', 'reason': 'no_tick_data'}
+
+    session_date = resolved_date  # rebind để code bên dưới dùng đúng
 
     # Lấy danh sách symbol cần xử lý
     qs = IntradayTick.objects.filter(timestamp__date=session_date)
