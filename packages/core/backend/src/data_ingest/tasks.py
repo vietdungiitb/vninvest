@@ -1640,6 +1640,23 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
         created += len(batch)
 
     logger.info('backfill_intraday_tick_system: done symbol=%s date=%s created=%d', symbol_upper, trade_date, created)
+
+    # §12: IntradayTick là short-lived staging — chain enrichment pipeline để
+    # materialize long-term canonical facts (whale canonical → session facts)
+    # Dùng Celery chain để đảm bảo thứ tự: whale detection trước, session facts sau.
+    try:
+        from celery import chain as celery_chain
+        from signal_intelligence.tasks import detect_and_store_global_whale_alerts
+        from market_serving.materializers import materialize_session_facts
+        celery_chain(
+            detect_and_store_global_whale_alerts.si(symbol=symbol_upper, session_date=trade_date),
+            materialize_session_facts.si(symbol=symbol_upper, session_date=trade_date),
+        ).apply_async()
+        logger.info('backfill_intraday_tick_system: enrichment chain queued symbol=%s date=%s', symbol_upper, trade_date)
+    except Exception as exc:
+        logger.warning('backfill_intraday_tick_system: enrichment chain trigger failed symbol=%s date=%s: %s',
+                       symbol_upper, trade_date, exc)
+
     return {'status': 'ok', 'symbol': symbol_upper, 'date': trade_date, 'ticks': created}
 
 
@@ -1712,4 +1729,20 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
 
     logger.info('backfill_intraday_tick_user: done user=%s symbol=%s date=%s created=%d',
                 user_id, symbol_upper, trade_date, created)
+
+    # §12: chain enrichment pipeline — dữ liệu user backfill cũng phải
+    # materialize whale canonical + session facts để tái sử dụng shared facts.
+    try:
+        from celery import chain as celery_chain
+        from signal_intelligence.tasks import detect_and_store_global_whale_alerts
+        from market_serving.materializers import materialize_session_facts
+        celery_chain(
+            detect_and_store_global_whale_alerts.si(symbol=symbol_upper, session_date=trade_date),
+            materialize_session_facts.si(symbol=symbol_upper, session_date=trade_date),
+        ).apply_async()
+        logger.info('backfill_intraday_tick_user: enrichment chain queued symbol=%s date=%s', symbol_upper, trade_date)
+    except Exception as exc:
+        logger.warning('backfill_intraday_tick_user: enrichment chain trigger failed symbol=%s date=%s: %s',
+                       symbol_upper, trade_date, exc)
+
     return {'status': 'ok', 'symbol': symbol_upper, 'date': trade_date, 'ticks': created, 'user_id': user_id}

@@ -175,7 +175,7 @@ def materialize_pre_open_snapshots(
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def materialize_session_facts(self, symbol: str | None = None):
+def materialize_session_facts(self, symbol: str | None = None, session_date: str | None = None):
     """
     Tính SessionFacts từ WhaleAlertCanonical dùng công thức chuẩn quốc tế:
       - CVD (Cumulative Volume Delta) normalized 0-100
@@ -185,15 +185,24 @@ def materialize_session_facts(self, symbol: str | None = None):
 
     Chạy mỗi 5 phút qua celery beat (market_serving.materializers.materialize_session_facts).
     Data source: signal_intelligence.WhaleAlertCanonical
+
+    session_date (str "YYYY-MM-DD"): khi backfill lịch sử, truyền ngày cụ thể
+    thay vì dùng today(). Nếu None, dùng ngày hiện tại.
     """
     from market_serving.session_facts_engine import compute_session_facts_for_all_active
 
+    resolved_date = None
+    if session_date:
+        try:
+            from datetime import datetime
+            resolved_date = datetime.strptime(session_date, '%Y-%m-%d').date()
+        except ValueError:
+            logger.error('materialize_session_facts: invalid session_date=%s', session_date)
+            return {'status': 'error', 'reason': f'invalid session_date: {session_date}'}
+
     try:
-        result = compute_session_facts_for_all_active(symbol=symbol)
-        logger.info(
-            'materialize_session_facts: %s',
-            result,
-        )
+        result = compute_session_facts_for_all_active(symbol=symbol, session_date=resolved_date)
+        logger.info('materialize_session_facts: %s', result)
         return result
     except Exception as exc:
         logger.error('materialize_session_facts failed: %s', exc)
