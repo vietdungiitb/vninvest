@@ -38,7 +38,7 @@ const mockRotateTenantPAT = jest.requireMock('../../../api/client').rotateTenant
 
 function mockTranslations() {
   const labels = {
-    'tenantPats.title': 'PAT khách thuê',
+    'tenantPats.title': 'PAT thành viên',
     'tenantPats.description': 'Issue, rotate và revoke PAT cho service account trong tenant hiện tại. Secret chỉ hiển thị đúng một lần sau khi tạo hoặc rotate.',
     'tenantPats.refreshAction': 'Tải lại danh sách',
     'tenantPats.backToServiceAccounts': 'Về service account',
@@ -177,7 +177,7 @@ describe('TenantPATs', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText('PAT khách thuê');
+    await screen.findByText('PAT thành viên');
     await screen.findByRole('button', { name: 'Issue PAT' });
 
     await user.click(screen.getByRole('button', { name: 'Issue PAT' }));
@@ -198,7 +198,7 @@ describe('TenantPATs', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText('PAT khách thuê');
+    await screen.findByText('PAT thành viên');
     await screen.findByRole('button', { name: 'Rotate' });
 
     await user.click(screen.getByRole('button', { name: 'Rotate' }));
