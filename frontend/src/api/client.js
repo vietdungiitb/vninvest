@@ -840,8 +840,8 @@ export const saveDNSEDataCredential = (data) => apiClient.post('/api/core/v1/dns
 export const deleteDNSEDataCredential = () => apiClient.delete('/api/core/v1/dnse-credential/');
 
 // --- DNSE Backfill (D07) ---
-export const triggerSystemBackfill = (data) => apiClient.post('/core/v1/data-ingest/backfill/system/', data);
-export const triggerUserBackfill = (data) => apiClient.post('/core/v1/data-ingest/backfill/user/', data);
+export const triggerSystemBackfill = (data) => apiClient.post('/core/v1/data-ingest/backfill/system/', data, { baseURL: '' });
+export const triggerUserBackfill = (data) => apiClient.post('/core/v1/data-ingest/backfill/user/', data, { baseURL: '' });
 
 // --- Crawling Control API ---
 export const getAdminCrawlJobs = () => apiClient.get('/v1/admin/crawl/jobs/');
