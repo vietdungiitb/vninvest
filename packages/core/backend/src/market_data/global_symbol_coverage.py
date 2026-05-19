@@ -620,3 +620,192 @@ def build_global_planner_preview(
             'skipped_items': len(skipped),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# B04 — Coverage Gap Inventory: gap_score computation and bulk update
+# ---------------------------------------------------------------------------
+
+# Tier weights — higher tier = more important symbol
+_TIER_WEIGHT = {
+    'hot': 40.0,
+    'warm': 25.0,
+    'cold': 10.0,
+    '': 10.0,
+}
+
+# Demand source weights
+_DEMAND_WEIGHT = {
+    'portfolio': 20.0,
+    'watchlist': 15.0,
+    'advisory': 12.0,
+    'screener': 8.0,
+    'universe': 5.0,
+    '': 5.0,
+}
+
+# Freshness penalty weights
+_FRESHNESS_PENALTY = {
+    GlobalSymbolCoverage.FreshnessChoices.ERROR:   30.0,
+    GlobalSymbolCoverage.FreshnessChoices.MISSING: 28.0,
+    GlobalSymbolCoverage.FreshnessChoices.STALE:   18.0,
+    GlobalSymbolCoverage.FreshnessChoices.WARM:    6.0,
+    GlobalSymbolCoverage.FreshnessChoices.FRESH:   0.0,
+    GlobalSymbolCoverage.FreshnessChoices.UNKNOWN: 10.0,
+}
+
+# Dataset importance (daily_prices most critical for backfill)
+_DATASET_WEIGHT = {
+    GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES:         10.0,
+    GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS:        6.0,
+    GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT: 4.0,
+    GlobalSymbolCoverage.DatasetChoices.INTRADAY_BARS:        3.0,
+    GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS:       2.0,
+}
+
+
+def compute_gap_score(
+    *,
+    freshness_state: str,
+    tier: str = '',
+    demand_source: str = '',
+    dataset: str = '',
+    gap_days: int = 0,
+) -> float:
+    """Tính gap_score 0–100 cho một coverage row.
+
+    Công thức:
+      score = freshness_penalty + tier_weight + demand_weight + dataset_weight + gap_days_factor
+    Clamp về [0, 100].
+    """
+    score = 0.0
+    score += _FRESHNESS_PENALTY.get(freshness_state, 10.0)
+    score += _TIER_WEIGHT.get(str(tier or '').lower(), _TIER_WEIGHT[''])
+    score += _DEMAND_WEIGHT.get(str(demand_source or '').lower(), _DEMAND_WEIGHT[''])
+    score += _DATASET_WEIGHT.get(dataset, 0.0)
+    # Thêm điểm cho số ngày gap (capped tại 15 điểm)
+    if gap_days > 0:
+        score += min(gap_days / 30.0 * 10.0, 15.0)
+    return round(min(max(score, 0.0), 100.0), 2)
+
+
+def _build_priority_reason(*, freshness_state: str, tier: str, demand_source: str, gap_days: int) -> str:
+    """Tạo priority_reason ngắn gọn để hiển thị trong UI."""
+    parts = []
+    if tier:
+        parts.append(f'tier:{tier}')
+    if demand_source:
+        parts.append(f'demand:{demand_source}')
+    parts.append(f'freshness:{freshness_state}')
+    if gap_days > 0:
+        parts.append(f'gap:{gap_days}d')
+    return ' | '.join(parts)
+
+
+def build_gap_inventory(
+    *,
+    dataset: str = GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+    limit: int = 100,
+    min_score: float = 0.0,
+    demand_source: str | None = None,
+) -> list[dict[str, Any]]:
+    """Trả về danh sách symbol có gap_score cao nhất cho một dataset.
+
+    Dùng cho planner ưu tiên và UI SOC operator.
+    Không full-scan raw tables — chỉ đọc từ GlobalSymbolCoverage.
+    """
+    qs = GlobalSymbolCoverage.objects.select_related('registry').filter(dataset=dataset)
+    if demand_source:
+        qs = qs.filter(demand_source=demand_source)
+    if min_score > 0:
+        qs = qs.filter(gap_score__gte=min_score)
+    qs = qs.order_by('-gap_score', 'registry__symbol')[:max(1, limit)]
+
+    return [
+        {
+            'symbol': row.registry.symbol,
+            'tier': row.registry.current_priority_tier if hasattr(row.registry, 'current_priority_tier') else '',
+            'dataset': row.dataset,
+            'freshness_state': row.freshness_state,
+            'gap_score': row.gap_score,
+            'priority_reason': row.priority_reason,
+            'demand_source': row.demand_source,
+            'gap_days': row.gap_days,
+            'next_recommended_action': row.next_recommended_action,
+            'latest_complete_trade_date': (
+                row.latest_complete_trade_date.isoformat() if row.latest_complete_trade_date else None
+            ),
+        }
+        for row in qs
+    ]
+
+
+def refresh_gap_scores(
+    *,
+    dataset: str = GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,
+    batch_size: int = 500,
+) -> int:
+    """Tính lại gap_score và priority_reason cho tất cả rows của một dataset.
+
+    Chạy trong background task — không phải trên request path.
+    Trả về số row đã update.
+    """
+    from django.utils import timezone as _tz
+
+    total_updated = 0
+    qs = GlobalSymbolCoverage.objects.select_related('registry').filter(dataset=dataset)
+    rows_to_update = []
+
+    for row in qs.iterator(chunk_size=batch_size):
+        registry = row.registry
+        tier = str(getattr(registry, 'current_priority_tier', '') or '').lower()
+        demand = str(row.demand_source or '').lower()
+
+        # Estimate gap_days from missing_ranges
+        gap_days = 0
+        try:
+            for r in (row.missing_ranges or []):
+                start_str = r.get('start') or r.get('from') or ''
+                end_str = r.get('end') or r.get('to') or ''
+                if start_str and end_str:
+                    from datetime import date as _date
+                    s = _date.fromisoformat(start_str[:10])
+                    e = _date.fromisoformat(end_str[:10])
+                    gap_days += max((e - s).days, 0)
+        except Exception:
+            pass
+
+        new_score = compute_gap_score(
+            freshness_state=row.freshness_state,
+            tier=tier,
+            demand_source=demand,
+            dataset=dataset,
+            gap_days=gap_days,
+        )
+        new_reason = _build_priority_reason(
+            freshness_state=row.freshness_state,
+            tier=tier,
+            demand_source=demand,
+            gap_days=gap_days,
+        )
+
+        if row.gap_score != new_score or row.priority_reason != new_reason or row.gap_days != gap_days:
+            row.gap_score = new_score
+            row.priority_reason = new_reason
+            row.gap_days = gap_days
+            rows_to_update.append(row)
+
+        if len(rows_to_update) >= batch_size:
+            GlobalSymbolCoverage.objects.bulk_update(
+                rows_to_update, ['gap_score', 'priority_reason', 'gap_days'],
+            )
+            total_updated += len(rows_to_update)
+            rows_to_update = []
+
+    if rows_to_update:
+        GlobalSymbolCoverage.objects.bulk_update(
+            rows_to_update, ['gap_score', 'priority_reason', 'gap_days'],
+        )
+        total_updated += len(rows_to_update)
+
+    return total_updated

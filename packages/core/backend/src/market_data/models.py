@@ -357,6 +357,35 @@ class GlobalSymbolCoverage(models.Model):
     last_verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần verify cuối')
     next_recommended_action = models.CharField(max_length=64, blank=True, default='', verbose_name='Hành động kế tiếp')
     detail = models.JSONField(default=dict, blank=True)
+
+    # B04 — Coverage Gap Inventory
+    gap_score = models.FloatField(
+        default=0.0,
+        db_index=True,
+        verbose_name='Điểm ưu tiên gap',
+        help_text='Điểm tổng hợp 0–100; càng cao càng cần backfill gấp.',
+    )
+    priority_reason = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        verbose_name='Lý do ưu tiên',
+        help_text='Mô tả ngắn: tier, demand_source, staleness reason.',
+    )
+    demand_source = models.CharField(
+        max_length=40,
+        blank=True,
+        default='',
+        db_index=True,
+        verbose_name='Nguồn demand',
+        help_text='watchlist / portfolio / screener / advisory / universe',
+    )
+    gap_days = models.IntegerField(
+        default=0,
+        verbose_name='Số ngày bị gap',
+        help_text='Ước tính số ngày dữ liệu thiếu (0 = không thiếu).',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -373,6 +402,8 @@ class GlobalSymbolCoverage(models.Model):
         indexes = [
             models.Index(fields=['dataset', 'freshness_state'], name='mktdata_gsc_dataset_state_idx'),
             models.Index(fields=['registry', 'dataset', 'freshness_state'], name='mktdata_gsc_reg_dataset_idx'),
+            models.Index(fields=['dataset', 'gap_score'], name='mktdata_gsc_gap_score_idx'),
+            models.Index(fields=['demand_source', 'gap_score'], name='mktdata_gsc_demand_gap_idx'),
         ]
 
     def __str__(self) -> str:
