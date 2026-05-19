@@ -418,9 +418,9 @@ class SystemBackfillTriggerView(APIView):
         for symbol in symbols:
             for trade_date in trade_dates:
                 if mode == 'missing_only':
-                    # §14.5: presence check before enqueue
+                    # §14.5: presence check before enqueue (IntradayTick uses timestamp DateTimeField)
                     already_exists = IntradayTick.objects.filter(
-                        symbol=symbol, trade_date=trade_date
+                        symbol=symbol, timestamp__date=trade_date
                     ).exists()
                     if already_exists:
                         skipped += 1
