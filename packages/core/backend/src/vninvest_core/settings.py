@@ -393,7 +393,7 @@ CELERY_BEAT_SCHEDULE = {
     'daily-backfill-prices-1700': {
         'task': 'data_ingest.tasks.backfill_daily_prices',
         'schedule': crontab(hour=10, minute=5),  # 17:05 ICT (UTC+7) = 10:05 UTC
-        'kwargs': {'days': 365},
+        'kwargs': {'days': 365, '_scheduler_job_key': 'daily-backfill-prices-1700'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('daily-backfill-prices-1700', 'enrichment_offhours')},
     },
 
@@ -404,7 +404,7 @@ CELERY_BEAT_SCHEDULE = {
     'deep-history-bootstrap-weekly': {
         'task': 'data_ingest.tasks.backfill_daily_prices',
         'schedule': crontab(hour=20, minute=0, day_of_week=6),  # Sat 20:00 UTC = Sun 03:00 ICT
-        'kwargs': {'days': 1825},
+        'kwargs': {'days': 1825, '_scheduler_job_key': 'deep-history-bootstrap-weekly'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('deep-history-bootstrap-weekly', 'enrichment_offhours')},
     },
 

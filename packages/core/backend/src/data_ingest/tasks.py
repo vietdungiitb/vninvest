@@ -1046,6 +1046,17 @@ def ingest_daily_prices(
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
 
 
+def _b01_clear_inflight_cache(job_key: 'str | None') -> None:
+    """B01 helper: clear the scheduler:inflight cache marker on task terminal state."""
+    if not job_key:
+        return
+    try:
+        from django.core.cache import cache
+        cache.delete(f'scheduler:inflight:{job_key}')
+    except Exception:
+        pass
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
 def backfill_daily_prices(
     self,
@@ -1053,6 +1064,8 @@ def backfill_daily_prices(
     symbols: list = None,
     max_workers: int = None,
     plan_items: list[dict] | None = None,
+    service_run_log_id: int | None = None,
+    _scheduler_job_key: str | None = None,
 ):
     """
     Backfill DailyPrice cho tất cả active symbols (hoặc danh sách truyền vào).
@@ -1065,7 +1078,47 @@ def backfill_daily_prices(
         days: số ngày lịch sử cần backfill (mặc định 365).
         symbols: danh sách symbol cụ thể; None = tất cả active GlobalSymbolRegistry symbols.
         max_workers: số thread song song; None = số provider khả dụng.
+        service_run_log_id: ID của ServiceRunLog pre-created bởi run_now dispatcher.
+                            Nếu None và _scheduler_job_key được cung cấp, task tự tạo run log.
+        _scheduler_job_key: job key từ CELERY_BEAT_SCHEDULE để map service_key và xóa cache.
     """
+    # B01: Run log lifecycle management
+    service_run_log = None
+    _task_id = getattr(self.request, 'id', '') or ''
+    try:
+        from service_ops.models import ServiceRunLog
+        from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
+
+        if service_run_log_id is not None:
+            # Operator-triggered run_now: run log pre-created, just transition to running.
+            service_run_log = ServiceRunLog.objects.select_related('service').filter(
+                pk=service_run_log_id
+            ).first()
+            if service_run_log is not None and service_run_log.status not in ('success', 'partial', 'failed', 'skipped'):
+                _mark_run_log_running(service_run_log, _task_id)
+        elif _scheduler_job_key:
+            # Beat-triggered run: auto-create ServiceRunLog using catalog service_key.
+            from service_ops.scheduler_catalog import CATALOG_JOB_METADATA
+            from service_ops.registry import get_registered_service
+            _catalog_entry = CATALOG_JOB_METADATA.get(_scheduler_job_key, {})
+            _service_key = _catalog_entry.get('service_key', '')
+            if _service_key:
+                try:
+                    _svc_def = get_registered_service(_service_key)
+                    service_run_log = ServiceRunLog.objects.create(
+                        service=_svc_def,
+                        celery_task_id=_task_id,
+                        status='running',
+                        input_summary={
+                            'triggered_by': 'beat_schedule',
+                            'job_key': _scheduler_job_key,
+                            'days': days,
+                        },
+                    )
+                except Exception:
+                    pass
+    except Exception:
+        pass
     if plan_items is None and symbols is None:
         symbols = _get_default_global_registry_symbols()
 
@@ -1075,6 +1128,18 @@ def backfill_daily_prices(
     plan_items = _normalize_daily_plan_items(list(plan_items or []), days)
 
     if not plan_items:
+        # B01: mark skipped in run log if one was created
+        if service_run_log is not None:
+            try:
+                from service_ops.tasks import _mark_run_log_finished
+                _mark_run_log_finished(
+                    service_run_log,
+                    status_value='skipped',
+                    output_summary={'reason': 'no_symbols', 'days': days},
+                )
+            except Exception:
+                pass
+        _b01_clear_inflight_cache(_scheduler_job_key)
         return {'status': 'skipped', 'reason': 'no_symbols'}
 
     providers = _HISTORY_PROVIDERS
@@ -1198,7 +1263,7 @@ def backfill_daily_prices(
                 except Exception as exc:
                     logger.error('backfill thread [%s] raised: %s', provider, exc)
 
-    return {
+    result = {
         'status': 'ok',
         'planned_items': len(plan_items),
         'inserted': total_inserted,
@@ -1212,6 +1277,30 @@ def backfill_daily_prices(
         'per_provider': per_provider_stats,
         'providers': providers,
     }
+    # B01: transition run log to success/partial and clear inflight cache marker.
+    if service_run_log is not None:
+        try:
+            from service_ops.tasks import _mark_run_log_finished
+            _final_status = 'partial' if all_failed else 'success'
+            _mark_run_log_finished(
+                service_run_log,
+                status_value=_final_status,
+                output_summary={
+                    'days': days,
+                    'planned_items': len(plan_items),
+                    'inserted': total_inserted,
+                    'updated': total_updated,
+                    'skipped_existing': total_skipped_existing,
+                    'upserted': total_upserted,
+                    'failed_count': len(all_failed),
+                    'total_retries_used': total_retries_used,
+                    'providers': providers,
+                },
+            )
+        except Exception:
+            pass
+    _b01_clear_inflight_cache(_scheduler_job_key)
+    return result
 
 
 @shared_task(bind=True, name='data_ingest.tasks.run_global_market_data_planner')

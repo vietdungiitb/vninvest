@@ -201,6 +201,23 @@ CANONICAL_SOC_SERVICES = (
         'owner_team': 'core',
         'tags': ['matrix', 'workers', 'providers'],
     },
+    # B01 — Scheduler run truth hardening for backfill jobs
+    {
+        'service_key': 'backfill_daily_prices',
+        'name': 'Daily Price Backfill Scheduler',
+        'domain': 'dataops',
+        'description': 'Backfills 365 days of OHLCV for all active global registry symbols after market close.',
+        'owner_team': 'core',
+        'tags': ['dataops', 'daily-prices', 'backfill', 'scheduler'],
+    },
+    {
+        'service_key': 'deep_history_bootstrap',
+        'name': 'Deep History Bootstrap Scheduler',
+        'domain': 'dataops',
+        'description': 'Backfills 5 years of OHLCV coverage for all active global registry symbols (weekly).',
+        'owner_team': 'core',
+        'tags': ['dataops', 'daily-prices', 'deep-history', 'scheduler'],
+    },
 )
 
 REQUIRED_SERVICE_KEYS = frozenset(service['service_key'] for service in CANONICAL_SOC_SERVICES)

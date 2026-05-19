@@ -497,36 +497,64 @@ def _execute_scheduler_action(
             try:
                 schedule_map = getattr(settings, 'CELERY_BEAT_SCHEDULE', {})
                 job_def = schedule_map.get(job_key, {})
-                kwargs = job_def.get('kwargs', {})
+                kwargs = dict(job_def.get('kwargs', {}))
                 queue = job_def.get('options', {}).get('queue', 'celery')
+
+                # B01: resolve ServiceDefinition via catalog service_key (not job_key)
+                # meta['service_key'] is set for jobs that have full observability.
+                _catalog_service_key = meta.get('service_key', '') or ''
+                service_def = None
+                if _catalog_service_key:
+                    service_def = ServiceDefinition.objects.filter(
+                        service_key=_catalog_service_key
+                    ).first()
+                # Fallback: some legacy jobs use job_key as service_key directly
+                if service_def is None:
+                    service_def = ServiceDefinition.objects.filter(service_key=job_key).first()
+
+                # Pre-create ServiceRunLog so the task can transition state correctly.
+                run_log = None
+                if service_def is not None:
+                    try:
+                        run_log = ServiceRunLog.objects.create(
+                            service=service_def,
+                            celery_task_id='',  # will be updated by task
+                            status='queued',
+                            input_summary={
+                                'triggered_by': 'operator_run_now',
+                                'job_key': job_key,
+                                'actor': actor,
+                                'reason': reason,
+                            },
+                        )
+                        # Pass IDs into task so it can manage its own lifecycle.
+                        kwargs['service_run_log_id'] = run_log.pk
+                        kwargs['_scheduler_job_key'] = job_key
+                    except Exception:
+                        pass
+
                 async_result = celery_app.send_task(task_path, kwargs=kwargs, queue=queue)
                 celery_task_id = async_result.id
+
+                # Update run log with actual Celery task ID now that we have it.
+                if run_log is not None:
+                    try:
+                        run_log.celery_task_id = celery_task_id
+                        run_log.save(update_fields=['celery_task_id'])
+                    except Exception:
+                        pass
+
                 message_parts.append(
                     f"Task '{task_path}' đã được gửi vào queue '{queue}'. "
                     f"Celery task ID: {celery_task_id}."
                 )
                 # Đánh dấu inflight trong cache để catalog hiển thị 'ĐANG CHẠY' ngay lập tức.
-                # TTL = 7200s (2h) — đủ cho backfill dài; abort sẽ xóa sớm hơn nếu cần.
+                # TTL = 7200s (2h) — đủ cho backfill dài; task sẽ xóa sau khi hoàn thành.
                 try:
                     from django.core.cache import cache
                     _INFLIGHT_TTL = 7200  # 2 giờ
                     cache.set(f'scheduler:inflight:{job_key}', celery_task_id, timeout=_INFLIGHT_TTL)
                     cache.set(f'scheduler:manual_run:{job_key}', executed_at.isoformat(), timeout=86400)
-                except Exception:
-                    pass
-                try:
-                    service_def = ServiceDefinition.objects.filter(service_key=job_key).first()
-                    if service_def:
-                        ServiceRunLog.objects.create(
-                            service=service_def,
-                            celery_task_id=celery_task_id,
-                            status='queued',
-                            input_summary={
-                                'triggered_by': 'operator_run_now',
-                                'actor': actor,
-                                'reason': reason,
-                            },
-                        )
                 except Exception:
                     pass
             except Exception as exc:

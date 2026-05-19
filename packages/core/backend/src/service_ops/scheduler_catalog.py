@@ -69,6 +69,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Daily price backfill (17:00 ICT)',
+        'service_key': 'backfill_daily_prices',
     },
     'ingest-daily-prices-1705': {
         'domain': 'dataops',
@@ -85,6 +86,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Deep history bootstrap — 5 năm (Chủ nhật 03:00)',
+        'service_key': 'deep_history_bootstrap',
     },
     # === Materializers ===
     'materialize-symbol-snapshot-60s': {

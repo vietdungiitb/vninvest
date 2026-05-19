@@ -23,6 +23,7 @@ class ServiceDefinition(models.Model):
         ('screener', 'Global Screener'),
         ('matrix', 'Symbol Matrix'),
         ('platform', 'Platform Internal'),
+        ('dataops', 'DataOps Scheduler'),
     ]
 
     # Định danh
