@@ -199,8 +199,22 @@
       "preview_failed": "Xem trước không thành công",
       "metrics": "Số liệu",
       "throughput": "Thông lượng",
-      "error_rate": "Tỷ lệ lỗi"
-    },    "scheduler": {
+      "error_rate": "Tỷ lệ lỗi",
+      "anomaly_guard_title": "Phát hiện dị thường (Anomaly Guard)",
+      "anomaly_guard_desc": "Theo dõi các symbol cần ưu tiên xử lý gap dữ liệu",
+      "promotion_backlog": "Tồn đọng promotion",
+      "repair_backlog_age": "Tuổi tồn đọng repair",
+      "critical_gap_symbols": "Symbol gap nghiêm trọng",
+      "hot_tier_breach": "Hot tier vi phạm ngưỡng",
+      "symbol": "Symbol",
+      "tier": "Tier",
+      "gap_score": "Gap Score",
+      "gap_days": "Gap ngày",
+      "freshness_state": "Trạng thái",
+      "no_critical_gaps": "Không có symbol gap nghiêm trọng",
+      "no_hot_breach": "Không có hot tier vi phạm"
+    },
+    "scheduler": {
       "board_title": "Bảng điều khiển lịch chạy",
       "board_generated_at": "Cập nhật lúc",
       "filter_all_domains": "Tất cả domain",
@@ -237,7 +251,8 @@
       "health_degraded": "Suy giảm",
       "health_inflight": "Đang chạy",
       "health_stale": "Quá hạn"
-    },    "backfill": {
+    },
+    "backfill": {
       "panel_title": "Tiến trình backfill dữ liệu",
       "filter_all_status": "Tất cả trạng thái",
       "empty_state": "Không có lần chạy backfill nào",
@@ -272,7 +287,8 @@
       "run_detail_title": "Chi tiết lần chạy backfill",
       "batches_title": "Chi tiết theo nhà cung cấp",
       "error_summary_title": "Lỗi xảy ra"
-    },    "errors": {
+    },
+    "errors": {
       "network_error": "Lỗi mạng",
       "unauthorized": "Không được phép",
       "forbidden": "Bị từ chối",

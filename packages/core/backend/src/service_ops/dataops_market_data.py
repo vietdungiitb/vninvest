@@ -611,6 +611,103 @@ def _build_parity_history_from_scheduler_logs(*, window_key: str, points: int = 
     return history
 
 
+def _build_anomaly_guard() -> dict:
+    """B08 — Coverage anomaly guard.
+
+    Phát hiện các anomalies:
+    - critical_gap_symbols: symbol hot/warm có gap_score cao nhưng freshness không phải FRESH
+    - hot_tier_breach: symbol hot nhưng có quá ít dữ liệu (gap_days vượt ngưỡng)
+    - promotion_backlog: số symbol vừa được promote nhưng coverage vẫn MISSING/STALE
+    - repair_backlog_age: thời gian (giờ) kể từ coverage row stale nhất chưa được repair
+
+    Không full-scan raw tables — chỉ đọc từ GlobalSymbolCoverage.
+    """
+    _HOT_BREACH_MIN_DAYS = 7      # hot symbol cần ít nhất 7 ngày data
+    _CRITICAL_GAP_MIN_SCORE = 60.0
+    _PROMOTION_BACKLOG_STATES = {
+        GlobalSymbolCoverage.FreshnessChoices.MISSING,
+        GlobalSymbolCoverage.FreshnessChoices.STALE,
+        GlobalSymbolCoverage.FreshnessChoices.ERROR,
+    }
+
+    daily = GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES
+
+    # critical_gap_symbols: active symbols với gap_score cao, không FRESH
+    critical_gap_rows = list(
+        GlobalSymbolCoverage.objects.select_related('registry')
+        .filter(
+            dataset=daily,
+            gap_score__gte=_CRITICAL_GAP_MIN_SCORE,
+            registry__is_active=True,
+        )
+        .exclude(freshness_state=GlobalSymbolCoverage.FreshnessChoices.FRESH)
+        .order_by('-gap_score')[:20]
+    )
+    critical_gap_symbols = [
+        {
+            'symbol': r.registry.symbol,
+            'tier': r.registry.current_priority_tier,
+            'gap_score': r.gap_score,
+            'freshness_state': r.freshness_state,
+            'priority_reason': r.priority_reason,
+        }
+        for r in critical_gap_rows
+    ]
+
+    # hot_tier_breach: hot symbols với gap_days vượt ngưỡng
+    hot_breach_rows = list(
+        GlobalSymbolCoverage.objects.select_related('registry')
+        .filter(
+            dataset=daily,
+            registry__is_active=True,
+            registry__current_priority_tier='hot',
+        )
+        .filter(gap_days__gt=_HOT_BREACH_MIN_DAYS)
+        .order_by('-gap_days')[:20]
+    )
+    hot_tier_breach = [
+        {
+            'symbol': r.registry.symbol,
+            'gap_days': r.gap_days,
+            'gap_score': r.gap_score,
+            'freshness_state': r.freshness_state,
+        }
+        for r in hot_breach_rows
+    ]
+
+    # promotion_backlog: warm/hot symbols với coverage chưa ổn
+    promotion_backlog_count = GlobalSymbolCoverage.objects.filter(
+        dataset=daily,
+        registry__is_active=True,
+        registry__current_priority_tier__in=['hot', 'warm'],
+        freshness_state__in=_PROMOTION_BACKLOG_STATES,
+    ).count()
+
+    # repair_backlog_age: thời gian giờ kể từ coverage row stale cũ nhất chưa repair
+    oldest_stale = (
+        GlobalSymbolCoverage.objects.filter(
+            dataset=daily,
+            registry__is_active=True,
+            freshness_state__in=_PROMOTION_BACKLOG_STATES,
+        )
+        .order_by('last_verified_at')
+        .values('last_verified_at')
+        .first()
+    )
+    repair_backlog_age_hours = None
+    if oldest_stale and oldest_stale['last_verified_at']:
+        delta = timezone.now() - oldest_stale['last_verified_at']
+        repair_backlog_age_hours = round(delta.total_seconds() / 3600, 1)
+
+    return {
+        'critical_gap_symbols': critical_gap_symbols,
+        'hot_tier_breach': hot_tier_breach,
+        'promotion_backlog': int(promotion_backlog_count),
+        'repair_backlog_age_hours': repair_backlog_age_hours,
+        'anomaly_computed_at': timezone.now().isoformat(),
+    }
+
+
 def build_market_data_observability_summary() -> dict[str, object]:
     config, _ = get_market_data_runtime_config()
     matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
@@ -754,5 +851,7 @@ def build_market_data_observability_summary() -> dict[str, object]:
         'parity_history': parity_history,
         'retention_health': retention_health,
         'starvation': starvation_indicators,
+        # B08 — Coverage anomaly guard
+        'anomaly_guard': _build_anomaly_guard(),
         'updated_at': now_value.isoformat(),
     }

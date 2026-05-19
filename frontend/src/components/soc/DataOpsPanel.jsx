@@ -1854,6 +1854,92 @@ const DataOpsPanel = ({ t }) => {
         </div>
       </div>
 
+      {/* B08 — Anomaly Guard */}
+      <div className="rounded-lg border border-orange-800/40 bg-slate-900 p-6">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-orange-400">{t('soc.dataops.anomaly_guard_title')}</h3>
+            <p className="mt-1 text-sm text-slate-400">{t('soc.dataops.anomaly_guard_desc')}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:flex md:gap-4">
+            <div className="rounded-lg border border-orange-900/60 bg-slate-950/70 px-4 py-3 text-right">
+              <p className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.promotion_backlog')}</p>
+              <p className="mt-1 text-xl font-bold text-orange-400">{observabilitySummary?.anomaly_guard?.promotion_backlog ?? '–'}</p>
+            </div>
+            <div className="rounded-lg border border-orange-900/60 bg-slate-950/70 px-4 py-3 text-right">
+              <p className="text-xs uppercase tracking-wide text-slate-500">{t('soc.dataops.repair_backlog_age')}</p>
+              <p className="mt-1 text-xl font-bold text-orange-400">
+                {observabilitySummary?.anomaly_guard?.repair_backlog_age_hours != null
+                  ? `${observabilitySummary.anomaly_guard.repair_backlog_age_hours}h`
+                  : '–'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Critical gap symbols */}
+          <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+            <h4 className="text-sm font-semibold text-white">{t('soc.dataops.critical_gap_symbols')}</h4>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-3">{t('soc.dataops.symbol')}</th>
+                    <th className="px-3 py-2">{t('soc.dataops.tier')}</th>
+                    <th className="px-3 py-2 text-right">{t('soc.dataops.gap_score')}</th>
+                    <th className="px-3 py-2">{t('soc.dataops.freshness_state')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {(observabilitySummary?.anomaly_guard?.critical_gap_symbols || []).map((item) => (
+                    <tr key={item.symbol}>
+                      <td className="py-2 pr-3 font-mono text-orange-300">{item.symbol}</td>
+                      <td className="px-3 py-2 text-slate-300">{item.tier}</td>
+                      <td className="px-3 py-2 text-right font-mono text-red-400">{item.gap_score?.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-yellow-400">{item.freshness_state}</td>
+                    </tr>
+                  ))}
+                  {(observabilitySummary?.anomaly_guard?.critical_gap_symbols || []).length === 0 && (
+                    <tr><td colSpan={4} className="py-4 text-center text-xs text-slate-500">{t('soc.dataops.no_critical_gaps')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Hot tier breach */}
+          <div className="rounded-lg border border-slate-700 bg-slate-950/70 p-4">
+            <h4 className="text-sm font-semibold text-white">{t('soc.dataops.hot_tier_breach')}</h4>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-3">{t('soc.dataops.symbol')}</th>
+                    <th className="px-3 py-2 text-right">{t('soc.dataops.gap_days')}</th>
+                    <th className="px-3 py-2 text-right">{t('soc.dataops.gap_score')}</th>
+                    <th className="px-3 py-2">{t('soc.dataops.freshness_state')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {(observabilitySummary?.anomaly_guard?.hot_tier_breach || []).map((item) => (
+                    <tr key={item.symbol}>
+                      <td className="py-2 pr-3 font-mono text-red-300">{item.symbol}</td>
+                      <td className="px-3 py-2 text-right font-mono text-red-400">{item.gap_days}</td>
+                      <td className="px-3 py-2 text-right font-mono text-slate-300">{item.gap_score?.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-yellow-400">{item.freshness_state}</td>
+                    </tr>
+                  ))}
+                  {(observabilitySummary?.anomaly_guard?.hot_tier_breach || []).length === 0 && (
+                    <tr><td colSpan={4} className="py-4 text-center text-xs text-slate-500">{t('soc.dataops.no_hot_breach')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
