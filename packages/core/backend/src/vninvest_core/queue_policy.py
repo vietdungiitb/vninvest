@@ -96,6 +96,8 @@ QUEUE_DOMAIN_MATRIX = {
             'daily-backfill-prices-1700',
             # Deep history bootstrap: Sun 03:00 ICT (5 years) — gap-fill for all active symbols
             'deep-history-bootstrap-weekly',
+            # DNSE intraday tape 90-ngày — Sun 01:00 ICT orchestrator
+            'dnse-quarterly-backfill-intraday',
         ),
     },
     'manual_operations': {

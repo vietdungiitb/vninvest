@@ -72,6 +72,17 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'service_key': 'backfill_daily_prices',
         'max_expected_run_seconds': 10800,  # 3h — 1 năm × toàn bộ symbol
     },
+    # === DNSE intraday tape 90-ngày (quarterly backfill orchestrator) ===
+    'dnse-quarterly-backfill-intraday': {
+        'domain': 'dataops',
+        'data_types': ['intraday_ticks'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'DNSE intraday tape backfill 90 ngày (Chủ nhật 01:00)',
+        'service_key': 'dnse_intraday_quarterly_backfill',
+        'max_expected_run_seconds': 7200,  # 2h — VN100 × 90 ngày queue dispatch
+    },
     'ingest-daily-prices-1705': {
         'domain': 'dataops',
         'data_types': ['daily_prices'],

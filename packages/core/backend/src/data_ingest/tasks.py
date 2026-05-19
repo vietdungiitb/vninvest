@@ -1679,21 +1679,22 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
     """
     from market_data.models import IntradayTick
     from market_data.vnbroker_adapter import fetch_intraday_tape_history
-    from identity_access.models import UserDNSECredential
 
     symbol_upper = str(symbol or '').strip().upper()
     if not symbol_upper or not trade_date:
         return {'status': 'error', 'reason': 'symbol và trade_date là bắt buộc'}
 
-    # Lấy credential của user — không truyền qua Celery args
+    # Lấy credential của user từ user_workspace.DNSECredential — không truyền qua Celery args
     try:
-        cred = UserDNSECredential.objects.get(user_id=user_id)
-        api_key = cred.get_api_key()
-        api_secret = cred.get_api_secret()
-    except UserDNSECredential.DoesNotExist:
-        return {'status': 'error', 'reason': 'no_user_credential', 'user_id': user_id}
-    except Exception as exc:
-        logger.error('backfill_intraday_tick_user: credential decrypt error user_id=%s: %s', user_id, exc)
+        from user_workspace.models import DNSECredential as _WorkspaceDNSECred
+        cred = _WorkspaceDNSECred.objects.get(user_id=user_id, is_active=True)
+        api_key = cred.get_client_id()
+        api_secret = cred.get_client_secret()
+    except Exception as exc:  # DoesNotExist hoặc decrypt error
+        _exc_name = type(exc).__name__
+        if 'DoesNotExist' in _exc_name:
+            return {'status': 'error', 'reason': 'no_user_credential', 'user_id': user_id}
+        logger.error('backfill_intraday_tick_user: credential error user_id=%s: %s', user_id, exc)
         return {'status': 'error', 'reason': 'credential_error', 'user_id': user_id}
 
     # §14.5: Presence check
@@ -1746,3 +1747,108 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
                        symbol_upper, trade_date, exc)
 
     return {'status': 'ok', 'symbol': symbol_upper, 'date': trade_date, 'ticks': created, 'user_id': user_id}
+
+
+# ---------------------------------------------------------------------------
+# D05: System orchestrator — DNSE intraday 90-ngày (quarterly backfill)
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    bind=True,
+    name='data_ingest.tasks.enqueue_dnse_quarterly_backfill',
+    queue='enrichment_offhours',
+)
+def enqueue_dnse_quarterly_backfill(
+    self,
+    *,
+    days_back: int = 90,
+    symbols_group: str = 'vn100',
+    _scheduler_job_key: str = 'dnse-quarterly-backfill-intraday',
+) -> dict:
+    """
+    Orchestrator: quét 90 ngày giao dịch gần nhất, queue các slot còn thiếu
+    IntradayTick vào 'manual_on_demand' via backfill_intraday_tick_system.
+
+    Không ghi dữ liệu trực tiếp — chỉ dispatch subtasks.
+
+    Hard rules:
+    - Presence check per (symbol, date) để tránh duplicate.
+    - Chỉ queue 'missing_only' slots.
+    - days_back hard-cap = 180 (DNSE tape retention window).
+    """
+    from datetime import date, timedelta
+
+    from market_data.models import IntradayTick
+    from market_data.vnbroker_adapter import fetch_symbol_group_members
+
+    days_back = max(1, min(int(days_back or 90), 180))
+
+    # 1. Resolve symbols
+    try:
+        raw_members = fetch_symbol_group_members(symbols_group)
+        symbols = sorted({s.strip().upper() for s in raw_members if s and s.strip()})
+    except Exception as exc:
+        logger.warning('enqueue_dnse_quarterly_backfill: cannot resolve %s: %s', symbols_group, exc)
+        symbols = []
+    if not symbols:
+        # Fallback: toàn bộ global registry
+        symbols = _get_default_global_registry_symbols()
+    if not symbols:
+        return {'status': 'error', 'reason': 'no_symbols', 'symbols_group': symbols_group}
+
+    # 2. Generate trading date range (Mon–Fri, không kể cuối tuần)
+    today = date.today()
+    date_from = today - timedelta(days=days_back)
+    trade_dates: list[str] = []
+    cur = date_from
+    while cur <= today:
+        if cur.weekday() < 5:
+            trade_dates.append(cur.isoformat())
+        cur += timedelta(days=1)
+
+    # 3. Presence check — lấy tập (symbol, date) đã có data
+    existing_pairs: set[tuple[str, str]] = set()
+    try:
+        qs = (
+            IntradayTick.objects
+            .filter(symbol__in=symbols, timestamp__date__in=trade_dates)
+            .values_list('symbol', 'timestamp__date')
+            .distinct()
+        )
+        for sym, dt in qs:
+            existing_pairs.add((sym, str(dt)))
+    except Exception as exc:
+        logger.warning('enqueue_dnse_quarterly_backfill: presence query failed: %s', exc)
+        # Nếu lỗi presence check — abort để tránh over-queue
+        return {'status': 'error', 'reason': 'presence_check_failed', 'detail': str(exc)}
+
+    # 4. Queue missing slots
+    total_slots = len(symbols) * len(trade_dates)
+    queued = 0
+    skipped = 0
+    for sym in symbols:
+        for dt in trade_dates:
+            if (sym, dt) in existing_pairs:
+                skipped += 1
+                continue
+            backfill_intraday_tick_system.apply_async(
+                kwargs={'symbol': sym, 'trade_date': dt},
+                queue='manual_on_demand',
+            )
+            queued += 1
+
+    logger.info(
+        'enqueue_dnse_quarterly_backfill: symbols=%d dates=%d total_slots=%d queued=%d skipped=%d '
+        'days_back=%d group=%s',
+        len(symbols), len(trade_dates), total_slots, queued, skipped, days_back, symbols_group,
+    )
+    return {
+        'status': 'ok',
+        'symbols': len(symbols),
+        'trade_dates': len(trade_dates),
+        'total_slots': total_slots,
+        'queued': queued,
+        'skipped_existing': skipped,
+        'days_back': days_back,
+        'symbols_group': symbols_group,
+    }

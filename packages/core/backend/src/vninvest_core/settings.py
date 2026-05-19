@@ -404,6 +404,17 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('daily-backfill-prices-1700', 'enrichment_offhours')},
     },
 
+    # === DNSE intraday tape backfill 90 ngày — Chủ nhật 01:00 ICT (Sat 18:00 UTC) ===
+    # Orchestrator: resolve VN100, presence-check, queue missing (symbol, date) slots.
+    # Subtasks chạy queue manual_on_demand; orchestrator chạy enrichment_offhours.
+    # Enabled=True — chạy hàng tuần để fill gap tự động.
+    'dnse-quarterly-backfill-intraday': {
+        'task': 'data_ingest.tasks.enqueue_dnse_quarterly_backfill',
+        'schedule': crontab(hour=18, minute=0, day_of_week=6),  # Sat 18:00 UTC = Sun 01:00 ICT
+        'kwargs': {'days_back': 90, 'symbols_group': 'vn100', '_scheduler_job_key': 'dnse-quarterly-backfill-intraday'},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('dnse-quarterly-backfill-intraday', 'enrichment_offhours')},
+    },
+
     # === Deep history bootstrap — weekly Sun 03:00 ICT (Sat 20:00 UTC) ===
     # Fills OHLCV coverage gaps for all active global registry symbols.
     # Uses days=1825 (5 years) so newly registered symbols always get full depth.
