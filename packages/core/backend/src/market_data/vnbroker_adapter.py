@@ -2,6 +2,7 @@ import logging
 import time
 import random
 import json
+from datetime import timezone as _dt_timezone
 from importlib import import_module
 from typing import Any, Optional
 
@@ -623,3 +624,112 @@ def fetch_intraday_tape(symbol: str, page_size: int = 50) -> dict[str, Any]:
     cache.set(cache_key, result, timeout=300)
     
     return result
+
+
+# ---------------------------------------------------------------------------
+# DNSE Historical Tape — SSOT (D01)
+# ---------------------------------------------------------------------------
+# SSOT duy nhất cho fetch tape lịch sử DNSE.
+# Tuyệt đối cấm import DNSEQuote từ bất kỳ nơi nào khác ngoài hàm này.
+# ---------------------------------------------------------------------------
+
+_DNSE_SIDE_BUY = frozenset({'bu', 'b', 'buy', '+'})
+_DNSE_SIDE_SELL = frozenset({'sd', 's', 'sell', '-'})
+
+
+def fetch_intraday_tape_history(
+    symbol: str,
+    trade_date: str,
+    api_key: str | None = None,
+    api_secret: str | None = None,
+    *,
+    source: str = 'dnse',
+) -> list[dict[str, Any]]:
+    """
+    Fetch historical intraday tape từ DNSE cho một ngày giao dịch cụ thể.
+
+    SSOT duy nhất cho DNSE historical tape — tuyệt đối không import DNSEQuote
+    từ bất kỳ module nào khác ngoài hàm này.
+
+    Args:
+        symbol:     Mã CK, e.g. 'HPG'.
+        trade_date: Ngày giao dịch 'YYYY-MM-DD'.
+        api_key:    DNSE API key (None → public endpoint, dữ liệu có thể giới hạn).
+        api_secret: DNSE API secret.
+        source:     Label ghi vào field 'source' của mỗi tick, e.g. 'dnse_system' / 'dnse_user'.
+
+    Returns:
+        list[dict] với keys: timestamp (UTC-aware datetime), price (float),
+        volume (int), side ('buy'/'sell'/'unknown'), match_type (str), source (str).
+        Trả về [] nếu không có dữ liệu hoặc lỗi. Không raise exception.
+
+    Security:
+        api_key và api_secret tuyệt đối không được log.
+        Chỉ log symbol, trade_date, result count.
+    """
+    symbol_upper = symbol.strip().upper()
+    try:
+        from vnbroker.explorer.dnse.quote import DNSEQuote
+
+        q = DNSEQuote(
+            symbol=symbol_upper,
+            api_key=api_key,
+            api_secret=api_secret,
+            show_log=False,
+        )
+        df = q.intraday(date=trade_date, get_all=True, page_size=1000)
+
+        if df is None or df.empty:
+            logger.info(
+                'fetch_intraday_tape_history: no data — symbol=%s date=%s',
+                symbol_upper, trade_date,
+            )
+            return []
+
+        results: list[dict[str, Any]] = []
+        for _, row in df.iterrows():
+            ts_raw = row.get('time')
+            if ts_raw is None or pd.isna(ts_raw):
+                continue
+
+            # _parse_trades converts Unix timestamps → naive UTC datetime (tz stripped).
+            # For string timestamps from DNSE, they may be VN local naive; treat as UTC
+            # since VN production data consistently uses Unix seconds (UTC).
+            ts = pd.Timestamp(ts_raw)
+            if ts.tzinfo is None:
+                utc_ts = ts.to_pydatetime().replace(tzinfo=_dt_timezone.utc)
+            else:
+                utc_ts = ts.to_pydatetime().astimezone(_dt_timezone.utc)
+
+            side_raw = str(row.get('side') or '').strip().lower()
+            if side_raw in _DNSE_SIDE_BUY:
+                side = 'buy'
+            elif side_raw in _DNSE_SIDE_SELL:
+                side = 'sell'
+            else:
+                side = 'unknown'
+
+            results.append({
+                'timestamp': utc_ts,
+                'price': float(row.get('price') or 0),
+                'volume': int(row.get('volume') or 0),
+                'side': side,
+                'match_type': 'NormalMatch',
+                'source': source,
+            })
+
+        logger.info(
+            'fetch_intraday_tape_history: symbol=%s date=%s ticks=%d source=%s',
+            symbol_upper, trade_date, len(results), source,
+        )
+        return results
+
+    except Exception:
+        # Không log exception message nếu nó chứa credential info.
+        # Chỉ log symbol và date.
+        logger.warning(
+            'fetch_intraday_tape_history failed: symbol=%s date=%s',
+            symbol_upper, trade_date,
+        )
+        return []
+
