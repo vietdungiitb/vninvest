@@ -1,5 +1,53 @@
 # Code Change Audit Ledger
 
+# 2026-05-19 | DNSE Backfill Whale & Dark Flow — D01–D07 Implementation Complete
+
+## Modified / Created Files
+
+| File | Change | Slice |
+|------|--------|-------|
+| `packages/core/backend/src/market_data/vnbroker_adapter.py` | ADD — `fetch_intraday_tape_history(symbol, trade_date, api_key, api_secret)` SSOT for DNSE tape history; `_DNSE_SIDE_BUY/SELL` frozensets; normalizes side, attaches UTC timezone | D01 |
+| `packages/core/backend/src/market_data/tests/test_intraday_tape_history.py` | CREATE — 16 unit tests for adapter function (T-A1..T-A16) | D01 |
+| `packages/core/backend/src/identity_access/models.py` | ADD — `UserDNSECredential` model with Fernet encryption (`_get_fernet`, `_encrypt_credential`, `_decrypt_credential`), `set_credentials/get_api_key/get_api_secret`, `get_system_provider_credentials()` module function | D02 |
+| `packages/core/backend/src/identity_access/migrations/0005_dnse_credential.py` | CREATE — migration for `UserDNSECredential` | D02 |
+| `packages/core/backend/src/identity_access/dnse_credential_views.py` | CREATE — GET/POST/DELETE `/api/core/v1/dnse-credential/`; never returns api_key/api_secret; `is_system_provider=True` requires is_staff | D02 |
+| `packages/core/backend/src/identity_access/tests/test_dnse_credential_views.py` | CREATE — 11 tests for credential views (T-B1..T-B11) | D02 |
+| `packages/core/backend/src/data_ingest/tasks.py` | ADD — `backfill_intraday_tick_system`, `backfill_intraday_tick_user` tasks; presence check, bulk_create, ignore_conflicts; queue `manual_on_demand` | D03+D04 |
+| `packages/core/backend/src/data_ingest/views.py` | ADD — `SystemBackfillTriggerView`, `UserBackfillTriggerView`, `SystemBackfillThrottle`, `UserBackfillThrottle`; clamps `days_back` ≤180 | D03+D04 |
+| `packages/core/backend/src/data_ingest/urls.py` | ADD — routes `data-ingest/backfill/system/` and `data-ingest/backfill/user/` | D03+D04 |
+| `packages/core/backend/src/vninvest_core/settings.py` | ADD — throttle rates: `user`, `ingest_admin_trigger`, `system_backfill_trigger`, `user_backfill_trigger` | D03+D04 |
+| `packages/core/backend/src/data_ingest/tests/test_backfill_tasks.py` | CREATE — 9 tests for tasks + views (T-C1..T-C9) | D03+D04 |
+| `packages/core/backend/src/signal_intelligence/tasks.py` | MODIFY — `detect_and_store_global_whale_alerts` gains optional `session_date: str\|None` param; parses `%Y-%m-%d`, falls back to `_get_latest_session_date()` | D05 |
+| `packages/core/backend/src/signal_intelligence/tests/test_detect_historical.py` | CREATE — 4 tests (T-D1..T-D4) for session_date param | D05 |
+| `packages/core/backend/src/data_ingest/tests/test_backfill_integration.py` | CREATE — 3 integration tests T-E1..T-E3 (system backfill, user backfill, idempotency) | D06 |
+| `packages/core/backend/src/identity_access/tests/test_dnse_credential_integration.py` | CREATE — 4 integration tests T-F1..T-F4 (Fernet round-trip, bytes differ, system creds) | D06 |
+| `packages/core/backend/src/market_data/tests/test_intraday_tick_presence.py` | CREATE — 3 integration tests T-G1..T-G3 (bulk_create ignore_conflicts, filter by date, empty) | D06 |
+| `frontend/src/api/client.js` | ADD — `getDNSEDataCredential`, `saveDNSEDataCredential`, `deleteDNSEDataCredential`, `triggerSystemBackfill`, `triggerUserBackfill` | D07 |
+| `frontend/src/components/soc/DNSEBackfillPanel.jsx` | CREATE — SOC admin panel: system backfill + user backfill sections with form/status | D07 |
+| `frontend/src/components/soc/SOCDomainTabs.jsx` | MODIFY — added `dnse-backfill` tab | D07 |
+| `frontend/src/pages/SOCPage.jsx` | MODIFY — registered `DNSEBackfillPanel` for `dnse-backfill` domain | D07 |
+| `frontend/src/pages/UserConfig.jsx` | MODIFY — DNSE credential state + handlers + render section (save/delete creds) | D07 |
+| `frontend/src/i18n/vi.json` | ADD — `settings.dnse_cred_*` keys + `soc.dnse_backfill.*` keys (full Vietnamese diacritics) | D07 |
+
+## Commits
+
+| Commit | Slice | Description |
+|--------|-------|-------------|
+| `03ac8ee1` | D01 | fetch_intraday_tape_history + 16 unit tests |
+| `d0e70908` | D02 | UserDNSECredential + Fernet + CRUD + migration + 11 tests |
+| `b5fc1121` | D03+D04 | Backfill tasks + endpoints + throttle + 9 tests |
+| `e3b13f82` | D05 | session_date param for whale detection + 4 tests |
+| `004dc507` | D06 | 10 integration tests |
+| `423bf233` | D07 | Frontend: SOC panel + UserConfig DNSE settings + i18n |
+
+## Validation
+
+- All backend tests pass: D01 (16/16), D02 (11/11), D03+D04 (9/9), D05 (4/4), D06 (10/10)
+- Frontend build: `Compiled successfully` (865 kB gzip)
+- Hard constraints §14 all honored: Fernet encryption, no cred logging, presence check before bulk_create, is_staff gate, shared IntradayTick table, days_back clamp 180
+
+
+
 # 2026-05-19 | Whale/Dark Flow pipeline — implement missing OrderFlowEvent detection tasks
 
 ## Modified Files
