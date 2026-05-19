@@ -599,6 +599,11 @@ def build_global_planner_preview(
                     'reason': _resolve_planner_reason(coverage_before, force_refresh=force_refresh),
                     'overwrite_existing': bool(force_refresh),
                     'coverage_before': coverage_before,
+                    # B05 — gap_score for priority sort
+                    'gap_score': coverage_row.gap_score if coverage_row is not None else compute_gap_score(
+                        freshness_state=coverage_before,
+                        dataset=dataset,
+                    ),
                 })
                 continue
 
@@ -608,7 +613,8 @@ def build_global_planner_preview(
                 'reason': 'coverage_ok',
             })
 
-    items.sort(key=lambda item: (item['symbol'], dataset_order.get(item['dataset'], 999)))
+    # B05 — Sort by gap_score DESC (highest priority gap first), then dataset order
+    items.sort(key=lambda item: (-item['gap_score'], dataset_order.get(item['dataset'], 999)))
     skipped.sort(key=lambda item: (item['symbol'], dataset_order.get(item['dataset'], 999)))
     return {
         'mode': normalized_mode,
