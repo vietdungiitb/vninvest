@@ -1,5 +1,819 @@
 # Code Change Audit Ledger
 
+# 2026-05-20 | Daily backfill stale-running self-heal for scheduler truth ✅
+
+## Problem Solved
+
+Scheduler job `daily-backfill-prices-1700` bị hiển thị `degraded/overdue` dù pipeline vẫn có run thành công mới hơn.
+Nguyên nhân gốc là các bản ghi `ServiceRunLog` / `BackfillExecutionRun` cũ bị kẹt `running`, khiến catalog suy luận sai `is_inflight`.
+
+Slice này thêm self-heal ở ngay đầu `backfill_daily_prices`:
+
+- Tự đóng `ServiceRunLog(status in queued/running)` quá TTL cho đúng `service_key`.
+- Tự đóng `BackfillExecutionRun(status=running)` quá TTL cho đúng `job_key`.
+- Set trạng thái terminal `failed` kèm `finished_at` + error summary để có audit trail rõ ràng.
+- Xóa marker cache inflight khi phát hiện stale run, tránh status `running` giả trên SchedulerBoard.
+- Bổ sung regression test đảm bảo stale records được dọn trước khi run mới bắt đầu.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/data_ingest/tasks.py` | Added B08 stale-running self-heal helper and invoked it at task startup for `backfill_daily_prices` |
+| `packages/core/backend/src/data_ingest/tests/test_tasks.py` | Added regression test covering stale `ServiceRunLog` + `BackfillExecutionRun` auto-close behavior |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Added incident/fix status snapshot for scheduler truth restoration |
+| `module_tree_full.md` | Regenerated canonical module tree after this backend/test slice (`1262` modules) |
+
+## Validation
+
+- `Set-Location 'C:\Mujoco Projects\vninvest'; docker exec vninvest-dev-core-api sh -lc 'cd /app/src && python manage.py test data_ingest.tests.test_tasks.DataIngestBackfillTaskTests.test_backfill_daily_prices_auto_closes_stale_running_records_before_new_run --keepdb'` — PASS (`1` test)
+- `Set-Location 'C:\Mujoco Projects\vninvest'; docker exec vninvest-dev-core-api sh -lc 'cd /app/src && python manage.py test data_ingest.tests.test_tasks.DataIngestBackfillTaskTests --keepdb'` — PASS (`14` tests)
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1262` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS (`core-api` health OK, frontend health OK, queue drift clean)
+
+## Residual Risk
+
+- Self-heal hiện dùng TTL suy ra từ `max_expected_run_seconds + grace` (fallback mặc định), chưa tách thành runtime config theo từng cụm job.
+- Vẫn cần theo dõi thêm qua vài chu kỳ tải cao để bảo đảm không có false-close edge case khi worker cập nhật trạng thái chậm.
+
+# 2026-05-20 | Stock-management AI advisory native core cutover ✅
+
+## Problem Solved
+
+Sau slice seed/sync + price-alerts, nhóm AI advisory của stock-management vẫn còn contract drift giữa session, observability, component mutation, và summary mutation. Core runtime cũng không thể dựa vào import legacy portfolio vì package đó không tồn tại trong core app.
+
+Slice này khóa lại path đó theo hướng native, snapshot-backed, và an toàn khi user có nhiều AI session:
+
+- `StockManagementAIAdvisorySessionView` now builds a native envelope from `AdvisoryRecord.context_snapshot`, including `advisory`, `aggregate`, `components`, `deleted_components`, `executive_summary`, `executive_summaries`, `user_ai_provider`, and effective provider metadata.
+- `StockManagementAIAdvisoryObservabilityView` persists telemetry into `context_snapshot` instead of returning a throwaway stub.
+- Component and summary mutation routes now require `advisory_id` when multiple sessions exist, so they mutate the intended snapshot instead of silently defaulting to the latest record.
+- Mutation routes now validate `advisory_id` format and reject malformed values with `400` instead of leaking query-layer exceptions.
+- Summary regenerate now keeps deleted-component counts in sync with the stored snapshot, and summary delete uses the same session-scoped resolution.
+- `generate` retains `manual_trigger` compatibility so existing callers do not lose the refresh provenance field.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Replaced the legacy portfolio dependency with a native snapshot-backed AI advisory envelope and real component/summary mutation helpers |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Updated AI advisory regressions to use numeric component IDs and a real snapshot-backed advisory record |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the AI advisory native cutover status, validation, and remaining compat debt |
+| `module_tree_full.md` | Regenerated canonical module tree after the backend slice (`1262` modules) |
+
+## Validation
+
+- `Set-Location 'C:\Mujoco Projects\vninvest\packages\core\backend'; & 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' manage.py test market_data.tests.test_stock_management_native_api --keepdb` — PASS (`47` tests)
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1262` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS (`core-api` health OK, frontend health OK, queue drift clean)
+
+## Residual Risk
+
+- `frontend/src/api/client.js` still contains the stock-management AI-advisory wrapper family, so the caller-side compat cutover is not complete yet.
+- Broader stock-management compat surfaces outside AI advisory remain for later slices.
+
+# 2026-05-20 | Stock-Management Seed/Sync + Price Alerts Core Cutover ✅
+
+## Problem Solved
+
+Sau slice stock-detail read family, Watchlist vẫn còn đi qua compat `/api/stock-management/...` cho hai nhóm hành vi sát nhất với stock-management workspace: `seed/sync` và `price-alerts`.
+
+Slice này dọn đúng bridge đó theo hướng root-cause và khóa luôn permission gap mới lộ ra trong review:
+
+- Mount native `/core/v1/stock-management/...` aliases cho `groups/<id>`, `groups/<id>/items`, `seed`, `sync`, `price-alerts`, `price-alerts/<id>`, và `price-alerts/<id>/mark-triggered/`.
+- Chuyển live frontend wrappers `seedSecurities`, `syncSecuritiesPrices`, `getPriceAlerts`, `createPriceAlert`, `updatePriceAlert`, `deletePriceAlert`, và `markPriceAlertTriggered` sang core transport `withCoreBase()`.
+- Áp dụng `TENANT_PERMISSION_CLASSES` cho các aliases core mới để chặn tenant bị suspend tiếp tục seed nhóm, queue sync, đọc/ghi cảnh báo giá, hoặc mở group detail/items qua saved IDs.
+- Bổ sung regression tests backend cho native aliases mới và regression test frontend cho các wrapper vừa cutover.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/core_urls.py` | Mounted the missing native `/core/v1` aliases for group detail/items, seed/sync, and the full price-alert family |
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Applied `TENANT_PERMISSION_CLASSES` to the newly exposed seed/sync, group detail/items, and price-alert routes |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added focused core route tests for the new aliases and a suspended-tenant regression covering the new paths |
+| `frontend/src/api/client.js` | Cut stock-management seed/sync and price-alert wrappers from compat transport to core `/core/v1` transport |
+| `frontend/src/api/client.coreRoutes.test.js` | Expanded wrapper regression coverage for the native seed/sync and price-alert callers |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the cutover status, validation, and remaining compat debt |
+| `module_tree_full.md` | Regenerated canonical module tree after the final backend/frontend slice (`1262` modules) |
+
+## Validation
+
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost,http://127.0.0.1'; $env:DJANGO_SECRET_KEY='local-test-secret-key'; $env:CORE_PAT_PEPPER='local-test-pepper'; Push-Location './packages/core/backend'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_stock_management_native_api.StockManagementNativeApiTestCase.test_core_v1_groups_seed_detail_and_items_routes_are_native market_data.tests.test_stock_management_native_api.StockManagementNativeApiTestCase.test_core_v1_price_alert_routes_are_native market_data.tests.test_stock_management_native_api.StockManagementNativeApiTestCase.test_core_v1_sync_route_user_scope_through_global_planner market_data.tests.test_stock_management_native_api.StockManagementNativeApiTestCase.test_core_v1_stock_management_mutation_and_detail_routes_block_suspended_tenant --keepdb; Pop-Location` — PASS (`4` tests)
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost,http://127.0.0.1'; $env:DJANGO_SECRET_KEY='local-test-secret-key'; $env:CORE_PAT_PEPPER='local-test-pepper'; Push-Location './packages/core/backend'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_stock_management_native_api --keepdb; Pop-Location` — PASS (`39` tests)
+- `Push-Location './frontend'; npm test -- --watchAll=false --runInBand src/api/client.coreRoutes.test.js; Pop-Location` — PASS (`7` tests)
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1262` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
+   - Frontend production build: `Compiled successfully`
+   - Core API health: `healthy`
+   - Native scheduler queue drift: `No queue drift detected`
+
+## Residual Risk
+
+- `stock-management/stocks/` list and the stock AI-advisory wrapper family in `frontend/src/api/client.js` still go through compat `/api/stock-management/...` paths.
+- Watchlist CRUD under `/portfolio/watchlist/*` remains legacy-shaped and outside this slice.
+- Group detail/items now have native aliases, but there is not yet a live frontend caller cutover that consumes those dedicated routes directly.
+
+# 2026-05-20 | Stock Detail Read Family Core Cutover + Transport Hardening ✅
+
+## Problem Solved
+
+Sau slice groups/digest/tracked mutation, live subscriber frontend vẫn còn đọc stock-detail family qua compat `/api/stock-management/stocks/*`, nên `StockDetail`, `WhaleAlertsDashboard`, và `StockNewsPanel` chưa dùng native `/core/v1` primary path dù backend owner đã tồn tại sẵn.
+
+Slice này dọn đúng path đó theo hướng root-cause:
+
+- Mount native stock-detail read family dưới `/core/v1/stock-management/stocks/<symbol>/...` cho `profile`, `overview`, `chart`, `order-flow`, `news`, `news/ai-summary`, và `financials`.
+- Siết tenant-aware permission stack cho family route mới expose và bổ sung OpenAPI metadata tương ứng cho core namespace.
+- Chuyển live frontend wrappers `getStockProfile`, `getStockWorkspaceOverview`, `getStockPriceChart`, `getStockOrderFlow`, `getStockNews`, `generateStockNewsAISummary`, và `getStockFinancials` sang core stock-management routes.
+- Sửa transport resolution ở `frontend/src/api/client.js` để core stock-management wrappers không còn bypass `REACT_APP_API_BASE_URL`, đồng thời vẫn fallback đúng về `/core/v1` trong dev/same-origin.
+- Đồng bộ validator tracked-symbol với facts-first existence rule của stock detail, để mã chỉ có `DailyPrice`/market facts vẫn track được từ Stock Detail thay vì bị reject chỉ vì chưa có `StockProfile`.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/core_urls.py` | Mounted the native stock-detail read family under `/core/v1/stock-management/stocks/<symbol>/...` |
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Added tenant-aware permissions + OpenAPI metadata for the exposed core read family and aligned tracked-symbol validation with facts-first symbol existence |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added focused parity tests for the core stock-detail routes and a regression test for tracked-symbol creation on a DailyPrice-only symbol |
+| `frontend/src/api/client.js` | Cut stock-detail live wrappers to core stock-management routes and replaced `baseURL: ''` overrides with resolved core-base transport |
+| `frontend/src/api/client.coreRoutes.test.js` | Added focused wrapper regressions for the stock-detail family and external API-host base resolution |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the stock-detail read-family cutover status, validations, and remaining compat debt |
+| `module_tree_full.md` | Regenerated canonical module tree after the route, transport, and regression-test changes (`1262` modules) |
+
+## Validation
+
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost,http://127.0.0.1'; $env:DJANGO_SECRET_KEY='local-test-secret-key'; $env:CORE_PAT_PEPPER='local-test-pepper'; Push-Location 'C:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe .\packages\core\backend\manage.py test market_data.tests.test_stock_management_native_api --keepdb; Pop-Location` — PASS (`35` tests)
+- `Push-Location 'C:\Mujoco Projects\vninvest\frontend'; npm test -- --runTestsByPath src/api/client.coreRoutes.test.js --watch=false; Pop-Location` — PASS (`5` tests)
+- `Push-Location 'C:\Mujoco Projects\vninvest\frontend'; npm run build; Pop-Location` — PASS
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1262` modules)
+- VS Code diagnostics on touched files (`core_urls.py`, `stock_mgmt_native_views.py`, `test_stock_management_native_api.py`, `client.js`, `client.coreRoutes.test.js`) — PASS (`No errors found`)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
+   - Core API health: `OK`
+   - Frontend health: `OK`
+   - Native scheduler queue drift: `No queue drift detected`
+
+## Residual Risk
+
+- Stock-management cutover vẫn chưa hoàn tất toàn namespace: `seed/sync`, stock list, group detail/items, price alerts, và các stock AI-advisory routes trong `frontend/src/api/client.js` vẫn còn ở compat `/api/...`.
+- OpenAPI metadata cho `overview/chart/order-flow` hiện dùng object envelope tổng quát để tránh schema drift sai thực tế; nếu muốn contract strict hơn thì cần một slice schema-hardening riêng.
+- Auth/tenant behavior cho authenticated user không gắn tenant vẫn theo repo-wide policy hiện tại; slice này chỉ đảm bảo family route mới expose dùng cùng tenant-active gate đã có.
+
+# 2026-05-20 | Native Stock-Management Groups + Digest + Tracked Mutation Core Cutover ✅
+
+## Problem Solved
+
+Sau hai slice trước, dashboard/package host vẫn còn hai helper cuối trong `coreApiAdapter` đi qua compat `/api/...` (`getPortfolioNewsDigest`, `getLegacyWatchlistGroups()`), còn live frontend vẫn ghi tracked-symbol qua compat `/api/stock-management/tracked-symbols/*`.
+
+Slice này dọn nốt bridge đó theo hướng root-cause:
+
+- Mount core-only native routes cho `stock-management/groups/`, `stock-management/portfolio/news-digest/`, `stock-management/tracked-symbols/<id>/`, và `stock-management/tracked-symbols/bulk-threshold/` dưới `/core/v1/`.
+- Bổ sung OpenAPI metadata cho family route frontend thuê bao vừa được expose.
+- Xóa hoàn toàn private `legacyApiGet(...)` khỏi `coreApiAdapter`; hai helper legacy cuối cùng nay đi qua `/core/v1`.
+- Chuyển live frontend `getSecuritiesGroups()` và tracked-symbol mutation wrappers sang native `/core/v1`.
+- Khôi phục tenant-active gate cho các route core mới và sửa `IsTenantActive` để chặn cả owner lẫn member có `core_profile.tenant` trỏ vào tenant bị suspend.
+- Tối ưu `getLegacyWatchlistGroups()` cho package/dashboard path bằng `include_prices=0` để không kéo price enrichment không cần thiết vào load path chỉ cần symbol universe.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/core_urls.py` | Mounted the missing core-only native stock-management routes for groups, news digest, tracked detail, and tracked bulk threshold |
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Added OpenAPI metadata, restored tenant-aware permissions on the exposed core routes, and added the lightweight `include_prices` control for groups reads |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added focused tests for groups/news-digest parity, tracked mutation routes, suspended-tenant owner blocking, and suspended-tenant member blocking |
+| `packages/core/backend/src/identity_access/permissions.py` | Fixed `IsTenantActive` so member profiles linked to suspended tenants are blocked consistently instead of only tenant owners |
+| `packages/web/src/adapters/coreApiAdapter.js` | Removed the last compat private transport, cut digest/groups helpers to `/core/v1`, and optimized dashboard group reads with `include_prices=0` |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added/updated adapter regressions for native digest/groups URLs and the lightweight groups query |
+| `frontend/src/api/client.js` | Switched securities-groups read and tracked-symbol write wrappers to native `/core/v1` routes |
+| `frontend/src/api/client.coreRoutes.test.js` | Added focused regression coverage for the new frontend axios wrappers targeting `/core/v1` |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the cutover status, validation, and next architectural debt |
+| `module_tree_full.md` | Regenerated canonical module tree after the final permission fix and route/test changes (`1262` modules) |
+
+## Validation
+
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost,http://127.0.0.1'; $env:DJANGO_SECRET_KEY='local-test-secret-key'; $env:CORE_PAT_PEPPER='local-test-pepper'; Push-Location 'C:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe .\packages\core\backend\manage.py test market_data.tests.test_stock_management_native_api --keepdb; Pop-Location` — PASS
+- `Push-Location 'C:\Mujoco Projects\vninvest\packages\web'; npm test -- src/adapters/coreApiAdapter.test.js --runInBand; Pop-Location` — PASS
+- `Push-Location 'C:\Mujoco Projects\vninvest\frontend'; $env:CI='true'; npm test -- --runInBand --watchAll=false src/api/client.coreRoutes.test.js; Pop-Location` — PASS
+- `Push-Location 'C:\Mujoco Projects\vninvest\frontend'; npm run build; Pop-Location` — PASS
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1262` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
+   - Core API health: `OK`
+   - Frontend health: `OK`
+   - Native scheduler queue drift: `No queue drift detected`
+
+## Residual Risk
+
+- `stock-management/groups/` và `tracked-symbols/` trên core vẫn là list contracts không phân trang để giữ tương thích caller hiện tại; đây vẫn là khoảng trống so với OpenAPI constitution R8.
+- Kiến trúc auth frontend vẫn còn tách đôi giữa fetch-based `coreApiAdapter` và axios `client.js`, còn token browser vẫn ở localStorage; đây là debt cũ, không phải regression mới của slice này.
+- `seed/sync` và nhiều stock/portfolio wrappers khác trong `frontend/src/api/client.js` vẫn còn ở compat `/api/...`, nên SaaS-native cutover cho subscriber frontend chưa hoàn tất toàn bộ.
+
+# 2026-05-20 | Dashboard Tracked Symbols Native Cutover + Core URL Ownership Fix ✅
+
+## Problem Solved
+
+After cutting portfolio analytics off the compat bridge, the dashboard still had one remaining symbol-universe read on legacy transport: `coreApiAdapter.getTrackedSymbols()` was calling `/api/stock-management/tracked-symbols/` even though the owning view already lived in the native stock-management implementation.
+
+This slice removes that bridge and fixes the route-ownership problem correctly instead of duplicating the `/api` path.
+
+Concretely:
+
+- Added a core-only URLConf for market-data native routes under `/core/v1/`.
+- Mounted `/core/v1/stock-management/tracked-symbols/` there using the existing `StockManagementTrackedSymbolsView` owner.
+- Left `/api/stock-management/tracked-symbols/` owned by `market_data.public_urls` only, avoiding duplicate `/api` registration.
+- Switched `coreApiAdapter.getTrackedSymbols()` to the native `/core/v1` route.
+- Added focused backend parity/auth coverage plus focused adapter URL coverage.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/core_urls.py` | Added a core-only URLConf so `/core/v1` can expose native tracked-symbols without duplicating `/api` ownership |
+| `packages/core/backend/src/market_data/urls.py` | Kept only shared market-data routes here after moving tracked-symbols to the core-only URLConf |
+| `packages/core/backend/src/vninvest_core/urls.py` | Switched the `/core/v1` market-data include to `market_data.core_urls` |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added focused parity and anonymous-auth tests for the native tracked-symbols list route |
+| `packages/web/src/adapters/coreApiAdapter.js` | Cut `getTrackedSymbols()` from compat `/api/stock-management/tracked-symbols/` to native `/core/v1/stock-management/tracked-symbols/` |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added focused URL regression test proving `getTrackedSymbols()` now targets the native route |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the tracked-symbols cutover and remaining legacy universe debt |
+| `module_tree_full.md` | Regenerated canonical module tree after the new core-only URLConf (`1261` modules) |
+
+## Validation
+
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost,http://127.0.0.1'; $env:DJANGO_SECRET_KEY='local-test-secret-key'; $env:CORE_PAT_PEPPER='local-test-pepper'; Push-Location 'C:\Mujoco Projects\vninvest\packages\core\backend'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_stock_management_native_api.StockManagementNativeApiTestCase.test_core_v1_tracked_symbols_list_route_matches_public_contract market_data.tests.test_stock_management_native_api.StockManagementNativeApiTestCase.test_core_v1_tracked_symbols_list_route_requires_authentication --keepdb; Pop-Location` — PASS
+- `Push-Location 'C:\Mujoco Projects\vninvest\packages\web'; npm test -- src/adapters/coreApiAdapter.test.js; Pop-Location` — PASS
+- `Push-Location 'C:\Mujoco Projects\vninvest\frontend'; npm run build; Pop-Location` — PASS
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1261` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
+   - Core API health: `OK`
+   - Frontend health: `OK`
+   - Native scheduler queue drift: `No queue drift detected`
+
+## Residual Risk
+
+- `getLegacyWatchlistGroups()` still depends on the compat `/api/portfolio/watchlist/groups/` surface and remains the clearest symbol-universe legacy bridge left inside `coreApiAdapter`.
+- `getPortfolioNewsDigest()` still depends on `/api/stock-management/portfolio/news-digest`.
+- Classic frontend wrappers still call compat routes directly for chart, equity curve, allocation, tracked-symbol mutations, and broader portfolio CRUD surfaces in `frontend/src/api/client.js`.
+- `ModernDashboard` remains the live route bridge even though the shared package data plane is now materially more native.
+
+# 2026-05-20 | Dashboard Portfolio Analytics Native Workspace Cutover ✅
+
+## Problem Solved
+
+The previous dashboard native cutover still left one material legacy bridge in place: portfolio holdings, summary, analytics, and portfolio technicals were fetched through compat `/api/portfolio/...` routes even though the owning business logic already lived in native `user_workspace` views.
+
+This slice removes that bridge at the root cause level by introducing explicit native workspace aliases for the existing portfolio analytics views and switching the shared package adapter to call those native routes directly.
+
+Concretely:
+
+- Added native workspace aliases under `/core/v1/workspace/portfolios/<id>/(holdings|summary|analytics|technicals)/`.
+- Kept legacy `/api/portfolio/portfolios/<id>/...` aliases intact for compatibility and parity comparison.
+- Switched `coreApiAdapter` portfolio analytics methods off `legacyApiGet(...)` and onto native `coreGet(...)` workspace paths.
+- Added focused backend parity/auth tests and focused adapter URL tests so the cutover is now guarded against drift.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/user_workspace/urls.py` | Added native workspace aliases for holdings, summary, analytics, and portfolio technicals |
+| `packages/core/backend/src/user_workspace/test_portfolio_analytics_native_routes.py` | Added focused backend parity, ownership, and anonymous-auth coverage for the new native workspace aliases |
+| `packages/web/src/adapters/coreApiAdapter.js` | Cut `getPortfolioHoldings`, `getPortfolioSummary`, `getPortfolioAnalytics`, and `getPortfolioTechnicals` from compat `/api/portfolio/...` to native `/core/v1/workspace/portfolios/...` |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added focused URL regression tests proving the portfolio analytics family now targets native workspace paths |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the portfolio analytics native cutover, validations, and remaining legacy debt |
+| `module_tree_full.md` | Regenerated canonical module tree after the new route aliases and focused tests (`1260` modules) |
+
+## Validation
+
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost,http://127.0.0.1'; $env:DJANGO_SECRET_KEY='local-test-secret-key'; $env:CORE_PAT_PEPPER='local-test-pepper'; Push-Location ./packages/core/backend; ..\..\..\.venv\Scripts\python.exe manage.py test user_workspace.test_portfolio_analytics_native_routes --keepdb; Pop-Location` — PASS
+- `Push-Location ./packages/web; npm test -- src/adapters/coreApiAdapter.test.js; Pop-Location` — PASS
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1260` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
+   - Core API health: `OK`
+   - Frontend health: `OK`
+   - Native scheduler queue drift: `No queue drift detected`
+
+## Residual Risk
+
+- Dashboard portfolio analytics primary reads are now native, but `getTrackedSymbols()`, `getLegacyWatchlistGroups()`, and `getPortfolioNewsDigest()` in `coreApiAdapter` still depend on compat `/api/...` paths.
+- Classic frontend wrappers outside this slice still call compat endpoints directly for chart/equity-curve/allocation and broader portfolio CRUD surfaces in `frontend/src/api/client.js`.
+- `ModernDashboard` remains the live bridge route, so the dashboard shell is not yet fully decommissioned in favor of the package-native host.
+
+# 2026-05-20 | Dashboard Lower-deck Native Contract Cutover — `/core/v1` Technicals + Whale Snapshot ✅
+
+## Problem Solved
+
+The previous lower-deck repair made the active compat routes return correct data, but the dashboard still consumed that data through transitional `/api/...` bridges. This slice moves the lower-deck primary read path closer to the approved SaaS-native target by introducing native `/core/v1` contracts for dashboard technicals and whale snapshot delivery, then cutting the frontend/package callers over to those native routes.
+
+Concretely:
+
+- Bulk technicals now have a native core route under `/core/v1/market-data/technicals/bulk/`.
+- Whale snapshot now has a native core route under `/core/v1/workspace/whale-analytics/<symbol>/`.
+- `coreApiAdapter` now calls those native routes directly.
+- The live frontend whale snapshot wrapper in `frontend/src/api/client.js` now delegates through `coreApiAdapter`, so the live dashboard no longer depends on the compat whale route for this lower-deck path.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Added OpenAPI metadata for the native bulk technicals contract |
+| `packages/core/backend/src/market_data/urls.py` | Mounted native `/core/v1/market-data/technicals/bulk/` route |
+| `packages/core/backend/src/user_workspace/portfolio_analytics_views.py` | Added OpenAPI metadata for the native whale snapshot contract |
+| `packages/core/backend/src/user_workspace/urls.py` | Mounted native `/core/v1/workspace/whale-analytics/<symbol>/` route |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added focused backend regression test for the native technicals route |
+| `packages/core/backend/src/user_workspace/test_portfolio_whale_analytics_native.py` | Added focused backend regression test for the native whale snapshot route |
+| `packages/web/src/adapters/coreApiAdapter.js` | Cut bulk technicals to `/core/v1/market-data/technicals/bulk/` and added native whale snapshot adapter method |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added focused adapter tests proving lower-deck calls now target `/core/v1` |
+| `frontend/src/api/client.js` | Rewired live whale snapshot fetch wrapper to delegate through `coreApiAdapter` |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the native cutover, validations, and remaining legacy bridge risks |
+| `module_tree_full.md` | Regenerated canonical module tree after new native routes and tests (`1259` modules) |
+
+## Validation
+
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost,http://127.0.0.1'; $env:DJANGO_SECRET_KEY='local-test-secret-key'; $env:CORE_PAT_PEPPER='local-test-pepper'; Push-Location ./packages/core/backend; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_stock_management_native_api.StockManagementNativeApiTestCase.test_core_v1_market_data_technicals_bulk_route_returns_native_contract user_workspace.test_portfolio_whale_analytics_native.PortfolioWhaleAnalyticsNativeApiTestCase.test_core_v1_workspace_whale_analytics_route_returns_snapshot_contract --keepdb; Pop-Location` — PASS
+- `Push-Location ./packages/web; npm test -- src/adapters/coreApiAdapter.test.js; Pop-Location` — PASS
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`1259` modules)
+- `git diff --check -- packages/core/backend/src/market_data/stock_mgmt_native_views.py packages/core/backend/src/market_data/urls.py packages/core/backend/src/user_workspace/portfolio_analytics_views.py packages/core/backend/src/user_workspace/urls.py packages/core/backend/src/market_data/tests/test_stock_management_native_api.py packages/core/backend/src/user_workspace/test_portfolio_whale_analytics_native.py packages/web/src/adapters/coreApiAdapter.js packages/web/src/adapters/coreApiAdapter.test.js frontend/src/api/client.js CODE_CHANGE_AUDIT_LEDGER.md PROGRESS_DASHBOARD.md module_tree_full.md` — PASS
+- `./start_dev.ps1` — PASS
+   - Core API health: `OK`
+   - Frontend health: `OK`
+
+## Residual Risk
+
+- Lower-deck whale snapshot and bulk technicals now have native `/core/v1` primary paths, but some adjacent dashboard data still remains on compat `/api/...` bridges, including portfolio analytics/summary/holdings and legacy watchlist-group fetches.
+- The new whale snapshot native route is still mounted under `user_workspace` for minimal-cutover reasons. Data ownership is now native, but a later slice may still want to move this contract into a more explicit market-serving/signal-facing domain surface if product API taxonomy requires it.
+- `ModernDashboard` still exists as the live route bridge, so the dashboard as a whole is not yet “pure SaaS native” even though these lower-deck reads are now substantially closer to the target architecture.
+
+# 2026-05-20 | Dashboard Lower-deck Market Sync — Technicals + Whale Compat Contracts ✅
+
+## Problem Solved
+
+The lower deck on `/dashboard` was not actually stale-first or market-unsynced at the UI layer; the active core runtime owners were returning incompatible contracts.
+
+- `Kỹ thuật` was calling the active core stock-management bulk endpoint, but that route only returned price snapshot fields and omitted the technical indicators the dashboard expects.
+- `Cá mập` was calling the active core compat whale route, but that route only returned a thin `whale_analytics` summary list and not the snapshot contract consumed by `useWhaleAnalyticsData` and `WhaleBubbleChart`.
+
+This slice fixes the root cause by making the active core runtime owners emit dashboard-compatible contracts from native core data sources, while also aligning the package-dashboard symbol universe so the canonical package path does not lag behind the live bridge path.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Upgraded the active bulk technicals route to compute and return real technical indicators plus a compatibility envelope with both `technicals` and `results` |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added a focused regression test that proves the bulk technicals route now returns the fields consumed by the dashboard |
+| `packages/core/backend/src/user_workspace/portfolio_analytics_views.py` | Replaced the thin whale summary compat route with a facts-first snapshot contract composed from `WhaleAlertCanonical`, `SessionFacts`, `SessionFactsBucket`, `SymbolSnapshot`, and `DailyPrice` |
+| `packages/core/backend/src/user_workspace/test_portfolio_whale_analytics_compat.py` | Added a focused regression test that proves the compat whale route now returns the snapshot shape required by the dashboard whale tab |
+| `packages/web/src/features/dashboard/useCoreDashboardData.js` | Expanded package-dashboard technical fetch coverage from holdings-only to the monitored symbol universe and made it read the new `technicals` envelope directly |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the lower-deck sync repair, validations, and remaining SaaS-native residual risk |
+| `module_tree_full.md` | Regenerated canonical module tree after backend and shared package changes |
+
+## Validation
+
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:CORS_ALLOWED_ORIGINS='http://localhost,http://127.0.0.1'; $env:DJANGO_SECRET_KEY='local-test-secret-key'; $env:CORE_PAT_PEPPER='local-test-pepper'; Push-Location ./packages/core/backend; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_stock_management_native_api.StockManagementNativeApiTestCase.test_stock_management_technicals_bulk_returns_compatible_technical_payload user_workspace.test_portfolio_whale_analytics_compat.PortfolioWhaleAnalyticsCompatApiTestCase.test_whale_analytics_route_returns_snapshot_contract_from_native_core_data --keepdb; Pop-Location` — PASS
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`1258` modules)
+- `./start_dev.ps1` — PASS
+   - Core API health: `OK`
+   - Frontend health: `OK`
+   - Native scheduler queue drift: `No queue drift detected`
+
+## Residual Risk
+
+- The repaired dashboard now reads native core data, but it still reaches that data through legacy-style compat routes under `/api/...`, not through final `/core/v1/*` OpenAPI-first dashboard contracts.
+- `PortfolioWhaleAnalyticsView` is still a compatibility bridge in `user_workspace`; it is materially more SaaS-native internally now, but the route itself still needs a future native cutover with formal OpenAPI metadata.
+- The package dashboard still depends on the stock-management compat bulk technicals route for lower-deck technicals; a future slice should expose a native typed technicals endpoint and cut `coreApiAdapter` over.
+
+# 2026-05-19 | Dashboard IA Redesign — Classic/Workstation Mode Split Fix ✅
+
+## Problem Solved
+
+The previous dashboard compact-mode change applied the new top-row treatment too broadly and no longer matched the product requirement for `Classic`: `Workstation` should be one compact equal-width row, but `Classic` must keep `Heatmap` on the first row with `Alert Center` and `AI Alerts / News` on the second row.
+
+This slice fixes the root cause by binding dashboard layout rules to `uiMode` at the shell level, so the same dashboard surfaces can now render different top-area contracts without duplicating component trees or touching any data path.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/Layout.jsx` | Added mode-specific class on the shared shell so dashboard layout can branch between `ui-mode--workstation` and `ui-mode--classic` |
+| `frontend/src/index.css` | Added classic-specific grid rules so `Heatmap` spans row 1 and `Alert + AI` render on row 2, while workstation keeps one equal-width row |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_HANDOFF_MASTER_20260519.md` | Updated the handoff summary to describe separate `Workstation` and `Classic` top-area contracts |
+| `docs/TECH_SPEC_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated technical invariants and responsive rules to define the verified mode split |
+| `docs/IMPLEMENTATION_PLAN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated target-state, slice goals, and `DIR-06` tasks for the mode-specific layout contract |
+| `docs/FRONTEND_DESIGN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Added separate workstation/classic wireframes and corrected non-mobile layout guidance |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_TRACEABILITY_MATRIX_20260519.md` | Rewrote requirements to trace both workstation and classic layout expectations |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md` | Updated manual smoke and viewport matrix to validate both modes |
+| `docs/RUN_INTEGRATION_TESTS_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated integration smoke steps and viewport matrix for the mode split |
+| `docs/RUN_CODE_REVIEW_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated review checklist to verify both workstation and classic non-mobile layouts |
+| `docs/RUN_SPEC_AUDIT_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated spec-audit expectations for `DIR-REQ-01`, `DIR-REQ-02`, `DIR-REQ-06`, `DIR-REQ-07`, and `DIR-REQ-14` |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_CODE_QUALITY_CONSTITUTION_20260519.md` | Updated quality gates to prevent workstation/classic drift |
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated `DIR-02.5` and `DIR-06.1` evidence wording to reflect both verified modes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the mode-split fix, validation, and residual wide-screen risk |
+| `module_tree_full.md` | Regenerated after the frontend shell/layout code change |
+
+## Validation
+
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./start_dev.ps1` — PASS
+- Shared authenticated `/dashboard` browser smoke — PASS
+   - `Workstation`: `window.innerWidth = 791`, `gridTemplateColumns = 234.663px 234.663px 234.675px`, all three top lanes share one row.
+   - `Classic`: `window.innerWidth = 791`, `gridTemplateColumns = 228px 228px`, `Heatmap` spans row 1 at `468px`, `Alert` and `AI` render side by side on row 2.
+
+## Residual Risk
+
+- True `1280px+` overflow and heatmap-tooltip proof are still pending because the shared integrated browser remains constrained near `791px`.
+- This slice intentionally leaves mobile stacking unchanged.
+
+# 2026-05-19 | Dashboard IA Redesign — Workstation Equal Triad Compact Mode ✅
+
+## Problem Solved
+
+The previous responsive rule still split the workstation top area into two rows on narrower shared widths, which directly conflicted with the updated product direction: keep `Classic` as-is, but make the `Workstation` dashboard denser by compressing the upper workspace into one equal-width triad row.
+
+This slice changes the workstation triad contract so `Trung tâm cảnh báo`, `Theo dõi Dòng tiền`, and `AI Alerts / News` stay in a single equal-width row for non-mobile viewports, while the full-width module below remains unchanged.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/src/index.css` | Replaced the widened-center triad and two-row tablet behavior with a single equal-width 3-column workstation grid for non-mobile widths |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_HANDOFF_MASTER_20260519.md` | Updated the handoff summary so workstation tablet/small-desktop keeps one-row triad and classic remains unchanged |
+| `docs/TECH_SPEC_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated the target composition and responsive rules to define an equal-width workstation triad across non-mobile widths |
+| `docs/IMPLEMENTATION_PLAN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated `DIR-06` responsive task wording to match the equal-triad workstation rule |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_TRACEABILITY_MATRIX_20260519.md` | Rewrote `DIR-REQ-14` to trace the new workstation compact-triad requirement |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md` | Updated responsive smoke expectations for `1024px` and `768px` |
+| `docs/RUN_INTEGRATION_TESTS_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated the responsive test matrix to match the equal-width workstation triad |
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated `DIR-02.5` audit note and `DIR-06.1` DoD to reflect the new workstation-only layout direction |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added execution/audit record for the workstation compact triad change |
+| `PROGRESS_DASHBOARD.md` | Logged the current workstation compact-mode outcome and validation |
+| `module_tree_full.md` | Regenerated module tree after the frontend source change (`1257` modules) |
+
+## Validation
+
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./start_dev.ps1` — PASS
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`1257` modules)
+- Shared authenticated browser smoke on `/dashboard` — PASS: `window.innerWidth = 791`, triad columns measured `234.663px 234.663px 234.675px`, all 3 lanes share the same row and height.
+
+## Residual Risk
+
+- True wide-screen overflow/tooltip proof at `1280px+` is still pending because the shared integrated browser remains constrained.
+- Mobile stacking remains intentionally unchanged; if product direction changes there too, the doc pack will need another requirement update.
+
+# 2026-05-19 | Dashboard IA Redesign — DIR-07 Browser Evidence + Architecture Audit ⚠️
+
+## Problem Solved
+
+After the layout/code slices were already in place, the remaining uncertainty was evidence quality rather than implementation logic: the redesigned `/dashboard` needed authenticated browser confirmation, package-host parity needed an in-session smoke pass, and the architecture gate needed an explicit scoped audit so the work could not be misread as “legacy dashboard accepted as end-state”.
+
+This audit pass confirms the live route and package-host surface both expose the intended `stats + triad + full-width deck` contract in the shared browser session, records the current viewport/tooling limitations honestly, and closes the architecture-compliance gate for the redesign-scoped file set.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Updated `DIR-02.5`, `DIR-06.3`, `DIR-07.3`, `DIR-07.4`, and `DIR-07.6` with authenticated-browser evidence and blocker notes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added browser-evidence and architecture-audit execution record for the dashboard redesign |
+| `PROGRESS_DASHBOARD.md` | Logged the evidence pass, current blockers, and next audit actions |
+
+## Validation
+
+- Shared authenticated browser snapshot for `/dashboard` — PASS: alert lane, heatmap lane, AI lane, and full-width deck are present; sticky alert strip and standalone live-signal panel are absent.
+- `Tab` focus smoke on authenticated `/dashboard` — PASS at shared viewport (`~791px`): traversal progressed through nav, refresh, alert filters, alert actions, and alert-card controls without an immediate focus trap.
+- Shared-session navigation smoke for `/dashboard/package-host` — PARTIAL PASS: the host surface rendered the same triad + deck shell semantics with alert heading, AI controls, and deck tabs present, but integrated-browser routing/path reporting was inconsistent during hydration.
+- `Select-String -Path "frontend/src/pages/modern/ModernDashboard.jsx" -Pattern "StickyAlertBar|ModernSidebar"` — PASS (no active matches)
+- `Select-String -Path "packages/web/src/pages/DashboardPage.js" -Pattern "renderAiPanel|renderAI|renderInsight"` — PASS (`renderAiPanel` contract present)
+- `git diff --name-only -- frontend/src/App.jsx frontend/src/components/modern/AIAdvisorAlertPanel.jsx frontend/src/components/modern/FactsFirstModularPositionDeck.jsx frontend/src/components/modern/SmartStatsHeader.jsx frontend/src/index.css frontend/src/pages/PackageDashboardHost.jsx frontend/src/pages/modern/ModernDashboard.jsx packages/web/src/index.js packages/web/src/pages/DashboardPage.js docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md CODE_CHANGE_AUDIT_LEDGER.md PROGRESS_DASHBOARD.md module_tree_full.md` — PASS (dashboard redesign remains scoped to frontend/package/docs/module-tree files)
+
+## Residual Risk
+
+- `DIR-07.3` is still incomplete: the integrated shared browser is fixed near `791px` wide, and `screenshot_page` does not honor Playwright viewport changes, so explicit `1440px` / `1024px` / `390px` evidence could not be captured in this toolchain.
+- `DIR-02.5` remains open for true `1280px+` overflow proof and heatmap tooltip-clipping validation.
+- `DIR-07.4` remains in progress until a human reviewer can sign off after real multi-viewport screenshot capture.
+
+# 2026-05-19 | Dashboard IA Redesign — DIR-06 Responsive + Accessibility Hardening ⚠️
+
+## Problem Solved
+
+After the IA redesign slices, the dashboard still had one spec mismatch in responsive behavior: the tablet breakpoint at `1024px` did not switch to the required `heatmap first / alert + AI second row` layout. Keyboard focus treatment was also weak on several newly prioritized controls in the header, AI lane, and deck.
+
+This slice hardens the dashboard-specific breakpoints and focus states without touching data hooks or adding any new fetch path, so responsive/accessibility behavior improves while network fan-out remains unchanged by construction.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Marked `DIR-05.5`, `DIR-06.1`, `DIR-06.2`, `DIR-06.4`, `DIR-07.1`, `DIR-07.2`, and `DIR-07.5` done; kept `DIR-06.3` in progress pending visual QA |
+| `frontend/src/index.css` | Added dashboard-specific tablet breakpoint at `max-width: 1279px` so heatmap becomes full-width top row and alert/AI move to the second row |
+| `frontend/src/components/modern/SmartStatsHeader.jsx` | Added clear `focus-visible` treatment to the refresh control |
+| `frontend/src/components/modern/AIAdvisorAlertPanel.jsx` | Added `focus-visible` treatment to AI tab buttons and collapse/expand control |
+| `frontend/src/components/modern/FactsFirstModularPositionDeck.jsx` | Added `focus-visible` treatment to deck tab buttons and empty-state CTA |
+| `module_tree_full.md` | Regenerated canonical module tree after responsive/accessibility updates (`1257` modules) |
+
+## Validation
+
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./start_dev.ps1` — PASS (core-api + frontend smoke checks OK)
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`module_tree_full.md` regenerated, `1257` modules)
+
+## Residual Risk
+
+- `DIR-06.3` still requires authenticated browser QA to confirm perceived focus order, internal scroll usability, and tablet/mobile visual hierarchy on real viewports.
+- Screenshot evidence and review/spec-audit execution remain pending in `DIR-07.3` and `DIR-07.4`.
+
+# 2026-05-19 | Dashboard IA Redesign — DIR-05 Package-host Parity ✅
+
+## Problem Solved
+
+The package-host/dashboard-page path had already been brought close to the new IA contract, but code-level governance still left ambiguity about which route was canonical and there was no dedicated parity smoke route for the `PackageDashboardHost` bridge.
+
+This slice closes the package-host parity work by keeping `DashboardPage`/`PackageDashboardHost` aligned with the live triad + full-width deck hierarchy, deprecating `renderBubble` from the default layout path, and marking `ModernDashboard` as transitional only at the route layer.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Marked `DIR-05.1` → `DIR-05.4` done |
+| `frontend/src/App.jsx` | Clarified `/dashboard` as temporary parity bridge and added guarded `/dashboard/package-host` route for package-host parity smoke |
+| `frontend/src/pages/PackageDashboardHost.jsx` | Declared package-host surface as canonical SaaS-native target in code comments; retained triad/header/deck parity wiring |
+| `module_tree_full.md` | Regenerated canonical module tree after route-level parity updates (`1257` modules) |
+
+## Validation
+
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./start_dev.ps1` — PASS (core-api + frontend smoke checks OK)
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`module_tree_full.md` regenerated, `1257` modules)
+
+## Residual Risk
+
+- `/dashboard` still intentionally points to `ModernDashboard` until authenticated parity review and route cutover sign-off are complete.
+- Visual parity between `/dashboard` and guarded `/dashboard/package-host` still needs a browser verification pass before any default-route swap.
+
+# 2026-05-19 | Dashboard IA Redesign — DIR-04 Remove Low-value Blocks ✅
+
+## Problem Solved
+
+After triad and deck repositioning, `/dashboard` still duplicated alert/signal information through `StickyAlertBar` and `ModernSidebar`.
+
+This slice removed both low-value render paths from the live route and migrated the four useful risk/performance metrics into the sticky header so the fold stays compact but still information-dense.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Marked `DIR-03.1` → `DIR-03.3` and `DIR-04.1` → `DIR-04.4` done |
+| `frontend/src/components/modern/SmartStatsHeader.jsx` | Added compact `Alpha`, `Beta`, `Sharpe`, and `Drawdown tối đa` micro-metrics driven by `analytics` prop |
+| `frontend/src/pages/modern/ModernDashboard.jsx` | Removed live render paths for `StickyAlertBar` and `ModernSidebar`; kept only triad + full-width deck in the main dashboard workspace |
+| `frontend/src/pages/PackageDashboardHost.jsx` | Passed `analytics` into `SmartStatsHeader` so package-host header stays aligned with live route contract |
+| `module_tree_full.md` | Regenerated canonical module tree after shared header/live route updates (`1257` modules) |
+
+## Validation
+
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./start_dev.ps1` — PASS (core-api + frontend smoke checks OK)
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`module_tree_full.md` regenerated, `1257` modules)
+
+## Residual Risk
+
+- Compact header metrics are code-complete, but visual sign-off is still pending on a live authenticated dashboard session to confirm the header stays single-row and does not crowd 1280px layouts.
+- Package-host/live parity is materially closer after this slice, but route-level parity sign-off remains part of `DIR-05`.
+
+# 2026-05-19 | Dashboard IA Redesign — DIR-03 Full-width Deck ✅
+
+## Problem Solved
+
+The `FactsFirstModularPositionDeck` still sat inside the old main rail wrapper, so overview/technical tables remained width-constrained despite the new triad.
+
+This slice moved the deck into a dedicated full-width row below the triad, preserving its empty state and `Mở Transactions` CTA while removing the side-rail constraint from the action workspace.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/src/pages/modern/ModernDashboard.jsx` | Moved `FactsFirstModularPositionDeck` outside the old `page-body-grid__main` container into its own full-width row below the triad |
+| `module_tree_full.md` | Regenerated canonical module tree after live route layout change (`1257` modules) |
+
+## Validation
+
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./start_dev.ps1` — PASS (core-api + frontend smoke checks OK)
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`module_tree_full.md` regenerated, `1257` modules)
+
+## Residual Risk
+
+- Full-width behavior is established in code, but final visual confirmation for empty-state centering and table width remains pending until an authenticated browser verification pass is available.
+
+# 2026-05-19 | Dashboard IA Redesign — DIR-02 Live Top Triad ⚠️
+
+## Problem Solved
+
+After the shared contract was established in `DIR-01`, the live `/dashboard` route still rendered the old two-column main rail plus AI side rail.
+
+This slice moved the live top fold in `ModernDashboard.jsx` to the approved triad composition: alert lane on the left, heatmap in the center, AI lane on the right, while keeping deck/sidebar removal for later slices to avoid scope creep.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Marked `DIR-02.1` → `DIR-02.4` done and `DIR-02.5` in progress pending visual sign-off |
+| `frontend/src/pages/modern/ModernDashboard.jsx` | Replaced live top-fold composition with shared triad layout; moved `UnifiedAlertCenter` left, `PortfolioHeatmap` center, `AIAdvisorAlertPanel` right |
+| `frontend/src/components/modern/AIAdvisorAlertPanel.jsx` | Added expanded-state sizing hook so live triad can request full-height AI lane without changing panel logic |
+| `frontend/src/index.css` | Tightened responsive ordering so triad keeps heatmap-first order on narrow layouts while preserving desktop center emphasis |
+| `module_tree_full.md` | Regenerated canonical module tree after live route/component updates (`1257` modules) |
+
+## Validation
+
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./start_dev.ps1` — PASS (core-api + frontend smoke checks OK)
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`module_tree_full.md` regenerated, `1257` modules)
+
+## Residual Risk
+
+- Visual sign-off for `DIR-02.5` is still pending because no authenticated browser page was available in the shared browser context to verify 1280px+ overflow and heatmap tooltip clipping.
+- `StickyAlertBar` and `ModernSidebar` intentionally remain on the live route; their removal belongs to `DIR-04` and should not be treated as regression from this slice.
+
+# 2026-05-19 | Dashboard IA Redesign — DIR-01 Shared Layout Contract ✅
+
+## Problem Solved
+
+User approved both follow-ups after the dashboard redesign doc-pack: update `AGENTS.md` so future sessions auto-load the new `/dashboard` redesign pack, and begin implementation with `DIR-01`.
+
+This slice establishes the shared triad/full-width deck contract for the SaaS-native dashboard path without changing underlying alert, AI, or heatmap business logic.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `AGENTS.md` | Added dashboard IA redesign doc-pack to feature-pack lookup and read-first rules for future `/dashboard` sessions |
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | Marked `DIR-00.1`, `DIR-00.2`, and `DIR-01.1` → `DIR-01.3` as done |
+| `packages/web/src/index.js` | Exported `coreApiAdapter` / `createCoreApiAdapter` so package-host bridge can consume canonical data-plane helpers |
+| `packages/web/src/pages/DashboardPage.js` | Reworked slot contract into `stats + alert lane + heatmap + AI lane + full-width deck`; deprecated `renderBubble` from default layout path |
+| `frontend/src/pages/PackageDashboardHost.jsx` | Injected alert, heatmap, AI, and deck slots; wired `AIAdvisorAlertPanel`; lazy-loaded digest through `coreApiAdapter.getPortfolioNewsDigest()` |
+| `frontend/src/index.css` | Added reusable `dashboard-triad-grid` / `dashboard-full-width-deck` layout primitives and responsive tablet/mobile behavior |
+| `module_tree_full.md` | Regenerated canonical module tree after package/frontend source changes (`1257` modules) |
+
+## Validation
+
+- `Push-Location ./frontend; npm run build; Pop-Location` — PASS
+- `./start_dev.ps1` — PASS (core-api + frontend smoke checks OK)
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` — PASS (`module_tree_full.md` regenerated, `1257` modules)
+
+## Residual Risk
+
+- `ModernDashboard.jsx` live route has not been recomposed into the triad yet; that remains in `DIR-02`.
+- AI news digest on the package-host path now goes through `coreApiAdapter`, but the adapter method still bridges to the legacy digest endpoint underneath until a native `/core/v1/*` equivalent exists.
+
+# 2026-05-19 | Dashboard Information Architecture Redesign — Documentation Pack Complete ✅
+
+## Problem Solved
+
+User requested a full execution-grade handoff package for redesigning `/dashboard` around a heatmap-centered information architecture: heatmap in the middle, alert center on the left, AI alerts/news on the right, and the FactsFirst symbol control block spanning the full width below. Existing dashboard migration docs did not cover this IA overhaul in enough detail for a coding team to execute without reopening UX/layout questions.
+
+This handoff pack was then hardened with explicit SaaS-native/OpenAPI constraints so the coding team cannot implement the redesign while preserving the legacy monolith architecture as the accepted end-state.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_HANDOFF_MASTER_20260519.md` | New handoff master defining scope, audit findings, target IA, constraints, deliverables |
+| `docs/IMPLEMENTATION_PLAN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | New slice-by-slice implementation plan `DIR-00` → `DIR-07` with DoD, files, tests, risks |
+| `docs/TECH_SPEC_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | New technical contract for triad layout, AI lane slot, removal of low-value blocks, responsive behavior |
+| `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | New atomic taskboard for execution tracking |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_TRACEABILITY_MATRIX_20260519.md` | New requirement matrix `DIR-REQ-01` → `DIR-REQ-24` |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md` | New self-audit and validation protocol |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_EXECUTION_EVIDENCE_TEMPLATE_20260519.md` | New evidence template for implementation slices |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_CONFIG_OWNERSHIP_MATRIX_20260519.md` | New ownership matrix for layout, slot contract, backend no-change policy |
+| `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_CODE_QUALITY_CONSTITUTION_20260519.md` | New quality constitution for IA redesign |
+| `docs/FRONTEND_DESIGN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | New frontend UX/UI design detail document |
+| `docs/BACKEND_DESIGN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | New backend inventory/no-change design document |
+| `docs/RUN_CODE_REVIEW_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | New code review checklist |
+| `docs/RUN_INTEGRATION_TESTS_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | New integration test plan |
+| `docs/RUN_SPEC_AUDIT_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md` | New requirement-by-requirement spec audit checklist |
+
+## Architecture constraints encoded
+
+- Canonical dashboard target path is locked as `PackageDashboardHost -> DashboardPage -> coreApiAdapter -> /core/v1/*`
+- `ModernDashboard`, `apiClient`, and legacy `/api` dashboard paths are explicitly marked as transition bridges only, never valid end-state
+- Any backend/API change triggered by the redesign must land in `packages/core/backend/`, expose `/core/v1/*`, and satisfy the OpenAPI constitution + PR gate checklist
+- Review, audit, integration-test, and evidence docs now block sign-off if legacy monolith remains the accepted dashboard architecture
+
+## Validation
+
+- Documentation-pack completeness check — PASS (`14/14` files under `docs/*DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN*_20260519.md` created)
+- No runtime/build/test command executed because this slice is documentation-only and does not change source/runtime behavior
+
+## Residual Risk
+
+- This slice does not implement the redesign yet. Actual UI parity and runtime validation remain pending until `DIR-01` → `DIR-07` are executed.
+
+# 2026-05-19 | DNSE Daily OHLCV Hard-Disable + CI Guard ✅
+
+## Problem Solved
+
+DNSE daily OHLCV path produced deterministic upstream incompatibility (`INVALID_BAR_TYPE`) and could still be selected from provider config resolution. Needed a code-level hard disable in daily history path, standardized warning for observability, plus CI tests to catch regressions early.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/vnbroker_adapter.py` | Add daily-source guard resolver; hard-disable explicit DNSE daily history requests; force runtime DNSE daily resolution to VCI fallback; standardized warning code `DNSE_DAILY_OHLCV_DISABLED` |
+| `packages/core/backend/src/market_data/tests/test_vnbroker_daily_history_guard.py` | Add focused tests for explicit DNSE block + runtime DNSE fallback and warning-log assertions |
+| `packages/core/pyproject.toml` | Bump package version `0.1.0` → `1.1.0` |
+| `tools/dnse_ohlcv_benchmark.py` | Fix verdict branch so 0 successful DNSE samples is reported as FAIL explicitly |
+
+## Validation
+
+- `./start_dev.ps1` — PASS (full dev runtime refresh, health/smoke checks OK)
+- `docker exec vninvest-dev-core-api sh -lc "cd /app/src && python manage.py test market_data.tests.test_vnbroker_daily_history_guard --keepdb"` — PASS (`2/2`)
+- `docker exec vninvest-dev-core-api sh -lc "cd /app/src && python manage.py test service_ops.tests.test_soc_tasks.VnbrokerAdapterTaskBridgeTestCase.test_fetch_daily_history_uses_requested_source_quote_class --keepdb"` — PASS (`1/1`)
+
+## Residual Risk
+
+- Upstream package metadata/version mismatch remains (`importlib.metadata` in runtime still observed as `1.0.2` while git ref points to `v1.1.0`). Functional DNSE daily risk is mitigated by guard, but release traceability should still be fixed upstream.
+
+# 2026-05-19 | vnbroker v1.1.0 tag rebuild + DNSE benchmark rerun ⚠️
+
+## Problem Solved
+
+User confirmed release tag `v1.1.0` was published. Runtime needed rebuild + re-benchmark to verify whether DNSE can be promoted to reliable daily OHLCV provider.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/requirements.txt` | Pin `vnbroker` dependency to git ref `@v1.1.0` |
+| `backend/requirements.txt` | Pin `vnbroker` dependency to git ref `@v1.1.0` for consistency |
+| `tools/dnse_ohlcv_benchmark.py` | Reused for post-rebuild benchmark execution evidence |
+
+## Validation
+
+- `./start_dev.ps1` rebuild: SUCCESS (all core containers + frontend healthy)
+- Runtime version checks:
+   - `docker exec vninvest-dev-core-api python -c "import importlib.metadata as m; print(m.version('vnbroker'))"` → `1.0.2`
+   - `docker exec vninvest-dev-core-worker-enrichment python -c "import importlib.metadata as m; print(m.version('vnbroker'))"` → `1.0.2`
+- Benchmark rerun:
+   - `docker exec vninvest-dev-core-worker-enrichment python /app/tools/dnse_ohlcv_benchmark.py`
+   - DNSE warnings: `INVALID_BAR_TYPE`
+   - DNSE deep history: `0/25 OK` (all empty)
+   - VCI deep history: `25/25 OK`, ~1306 rows/symbol
+
+## Residual Risk
+
+- Tag `v1.1.0` currently does not translate into effective runtime capability parity for DNSE OHLCV (and package metadata still shows `1.0.2`).
+- Enabling DNSE in production round-robin for daily history remains blocked until upstream DNSE `history()` contract is corrected and benchmark passes.
+
+# 2026-05-19 | REALTIME-SSOT-01 — Unified SSOT Realtime → IntradayTick Pipeline — Complete
+
+## Problem Solved
+
+`IntradayTick` for the current trading session (today) was only filled by the weekly DNSE backfill.
+`schedule_realtime_prefetch_shards` updated Redis cache but never persisted to DB.
+`detect_and_store_global_whale_alerts` reads `IntradayTick` — so alerts for today's session were delayed until the weekly backfill ran.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_serving/realtime_prefetch.py` | ADD hydrate constants (`DEFAULT_HOT_HYDRATE_INTERVAL_SECONDS=300`, `DEFAULT_WARM_HYDRATE_INTERVAL_SECONDS=900`, `REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX`); ADD SSOT intraday hydrate leg in `schedule_realtime_prefetch_shards` — throttled per-tier enqueue of `warm_intraday_universe` with `dataset='intraday_ticks'`; return dict now includes `hydrate_enqueued` |
+| `packages/core/backend/src/vninvest_core/queue_policy.py` | ADD `data_ingest.tasks.warm_intraday_universe` to `market_serving_realtime.task_routes`; ADD `warm-intraday-realtime-5m` to `market_serving_realtime.periodic_tasks` |
+| `packages/core/backend/src/vninvest_core/settings.py` | ADD `warm-intraday-realtime-5m` beat schedule (300s, queue=`realtime_prefetch`) as `data_ingest.tasks.warm_intraday_universe` |
+| `packages/core/backend/src/market_serving/tests/test_realtime_prefetch.py` | ADD `RealtimePrefetchHydrateLegTestCase` with 3 regression tests: enqueue when elapsed, throttle within interval, re-enqueue after interval expires |
+
+## Validation
+
+- **Tests:** `4/4 PASS` — `market_serving.tests.test_realtime_prefetch`
+- **Beat schedule smoke:** `warm-intraday-realtime-5m` → `task='data_ingest.tasks.warm_intraday_universe'`, `schedule=300.0`, `queue='realtime_prefetch'`
+- **Queue routing:** `TASK_ROUTES['data_ingest.tasks.warm_intraday_universe'] = {'queue': 'realtime_prefetch'}`, `SCHEDULER_QUEUE_MAP['warm-intraday-realtime-5m'] = 'realtime_prefetch'`
+- **Stack rebuild:** `./start_dev.ps1` — all 14 services healthy, no queue drift
+
+## Chain Link (Alert Center Flow)
+
+```
+GlobalSymbolRegistry (SSOT)
+→ schedule_realtime_prefetch_shards [3s] → warm_intraday_universe [throttled 5min]
+→ IntradayTick (persisted)
+→ detect_and_store_global_whale_alerts [5min] → OrderFlowEvent + WhaleAlertCanonical
+→ materialize_unified_alerts [2min] → UnifiedAlert
+→ Alert Center API (per-user delivery filter)
+```
+
+Max lag realtime tick → alert: ≤ 10 phút (average ≈ 5 phút).
+
+## Residual Risk
+
+- `warm_intraday_universe` không được trigger trực tiếp sau hydration — chạy độc lập theo beat.
+  Nếu cần lag < 5 phút: trigger `detect_and_store_global_whale_alerts.apply_async()` ở cuối hydration khi `inserted > 0`.
+- Warm symbols hydrate mỗi 15 phút (vs hot mỗi 5 phút) — alert lag cho warm symbols cao hơn.
+
+---
+
 # 2026-05-19 | DNSE-SYSUI-01 — System Backfill Admin UI Upgrade — Complete
 
 ## Modified / Created Files
@@ -16,6 +830,39 @@
 - All i18n keys resolve via `soc.dnse_backfill.*` prefix
 - Backend v2 payload validated: `datasets`, `symbols_group`, `from_date`, `to_date`, `mode`, `dry_run`
 - §14.5 presence check enforced in missing_only mode before any `bulk_create`
+
+---
+
+# 2026-05-19 | DNSE-QBACKFILL-01 — ServiceRunLog + z-index Fix cho dnse-quarterly-backfill-intraday — Complete
+
+## Problem Solved
+
+1. `dnse-quarterly-backfill-intraday` hiển thị "Thiếu dữ liệu" + bảng lịch sử rỗng vì `ServiceDefinition(service_key='dnse_intraday_quarterly_backfill')` chưa tồn tại trong DB → `SchedulerJobHistoryView` không có anchor FK để query.
+2. `enqueue_dnse_quarterly_backfill` không tạo `ServiceRunLog` khi beat trigger → mọi lần chạy đều vô hình trong lịch sử.
+3. `JobHistoryDrawer` dùng `z-40` thấp hơn navbar `z-50` → phần đầu drawer bị che khuất.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/data_ingest/tasks.py` | ADD `service_run_log_id: int \| None = None` to `enqueue_dnse_quarterly_backfill`; ADD `ServiceDefinition.objects.get_or_create()` block (idempotent); ADD `ServiceRunLog` tạo mới khi beat-trigger, fetch khi `run_now` (via `service_run_log_id`); ADD `_mark_run_log_running` + `_mark_run_log_finished` calls |
+| `frontend/src/components/soc/SchedulerBoard.jsx` | FIX `JobHistoryDrawer` outer wrapper `z-40` → `z-50` |
+
+## DB Fix (one-time, idempotent)
+
+`ServiceDefinition(service_key='dnse_intraday_quarterly_backfill', id=26)` tạo lần đầu bởi `get_or_create` trong task. Verify bằng: `ServiceDefinition.objects.get(service_key='dnse_intraday_quarterly_backfill')`.
+
+## Validation
+
+- `ServiceDefinition` created in DB: id=26, `created=True`
+- `enqueue_dnse_quarterly_backfill` signature: `['days_back', 'symbols_group', '_scheduler_job_key', 'service_run_log_id']` — verified in both core-api and enrichment-worker containers
+- `npm run build` — success (no errors, 867.48 kB bundle)
+- Hot-copy applied to: `vninvest-dev-core-api`, `vninvest-dev-core-worker-enrichment`, `vninvest-dev-core-worker`, `vninvest-dev-core-beat`
+
+## Residual Risk
+
+- Hot-copy tạm thời — next `./start_dev.ps1` rebuild sẽ bake code mới vào image.
+- Lịch sử cũ (trước fix) vẫn empty vì `ServiceRunLog` chưa được tạo hồi tưởng. Lần chạy đầu tiên sau fix mới có entry.
 
 ---
 

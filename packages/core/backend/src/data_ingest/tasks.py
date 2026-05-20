@@ -9,7 +9,7 @@ send_password_reset_email: async email send for password reset.
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -68,6 +68,13 @@ _HISTORY_PROVIDERS = [
     'VCI',
     'KBS',
 ]
+# Per-provider inter-symbol delay (seconds).
+# VCI: tăng delay để giảm rate-limit; KBS: giữ nguyên default.
+_PROVIDER_INTER_SYMBOL_DELAY: dict[str, float] = {
+    'VCI': 0.5,
+    'KBS': 0.12,
+}
+_DEFAULT_INTER_SYMBOL_DELAY = 0.12
 _DAILY_HISTORY_RETRY_ATTEMPTS = 3
 _DAILY_HISTORY_RETRY_BACKOFF_SECONDS = 0.5
 _DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS = 2.0
@@ -79,6 +86,8 @@ _INTRADAY_PAGE_SIZE_BY_DEPTH_TIER = {
     'cold': 25,
     'recovery': 80,
 }
+_B08_STALE_RUNNING_TTL_SECONDS = 2 * 60 * 60
+_B08_STALE_GRACE_SECONDS = 10 * 60
 
 
 def _normalize_symbols(symbols: list[str] | None) -> list[str]:
@@ -1087,6 +1096,61 @@ def _b01_clear_inflight_cache(job_key: 'str | None') -> None:
         pass
 
 
+def _b08_finalize_stale_running_runs(job_key: 'str | None', stale_after_seconds: int = _B08_STALE_RUNNING_TTL_SECONDS) -> dict[str, int]:
+    """B08 helper: close stale running/queued run records before new execution starts."""
+    if not job_key:
+        return {'stale_run_logs': 0, 'stale_backfill_runs': 0}
+    try:
+        from django.utils import timezone as _tz
+        from service_ops.models import BackfillExecutionRun, ServiceDefinition, ServiceRunLog
+        from service_ops.scheduler_catalog import CATALOG_JOB_METADATA
+
+        _meta = CATALOG_JOB_METADATA.get(job_key) or {}
+        _service_key = str(_meta.get('service_key') or '').strip()
+        _max_expected_seconds = int(_meta.get('max_expected_run_seconds') or 0)
+        _effective_ttl_seconds = max(
+            int(stale_after_seconds or 0),
+            _max_expected_seconds + _B08_STALE_GRACE_SECONDS,
+            1,
+        )
+        _cutoff = _tz.now() - timedelta(seconds=_effective_ttl_seconds)
+        _closed_run_logs = 0
+
+        if _service_key:
+            _service_def = ServiceDefinition.objects.filter(service_key=_service_key).first()
+            if _service_def is not None:
+                _closed_run_logs = ServiceRunLog.objects.filter(
+                    service=_service_def,
+                    status__in=['queued', 'running'],
+                    started_at__lt=_cutoff,
+                ).update(
+                    status='failed',
+                    finished_at=_tz.now(),
+                    error_detail='Auto-closed stale run log before new scheduler execution',
+                )
+
+        _closed_backfill_runs = BackfillExecutionRun.objects.filter(
+            job_key=job_key,
+            status='running',
+            started_at__lt=_cutoff,
+        ).update(
+            status='failed',
+            finished_at=_tz.now(),
+            error_summary='Auto-closed stale execution run before new scheduler execution',
+        )
+
+        if _closed_run_logs or _closed_backfill_runs:
+            _b01_clear_inflight_cache(job_key)
+
+        return {
+            'stale_run_logs': int(_closed_run_logs),
+            'stale_backfill_runs': int(_closed_backfill_runs),
+        }
+    except Exception as exc:
+        logger.warning('backfill stale-run cleanup failed for job_key=%s: %s', job_key, exc)
+        return {'stale_run_logs': 0, 'stale_backfill_runs': 0}
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
 def backfill_daily_prices(
     self,
@@ -1118,6 +1182,14 @@ def backfill_daily_prices(
     # B01: Run log lifecycle management
     service_run_log = None
     _task_id = getattr(self.request, 'id', '') or ''
+    _b08_cleanup_result = _b08_finalize_stale_running_runs(_scheduler_job_key)
+    if _b08_cleanup_result.get('stale_run_logs') or _b08_cleanup_result.get('stale_backfill_runs'):
+        logger.warning(
+            'backfill_daily_prices auto-closed stale runs: job_key=%s run_logs=%s backfill_runs=%s',
+            _scheduler_job_key,
+            _b08_cleanup_result.get('stale_run_logs', 0),
+            _b08_cleanup_result.get('stale_backfill_runs', 0),
+        )
     try:
         from service_ops.models import ServiceRunLog
         from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
@@ -1272,7 +1344,7 @@ def backfill_daily_prices(
                 [str(item.get('symbol') or '').strip().upper() for item in bucket],
                 provider,
                 days,
-                0.12,
+                _PROVIDER_INTER_SYMBOL_DELAY.get(provider.upper(), _DEFAULT_INTER_SYMBOL_DELAY),
                 bucket,
             )
             total_inserted += int(result.get('inserted') or 0)
@@ -1307,7 +1379,7 @@ def backfill_daily_prices(
                     [str(item.get('symbol') or '').strip().upper() for item in bucket],
                     provider,
                     days,
-                    0.12,
+                    _PROVIDER_INTER_SYMBOL_DELAY.get(provider.upper(), _DEFAULT_INTER_SYMBOL_DELAY),
                     bucket,
                 ): provider
                 for provider, bucket in buckets.items()
@@ -1764,6 +1836,7 @@ def enqueue_dnse_quarterly_backfill(
     days_back: int = 90,
     symbols_group: str = 'global',
     _scheduler_job_key: str = 'dnse-quarterly-backfill-intraday',
+    service_run_log_id: int | None = None,
 ) -> dict:
     """
     Orchestrator: quét 90 ngày giao dịch gần nhất, queue các slot còn thiếu
@@ -1781,8 +1854,44 @@ def enqueue_dnse_quarterly_backfill(
     from datetime import date, timedelta
 
     from market_data.models import IntradayTick
+    from service_ops.models import ServiceDefinition, ServiceRunLog
+    from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
 
     days_back = max(1, min(int(days_back or 90), 180))
+
+    # S01: Ensure ServiceDefinition exists (idempotent — first run creates it)
+    _own_run_log: ServiceRunLog | None = None
+    try:
+        _svc_def, _ = ServiceDefinition.objects.get_or_create(
+            service_key='dnse_intraday_quarterly_backfill',
+            defaults={
+                'name': 'DNSE Intraday Quarterly Backfill',
+                'domain': 'data_ingest',
+                'description': 'Orchestrator: cào 90 ngày tape DNSE, dispatch backfill subtasks.',
+                'owner_team': 'dataops',
+                'is_active': True,
+            },
+        )
+        if service_run_log_id is not None:
+            # Triggered via run_now — re-use pre-created run log
+            _own_run_log = ServiceRunLog.objects.filter(pk=service_run_log_id).first()
+            if _own_run_log:
+                _mark_run_log_running(_own_run_log, getattr(self.request, 'id', '') or '')
+        else:
+            # Triggered by beat schedule — create our own run log
+            _own_run_log = ServiceRunLog.objects.create(
+                service=_svc_def,
+                celery_task_id=getattr(self.request, 'id', '') or '',
+                status='running',
+                input_summary={
+                    'triggered_by': 'beat_schedule',
+                    'job_key': _scheduler_job_key,
+                    'days_back': days_back,
+                    'symbols_group': symbols_group,
+                },
+            )
+    except Exception as _svc_exc:
+        logger.warning('enqueue_dnse_quarterly_backfill: ServiceRunLog setup failed: %s', _svc_exc)
 
     # 1. Resolve symbols — global matrix là SSOT mặc định
     if not symbols_group or symbols_group == 'global':
@@ -1846,7 +1955,7 @@ def enqueue_dnse_quarterly_backfill(
         'days_back=%d group=%s',
         len(symbols), len(trade_dates), total_slots, queued, skipped, days_back, symbols_group,
     )
-    return {
+    _result = {
         'status': 'ok',
         'symbols': len(symbols),
         'trade_dates': len(trade_dates),
@@ -1856,3 +1965,10 @@ def enqueue_dnse_quarterly_backfill(
         'days_back': days_back,
         'symbols_group': symbols_group,
     }
+    # S01: finalize run log
+    if _own_run_log is not None:
+        try:
+            _mark_run_log_finished(_own_run_log, status_value='success', output_summary=_result)
+        except Exception as _fin_exc:
+            logger.warning('enqueue_dnse_quarterly_backfill: run log finalize failed: %s', _fin_exc)
+    return _result

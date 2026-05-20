@@ -11,7 +11,7 @@ from data_ingest.tasks import backfill_daily_prices, fetch_and_upsert_price_boar
 from data_ingest.tasks import _fetch_and_upsert_bucket
 from market_data.models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolRegistry, IntradayBar, IntradayTick
 from market_serving.models import SymbolSnapshot
-from service_ops.models import ServiceRunLog
+from service_ops.models import BackfillExecutionRun, ServiceRunLog
 from service_ops.registry import ensure_service_registry, get_registered_service
 
 
@@ -184,6 +184,110 @@ class DataIngestBackfillTaskTests(TestCase):
         self.assertCountEqual([call.args[0] for call in fetch_daily_history_mock.call_args_list], ['ACB', 'FPT'])
         self.assertTrue(DailyPrice.objects.filter(symbol='ACB', date=date(2026, 5, 16)).exists())
         self.assertTrue(DailyPrice.objects.filter(symbol='FPT', date=date(2026, 5, 16)).exists())
+
+    @patch('data_ingest.tasks.fetch_daily_history')
+    def test_backfill_daily_prices_auto_closes_stale_running_records_before_new_run(self, fetch_daily_history_mock):
+        stale_started_at = timezone.now() - timedelta(hours=4)
+        service = get_registered_service('backfill_daily_prices')
+        stale_run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='running',
+            input_summary={'triggered_by': 'test_stale'},
+            output_summary={},
+        )
+        ServiceRunLog.objects.filter(pk=stale_run_log.pk).update(started_at=stale_started_at)
+
+        stale_exec_run = BackfillExecutionRun.objects.create(
+            run_id='backfill-stale-test-1',
+            job_key='daily-backfill-prices-1700',
+            mode='daily_delta',
+            trigger='beat_schedule',
+            status='running',
+            requested_days=2,
+            planned_symbols_count=1,
+            started_at=stale_started_at,
+        )
+
+        fetch_daily_history_mock.return_value = [
+            {
+                'symbol': 'ACB',
+                'date': date(2026, 5, 16),
+                'open': 12.0,
+                'high': 12.4,
+                'low': 11.8,
+                'close': 12.3,
+                'volume': 4567,
+                'source': 'VCI',
+            }
+        ]
+
+        result = backfill_daily_prices.run(
+            days=2,
+            plan_items=[{'symbol': 'ACB', 'dataset': 'daily_prices'}],
+            max_workers=1,
+            _scheduler_job_key='daily-backfill-prices-1700',
+        )
+
+        stale_run_log.refresh_from_db()
+        stale_exec_run.refresh_from_db()
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(stale_run_log.status, 'failed')
+        self.assertIsNotNone(stale_run_log.finished_at)
+        self.assertIn('Auto-closed stale run log', stale_run_log.error_detail)
+        self.assertEqual(stale_exec_run.status, 'failed')
+        self.assertIsNotNone(stale_exec_run.finished_at)
+        self.assertIn('Auto-closed stale execution run', stale_exec_run.error_summary)
+
+    @patch('data_ingest.tasks.fetch_daily_history')
+    def test_backfill_daily_prices_does_not_close_fresh_running_records(self, fetch_daily_history_mock):
+        fresh_started_at = timezone.now() - timedelta(hours=1)
+        service = get_registered_service('backfill_daily_prices')
+        fresh_run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='running',
+            input_summary={'triggered_by': 'test_fresh'},
+            output_summary={},
+        )
+        ServiceRunLog.objects.filter(pk=fresh_run_log.pk).update(started_at=fresh_started_at)
+
+        fresh_exec_run = BackfillExecutionRun.objects.create(
+            run_id='backfill-fresh-test-1',
+            job_key='daily-backfill-prices-1700',
+            mode='daily_delta',
+            trigger='beat_schedule',
+            status='running',
+            requested_days=2,
+            planned_symbols_count=1,
+            started_at=fresh_started_at,
+        )
+
+        fetch_daily_history_mock.return_value = [
+            {
+                'symbol': 'ACB',
+                'date': date(2026, 5, 16),
+                'open': 12.0,
+                'high': 12.4,
+                'low': 11.8,
+                'close': 12.3,
+                'volume': 4567,
+                'source': 'VCI',
+            }
+        ]
+
+        result = backfill_daily_prices.run(
+            days=2,
+            plan_items=[{'symbol': 'ACB', 'dataset': 'daily_prices'}],
+            max_workers=1,
+            _scheduler_job_key='daily-backfill-prices-1700',
+        )
+
+        fresh_run_log.refresh_from_db()
+        fresh_exec_run.refresh_from_db()
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(fresh_run_log.status, 'running')
+        self.assertIsNone(fresh_run_log.finished_at)
+        self.assertEqual(fresh_exec_run.status, 'running')
+        self.assertIsNone(fresh_exec_run.finished_at)
 
     @patch('data_ingest.tasks.backfill_daily_prices.apply_async')
     @patch('data_ingest.tasks.backfill_daily_prices.run')
