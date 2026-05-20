@@ -1,4 +1,6 @@
 from datetime import date, timedelta
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -7,7 +9,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from data_ingest.models import IngestJob, IngestRun
-from data_ingest.tasks import backfill_daily_prices, fetch_and_upsert_price_board, ingest_daily_prices, warm_intraday_universe
+from data_ingest.tasks import backfill_daily_prices, backfill_pre5y_to_market_inception, fetch_and_upsert_price_board, ingest_daily_prices, warm_intraday_universe
 from data_ingest.tasks import _fetch_and_upsert_bucket
 from market_data.models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolRegistry, IntradayBar, IntradayTick
 from market_serving.models import SymbolSnapshot
@@ -139,7 +141,13 @@ class DataIngestBackfillTaskTests(TestCase):
             max_workers=1,
         )
 
-        fetch_daily_history_mock.assert_called_once_with('ACB', days=3, source='VCI')
+        fetch_daily_history_mock.assert_called_once_with(
+            'ACB',
+            days=3,
+            source='VCI',
+            start_date=date(2026, 5, 14),
+            end_date=date(2026, 5, 16),
+        )
         self.assertEqual(result['planned_items'], 1)
         self.assertEqual(result['inserted'], 1)
         self.assertEqual(result['updated'], 1)
@@ -153,6 +161,45 @@ class DataIngestBackfillTaskTests(TestCase):
         inserted_row = DailyPrice.objects.get(symbol='ACB', date=date(2026, 5, 16))
         self.assertEqual(str(updated_row.close), '12.60')
         self.assertEqual(str(inserted_row.close), '12.70')
+
+    @patch('data_ingest.tasks.backfill_daily_prices.run')
+    @patch('data_ingest.tasks.now')
+    def test_backfill_pre5y_to_market_inception_dispatches_pre5y_window_plan(
+        self,
+        now_mock,
+        backfill_daily_prices_run_mock,
+    ):
+        now_mock.return_value = datetime(2026, 5, 21, tzinfo=dt_timezone.utc)
+        GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
+        GlobalSymbolRegistry.objects.create(symbol='FPT', is_active=True)
+        backfill_daily_prices_run_mock.return_value = {
+            'status': 'ok',
+            'planned_items': 2,
+            'upserted': 10,
+            'failed': [],
+            'failed_count': 0,
+        }
+
+        result = backfill_pre5y_to_market_inception.run(
+            market_inception_date='2000-07-28',
+            recent_years=5,
+            _scheduler_job_key='pre5y-history-backfill-weekly',
+        )
+
+        called_kwargs = backfill_daily_prices_run_mock.call_args.kwargs
+        self.assertEqual(called_kwargs['mode'], 'historical_inception_backfill')
+        self.assertEqual(called_kwargs['trigger'], 'beat_schedule')
+        self.assertEqual(called_kwargs['_scheduler_job_key'], 'pre5y-history-backfill-weekly')
+        self.assertEqual(called_kwargs['symbols'], ['ACB', 'FPT'])
+        self.assertEqual(len(called_kwargs['plan_items']), 2)
+        self.assertEqual(
+            called_kwargs['plan_items'][0]['requested_window'],
+            {'start_date': '2000-07-28', 'end_date': '2021-05-21'},
+        )
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['market_inception_date'], '2000-07-28')
+        self.assertEqual(result['pre5y_end_date'], '2021-05-21')
+        self.assertEqual(result['recent_years'], 5)
 
     @patch('data_ingest.tasks.fetch_daily_history')
     def test_backfill_daily_prices_defaults_to_global_symbol_registry_when_symbols_missing(self, fetch_daily_history_mock):

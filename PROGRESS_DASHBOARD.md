@@ -1,3 +1,133 @@
+# 2026-05-21 — Pre-5Y historical backfill service to market inception ✅
+
+Status: **✅ NEW PRE-5Y HISTORY BACKFILL SERVICE ADDED** | focused backend tests PASS | scheduler/catalog wiring PASS | module tree synced | dev runtime refreshed
+
+## Summary
+- Added dedicated task `backfill_pre5y_to_market_inception` to backfill daily OHLCV from market inception to the day before the rolling 5-year window.
+- Kept the existing 5-year service intact; this slice only adds the missing deeper-history lane.
+- Extended daily-history adapter contract to support explicit `start_date`/`end_date` so pre-5y windows are fetched deterministically instead of relying on inferred `days` only.
+- Registered a new periodic job `pre5y-history-backfill-weekly` (Sun 04:00 ICT), routed to `enrichment_offhours`, with full SOC metadata + registry service key for Operations Center control/history.
+
+## Validation
+- Focused test `src/data_ingest/tests/test_tasks.py -k "pre5y or consumes_plan_items_with_detailed_counts"` — PASS (`2 passed`)
+- Focused test `src/service_ops/tests/test_scheduler_s04.py -k "pre5y"` — PASS (`2 passed`)
+- `git diff --check` on all touched backend/service/test files in this slice — PASS
+- VS Code diagnostics (`get_errors`) on touched files — PASS
+- `module_tree_full.md` regenerated — PASS
+- `start_dev.ps1` — PASS
+
+## Residual Risk
+- Current pre-5y boundary uses `365 * years`; if future requirements need exchange-calendar exactness, should add a trading-calendar aware boundary utility.
+
+# 2026-05-21 — Tenant PAT revoked-list cleanup + safe bulk selection ✅
+
+Status: **✅ revoked PATs are hidden by default, bulk selection is now viewport-safe, and tenant-admin revoke copy is natural Vietnamese** | Tenant PAT UI regressions PASS | code review PASS (`0` high/critical) | module tree synced | dev runtime refreshed
+
+## Summary
+- Tenant PAT admin now hides revoked PATs by default and provides an explicit reveal toggle for audit inspection.
+- `Select all` is now scoped to the current page only; bulk selection is cleared when the operator changes page, changes page size, hides/shows revoked rows, or reloads the PAT list.
+- Added focused regression coverage for every selection-safety transition above, including a reload path so off-screen PATs cannot be bulk-revoked accidentally after the list changes.
+- Updated the Vietnamese revoke/bulk-revoke copy on the live page to use PAT-specific wording more naturally.
+
+## Validation
+- Focused frontend suite `src/pages/admin/tenant/TenantPATs.test.jsx` — PASS (`8` tests)
+- `git diff --check` on touched Tenant PAT files — PASS
+- VS Code diagnostics on touched Tenant PAT files — PASS
+- `code-reviewer` — PASS (`0` critical, `0` high)
+- `module_tree_full.md` regenerated — PASS (`1267` modules)
+- `start_dev.ps1` — PASS
+  - rebuilt `vninvest-dev-core-runtime` and `vninvest-dev-frontend`
+  - `vninvest-dev-core-api` healthy
+  - queue drift clean
+  - smoke checks passed: `Core API health : OK`, `Frontend health : OK`
+
+## Residual Risk
+- Current tests still mock translations, so future wording drift in unrelated i18n keys could evade this page-level suite.
+
+# 2026-05-20 — Tenant PAT rotate/runtime session-facts repair ✅
+
+Status: **✅ human-session PAT no longer leaks into tenant PAT admin, session-facts caller restored to native market-serving path** | backend PAT regressions PASS | frontend route-wrapper regressions PASS | module tree synced | dev runtime refreshed
+
+## Summary
+- Confirmed the rotate error was not a generic serializer mismatch: the failing runtime token `d1596b84-50f9-4f59-a2d0-76861f491077` was a human-session PAT (`login:admin`) that had leaked into the tenant PAT admin list.
+- `PATListView` now returns machine PATs only, and tenant-admin rotate/revoke now refuse human-session PAT ids at the owner path with `404`.
+- Confirmed the session-facts `404` spam came from a frontend route-base bug: wrappers were calling `/core/v1/session-facts/*` even though the native market-serving owner path is `/api/market/session-facts/*`.
+- `frontend/src/api/client.js` now points both session-facts helpers at `/api/market/session-facts/*`, and the split-host regression is locked by a dedicated wrapper test.
+
+## Validation
+- Focused backend suite `tests.test_identity_access.CorePartnerPATApiTests` — PASS (`9` tests)
+- Focused frontend suite `src/api/client.coreRoutes.test.js` — PASS (`10` tests)
+- `git diff --check` on touched code files — PASS
+- VS Code diagnostics on touched code files — PASS
+- `code-reviewer` — PASS (`0` critical, `0` high)
+- `module_tree_full.md` regenerated — PASS (`1267` modules)
+- `start_dev.ps1` — PASS
+  - rebuilt `vninvest-dev-core-runtime` and `vninvest-dev-frontend`
+  - `vninvest-dev-core-api` healthy
+  - queue drift clean
+  - smoke checks passed: `Core API health : OK`, `Frontend health : OK`
+
+## Residual Risk
+- A real `404` from `/api/market/session-facts/<symbol>/cvd/` is still expected when a requested `window` or `trade_date` has not been materialized yet.
+
+# 2026-05-20 — Core partner PAT/service-account native hardening closure ✅
+
+Status: **✅ native core ownership confirmed, auth review blockers closed, focused suite PASS** | `47` focused Django tests PASS | code review PASS (`0` high/critical) | module tree synced | dev runtime refreshed
+
+## Summary
+- Confirmed the active owner for `/core/v1/partner/*` in current dev runtime is native core under `packages/core/backend`, not legacy `backend/portfolio`.
+- Closed the full auth hardening chain for partner PAT/service-account flows in native core:
+  - immutable `is_human_session` provenance for login PATs,
+  - revoke of legacy forged login-marker PATs during migration,
+  - human-session-only refresh with bounded TTL + refresh rotation,
+  - disabled service-account blocks on auth/issue/rotate/refresh,
+  - guard against deleting or disabling the last active service account,
+  - canonicalization of `policy_ids` into PAT `scope_codes`,
+  - removal of staff/operator privilege bleed from machine PATs,
+  - PAT/human-session authorization guards on adjacent identity-access endpoints (`billing`, `usage`, `tenant members`, `DNSE credential`, `user profile`, `user config`).
+- Expanded focused regression coverage from the original partner slice to cover native route ownership, refresh rotation, disabled-SA behavior, policy-backed PAT issuance, operator bleed, and machine-PAT access denial on owner-bound routes.
+
+## Validation
+- Focused suite `tests.test_identity_access_api_routes tests.test_identity_access tests.test_identity_access_permissions` — PASS (`47` tests, `OK`)
+- Scoped `git diff --check` on all touched identity-access code/test files — PASS
+- VS Code diagnostics on touched files — PASS
+- Final `code-reviewer` pass — PASS (`0` critical, `0` high)
+- `module_tree_full.md` regenerated — PASS (`1267` modules)
+- `start_dev.ps1` — PASS
+  - `vninvest-dev-core-runtime` and `vninvest-dev-frontend` rebuilt successfully
+  - `vninvest-dev-core-api` reached `healthy`
+  - native scheduler queue check returned `No queue drift detected`
+  - smoke checks passed: `Core API health : OK`, `Frontend health : OK`
+
+## Residual Risk
+- Deploying migration `0006` will force re-login for legacy login-marker PAT sessions.
+- Runtime refresh is complete in dev; remaining rollout-sensitive risk is still the forced re-login impact from migration `0006` on legacy login-marker PAT sessions.
+
+# 2026-05-20 — Daily backfill freshness semantics aligned to daily cadence ✅
+
+Status: **✅ `daily-backfill-prices-1700` no longer depends on 600s generic freshness window** | scheduler metadata fixed | scheduler catalog unit tests PASS | live operator verification captured | runtime refreshed | module tree synced
+
+## Summary
+- Live verification after stale-run self-heal showed one more root-cause on SchedulerBoard: `daily-backfill-prices-1700` was still using generic `600s` freshness semantics, so it could look `degraded` during a normal same-day idle period.
+- Added a daily freshness window (`24h`) in scheduler metadata so this job is evaluated against its real cadence instead of the generic short-lived default.
+- Aligned degraded `status_reason` with the same effective daily threshold, so operator-facing messaging no longer contradicts the new daily semantics.
+- Added a regression test proving a successful run from 6 hours earlier still yields a healthy catalog state for this daily job.
+- Added a regression test proving the truly stale daily case reports the `86400s` threshold in the catalog reason.
+- Re-ran live verification through the operator scheduler endpoints. The board truth now stays `warm/fresh` by cadence instead of falling into `stale` immediately after the short default window.
+
+## Validation
+- Focused test `SchedulerCatalogUnitTests.test_daily_backfill_uses_daily_freshness_window` — PASS (`1` test)
+- Full `SchedulerCatalogUnitTests` — PASS (`13` tests)
+- Final live operator snapshots — PASS
+  - Before-final: `status=running`, `freshness_state=warm`, `is_inflight=true`
+  - After-final `run_now`: accepted with new Celery task ID, `last_run_at` advanced immediately, `freshness_state=fresh`, new queued history row created
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1264` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS (`core-api` healthy, frontend healthy, queue drift clean)
+
+## Residual Risk
+- Scheduler action path still allows a second `run_now` while an earlier daily backfill run remains inflight, so overlapping manual runs are still possible.
+- Observability metadata for manual scheduler-triggered backfill runs still needs a follow-up fix so execution trigger labeling is always exact in `BackfillExecutionRun`.
+
 # 2026-05-20 — Daily backfill scheduler truth self-heal ✅
 
 Status: **✅ `daily-backfill-prices-1700` stale-running incident mitigated at source** | stale-run auto-close implemented | focused + class regression tests PASS | runtime refreshed | module tree synced

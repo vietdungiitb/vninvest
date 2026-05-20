@@ -181,6 +181,11 @@ class B01BackfillJobServiceKeyTests(TestCase):
         meta = CATALOG_JOB_METADATA.get('deep-history-bootstrap-weekly', {})
         self.assertEqual(meta.get('service_key'), 'deep_history_bootstrap')
 
+    def test_pre5y_backfill_has_service_key(self):
+        from service_ops.scheduler_catalog import CATALOG_JOB_METADATA
+        meta = CATALOG_JOB_METADATA.get('pre5y-history-backfill-weekly', {})
+        self.assertEqual(meta.get('service_key'), 'pre5y_history_backfill')
+
     def test_backfill_service_definition_exists(self):
         from service_ops.registry import ensure_service_registry
         from service_ops.models import ServiceDefinition
@@ -195,6 +200,14 @@ class B01BackfillJobServiceKeyTests(TestCase):
         ensure_service_registry()
         svc = ServiceDefinition.objects.filter(service_key='deep_history_bootstrap').first()
         self.assertIsNotNone(svc, 'ServiceDefinition for deep_history_bootstrap must exist')
+        self.assertEqual(svc.domain, 'dataops')
+
+    def test_pre5y_history_service_definition_exists(self):
+        from service_ops.registry import ensure_service_registry
+        from service_ops.models import ServiceDefinition
+        ensure_service_registry()
+        svc = ServiceDefinition.objects.filter(service_key='pre5y_history_backfill').first()
+        self.assertIsNotNone(svc, 'ServiceDefinition for pre5y_history_backfill must exist')
         self.assertEqual(svc.domain, 'dataops')
 
 

@@ -44,6 +44,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Parity snapshot retention cleanup (hourly)',
+        'freshness_warm_seconds': 3600,
     },
     'market-data-parity-retention-health-monitor-2h': {
         'domain': 'dataops',
@@ -52,6 +53,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Parity retention health monitor (2h)',
+        'freshness_warm_seconds': 2 * 3600,
     },
     # === Native ingest ===
     'ingest-price-board-60s': {
@@ -71,6 +73,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'display_name': 'Daily price backfill (17:00 ICT)',
         'service_key': 'backfill_daily_prices',
         'max_expected_run_seconds': 10800,  # 3h — 1 năm × toàn bộ symbol
+        'freshness_warm_seconds': 24 * 3600,  # daily job — stale only when the prior daily window is missed
     },
     # === DNSE intraday tape 90-ngày (quarterly backfill orchestrator) ===
     'dnse-quarterly-backfill-intraday': {
@@ -82,6 +85,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'display_name': 'DNSE intraday tape backfill 90 ngày (Chủ nhật 01:00)',
         'service_key': 'dnse_intraday_quarterly_backfill',
         'max_expected_run_seconds': 7200,  # 2h — VN100 × 90 ngày queue dispatch
+        'freshness_warm_seconds': 7 * 24 * 3600,  # weekly job — stale chỉ khi > 1 tuần
     },
     'ingest-daily-prices-1705': {
         'domain': 'dataops',
@@ -90,6 +94,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Daily price ingest shadow (17:05 ICT)',
+        'freshness_warm_seconds': 24 * 3600,
     },
     'deep-history-bootstrap-weekly': {
         'domain': 'dataops',
@@ -100,6 +105,18 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'display_name': 'Deep history bootstrap — 5 năm (Chủ nhật 03:00)',
         'service_key': 'deep_history_bootstrap',
         'max_expected_run_seconds': 28800,  # 8h — 5 năm × toàn bộ symbol
+        'freshness_warm_seconds': 7 * 24 * 3600,  # weekly job — stale chỉ khi > 1 tuần
+    },
+    'pre5y-history-backfill-weekly': {
+        'domain': 'dataops',
+        'data_types': ['daily_prices'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Backfill lịch sử trước 5 năm đến market inception (Chủ nhật 04:00)',
+        'service_key': 'pre5y_history_backfill',
+        'max_expected_run_seconds': 43200,  # 12h — long historical window
+        'freshness_warm_seconds': 7 * 24 * 3600,
     },
     # === Materializers ===
     'materialize-symbol-snapshot-60s': {
@@ -117,6 +134,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Pre-open snapshot materializer (08:40)',
+        'freshness_warm_seconds': 24 * 3600,
     },
     'materialize-session-facts-5m': {
         'domain': 'materialization',
@@ -159,6 +177,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Monthly invoice generator',
+        'freshness_warm_seconds': 31 * 24 * 3600,
     },
     'check-overdue-invoices': {
         'domain': 'platform',
@@ -167,6 +186,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Overdue invoice checker (daily 08:00)',
+        'freshness_warm_seconds': 24 * 3600,
     },
     'auto-expire-trials': {
         'domain': 'platform',
@@ -175,6 +195,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Trial auto-expiry (daily 01:00)',
+        'freshness_warm_seconds': 24 * 3600,
     },
     'auto-suspend-quota-overflow': {
         'domain': 'platform',
@@ -183,6 +204,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Quota overflow auto-suspend (1h)',
+        'freshness_warm_seconds': 3600,
     },
     'send-trial-expiry-warning': {
         'domain': 'platform',
@@ -191,6 +213,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Trial expiry warning (daily 09:00)',
+        'freshness_warm_seconds': 24 * 3600,
     },
     'auto-deprovision-stale': {
         'domain': 'platform',
@@ -199,6 +222,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'control_mode': 'beat_enabled',
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Stale tenant auto-deprovision (weekly)',
+        'freshness_warm_seconds': 7 * 24 * 3600,
     },
     # === Ops ===
     'daily-db-backup-2am': {
@@ -209,6 +233,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'capabilities': ['enable', 'disable', 'run_now'],
         'display_name': 'Daily DB backup (02:00)',
         'max_expected_run_seconds': 3600,  # 1h — DB dump full
+        'freshness_warm_seconds': 24 * 3600,
     },
 }
 
@@ -216,12 +241,13 @@ _FRESHNESS_FRESH_SECONDS = 120
 _FRESHNESS_WARM_SECONDS = 600
 
 
-def _freshness_state(lag_seconds: int | None) -> str:
+def _freshness_state(lag_seconds: int | None, warm_seconds: int | None = None) -> str:
+    _warm = warm_seconds if warm_seconds is not None else _FRESHNESS_WARM_SECONDS
     if lag_seconds is None:
         return 'missing'
     if lag_seconds <= _FRESHNESS_FRESH_SECONDS:
         return 'fresh'
-    if lag_seconds <= _FRESHNESS_WARM_SECONDS:
+    if lag_seconds <= _warm:
         return 'warm'
     return 'stale'
 
@@ -243,6 +269,7 @@ def _derive_status(
     freshness_state: str,
     lag_seconds: int | None,
     is_possibly_stuck: bool = False,
+    stale_threshold_seconds: int | None = None,
 ) -> tuple[str, str | None]:
     """
     Trả (status, status_reason).
@@ -260,7 +287,8 @@ def _derive_status(
     if not enabled:
         return 'disabled', None
     if freshness_state == 'stale':
-        reason = f'lag={lag_seconds}s vượt ngưỡng stale ({_FRESHNESS_WARM_SECONDS}s)'
+        threshold_seconds = stale_threshold_seconds if stale_threshold_seconds is not None else _FRESHNESS_WARM_SECONDS
+        reason = f'lag={lag_seconds}s vượt ngưỡng stale ({threshold_seconds}s)'
         return 'degraded', reason
     if freshness_state == 'missing':
         return 'idle', 'Chưa chạy lần nào'
@@ -333,7 +361,7 @@ def build_scheduler_catalog(
     _finished_qs = (
         ServiceRunLog.objects.filter(
             finished_at__isnull=False,
-            status__in=['completed', 'failed', 'partial'],
+            status__in=['completed', 'success', 'failed', 'partial'],
             service__service_key__in=_relevant_service_keys,
         )
         .values('service__service_key')
@@ -378,7 +406,8 @@ def build_scheduler_catalog(
             except Exception:
                 pass
 
-        freshness = _freshness_state(lag_seconds)
+        _job_warm_seconds: int | None = meta.get('freshness_warm_seconds')
+        freshness = _freshness_state(lag_seconds, _job_warm_seconds)
 
         # S04-ext: Override last_run_at / freshness từ manual run_now (operator trigger).
         # PeriodicTask.last_run_at chỉ cập nhật khi beat scheduler tự kích hoạt,
@@ -392,7 +421,7 @@ def build_scheduler_catalog(
                 if _manual_run_at and (last_run_at is None or _manual_run_at > last_run_at):
                     last_run_at = _manual_run_at
                     lag_seconds = max(int((now - last_run_at).total_seconds()), 0)
-                    freshness = _freshness_state(lag_seconds)
+                    freshness = _freshness_state(lag_seconds, _job_warm_seconds)
         except Exception:
             pass
 
@@ -417,7 +446,7 @@ def build_scheduler_catalog(
             if _finished_at and (last_run_at is None or _finished_at > last_run_at):
                 last_run_at = _finished_at
                 lag_seconds = max(int((now - last_run_at).total_seconds()), 0)
-                freshness = _freshness_state(lag_seconds)
+                freshness = _freshness_state(lag_seconds, _job_warm_seconds)
 
         # S04-ext2: Stuck run detection.
         # Nếu task đang chạy (is_inflight) nhưng vượt max_expected_run_seconds thì
@@ -434,7 +463,12 @@ def build_scheduler_catalog(
                     is_possibly_stuck = True
 
         job_status, status_reason = _derive_status(
-            enabled, is_inflight, freshness, lag_seconds, is_possibly_stuck
+            enabled,
+            is_inflight,
+            freshness,
+            lag_seconds,
+            is_possibly_stuck,
+            _job_warm_seconds,
         )
 
         # next_run_at: estimated from last_run_at + interval (best effort for interval jobs)

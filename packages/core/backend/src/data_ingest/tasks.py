@@ -459,6 +459,26 @@ def _resolve_history_days_from_window(requested_window: dict | None, default_day
     return max(int(default_days), 1)
 
 
+def _resolve_history_date_range_from_window(requested_window: dict | None) -> tuple[date | None, date | None]:
+    window = requested_window if isinstance(requested_window, dict) else {}
+    start_date_raw = window.get('start_date')
+    end_date_raw = window.get('end_date')
+
+    if not start_date_raw and not end_date_raw:
+        return None, None
+
+    try:
+        parsed_start_date = date.fromisoformat(str(start_date_raw)) if start_date_raw else None
+        parsed_end_date = date.fromisoformat(str(end_date_raw)) if end_date_raw else None
+    except ValueError:
+        return None, None
+
+    if parsed_start_date is not None and parsed_end_date is not None and parsed_start_date > parsed_end_date:
+        return None, None
+
+    return parsed_start_date, parsed_end_date
+
+
 def _build_default_daily_price_plan_items(symbols: list[str], days: int) -> list[dict]:
     return [
         {
@@ -500,12 +520,27 @@ def _compute_latency_percentile_ms(latencies_ms: list[float], percentile: float)
     return round(sorted_values[index], 2)
 
 
-def _fetch_daily_history_with_retry(symbol: str, provider: str, requested_days: int) -> tuple[list[dict], int, float]:
+def _fetch_daily_history_with_retry(
+    symbol: str,
+    provider: str,
+    requested_days: int,
+    *,
+    requested_start_date: date | None = None,
+    requested_end_date: date | None = None,
+) -> tuple[list[dict], int, float]:
     attempts = max(int(_DAILY_HISTORY_RETRY_ATTEMPTS), 1)
     for attempt in range(1, attempts + 1):
         started_at = time.perf_counter()
         try:
-            rows = fetch_daily_history(symbol, days=requested_days, source=provider)
+            history_kwargs = {
+                'days': requested_days,
+                'source': provider,
+            }
+            if requested_start_date is not None:
+                history_kwargs['start_date'] = requested_start_date
+            if requested_end_date is not None:
+                history_kwargs['end_date'] = requested_end_date
+            rows = fetch_daily_history(symbol, **history_kwargs)
             latency_ms = (time.perf_counter() - started_at) * 1000.0
             return list(rows or []), attempt, latency_ms
         except Exception:
@@ -592,8 +627,16 @@ def _fetch_and_upsert_bucket(
         if not symbol:
             continue
         try:
-            requested_days = int(plan_item.get('normalized_days') or _resolve_history_days_from_window(plan_item.get('requested_window'), days))
-            history_rows, attempts_used, latency_ms = _fetch_daily_history_with_retry(symbol, normalized_provider, requested_days)
+            requested_window = plan_item.get('requested_window') if isinstance(plan_item, dict) else None
+            requested_days = int(plan_item.get('normalized_days') or _resolve_history_days_from_window(requested_window, days))
+            requested_start_date, requested_end_date = _resolve_history_date_range_from_window(requested_window)
+            history_rows, attempts_used, latency_ms = _fetch_daily_history_with_retry(
+                symbol,
+                normalized_provider,
+                requested_days,
+                requested_start_date=requested_start_date,
+                requested_end_date=requested_end_date,
+            )
             latencies_ms.append(float(latency_ms))
             total_retries_used += max(int(attempts_used) - 1, 0)
             if not history_rows:
@@ -1511,6 +1554,82 @@ def backfill_daily_prices(
         except Exception:
             pass
     _b01_clear_inflight_cache(_scheduler_job_key)
+    return result
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=300)
+def backfill_pre5y_to_market_inception(
+    self,
+    market_inception_date: str = '2000-07-28',
+    recent_years: int = 5,
+    symbols: list[str] | None = None,
+    max_workers: int | None = None,
+    service_run_log_id: int | None = None,
+    _scheduler_job_key: str | None = None,
+) -> dict:
+    """
+    Backfill OHLCV from market inception up to the day before the rolling recent window.
+
+    The existing deep-history job already covers the latest 5 years. This task fills
+    the pre-5-year range only, so operators can bootstrap full-history datasets.
+    """
+    try:
+        parsed_inception_date = date.fromisoformat(str(market_inception_date).strip())
+    except ValueError:
+        return {
+            'status': 'error',
+            'reason': 'invalid_market_inception_date',
+            'market_inception_date': str(market_inception_date),
+        }
+
+    normalized_recent_years = max(int(recent_years or 5), 1)
+    today = now().date()
+    recent_window_start_date = today - timedelta(days=normalized_recent_years * 365)
+    pre5y_end_date = recent_window_start_date - timedelta(days=1)
+
+    if parsed_inception_date > pre5y_end_date:
+        return {
+            'status': 'skipped',
+            'reason': 'no_pre5y_window',
+            'market_inception_date': parsed_inception_date.isoformat(),
+            'pre5y_end_date': pre5y_end_date.isoformat(),
+            'recent_years': normalized_recent_years,
+        }
+
+    normalized_symbols = _normalize_symbols(symbols) if symbols is not None else []
+    if not normalized_symbols:
+        normalized_symbols = _get_default_global_registry_symbols()
+
+    if not normalized_symbols:
+        return {'status': 'skipped', 'reason': 'no_symbols'}
+
+    requested_days = max((pre5y_end_date - parsed_inception_date).days + 1, 1)
+    requested_window = {
+        'start_date': parsed_inception_date.isoformat(),
+        'end_date': pre5y_end_date.isoformat(),
+    }
+    plan_items = [
+        {
+            'symbol': symbol,
+            'requested_window': dict(requested_window),
+        }
+        for symbol in normalized_symbols
+    ]
+    trigger_mode = 'beat_schedule' if _scheduler_job_key else 'operator_run_now'
+
+    result = backfill_daily_prices.run(
+        days=requested_days,
+        symbols=normalized_symbols,
+        max_workers=max_workers,
+        plan_items=plan_items,
+        service_run_log_id=service_run_log_id,
+        _scheduler_job_key=_scheduler_job_key,
+        mode='historical_inception_backfill',
+        trigger=trigger_mode,
+    )
+    result['market_inception_date'] = parsed_inception_date.isoformat()
+    result['pre5y_end_date'] = pre5y_end_date.isoformat()
+    result['recent_years'] = normalized_recent_years
     return result
 
 

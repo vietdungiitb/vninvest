@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-20 17:08:25`
+Generated at: `2026-05-21 01:29:02`
 
 ## Summary
 
-- Total modules: 1262
-- Python modules: 722
-- JS/TS modules: 540
-- Total classes: 1457
-- Total functions: 3437
-- Total top-level variables: 5085
+- Total modules: 1267
+- Python modules: 724
+- JS/TS modules: 543
+- Total classes: 1464
+- Total functions: 3468
+- Total top-level variables: 5193
 
 ## Python Modules
 
@@ -2722,7 +2722,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/core/backend/src/data_ingest/tasks.py`
 
 - Functions:
-  - `_attach_ingest_run_to_service_run_log`, `_b01_clear_inflight_cache`, `_b02_mark_run_failed_on_crash`, `_b08_finalize_stale_running_runs`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_build_intraday_symbol_plan`, `_classify_daily_price_rows`, `_compute_latency_percentile_ms`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_fetch_daily_history_with_retry`, `_floor_intraday_bucket`, `_get_default_global_registry_symbols`, `_hydrate_intraday_symbols`, `_normalize_daily_plan_items`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_days_from_window`, `_resolve_intraday_page_size_from_window`, `backfill_daily_prices`, `backfill_intraday_tick_system`, `backfill_intraday_tick_user`, `enqueue_dnse_quarterly_backfill`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
+  - `_attach_ingest_run_to_service_run_log`, `_b01_clear_inflight_cache`, `_b02_mark_run_failed_on_crash`, `_b08_finalize_stale_running_runs`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_build_intraday_symbol_plan`, `_classify_daily_price_rows`, `_compute_latency_percentile_ms`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_fetch_daily_history_with_retry`, `_floor_intraday_bucket`, `_get_default_global_registry_symbols`, `_hydrate_intraday_symbols`, `_normalize_daily_plan_items`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_date_range_from_window`, `_resolve_history_days_from_window`, `_resolve_intraday_page_size_from_window`, `backfill_daily_prices`, `backfill_intraday_tick_system`, `backfill_intraday_tick_user`, `backfill_pre5y_to_market_inception`, `enqueue_dnse_quarterly_backfill`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
 - Top-level variables:
   - `_B08_STALE_GRACE_SECONDS`, `_B08_STALE_RUNNING_TTL_SECONDS`, `_BACKFILL_BATCH_SIZE`, `_DAILY_HISTORY_RETRY_ATTEMPTS`, `_DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS`, `_DAILY_HISTORY_RETRY_BACKOFF_SECONDS`, `_DEFAULT_INTER_SYMBOL_DELAY`, `_HISTORY_PROVIDERS`, `_INTRADAY_BAR_TIMEFRAMES`, `_INTRADAY_PAGE_SIZE_BY_DEPTH_TIER`, `_INTRADAY_PLAN_DATASETS`, `_MAX_BACKFILL_DAYS`, `_PROVIDER_INTER_SYMBOL_DELAY`, `_USER_BACKFILL_MAX_DAYS`, `logger`
 
@@ -2752,7 +2752,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/core/backend/src/data_ingest/tests/test_tasks.py`
 
 - Classes:
-  - `DataIngestBackfillTaskTests` -> methods: `setUpTestData`, `test_backfill_daily_prices_auto_closes_stale_running_records_before_new_run`, `test_backfill_daily_prices_consumes_plan_items_with_detailed_counts`, `test_backfill_daily_prices_defaults_to_global_symbol_registry_when_symbols_missing`, `test_backfill_daily_prices_does_not_close_fresh_running_records`, `test_fetch_and_upsert_bucket_retries_with_bounded_attempts`, `test_fetch_and_upsert_bucket_uses_adapter_ssot`, `test_fetch_and_upsert_price_board_consumes_plan_items`, `test_fetch_and_upsert_price_board_defaults_to_global_symbol_registry_when_symbols_missing`, `test_fetch_and_upsert_price_board_updates_service_run_log_when_provided`, `test_ingest_daily_prices_runs_backfill_inline`, `test_ingest_daily_prices_updates_service_run_log_when_provided`, `test_warm_intraday_universe_applies_intraday_page_size_from_plan_window`, `test_warm_intraday_universe_consumes_plan_items_and_persists_rows`, `test_warm_intraday_universe_defaults_to_global_symbol_registry_when_symbols_missing`
+  - `DataIngestBackfillTaskTests` -> methods: `setUpTestData`, `test_backfill_daily_prices_auto_closes_stale_running_records_before_new_run`, `test_backfill_daily_prices_consumes_plan_items_with_detailed_counts`, `test_backfill_daily_prices_defaults_to_global_symbol_registry_when_symbols_missing`, `test_backfill_daily_prices_does_not_close_fresh_running_records`, `test_backfill_pre5y_to_market_inception_dispatches_pre5y_window_plan`, `test_fetch_and_upsert_bucket_retries_with_bounded_attempts`, `test_fetch_and_upsert_bucket_uses_adapter_ssot`, `test_fetch_and_upsert_price_board_consumes_plan_items`, `test_fetch_and_upsert_price_board_defaults_to_global_symbol_registry_when_symbols_missing`, `test_fetch_and_upsert_price_board_updates_service_run_log_when_provided`, `test_ingest_daily_prices_runs_backfill_inline`, `test_ingest_daily_prices_updates_service_run_log_when_provided`, `test_warm_intraday_universe_applies_intraday_page_size_from_plan_window`, `test_warm_intraday_universe_consumes_plan_items_and_persists_rows`, `test_warm_intraday_universe_defaults_to_global_symbol_registry_when_symbols_missing`
 
 ### `packages/core/backend/src/data_ingest/tests/test_views.py`
 
@@ -2882,6 +2882,22 @@ Generated at: `2026-05-20 17:08:25`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/identity_access/migrations/0006_corepatcredential_is_human_session.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `revoke_legacy_human_marker_pats`
+
+### `packages/core/backend/src/identity_access/migrations/0007_canonicalize_service_account_scope_codes.py`
+
+- Classes:
+  - `Migration`
+- Functions:
+  - `_normalize_identifier_list`, `_policy_ids_to_scope_codes`, `_scope_codes_to_policy_ids`, `canonicalize_policy_backed_scopes`
+- Top-level variables:
+  - `POLICY_TO_SCOPE_CODES`, `SCOPE_CODE_TO_POLICY`
+
 ### `packages/core/backend/src/identity_access/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -2889,7 +2905,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/core/backend/src/identity_access/models.py`
 
 - Classes:
-  - `CorePATCredential` -> methods: `__str__`, `effective_status`, `issue_for_service_account`, `resolve_from_raw_secret`, `revoke_pat`, `save`
+  - `CorePATCredential` -> methods: `__str__`, `effective_status`, `issue_for_service_account`, `mark_rotating`, `resolve_from_raw_secret`, `revoke_pat`, `save`
   - `CoreServiceAccount` -> methods: `__str__`, `clean`, `save`
   - `CoreTenant` -> methods: `__str__`, `save`, `tenant_id`
   - `PasswordResetToken` -> methods: `__str__`, `cleanup_expired`, `generate_and_save`, `is_expired`, `is_valid`, `verify_and_mark_used`
@@ -2917,17 +2933,26 @@ Generated at: `2026-05-20 17:08:25`
 - Classes:
   - `IsCoreOperator` -> methods: `has_permission`
   - `IsTenantActive` -> methods: `has_permission`
+- Functions:
+  - `_normalize_scope_codes`, `is_machine_pat_request`, `require_human_session`, `require_pat_scopes_or_human_session`
 
 ### `packages/core/backend/src/identity_access/serializers.py`
 
 - Classes:
-  - `CorePATCredentialSerializer`
+  - `CorePATCredentialSerializer` -> methods: `get_object`, `get_status`
   - `CorePATIssueResponseSerializer`
-  - `CoreServiceAccountSerializer`
+  - `CoreServiceAccountSerializer` -> methods: `_merge_metadata`, `create`, `to_representation`, `update`, `validate`
   - `CoreTenantSerializer`
+  - `PartnerPATIssueSerializer` -> methods: `validate`
+  - `PartnerPATRevokeSerializer`
+  - `PartnerPATRotateSerializer` -> methods: `validate`
   - `TenantInviteCreateSerializer`
   - `TenantInviteSerializer` -> methods: `get_is_expired`
   - `TenantMemberSerializer`
+- Functions:
+  - `_normalize_identifier_list`, `_policy_ids_to_scope_codes`, `_scope_codes_to_policy_ids`
+- Top-level variables:
+  - `POLICY_TO_SCOPE_CODES`, `SCOPE_CODE_TO_POLICY`
 
 ### `packages/core/backend/src/identity_access/tenant_member_views.py`
 
@@ -2983,23 +3008,23 @@ Generated at: `2026-05-20 17:08:25`
 - Classes:
   - `PartnerUsageMetersView` -> methods: `list`
   - `PATListView` -> methods: `get_queryset`
-  - `ServiceAccountDetailView` -> methods: `get_object`, `get_queryset`
+  - `ServiceAccountDetailView` -> methods: `_ensure_not_last_active_service_account`, `get_object`, `get_queryset`, `perform_destroy`, `perform_update`
   - `ServiceAccountListView` -> methods: `get_queryset`, `perform_create`
   - `TenantDetailView` -> methods: `get_object`
   - `UserProfileView` -> methods: `get`, `patch`
 - Functions:
-  - `issue_pat`, `partner_issue_pat`, `partner_revoke_pat`, `partner_rotate_pat`
+  - `_is_human_session_pat`, `_normalize_scope_codes`, `_reject_human_session_markers`, `_require_partner_scope`, `_serialize_partner_pat`, `_validate_requested_pat_scopes`, `issue_pat`, `partner_issue_pat`, `partner_revoke_pat`, `partner_rotate_pat`
 - Top-level variables:
-  - `TENANT_PERMISSION_CLASSES`
+  - `HUMAN_SESSION_PAT_AUDIT_REASON`, `HUMAN_SESSION_PAT_LABEL_PREFIX`, `PARTNER_SCOPE_MANAGE_PATS`, `PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS`, `PARTNER_SCOPE_MANAGE_TENANT`, `TENANT_PERMISSION_CLASSES`
 
 ### `packages/core/backend/src/identity_access/views_auth.py`
 
 - Classes:
   - `AuthBootstrapThrottle`
 - Functions:
-  - `_build_abilities`, `_build_auth_payload`, `_build_capabilities_payload`, `_build_entitlements`, `_build_navigation`, `_build_target`, `_current_user_config`, `_make_token`, `_normalize_user_config_payload`, `_service_account_payload`, `_tenant_payload`, `_token_expired`, `_user_payload`, `capabilities_view`, `login_view`, `logout_view`, `password_reset_confirm_view`, `password_reset_request_view`, `profile_view`, `refresh_token_view`, `register_view`, `user_config_view`, `verify_email_view`
+  - `_build_abilities`, `_build_auth_payload`, `_build_capabilities_payload`, `_build_entitlements`, `_build_navigation`, `_build_target`, `_current_user_config`, `_human_session_pat_expires_at`, `_human_session_pat_lifetime`, `_make_token`, `_normalize_user_config_payload`, `_resolve_request_service_account`, `_service_account_payload`, `_tenant_payload`, `_token_expired`, `_user_payload`, `capabilities_view`, `login_view`, `logout_view`, `password_reset_confirm_view`, `password_reset_request_view`, `profile_view`, `refresh_token_view`, `register_view`, `user_config_view`, `verify_email_view`
 - Top-level variables:
-  - `TENANT_PERMISSION_CLASSES`, `User`, `_DEFAULT_USER_CONFIG`, `_EMAIL_VERIFY_TOKENS`, `_TOKEN_TTL_HOURS`, `_USER_CONFIG_STORE`, `logger`
+  - `DEFAULT_HUMAN_SESSION_PAT_HOURS`, `TENANT_PERMISSION_CLASSES`, `User`, `_DEFAULT_USER_CONFIG`, `_EMAIL_VERIFY_TOKENS`, `_TOKEN_TTL_HOURS`, `_USER_CONFIG_STORE`, `logger`
 
 ### `packages/core/backend/src/market_data/__init__.py`
 
@@ -3779,7 +3804,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/core/backend/src/service_ops/tests/test_scheduler_catalog.py`
 
 - Classes:
-  - `SchedulerCatalogUnitTests` -> methods: `test_catalog_beat_registered_false_when_no_periodic_task`, `test_catalog_capabilities_from_metadata`, `test_catalog_domain_filter`, `test_catalog_empty_schedule_returns_empty`, `test_catalog_freshness_missing_when_never_run`, `test_catalog_job_disabled_when_schedule_def_says_false`, `test_catalog_job_has_required_fields`, `test_catalog_job_key_matches_schedule_key`, `test_catalog_returns_list`, `test_catalog_schedule_label_interval`, `test_catalog_unknown_job_gets_default_metadata`
+  - `SchedulerCatalogUnitTests` -> methods: `setUpTestData`, `test_catalog_beat_registered_false_when_no_periodic_task`, `test_catalog_capabilities_from_metadata`, `test_catalog_domain_filter`, `test_catalog_empty_schedule_returns_empty`, `test_catalog_freshness_missing_when_never_run`, `test_catalog_job_disabled_when_schedule_def_says_false`, `test_catalog_job_has_required_fields`, `test_catalog_job_key_matches_schedule_key`, `test_catalog_returns_list`, `test_catalog_schedule_label_interval`, `test_catalog_unknown_job_gets_default_metadata`, `test_daily_backfill_reports_daily_threshold_when_truly_stale`, `test_daily_backfill_uses_daily_freshness_window`, `test_hourly_job_uses_hourly_freshness_window`, `test_weekly_job_uses_weekly_freshness_window`
   - `SchedulerHealthApiTests` -> methods: `setUp`, `setUpTestData`, `test_health_has_required_fields`, `test_health_jobs_total_is_int`, `test_health_requires_auth`, `test_health_returns_200`
   - `SchedulerHealthSummaryUnitTests` -> methods: `test_health_summary_has_required_fields`, `test_health_summary_healthy_when_empty_catalog`, `test_health_summary_jobs_total`, `test_health_summary_overall_health_degraded_when_unregistered`, `test_health_summary_unregistered_equals_total_when_no_periodic_tasks`
   - `SchedulerJobHistoryApiTests` -> methods: `setUp`, `setUpTestData`, `test_history_known_job_returns_200`, `test_history_response_has_count_and_results`, `test_history_unknown_job_returns_404`
@@ -3790,7 +3815,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/core/backend/src/service_ops/tests/test_scheduler_s04.py`
 
 - Classes:
-  - `B01BackfillJobServiceKeyTests` -> methods: `test_backfill_service_definition_exists`, `test_daily_backfill_has_service_key`, `test_deep_history_bootstrap_has_service_key`, `test_deep_history_service_definition_exists`
+  - `B01BackfillJobServiceKeyTests` -> methods: `test_backfill_service_definition_exists`, `test_daily_backfill_has_service_key`, `test_deep_history_bootstrap_has_service_key`, `test_deep_history_service_definition_exists`, `test_pre5y_backfill_has_service_key`, `test_pre5y_history_service_definition_exists`
   - `B01HistoryEndpointBackfillTests` -> methods: `setUp`, `setUpTestData`, `test_daily_backfill_history_result_items_have_trigger_field`, `test_daily_backfill_history_returns_results`, `test_deep_history_bootstrap_history_returns_results`
   - `B01InflightCacheCleared` -> methods: `setUpTestData`, `test_b01_clear_inflight_cache_deletes_key`, `test_b01_clear_inflight_cache_noop_on_none`, `test_backfill_task_clears_cache_on_skipped`
   - `B01RunNowCreatesRunLogTests` -> methods: `_post_run_now`, `setUp`, `setUpTestData`, `test_run_now_daily_backfill_creates_run_log`, `test_run_now_deep_history_creates_run_log`, `test_run_now_passes_service_run_log_id_to_task`, `test_run_now_run_log_starts_queued_with_job_key`
@@ -5068,6 +5093,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/core/backend/tests/test_identity_access.py`
 
 - Classes:
+  - `CorePartnerPATApiTests` -> methods: `setUp`, `test_cross_tenant_pat_issue_is_blocked`, `test_issue_pat_rejects_disabled_service_account`, `test_issue_pat_rejects_scopes_outside_service_account_policy`, `test_issue_pat_returns_frontend_contract_and_secret_authenticates`, `test_partner_pat_list_excludes_human_session_credentials`, `test_revoke_human_session_pat_returns_not_found`, `test_revoke_pat_invalidates_token`, `test_rotate_human_session_pat_returns_not_found`, `test_rotate_pat_returns_nested_new_token_and_keeps_old_token_in_grace_window`
   - `CorePartnerServiceAccountApiTests` -> methods: `setUp`, `test_service_account_list_uses_created_at_cursor_pagination_and_create_succeeds`
   - `CorePATCredentialModelTests` -> methods: `setUp`, `test_issue_pat_returns_credential_and_raw_secret`, `test_pat_token_prefix_is_12_chars`, `test_resolve_from_raw_secret`, `test_resolve_returns_none_for_invalid_secret`, `test_revoke_pat`
   - `CoreServiceAccountModelTests` -> methods: `setUp`, `test_create_service_account`, `test_service_account_belongs_to_tenant`
@@ -5078,7 +5104,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/core/backend/tests/test_identity_access_api_routes.py`
 
 - Classes:
-  - `IdentityAccessApiRouteTests` -> methods: `_login_and_authenticate`, `setUp`, `test_login_me_capabilities_and_userconfig_routes_are_native`, `test_partner_service_accounts_route_is_native`
+  - `IdentityAccessApiRouteTests` -> methods: `_login_and_authenticate`, `setUp`, `test_login_me_capabilities_and_userconfig_routes_are_native`, `test_login_session_pat_has_expiry_and_refresh_rotates_secret`, `test_partner_pat_routes_are_native_and_list_never_leaks_secret`, `test_partner_service_accounts_route_is_native`
 - Top-level variables:
   - `_src_dir`
 
@@ -5087,6 +5113,7 @@ Generated at: `2026-05-20 17:08:25`
 - Classes:
   - `IsTenantActivePermissionTests` -> methods: `_request_for_user`, `setUp`, `test_active_tenant_allowed`, `test_deprovisioned_tenant_blocked`, `test_superuser_bypasses_tenant_status`, `test_suspended_tenant_blocked`, `test_trial_tenant_allowed`, `test_user_without_tenant_allowed`
   - `IsTenantActiveRouteTests` -> methods: `setUp`, `test_public_legal_pages_route_unchanged`, `test_superuser_bypasses_suspended_tenant_on_partner_service_accounts_route`, `test_suspended_tenant_blocks_partner_service_accounts_route`
+  - `PartnerScopeGuardRouteTests` -> methods: `setUp`, `test_cannot_delete_last_active_service_account`, `test_cannot_disable_last_active_service_account`, `test_forged_human_markers_without_human_session_flag_do_not_bypass_scope_guard`, `test_human_login_pat_bypasses_partner_scope_guard`, `test_machine_pat_cannot_inherit_operator_access_from_staff_owner`, `test_machine_pat_cannot_issue_scope_outside_its_own_grants`, `test_machine_pat_cannot_spoof_human_login_markers`, `test_machine_pat_cannot_use_refresh_flow`, `test_machine_pat_is_forbidden_on_dnse_credential_route`, `test_machine_pat_with_manage_pats_scope_can_access_partner_pat_routes`, `test_machine_pat_with_manage_tenant_scope_can_access_partner_billing_route`, `test_machine_pat_without_manage_pats_scope_is_forbidden`, `test_machine_pat_without_manage_tenant_scope_is_forbidden_on_partner_billing_route`, `test_machine_pat_without_manage_tenant_scope_is_forbidden_on_tenant_members_route`, `test_pat_from_disabled_service_account_cannot_authenticate`, `test_refresh_token_from_disabled_service_account_is_rejected`, `test_service_account_detail_route_requires_manage_service_accounts_scope`, `test_staff_human_session_pat_keeps_operator_access`
 - Top-level variables:
   - `_src_dir`
 
@@ -5373,7 +5400,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `frontend/src/api/client.coreRoutes.test.js`
 
 - Top-level variables:
-  - `addTrackedSymbol`, `axiosModule`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createPriceAlert`, `deletePriceAlert`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteTrackedSymbol`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getPriceAlerts`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `markPriceAlertTriggered`, `mockApiClient`, `originalApiBaseURL`, `originalCoreApiBaseURL`, `postStockAIAdvisoryObservabilityEvent`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `regenerateStockAIExecutiveSummary`, `restoreStockAIAdvisoryComponent`, `seedSecurities`, `syncSecuritiesPrices`, `toggleStockAIAdvisoryComponentInclude`, `updatePriceAlert`, `updateTrackedSymbol`
+  - `addTrackedSymbol`, `axiosModule`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createPriceAlert`, `deletePriceAlert`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteTrackedSymbol`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getPriceAlerts`, `getSecuritiesGroups`, `getSessionFacts`, `getSessionFactsCvd`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `markPriceAlertTriggered`, `mockApiClient`, `originalApiBaseURL`, `originalCoreApiBaseURL`, `postStockAIAdvisoryObservabilityEvent`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `regenerateStockAIExecutiveSummary`, `restoreStockAIAdvisoryComponent`, `seedSecurities`, `syncSecuritiesPrices`, `toggleStockAIAdvisoryComponentInclude`, `updatePriceAlert`, `updateTrackedSymbol`
 
 ### `frontend/src/api/client.js`
 
@@ -5406,7 +5433,7 @@ Generated at: `2026-05-20 17:08:25`
 ### `frontend/src/App.jsx`
 
 - Functions:
-  - `AdminCoreShell`, `LoginPage`, `ProtectedLayout`
+  - `AdminCoreShell`, `LoginPage`, `ProtectedLayout`, `WhaleAlertsSymbolRedirect`
 - Top-level variables:
   - `debugPagesEnabled`, `hasStoredTokens`, `location`, `navigate`, `packageShellHostEnabled`
 
@@ -5500,6 +5527,11 @@ Generated at: `2026-05-20 17:08:25`
   - `CustomTooltip`, `formatVND`, `normalizeAllocationRows`
 - Top-level variables:
   - `COLORS`, `d`, `fetchAllocation`, `name`, `nameKey`, `res`
+
+### `frontend/src/components/AnalyticsTabDeck.jsx`
+
+- Top-level variables:
+  - `TABS`, `handleTabChange`, `mountedTabs`, `syncTimestamp`
 
 ### `frontend/src/components/BubbleOrderChart.jsx`
 
@@ -5649,7 +5681,7 @@ Generated at: `2026-05-20 17:08:25`
 - Functions:
   - `fmtNumber`, `fmtSignedPercent`, `handlePageSizeChange`, `handleTabChange`
 - Top-level variables:
-  - `FactsFirstWhaleAnalyticsTab`, `PAGE_SIZE_OPTIONS`, `activeSymbolSet`, `aiMonitorSummary`, `aiScopeTitle`, `alpha`, `alphaScore`, `bearishCount`, `bullishCount`, `color`, `counts`, `ddScore`, `filteredOverviewRows`, `filteredTechnicals`, `grade`, `hasAnalytics`, `healthStats`, `isAITab`, `isHoldingsScope`, `isOverviewTab`, `isTechnicalTab`, `maxDD`, `needsHealthStats`, `needsTechnicalsView`, `neutralCount`, `numeric`, `option`, `pagedOverviewRows`, `pagedTechnicals`, `scopeOptions`, `scopedUniverse`, `sharpe`, `sharpeScore`, `sign`, `sourceBadgeClass`, `sourceBadgeLabel`, `start`, `symbolOptions`, `symbolsCount`, `tabs`, `total`
+  - `FactsFirstWhaleAnalyticsTab`, `PAGE_SIZE_OPTIONS`, `activeSymbolSet`, `aiMonitorSummary`, `aiScopeTitle`, `alpha`, `alphaScore`, `bearishCount`, `bullishCount`, `color`, `counts`, `ddScore`, `filteredOverviewRows`, `filteredTechnicals`, `grade`, `hasAnalytics`, `healthStats`, `isAITab`, `isHoldingsScope`, `isOverviewTab`, `isTechnicalTab`, `maxDD`, `needsHealthStats`, `needsTechnicalsView`, `neutralCount`, `numeric`, `option`, `pagedOverviewRows`, `pagedTechnicals`, `scopeOptions`, `scopedUniverse`, `sharpe`, `sharpeScore`, `sign`, `sourceBadgeClass`, `sourceBadgeLabel`, `start`, `symbolOptions`, `symbolsCount`, `tabs`, `total`, `val`
 
 ### `frontend/src/components/modern/ModernPortfolioDigest.jsx`
 
@@ -5985,9 +6017,9 @@ Generated at: `2026-05-20 17:08:25`
 ### `frontend/src/components/TopNav.jsx`
 
 - Functions:
-  - `NavGroup`, `canNavigateTo`, `groupLinkClass`, `handleOutsideClick`
+  - `NavGroup`, `canNavigateTo`, `groupLinkClass`, `handleOutsideClick`, `handleSearch`
 - Top-level variables:
-  - `canReadSOC`, `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `capabilityMenus`, `hasCapabilityMenus`, `portfolioItems`, `ref`, `signalItems`, `systemItems`, `tenantItems`, `tenantSurfaceEnabled`, `visibleRoutes`
+  - `canReadSOC`, `canReadTenantBilling`, `canReadTenantCapabilities`, `canReadTenantHome`, `canReadTenantPATs`, `canReadTenantServiceAccounts`, `canReadTenantUsage`, `capabilityMenus`, `hasCapabilityMenus`, `navigate`, `portfolioItems`, `ref`, `signalItems`, `systemItems`, `tenantItems`, `tenantSurfaceEnabled`, `visibleRoutes`
 
 ### `frontend/src/components/UnifiedAlertBar.jsx`
 
@@ -6271,14 +6303,14 @@ Generated at: `2026-05-20 17:08:25`
 - Functions:
   - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleBulkRevoke`, `handleCopyToken`, `handleIssue`, `handleRevoke`, `handleRotate`, `loadData`, `normalizeCommaList`, `normalizeSecretReveal`, `resolveErrorMessage`, `resolvePatSecret`, `toggleSelectAll`, `toggleTokenSelection`
 - Top-level variables:
-  - `activeCount`, `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `confirmed`, `isSelected`, `newSelected`, `nextSecretReveal`, `nextServiceAccounts`, `nextTokens`, `response`, `rotating`, `rotatingCount`, `secret`, `serviceAccount`, `serviceAccountMap`, `tokenIdsList`, `tokenPrefix`, `tokenValue`, `totalPages`
+  - `activeCount`, `allCurrentPageSelectableSelected`, `canIssue`, `canRevoke`, `canRotate`, `cancelled`, `confirmed`, `currentPageSelectableTokens`, `isSelected`, `newSelected`, `nextSecretReveal`, `nextSelected`, `nextServiceAccounts`, `nextTokens`, `paginatedTokens`, `response`, `revokedCount`, `rotating`, `rotatingCount`, `secret`, `serviceAccount`, `serviceAccountMap`, `tokenIdsList`, `tokenPrefix`, `tokenValue`, `totalPages`, `visibleTokens`
 
 ### `frontend/src/pages/admin/tenant/TenantPATs.test.jsx`
 
 - Functions:
   - `mockTranslations`
 - Top-level variables:
-  - `labels`, `mockGetTenantPATs`, `mockGetTenantServiceAccounts`, `mockIssueTenantPAT`, `mockRotateTenantPAT`, `user`
+  - `labels`, `mockGetTenantPATs`, `mockGetTenantServiceAccounts`, `mockIssueTenantPAT`, `mockRotateTenantPAT`, `tokens`, `user`
 
 ### `frontend/src/pages/admin/tenant/TenantServiceAccounts.jsx`
 
@@ -6429,9 +6461,9 @@ Generated at: `2026-05-20 17:08:25`
 ### `frontend/src/pages/PackageDashboardHost.jsx`
 
 - Functions:
-  - `DashboardPanelFallback`
+  - `DashboardPanelFallback`, `buildFallbackSparkline`
 - Top-level variables:
-  - `AIAdvisorAlertPanel`, `EMPTY`, `baseSymbolUniverse`, `cp`, `digestFetchInFlightRef`, `handleDataReady`, `liveHoldings`, `monitoredSymbols`, `quote`, `realtimeBreadth`, `renderAiPanel`, `renderAlertLane`, `renderDeck`, `renderHeatmap`, `renderStats`, `requestPortfolioDigest`, `response`, `symbolUniverse`, `trackedSymbolNames`, `unreadUnifiedCount`
+  - `AIAdvisorAlertPanel`, `EMPTY`, `avgPositionSize`, `base`, `baseSymbolUniverse`, `changePct`, `cp`, `current`, `delta`, `digestFetchInFlightRef`, `handleDataReady`, `heatmapData`, `held`, `holdingsMap`, `industry`, `liveHoldings`, `monitoredSymbols`, `nominalSize`, `prev`, `quote`, `realtimeBreadth`, `renderAiPanel`, `renderAlertLane`, `renderDeck`, `renderHeatmap`, `renderStats`, `requestPortfolioDigest`, `response`, `sparkline24`, `symbolUniverse`, `totalHeldValue`, `trackedInfo`, `trackedMap`, `trackedSymbolNames`, `unreadUnifiedCount`
 
 ### `frontend/src/pages/packageShellHostRuntime.js`
 
@@ -8118,12 +8150,26 @@ Generated at: `2026-05-20 17:08:25`
 - Top-level variables:
   - `communityFeaturePages`
 
+### `packages/web/src/features/dashboard/__tests/dashboard_lifecycle.test.js`
+
+- Functions:
+  - `setter`
+- Top-level variables:
+  - `cleanup`, `effectObj`, `hasHydrated`, `holdings`, `hookResult`, `hookState`, `listA`, `listB`, `mockEffects`, `mockRefCurrent`, `mockStateSetters`, `mockStateVal`, `origUseState`, `refKey`, `stateKey`, `stateKeys`, `stateUpdate`, `token`, `trackedSymbols`, `watchlistGroups`, `watchlists`
+
+### `packages/web/src/features/dashboard/__tests__/dashboard_lifecycle.test.js`
+
+- Functions:
+  - `setter`
+- Top-level variables:
+  - `cleanup`, `effectObj`, `holdings`, `hookResult`, `listA`, `listB`, `mockEffects`, `mockRefCurrent`, `mockStateSetters`, `mockStateVal`, `refKey`, `stateKey`, `stateKeys`, `stateUpdate`, `token`, `trackedSymbols`, `watchlistGroups`, `watchlists`
+
 ### `packages/web/src/features/dashboard/useCoreDashboardData.js`
 
 - Functions:
-  - `addSymbol`, `collectDashboardSymbols`, `extractTechnicalsResponse`, `load`, `normalizeSymbol`, `safeResults`, `useCoreDashboardData`
+  - `addSymbol`, `collectDashboardSymbols`, `extractTechnicalsResponse`, `load`, `normalizeSymbol`, `safeResults`, `useCoreDashboardData`, `wrapWithErrorCode`
 - Top-level variables:
-  - `EMPTY_ARRAY`, `abortRef`, `cancelled`, `controller`, `holdings`, `normalized`, `refresh`, `symbol`, `symbolSet`, `symbols`, `techRes`, `technicals`, `trackedSymbols`, `watchlistGroups`, `watchlists`
+  - `EMPTY_ARRAY`, `abortRef`, `cancelled`, `controller`, `holdings`, `normalized`, `refresh`, `symbol`, `symbolSet`, `symbols`, `techRes`, `technicals`, `technicalsStatus`, `trackedSymbols`, `watchlistGroups`, `watchlists`
 
 ### `packages/web/src/features/saas/components/index.js`
 
@@ -8178,9 +8224,9 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/web/src/pages/AlertCenterPage.js`
 
 - Functions:
-  - `AlertCenterPage`, `formatAlertTimestamp`, `formatAlertValue`, `handleAcknowledge`, `handleApply`, `handleLoadDetail`, `handleMuteSymbol`, `load`, `normalizeSymbol`, `renderEvidenceList`, `renderSummaryCard`, `useAlertCenterData`
+  - `AlertCenterPage`, `formatAlertTimestamp`, `formatAlertValue`, `handleAcknowledge`, `handleApply`, `handleLoadDetail`, `handleMuteSymbol`, `load`, `normalizeSymbol`, `renderEvidenceList`, `renderSummaryCard`, `toggleEvidence`, `useAlertCenterData`
 - Top-level variables:
-  - `DEFAULT_ENV`, `LANE_OPTIONS`, `adapter`, `aiSuggestCount`, `alerts`, `e`, `entries`, `highSeverityCount`, `mountedRef`, `numericValue`, `query`, `timestamp`
+  - `DEFAULT_ENV`, `LANE_OPTIONS`, `SORT_OPTIONS`, `WINDOW_OPTIONS`, `adapter`, `aggregatedSymbols`, `aiSuggestCount`, `alerts`, `buyPercent`, `dir`, `directionClass`, `e`, `entries`, `freq`, `freqClass`, `highSeverityCount`, `interval`, `isEvidenceExpanded`, `mountedRef`, `neutralPercent`, `numericValue`, `query`, `rawAlerts`, `s`, `sellPercent`, `sev`, `sortedAlerts`, `sym`, `symbolStats`, `t`, `timeA`, `timeB`, `timestamp`, `triggerManualRefresh`, `valA`, `valB`
 
 ### `packages/web/src/pages/coreShellPageHelpers.js`
 
@@ -8192,9 +8238,9 @@ Generated at: `2026-05-20 17:08:25`
 ### `packages/web/src/pages/DashboardPage.js`
 
 - Functions:
-  - `DashboardPage`, `ErrorBanner`, `LoadingSkeleton`, `NOOP`
+  - `DashboardPage`, `ErrorBanner`, `LoadingSkeleton`, `NOOP`, `collectUniqueSortedSymbols`
 - Top-level variables:
-  - `e`, `prevHoldingsRef`, `resolvedRenderAlertLane`
+  - `e`, `prevReadyTokenRef`, `rawList`, `resolvedRenderAlertLane`, `showSkeleton`, `token`, `uniqueSorted`
 
 ### `packages/web/src/pages/pageRegistry.js`
 

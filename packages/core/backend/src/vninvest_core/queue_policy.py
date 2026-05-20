@@ -48,8 +48,10 @@ QUEUE_DOMAIN_MATRIX = {
         'task_routes': (
             'market_serving.materializers.materialize_symbol_snapshot',
             'market_serving.materializers.materialize_session_facts',
-            # C1: native ingest task
+            # C1: native ingest — price board every 60s
             'data_ingest.tasks.fetch_and_upsert_price_board',
+            # C2: native intraday tick hydration — same SSOT universe, persists to IntradayTick
+            'data_ingest.tasks.warm_intraday_universe',
         ),
         'periodic_tasks': (
             'materialize-symbol-snapshot-60s',
@@ -58,6 +60,8 @@ QUEUE_DOMAIN_MATRIX = {
             'materialize-bucket-facts-5m',
             # C1: native ingest — fetch price board every 60s
             'ingest-price-board-60s',
+            # C2: native intraday hydrate — today's ticks every 5 minutes
+            'warm-intraday-realtime-5m',
         ),
     },
     'market_serving_analytics': {
@@ -87,6 +91,8 @@ QUEUE_DOMAIN_MATRIX = {
             'market_serving.materializers.materialize_pre_open_snapshots',
             # Daily OHLCV backfill after market close
             'data_ingest.tasks.backfill_daily_prices',
+            # Pre-5-year historical OHLCV backfill to market inception
+            'data_ingest.tasks.backfill_pre5y_to_market_inception',
         ),
         'periodic_tasks': (
             'enrich_history_bars',
@@ -96,6 +102,8 @@ QUEUE_DOMAIN_MATRIX = {
             'daily-backfill-prices-1700',
             # Deep history bootstrap: Sun 03:00 ICT (5 years) — gap-fill for all active symbols
             'deep-history-bootstrap-weekly',
+            # Pre-5-year historical backfill — complements deep-history 5-year job
+            'pre5y-history-backfill-weekly',
             # DNSE intraday tape 90-ngày — Sun 01:00 ICT orchestrator
             'dnse-quarterly-backfill-intraday',
         ),

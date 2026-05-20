@@ -395,6 +395,21 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-price-board-60s', 'realtime_prefetch')},
     },
 
+    # === C2: Native intraday tick hydration — every 5 minutes ===
+    # Persistent counterpart of the price-cache prefetch (C1).
+    # Same SSOT GlobalSymbolRegistry universe → fetch_intraday_tape (KBS/VCI/DNSE)
+    # → bulk_create IntradayTick.  After hydration, the existing
+    # detect-whale-alerts-5m and materialize-session-facts-5m tasks
+    # pick up fresh rows automatically — closing the gap where IntradayTick
+    # for the current session was only filled by the weekly DNSE backfill.
+    # schedule_realtime_prefetch_shards also enqueues this with throttling
+    # as belt-and-suspenders (see realtime_prefetch.py hydrate leg).
+    'warm-intraday-realtime-5m': {
+        'task': 'data_ingest.tasks.warm_intraday_universe',
+        'schedule': 300.0,  # every 5 minutes
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('warm-intraday-realtime-5m', 'realtime_prefetch')},
+    },
+
     # === Daily OHLCV backfill — after HOSE close (17:00 ICT = UTC+7) ===
     # Upserts 365 days of daily candles for all tracked symbols via VCI+KBS parallel.
     'daily-backfill-prices-1700': {
@@ -424,6 +439,20 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=20, minute=0, day_of_week=6),  # Sat 20:00 UTC = Sun 03:00 ICT
         'kwargs': {'days': 1825, '_scheduler_job_key': 'deep-history-bootstrap-weekly'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('deep-history-bootstrap-weekly', 'enrichment_offhours')},
+    },
+
+    # === Pre-5-year historical backfill to market inception — weekly Sun 04:00 ICT ===
+    # Complements deep-history-bootstrap-weekly (latest 5 years) by filling older history
+    # from market inception up to the day before the rolling 5-year window.
+    'pre5y-history-backfill-weekly': {
+        'task': 'data_ingest.tasks.backfill_pre5y_to_market_inception',
+        'schedule': crontab(hour=21, minute=0, day_of_week=6),  # Sat 21:00 UTC = Sun 04:00 ICT
+        'kwargs': {
+            'market_inception_date': '2000-07-28',
+            'recent_years': 5,
+            '_scheduler_job_key': 'pre5y-history-backfill-weekly',
+        },
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('pre5y-history-backfill-weekly', 'enrichment_offhours')},
     },
 
     # === P3-T03: Daily ingest_daily_prices (shadow run) ===

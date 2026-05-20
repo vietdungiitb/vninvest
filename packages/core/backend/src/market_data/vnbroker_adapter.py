@@ -2,6 +2,8 @@ import logging
 import time
 import random
 import json
+from datetime import date as dt_date
+from datetime import timedelta
 from datetime import timezone as _dt_timezone
 from importlib import import_module
 from typing import Any, Optional
@@ -18,6 +20,9 @@ from .models import VnbrokerRuntimeConfig
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_PROVIDER_SOURCES = ('VCI', 'KBS', 'DNSE')
+_DAILY_HISTORY_ALLOWED_SOURCES = ('VCI', 'KBS')
+_DAILY_HISTORY_FALLBACK_SOURCE = 'VCI'
+_DAILY_HISTORY_DISABLED_WARN_CODE = 'DNSE_DAILY_OHLCV_DISABLED'
 
 class VnbrokerAdapterError(Exception):
     """Base error for vnbroker adapter."""
@@ -245,6 +250,39 @@ def _resolve_realtime_source(source: str | None) -> str:
     return _normalize_supported_source(source, fallback_to_config=True)
 
 
+def _resolve_daily_history_source(source: str | None) -> str:
+    normalized_source = _normalize_supported_source(source, fallback_to_config=True)
+    requested_source = str(source or '').strip().upper()
+
+    if normalized_source in _DAILY_HISTORY_ALLOWED_SOURCES:
+        return normalized_source
+
+    if normalized_source == 'DNSE':
+        if requested_source == 'DNSE':
+            logger.warning(
+                '[%s] Daily OHLCV provider DNSE is hard-disabled on native core path; '
+                'returning empty result.',
+                _DAILY_HISTORY_DISABLED_WARN_CODE,
+            )
+            return ''
+
+        logger.warning(
+            '[%s] Daily OHLCV source resolved to DNSE from runtime config; '
+            'forcing fallback source %s.',
+            _DAILY_HISTORY_DISABLED_WARN_CODE,
+            _DAILY_HISTORY_FALLBACK_SOURCE,
+        )
+        return _DAILY_HISTORY_FALLBACK_SOURCE
+
+    logger.warning(
+        '[DAILY_OHLCV_SOURCE_UNSUPPORTED] Daily OHLCV source %s unsupported; '
+        'forcing fallback source %s.',
+        normalized_source,
+        _DAILY_HISTORY_FALLBACK_SOURCE,
+    )
+    return _DAILY_HISTORY_FALLBACK_SOURCE
+
+
 def _load_quote_class(source: str):
     normalized_source = str(source or '').strip().upper()
     if not normalized_source:
@@ -418,24 +456,42 @@ def fetch_price_board_snapshot(symbols: list[str], *, source: str | None = None)
 
     return results
 
-def fetch_daily_history(symbol: str, days: int = 365, *, source: str | None = None) -> list[dict[str, Any]]:
+def fetch_daily_history(
+    symbol: str,
+    days: int = 365,
+    *,
+    source: str | None = None,
+    start_date: dt_date | None = None,
+    end_date: dt_date | None = None,
+) -> list[dict[str, Any]]:
     """
     Lấy lịch sử giá ngày (OHLCV) cho một symbol qua provider được chỉ định.
     Trả về list dict chuẩn hoá để ghi vào DailyPrice.
     """
-    from datetime import timedelta, date as dt_date
-
     symbol_upper = symbol.strip().upper()
-    normalized_source = _resolve_realtime_source(source)
-    end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=days)
+    normalized_source = _resolve_daily_history_source(source)
+    if not normalized_source:
+        return []
+
+    normalized_end_date = end_date or timezone.now().date()
+    normalized_days = max(int(days or 1), 1)
+    normalized_start_date = start_date or (normalized_end_date - timedelta(days=normalized_days))
+    if normalized_start_date > normalized_end_date:
+        logger.warning(
+            'fetch_daily_history %s ignored for %s due to invalid date range (%s > %s).',
+            normalized_source,
+            symbol_upper,
+            normalized_start_date,
+            normalized_end_date,
+        )
+        return []
 
     try:
         quote_class = _load_quote_class(normalized_source)
         quote_client = quote_class(symbol=symbol_upper)
         df = quote_client.history(
-            start=start_date.isoformat(),
-            end=end_date.isoformat(),
+            start=normalized_start_date.isoformat(),
+            end=normalized_end_date.isoformat(),
             interval='1D',
             show_log=False,
         )

@@ -218,6 +218,14 @@ CANONICAL_SOC_SERVICES = (
         'owner_team': 'core',
         'tags': ['dataops', 'daily-prices', 'deep-history', 'scheduler'],
     },
+    {
+        'service_key': 'pre5y_history_backfill',
+        'name': 'Pre-5Y History Backfill Scheduler',
+        'domain': 'dataops',
+        'description': 'Backfills OHLCV from market inception to the day before the rolling 5-year window.',
+        'owner_team': 'core',
+        'tags': ['dataops', 'daily-prices', 'historical', 'scheduler'],
+    },
 )
 
 REQUIRED_SERVICE_KEYS = frozenset(service['service_key'] for service in CANONICAL_SOC_SERVICES)

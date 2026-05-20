@@ -1,5 +1,249 @@
 # Code Change Audit Ledger
 
+# 2026-05-21 | Pre-5Y historical backfill service (market inception) ✅
+
+## Problem Solved
+
+Backfill daily OHLCV hiện có đã cover 5 năm gần đây (`deep-history-bootstrap-weekly` với `days=1825`), nhưng chưa có service tách riêng phần lịch sử cũ hơn 5 năm để đi về mốc mở cửa thị trường VN.
+
+Slice này bổ sung service mới để lấp phần pre-5-year range một cách tường minh:
+
+- Thêm task `backfill_pre5y_to_market_inception` để tạo plan window từ `market_inception_date` đến ngày trước mốc rolling 5 năm gần nhất.
+- Mở rộng `fetch_daily_history(...)` cho phép nhận explicit `start_date`/`end_date` (vẫn tương thích path cũ theo `days`).
+- Nối scheduler + queue-policy + scheduler-catalog + service-registry để job mới hiển thị/điều khiển được ở Operations Center.
+- Bổ sung focused tests cho task mới và metadata/service registration.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/vnbroker_adapter.py` | Added `start_date`/`end_date` support in `fetch_daily_history` for explicit history-window backfill |
+| `packages/core/backend/src/data_ingest/tasks.py` | Added explicit window handling in bucket fetch path and new `backfill_pre5y_to_market_inception` task |
+| `packages/core/backend/src/vninvest_core/settings.py` | Added periodic job `pre5y-history-backfill-weekly` (Sun 04:00 ICT) |
+| `packages/core/backend/src/vninvest_core/queue_policy.py` | Added task route + periodic key mapping for the new pre-5y job |
+| `packages/core/backend/src/service_ops/scheduler_catalog.py` | Added scheduler metadata for `pre5y-history-backfill-weekly` |
+| `packages/core/backend/src/service_ops/registry.py` | Registered canonical service `pre5y_history_backfill` |
+| `packages/core/backend/src/data_ingest/tests/test_tasks.py` | Added unit test for pre-5y wrapper and updated plan-window assertion on existing backfill test |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_s04.py` | Added metadata + service-definition assertions for pre-5y job |
+| `module_tree_full.md` | Regenerated module tree after this backend slice |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this slice |
+
+## Validation
+
+- `python -m pytest --ds=vninvest_core.settings src/data_ingest/tests/test_tasks.py -k "pre5y or consumes_plan_items_with_detailed_counts"` — PASS (`2 passed`)
+- `python -m pytest --ds=vninvest_core.settings src/service_ops/tests/test_scheduler_s04.py -k "pre5y"` — PASS (`2 passed`)
+- `git diff --check -- packages/core/backend/src/market_data/vnbroker_adapter.py packages/core/backend/src/data_ingest/tasks.py packages/core/backend/src/vninvest_core/settings.py packages/core/backend/src/vninvest_core/queue_policy.py packages/core/backend/src/service_ops/scheduler_catalog.py packages/core/backend/src/service_ops/registry.py packages/core/backend/src/data_ingest/tests/test_tasks.py packages/core/backend/src/service_ops/tests/test_scheduler_s04.py` — PASS (no output)
+- VS Code diagnostics on touched files via `get_errors` — PASS (no errors)
+- `Set-Location 'C:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` — PASS
+- `Set-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1` — PASS
+
+## Residual Risk
+
+- Job pre-5y hiện dùng cửa sổ năm quy đổi theo `365 * recent_years`; nếu cần chuẩn year-boundary theo lịch giao dịch/leap-year, nên nâng cấp bằng policy helper riêng.
+- Code-review subagent trong phiên này không truy cập được diff thực nên chưa cung cấp được line-level findings; đã bù bằng focused pytest + diagnostics + diff-check.
+
+# 2026-05-21 | Tenant PAT revoked-list hygiene + safe bulk-selection reset ✅
+
+## Problem Solved
+
+Slice này xử lý yêu cầu UX mới trên Tenant PAT admin: danh sách có quá nhiều PAT đã thu hồi, trong khi bulk action cũ có thể gây thao tác nhầm lên item ngoài viewport khi người vận hành đổi trang, đổi page size, ẩn/hiện revoked, hoặc reload danh sách.
+
+Phần sửa đã chốt trong slice này:
+
+- Mặc định ẩn PAT `revoked` khỏi danh sách và thêm toggle để hiện lại khi cần kiểm tra audit.
+- Chuyển `select all` sang semantics theo trang hiện tại thay vì theo toàn bộ tập dữ liệu đang filter.
+- Xóa toàn bộ bulk selection khi đổi trang, đổi số mục mỗi trang, ẩn/hiện revoked, hoặc reload lại token list để chặn revoke nhầm PAT ngoài màn hình.
+- Việt hóa tự nhiên hơn các copy mới và copy bulk-revoke liên quan đến `PAT` trong locale `vi`.
+- Bổ sung focused regression coverage cho các nhánh: hide/show revoked, trang chỉ có revoked, đổi trang, đổi page size, ẩn lại revoked, và reload danh sách.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/src/pages/admin/tenant/TenantPATs.jsx` | Added default hide-revoked toggle, page-scoped selection, and selection reset guards on pagination/filter/reload transitions |
+| `frontend/src/pages/admin/tenant/TenantPATs.test.jsx` | Added regressions for hide/show revoked, revoked-only page, page change, page-size change, and list reload selection resets |
+| `frontend/src/i18n/vi.js` | Added and refined Vietnamese PAT revoke/bulk-revoke copy for the new UX |
+| `frontend/src/i18n/en.js` | Added English labels for the hide/show revoked toggle and hidden-state messaging |
+| `module_tree_full.md` | Regenerated canonical module tree after the final Tenant PAT UI slice (`1267` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the Tenant PAT revoked-list cleanup slice and verification outcome |
+
+## Validation
+
+- `Set-Location 'C:\Mujoco Projects\vninvest\frontend'; $env:CI='true'; npm test -- --runTestsByPath src/pages/admin/tenant/TenantPATs.test.jsx --runInBand` — PASS (`8` tests, `OK`)
+- `git diff --check -- frontend/src/pages/admin/tenant/TenantPATs.jsx frontend/src/pages/admin/tenant/TenantPATs.test.jsx frontend/src/i18n/vi.js frontend/src/i18n/en.js` — PASS (no output)
+- VS Code diagnostics on touched code files via `get_errors` — PASS (no errors)
+- `Set-Location 'C:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` — PASS (`1267` modules)
+- `Set-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1` — PASS
+   - Docker images rebuilt successfully: `vninvest-dev-core-runtime`, `vninvest-dev-frontend`
+   - `vninvest-dev-core-api` reached `healthy`
+   - Native scheduler queue check returned `No queue drift detected`
+   - Smoke checks passed: `Core API health : OK`, `Frontend health : OK`
+- Final `code-reviewer` pass on the touched Tenant PAT slice — PASS (`0` critical, `0` high, `0` medium, `1` low)
+   - Low note only: UI behavior is correct, but test suite still mocks translations instead of rendering the real i18n dictionaries end-to-end.
+
+## Residual Risk
+
+- Focused tests now cover the destructive-selection safety paths, but wording regressions in untouched `vi` dictionary keys can still slip through because the page tests mock translations instead of mounting the real i18n bundle.
+- UI screenshot/video was not captured in this slice; dev runtime has been refreshed successfully for direct manual verification at `/tenant-admin/pats` in the running stack.
+
+# 2026-05-20 | Tenant PAT admin human-session isolation + session-facts route repair ✅
+
+## Problem Solved
+
+Slice này xử lý đúng hai lỗi runtime user vừa báo trên dev stack native:
+
+- `POST /api/core/v1/partner/pats/<id>/rotate/` trả `400` khi bấm rotate trên Tenant PAT UI.
+- `GET /core/v1/session-facts/<symbol>/...` trả `404` hàng loạt từ frontend.
+
+Root cause đã được xác nhận cục bộ và bằng runtime check:
+
+- Frontend `getSessionFacts()` và `getSessionFactsCvd()` đang ép request sang core base `/core/v1`, trong khi owner route native hiện tại của market-serving vẫn là `/api/market/session-facts/*`.
+- Tenant PAT admin backend đang liệt kê cả `CorePATCredential.is_human_session=True`; runtime query xác nhận token lỗi `d1596b84-50f9-4f59-a2d0-76861f491077` chính là PAT human-session `login:admin`, nên thao tác rotate chạm validator dành riêng cho login session thay vì machine PAT admin flow.
+
+Phần sửa trong slice này:
+
+- Giới hạn PAT admin list sang machine PAT only bằng cách loại `is_human_session=True` khỏi `PATListView`.
+- Chặn rotate/revoke trên human-session PAT ở partner admin surface bằng filter owner-path ngay tại `get_object_or_404(...)`, trả `404` thay vì để rơi vào validation path sai.
+- Chuyển frontend session-facts wrappers về đúng native market-serving base `/api/market/session-facts/*`.
+- Bổ sung regression test cho deployment có `REACT_APP_API_BASE_URL` và `REACT_APP_CORE_API_BASE_URL` tách host, để session-facts không bị trôi ngược về core host sau này.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/views.py` | Excluded human-session PATs from tenant PAT admin list and blocked rotate/revoke on them |
+| `packages/core/backend/tests/test_identity_access.py` | Added regressions for hidden human-session PATs and `404` on rotate/revoke through partner admin routes |
+| `frontend/src/api/client.js` | Fixed session-facts wrappers to call `/api/market/session-facts/*` instead of `/core/v1/session-facts/*` |
+| `frontend/src/api/client.coreRoutes.test.js` | Added session-facts route regressions for default and split-host API/core deployments |
+| `module_tree_full.md` | Regenerated canonical module tree after this bug-fix slice (`1267` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the PAT admin/session-facts runtime repair and verification outcome |
+
+## Validation
+
+- `Set-Location 'C:\Mujoco Projects\vninvest\packages\core\backend'; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1,testserver,core-api'; $env:CORS_ALLOWED_ORIGINS='http://localhost'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_identity_access.CorePartnerPATApiTests --keepdb` — PASS (`9` tests, `OK`)
+- `Set-Location 'C:\Mujoco Projects\vninvest\frontend'; npm test -- --runTestsByPath src/api/client.coreRoutes.test.js --watch=false --runInBand` — PASS (`10` tests, `OK`)
+- Runtime DB check via `docker exec vninvest-dev-core-api python /app/src/manage.py shell -c "..."` — PASS (confirmed failing token `d1596b84-50f9-4f59-a2d0-76861f491077` is `is_human_session=True`, label `login:admin`)
+- `git diff --check -- packages/core/backend/src/identity_access/views.py packages/core/backend/tests/test_identity_access.py frontend/src/api/client.js frontend/src/api/client.coreRoutes.test.js` — PASS (no output)
+- VS Code diagnostics on touched code files via `get_errors` — PASS (no errors)
+- Focused `code-reviewer` pass after fix + regression update — PASS (`0` critical, `0` high)
+- `Set-Location 'C:\Mujoco Projects\vninvest'; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` — PASS (`1267` modules)
+- `Set-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1` — PASS
+   - Docker images rebuilt successfully: `vninvest-dev-core-runtime`, `vninvest-dev-frontend`
+   - `vninvest-dev-core-api` reached `healthy`
+   - Native scheduler queue check returned `No queue drift detected`
+   - Smoke checks passed: `Core API health : OK`, `Frontend health : OK`
+
+## Residual Risk
+
+- Browser tabs đang mở Tenant PAT page từ trước khi refresh stack có thể vẫn giữ danh sách PAT cũ trong state UI cho đến khi reload trang; sau reload, human-session PAT sẽ biến mất khỏi admin list.
+- Với session-facts CVD, `404` vẫn là hành vi hợp lệ nếu request hỏi `window` hoặc `trade_date` chưa được materialize trong read model; slice này chỉ sửa sai route base, không thay đổi semantics dữ liệu của market-serving.
+
+# 2026-05-20 | Core partner PAT/service-account auth hardening + native SaaS ownership closure ✅
+
+## Problem Solved
+
+Slice này chốt dứt điểm native core ownership cho partner PAT/service-account path trong `packages/core/backend` thay vì vá legacy backend, đồng thời khóa toàn bộ nhóm auth gap đã lộ ra qua nhiều vòng review.
+
+Phần hardening đã hoàn tất trong slice này:
+
+- Giữ route owner ở native core path cho `/core/v1/partner/*`; không sửa runtime qua `backend/portfolio/*`.
+- Bổ sung contract native cho service account và PAT theo shape frontend đang dùng: `id`, `environment`, `policy_ids`, `object`, `scope_codes`, `secret`, `new_token`.
+- Thêm trạng thái `ROTATING` và grace window cho rotate, vẫn cho token cũ sống trong cửa sổ grace theo thiết kế.
+- Chuyển human login PAT từ heuristic mutable (`label`, `audit_reason`) sang provenance bit bất biến `is_human_session`.
+- Thêm migration revoke toàn bộ PAT legacy giả dạng login session để chặn bypass còn sót trong DB cũ.
+- Thêm bounded TTL cho human session PAT và refresh rotation thật: refresh chỉ dành cho human-session PAT, cấp secret mới, revoke secret cũ.
+- Chặn PAT của service account đã `disabled` ở auth path, issue path, rotate path, và refresh path.
+- Chặn tenant tự lockout bằng cách disable/xóa service account active cuối cùng.
+- Canonicalize `policy_ids -> scope_codes` cho service account/PAT path và migrate dữ liệu cũ sang canonical scope vocabulary.
+- Tước quyền `is_staff` / `is_superuser` khỏi machine PAT principal ở auth layer để machine PAT không bleed sang operator surfaces.
+- Áp reusable PAT/human-session permission guard lên các endpoint identity-access liền kề (`partner billing/usage`, `DNSE credential`, `tenant members`, `user profile`, `user config`) để low-scope machine PAT không còn đi xuyên qua các route chỉ dùng `IsAuthenticated`.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/models.py` | Added immutable `is_human_session` flag and issuance support for human-session provenance |
+| `packages/core/backend/src/identity_access/authentication.py` | Enforced disabled service-account rejection and stripped staff/superuser privilege from machine PAT principals |
+| `packages/core/backend/src/identity_access/serializers.py` | Added policy/scope canonicalization helpers and aligned service-account contract storage with PAT `scope_codes` |
+| `packages/core/backend/src/identity_access/views.py` | Hardened partner PAT/service-account flows, added last-active service-account guard, and reused PAT scope enforcement helpers |
+| `packages/core/backend/src/identity_access/views_auth.py` | Added bounded human-session PAT lifetime, refresh rotation, disabled-SA refresh rejection, and request-bound service-account resolution |
+| `packages/core/backend/src/identity_access/permissions.py` | Added reusable human-session and PAT-scope guard helpers; blocked machine PATs from operator-only permission path |
+| `packages/core/backend/src/identity_access/commercial_partner_views.py` | Required `manage_tenant` scope or human session for partner billing/usage reads |
+| `packages/core/backend/src/identity_access/dnse_credential_views.py` | Restricted DNSE credential CRUD to human sessions only |
+| `packages/core/backend/src/identity_access/tenant_member_views.py` | Required `manage_tenant` scope or human session on tenant-member management flows and human session for invite acceptance |
+| `packages/core/backend/src/identity_access/migrations/0006_corepatcredential_is_human_session.py` | Added `is_human_session` column and revoked legacy login-marker PATs during migration |
+| `packages/core/backend/src/identity_access/migrations/0007_canonicalize_service_account_scope_codes.py` | Canonicalized service-account/PAT stored scopes and policy metadata to PAT scope vocabulary |
+| `packages/core/backend/tests/test_identity_access.py` | Added native contract and policy-backed PAT issuance regression coverage |
+| `packages/core/backend/tests/test_identity_access_api_routes.py` | Added native route ownership and human-session refresh rotation route coverage |
+| `packages/core/backend/tests/test_identity_access_permissions.py` | Added regression coverage for spoofed login markers, disabled service accounts, last-active lockout protection, operator bleed, partner billing/tenant-member/DNSE machine-PAT blocks, and human/session vs machine-PAT separation |
+| `module_tree_full.md` | Regenerated canonical module tree after this slice (`1267` modules) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the identity-access native hardening closure and runtime blocker |
+
+## Validation
+
+- `$env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1,testserver,core-api'; $env:CORS_ALLOWED_ORIGINS='http://localhost'; Push-Location 'C:\Mujoco Projects\vninvest\packages\core\backend'; & 'c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe' manage.py test tests.test_identity_access_api_routes tests.test_identity_access tests.test_identity_access_permissions --keepdb; Pop-Location` — PASS (`47` tests, `51.755s`, `OK`)
+- `git diff --check --` scoped to all touched identity-access code/test files — PASS (no output)
+- VS Code diagnostics on touched code files via `get_errors` — PASS (no errors)
+- Final `code-reviewer` pass on the full diff — PASS (`0` critical, `0` high)
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1267` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
+   - Docker images rebuilt successfully: `vninvest-dev-core-runtime`, `vninvest-dev-frontend`
+   - Native dev stack started successfully; `vninvest-dev-core-api` reached `healthy`
+   - Native scheduler queue check returned `No queue drift detected`
+   - Smoke checks passed: `Core API health : OK`, `Frontend health : OK`
+
+## Residual Risk
+
+- Deployment of migration `0006` will forcibly revoke legacy login-marker PATs, so existing browser sessions matching that old shape will be logged out and must re-authenticate.
+- Migration `0007` must be applied before manual runtime validation or production rollout because the new guards assume canonical scope storage and the new `is_human_session` column exist in the live DB.
+- Deploying migration `0006` will force re-login for legacy login-marker PAT sessions, so expect existing browser sessions on old markers to be invalidated after rollout.
+
+# 2026-05-20 | Daily backfill scheduler freshness semantics fix + live verification ✅
+
+## Problem Solved
+
+Sau khi vá stale-running self-heal, live verification trên SchedulerBoard cho thấy `daily-backfill-prices-1700`
+vẫn có thể bị hiển thị `degraded` trong khoảng giữa hai lần chạy bình thường chỉ vì job này đang dùng
+freshness threshold mặc định `600s`, trong khi đây là job chạy theo ngày.
+
+Slice này sửa đúng chỗ quyết định status:
+
+- Gán `freshness_warm_seconds = 24 * 3600` cho `daily-backfill-prices-1700` trong `CATALOG_JOB_METADATA`.
+- Giữ logic `running`/`inflight` nguyên vẹn, nhưng khi job không inflight nữa thì trạng thái giữa hai daily window sẽ là `enabled`/`warm` thay vì `degraded`/`stale` giả.
+- Đồng bộ luôn `status_reason` để khi job daily thực sự stale, message operator-facing hiển thị đúng ngưỡng `86400s` thay vì fallback `600s`.
+- Thêm regression test xác nhận một run thành công cách hiện tại 6 giờ vẫn được xem là healthy cho daily cadence.
+- Thêm regression test xác nhận khi job daily thực sự stale, `status_reason` phản ánh đúng threshold daily.
+- Chạy lại live verification qua đúng operator endpoints mà SchedulerBoard dùng để chụp snapshot trước/sau `run_now`.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/scheduler_catalog.py` | Added daily freshness window metadata for `daily-backfill-prices-1700` |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_catalog.py` | Added regression coverage for daily scheduler freshness semantics |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this execution/audit record |
+| `PROGRESS_DASHBOARD.md` | Logged the daily scheduler freshness semantics fix and live verification outcome |
+| `module_tree_full.md` | Regenerated canonical module tree after this scheduler slice (`1264` modules) |
+
+## Validation
+
+- `Set-Location 'C:\Mujoco Projects\vninvest'; docker exec vninvest-dev-core-api sh -lc 'cd /app/src && python manage.py test service_ops.tests.test_scheduler_catalog.SchedulerCatalogUnitTests.test_daily_backfill_uses_daily_freshness_window --keepdb'` — PASS (`1` test)
+- `Set-Location 'C:\Mujoco Projects\vninvest'; docker exec vninvest-dev-core-api sh -lc 'cd /app/src && python manage.py test service_ops.tests.test_scheduler_catalog.SchedulerCatalogUnitTests --keepdb'` — PASS (`13` tests)
+- Final live operator snapshot via `/core/v1/operator/scraping/dataops/scheduler/plan/`, `/history/`, and `/actions/` — PASS
+   - Before-final: job remained `running` with `freshness_state=warm`, not `stale`, while an in-flight manual verification run existed.
+   - After-final run_now: new task accepted (`Celery task ID: d98f86cf-42a9-4309-9e9c-d82613687c8f`), status stayed `running`, `last_run_at` advanced immediately, `freshness_state=fresh`, and a new queued history row was created.
+- `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1264` modules)
+- `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS (`core-api` health OK, frontend health OK, queue drift clean)
+
+## Residual Risk
+
+- Live verification exposed that `run_now` vẫn chấp nhận enqueue thêm một manual run khi đã có run `queued/running`, nên operator hiện vẫn có thể tạo overlapping daily backfill runs.
+- `BackfillExecutionRun.trigger` trong runtime path hiện vẫn có khả năng ghi nhận `beat_schedule` khi run được kích hoạt từ Scheduler action nếu task chỉ dựa vào `_scheduler_job_key`; đây là vấn đề observability riêng chưa xử lý trong slice này.
+
 # 2026-05-20 | Daily backfill stale-running self-heal for scheduler truth ✅
 
 ## Problem Solved
