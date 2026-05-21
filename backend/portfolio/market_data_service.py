@@ -33,6 +33,10 @@ from .adapters.vnbroker_adapter import (
     read_stream_intraday_ticks,
 )
 from .baseline_service import BaselineService
+
+# OHLCV Bars contract — giới hạn đồng bộ với serializers (không import để tránh circular)
+_OHLCV_BAR_LIMIT_DEFAULT = 500
+_OHLCV_BAR_LIMIT_MAX = 1000
 from .domain_constants import (
     WHALE_AGGREGATE_VNBROKER_MAX_SYMBOLS_DEFAULT,
     WHALE_CONFIG_VERSION,
@@ -2406,6 +2410,311 @@ class MarketDataService:
 
         result = StockWorkspaceChartResponseSerializer(payload).data
         set_cache(cache_key, result, timeout=3600)
+        return result
+
+    # ------------------------------------------------------------------
+    # OHLCV Bars contract mới — hỗ trợ window (from/to) và cursor (before/after)
+    # Đáp ứng yêu cầu frontend handoff 2026-05-21
+    # ------------------------------------------------------------------
+
+    # Số ngày ước tính cần fetch cho mỗi bar theo timeframe (dùng để tính khoảng date range)
+    _TIMEFRAME_DAYS_PER_BAR = {
+        '1m': 1 / (8 * 60),
+        '5m': 1 / (8 * 12),
+        '15m': 1 / (8 * 4),
+        '1H': 1 / 8,
+        '2H': 1 / 4,
+        '4H': 1 / 2,
+        'D': 1.0,
+        'W': 7.0,
+        'M': 30.0,
+    }
+
+    # Cache TTL theo timeframe (bar daily/weekly/monthly ít thay đổi hơn)
+    _BARS_CACHE_TTL = {
+        '1m': 30,
+        '5m': 60,
+        '15m': 120,
+        '1H': 300,
+        '2H': 600,
+        '4H': 900,
+        'D': 3600,
+        'W': 7200,
+        'M': 14400,
+    }
+
+    def _datetime_to_unix_ms(self, dt_value) -> int | None:
+        """Chuyển datetime sang Unix milliseconds UTC."""
+        import datetime as dt
+        if dt_value is None:
+            return None
+        if isinstance(dt_value, dt.datetime):
+            if dt_value.tzinfo is None:
+                dt_value = dt_value.replace(tzinfo=dt.timezone.utc)
+            return int(dt_value.timestamp() * 1000)
+        if isinstance(dt_value, dt.date):
+            combined = dt.datetime.combine(dt_value, dt.time.min, tzinfo=dt.timezone.utc)
+            return int(combined.timestamp() * 1000)
+        return None
+
+    def _build_bar_row(self, row: dict, symbol: str) -> dict | None:
+        """Chuẩn hóa một row dữ liệu sang bar format (timestamp unix ms)."""
+        import datetime as dt
+
+        raw_time = row.get('time', row.get('date', ''))
+        point_dt = self._normalize_chart_timestamp(raw_time)
+        if point_dt is None:
+            return None
+
+        if isinstance(point_dt, dt.date) and not isinstance(point_dt, dt.datetime):
+            point_dt = dt.datetime.combine(point_dt, dt.time.min, tzinfo=dt.timezone.utc)
+        elif point_dt.tzinfo is None:
+            point_dt = point_dt.replace(tzinfo=dt.timezone.utc)
+
+        ts_ms = int(point_dt.timestamp() * 1000)
+        normalized_open = self._normalize_historical_quote_price(row.get('open'), symbol)
+        normalized_high = self._normalize_historical_quote_price(row.get('high'), symbol)
+        normalized_low = self._normalize_historical_quote_price(row.get('low'), symbol)
+        normalized_close = self._normalize_historical_quote_price(row.get('close'), symbol)
+        if normalized_close is None:
+            return None
+
+        return {
+            'timestamp': ts_ms,
+            'open': normalized_open,
+            'high': normalized_high,
+            'low': normalized_low,
+            'close': normalized_close,
+            'volume': float(row['volume']) if row.get('volume') is not None else None,
+        }
+
+    def _fetch_bars_for_range(
+        self,
+        symbol: str,
+        timeframe: str,
+        start_date,
+        end_date,
+    ) -> list[dict]:
+        """
+        Fetch bars từ vnbroker/DB cho khoảng [start_date, end_date].
+        Trả về list bar đã chuẩn hóa, sort tăng dần theo timestamp.
+        Fallback sang DailyPrice nếu timeframe daily+.
+        """
+        import datetime as dt
+
+        interval = self._CHART_TIMEFRAME_TO_INTERVAL[timeframe]
+        bars: list[dict] = []
+
+        try:
+            df = fetch_history_dataframe(
+                symbol,
+                start=str(start_date),
+                end=str(end_date),
+                interval=interval,
+            )
+            if df is not None and not df.empty:
+                for _, row in df.iterrows():
+                    bar = self._build_bar_row(dict(row), symbol)
+                    if bar is not None:
+                        bars.append(bar)
+        except ExternalSystemException as exc:
+            logger.warning('get_ohlcv_bars vnbroker lỗi %s: %s', symbol, exc)
+
+        is_intraday = timeframe in self._INTRADAY_LOOKBACK_DAYS_CAP
+
+        # Fallback sang DB chỉ cho daily+ frame
+        if not bars and not is_intraday:
+            db_rows = list(
+                DailyPrice.objects
+                .filter(symbol=symbol, date__range=(start_date, end_date))
+                .order_by('date')
+                .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')
+            )
+            for row in db_rows:
+                bar = self._build_bar_row({
+                    'date': row['date'],
+                    'open': row['open_price'],
+                    'high': row['high_price'],
+                    'low': row['low_price'],
+                    'close': row['close_price'],
+                    'volume': row['volume'],
+                }, symbol)
+                if bar is not None:
+                    bars.append(bar)
+
+        # Đảm bảo sort tăng dần, loại duplicate
+        bars.sort(key=lambda b: b['timestamp'])
+        seen: set = set()
+        unique_bars: list[dict] = []
+        for b in bars:
+            if b['timestamp'] not in seen:
+                seen.add(b['timestamp'])
+                unique_bars.append(b)
+        return unique_bars
+
+    def _has_data_before(self, symbol: str, timeframe: str, before_ts_ms: int) -> bool:
+        """
+        Kiểm tra có dữ liệu trước before_ts_ms hay không.
+        Dùng DailyPrice (daily+) hoặc chỉ trả False cho intraday (không thể check nhanh).
+        """
+        import datetime as dt
+
+        is_intraday = timeframe in self._INTRADAY_LOOKBACK_DAYS_CAP
+        if is_intraday:
+            # Intraday: giả sử còn dữ liệu nếu chưa hit EPOCH thực tế
+            epoch_ms = int(
+                dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc).timestamp() * 1000
+            )
+            return before_ts_ms > epoch_ms
+
+        before_date = dt.date.fromtimestamp(before_ts_ms / 1000.0)
+        return DailyPrice.objects.filter(
+            symbol=symbol, date__lt=before_date
+        ).exists()
+
+    def get_ohlcv_bars(self, symbol: str, params: dict) -> dict:
+        """
+        Endpoint /bars/ — trả về OHLCV theo window hoặc cursor.
+
+        params là dict đã validated từ OHLCVBarsQuerySerializer:
+          - timeframe: str
+          - from / to : datetime UTC (window mode)
+          - before    : datetime UTC (cursor-before mode)
+          - after     : datetime UTC (cursor-after mode)
+          - limit     : int
+          - snapshot_id: str (optional)
+        """
+        import datetime as dt
+        from django.utils import timezone as tz
+
+        normalized_symbol = self.normalize_symbol(symbol)
+        timeframe = self._normalize_chart_timeframe(params['timeframe'])
+
+        from .models import StockProfile
+        if not StockProfile.objects.filter(symbol=normalized_symbol).exists():
+            raise MarketDataValidationException('Mã chứng khoán không tồn tại.')
+
+        limit = int(params.get('limit') or _OHLCV_BAR_LIMIT_DEFAULT)
+        limit = min(limit, _OHLCV_BAR_LIMIT_MAX)
+
+        from_dt: dt.datetime | None = params.get('from')
+        to_dt: dt.datetime | None = params.get('to')
+        before_dt: dt.datetime | None = params.get('before')
+        after_dt: dt.datetime | None = params.get('after')
+
+        # Tạo snapshot_id: dùng lại nếu client truyền, hoặc tạo mới
+        passed_snapshot_id = params.get('snapshot_id', '').strip()
+        now_utc = tz.now().replace(second=0, microsecond=0)
+        snapshot_id = passed_snapshot_id or f'{normalized_symbol}:{timeframe}:{now_utc.strftime("%Y-%m-%dT%H:%MZ")}'
+
+        # ----- Xác định chế độ fetch -----
+        if from_dt is not None and to_dt is not None:
+            # Window mode
+            cache_key = (
+                f'ohlcv_bars:{normalized_symbol}:{timeframe}:'
+                f'window:{int(from_dt.timestamp())}:{int(to_dt.timestamp())}'
+            )
+            cached = get_cache(cache_key)
+            if cached is not None:
+                return cached
+
+            start_date = from_dt.date()
+            end_date = to_dt.date()
+            all_bars = self._fetch_bars_for_range(normalized_symbol, timeframe, start_date, end_date)
+
+            # Lọc chính xác theo from/to ms
+            from_ms = int(from_dt.timestamp() * 1000)
+            to_ms = int(to_dt.timestamp() * 1000)
+            bars = [b for b in all_bars if from_ms <= b['timestamp'] <= to_ms]
+
+            has_more_before = self._has_data_before(
+                normalized_symbol, timeframe, from_ms
+            )
+            # Kiểm tra has_more_after: so sánh to với now
+            has_more_after = to_dt < tz.now()
+            next_before = bars[0]['timestamp'] if bars else None
+            next_after = bars[-1]['timestamp'] if (bars and has_more_after) else None
+
+        elif before_dt is not None:
+            # Before/cursor mode
+            before_ms = int(before_dt.timestamp() * 1000)
+            cache_key = (
+                f'ohlcv_bars:{normalized_symbol}:{timeframe}:'
+                f'before:{int(before_dt.timestamp())}:lim:{limit}'
+            )
+            cached = get_cache(cache_key)
+            if cached is not None:
+                return cached
+
+            # Ước tính khoảng date cần fetch để đủ `limit` bars
+            days_per_bar = self._TIMEFRAME_DAYS_PER_BAR.get(timeframe, 1.0)
+            # Fetch gấp 2 lần để đảm bảo đủ sau khi filter bỏ weekend/holiday
+            days_needed = int(limit * days_per_bar * 2) + 7
+            # Cap intraday theo lookback max
+            intraday_cap = self._INTRADAY_LOOKBACK_DAYS_CAP.get(timeframe)
+            if intraday_cap:
+                days_needed = min(days_needed, intraday_cap)
+
+            end_date = before_dt.date()
+            start_date = end_date - timedelta(days=days_needed)
+
+            all_bars = self._fetch_bars_for_range(normalized_symbol, timeframe, start_date, end_date)
+            # Loại bar tại hoặc sau before_ms
+            candidate_bars = [b for b in all_bars if b['timestamp'] < before_ms]
+            # Lấy `limit` bars gần nhất (tail)
+            bars = candidate_bars[-limit:]
+
+            has_more_before = bool(candidate_bars[:-limit]) or self._has_data_before(
+                normalized_symbol, timeframe,
+                bars[0]['timestamp'] if bars else before_ms,
+            )
+            has_more_after = True  # trước before_dt luôn còn data sau đó
+            next_before = bars[0]['timestamp'] if bars else None
+            next_after = before_ms
+
+        elif after_dt is not None:
+            # After/forward mode
+            after_ms = int(after_dt.timestamp() * 1000)
+            cache_key = (
+                f'ohlcv_bars:{normalized_symbol}:{timeframe}:'
+                f'after:{int(after_dt.timestamp())}:lim:{limit}'
+            )
+            cached = get_cache(cache_key)
+            if cached is not None:
+                return cached
+
+            end_date = tz.localdate()
+            start_date = after_dt.date()
+
+            all_bars = self._fetch_bars_for_range(normalized_symbol, timeframe, start_date, end_date)
+            bars = [b for b in all_bars if b['timestamp'] > after_ms][:limit]
+
+            has_more_before = True  # luôn có data trước after
+            has_more_after = len(bars) == limit
+            next_before = after_ms
+            next_after = bars[-1]['timestamp'] if (bars and has_more_after) else None
+
+        else:
+            # Fallback không nên xảy ra vì serializer đã set default before=now
+            bars = []
+            has_more_before = False
+            has_more_after = False
+            next_before = None
+            next_after = None
+            cache_key = f'ohlcv_bars:{normalized_symbol}:{timeframe}:empty'
+
+        ttl = self._BARS_CACHE_TTL.get(timeframe, 3600)
+        result = {
+            'symbol': normalized_symbol,
+            'timeframe': timeframe,
+            'bars': bars,
+            'has_more_before': has_more_before,
+            'has_more_after': has_more_after,
+            'next_before': next_before,
+            'next_after': next_after,
+            'snapshot_id': snapshot_id,
+        }
+        set_cache(cache_key, result, timeout=ttl)
         return result
 
     def _build_intraday_backoff_response(self, normalized_symbol: str) -> dict:

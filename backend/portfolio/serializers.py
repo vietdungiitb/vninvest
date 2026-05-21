@@ -759,6 +759,127 @@ class MarketStockChartQuerySerializer(serializers.Serializer):
     )
 
 
+# ---------------------------------------------------------------------------
+# OHLCV Bars contract mới — hỗ trợ window (from/to) và cursor (before/after)
+# Đáp ứng yêu cầu từ frontend chart runtime (VNStockChart handoff 2026-05-21)
+# ---------------------------------------------------------------------------
+
+_OHLCV_TIMEFRAME_CHOICES = ['1m', '5m', '15m', '1H', '2H', '4H', 'D', 'W', 'M']
+_OHLCV_BAR_LIMIT_MAX = 1000
+_OHLCV_BAR_LIMIT_DEFAULT = 500
+
+
+class _FlexibleTimestampField(serializers.Field):
+    """Chấp nhận Unix ms (int) hoặc ISO 8601 string, trả về datetime aware UTC."""
+
+    def to_internal_value(self, data):
+        from django.utils import timezone as tz
+        import datetime as dt
+
+        if isinstance(data, (int, float)):
+            try:
+                return dt.datetime.fromtimestamp(int(data) / 1000.0, tz=dt.timezone.utc)
+            except (OSError, OverflowError, ValueError):
+                self.fail('invalid')
+
+        if isinstance(data, str):
+            text = data.strip()
+            if text.isdigit():
+                try:
+                    return dt.datetime.fromtimestamp(int(text) / 1000.0, tz=dt.timezone.utc)
+                except (OSError, OverflowError, ValueError):
+                    self.fail('invalid')
+            # ISO 8601
+            try:
+                parsed = dt.datetime.fromisoformat(text.replace('Z', '+00:00'))
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=dt.timezone.utc)
+                return parsed
+            except ValueError:
+                self.fail('invalid')
+
+        self.fail('invalid')
+
+    def to_representation(self, value):
+        import datetime as dt
+        if isinstance(value, dt.datetime):
+            return int(value.timestamp() * 1000)
+        return value
+
+    default_error_messages = {
+        'invalid': 'Giá trị timestamp không hợp lệ. Dùng Unix milliseconds hoặc ISO 8601.',
+    }
+
+
+class OHLCVBarsQuerySerializer(serializers.Serializer):
+    """
+    Serializer cho endpoint /bars/ — hỗ trợ 3 chế độ:
+      - Window  : from + to  (initial load hoặc range reload)
+      - Before  : before + limit  (pan-left / backfill)
+      - After   : after  + limit  (forward / polling fallback)
+    """
+
+    timeframe = serializers.ChoiceField(
+        required=True,
+        choices=_OHLCV_TIMEFRAME_CHOICES,
+        error_messages={'invalid_choice': 'timeframe phải là một trong: ' + ', '.join(_OHLCV_TIMEFRAME_CHOICES)},
+    )
+
+    # --- Window params ---
+    from_ts = _FlexibleTimestampField(required=False, source='from_ts')
+    to_ts = _FlexibleTimestampField(required=False, source='to_ts')
+
+    # --- Cursor params ---
+    before = _FlexibleTimestampField(required=False)
+    after = _FlexibleTimestampField(required=False)
+
+    limit = serializers.IntegerField(
+        required=False,
+        default=_OHLCV_BAR_LIMIT_DEFAULT,
+        min_value=1,
+        max_value=_OHLCV_BAR_LIMIT_MAX,
+        error_messages={'max_value': f'limit tối đa là {_OHLCV_BAR_LIMIT_MAX}.'},
+    )
+
+    snapshot_id = serializers.CharField(required=False, allow_blank=True, max_length=200)
+
+    def get_fields(self):
+        fields = super().get_fields()
+        # Map query param tên "from" và "to" (không hợp lệ làm Python identifier)
+        fields['from'] = fields.pop('from_ts')
+        fields['to'] = fields.pop('to_ts')
+        return fields
+
+    def validate(self, data):
+        has_from = 'from' in data and data.get('from') is not None
+        has_to = 'to' in data and data.get('to') is not None
+        has_before = data.get('before') is not None
+        has_after = data.get('after') is not None
+
+        modes = sum([has_from or has_to, has_before, has_after])
+        if modes > 1:
+            raise serializers.ValidationError(
+                {'non_field_errors': 'Chỉ được dùng một trong ba chế độ: (from+to) | before | after.'}
+            )
+
+        if has_from or has_to:
+            if not (has_from and has_to):
+                raise serializers.ValidationError(
+                    {'non_field_errors': 'Chế độ window yêu cầu cả hai tham số from và to.'}
+                )
+            if data['from'] >= data['to']:
+                raise serializers.ValidationError(
+                    {'non_field_errors': 'from phải nhỏ hơn to.'}
+                )
+
+        # Nếu không có chế độ nào → mặc định before=now với limit
+        if modes == 0:
+            from django.utils import timezone as tz
+            data['before'] = tz.now()
+
+        return data
+
+
 class TradingSubAccountCreateRequestSerializer(serializers.Serializer):
     portfolio = serializers.IntegerField(required=False, min_value=1)
 

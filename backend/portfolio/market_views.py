@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from django.conf import settings
 
 from .exceptions import ExternalSystemException, MarketDataValidationException
-from .serializers import MarketIntradayQuerySerializer, MarketStockChartQuerySerializer
+from .serializers import MarketIntradayQuerySerializer, MarketStockChartQuerySerializer, OHLCVBarsQuerySerializer
 from .market_data_service import market_data_service
 from .permissions import resolve_user_entitlements
 from .quota_service import build_quota_exceeded_payload, consume_quota
@@ -245,4 +245,88 @@ class StockWorkspaceChartView(BaseMarketDataView):
                 )
         except Exception as exc:
             return self.handle_exception_response(exc)
+        return Response(payload)
+
+
+class StockOHLCVBarsView(BaseMarketDataView):
+    """
+    GET /api/stock-management/stocks/{symbol}/bars/
+
+    Endpoint OHLCV contract mới — hỗ trợ:
+      - Window  : ?timeframe=D&from=<unix_ms>&to=<unix_ms>
+      - Before  : ?timeframe=D&before=<unix_ms>&limit=500  (pan-left / backfill)
+      - After   : ?timeframe=D&after=<unix_ms>&limit=500   (forward polling fallback)
+
+    Response chuẩn hóa:
+      {
+        "symbol": "TCB",
+        "timeframe": "D",
+        "bars": [{"timestamp": <unix_ms>, "open":..., "high":..., "low":..., "close":..., "volume":...}],
+        "has_more_before": true,
+        "has_more_after": false,
+        "next_before": <unix_ms | null>,
+        "next_after": <unix_ms | null>,
+        "snapshot_id": "TCB:D:2026-05-21T15:30Z"
+      }
+
+    Error response machine-readable:
+      400: {"code": "INVALID_TIMEFRAME" | "INVALID_TIMESTAMP" | ..., "detail": "..."}
+      404: {"code": "SYMBOL_NOT_FOUND", "detail": "..."}
+    """
+    throttle_scope = 'realtime_chart'
+
+    _VALIDATION_CODE_MAP = {
+        'invalid_choice': 'INVALID_TIMEFRAME',
+        'invalid': 'INVALID_TIMESTAMP',
+        'max_value': 'LIMIT_EXCEEDED',
+        'min_value': 'INVALID_LIMIT',
+        'non_field_errors': 'INVALID_QUERY',
+    }
+
+    def _machine_readable_error(self, detail, code: str = 'VALIDATION_ERROR') -> Response:
+        if isinstance(detail, dict):
+            # Lấy code từ first key
+            first_key = next(iter(detail), 'non_field_errors')
+            mapped = self._VALIDATION_CODE_MAP.get(first_key, code)
+            first_msg = detail[first_key]
+            if isinstance(first_msg, list):
+                first_msg = str(first_msg[0])
+            return Response(
+                {'code': mapped, 'detail': first_msg},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if isinstance(detail, list) and detail:
+            item = detail[0]
+            if hasattr(item, 'code'):
+                mapped = self._VALIDATION_CODE_MAP.get(item.code, code)
+            else:
+                mapped = code
+            return Response(
+                {'code': mapped, 'detail': str(item)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({'code': code, 'detail': str(detail)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, symbol):
+        from rest_framework.exceptions import ValidationError as DRFVErr
+
+        # Validate input
+        serializer = OHLCVBarsQuerySerializer(data=request.query_params)
+        if not serializer.is_valid():
+            return self._machine_readable_error(serializer.errors)
+
+        params = serializer.validated_data
+
+        try:
+            payload = market_data_service.get_ohlcv_bars(symbol, params)
+        except MarketDataValidationException as exc:
+            return Response(
+                {'code': 'SYMBOL_NOT_FOUND', 'detail': exc.message},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except DRFVErr as exc:
+            return self._machine_readable_error(exc.detail)
+        except Exception as exc:
+            return self.handle_exception_response(exc)
+
         return Response(payload)

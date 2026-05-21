@@ -13,6 +13,7 @@ urlpatterns = [
         path("portfolio/news-digest/", views.portfolio_news_digest_api, name="portfolio-news-digest"),
     path("stocks/<str:symbol>/overview/", market_views.StockWorkspaceOverviewView.as_view(), name="stock-workspace-overview"),
     path("stocks/<str:symbol>/chart/", market_views.StockWorkspaceChartView.as_view(), name="stock-workspace-chart"),
+    path("stocks/<str:symbol>/bars/", market_views.StockOHLCVBarsView.as_view(), name="stock-ohlcv-bars"),
     path("stocks/<str:symbol>/financials/", market_views.FinancialMetricsView.as_view(), name="stock-financials"),
     path("stocks/<str:symbol>/news/", views.stock_news_api, name="stock-news"),
     path("stocks/<str:symbol>/news/ai-summary/", views.stock_news_ai_summary_api, name="stock-news-ai-summary"),
