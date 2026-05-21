@@ -39,17 +39,31 @@ PERIOD_DAYS_MAP = {
     '1Y': 365,
     '10Y': 3650,
 }
-VALID_INTERVALS = {'1D', '1W', '1h', '30m', '15m'}
+VALID_INTERVALS = {'1m', '5m', '15m', '30m', '1h', '4h', '1D', '1W'}
 INTERVAL_ALIASES = {
+    '1m': '1m',
+    '5m': '5m',
+    '15m': '15m',
+    '30m': '30m',
+    '1h': '1h',
+    '4h': '4h',
     '1d': '1D',
     '1w': '1W',
-    '1h': '1h',
-    '30m': '30m',
-    '15m': '15m',
 }
-INTRADAY_MAX_DAYS = {'1h': 7, '30m': 3, '15m': 2}
-vnbroker_INTERVAL_MAP = {'1D': '1D', '1W': '1W', '1h': '60', '30m': '30', '15m': '15'}
-TRUNC_FN_MAP = {'1D': TruncDate, '1W': TruncWeek, '1h': TruncHour, '30m': TruncMinute, '15m': TruncMinute}
+# Intraday max lookback in days (based on provider data availability)
+INTRADAY_MAX_DAYS = {'1m': 1, '5m': 3, '15m': 7, '30m': 7, '1h': 14, '4h': 30}
+# Mapping to vnbroker DNSE bar_type format (minutes for intraday, 1D/1W for daily+)
+vnbroker_INTERVAL_MAP = {
+    '1m': '1',      # 1 minute
+    '5m': '5',      # 5 minutes
+    '15m': '15',    # 15 minutes
+    '30m': '30',    # 30 minutes
+    '1h': '60',     # 60 minutes = 1 hour
+    '4h': '240',    # 240 minutes = 4 hours
+    '1D': '1D',     # Daily (D for daily in DNSE format)
+    '1W': '1W',     # Weekly (W for weekly)
+}
+TRUNC_FN_MAP = {'1m': TruncMinute, '5m': TruncMinute, '15m': TruncMinute, '30m': TruncMinute, '1h': TruncHour, '4h': TruncHour, '1D': TruncDate, '1W': TruncWeek}
 MA_WINDOWS = [20, 50]
 SMFI_LOOKBACK_SESSIONS = 20
 
@@ -286,7 +300,7 @@ def dark_money_history_api(request, symbol: str):
 
         Query params:
             - period: 1M | 3M | 6M | 1Y | 10Y (default: 3M)
-    - interval: 1D | 1W | 1h | 30m | 15m (default: 1D)
+            - interval: 1m | 5m | 15m | 30m | 1h | 4h | 1D | 1W (default: 1D)
     """
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol or len(normalized_symbol) > 10:
