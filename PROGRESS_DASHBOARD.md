@@ -1,3 +1,88 @@
+# 2026-05-21 — OpenAPI cutover handoff pack for OHLCV + dark-money-history ✅
+
+Status: **✅ IMPLEMENTATION + VALIDATION COMPLETE (core/public routes + adapter/client + tests + runtime refresh)**
+
+## Summary
+- Completed coding slice for OpenAPI cutover path of stock chart and dark-money-history.
+- Added native dark-money-history endpoint exposure on both `/api` and `/core/v1` stock-management route families.
+- Added chart timeframe normalization support for `30m` and added regression coverage.
+- Added shared package adapter APIs and frontend client wrapper for dark-money-history route.
+- Ran focused backend + package/web + frontend tests and completed mandated dev runtime refresh via `start_dev.ps1`.
+
+## Files Updated In This Slice
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/public_urls.py`
+- `packages/core/backend/src/market_data/core_urls.py`
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `frontend/src/api/client.js`
+- `frontend/src/api/client.coreRoutes.test.js`
+
+## Validation
+- Backend: `manage.py test market_data.tests.test_stock_management_native_api --keepdb` -> PASS (`50` tests).
+- Shared package: `npm test -- src/adapters/coreApiAdapter.test.js` -> PASS (`32` tests).
+- Frontend wrapper: `npm test -- --runTestsByPath src/api/client.coreRoutes.test.js` -> PASS (`10` tests).
+- Audit checks: `git diff --check` (scoped files) -> PASS; forbidden pattern scan (`print(`, `vnbroker.explorer`) -> clean.
+- Module tree regen: `scripts/ops/generate_module_tree.py` executed.
+- Runtime refresh: `./start_dev.ps1` -> core API healthy, frontend healthy, queue drift clean.
+
+## Residual Risk
+- `code-reviewer` subagent in this session could not read workspace files due tool-context limitation, so review findings are covered by focused tests + diff hygiene only.
+
+Status: **✅ FULL DOCUMENTATION PACK READY FOR IMPLEMENTATION HANDOFF** | 13/13 governance-design-runbook docs created | no production shadow-run required (dev-stage policy) | execution-ready for coding team
+
+## Summary
+- Created a complete handoff package for replacing legacy OHLCV/dark-money-history read routes with core OpenAPI routes.
+- Defined contract-first scope for two endpoint families:
+  - `/core/v1/stock-management/stocks/{symbol}/chart/`
+  - `/core/v1/stock-management/stocks/{symbol}/dark-money-history/`
+- Locked canonical timeframe strategy, interval/period normalization, test gates, and cutover readiness criteria.
+- Added implementation governance artifacts so coding team can execute without additional clarification cycles.
+
+## Deliverables Created
+- `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_HANDOFF_MASTER_20260521.md`
+- `docs/IMPLEMENTATION_PLAN_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md`
+- `docs/TECH_SPEC_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md`
+- `docs/TASKBOARD_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md`
+- `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260521.md`
+- `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260521.md`
+- `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260521.md`
+- `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_CONFIG_OWNERSHIP_MATRIX_20260521.md`
+- `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_CODE_QUALITY_CONSTITUTION_20260521.md`
+- `docs/FRONTEND_DESIGN_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md`
+- `docs/BACKEND_DESIGN_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md`
+- `docs/RUN_CODE_REVIEW_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md`
+- `docs/RUN_INTEGRATION_TESTS_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md`
+- `docs/RUN_SPEC_AUDIT_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md`
+
+## Validation
+- Package structure verified against existing project handoff format.
+- Governance alignment verified against core OpenAPI constitution and PR gate checklist.
+
+## Residual Risk
+- This slice creates implementation-ready documentation only; code-level parity and runtime validation remain pending until execution phase.
+
+# 2026-05-21 — Redesign Alert Center Workspace (Whale Alerts) 🟢.
+
+Status: **🟢. COMPLETE** | Redesigned Premium Glassmorphic Dark UI | Module 1 & Module 2 Fully Coded | all 35 packages/web Jest tests PASS | frontend production build PASS | immutable sources verified clean | Vietnamese standard diacritics
+
+## Summary
+- Hoàn toàn viết lại trang `/whale-alerts` mới (`packages/web/src/pages/AlertCenterPage.js`) tuân thủ nghiêm ngặt chuẩn React `createElement` không sử dụng JSX.
+- Tích hợp lớp styling glassmorphic tối thượng bằng cách chèn động thẻ `<style>` với màu neon phát sáng tương ứng theo mức độ cảnh báo (critical: neon đỏ, high: neon cam, medium: neon xanh dương, low: neon xám).
+- **Module 1 (Real-time Feed):** Thiết kế lại bảng tin anomal giao dịch dòng tiền lớn, bổ sung bộ đếm metrics, bộ chọn phạm vi thời gian (5m, 15m, 1h, phiên, 5d), nút tắt/bật auto-refresh (5 giây) với đèn LIVE pulse nhấp nháy, xem nhanh bằng chứng (evidence) và drawer kiểm tra pháp y chuyên sâu từ OpenAPI.
+- **Module 2 (Statistics by Stock Symbol):** Gom nhóm thông minh dòng tiền theo mã cổ phiếu, cung cấp biểu đồ thanh Buy/Sell Strength Meter trực quan, tính toán phân cấp tần suất xuất hiện (Bùng nổ, Cao, Trung bình, Thấp) và nút mở workspace Stock Detail.
+- Bảo vệ tuyệt đối 3 tệp nguồn bubble chart của modern dashboard tránh regression.
+- Sửa lỗi mock lifecycle trong tests để phục hồi tính ổn định của test suite.
+
+## Validation
+- Thư mục `packages/web` test suite -> PASS (`35/35 tests passed`).
+- Production build `frontend` -> PASS (`Compiled successfully`).
+- Khớp hoàn toàn contract OpenAPI của core API.
+
+## Residual Risk
+- Người dùng cần lưu token ở `localStorage` để các tác vụ Ack/Mute và load feed thành công.
+
 # 2026-05-21 — Pre-5Y historical backfill service to market inception ✅
 
 Status: **✅ NEW PRE-5Y HISTORY BACKFILL SERVICE ADDED** | focused backend tests PASS | scheduler/catalog wiring PASS | module tree synced | dev runtime refreshed

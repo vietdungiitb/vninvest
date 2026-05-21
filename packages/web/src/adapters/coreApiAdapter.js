@@ -235,15 +235,6 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     clearTokens,
   });
 
-  // Private transport for legacy /api/* endpoints (e.g. bulk technicals) that are NOT
-  // mounted under /core/v1/. NEVER export this function.
-  const { coreGet: legacyApiGet } = createCoreTransport({ CORE_API_BASE_URL: "/api" }, {
-    getToken,
-    getRefreshToken,
-    setTokens,
-    clearTokens,
-  });
-
   return {
   
   /**
@@ -370,7 +361,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     const query = new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
     ).toString();
-    return legacyApiGet(`/stock-management/portfolio/news-digest${query ? `?${query}` : ""}`);
+    return coreGet(`/stock-management/portfolio/news-digest/${query ? `?${query}` : ""}`);
   },
 
   /**
@@ -615,6 +606,40 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     return coreGet(`/market-data/symbols/${encodeURIComponent(symbol.toUpperCase())}/`);
   },
 
+  /**
+   * Get stock chart history by timeframe.
+   * @param {string} symbol
+   * @param {{ timeframe?: string, days?: number }} [params]
+   * @returns {Promise<object>}
+   */
+  getStockChartHistory(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getStockChartHistory");
+    const timeframe = params.timeframe ?? "1H";
+    const days = params.days ?? 180;
+    const query = new URLSearchParams({
+      timeframe: String(timeframe),
+      days: String(days),
+    }).toString();
+    return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/chart/${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Get dark-money-history by interval/period.
+   * @param {string} symbol
+   * @param {{ interval?: string, period?: string }} [params]
+   * @returns {Promise<object>}
+   */
+  getDarkMoneyHistory(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getDarkMoneyHistory");
+    const interval = params.interval ?? "1D";
+    const period = params.period ?? "3M";
+    const query = new URLSearchParams({
+      interval: String(interval),
+      period: String(period),
+    }).toString();
+    return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/dark-money-history/${query ? `?${query}` : ""}`);
+  },
+
   // ─── Order Flow ───────────────────────────────────────────────────────────
 
   /**
@@ -731,7 +756,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getPortfolioHoldings(portfolioId) {
     if (!portfolioId) throw new Error("portfolioId is required for getPortfolioHoldings");
-    return legacyApiGet(`/portfolio/portfolios/${encodeURIComponent(portfolioId)}/holdings/`);
+    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/holdings/`);
   },
 
   /**
@@ -741,7 +766,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getPortfolioSummary(portfolioId) {
     if (!portfolioId) throw new Error("portfolioId is required for getPortfolioSummary");
-    return legacyApiGet(`/portfolio/portfolios/${encodeURIComponent(portfolioId)}/summary/`);
+    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/summary/`);
   },
 
   /**
@@ -752,7 +777,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getPortfolioAnalytics(portfolioId, days = 30) {
     if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAnalytics");
-    return legacyApiGet(`/portfolio/portfolios/${encodeURIComponent(portfolioId)}/analytics/?days=${days}`);
+    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/analytics/?days=${days}`);
   },
 
   /**
@@ -762,19 +787,43 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getPortfolioTechnicals(portfolioId) {
     if (!portfolioId) throw new Error("portfolioId is required for getPortfolioTechnicals");
-    return legacyApiGet(`/portfolio/portfolios/${encodeURIComponent(portfolioId)}/technicals/`);
+    return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/technicals/`);
   },
 
   /**
    * Get bulk technicals for an explicit list of symbols.
-   * Calls /api/stock-management/technicals/bulk/ (legacy market-data route, not /core/v1/).
+   * Calls the native core route /core/v1/market-data/technicals/bulk/.
    * @param {string[]} symbols
    * @returns {Promise<object[]>}
    */
   getBulkTechnicalsBySymbols(symbols) {
     if (!symbols || symbols.length === 0) return Promise.resolve([]);
     const q = symbols.map((s) => encodeURIComponent(String(s).toUpperCase())).join(",");
-    return legacyApiGet(`/stock-management/technicals/bulk/?symbols=${q}`);
+    return coreGet(`/market-data/technicals/bulk/?symbols=${q}`);
+  },
+
+  /**
+   * Get a facts-first whale analytics snapshot for one symbol.
+   * Calls the native core route /core/v1/workspace/whale-analytics/{symbol}/.
+   * @param {string} symbol
+   * @param {{ timeframe?: string, compact?: number, tradeDate?: string|null, includeBaseline?: boolean }} [options]
+   * @returns {Promise<object>}
+   */
+  getWhaleAnalyticsSnapshot(symbol, { timeframe = "session", compact = 1, tradeDate, includeBaseline } = {}) {
+    if (!symbol) throw new Error("symbol is required for getWhaleAnalyticsSnapshot");
+    const params = new URLSearchParams();
+    params.set("timeframe", String(timeframe || "session"));
+    if (compact !== undefined && compact !== null) {
+      params.set("compact", String(compact));
+    }
+    if (tradeDate) {
+      params.set("trade_date", String(tradeDate).slice(0, 10));
+    }
+    if (includeBaseline !== undefined) {
+      params.set("include_baseline", includeBaseline ? "1" : "0");
+    }
+    const query = params.toString();
+    return coreGet(`/workspace/whale-analytics/${encodeURIComponent(String(symbol).toUpperCase())}/${query ? `?${query}` : ""}`);
   },
 
   /**
@@ -782,15 +831,16 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    * @returns {Promise<{results: object[]}>}
    */
   getTrackedSymbols() {
-    return legacyApiGet("/stock-management/tracked-symbols/");
+    return coreGet("/stock-management/tracked-symbols/");
   },
 
   /**
-   * Get legacy watchlist groups (used for symbol universe construction).
+   * Get watchlist-backed market groups used for symbol universe construction.
+   * Keeps the legacy method name so existing callers can migrate without churn.
    * @returns {Promise<{results: object[]}>}
    */
   getLegacyWatchlistGroups() {
-    return legacyApiGet("/portfolio/watchlist/groups/");
+    return coreGet("/stock-management/groups/?include_prices=0");
   },
   };
 }

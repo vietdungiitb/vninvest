@@ -2,22 +2,32 @@
 C3 — Native stock-management views for market_data domain.
 
 Replaces StockManagementLegacyBridgeView for all stock-management frontend compat routes.
-Advisory-related routes delegate to the advisory domain (already native since B5).
+AI advisory routes keep route ownership here but delegate to the existing stock AI contract
+handlers so `/api` and `/core/v1` stay aligned while tenant gating remains enforced.
 
 All views require IsAuthenticated; symbol params are always uppercased.
 Graceful stubs return empty/null for features not yet fully native.
 """
+from collections import defaultdict
+from copy import deepcopy
 from decimal import Decimal
 from datetime import date, datetime, time, timedelta
+from uuid import UUID
 
 from django.db import DatabaseError, connection
 from django.db.models import Q
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from advisory.models import AdvisoryRecord
+from advisory.serializers import AdvisoryRecordSerializer
+
+from identity_access.permissions import IsTenantActive
 from .global_symbol_planner import create_global_planner_run
 from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
@@ -86,6 +96,275 @@ _STOCK_MANAGEMENT_DEFAULT_GROUPS = [
 _STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP = {group['name']: group for group in _STOCK_MANAGEMENT_DEFAULT_GROUPS}
 _STOCK_MANAGEMENT_COLOR_PALETTE = ['#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#22c55e', '#ec4899', '#6366f1']
 _SYSTEM_DEFAULT_SYMBOL_GROUP_IDS = ('vn30', 'vn100')
+
+_PORTFOLIO_NEWS_DIGEST_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'news': {
+            'type': 'array',
+            'items': {'type': 'object'},
+        },
+        'note': {'type': 'string'},
+    },
+    'required': ['news', 'note'],
+}
+
+_STOCK_MANAGEMENT_ITEM_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'id': {'type': 'integer'},
+        'symbol': {'type': 'string'},
+        'note': {'type': 'string'},
+        'current_price': {'type': 'number', 'nullable': True},
+        'prev_price': {'type': 'number', 'nullable': True},
+        'change_value': {'type': 'number', 'nullable': True},
+        'change_pct': {'type': 'number', 'nullable': True},
+        'last_date': {'type': 'string', 'nullable': True},
+    },
+    'required': ['id', 'symbol', 'note', 'current_price', 'prev_price', 'change_value', 'change_pct', 'last_date'],
+}
+
+_STOCK_MANAGEMENT_GROUP_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'id': {'type': 'integer'},
+        'name': {'type': 'string'},
+        'group_type': {'type': 'string'},
+        'description': {'type': 'string', 'nullable': True},
+        'color': {'type': 'string'},
+        'order': {'type': 'integer'},
+        'items': {
+            'type': 'array',
+            'items': _STOCK_MANAGEMENT_ITEM_SCHEMA,
+        },
+    },
+    'required': ['id', 'name', 'group_type', 'description', 'color', 'order', 'items'],
+}
+
+_STOCK_MANAGEMENT_GROUP_LIST_SCHEMA = {
+    'type': 'array',
+    'items': _STOCK_MANAGEMENT_GROUP_SCHEMA,
+}
+
+_TRACKED_SYMBOL_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'id': {'type': 'integer'},
+        'symbol': {'type': 'string'},
+        'industry': {'type': 'string'},
+        'company_name': {'type': 'string'},
+        'market_cap_bn': {'type': 'number', 'nullable': True},
+        'source_group_id': {'type': 'integer', 'nullable': True},
+        'source_group_name': {'type': 'string', 'nullable': True},
+        'whale_alert_threshold_million': {'type': 'number', 'nullable': True},
+        'current_price': {'type': 'number', 'nullable': True},
+        'prev_price': {'type': 'number', 'nullable': True},
+        'change_value': {'type': 'number', 'nullable': True},
+        'change_pct': {'type': 'number', 'nullable': True},
+        'last_date': {'type': 'string', 'nullable': True},
+        'added_at': {'type': 'string', 'nullable': True},
+        'updated_at': {'type': 'string', 'nullable': True},
+    },
+    'required': [
+        'id', 'symbol', 'industry', 'company_name', 'market_cap_bn',
+        'source_group_id', 'source_group_name', 'whale_alert_threshold_million',
+        'current_price', 'prev_price', 'change_value', 'change_pct',
+        'last_date', 'added_at', 'updated_at',
+    ],
+}
+
+_TRACKED_SYMBOL_LIST_SCHEMA = {
+    'type': 'array',
+    'items': _TRACKED_SYMBOL_SCHEMA,
+}
+
+_TRACKED_SYMBOL_CREATE_REQUEST_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'symbol': {'type': 'string', 'minLength': 1, 'maxLength': 10},
+        'source_group_id': {'type': 'integer', 'nullable': True},
+        'whale_alert_threshold_million': {'type': 'number', 'nullable': True, 'minimum': 1},
+    },
+    'required': ['symbol'],
+}
+
+_TRACKED_SYMBOL_PATCH_REQUEST_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'source_group_id': {'type': 'integer', 'nullable': True},
+        'whale_alert_threshold_million': {'type': 'number', 'nullable': True, 'minimum': 1},
+    },
+}
+
+_TRACKED_SYMBOL_BULK_THRESHOLD_REQUEST_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'tracked_symbol_ids': {
+            'type': 'array',
+            'items': {'type': 'integer'},
+            'minItems': 1,
+        },
+        'whale_alert_threshold_million': {'type': 'number', 'nullable': True, 'minimum': 1},
+    },
+    'required': ['tracked_symbol_ids'],
+}
+
+_TRACKED_SYMBOL_BULK_THRESHOLD_RESPONSE_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'updated_count': {'type': 'integer'},
+        'rows': {
+            'type': 'array',
+            'items': _TRACKED_SYMBOL_SCHEMA,
+        },
+    },
+    'required': ['updated_count', 'rows'],
+}
+
+_STOCK_PROFILE_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'symbol': {'type': 'string'},
+        'company_name': {'type': 'string'},
+        'exchange': {'type': 'string', 'nullable': True},
+        'industry': {'type': 'string', 'nullable': True},
+        'status': {'type': 'string', 'nullable': True},
+        'outstanding_shares': {'type': 'number', 'nullable': True},
+    },
+    'required': ['symbol', 'company_name', 'exchange', 'industry', 'status', 'outstanding_shares'],
+}
+
+_STOCK_OVERVIEW_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'symbol': {'type': 'string'},
+        'company_name': {'type': 'string'},
+        'industry': {'type': 'string', 'nullable': True},
+        'exchange': {'type': 'string', 'nullable': True},
+        'current_price': {'type': 'number', 'nullable': True},
+        'reference_price': {'type': 'number', 'nullable': True},
+        'change_value': {'type': 'number', 'nullable': True},
+        'change_pct': {'type': 'number', 'nullable': True},
+        'volume': {'type': 'integer', 'nullable': True},
+        'is_tracked': {'type': 'boolean'},
+        'tracked_symbol_id': {'type': 'integer', 'nullable': True},
+        'market_group_refs': {'type': 'array', 'items': {'type': 'object'}},
+        'watchlist_memberships': {'type': 'array', 'items': {'type': 'object'}},
+    },
+    'required': [
+        'symbol', 'company_name', 'industry', 'exchange', 'current_price', 'reference_price',
+        'change_value', 'change_pct', 'volume', 'is_tracked', 'tracked_symbol_id',
+        'market_group_refs', 'watchlist_memberships',
+    ],
+}
+
+_STOCK_CHART_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'symbol': {'type': 'string'},
+        'days': {'type': 'integer'},
+        'timeframe': {'type': 'string'},
+        'interval': {'type': 'string'},
+        'start_date': {'type': 'string'},
+        'end_date': {'type': 'string'},
+        'points': {'type': 'array', 'items': {'type': 'object'}},
+        'technical': {'type': 'object'},
+    },
+    'required': ['symbol', 'days', 'timeframe', 'interval', 'start_date', 'end_date', 'points', 'technical'],
+}
+
+_STOCK_ORDER_FLOW_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'symbol': {'type': 'string'},
+        'window': {'type': 'string'},
+        'session_date': {'type': 'string', 'nullable': True},
+        'dark_flow': {'type': 'object'},
+        'latest_signal': {'type': 'object', 'nullable': True},
+        'signals': {'type': 'array', 'items': {'type': 'object'}},
+        'tick_rate': {'type': 'object'},
+        'size_distribution': {'type': 'object'},
+        'order_flow': {'type': 'array', 'items': {'type': 'object'}},
+    },
+    'required': ['symbol', 'window', 'session_date', 'dark_flow', 'latest_signal', 'signals', 'tick_rate', 'size_distribution', 'order_flow'],
+}
+
+_STOCK_DARK_MONEY_HISTORY_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'ok': {'type': 'boolean'},
+        'symbol': {'type': 'string'},
+        'period': {'type': 'string'},
+        'interval': {'type': 'string'},
+        'candles': {'type': 'array', 'items': {'type': 'object'}},
+        'dark_flow_series': {'type': 'array', 'items': {'type': 'object'}},
+        'whale_signals': {'type': 'array', 'items': {'type': 'object'}},
+        'moving_averages': {'type': 'object'},
+        'smfi': {'type': 'number'},
+        'strategy_table': {'type': 'array', 'items': {'type': 'object'}},
+    },
+    'required': ['ok', 'symbol', 'period', 'interval', 'candles', 'dark_flow_series', 'whale_signals', 'moving_averages', 'smfi', 'strategy_table'],
+}
+
+_STOCK_NEWS_STUB_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'symbol': {'type': 'string'},
+        'news': {'type': 'array', 'items': {'type': 'object'}},
+        'note': {'type': 'string'},
+    },
+    'required': ['symbol', 'news', 'note'],
+}
+
+_STOCK_NEWS_AI_SUMMARY_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'symbol': {'type': 'string'},
+        'summary': {'type': 'object', 'nullable': True},
+        'note': {'type': 'string'},
+    },
+    'required': ['symbol', 'summary', 'note'],
+}
+
+_STOCK_FINANCIALS_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'symbol': {'type': 'string'},
+        'financials': {'type': 'object', 'nullable': True},
+        'note': {'type': 'string'},
+    },
+    'required': ['symbol', 'financials', 'note'],
+}
+
+TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
+
+_DARK_MONEY_PERIOD_DAYS = {
+    '1M': 30,
+    '3M': 90,
+    '6M': 180,
+    '1Y': 365,
+    '10Y': 3650,
+}
+
+_DARK_MONEY_INTERVAL_ALIASES = {
+    '1m': '1m',
+    '5m': '5m',
+    '15m': '15m',
+    '30m': '30m',
+    '1h': '1h',
+    '4h': '4h',
+    '1d': '1D',
+    '1w': '1W',
+}
+
+_DARK_MONEY_INTRADAY_MAX_DAYS = {
+    '1m': 1,
+    '5m': 3,
+    '15m': 7,
+    '30m': 7,
+    '1h': 14,
+    '4h': 30,
+}
 
 
 def _to_float(value):
@@ -172,7 +451,13 @@ def _validate_stock_symbol(raw_symbol):
         raise ValueError('Thiếu mã chứng khoán.')
     if not symbol.isalnum() or len(symbol) > 10:
         raise ValueError('Mã chứng khoán không hợp lệ. Chỉ chấp nhận 1-10 ký tự chữ in hoa và số.')
-    if StockProfile.objects.exists() and not StockProfile.objects.filter(symbol=symbol).exists():
+    if (
+        StockProfile.objects.exists()
+        and not StockProfile.objects.filter(symbol=symbol).exists()
+        and not DailyPrice.objects.filter(symbol=symbol).exists()
+        and not IntradayBar.objects.filter(symbol=symbol).exists()
+        and _fetch_symbol_snapshot_payload(symbol) is None
+    ):
         raise ValueError(f'Mã {symbol} không tồn tại trong hệ thống. Vui lòng kiểm tra lại mã chứng khoán.')
     return symbol
 
@@ -571,6 +856,7 @@ def _normalize_timeframe(value):
         '1M': '1m',
         '5M': '5m',
         '15M': '15m',
+        '30M': '30m',
         '1H': '1H',
         '2H': '2H',
         '4H': '4H',
@@ -591,6 +877,7 @@ def _interval_for_timeframe(timeframe):
         '1m': '1m',
         '5m': '5m',
         '15m': '15m',
+        '30m': '30m',
         '1H': '1H',
         '2H': '2H',
         '4H': '4H',
@@ -727,6 +1014,74 @@ def _normalize_order_flow_window(value):
     if resolved not in window_map:
         return '30m', 30
     return resolved, window_map[resolved]
+
+
+def _normalize_dark_money_interval(value):
+    return _DARK_MONEY_INTERVAL_ALIASES.get(str(value or '').strip().lower(), '1D')
+
+
+def _normalize_dark_money_period(value):
+    raw = str(value or '3M').strip().upper()
+    return raw if raw in _DARK_MONEY_PERIOD_DAYS else '3M'
+
+
+def _to_unix_seconds(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        dt_value = value
+    else:
+        return None
+    if dt_value.tzinfo is None:
+        dt_value = timezone.make_aware(dt_value, timezone=timezone.get_current_timezone())
+    return int(dt_value.timestamp())
+
+
+def _floor_dark_money_bucket(dt_value, interval):
+    if interval == '1h':
+        return dt_value.replace(minute=0, second=0, microsecond=0)
+    if interval == '30m':
+        return dt_value.replace(minute=(dt_value.minute // 30) * 30, second=0, microsecond=0)
+    if interval == '15m':
+        return dt_value.replace(minute=(dt_value.minute // 15) * 15, second=0, microsecond=0)
+    if interval == '5m':
+        return dt_value.replace(minute=(dt_value.minute // 5) * 5, second=0, microsecond=0)
+    if interval == '1m':
+        return dt_value.replace(second=0, microsecond=0)
+    if interval == '4h':
+        return dt_value.replace(hour=(dt_value.hour // 4) * 4, minute=0, second=0, microsecond=0)
+    return dt_value
+
+
+def _compute_simple_moving_average(candles, window):
+    key = f'ma{window}'
+    result = []
+    closes = [float(c.get('close') or 0) for c in candles]
+    times = [c.get('time') for c in candles]
+    for idx in range(len(closes)):
+        if idx < window - 1:
+            continue
+        window_slice = closes[idx - window + 1: idx + 1]
+        result.append({'time': times[idx], 'value': round(sum(window_slice) / len(window_slice), 2)})
+    return key, result
+
+
+def _build_dark_money_strategy_table(latest_strength, latest_signal_type):
+    active_id = 'standby'
+    if latest_strength >= 60 and latest_signal_type == 'whale_buy':
+        active_id = 'allin'
+    elif latest_strength >= 35 and latest_signal_type in {'whale_buy', 'dark_flow'}:
+        active_id = 'accumulate'
+    elif latest_signal_type in {'whale_sell', 'signal_sell'}:
+        active_id = 'distribute'
+
+    rows = [
+        {'id': 'allin', 'label': 'All-in', 'meaning': 'Dong tien lon xac nhan xu huong', 'risk_level': 'low', 'is_active': active_id == 'allin'},
+        {'id': 'accumulate', 'label': 'Accumulate', 'meaning': 'Co dau hieu gom hang', 'risk_level': 'medium', 'is_active': active_id == 'accumulate'},
+        {'id': 'distribute', 'label': 'Distribute', 'meaning': 'Dau hieu phan phoi tang len', 'risk_level': 'high', 'is_active': active_id == 'distribute'},
+        {'id': 'standby', 'label': 'Standby', 'meaning': 'Tin hieu yeu, uu tien quan sat', 'risk_level': 'none', 'is_active': active_id == 'standby'},
+    ]
+    return rows
 
 
 def _safe_numeric(value):
@@ -953,41 +1308,163 @@ class StockManagementTechnicalsView(APIView):
 
     def _build_response(self, symbols):
         if not symbols:
-            return Response({'results': []})
+            return Response({
+                'technicals': [],
+                'results': [],
+                'requested_count': 0,
+                'resolved_count': 0,
+            })
 
-        today = date.today()
+        from market_serving.models import SymbolSnapshot
+
+        today = timezone.localdate()
+        lookback_start = today - timedelta(days=180)
+        history_rows = list(
+            DailyPrice.objects.filter(
+                symbol__in=symbols,
+                date__gte=lookback_start,
+                date__lte=today,
+            )
+            .order_by('symbol', '-date')
+            .values('symbol', 'date', 'open', 'high', 'low', 'close', 'volume')
+        )
+        history_by_symbol = {symbol: [] for symbol in symbols}
+        for row in history_rows:
+            normalized_symbol = str(row.get('symbol') or '').upper()
+            if normalized_symbol in history_by_symbol:
+                history_by_symbol[normalized_symbol].append(row)
+
+        snapshot_rows = SymbolSnapshot.objects.filter(symbol__in=symbols).order_by(
+            'symbol',
+            '-session_date',
+            '-fetched_at',
+            '-pk',
+        )
+        snapshots_by_symbol = {}
+        for snapshot_row in snapshot_rows:
+            normalized_symbol = str(snapshot_row.symbol or '').upper()
+            if normalized_symbol and normalized_symbol not in snapshots_by_symbol:
+                snapshots_by_symbol[normalized_symbol] = snapshot_row
+
         results = []
         for sym in symbols:
-            snap = _fetch_symbol_snapshot_payload(sym)
-            latest_daily = DailyPrice.objects.filter(symbol=sym, date=today).order_by('-date').first()
-            if snap is None and latest_daily is None:
-                results.append({
-                    'symbol': sym,
-                    'price': None,
-                    'price_change': None,
-                    'price_change_pct': None,
-                    'volume': None,
-                    'stale': True,
-                })
-                continue
+            symbol_history_desc = history_by_symbol.get(sym, [])
+            latest_daily = symbol_history_desc[0] if symbol_history_desc else None
+            previous_daily = symbol_history_desc[1] if len(symbol_history_desc) > 1 else None
+            symbol_points = [
+                {
+                    'open': row.get('open'),
+                    'high': row.get('high'),
+                    'low': row.get('low'),
+                    'close': row.get('close'),
+                    'volume': row.get('volume'),
+                }
+                for row in reversed(symbol_history_desc[:60])
+            ]
+            technical_payload = (
+                _compute_chart_technical_payload(symbol_points)
+                if symbol_points
+                else _default_chart_technical_payload()
+            )
 
-            price_value = _to_float(snap.get('price')) if snap else _to_float(getattr(latest_daily, 'close', None))
-            change_value = _to_float(snap.get('price_change')) if snap and snap.get('price_change') is not None else None
-            change_pct = _to_float(snap.get('price_change_pct')) if snap and snap.get('price_change_pct') is not None else None
-            if change_value is None and price_value is not None and latest_daily is not None and latest_daily.close not in (None, 0):
-                change_value = price_value - _to_float(latest_daily.close)
-            if change_pct is None and change_value is not None and latest_daily is not None and latest_daily.close not in (None, 0):
-                change_pct = (change_value / _to_float(latest_daily.close)) * 100
+            snapshot_row = snapshots_by_symbol.get(sym)
+            price_value = _to_float(getattr(snapshot_row, 'price', None)) if snapshot_row else _to_float(latest_daily.get('close') if latest_daily else None)
+            change_value = _to_float(getattr(snapshot_row, 'price_change', None)) if snapshot_row else None
+            change_pct = _to_float(getattr(snapshot_row, 'price_change_pct', None)) if snapshot_row else None
+
+            latest_close = _to_float(latest_daily.get('close') if latest_daily else None)
+            previous_close = _to_float(previous_daily.get('close') if previous_daily else None)
+            if change_value is None and latest_close is not None and previous_close not in (None, 0):
+                change_value = latest_close - previous_close
+            if change_pct is None and change_value is not None and previous_close not in (None, 0):
+                change_pct = (change_value / previous_close) * 100
+
+            volume_value = _to_int(getattr(snapshot_row, 'volume', None)) if snapshot_row else _to_int(latest_daily.get('volume') if latest_daily else None)
+            stale_value = bool(getattr(snapshot_row, 'stale', False)) if snapshot_row is not None else latest_daily is None
+
             results.append({
                 'symbol': sym,
+                'date': str(latest_daily.get('date')) if latest_daily else None,
                 'price': _round_or_none(price_value),
                 'price_change': _round_or_none(change_value),
                 'price_change_pct': _round_or_none(change_pct),
-                'volume': _to_int(snap.get('volume')) if snap else _to_int(getattr(latest_daily, 'volume', None)),
-                'stale': bool(snap.get('stale', False)) if snap else True,
+                'volume': volume_value,
+                'stale': stale_value,
+                'bias': technical_payload.get('bias'),
+                'bias_label': technical_payload.get('bias_label'),
+                'bias_description': technical_payload.get('bias_description'),
+                'sma20': technical_payload.get('sma20'),
+                'sma50': technical_payload.get('sma50'),
+                'rsi14': technical_payload.get('rsi14'),
+                'rsi_14': technical_payload.get('rsi14'),
+                'avg_volume_20': technical_payload.get('avg_volume_20'),
+                'price_vs_sma20_pct': technical_payload.get('price_vs_sma20_pct'),
+                'price_vs_sma50_pct': technical_payload.get('price_vs_sma50_pct'),
+                'momentum_20d_pct': technical_payload.get('momentum_20d_pct'),
+                'range_position_pct': technical_payload.get('range_position_pct'),
+                'latest_close': technical_payload.get('latest_close') if technical_payload.get('latest_close') is not None else _round_or_none(latest_close),
             })
-        return Response({'results': results})
+        return Response({
+            'technicals': results,
+            'results': results,
+            'requested_count': len(symbols),
+            'resolved_count': len(results),
+        })
 
+    @extend_schema(
+        summary='Lấy technical indicators theo danh sách symbol',
+        description=(
+            'Endpoint native `/core/v1/market-data/technicals/bulk/`. '
+            'Trả về payload technicals dùng cho lower-deck dashboard, '
+            'đồng thời giữ tương thích với cả envelope `technicals` và `results`.'
+        ),
+        parameters=[
+            OpenApiParameter(
+                name='symbols',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Danh sách mã dạng CSV, ví dụ `TPB,FPT,VCB`.',
+                required=True,
+            ),
+        ],
+        responses={
+            200: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Technicals bulk',
+                value={
+                    'technicals': [
+                        {
+                            'symbol': 'TPB',
+                            'price': 18.45,
+                            'price_change_pct': 2.5,
+                            'rsi_14': 63.4,
+                            'sma20': 18.02,
+                            'sma50': 17.48,
+                            'momentum_20d_pct': 4.8,
+                            'stale': False,
+                        }
+                    ],
+                    'results': [
+                        {
+                            'symbol': 'TPB',
+                            'price': 18.45,
+                            'price_change_pct': 2.5,
+                            'rsi_14': 63.4,
+                            'sma20': 18.02,
+                            'sma50': 17.48,
+                            'momentum_20d_pct': 4.8,
+                            'stale': False,
+                        }
+                    ],
+                    'requested_count': 1,
+                    'resolved_count': 1,
+                },
+            ),
+        ],
+    )
     def get(self, request):
         symbols = self._parse_symbols(request)
         return self._build_response(symbols)
@@ -999,7 +1476,18 @@ class StockManagementTechnicalsView(APIView):
 
 class StockManagementDetailView(APIView):
     """GET /api/stock-management/stocks/<symbol>/ — stock profile detail."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lấy hồ sơ mã cổ phiếu native',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/` trả về hồ sơ cơ bản của mã chứng khoán.',
+        responses={
+            200: _STOCK_PROFILE_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
 
     def get(self, request, symbol):
         symbol = symbol.upper()
@@ -1019,7 +1507,18 @@ class StockManagementDetailView(APIView):
 
 class StockManagementOverviewView(APIView):
     """GET /api/stock-management/stocks/<symbol>/overview/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lấy stock workspace overview native',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/overview/` cho Stock Detail và Whale Alerts.',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
 
     def get(self, request, symbol):
         symbol = symbol.upper()
@@ -1105,7 +1604,34 @@ class StockManagementOverviewView(APIView):
 
 class StockManagementChartView(APIView):
     """GET /api/stock-management/stocks/<symbol>/chart/ — native chart envelope."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lấy chart data native cho stock workspace',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/chart/` trả về chart envelope gồm points và technical.',
+        parameters=[
+            OpenApiParameter(
+                name='days',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Số ngày lookback cho dữ liệu chart.',
+                required=False,
+            ),
+            OpenApiParameter(
+                name='timeframe',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Khung thời gian chart, ví dụ `1H`, `D`, `W`.',
+                required=False,
+            ),
+        ],
+        responses={
+            200: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
 
     def get(self, request, symbol):
         symbol = symbol.upper()
@@ -1123,7 +1649,7 @@ class StockManagementChartView(APIView):
         end_date = timezone.localdate()
         start_date = end_date - timedelta(days=days)
 
-        intraday_frames = {'1m', '5m', '15m', '1H', '2H', '4H'}
+        intraday_frames = {'1m', '5m', '15m', '30m', '1H', '2H', '4H'}
         if timeframe in intraday_frames:
             bars = list(
                 IntradayBar.objects.filter(
@@ -1155,9 +1681,241 @@ class StockManagementChartView(APIView):
         return Response(payload)
 
 
+class StockManagementDarkMoneyHistoryView(APIView):
+    """GET /api/stock-management/stocks/<symbol>/dark-money-history/ — native dark-money-history envelope."""
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lay dark-money-history native theo timeframe',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/dark-money-history/` cho lich su OHLCV + dark flow + whale signal.',
+        parameters=[
+            OpenApiParameter(
+                name='period',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Khoang lookback: 1M, 3M, 6M, 1Y, 10Y.',
+                required=False,
+            ),
+            OpenApiParameter(
+                name='interval',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Khung: 1m, 5m, 15m, 30m, 1h, 4h, 1D, 1W.',
+                required=False,
+            ),
+        ],
+        responses={
+            200: _STOCK_DARK_MONEY_HISTORY_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
+    def get(self, request, symbol):
+        from signal_intelligence.models import UnifiedAlert
+
+        symbol = str(symbol or '').strip().upper()
+        if not _symbol_exists_for_stock_chart(symbol):
+            raise NotFound(f'Stock not found: {symbol}')
+
+        period = _normalize_dark_money_period(request.query_params.get('period', '3M'))
+        interval = _normalize_dark_money_interval(request.query_params.get('interval', '1D'))
+        period_days = _DARK_MONEY_PERIOD_DAYS[period]
+        if interval in _DARK_MONEY_INTRADAY_MAX_DAYS:
+            period_days = min(period_days, _DARK_MONEY_INTRADAY_MAX_DAYS[interval])
+
+        end_date = timezone.localdate()
+        start_date = end_date - timedelta(days=period_days)
+        is_intraday = interval in _DARK_MONEY_INTRADAY_MAX_DAYS
+
+        candles = []
+        if is_intraday:
+            timeframe_map = {
+                '1m': '1m',
+                '5m': '5m',
+                '15m': '15m',
+                '30m': '30m',
+                '1h': '1H',
+                '4h': '4H',
+            }
+            timeframe = timeframe_map[interval]
+            bars = list(
+                IntradayBar.objects.filter(
+                    symbol=symbol,
+                    timeframe__iexact=timeframe,
+                    datetime__date__range=(start_date, end_date),
+                ).order_by('datetime')
+            )
+            candles = [
+                {
+                    'time': _to_unix_seconds(bar.datetime),
+                    'open': _to_float(bar.open) or 0,
+                    'high': _to_float(bar.high) or 0,
+                    'low': _to_float(bar.low) or 0,
+                    'close': _to_float(bar.close) or 0,
+                    'volume': _to_int(bar.volume) or 0,
+                }
+                for bar in bars
+                if _to_unix_seconds(bar.datetime) is not None
+            ]
+        else:
+            rows = list(
+                DailyPrice.objects.filter(symbol=symbol, date__range=(start_date, end_date)).order_by('date')
+            )
+            timeframe = 'W' if interval == '1W' else 'D'
+            points = _aggregate_daily_rows(rows, timeframe)
+            candles = [
+                {
+                    'time': str(point.get('date') or '')[:10],
+                    'open': _to_float(point.get('open')) or 0,
+                    'high': _to_float(point.get('high')) or 0,
+                    'low': _to_float(point.get('low')) or 0,
+                    'close': _to_float(point.get('close')) or 0,
+                    'volume': _to_int(point.get('volume')) or 0,
+                }
+                for point in points
+            ]
+
+        alerts = list(
+            UnifiedAlert.objects.filter(
+                symbol=symbol,
+                triggered_at__date__gte=start_date,
+                alert_type__in=(
+                    UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+                    UnifiedAlert.AlertTypeChoices.WHALE,
+                    UnifiedAlert.AlertTypeChoices.SIGNAL,
+                ),
+            ).order_by('triggered_at', 'pk')
+        )
+
+        grouped = defaultdict(lambda: {
+            'strength_sum': 0.0,
+            'confidence_sum': 0.0,
+            'count': 0,
+            'signal_types': defaultdict(int),
+            'whale_buy_value': 0.0,
+            'whale_sell_value': 0.0,
+        })
+        whale_signals = []
+
+        for alert in alerts:
+            local_dt = timezone.localtime(alert.triggered_at)
+            if is_intraday:
+                bucket_dt = _floor_dark_money_bucket(local_dt, interval)
+                bucket_key = _to_unix_seconds(bucket_dt)
+            else:
+                bucket_key = local_dt.date().isoformat()
+
+            if bucket_key is None:
+                continue
+
+            bucket = grouped[bucket_key]
+            strength = _extract_signal_strength(alert)
+            confidence = _safe_numeric(alert.confidence) or 0.0
+            signal_type = str(
+                (alert.metadata.get('signal_type') if isinstance(alert.metadata, dict) else None)
+                or alert.alert_type
+                or 'none'
+            ).lower()
+
+            bucket['strength_sum'] += strength
+            bucket['confidence_sum'] += confidence
+            bucket['count'] += 1
+            bucket['signal_types'][signal_type] += 1
+
+            alert_value = _safe_numeric(alert.value) or 0.0
+            if alert.alert_type == UnifiedAlert.AlertTypeChoices.WHALE:
+                if alert.direction == UnifiedAlert.DirectionChoices.BUY:
+                    bucket['whale_buy_value'] += alert_value
+                elif alert.direction == UnifiedAlert.DirectionChoices.SELL:
+                    bucket['whale_sell_value'] += alert_value
+                if len(whale_signals) < 100:
+                    whale_signals.append(
+                        {
+                            'time': bucket_key,
+                            'signal_type': signal_type,
+                            'direction': alert.direction,
+                            'confidence': round(confidence, 4),
+                            'strength': round(strength, 2),
+                            'value': round(alert_value, 2),
+                        }
+                    )
+
+        dark_flow_series = []
+        for bucket_key in sorted(grouped.keys()):
+            bucket = grouped[bucket_key]
+            count = max(1, int(bucket['count']))
+            dominant_signal_type = max(bucket['signal_types'].items(), key=lambda item: item[1])[0]
+            dark_flow_series.append(
+                {
+                    'time': bucket_key,
+                    'strength': round(bucket['strength_sum'] / count, 2),
+                    'confidence': round(bucket['confidence_sum'] / count, 4),
+                    'signal_count': count,
+                    'signal_type': dominant_signal_type,
+                    'whale_buy_value': round(bucket['whale_buy_value'], 2),
+                    'whale_sell_value': round(bucket['whale_sell_value'], 2),
+                }
+            )
+
+        moving_averages = {}
+        for window in (20, 50):
+            key, values = _compute_simple_moving_average(candles, window)
+            moving_averages[key] = values
+
+        recent_dark_flow = dark_flow_series[-20:]
+        net_whale_value = sum((item.get('whale_buy_value') or 0) - (item.get('whale_sell_value') or 0) for item in recent_dark_flow)
+        reference_turnover = sum((item.get('close') or 0) * (item.get('volume') or 0) for item in candles[-20:])
+        smfi = round((net_whale_value / reference_turnover) * 100, 2) if reference_turnover > 0 else 0.0
+
+        latest_signal_type = dark_flow_series[-1]['signal_type'] if dark_flow_series else 'none'
+        latest_strength = dark_flow_series[-1]['strength'] if dark_flow_series else 0.0
+
+        return Response(
+            {
+                'ok': True,
+                'symbol': symbol,
+                'period': period,
+                'interval': interval,
+                'candles': candles,
+                'dark_flow_series': dark_flow_series,
+                'whale_signals': whale_signals,
+                'moving_averages': moving_averages,
+                'smfi': smfi,
+                'strategy_table': _build_dark_money_strategy_table(latest_strength, latest_signal_type),
+            }
+        )
+
+
 class StockManagementOrderFlowView(APIView):
     """GET /api/stock-management/stocks/<symbol>/order-flow/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lấy order-flow native cho stock workspace',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/order-flow/` trả về radar contract cho Stock Detail.',
+        parameters=[
+            OpenApiParameter(
+                name='window',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Cửa sổ thời gian radar, ví dụ `15m`, `30m`, `2h`.',
+                required=False,
+            ),
+            OpenApiParameter(
+                name='limit',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Số signal tối đa trả về.',
+                required=False,
+            ),
+        ],
+        responses={
+            200: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
 
     def get(self, request, symbol):
         from signal_intelligence.models import UnifiedAlert
@@ -1241,7 +1999,26 @@ class StockManagementOrderFlowView(APIView):
 
 class StockManagementNewsView(APIView):
     """GET /api/stock-management/stocks/<symbol>/news/ — graceful empty (no native news model)."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lấy news stub native cho stock workspace',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/news/` hiện trả về empty-state stub thống nhất.',
+        parameters=[
+            OpenApiParameter(
+                name='force',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Giữ tương thích với caller cũ; hiện không đổi hành vi native stub.',
+                required=False,
+            ),
+        ],
+        responses={
+            200: _STOCK_NEWS_STUB_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
 
     def get(self, request, symbol):
         return Response({
@@ -1253,7 +2030,17 @@ class StockManagementNewsView(APIView):
 
 class StockManagementNewsAISummaryView(APIView):
     """GET /api/stock-management/stocks/<symbol>/news/ai-summary/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lấy hoặc yêu cầu AI news summary native stub',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/news/ai-summary/` hiện trả về stub thống nhất cho client.',
+        responses={
+            200: _STOCK_NEWS_AI_SUMMARY_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
 
     def get(self, request, symbol):
         return Response({
@@ -1262,100 +2049,866 @@ class StockManagementNewsAISummaryView(APIView):
             'note': 'ai_summary_not_available_in_native',
         })
 
+    @extend_schema(
+        summary='Yêu cầu AI news summary native stub',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/news/ai-summary/` giữ tương thích POST cho client hiện tại.',
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'force_refresh': {'type': 'boolean'},
+                },
+            },
+        },
+        responses={
+            200: _STOCK_NEWS_AI_SUMMARY_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def post(self, request, symbol):
         return self.get(request, symbol)
 
 
 # ---------------------------------------------------------------------------
-# Advisory compat views — delegate to advisory domain (native since B5)
+# Advisory compat views — native envelope backed by AdvisoryRecord snapshots
 # ---------------------------------------------------------------------------
+
+def _normalize_ai_symbol(symbol):
+    return str(symbol or '').strip().upper()
+
+
+def _ai_context_snapshot(record):
+    return deepcopy(record.context_snapshot) if isinstance(record.context_snapshot, dict) else {}
+
+
+def _dict_list(value):
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _int_value(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _float_value(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _latest_ai_record(user, symbol, selected_trade_date=None):
+    queryset = AdvisoryRecord.objects.filter(user=user, symbol=symbol)
+    if selected_trade_date is not None:
+        queryset = queryset.filter(session_date__lte=selected_trade_date)
+    return queryset.order_by('-created_at', '-updated_at', '-pk').first()
+
+
+def _normalize_component_item(component):
+    normalized = dict(component) if isinstance(component, dict) else {}
+    normalized['id'] = _int_value(normalized.get('id'))
+    normalized['symbol'] = str(normalized.get('symbol') or '').strip().upper()
+    normalized['component_type'] = str(normalized.get('component_type') or 'indicator').strip()
+    normalized['indicator_name'] = str(normalized.get('indicator_name') or 'Tín hiệu').strip()
+    normalized['status'] = str(normalized.get('status') or 'neutral').strip()
+    normalized['confidence_score'] = _int_value(normalized.get('confidence_score'), 5)
+    normalized['suggested_action'] = str(normalized.get('suggested_action') or 'watch').strip()
+    normalized['rationale_text'] = str(normalized.get('rationale_text') or '').strip()
+    normalized['timeframe'] = str(normalized.get('timeframe') or '30m').strip()
+    normalized['include_in_summary'] = bool(normalized.get('include_in_summary', True))
+    normalized['is_deleted'] = bool(normalized.get('is_deleted', False))
+    normalized['created_at'] = str(normalized.get('created_at') or timezone.now().isoformat())
+    normalized['updated_at'] = str(normalized.get('updated_at') or normalized['created_at'])
+    return normalized
+
+
+def _normalize_component_collection(components):
+    normalized_components = []
+    next_identifier = 1
+    for component in _dict_list(components):
+        normalized_component = _normalize_component_item(component)
+        if normalized_component['id'] <= 0:
+            normalized_component['id'] = next_identifier
+        next_identifier = max(next_identifier, normalized_component['id'] + 1)
+        normalized_components.append(normalized_component)
+    return normalized_components, next_identifier
+
+
+def _default_component_templates(record, timeframe='30m', chart_context=None):
+    chart_context = chart_context if isinstance(chart_context, dict) else {}
+    rationale_prefix = str(
+        chart_context.get('rationale_text')
+        or chart_context.get('summary')
+        or record.advisory_text
+        or f'Phân tích native cho {record.symbol}'
+    ).strip()
+    return [
+        {
+            'symbol': record.symbol,
+            'component_type': 'indicator',
+            'indicator_name': 'RSI',
+            'status': 'neutral',
+            'confidence_score': 7,
+            'suggested_action': 'watch',
+            'rationale_text': rationale_prefix,
+            'timeframe': timeframe,
+            'include_in_summary': True,
+            'is_deleted': False,
+        },
+        {
+            'symbol': record.symbol,
+            'component_type': 'flow',
+            'indicator_name': 'Whale Flow',
+            'status': 'bullish',
+            'confidence_score': 8,
+            'suggested_action': 'follow',
+            'rationale_text': f'Native flow snapshot cho {record.symbol}',
+            'timeframe': timeframe,
+            'include_in_summary': True,
+            'is_deleted': False,
+        },
+        {
+            'symbol': record.symbol,
+            'component_type': 'summary',
+            'indicator_name': 'Executive Summary',
+            'status': 'informative',
+            'confidence_score': 6,
+            'suggested_action': 'hold',
+            'rationale_text': f'Tổng hợp native cho {record.symbol}',
+            'timeframe': timeframe,
+            'include_in_summary': False,
+            'is_deleted': False,
+        },
+    ]
+
+
+def _build_summary_from_components(record, components, deleted_components, summary_version):
+    active_components = [item for item in components if not item.get('is_deleted') and item.get('include_in_summary')]
+    confidence_values = [_float_value(item.get('confidence_score'), 0.0) for item in active_components]
+    average_confidence = round(sum(confidence_values) / len(confidence_values), 1) if confidence_values else 5.0
+    if average_confidence >= 7.5:
+        strategy_action = 'buy'
+        risk_level = 'low'
+        score_band = 'high'
+    elif average_confidence >= 5.5:
+        strategy_action = 'hold'
+        risk_level = 'medium'
+        score_band = 'medium'
+    else:
+        strategy_action = 'reduce'
+        risk_level = 'high'
+        score_band = 'low'
+    return {
+        'id': summary_version,
+        'summary_id': summary_version,
+        'summary_version': summary_version,
+        'symbol': record.symbol,
+        'session_date': record.session_date.isoformat(),
+        'strategy_action': strategy_action,
+        'risk_level': risk_level,
+        'overall_confidence': average_confidence,
+        'score_band': score_band,
+        'summary_text': f'Phân tích native cho {record.symbol}: {strategy_action}.',
+        'component_ids': [item['id'] for item in active_components],
+        'active_components_count': len(active_components),
+        'deleted_components_count': len([item for item in deleted_components if item.get('is_deleted')]),
+        'generated_at': timezone.now().isoformat(),
+        'source': 'native',
+    }
+
+
+def _build_observability_snapshot(record, context, components, deleted_components):
+    events = _dict_list(context.get('observability_events'))
+    latest_telemetry = context.get('observability_telemetry') if isinstance(context.get('observability_telemetry'), dict) else {}
+    confidences = [_float_value(item.get('confidence_score'), 0.0) for item in components if not item.get('is_deleted')]
+    average_confidence = round(sum(confidences) / len(confidences), 1) if confidences else 5.0
+    retry_events = []
+    for item in events[-20:][::-1]:
+        telemetry = item.get('telemetry') if isinstance(item.get('telemetry'), dict) else {}
+        retry_events.append(
+            {
+                'event_type': item.get('event_type') or 'frontend_retry_telemetry',
+                'outcome': item.get('outcome') or '',
+                'reason': item.get('reason') or telemetry.get('last_reason') or '',
+                'client_ts': item.get('client_ts') or '',
+                'created_at': item.get('created_at') or '',
+                'telemetry': telemetry,
+            }
+        )
+    summary = {
+        'severity_drift_label': context.get('severity_drift_label') or 'stable',
+        'severity_delta': _float_value(context.get('severity_delta'), 0.0),
+        'avg_aggregate_quality_score': average_confidence,
+        'retry_scheduled_total': _int_value(latest_telemetry.get('scheduled_count'), 0),
+        'retry_recovered_total': _int_value(latest_telemetry.get('recovered_count'), 0),
+        'retry_failed_total': _int_value(latest_telemetry.get('failed_count'), 0),
+    }
+    governance = context.get('governance') if isinstance(context.get('governance'), dict) else {}
+    return {
+        'summary': summary,
+        'retry_events': retry_events,
+        'timeline': retry_events[:5],
+        'governance': {
+            'delta_thresholds': governance.get('delta_thresholds') if isinstance(governance.get('delta_thresholds'), dict) else {'warning': 2, 'critical': 4, 'cooldown': 2},
+            'rollout_gate_deny_trend': _dict_list(governance.get('rollout_gate_deny_trend')),
+            'rollout_gate_deny_by_endpoint': governance.get('rollout_gate_deny_by_endpoint') if isinstance(governance.get('rollout_gate_deny_by_endpoint'), dict) else {},
+            'rollout_gate_deny_by_reason': governance.get('rollout_gate_deny_by_reason') if isinstance(governance.get('rollout_gate_deny_by_reason'), dict) else {},
+            'rollout_gate_deny_by_cohort_mode': governance.get('rollout_gate_deny_by_cohort_mode') if isinstance(governance.get('rollout_gate_deny_by_cohort_mode'), dict) else {},
+        },
+    }
+
+
+def _save_advisory_context(record, context):
+    record.context_snapshot = context
+    record.save(update_fields=['context_snapshot', 'updated_at'])
+
+
+def _build_ai_session_payload(record, *, selected_trade_date=None, contract_version='v1', include_benchmarks=False):
+    context = _ai_context_snapshot(record)
+    components, next_component_id = _normalize_component_collection(context.get('components'))
+    deleted_components, next_deleted_component_id = _normalize_component_collection(context.get('deleted_components'))
+    if not components:
+        components = []
+    if not deleted_components:
+        deleted_components = []
+
+    summary_sequence = _int_value(context.get('summary_sequence'), 1)
+    executive_summaries = _dict_list(context.get('executive_summaries'))
+    executive_summary = context.get('executive_summary') if isinstance(context.get('executive_summary'), dict) else None
+    if executive_summary is None and executive_summaries:
+        executive_summary = executive_summaries[0]
+    if executive_summary is None:
+        executive_summary = _build_summary_from_components(record, components, deleted_components, summary_sequence)
+        executive_summaries = [executive_summary]
+    if not executive_summaries:
+        executive_summaries = [executive_summary]
+
+    advisory_payload = dict(AdvisoryRecordSerializer(record).data)
+    advisory_payload.update({
+        'strategy_action': executive_summary.get('strategy_action'),
+        'risk_level': executive_summary.get('risk_level'),
+        'confidence_score': executive_summary.get('overall_confidence'),
+    })
+
+    observability = _build_observability_snapshot(record, context, components, deleted_components)
+    aggregate = context.get('aggregate') if isinstance(context.get('aggregate'), dict) else {}
+    if not aggregate:
+        aggregate = {
+            'advisory_id': str(record.advisory_id),
+            'session_date': record.session_date.isoformat(),
+            'selected_trade_date': selected_trade_date.isoformat() if selected_trade_date else record.session_date.isoformat(),
+            'contract_version': contract_version,
+            'decision': {
+                'action': executive_summary.get('strategy_action'),
+                'risk': executive_summary.get('risk_level'),
+                'score_band': executive_summary.get('score_band'),
+                'score': round(_float_value(executive_summary.get('overall_confidence'), 0.0) / 10.0, 2),
+            },
+            'observability': {
+                'severity_drift_24h': {
+                    'label': observability['summary']['severity_drift_label'],
+                    'delta': observability['summary']['severity_delta'],
+                },
+                'aggregate_quality': {
+                    'score': observability['summary']['avg_aggregate_quality_score'],
+                    'label': 'native',
+                },
+            },
+        }
+        if include_benchmarks:
+            aggregate['benchmarks'] = {'enabled': True, 'rows': []}
+
+    payload = dict(advisory_payload)
+    payload.update(
+        {
+            'ok': True,
+            'queued': record.status == AdvisoryRecord.StatusChoices.PENDING,
+            'symbol': record.symbol,
+            'contract_version': contract_version,
+            'selected_trade_date': selected_trade_date.isoformat() if selected_trade_date else None,
+            'user_ai_provider': context.get('user_ai_provider') or (record.ai_model or 'core-native'),
+            'effective_ai_provider': context.get('effective_ai_provider') or context.get('user_ai_provider') or (record.ai_model or 'core-native'),
+            'effective_ai_model': context.get('effective_ai_model') or record.ai_model or '',
+            'effective_ai_source': context.get('effective_ai_source') or 'native',
+            'advisory': dict(advisory_payload),
+            'aggregate': aggregate,
+            'components': components,
+            'deleted_components': deleted_components,
+            'executive_summary': executive_summary,
+            'executive_summaries': executive_summaries,
+        }
+    )
+    if context.get('message'):
+        payload['message'] = context['message']
+    return payload
+
+
+def _find_component_context(record, component_id):
+    context = _ai_context_snapshot(record)
+    components, next_component_id = _normalize_component_collection(context.get('components'))
+    deleted_components, next_deleted_component_id = _normalize_component_collection(context.get('deleted_components'))
+    for index, component in enumerate(components):
+        if component['id'] == component_id:
+            return context, components, deleted_components, component, 'components', index
+    for index, component in enumerate(deleted_components):
+        if component['id'] == component_id:
+            return context, components, deleted_components, component, 'deleted_components', index
+    return context, components, deleted_components, None, None, None
+
+
+def _find_component_record(user, component_id, advisory_id=None):
+    matches = []
+    queryset = AdvisoryRecord.objects.filter(user=user).order_by('-created_at', '-updated_at', '-pk')
+    if advisory_id:
+        try:
+            advisory_id = UUID(str(advisory_id))
+        except (TypeError, ValueError):
+            return None, None, None, None, None, None, None, Response({'ok': False, 'message': 'advisory_id khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+        queryset = queryset.filter(advisory_id=advisory_id)
+    for record in queryset:
+        context, components, deleted_components, component, component_bucket, component_index = _find_component_context(record, component_id)
+        if component is not None:
+            matches.append((record, context, components, deleted_components, component, component_bucket, component_index))
+            if advisory_id:
+                break
+    if not matches:
+        return None, None, None, None, None, None, None, Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+    if len(matches) > 1:
+        return None, None, None, None, None, None, None, Response({'ok': False, 'message': 'Khong the xac dinh advisory session. Hay truyen advisory_id.'}, status=status.HTTP_409_CONFLICT)
+    record, context, components, deleted_components, component, component_bucket, component_index = matches[0]
+    return record, context, components, deleted_components, component, component_bucket, component_index, None
+
+
+def _find_symbol_advisory_record(user, symbol, advisory_id=None, *, require_unique=True):
+    queryset = AdvisoryRecord.objects.filter(user=user, symbol=symbol).order_by('-created_at', '-updated_at', '-pk')
+    if advisory_id:
+        try:
+            advisory_id = UUID(str(advisory_id))
+        except (TypeError, ValueError):
+            return None, Response({'ok': False, 'symbol': symbol, 'message': 'advisory_id khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+        queryset = queryset.filter(advisory_id=advisory_id)
+    records = list(queryset)
+    if not records:
+        return None, Response({'ok': False, 'symbol': symbol, 'message': 'AI session khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+    if require_unique and len(records) > 1 and not advisory_id:
+        return None, Response({'ok': False, 'symbol': symbol, 'message': 'AI session khong ro. Hay truyen advisory_id.'}, status=status.HTTP_409_CONFLICT)
+    return records[0], None
+
+
+def _ensure_advisory_record_for_symbol(request, symbol):
+    normalized_symbol = _normalize_ai_symbol(symbol)
+    if not normalized_symbol:
+        return None, Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    trade_date_raw = str(request.query_params.get('trade_date') or request.query_params.get('date') or '').strip()
+    selected_trade_date = None
+    if trade_date_raw:
+        try:
+            selected_trade_date = datetime.fromisoformat(f'{trade_date_raw[:10]}T00:00:00').date()
+        except ValueError:
+            selected_trade_date = None
+
+    record = _latest_ai_record(request.user, normalized_symbol, selected_trade_date=selected_trade_date)
+    if record is not None:
+        return record, None
+
+    from advisory.views import AdvisoryRefreshView
+
+    django_request = getattr(request, '_request', request)
+    refresh_response = AdvisoryRefreshView.as_view()(django_request, symbol=normalized_symbol)
+    if refresh_response.status_code not in {status.HTTP_200_OK, status.HTTP_201_CREATED}:
+        return None, refresh_response
+
+    advisory_id = refresh_response.data.get('advisory_id') if isinstance(refresh_response.data, dict) else None
+    if advisory_id:
+        record = AdvisoryRecord.objects.filter(advisory_id=advisory_id, user=request.user, symbol=normalized_symbol).first()
+        if record is not None:
+            return record, None
+
+    return _latest_ai_record(request.user, normalized_symbol, selected_trade_date=selected_trade_date), None
+
+
+def _upsert_ai_components(record, *, timeframe='30m', chart_context=None):
+    context = _ai_context_snapshot(record)
+    components, next_component_id = _normalize_component_collection(context.get('components'))
+    if components:
+        context['components'] = components
+        context['deleted_components'] = _normalize_component_collection(context.get('deleted_components'))[0]
+        context['component_sequence'] = max(_int_value(context.get('component_sequence'), 0), next_component_id)
+        _save_advisory_context(record, context)
+        return components, False, []
+
+    default_components, _ = _normalize_component_collection(_default_component_templates(record, timeframe=timeframe, chart_context=chart_context))
+    context['components'] = default_components
+    context['deleted_components'] = []
+    context['component_sequence'] = len(default_components) + 1
+    _save_advisory_context(record, context)
+    return default_components, True, []
+
+
+def _update_component_lists(record, components, deleted_components):
+    context = _ai_context_snapshot(record)
+    context['components'] = components
+    context['deleted_components'] = deleted_components
+    context['component_sequence'] = max([_int_value(item.get('id'), 0) for item in components + deleted_components] or [0]) + 1
+    _save_advisory_context(record, context)
+
+
+def _build_native_observability_payload(record, limit=20, window_hours=24, retry_outcome=None, retry_reason=None, retry_sort='newest'):
+    context = _ai_context_snapshot(record)
+    components, _ = _normalize_component_collection(context.get('components'))
+    deleted_components, _ = _normalize_component_collection(context.get('deleted_components'))
+    observability = _build_observability_snapshot(record, context, components, deleted_components)
+
+    retry_events = observability['retry_events']
+    if retry_outcome:
+        retry_events = [item for item in retry_events if str(item.get('outcome') or '').lower() == retry_outcome]
+    if retry_reason:
+        retry_events = [item for item in retry_events if str(item.get('reason') or '').lower() == retry_reason]
+    if retry_sort == 'oldest':
+        retry_events = list(reversed(retry_events))
+    elif retry_sort == 'most_failed':
+        retry_events = sorted(retry_events, key=lambda item: 1 if str(item.get('outcome') or '').lower() == 'failed' else 0, reverse=True)
+
+    observability['retry_events'] = retry_events[:limit]
+    observability['timeline'] = observability['retry_events'][:5]
+    observability['symbol'] = record.symbol
+    observability['window_hours'] = window_hours
+    observability['limit'] = limit
+    observability['ok'] = True
+    return observability
 
 class StockManagementAIAdvisorySessionView(APIView):
     """GET /api/stock-management/stocks/<symbol>/ai-advisory-session/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, symbol):
-        from advisory.views import AdvisoryLatestView
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        contract_raw = str(request.query_params.get('contract') or 'v1').strip().lower()
+        if contract_raw and contract_raw not in {'v1', 'v2'}:
+            return Response({'ok': False, 'message': 'contract khong hop le. Ho tro: v1, v2.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        include_benchmarks = str(request.query_params.get('include_benchmarks') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+        trade_date_raw = str(request.query_params.get('trade_date') or request.query_params.get('date') or '').strip()
+        selected_trade_date = None
+        if trade_date_raw:
+            try:
+                selected_trade_date = datetime.fromisoformat(f'{trade_date_raw[:10]}T00:00:00').date()
+            except ValueError:
+                selected_trade_date = None
+
+        record = _latest_ai_record(request.user, normalized_symbol, selected_trade_date=selected_trade_date)
+        if record is None:
+            return Response(
+                {
+                    'ok': False,
+                    'queued': False,
+                    'symbol': normalized_symbol,
+                    'contract': contract_raw or 'v1',
+                    'contract_version': contract_raw or 'v1',
+                    'include_benchmarks': include_benchmarks,
+                    'reason': 'no_advisory_data',
+                    'message': f'Chưa có dữ liệu tư vấn AI cho mã {normalized_symbol}.',
+                    'advisory': None,
+                    'aggregate': None,
+                    'components': [],
+                    'deleted_components': [],
+                    'executive_summary': None,
+                    'executive_summaries': [],
+                    'user_ai_provider': None,
+                    'effective_ai_provider': None,
+                    'effective_ai_model': None,
+                    'effective_ai_source': None,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        payload = _build_ai_session_payload(
+            record,
+            selected_trade_date=selected_trade_date,
+            contract_version='v2' if contract_raw == 'v2' else 'v1',
+            include_benchmarks=include_benchmarks,
+        )
+        if payload.get('aggregate') and include_benchmarks:
+            payload['aggregate']['benchmarks'] = {'enabled': True, 'rows': []}
+        return Response(payload, status=status.HTTP_200_OK)
+
+    def post(self, request, symbol):
+        from advisory.views import AdvisoryRefreshView
+
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
         django_request = getattr(request, '_request', request)
-        response = AdvisoryLatestView.as_view()(django_request, symbol=symbol.upper())
-        if getattr(response, 'status_code', None) == status.HTTP_404_NOT_FOUND:
-            normalized_symbol = symbol.upper()
-            return Response({
-                'ok': False,
-                'queued': False,
-                'symbol': normalized_symbol,
-                'contract': request.query_params.get('contract', 'v1'),
-                'include_benchmarks': str(request.query_params.get('include_benchmarks', '')).lower() in {'1', 'true', 'yes'},
-                'reason': 'no_advisory_data',
-                'message': f'Chưa có dữ liệu tư vấn AI cho mã {normalized_symbol}.',
-                'advisory': None,
-                'aggregate': None,
-                'components': [],
-                'deleted_components': [],
-                'executive_summary': None,
-                'executive_summaries': [],
-            }, status=status.HTTP_200_OK)
-        return response
+        refresh_response = AdvisoryRefreshView.as_view()(django_request, symbol=normalized_symbol)
+        if refresh_response.status_code not in {status.HTTP_200_OK, status.HTTP_201_CREATED}:
+            return refresh_response
+
+        advisory_id = refresh_response.data.get('advisory_id') if isinstance(refresh_response.data, dict) else None
+        record = AdvisoryRecord.objects.filter(advisory_id=advisory_id, user=request.user, symbol=normalized_symbol).first() if advisory_id else None
+        if record is None:
+            record = _latest_ai_record(request.user, normalized_symbol)
+        if record is None:
+            return refresh_response
+
+        payload = _build_ai_session_payload(record, contract_version='v1')
+        payload['task_id'] = refresh_response.data.get('task_id')
+        payload['manual_trigger'] = refresh_response.data.get('manual_trigger')
+        payload['message'] = refresh_response.data.get('message') or payload.get('message') or 'Đã tạo advisory AI.'
+        payload['queued'] = payload.get('queued', False)
+        return Response(payload, status=refresh_response.status_code)
 
 
 class StockManagementAIAdvisoryObservabilityView(APIView):
     """GET/POST /api/stock-management/stocks/<symbol>/ai-advisory-observability/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, symbol):
-        return Response({
-            'symbol': symbol.upper(),
-            'observability': None,
-            'note': 'observability_not_available_in_native',
-        })
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        limit_raw = request.query_params.get('limit')
+        window_hours_raw = request.query_params.get('window_hours')
+        retry_outcome = str(request.query_params.get('retry_outcome') or '').strip().lower() or None
+        retry_reason = str(request.query_params.get('retry_reason') or '').strip().lower() or None
+        retry_sort = str(request.query_params.get('retry_sort') or 'newest').strip().lower()
+        governance_bucket = str(request.query_params.get('governance_bucket') or 'hour').strip().lower()
+
+        try:
+            limit = max(int(limit_raw or 20), 1)
+            limit = min(limit, 100)
+        except (TypeError, ValueError):
+            return Response({'ok': False, 'message': 'limit khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            window_hours = max(int(window_hours_raw or 24), 1)
+            window_hours = min(window_hours, 168)
+        except (TypeError, ValueError):
+            return Response({'ok': False, 'message': 'window_hours khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if retry_sort not in {'newest', 'oldest', 'most_failed'}:
+            return Response({'ok': False, 'message': 'retry_sort khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+        if governance_bucket not in {'hour', 'day'}:
+            return Response({'ok': False, 'message': 'governance_bucket khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        record = _latest_ai_record(request.user, normalized_symbol)
+        if record is None:
+            return Response(
+                {
+                    'ok': True,
+                    'symbol': normalized_symbol,
+                    'summary': {
+                        'severity_drift_label': 'stable',
+                        'severity_delta': 0,
+                        'avg_aggregate_quality_score': 0,
+                        'retry_scheduled_total': 0,
+                        'retry_recovered_total': 0,
+                        'retry_failed_total': 0,
+                    },
+                    'retry_events': [],
+                    'timeline': [],
+                    'governance': {
+                        'delta_thresholds': {'warning': 2, 'critical': 4, 'cooldown': 2},
+                        'rollout_gate_deny_trend': [],
+                        'rollout_gate_deny_by_endpoint': {},
+                        'rollout_gate_deny_by_reason': {},
+                        'rollout_gate_deny_by_cohort_mode': {},
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        payload = _build_native_observability_payload(
+            record,
+            limit=limit,
+            window_hours=window_hours,
+            retry_outcome=retry_outcome,
+            retry_reason=retry_reason,
+            retry_sort=retry_sort,
+        )
+        payload['symbol'] = normalized_symbol
+        payload['governance_bucket'] = governance_bucket
+        return Response(payload, status=status.HTTP_200_OK)
 
     def post(self, request, symbol):
-        # Accept telemetry events from the frontend advisory observer; no-op store for now.
-        return Response({
-            'symbol': symbol.upper(),
-            'received': True,
-        }, status=status.HTTP_201_CREATED)
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        record = _latest_ai_record(request.user, normalized_symbol)
+        if record is None:
+            return Response({'ok': True, 'symbol': normalized_symbol, 'received': True}, status=status.HTTP_201_CREATED)
+
+        context = _ai_context_snapshot(record)
+        events = _dict_list(context.get('observability_events'))
+        payload = request.data if isinstance(request.data, dict) else {}
+        telemetry = payload.get('telemetry') if isinstance(payload.get('telemetry'), dict) else {}
+        event_type = str(payload.get('event_type') or 'frontend_retry_telemetry').strip()[:80]
+        outcome = str(payload.get('outcome') or '').strip()[:60]
+        client_ts = str(payload.get('client_ts') or '').strip()[:64]
+        telemetry_payload = {
+            'scheduled_count': _int_value(telemetry.get('scheduled_count'), 0),
+            'recovered_count': _int_value(telemetry.get('recovered_count'), 0),
+            'failed_count': _int_value(telemetry.get('failed_count'), 0),
+            'last_reason': str(telemetry.get('last_reason') or '').strip()[:120],
+            'last_event_at': str(telemetry.get('last_event_at') or '').strip()[:64],
+        }
+        events.append(
+            {
+                'event_type': event_type,
+                'outcome': outcome,
+                'client_ts': client_ts,
+                'telemetry': telemetry_payload,
+                'reason': telemetry_payload['last_reason'],
+                'created_at': timezone.now().isoformat(),
+            }
+        )
+        context['observability_events'] = events[-20:]
+        context['observability_telemetry'] = telemetry_payload
+        _save_advisory_context(record, context)
+        return Response({'ok': True, 'symbol': normalized_symbol, 'received': True}, status=status.HTTP_201_CREATED)
 
 
 class StockManagementAIAdvisoryComponentsGenerateView(APIView):
     """POST /api/stock-management/stocks/<symbol>/ai-advisory-components/generate/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request, symbol):
-        from advisory.views import AdvisoryRefreshView
-        django_request = getattr(request, '_request', request)
-        return AdvisoryRefreshView.as_view()(django_request, symbol=symbol.upper())
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        record = _latest_ai_record(request.user, normalized_symbol)
+        if record is None:
+            from advisory.views import AdvisoryRefreshView
+
+            django_request = getattr(request, '_request', request)
+            refresh_response = AdvisoryRefreshView.as_view()(django_request, symbol=normalized_symbol)
+            if refresh_response.status_code not in {status.HTTP_200_OK, status.HTTP_201_CREATED}:
+                return refresh_response
+            advisory_id = refresh_response.data.get('advisory_id') if isinstance(refresh_response.data, dict) else None
+            record = AdvisoryRecord.objects.filter(advisory_id=advisory_id, user=request.user, symbol=normalized_symbol).first() if advisory_id else None
+            if record is None:
+                record = _latest_ai_record(request.user, normalized_symbol)
+
+        if record is None:
+            return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Chưa có advisory gốc để tạo components.'}, status=status.HTTP_404_NOT_FOUND)
+
+        payload_data = request.data if isinstance(request.data, dict) else {}
+        timeframe = str(payload_data.get('timeframe') or '30m').strip() or '30m'
+        chart_context = payload_data.get('chart_context') if isinstance(payload_data.get('chart_context'), dict) else None
+        components, created_now, warnings = _upsert_ai_components(record, timeframe=timeframe, chart_context=chart_context)
+
+        context = _ai_context_snapshot(record)
+        deleted_components = _dict_list(context.get('deleted_components'))
+        summary_sequence = _int_value(context.get('summary_sequence'), 1)
+        if not _dict_list(context.get('executive_summaries')):
+            context['executive_summary'] = _build_summary_from_components(record, components, deleted_components, summary_sequence)
+            context['executive_summaries'] = [context['executive_summary']]
+            _save_advisory_context(record, context)
+
+        manual_trigger = context.get('manual_trigger') if isinstance(context.get('manual_trigger'), dict) else {
+            'job_key': 'advisory_refresh',
+            'source': 'native_components_generate',
+        }
+
+        return Response(
+            {
+                'ok': True,
+                'symbol': normalized_symbol,
+                'status': record.status,
+                'advisory': AdvisoryRecordSerializer(record).data,
+                'created_count': len(components) if created_now else 0,
+                'generated_by_ai': False,
+                'chart_context_used': bool(chart_context),
+                'chart_context_warnings': warnings,
+                'manual_trigger': manual_trigger,
+                'components': components,
+                'deleted_components': deleted_components,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class StockManagementAIAdvisoryComponentsDeletedView(APIView):
-    """GET /api/stock-management/stocks/<symbol>/ai-advisory-components/deleted/"""
-    permission_classes = [permissions.IsAuthenticated]
+    """DELETE /api/stock-management/stocks/<symbol>/ai-advisory-components/deleted/"""
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, symbol):
-        return Response({'symbol': symbol.upper(), 'deleted': []})
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
+        if error_response is not None:
+            if error_response.status_code == status.HTTP_404_NOT_FOUND:
+                return Response({'ok': True, 'symbol': normalized_symbol, 'deleted': []}, status=status.HTTP_200_OK)
+            return error_response
+
+        context = _ai_context_snapshot(record)
+        deleted_components = _normalize_component_collection(context.get('deleted_components'))[0]
+        return Response({'ok': True, 'symbol': normalized_symbol, 'deleted': deleted_components}, status=status.HTTP_200_OK)
+
+    def delete(self, request, symbol):
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
+        if error_response is not None:
+            if error_response.status_code == status.HTTP_404_NOT_FOUND:
+                return Response({'ok': True, 'symbol': normalized_symbol, 'deleted_count': 0, 'message': 'Da xoa toan bo deleted tabs.'}, status=status.HTTP_200_OK)
+            return error_response
+
+        context = _ai_context_snapshot(record)
+        deleted_components, _ = _normalize_component_collection(context.get('deleted_components'))
+        deleted_count = len(deleted_components)
+        context['deleted_components'] = []
+        _save_advisory_context(record, context)
+        return Response({'ok': True, 'symbol': normalized_symbol, 'deleted_count': deleted_count, 'message': 'Da xoa toan bo deleted tabs.'}, status=status.HTTP_200_OK)
 
 
 class StockManagementAIAdvisorySummaryRegenerateView(APIView):
     """POST /api/stock-management/stocks/<symbol>/ai-advisory-summary/regenerate/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request, symbol):
-        from advisory.views import AdvisoryRefreshView
-        django_request = getattr(request, '_request', request)
-        return AdvisoryRefreshView.as_view()(django_request, symbol=symbol.upper())
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
+        if error_response is not None:
+            if error_response.status_code == status.HTTP_404_NOT_FOUND:
+                return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Chưa có advisory gốc để tổng hợp.'}, status=status.HTTP_404_NOT_FOUND)
+            return error_response
+
+        payload_data = request.data if isinstance(request.data, dict) else {}
+        component_ids = payload_data.get('component_ids')
+        synthesis_preference = str(payload_data.get('synthesis_preference') or 'balanced').strip().lower()
+        if synthesis_preference not in {'short_term_action', 'risk_management', 'balanced'}:
+            synthesis_preference = 'balanced'
+        raw_prompt_config = payload_data.get('prompt_config')
+        prompt_config = raw_prompt_config if isinstance(raw_prompt_config, dict) else None
+
+        context = _ai_context_snapshot(record)
+        components, _ = _normalize_component_collection(context.get('components'))
+        deleted_components, _ = _normalize_component_collection(context.get('deleted_components'))
+        active_components = [
+            item for item in components
+            if not item.get('is_deleted') and item.get('include_in_summary')
+        ]
+        if isinstance(component_ids, list) and component_ids:
+            requested_ids = {_int_value(item, -1) for item in component_ids}
+            active_components = [item for item in active_components if item['id'] in requested_ids]
+
+        if not active_components:
+            return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Khong co component active de tong hop.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        summary_sequence = _int_value(context.get('summary_sequence'), 0) + 1
+        summary = _build_summary_from_components(record, active_components, deleted_components, summary_sequence)
+        summary['synthesis_preference'] = synthesis_preference
+        if prompt_config is not None:
+            summary['prompt_config'] = prompt_config
+
+        executive_summaries = _dict_list(context.get('executive_summaries'))
+        executive_summaries = [summary, *[item for item in executive_summaries if _int_value(item.get('summary_version'), 0) != summary_sequence]]
+        context['summary_sequence'] = summary_sequence
+        context['executive_summary'] = summary
+        context['executive_summaries'] = executive_summaries[:8]
+        context['components'] = components
+        context['deleted_components'] = deleted_components
+        aggregate = context.get('aggregate') if isinstance(context.get('aggregate'), dict) else {}
+        aggregate.update(
+            {
+                'advisory_id': str(record.advisory_id),
+                'session_date': record.session_date.isoformat(),
+                'selected_trade_date': record.session_date.isoformat(),
+                'contract_version': 'v1',
+                'decision': {
+                    'action': summary['strategy_action'],
+                    'risk': summary['risk_level'],
+                    'score_band': summary['score_band'],
+                    'score': round(_float_value(summary['overall_confidence'], 0.0) / 10.0, 2),
+                },
+                'observability': {
+                    'severity_drift_24h': {'label': summary['strategy_action'], 'delta': 0},
+                    'aggregate_quality': {'score': summary['overall_confidence'], 'label': 'native'},
+                },
+            }
+        )
+        context['aggregate'] = aggregate
+        _save_advisory_context(record, context)
+
+        return Response(
+            {
+                'ok': True,
+                'symbol': normalized_symbol,
+                'status': record.status,
+                'executive_summary': summary,
+                'executive_summaries': executive_summaries[:8],
+                'components': components,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class StockManagementAIAdvisorySummaryDetailView(APIView):
     """DELETE /api/stock-management/stocks/<symbol>/ai-advisory-summary/<summary_id>/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def delete(self, request, symbol, summary_id):
+        normalized_symbol = _normalize_ai_symbol(symbol)
+        if not normalized_symbol:
+            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
+        if error_response is not None:
+            if error_response.status_code == status.HTTP_404_NOT_FOUND:
+                return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Thong tin tong hop khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+            return error_response
+
+        context = _ai_context_snapshot(record)
+        executive_summaries = _dict_list(context.get('executive_summaries'))
+        remaining_summaries = [item for item in executive_summaries if _int_value(item.get('summary_version'), 0) != _int_value(summary_id, 0)]
+        if len(remaining_summaries) == len(executive_summaries):
+            return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Thong tin tong hop khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+
+        context['executive_summaries'] = remaining_summaries
+        if _int_value(context.get('summary_sequence'), 0) == _int_value(summary_id, 0):
+            context['summary_sequence'] = _int_value(summary_id, 0)
+        context['executive_summary'] = remaining_summaries[0] if remaining_summaries else None
+        _save_advisory_context(record, context)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class StockManagementFinancialsView(APIView):
     """GET /api/stock-management/stocks/<symbol>/financials/ — graceful empty."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lấy financials stub native cho stock workspace',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/financials/` trả về stub thống nhất khi financials native chưa materialized.',
+        responses={
+            200: _STOCK_FINANCIALS_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
 
     def get(self, request, symbol):
         return Response({'symbol': symbol.upper(), 'financials': None, 'note': 'financials_not_available_in_native'})
@@ -1367,43 +2920,136 @@ class StockManagementFinancialsView(APIView):
 
 class StockManagementAdvisoryCompToggleView(APIView):
     """POST /api/stock-management/ai-advisory-components/<pk>/toggle-include/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request, pk):
-        return Response({'id': pk, 'included': True})
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, context, components, deleted_components, component, component_bucket, component_index, error_response = _find_component_record(request.user, _int_value(pk, -1), advisory_id=advisory_id)
+        if error_response is not None:
+            return error_response
+        if record is None or component is None:
+            return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if component_bucket == 'components':
+            components[component_index]['include_in_summary'] = not bool(components[component_index].get('include_in_summary', True))
+            components[component_index]['updated_at'] = timezone.now().isoformat()
+        else:
+            deleted_components[component_index]['include_in_summary'] = not bool(deleted_components[component_index].get('include_in_summary', False))
+            deleted_components[component_index]['updated_at'] = timezone.now().isoformat()
+        _update_component_lists(record, components, deleted_components)
+        updated_component = components[component_index] if component_bucket == 'components' else deleted_components[component_index]
+        return Response({'ok': True, 'component': updated_component}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompRefreshView(APIView):
     """POST /api/stock-management/ai-advisory-components/<pk>/refresh/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request, pk):
-        return Response({'id': pk, 'status': 'refresh_queued'})
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, context, components, deleted_components, component, component_bucket, component_index, error_response = _find_component_record(request.user, _int_value(pk, -1), advisory_id=advisory_id)
+        if error_response is not None:
+            return error_response
+        if record is None or component is None:
+            return Response({'ok': False, 'message': 'Chưa có advisory gốc để làm mới tab.'}, status=status.HTTP_404_NOT_FOUND)
+
+        refreshed_component = dict(component)
+        refreshed_component['confidence_score'] = min(10, _int_value(refreshed_component.get('confidence_score'), 5) + 1)
+        refreshed_component['status'] = refreshed_component.get('status') or 'neutral'
+        refreshed_component['rationale_text'] = refreshed_component.get('rationale_text') or f'Làm mới native cho {record.symbol}'
+        refreshed_component['updated_at'] = timezone.now().isoformat()
+        if component_bucket == 'components':
+            components[component_index] = refreshed_component
+        else:
+            deleted_components[component_index] = refreshed_component
+        _update_component_lists(record, components, deleted_components)
+        return Response({'ok': True, 'generated_by_ai': False, 'component': refreshed_component, 'message': 'Đã làm mới tab AI đang chọn.'}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompRestoreView(APIView):
     """POST /api/stock-management/ai-advisory-components/<pk>/restore/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request, pk):
-        return Response({'id': pk, 'status': 'restored'})
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, context, components, deleted_components, component, component_bucket, component_index, error_response = _find_component_record(request.user, _int_value(pk, -1), advisory_id=advisory_id)
+        if error_response is not None:
+            return error_response
+        if record is None or component is None:
+            return Response({'ok': False, 'message': 'Component khong ton tai hoac chua bi xoa.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if component_bucket != 'deleted_components':
+            return Response({'ok': False, 'message': 'Component khong ton tai hoac chua bi xoa.'}, status=status.HTTP_404_NOT_FOUND)
+
+        restored_component = dict(component)
+        restored_component['is_deleted'] = False
+        restored_component['include_in_summary'] = True
+        restored_component['updated_at'] = timezone.now().isoformat()
+        deleted_components.pop(component_index)
+        components.append(restored_component)
+        components.sort(key=lambda item: _int_value(item.get('id'), 0))
+        _update_component_lists(record, components, deleted_components)
+        return Response({'ok': True, 'component': restored_component}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompDetailView(APIView):
-    """GET/DELETE /api/stock-management/ai-advisory-components/<pk>/"""
-    permission_classes = [permissions.IsAuthenticated]
+    """DELETE /api/stock-management/ai-advisory-components/<pk>/"""
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, pk):
-        return Response({'id': pk, 'data': None, 'note': 'component_not_available_in_native'})
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, context, components, deleted_components, component, component_bucket, component_index, error_response = _find_component_record(request.user, _int_value(pk, -1), advisory_id=advisory_id)
+        if error_response is not None:
+            return error_response
+        if record is None or component is None:
+            return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'ok': True, 'id': component['id'], 'component': component, 'deleted_components': deleted_components}, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
+        advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
+        record, context, components, deleted_components, component, component_bucket, component_index, error_response = _find_component_record(request.user, _int_value(pk, -1), advisory_id=advisory_id)
+        if error_response is not None:
+            return error_response
+        if record is None or component is None:
+            return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if component_bucket == 'deleted_components':
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        removed_component = dict(component)
+        removed_component['is_deleted'] = True
+        removed_component['include_in_summary'] = False
+        removed_component['updated_at'] = timezone.now().isoformat()
+        components.pop(component_index)
+        deleted_components.insert(0, removed_component)
+        _update_component_lists(record, components, deleted_components)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class StockManagementPortfolioNewsDigestView(APIView):
     """GET /api/stock-management/portfolio/news-digest/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        summary='Lấy portfolio news digest native cho frontend thuê bao',
+        description=(
+            'Endpoint native `/core/v1/stock-management/portfolio/news-digest/`. '
+            'Hiện trả về stub facts-first để frontend render lane digest mà không phụ thuộc compat `/api`.'
+        ),
+        responses={
+            200: _PORTFOLIO_NEWS_DIGEST_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Portfolio news digest stub',
+                value={
+                    'news': [],
+                    'note': 'news_digest_not_available_in_native',
+                },
+            ),
+        ],
+    )
     def get(self, request):
         return Response({'news': [], 'note': 'news_digest_not_available_in_native'})
 
@@ -1414,13 +3060,61 @@ class StockManagementPortfolioNewsDigestView(APIView):
 
 class StockManagementGroupsView(APIView):
     """GET /api/stock-management/groups/ — native watchlist-backed groups."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        summary='Lấy market groups native cho watchlist và dashboard symbol universe',
+        description=(
+            'Endpoint native `/core/v1/stock-management/groups/`. '
+            'Trả về danh sách group watchlist-backed kèm `items` inline để frontend thuê bao xây symbol universe và panel watchlist.'
+        ),
+        parameters=[
+            OpenApiParameter(
+                name='include_prices',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Đặt `false` để bỏ price enrichment khi caller chỉ cần symbol universe.',
+                required=False,
+            ),
+        ],
+        responses={
+            200: _STOCK_MANAGEMENT_GROUP_LIST_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Stock management groups',
+                value=[
+                    {
+                        'id': 7,
+                        'name': 'Ngân hàng',
+                        'group_type': 'SECTOR',
+                        'description': 'Nhóm ngân hàng',
+                        'color': '#3b82f6',
+                        'order': 1,
+                        'items': [
+                            {
+                                'id': 81,
+                                'symbol': 'TPB',
+                                'note': 'Theo dõi ngân hàng',
+                                'current_price': 18.25,
+                                'prev_price': 17.9,
+                                'change_value': 0.35,
+                                'change_pct': 1.96,
+                                'last_date': '2026-05-20',
+                            },
+                        ],
+                    },
+                ],
+            ),
+        ],
+    )
     def get(self, request):
+        include_prices = str(request.query_params.get('include_prices', '1')).strip().lower() not in {'0', 'false', 'no'}
         watchlists = list(_watchlists_queryset_for_user(request.user).prefetch_related('items'))
         watchlists.sort(key=_group_sort_key)
         symbols = [item.symbol for watchlist in watchlists for item in watchlist.items.all()]
-        price_map = _build_price_change_map(symbols)
+        price_map = _build_price_change_map(symbols) if include_prices else {}
         return Response([
             _serialize_stock_management_group(watchlist, index, price_map)
             for index, watchlist in enumerate(watchlists)
@@ -1429,7 +3123,7 @@ class StockManagementGroupsView(APIView):
 
 class StockManagementSeedView(APIView):
     """POST /api/stock-management/seed/ — create/update default market groups."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request):
         tenant = _resolve_user_tenant(request.user)
@@ -1512,7 +3206,7 @@ class StockManagementSeedView(APIView):
 
 class StockManagementSyncView(APIView):
     """POST /api/stock-management/sync/ — native quote refresh for user scope."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request):
         watchlist_symbols = list(
@@ -1571,8 +3265,43 @@ class StockManagementSyncView(APIView):
 
 class StockManagementTrackedSymbolsView(APIView):
     """GET/POST /api/stock-management/tracked-symbols/ — native tracked symbol contract."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        summary='Lấy danh sách tracked symbols native của user',
+        description=(
+            'Endpoint native `/core/v1/stock-management/tracked-symbols/`. '
+            'Danh sách đã enrich với price snapshot và profile summary để frontend render shortlist trực tiếp.'
+        ),
+        responses={
+            200: _TRACKED_SYMBOL_LIST_SCHEMA,
+            401: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Tracked symbols list',
+                value=[
+                    {
+                        'id': 11,
+                        'symbol': 'TPB',
+                        'industry': 'Ngân hàng',
+                        'company_name': 'TPBank',
+                        'market_cap_bn': 48000.25,
+                        'source_group_id': 7,
+                        'source_group_name': 'Ngân hàng',
+                        'whale_alert_threshold_million': 850.0,
+                        'current_price': 18.25,
+                        'prev_price': 17.9,
+                        'change_value': 0.35,
+                        'change_pct': 1.96,
+                        'last_date': '2026-05-20',
+                        'added_at': '2026-05-20T09:15:00+07:00',
+                        'updated_at': '2026-05-20T09:15:00+07:00',
+                    },
+                ],
+            ),
+        ],
+    )
     def get(self, request):
         tracked_symbols = list(_tracked_symbols_queryset_for_user(request.user).order_by('-added_at', '-pk'))
         symbols = [row.symbol for row in tracked_symbols]
@@ -1583,6 +3312,52 @@ class StockManagementTrackedSymbolsView(APIView):
             for row in tracked_symbols
         ])
 
+    @extend_schema(
+        summary='Thêm tracked symbol native cho user',
+        description=(
+            'Endpoint native `/core/v1/stock-management/tracked-symbols/`. '
+            'Dùng cho add-to-tracked từ watchlist và stock detail mà không đi qua compat `/api`.'
+        ),
+        request=_TRACKED_SYMBOL_CREATE_REQUEST_SCHEMA,
+        responses={
+            201: _TRACKED_SYMBOL_SCHEMA,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            409: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Create tracked symbol request',
+                value={
+                    'symbol': 'TPB',
+                    'source_group_id': 7,
+                    'whale_alert_threshold_million': 850,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Create tracked symbol response',
+                value={
+                    'id': 11,
+                    'symbol': 'TPB',
+                    'industry': 'Ngân hàng',
+                    'company_name': 'TPBank',
+                    'market_cap_bn': 48000.25,
+                    'source_group_id': 7,
+                    'source_group_name': 'Ngân hàng',
+                    'whale_alert_threshold_million': 850.0,
+                    'current_price': 18.25,
+                    'prev_price': 17.9,
+                    'change_value': 0.35,
+                    'change_pct': 1.96,
+                    'last_date': '2026-05-20',
+                    'added_at': '2026-05-20T09:15:00+07:00',
+                    'updated_at': '2026-05-20T09:15:00+07:00',
+                },
+                response_only=True,
+            ),
+        ],
+    )
     def post(self, request):
         try:
             symbol = _validate_stock_symbol(request.data.get('symbol') or request.data.get('ticker') or request.data.get('code'))
@@ -1619,8 +3394,28 @@ class StockManagementTrackedSymbolsView(APIView):
 
 class StockManagementTrackedSymbolDetailView(APIView):
     """PATCH/DELETE /api/stock-management/tracked-symbols/<pk>/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        summary='Cập nhật tracked symbol native',
+        description='Endpoint native `/core/v1/stock-management/tracked-symbols/{id}/` cho cập nhật threshold hoặc source group.',
+        request=_TRACKED_SYMBOL_PATCH_REQUEST_SCHEMA,
+        responses={
+            200: _TRACKED_SYMBOL_SCHEMA,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Patch tracked symbol request',
+                value={
+                    'whale_alert_threshold_million': 920,
+                },
+                request_only=True,
+            ),
+        ],
+    )
     def patch(self, request, pk):
         tracked_symbol = _get_tracked_symbol_or_404_for_user(request.user, pk)
         update_fields = []
@@ -1654,6 +3449,15 @@ class StockManagementTrackedSymbolDetailView(APIView):
         profile_map = _build_profile_map([tracked_symbol.symbol], price_map)
         return Response(_serialize_tracked_symbol_row(tracked_symbol, price_map, profile_map))
 
+    @extend_schema(
+        summary='Xóa tracked symbol native',
+        description='Endpoint native `/core/v1/stock-management/tracked-symbols/{id}/` cho thao tác remove-from-tracked.',
+        responses={
+            204: None,
+            401: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk):
         tracked_symbol = _get_tracked_symbol_or_404_for_user(request.user, pk)
         tracked_symbol.delete()
@@ -1662,8 +3466,57 @@ class StockManagementTrackedSymbolDetailView(APIView):
 
 class StockManagementTrackedSymbolBulkThresholdView(APIView):
     """POST /api/stock-management/tracked-symbols/bulk-threshold/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        summary='Bulk set hoặc clear whale threshold cho tracked symbols native',
+        description=(
+            'Endpoint native `/core/v1/stock-management/tracked-symbols/bulk-threshold/`. '
+            'Dùng cho thao tác hàng loạt trên Watchlist page mà không cần compat `/api`.'
+        ),
+        request=_TRACKED_SYMBOL_BULK_THRESHOLD_REQUEST_SCHEMA,
+        responses={
+            200: _TRACKED_SYMBOL_BULK_THRESHOLD_RESPONSE_SCHEMA,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Bulk threshold request',
+                value={
+                    'tracked_symbol_ids': [11, 18],
+                    'whale_alert_threshold_million': None,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Bulk threshold response',
+                value={
+                    'updated_count': 2,
+                    'rows': [
+                        {
+                            'id': 11,
+                            'symbol': 'TPB',
+                            'industry': 'Ngân hàng',
+                            'company_name': 'TPBank',
+                            'market_cap_bn': 48000.25,
+                            'source_group_id': 7,
+                            'source_group_name': 'Ngân hàng',
+                            'whale_alert_threshold_million': None,
+                            'current_price': 18.25,
+                            'prev_price': 17.9,
+                            'change_value': 0.35,
+                            'change_pct': 1.96,
+                            'last_date': '2026-05-20',
+                            'added_at': '2026-05-20T09:15:00+07:00',
+                            'updated_at': '2026-05-20T09:25:00+07:00',
+                        },
+                    ],
+                },
+                response_only=True,
+            ),
+        ],
+    )
     def post(self, request):
         tracked_symbol_ids = request.data.get('tracked_symbol_ids')
         if not isinstance(tracked_symbol_ids, list) or not tracked_symbol_ids:
@@ -1707,7 +3560,7 @@ class StockManagementTrackedSymbolBulkThresholdView(APIView):
 
 class StockManagementPriceAlertsView(APIView):
     """GET/POST /api/stock-management/price-alerts/ — native price alert contract."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request):
         alerts = list(_price_alerts_queryset_for_user(request.user).order_by('-created_at', '-pk'))
@@ -1745,7 +3598,7 @@ class StockManagementPriceAlertsView(APIView):
 
 class StockManagementPriceAlertDetailView(APIView):
     """PATCH/DELETE /api/stock-management/price-alerts/<pk>/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def patch(self, request, pk):
         alert = _get_price_alert_or_404_for_user(request.user, pk)
@@ -1804,7 +3657,7 @@ class StockManagementPriceAlertDetailView(APIView):
 
 class StockManagementPriceAlertTriggerView(APIView):
     """POST /api/stock-management/price-alerts/<pk>/mark-triggered/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request, pk):
         alert = _get_price_alert_or_404_for_user(request.user, pk)
@@ -1816,7 +3669,7 @@ class StockManagementPriceAlertTriggerView(APIView):
 
 class StockManagementGroupDetailView(APIView):
     """GET/PUT/DELETE /api/stock-management/groups/<group_id>/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, group_id):
         watchlist = _get_watchlist_or_404_for_user(request.user, group_id)
@@ -1842,7 +3695,7 @@ class StockManagementGroupDetailView(APIView):
 
 class StockManagementGroupItemsView(APIView):
     """GET /api/stock-management/groups/<group_id>/items/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, group_id):
         watchlist = _get_watchlist_or_404_for_user(request.user, group_id)

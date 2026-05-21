@@ -250,6 +250,158 @@ describe("coreApiAdapter", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // dashboard lower-deck native routes
+  // ---------------------------------------------------------------------------
+  test("getBulkTechnicalsBySymbols calls /core/v1/market-data/technicals/bulk/", async () => {
+    const payload = { technicals: [{ symbol: "TPB", rsi_14: 63.4 }], results: [{ symbol: "TPB", rsi_14: 63.4 }] };
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getBulkTechnicalsBySymbols(["tpb", "fpt"]);
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/market-data/technicals/bulk/?symbols=TPB,FPT");
+    expect(url).toContain("/core/v1/");
+  });
+
+  test("getStockChartHistory calls /core/v1/stock-management/stocks/{symbol}/chart/", async () => {
+    const payload = { symbol: "TPB", timeframe: "1H", points: [] };
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getStockChartHistory("tpb", { timeframe: "1H", days: 30 });
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/stocks/TPB/chart/");
+    expect(url).toContain("timeframe=1H");
+    expect(url).toContain("days=30");
+  });
+
+  test("getDarkMoneyHistory calls /core/v1/stock-management/stocks/{symbol}/dark-money-history/", async () => {
+    const payload = { ok: true, symbol: "TPB", interval: "1h", period: "1M" };
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getDarkMoneyHistory("tpb", { interval: "1h", period: "1M" });
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/stocks/TPB/dark-money-history/");
+    expect(url).toContain("interval=1h");
+    expect(url).toContain("period=1M");
+  });
+
+  test("getWhaleAnalyticsSnapshot calls /core/v1/workspace/whale-analytics/{symbol}/", async () => {
+    const payload = { symbol: "TPB", timeframe: "session", bubble_series: [], flow_series: { cvd: [] } };
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getWhaleAnalyticsSnapshot("tpb", {
+      timeframe: "session",
+      compact: 0,
+      tradeDate: "2026-05-20",
+      includeBaseline: false,
+    });
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/workspace/whale-analytics/TPB/");
+    expect(url).toContain("timeframe=session");
+    expect(url).toContain("compact=0");
+    expect(url).toContain("trade_date=2026-05-20");
+    expect(url).toContain("include_baseline=0");
+  });
+
+  test("getWhaleAnalyticsSnapshot throws on missing symbol", () => {
+    expect(() => coreApiAdapter.getWhaleAnalyticsSnapshot("")).toThrow("symbol is required");
+  });
+
+  test("getPortfolioHoldings calls /core/v1/workspace/portfolios/{id}/holdings/", async () => {
+    const payload = [{ symbol: "VCB", quantity: 120 }];
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getPortfolioHoldings(123);
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/core/v1/workspace/portfolios/123/holdings/");
+    expect(url).not.toContain("/api/portfolio/portfolios/123/holdings/");
+  });
+
+  test("getPortfolioSummary calls /core/v1/workspace/portfolios/{id}/summary/", async () => {
+    const payload = { portfolio_id: 123, portfolio_name: "Danh mục chính" };
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getPortfolioSummary(123);
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/core/v1/workspace/portfolios/123/summary/");
+    expect(url).not.toContain("/api/portfolio/portfolios/123/summary/");
+  });
+
+  test("getPortfolioAnalytics calls /core/v1/workspace/portfolios/{id}/analytics/", async () => {
+    const payload = { summary: { portfolio_id: 123 }, note: "full_analytics_available_via_sub_endpoints" };
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getPortfolioAnalytics(123, 30);
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/core/v1/workspace/portfolios/123/analytics/?days=30");
+    expect(url).not.toContain("/api/portfolio/portfolios/123/analytics/");
+  });
+
+  test("getPortfolioTechnicals calls /core/v1/workspace/portfolios/{id}/technicals/", async () => {
+    const payload = [{ symbol: "VCB", price_change_pct: "2.9700" }];
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getPortfolioTechnicals(123);
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/core/v1/workspace/portfolios/123/technicals/");
+    expect(url).not.toContain("/api/portfolio/portfolios/123/technicals/");
+  });
+
+  test("getPortfolioNewsDigest calls /core/v1/stock-management/portfolio/news-digest/", async () => {
+    const payload = { news: [], note: "news_digest_not_available_in_native" };
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getPortfolioNewsDigest({ page_size: 5 });
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/core/v1/stock-management/portfolio/news-digest/");
+    expect(url).toContain("page_size=5");
+    expect(url).not.toContain("/api/stock-management/portfolio/news-digest");
+  });
+
+  test("getTrackedSymbols calls /core/v1/stock-management/tracked-symbols/", async () => {
+    const payload = [{ symbol: "TPB", source_group_id: 7 }];
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getTrackedSymbols();
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/core/v1/stock-management/tracked-symbols/");
+    expect(url).not.toContain("/api/stock-management/tracked-symbols/");
+  });
+
+  test("getLegacyWatchlistGroups now resolves through /core/v1/stock-management/groups/ without price enrichment", async () => {
+    const payload = [{ id: 7, name: "Ngân hàng", items: [] }];
+    mockOkResponse(payload);
+
+    const result = await coreApiAdapter.getLegacyWatchlistGroups();
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/core/v1/stock-management/groups/");
+    expect(url).toContain("include_prices=0");
+    expect(url).not.toContain("/api/portfolio/watchlist/groups/");
+  });
+
+
+  // ---------------------------------------------------------------------------
   // X-Request-ID header
   // ---------------------------------------------------------------------------
   test("all requests include X-Request-ID header", async () => {

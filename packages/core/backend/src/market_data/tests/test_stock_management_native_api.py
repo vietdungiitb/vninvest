@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import AdvisoryRecord
-from identity_access.models import CoreTenant
+from identity_access.models import CoreTenant, UserProfile
 from market_data.models import DailyPrice, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, IntradayTick, StockProfile
 from signal_intelligence.models import UnifiedAlert
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
@@ -205,6 +205,72 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertEqual(len(payload['points']), 2)
         self.assertEqual(payload['points'][-1]['close'], 18.4)
 
+    def test_stock_chart_accepts_30m_timeframe_alias(self):
+        now = timezone.now().replace(second=0, microsecond=0)
+        IntradayBar.objects.create(
+            symbol='TPB',
+            datetime=now - timedelta(minutes=30),
+            timeframe='30m',
+            open=18.00,
+            high=18.10,
+            low=17.95,
+            close=18.05,
+            volume=5000,
+            source='core',
+        )
+
+        response = self.client.get('/api/stock-management/stocks/TPB/chart/?timeframe=30m&days=2')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['timeframe'], '30m')
+        self.assertEqual(payload['interval'], '30m')
+        self.assertEqual(len(payload['points']), 1)
+
+    def test_stock_dark_money_history_returns_native_envelope(self):
+        now = timezone.now().replace(second=0, microsecond=0)
+        IntradayBar.objects.create(
+            symbol='TPB',
+            datetime=now,
+            timeframe='1H',
+            open=18.00,
+            high=18.30,
+            low=17.90,
+            close=18.20,
+            volume=15000,
+            source='core',
+        )
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+            symbol='TPB',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.82,
+            title='Dark flow TPB',
+            body='',
+            value=Decimal('1200000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=timezone.localdate(),
+            triggered_at=now,
+            source_ref='test-dark-money-history',
+            metadata={'signal_type': 'dark_flow', 'strength': 68},
+            evidence={},
+        )
+
+        response = self.client.get('/api/stock-management/stocks/TPB/dark-money-history/?interval=1h&period=1M')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['symbol'], 'TPB')
+        self.assertEqual(payload['interval'], '1h')
+        self.assertEqual(payload['period'], '1M')
+        self.assertIn('candles', payload)
+        self.assertIn('dark_flow_series', payload)
+        self.assertIn('whale_signals', payload)
+        self.assertIn('moving_averages', payload)
+        self.assertIn('smfi', payload)
+        self.assertIn('strategy_table', payload)
+
     def test_stock_chart_reads_daily_prices_with_native_envelope(self):
         today = timezone.localdate()
         DailyPrice.objects.create(
@@ -262,6 +328,245 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/api/stock-management/stocks/ZZZZ/chart/?timeframe=D&days=30')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_core_v1_stock_profile_route_matches_public_contract(self):
+        native_response = self.client.get('/core/v1/stock-management/stocks/TPB/')
+        public_response = self.client.get('/api/stock-management/stocks/TPB/')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()['symbol'], 'TPB')
+
+    def test_core_v1_stock_overview_route_matches_public_contract(self):
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=timezone.localdate() - timedelta(days=1),
+            open=17.55,
+            high=17.95,
+            low=17.40,
+            close=17.90,
+            volume=11111,
+            source='core',
+        )
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=timezone.localdate(),
+            open=18.00,
+            high=18.40,
+            low=17.95,
+            close=18.25,
+            volume=123456,
+            source='core',
+        )
+
+        native_response = self.client.get('/core/v1/stock-management/stocks/TPB/overview/')
+        public_response = self.client.get('/api/stock-management/stocks/TPB/overview/')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()['symbol'], 'TPB')
+
+    def test_core_v1_stock_chart_route_matches_public_contract(self):
+        today = timezone.localdate()
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=today - timedelta(days=1),
+            open=17.8,
+            high=18.1,
+            low=17.7,
+            close=18.0,
+            volume=9500,
+            source='core',
+        )
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=today,
+            open=18.0,
+            high=18.5,
+            low=17.9,
+            close=18.3,
+            volume=11000,
+            source='core',
+        )
+
+        native_response = self.client.get('/core/v1/stock-management/stocks/TPB/chart/?timeframe=D&days=30')
+        public_response = self.client.get('/api/stock-management/stocks/TPB/chart/?timeframe=D&days=30')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()['timeframe'], 'D')
+
+    def test_core_v1_stock_dark_money_history_route_matches_public_contract(self):
+        now = timezone.now().replace(second=0, microsecond=0)
+        IntradayBar.objects.create(
+            symbol='TPB',
+            datetime=now,
+            timeframe='1H',
+            open=18.00,
+            high=18.30,
+            low=17.90,
+            close=18.20,
+            volume=15000,
+            source='core',
+        )
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+            symbol='TPB',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.82,
+            title='Dark flow TPB',
+            body='',
+            value=Decimal('1200000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=timezone.localdate(),
+            triggered_at=now,
+            source_ref='test-dark-money-history-core',
+            metadata={'signal_type': 'dark_flow', 'strength': 68},
+            evidence={},
+        )
+
+        native_response = self.client.get('/core/v1/stock-management/stocks/TPB/dark-money-history/?interval=1h&period=1M')
+        public_response = self.client.get('/api/stock-management/stocks/TPB/dark-money-history/?interval=1h&period=1M')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+
+    def test_core_v1_stock_order_flow_route_matches_public_contract(self):
+        now = timezone.now()
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+            symbol='TPB',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.91,
+            title='Dark flow TPB tăng mạnh',
+            body='',
+            value=Decimal('2200000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=timezone.localdate(),
+            triggered_at=now,
+            source_ref='stock-native-order-flow-dark-core',
+            metadata={'signal_type': 'dark_flow', 'whale_intensity': 0.82},
+            evidence={},
+        )
+        IntradayTick.objects.create(
+            symbol='TPB',
+            timestamp=now - timedelta(minutes=1),
+            price=18.2,
+            volume=100,
+            side=IntradayTick.SideChoices.BUY,
+            source='core',
+        )
+
+        native_response = self.client.get('/core/v1/stock-management/stocks/TPB/order-flow/?window=30m&limit=10')
+        public_response = self.client.get('/api/stock-management/stocks/TPB/order-flow/?window=30m&limit=10')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()['symbol'], 'TPB')
+
+    def test_core_v1_stock_news_route_matches_public_contract(self):
+        native_response = self.client.get('/core/v1/stock-management/stocks/TPB/news/')
+        public_response = self.client.get('/api/stock-management/stocks/TPB/news/')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()['note'], 'news_not_available_in_native')
+
+    def test_core_v1_stock_news_ai_summary_route_matches_public_contract(self):
+        native_response = self.client.post('/core/v1/stock-management/stocks/TPB/news/ai-summary/', {}, format='json')
+        public_response = self.client.post('/api/stock-management/stocks/TPB/news/ai-summary/', {}, format='json')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()['note'], 'ai_summary_not_available_in_native')
+
+    def test_core_v1_stock_financials_route_matches_public_contract(self):
+        native_response = self.client.get('/core/v1/stock-management/stocks/TPB/financials/')
+        public_response = self.client.get('/api/stock-management/stocks/TPB/financials/')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()['note'], 'financials_not_available_in_native')
+
+    def test_stock_management_technicals_bulk_returns_compatible_technical_payload(self):
+        start_date = timezone.localdate() - timedelta(days=70)
+        for offset in range(60):
+            trade_date = start_date + timedelta(days=offset)
+            close_price = 18.0 + (offset * 0.12)
+            DailyPrice.objects.create(
+                symbol='TPB',
+                date=trade_date,
+                open=close_price - 0.15,
+                high=close_price + 0.2,
+                low=close_price - 0.25,
+                close=close_price,
+                volume=10000 + (offset * 150),
+                source='core',
+            )
+
+        response = self.client.get('/api/stock-management/technicals/bulk/?symbols=TPB,FPT')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('technicals', payload)
+        self.assertIn('results', payload)
+        self.assertEqual(payload['requested_count'], 2)
+        self.assertEqual(payload['resolved_count'], 2)
+
+        tpb_row = next(item for item in payload['technicals'] if item['symbol'] == 'TPB')
+        self.assertIn('rsi_14', tpb_row)
+        self.assertIn('sma20', tpb_row)
+        self.assertIn('sma50', tpb_row)
+        self.assertIn('momentum_20d_pct', tpb_row)
+        self.assertIsNotNone(tpb_row['rsi_14'])
+        self.assertIsNotNone(tpb_row['sma20'])
+        self.assertIsNotNone(tpb_row['sma50'])
+        self.assertIsNotNone(tpb_row['momentum_20d_pct'])
+        self.assertEqual(payload['results'][0].keys(), payload['technicals'][0].keys())
+
+        fpt_row = next(item for item in payload['technicals'] if item['symbol'] == 'FPT')
+        self.assertIsNone(fpt_row['rsi_14'])
+        self.assertIsNone(fpt_row['sma20'])
+        self.assertIsNone(fpt_row['sma50'])
+        self.assertIsNone(fpt_row['momentum_20d_pct'])
+
+    def test_core_v1_market_data_technicals_bulk_route_returns_native_contract(self):
+        start_date = timezone.localdate() - timedelta(days=70)
+        for offset in range(60):
+            trade_date = start_date + timedelta(days=offset)
+            close_price = 18.0 + (offset * 0.12)
+            DailyPrice.objects.create(
+                symbol='TPB',
+                date=trade_date,
+                open=close_price - 0.15,
+                high=close_price + 0.2,
+                low=close_price - 0.25,
+                close=close_price,
+                volume=10000 + (offset * 150),
+                source='core',
+            )
+
+        response = self.client.get('/core/v1/market-data/technicals/bulk/?symbols=TPB')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['requested_count'], 1)
+        self.assertEqual(payload['resolved_count'], 1)
+        self.assertEqual(len(payload['technicals']), 1)
+        self.assertEqual(payload['technicals'][0]['symbol'], 'TPB')
+        self.assertIn('rsi_14', payload['technicals'][0])
+        self.assertIn('sma20', payload['technicals'][0])
+        self.assertIn('momentum_20d_pct', payload['technicals'][0])
+        self.assertEqual(payload['results'][0]['symbol'], 'TPB')
+        self.assertEqual(payload['results'][0]['rsi_14'], payload['technicals'][0]['rsi_14'])
 
     def test_stock_order_flow_returns_radar_contract_fields(self):
         now = timezone.now()
@@ -360,7 +665,7 @@ class StockManagementNativeApiTestCase(TestCase):
         fetch_price_board_snapshot_mock,
         fetch_intraday_tape_mock,
     ):
-        AdvisoryRecord.objects.create(
+        record_b = AdvisoryRecord.objects.create(
             symbol='TPB',
             session_date=timezone.localdate(),
             user=self.user,
@@ -378,6 +683,75 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.GENERATED)
         self.assertEqual(payload['advisory_text'], 'Native advisory payload')
+        fetch_realtime_price_mock.assert_not_called()
+        fetch_daily_history_mock.assert_not_called()
+        fetch_price_board_snapshot_mock.assert_not_called()
+        fetch_intraday_tape_mock.assert_not_called()
+
+    @patch('market_data.vnbroker_adapter.fetch_intraday_tape', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_daily_history', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_realtime_price', side_effect=AssertionError('provider path must not run in advisory request path'))
+    def test_core_v1_ai_advisory_session_reads_native_advisory_record(
+        self,
+        fetch_realtime_price_mock,
+        fetch_daily_history_mock,
+        fetch_price_board_snapshot_mock,
+        fetch_intraday_tape_mock,
+    ):
+        record_b = AdvisoryRecord.objects.create(
+            symbol='TPB',
+            session_date=timezone.localdate(),
+            user=self.user,
+            status=AdvisoryRecord.StatusChoices.GENERATED,
+            ai_model='gpt-4o-mini',
+            advisory_text='Native advisory payload',
+            tokens_used=321,
+            generated_at=timezone.now(),
+        )
+
+        response = self.client.get('/core/v1/stock-management/stocks/TPB/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'TPB')
+        self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.GENERATED)
+        self.assertEqual(payload['advisory_text'], 'Native advisory payload')
+        fetch_realtime_price_mock.assert_not_called()
+        fetch_daily_history_mock.assert_not_called()
+        fetch_price_board_snapshot_mock.assert_not_called()
+        fetch_intraday_tape_mock.assert_not_called()
+
+    @patch('market_data.vnbroker_adapter.fetch_intraday_tape', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_daily_history', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_realtime_price', side_effect=AssertionError('provider path must not run in advisory request path'))
+    def test_core_v1_ai_advisory_session_post_routes_to_native_manual_trigger(
+        self,
+        fetch_realtime_price_mock,
+        fetch_daily_history_mock,
+        fetch_price_board_snapshot_mock,
+        fetch_intraday_tape_mock,
+    ):
+        CoreTenant.objects.create(
+            owner_user=self.user,
+            tenant_code='stock-native-api-advisory-session-post',
+            display_name='Stock Native Advisory Session POST Tenant',
+            plan=CoreTenant.PlanChoices.PRO,
+            status=CoreTenant.StatusChoices.ACTIVE,
+        )
+
+        response = self.client.post(
+            '/core/v1/stock-management/stocks/TPB/ai-advisory-session/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'TPB')
+        self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.PENDING)
+        self.assertIn('manual_trigger', payload)
         fetch_realtime_price_mock.assert_not_called()
         fetch_daily_history_mock.assert_not_called()
         fetch_price_board_snapshot_mock.assert_not_called()
@@ -421,6 +795,307 @@ class StockManagementNativeApiTestCase(TestCase):
         fetch_daily_history_mock.assert_not_called()
         fetch_price_board_snapshot_mock.assert_not_called()
         fetch_intraday_tape_mock.assert_not_called()
+
+    @patch('market_data.vnbroker_adapter.fetch_intraday_tape', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_daily_history', side_effect=AssertionError('provider path must not run in advisory request path'))
+    @patch('market_data.vnbroker_adapter.fetch_realtime_price', side_effect=AssertionError('provider path must not run in advisory request path'))
+    def test_core_v1_ai_advisory_generate_routes_to_native_manual_trigger(
+        self,
+        fetch_realtime_price_mock,
+        fetch_daily_history_mock,
+        fetch_price_board_snapshot_mock,
+        fetch_intraday_tape_mock,
+    ):
+        CoreTenant.objects.create(
+            owner_user=self.user,
+            tenant_code='stock-native-api-core-v1-advisory',
+            display_name='Stock Native Core V1 Advisory Tenant',
+            plan=CoreTenant.PlanChoices.PRO,
+            status=CoreTenant.StatusChoices.ACTIVE,
+        )
+
+        response = self.client.post(
+            '/core/v1/stock-management/stocks/TPB/ai-advisory-components/generate/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'TPB')
+        self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.PENDING)
+        self.assertIn('manual_trigger', payload)
+        fetch_realtime_price_mock.assert_not_called()
+        fetch_daily_history_mock.assert_not_called()
+        fetch_price_board_snapshot_mock.assert_not_called()
+        fetch_intraday_tape_mock.assert_not_called()
+
+    def test_core_v1_ai_advisory_support_routes_are_native(self):
+        advisory = AdvisoryRecord.objects.create(
+            symbol='TPB',
+            session_date=timezone.localdate(),
+            user=self.user,
+            status=AdvisoryRecord.StatusChoices.GENERATED,
+            ai_model='gpt-4o-mini',
+            advisory_text='Native advisory payload',
+            tokens_used=321,
+            generated_at=timezone.now(),
+            context_snapshot={
+                'components': [
+                    {
+                        'id': 1,
+                        'symbol': 'TPB',
+                        'component_type': 'indicator',
+                        'indicator_name': 'RSI',
+                        'status': 'neutral',
+                        'confidence_score': 7,
+                        'suggested_action': 'watch',
+                        'rationale_text': 'Active component',
+                        'timeframe': '30m',
+                        'include_in_summary': True,
+                        'is_deleted': False,
+                        'created_at': timezone.now().isoformat(),
+                        'updated_at': timezone.now().isoformat(),
+                    },
+                ],
+                'deleted_components': [
+                    {
+                        'id': 2,
+                        'symbol': 'TPB',
+                        'component_type': 'flow',
+                        'indicator_name': 'Whale Flow',
+                        'status': 'bullish',
+                        'confidence_score': 6,
+                        'suggested_action': 'follow',
+                        'rationale_text': 'Deleted component',
+                        'timeframe': '30m',
+                        'include_in_summary': False,
+                        'is_deleted': True,
+                        'created_at': timezone.now().isoformat(),
+                        'updated_at': timezone.now().isoformat(),
+                    },
+                ],
+                'executive_summary': {
+                    'id': 1,
+                    'summary_id': 1,
+                    'summary_version': 1,
+                    'symbol': 'TPB',
+                    'session_date': timezone.localdate().isoformat(),
+                    'strategy_action': 'hold',
+                    'risk_level': 'medium',
+                    'overall_confidence': 6.5,
+                    'score_band': 'medium',
+                    'summary_text': 'Native summary',
+                    'component_ids': [1],
+                    'active_components_count': 1,
+                    'deleted_components_count': 1,
+                    'generated_at': timezone.now().isoformat(),
+                    'source': 'native',
+                },
+                'executive_summaries': [
+                    {
+                        'id': 1,
+                        'summary_id': 1,
+                        'summary_version': 1,
+                        'symbol': 'TPB',
+                        'session_date': timezone.localdate().isoformat(),
+                        'strategy_action': 'hold',
+                        'risk_level': 'medium',
+                        'overall_confidence': 6.5,
+                        'score_band': 'medium',
+                        'summary_text': 'Native summary',
+                        'component_ids': [1],
+                        'active_components_count': 1,
+                        'deleted_components_count': 1,
+                        'generated_at': timezone.now().isoformat(),
+                        'source': 'native',
+                    },
+                ],
+                'manual_trigger': {
+                    'job_key': 'advisory_refresh',
+                },
+            },
+        )
+        advisory_id = str(advisory.advisory_id)
+        observability_get_response = self.client.get('/core/v1/stock-management/stocks/TPB/ai-advisory-observability/')
+        observability_post_response = self.client.post(
+            '/core/v1/stock-management/stocks/TPB/ai-advisory-observability/',
+            {'event': 'open'},
+            format='json',
+        )
+        deleted_response = self.client.get('/core/v1/stock-management/stocks/TPB/ai-advisory-components/deleted/')
+        summary_regenerate_response = self.client.post(
+            f'/core/v1/stock-management/stocks/TPB/ai-advisory-summary/regenerate/?advisory_id={advisory_id}',
+            {'component_ids': [1]},
+            format='json',
+        )
+        toggle_response = self.client.post(f'/core/v1/stock-management/ai-advisory-components/1/toggle-include/?advisory_id={advisory_id}', {}, format='json')
+        refresh_response = self.client.post(f'/core/v1/stock-management/ai-advisory-components/1/refresh/?advisory_id={advisory_id}', {}, format='json')
+        restore_response = self.client.post(f'/core/v1/stock-management/ai-advisory-components/2/restore/?advisory_id={advisory_id}', {}, format='json')
+        detail_response = self.client.get(f'/core/v1/stock-management/ai-advisory-components/1/?advisory_id={advisory_id}')
+        delete_response = self.client.delete(f'/core/v1/stock-management/ai-advisory-components/1/?advisory_id={advisory_id}')
+        summary_delete_response = self.client.delete(f'/core/v1/stock-management/stocks/TPB/ai-advisory-summary/1/?advisory_id={advisory_id}')
+
+        self.assertEqual(observability_get_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(observability_get_response.json()['symbol'], 'TPB')
+        self.assertEqual(observability_post_response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(observability_post_response.json()['received'])
+        self.assertEqual(deleted_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(deleted_response.json()['deleted']), 1)
+        self.assertEqual(deleted_response.json()['deleted'][0]['id'], 2)
+        self.assertEqual(summary_regenerate_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(summary_regenerate_response.json()['executive_summary']['deleted_components_count'], 1)
+        self.assertEqual(toggle_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(toggle_response.json()['component']['include_in_summary'])
+        self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(refresh_response.json()['component']['id'], 1)
+        self.assertEqual(restore_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(restore_response.json()['component']['id'], 2)
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail_response.json()['component']['id'], 1)
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(summary_delete_response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_core_v1_ai_advisory_component_routes_require_advisory_id_when_ids_collide(self):
+        record_a = AdvisoryRecord.objects.create(
+            symbol='TPB',
+            session_date=timezone.localdate(),
+            user=self.user,
+            status=AdvisoryRecord.StatusChoices.GENERATED,
+            ai_model='gpt-4o-mini',
+            advisory_text='First native advisory payload',
+            tokens_used=111,
+            generated_at=timezone.now(),
+            context_snapshot={
+                'components': [
+                    {
+                        'id': 3,
+                        'symbol': 'TPB',
+                        'component_type': 'indicator',
+                        'indicator_name': 'RSI',
+                        'status': 'neutral',
+                        'confidence_score': 7,
+                        'suggested_action': 'watch',
+                        'rationale_text': 'First record',
+                        'timeframe': '30m',
+                        'include_in_summary': True,
+                        'is_deleted': False,
+                        'created_at': timezone.now().isoformat(),
+                        'updated_at': timezone.now().isoformat(),
+                    },
+                ],
+                'deleted_components': [],
+            },
+        )
+        record_b = AdvisoryRecord.objects.create(
+            symbol='TPB',
+            session_date=timezone.localdate(),
+            user=self.user,
+            status=AdvisoryRecord.StatusChoices.GENERATED,
+            ai_model='gpt-4o-mini',
+            advisory_text='Second native advisory payload',
+            tokens_used=112,
+            generated_at=timezone.now(),
+            context_snapshot={
+                'components': [
+                    {
+                        'id': 3,
+                        'symbol': 'TPB',
+                        'component_type': 'indicator',
+                        'indicator_name': 'MACD',
+                        'status': 'bearish',
+                        'confidence_score': 4,
+                        'suggested_action': 'reduce',
+                        'rationale_text': 'Second record',
+                        'timeframe': '30m',
+                        'include_in_summary': True,
+                        'is_deleted': False,
+                        'created_at': timezone.now().isoformat(),
+                        'updated_at': timezone.now().isoformat(),
+                    },
+                ],
+                'deleted_components': [],
+            },
+        )
+
+        ambiguous_response = self.client.post('/core/v1/stock-management/ai-advisory-components/3/toggle-include/', {}, format='json')
+        scoped_response = self.client.post(
+            f'/core/v1/stock-management/ai-advisory-components/3/toggle-include/?advisory_id={record_a.advisory_id}',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(ambiguous_response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(scoped_response.status_code, status.HTTP_200_OK)
+        record_a.refresh_from_db()
+        record_b.refresh_from_db()
+        self.assertIsNotNone(record_a.context_snapshot)
+        self.assertIsNotNone(record_b)
+        self.assertFalse(record_a.context_snapshot['components'][0]['include_in_summary'])
+        self.assertEqual(record_b.context_snapshot['components'][0]['indicator_name'], 'MACD')
+
+    def test_core_v1_ai_advisory_component_route_rejects_malformed_advisory_id(self):
+        AdvisoryRecord.objects.create(
+            symbol='TPB',
+            session_date=timezone.localdate(),
+            user=self.user,
+            status=AdvisoryRecord.StatusChoices.GENERATED,
+            ai_model='gpt-4o-mini',
+            advisory_text='Native advisory payload',
+            tokens_used=111,
+            generated_at=timezone.now(),
+            context_snapshot={
+                'components': [
+                    {
+                        'id': 7,
+                        'symbol': 'TPB',
+                        'component_type': 'indicator',
+                        'indicator_name': 'RSI',
+                        'status': 'neutral',
+                        'confidence_score': 7,
+                        'suggested_action': 'watch',
+                        'rationale_text': 'Malformed advisory_id test',
+                        'timeframe': '30m',
+                        'include_in_summary': True,
+                        'is_deleted': False,
+                        'created_at': timezone.now().isoformat(),
+                        'updated_at': timezone.now().isoformat(),
+                    },
+                ],
+                'deleted_components': [],
+            },
+        )
+
+        response = self.client.post('/core/v1/stock-management/ai-advisory-components/7/toggle-include/?advisory_id=not-a-uuid', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('advisory_id', response.json().get('message', ''))
+
+    def test_core_v1_ai_advisory_session_does_not_leak_other_users_record(self):
+        other_user = User.objects.create_user(
+            username='stock-native-ai-other',
+            email='stock-native-ai-other@test.local',
+            password='pass123',
+        )
+        AdvisoryRecord.objects.create(
+            symbol='TPB',
+            session_date=timezone.localdate(),
+            user=other_user,
+            status=AdvisoryRecord.StatusChoices.GENERATED,
+            ai_model='gpt-4o-mini',
+            advisory_text='Other user advisory',
+            tokens_used=111,
+            generated_at=timezone.now(),
+        )
+
+        response = self.client.get('/core/v1/stock-management/stocks/TPB/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertFalse(payload['ok'])
+        self.assertEqual(payload['reason'], 'no_advisory_data')
+        self.assertIsNone(payload['advisory'])
 
     @patch(
         'market_data.stock_mgmt_native_views.fetch_symbol_group_members',
@@ -560,6 +1235,305 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertFalse(demand_edge.is_active)
         self.assertEqual(registry.current_priority_tier, GlobalSymbolRegistry.PriorityTierChoices.RECOVERY)
 
+    def test_core_v1_tracked_symbols_list_route_matches_public_contract(self):
+        group = Watchlist.objects.create(user=self.user, name='Ngân hàng', description='Nhóm ngân hàng')
+        TrackedSymbol.objects.create(
+            user=self.user,
+            symbol='TPB',
+            source_watchlist=group,
+            whale_alert_threshold_million=Decimal('850'),
+        )
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=timezone.localdate() - timedelta(days=1),
+            open=17.55,
+            high=17.95,
+            low=17.40,
+            close=17.90,
+            volume=11111,
+            source='core',
+        )
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=timezone.localdate(),
+            open=18.00,
+            high=18.40,
+            low=17.95,
+            close=18.25,
+            volume=123456,
+            source='core',
+        )
+
+        native_response = self.client.get('/core/v1/stock-management/tracked-symbols/')
+        public_response = self.client.get('/api/stock-management/tracked-symbols/')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()[0]['symbol'], 'TPB')
+        self.assertEqual(native_response.json()[0]['source_group_id'], group.pk)
+
+    def test_core_v1_tracked_symbols_list_route_requires_authentication(self):
+        anonymous_client = APIClient()
+        response = anonymous_client.get('/core/v1/stock-management/tracked-symbols/')
+        self.assertIn(
+            response.status_code,
+            {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN},
+        )
+
+    def test_core_v1_groups_route_blocks_suspended_tenant(self):
+        CoreTenant.objects.create(
+            owner_user=self.user,
+            tenant_code='stock-native-api-tenant',
+            display_name='Stock Native API Tenant',
+            status=CoreTenant.StatusChoices.SUSPENDED,
+        )
+
+        response = self.client.get('/core/v1/stock-management/groups/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_core_v1_stock_management_mutation_and_detail_routes_block_suspended_tenant(self):
+        tenant = CoreTenant.objects.create(
+            owner_user=self.user,
+            tenant_code='stock-native-api-route-tenant',
+            display_name='Stock Native API Route Tenant',
+            status=CoreTenant.StatusChoices.SUSPENDED,
+        )
+        watchlist = Watchlist.objects.create(
+            user=self.user,
+            tenant=tenant,
+            name='Ngân hàng',
+            description='Nhóm ngân hàng',
+        )
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='TPB', note='Theo dõi ngân hàng')
+
+        seed_response = self.client.post('/core/v1/stock-management/seed/', {}, format='json')
+        sync_response = self.client.post('/core/v1/stock-management/sync/', {'days': 5}, format='json')
+        price_alert_list_response = self.client.get('/core/v1/stock-management/price-alerts/')
+        price_alert_create_response = self.client.post(
+            '/core/v1/stock-management/price-alerts/',
+            {
+                'symbol': 'FPT',
+                'condition': 'ABOVE',
+                'target_price': 100500,
+                'cooldown_seconds': 120,
+                'is_active': True,
+            },
+            format='json',
+        )
+        group_detail_response = self.client.get(f'/core/v1/stock-management/groups/{watchlist.pk}/')
+        group_items_response = self.client.get(f'/core/v1/stock-management/groups/{watchlist.pk}/items/')
+
+        self.assertEqual(seed_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(sync_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(price_alert_list_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(price_alert_create_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(group_detail_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(group_items_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_core_v1_ai_advisory_routes_block_suspended_tenant(self):
+        CoreTenant.objects.create(
+            owner_user=self.user,
+            tenant_code='stock-native-api-ai-tenant',
+            display_name='Stock Native API AI Tenant',
+            status=CoreTenant.StatusChoices.SUSPENDED,
+        )
+
+        session_get_response = self.client.get('/core/v1/stock-management/stocks/TPB/ai-advisory-session/')
+        session_post_response = self.client.post('/core/v1/stock-management/stocks/TPB/ai-advisory-session/', {}, format='json')
+        generate_response = self.client.post('/core/v1/stock-management/stocks/TPB/ai-advisory-components/generate/', {}, format='json')
+        toggle_response = self.client.post('/core/v1/stock-management/ai-advisory-components/1/toggle-include/', {}, format='json')
+
+        self.assertEqual(session_get_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(session_post_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(generate_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(toggle_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_core_v1_groups_route_blocks_suspended_tenant_member(self):
+        owner = User.objects.create_user(
+            username='stock-native-owner',
+            email='stock-native-owner@test.local',
+            password='pass123',
+        )
+        member = User.objects.create_user(
+            username='stock-native-member',
+            email='stock-native-member@test.local',
+            password='pass123',
+        )
+        tenant = CoreTenant.objects.create(
+            owner_user=owner,
+            tenant_code='stock-native-api-member-tenant',
+            display_name='Stock Native API Member Tenant',
+            status=CoreTenant.StatusChoices.SUSPENDED,
+        )
+        UserProfile.objects.create(user=member, tenant=tenant)
+        member_client = APIClient()
+        member_client.force_authenticate(user=member)
+
+        response = member_client.get('/core/v1/stock-management/groups/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_core_v1_groups_list_route_matches_public_contract(self):
+        watchlist = Watchlist.objects.create(user=self.user, name='Ngân hàng', description='Nhóm ngân hàng')
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='TPB', note='Theo dõi ngân hàng')
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=timezone.localdate() - timedelta(days=1),
+            open=17.55,
+            high=17.95,
+            low=17.40,
+            close=17.90,
+            volume=11111,
+            source='core',
+        )
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=timezone.localdate(),
+            open=18.00,
+            high=18.40,
+            low=17.95,
+            close=18.25,
+            volume=123456,
+            source='core',
+        )
+
+        native_response = self.client.get('/core/v1/stock-management/groups/')
+        public_response = self.client.get('/api/stock-management/groups/')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()[0]['name'], 'Ngân hàng')
+        self.assertEqual(native_response.json()[0]['items'][0]['symbol'], 'TPB')
+
+    @patch(
+        'market_data.stock_mgmt_native_views.fetch_symbol_group_members',
+        side_effect=lambda group_id: ['FPT', 'HPG'] if str(group_id).lower() == 'vn30' else ['FPT', 'HPG', 'TPB'],
+    )
+    def test_core_v1_groups_seed_detail_and_items_routes_are_native(self, fetch_symbol_group_members_mock):
+        seed_response = self.client.post('/core/v1/stock-management/seed/', {}, format='json')
+
+        self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', seed_response.json())
+        self.assertEqual(fetch_symbol_group_members_mock.call_count, 2)
+
+        list_response = self.client.get('/core/v1/stock-management/groups/')
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        groups = list_response.json()
+        self.assertGreater(len(groups), 0)
+        first_group = groups[0]
+
+        detail_response = self.client.get(f"/core/v1/stock-management/groups/{first_group['id']}/")
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail_response.json()['id'], first_group['id'])
+
+        items_response = self.client.get(f"/core/v1/stock-management/groups/{first_group['id']}/items/")
+        self.assertEqual(items_response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(items_response.json(), list)
+        self.assertGreater(len(items_response.json()), 0)
+
+    def test_core_v1_portfolio_news_digest_route_matches_public_contract(self):
+        native_response = self.client.get('/core/v1/stock-management/portfolio/news-digest/')
+        public_response = self.client.get('/api/stock-management/portfolio/news-digest/')
+
+        self.assertEqual(native_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(native_response.json()['news'], [])
+        self.assertEqual(native_response.json()['note'], 'news_digest_not_available_in_native')
+
+    def test_core_v1_tracked_symbol_mutation_routes_are_native(self):
+        group = Watchlist.objects.create(user=self.user, name='Ngân hàng', description='Nhóm ngân hàng')
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=timezone.localdate() - timedelta(days=1),
+            open=17.55,
+            high=17.95,
+            low=17.40,
+            close=17.90,
+            volume=11111,
+            source='core',
+        )
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=timezone.localdate(),
+            open=18.00,
+            high=18.40,
+            low=17.95,
+            close=18.25,
+            volume=123456,
+            source='core',
+        )
+
+        create_response = self.client.post(
+            '/core/v1/stock-management/tracked-symbols/',
+            {
+                'symbol': 'TPB',
+                'source_group_id': group.pk,
+                'whale_alert_threshold_million': 850,
+            },
+            format='json',
+        )
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        tracked_row = create_response.json()
+        self.assertEqual(tracked_row['symbol'], 'TPB')
+        self.assertEqual(tracked_row['source_group_id'], group.pk)
+        self.assertEqual(tracked_row['whale_alert_threshold_million'], 850.0)
+
+        patch_response = self.client.patch(
+            f"/core/v1/stock-management/tracked-symbols/{tracked_row['id']}/",
+            {'whale_alert_threshold_million': 920},
+            format='json',
+        )
+        self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(patch_response.json()['whale_alert_threshold_million'], 920.0)
+
+        bulk_response = self.client.post(
+            '/core/v1/stock-management/tracked-symbols/bulk-threshold/',
+            {
+                'tracked_symbol_ids': [tracked_row['id']],
+                'whale_alert_threshold_million': None,
+            },
+            format='json',
+        )
+        self.assertEqual(bulk_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(bulk_response.json()['updated_count'], 1)
+        self.assertIsNone(bulk_response.json()['rows'][0]['whale_alert_threshold_million'])
+
+        delete_response = self.client.delete(f"/core/v1/stock-management/tracked-symbols/{tracked_row['id']}/")
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(TrackedSymbol.objects.filter(pk=tracked_row['id']).exists())
+
+    def test_core_v1_tracked_symbol_create_accepts_daily_price_only_symbol(self):
+        DailyPrice.objects.create(
+            symbol='VGC',
+            date=timezone.localdate(),
+            open=43.5,
+            high=44.1,
+            low=43.2,
+            close=43.9,
+            volume=9000,
+            source='core',
+        )
+
+        response = self.client.post(
+            '/core/v1/stock-management/tracked-symbols/',
+            {
+                'symbol': 'VGC',
+                'whale_alert_threshold_million': 700,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payload = response.json()
+        self.assertEqual(payload['symbol'], 'VGC')
+        self.assertEqual(payload['company_name'], 'VGC')
+        self.assertEqual(payload['current_price'], 43.9)
+
     def test_price_alert_endpoints_are_native(self):
         DailyPrice.objects.create(
             symbol='FPT',
@@ -638,6 +1612,68 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(PriceAlert.objects.filter(pk=alert_row['id']).exists())
 
+    def test_core_v1_price_alert_routes_are_native(self):
+        DailyPrice.objects.create(
+            symbol='FPT',
+            date=timezone.localdate() - timedelta(days=1),
+            open=99900,
+            high=100500,
+            low=99500,
+            close=100000,
+            volume=8800,
+            source='core',
+        )
+        DailyPrice.objects.create(
+            symbol='FPT',
+            date=timezone.localdate(),
+            open=100000,
+            high=101500,
+            low=99800,
+            close=101000,
+            volume=9600,
+            source='core',
+        )
+
+        create_response = self.client.post(
+            '/core/v1/stock-management/price-alerts/',
+            {
+                'symbol': 'FPT',
+                'condition': 'ABOVE',
+                'target_price': 100500,
+                'cooldown_seconds': 120,
+                'is_active': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        alert_row = create_response.json()
+        self.assertEqual(alert_row['symbol'], 'FPT')
+
+        list_response = self.client.get('/core/v1/stock-management/price-alerts/')
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.json()[0]['id'], alert_row['id'])
+
+        patch_response = self.client.patch(
+            f"/core/v1/stock-management/price-alerts/{alert_row['id']}/",
+            {'is_active': False},
+            format='json',
+        )
+        self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(patch_response.json()['is_active'])
+
+        trigger_response = self.client.post(
+            f"/core/v1/stock-management/price-alerts/{alert_row['id']}/mark-triggered/",
+            {},
+            format='json',
+        )
+        self.assertEqual(trigger_response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(trigger_response.json()['last_triggered_at'])
+
+        delete_response = self.client.delete(f"/core/v1/stock-management/price-alerts/{alert_row['id']}/")
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(PriceAlert.objects.filter(pk=alert_row['id']).exists())
+
     @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', side_effect=AssertionError('provider path must not run in request path'))
     @patch('market_data.stock_mgmt_native_views.create_global_planner_run')
     def test_sync_routes_user_scope_through_global_planner(self, create_global_planner_run_mock, fetch_price_board_snapshot_mock):
@@ -682,4 +1718,32 @@ class StockManagementNativeApiTestCase(TestCase):
                 'requested_symbols': 1,
             },
         )
+        fetch_price_board_snapshot_mock.assert_not_called()
+
+    @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', side_effect=AssertionError('provider path must not run in request path'))
+    @patch('market_data.stock_mgmt_native_views.create_global_planner_run')
+    def test_core_v1_sync_route_user_scope_through_global_planner(self, create_global_planner_run_mock, fetch_price_board_snapshot_mock):
+        watchlist = Watchlist.objects.create(user=self.user, name='Ngân hàng', description='Nhóm ngân hàng')
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='TPB')
+        create_global_planner_run_mock.return_value = {
+            'queued': True,
+            'status': 'queued',
+            'run_id': 'planner-run-1',
+            'celery_task_id': 'task-1',
+            'plan_summary': {
+                'planned_items': 1,
+                'skipped_items': 0,
+            },
+        }
+
+        response = self.client.post('/core/v1/stock-management/sync/', {'days': 5}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['synced'], ['TPB'])
+        self.assertEqual(payload['scope'], 'global_ssot')
+        self.assertEqual(payload['source'], 'global_planner')
+        self.assertTrue(payload['queued'])
+        self.assertEqual(payload['run_id'], 'planner-run-1')
+        create_global_planner_run_mock.assert_called_once()
         fetch_price_board_snapshot_mock.assert_not_called()

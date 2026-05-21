@@ -4,10 +4,45 @@
  * BaseURL từ REACT_APP_API_BASE_URL hoặc proxy /api -> backend:8000
  */
 import axios from 'axios';
-import { coreApiAdapter } from '@vninvest/web/adapters/core-api-adapter';
+import { coreApiAdapter } from '@vninvest/web';
 
 const apiBaseURL = process.env.REACT_APP_API_BASE_URL || '/api';
 const REQUEST_TIMEOUT_MS = 20000;
+
+function normalizeCoreApiBaseURL(rawBaseURL) {
+  const normalized = String(rawBaseURL || '').trim().replace(/\/$/, '');
+  if (!normalized) {
+    return '';
+  }
+  if (/\/core\/v1$/i.test(normalized)) {
+    return normalized;
+  }
+  return `${normalized}/core/v1`;
+}
+
+const coreApiBaseURL = (() => {
+  const explicitCoreBaseURL =
+    process.env.REACT_APP_CORE_API_BASE_URL
+    || process.env.CORE_API_BASE_URL
+    || (typeof window !== 'undefined' ? window.CORE_API_BASE_URL : '');
+
+  if (explicitCoreBaseURL) {
+    return normalizeCoreApiBaseURL(explicitCoreBaseURL);
+  }
+
+  if (/\/api\/?$/i.test(apiBaseURL)) {
+    return apiBaseURL.replace(/\/api\/?$/i, '/core/v1');
+  }
+
+  return normalizeCoreApiBaseURL(apiBaseURL);
+})();
+
+function withCoreBase(config = {}) {
+  return {
+    ...config,
+    baseURL: coreApiBaseURL,
+  };
+}
 
 function normalizeChartTimeframe(timeframe) {
   const value = String(timeframe || '1H').trim();
@@ -440,69 +475,74 @@ export const createWatchlistGroup = (data) => apiClient.post('/portfolio/watchli
 export const updateWatchlistGroup = (id, data) => apiClient.patch(`/portfolio/watchlist/groups/${id}/`, data);
 export const deleteWatchlistGroup = (id) => apiClient.delete(`/portfolio/watchlist/groups/${id}/`);
 export const addWatchlistItem = (groupId, symbol) =>
-  apiClient.post(`/portfolio/watchlist/groups/${groupId}/items/`, { symbol });
-export const deleteWatchlistItem = (itemId) => apiClient.delete(`/portfolio/watchlist/items/${itemId}/`);
+  apiClient.post(`/workspace/watchlists/${groupId}/items/`, { symbol }, withCoreBase());
+export const deleteWatchlistItem = (watchlistId, symbol) =>
+  apiClient.delete(`/workspace/watchlists/${watchlistId}/items/${symbol}/`, withCoreBase());
 export const seedWatchlist = () => apiClient.post('/portfolio/watchlist/seed/');
 export const syncWatchlistPrices = (days = 5) => apiClient.post('/portfolio/watchlist/sync/', { days });
 
 // --- Securities Groups APIs ---
-export const getSecuritiesGroups = () => apiClient.get('/stock-management/groups/');
-export const seedSecurities = () => apiClient.post('/stock-management/seed/');
-export const syncSecuritiesPrices = (days = 5) => apiClient.post('/stock-management/sync/', { days });
-export const getStockProfile = (symbol) => apiClient.get(`/stock-management/stocks/${symbol}/`);
-export const getStockWorkspaceOverview = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/overview/`);
+export const getSecuritiesGroups = () => apiClient.get('/stock-management/groups/', withCoreBase());
+export const seedSecurities = () => apiClient.post('/stock-management/seed/', {}, withCoreBase());
+export const syncSecuritiesPrices = (days = 5) => apiClient.post('/stock-management/sync/', { days }, withCoreBase());
+export const getStockProfile = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/`, withCoreBase());
+export const getStockWorkspaceOverview = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/overview/`, withCoreBase());
 export const getStockPriceChart = (symbol, days = 180, timeframe = '1H') =>
-  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/`, {
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/`, withCoreBase({
     params: { days, timeframe: normalizeChartTimeframe(timeframe) },
-  });
-export const getStockOrderFlow = (symbol, window = '30m') => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`, { params: { window } });
+  }));
+export const getStockDarkMoneyHistory = (symbol, interval = '1D', period = '3M') =>
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/dark-money-history/`, withCoreBase({
+    params: { interval, period },
+  }));
+export const getStockOrderFlow = (symbol, window = '30m') => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`, withCoreBase({ params: { window } }));
 export const getStockNews = (symbol, { force = false } = {}) =>
-  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/news/`, {
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/news/`, withCoreBase({
     params: force ? { force: 1 } : undefined,
-  });
+  }));
 export const generateStockNewsAISummary = (symbol, { force = false } = {}) =>
   apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/news/ai-summary/`, {
     force_refresh: Boolean(force),
-  });
+  }, withCoreBase());
 export const getPortfolioNewsDigest = (params = {}) =>
   Promise.resolve(coreApiAdapter.getPortfolioNewsDigest(params)).then((data) => ({ data }));
 export const getStockAIAdvisorySession = (symbol, params = {}) =>
-  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`, { params });
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`, withCoreBase({ params }));
 export const getStockAIAdvisoryObservability = (symbol, params = {}) =>
-  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-observability/`, { params });
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-observability/`, withCoreBase({ params }));
 export const postStockAIAdvisoryObservabilityEvent = (symbol, payload = {}) =>
-  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-observability/`, payload);
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-observability/`, payload, withCoreBase());
 export const refreshStockAIAdvisorySession = (symbol) =>
-  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`);
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`, {}, withCoreBase());
 export const generateStockAIAdvisoryComponents = (symbol, payload = {}) =>
-  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-components/generate/`, payload);
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-components/generate/`, payload, withCoreBase());
 export const toggleStockAIAdvisoryComponentInclude = (componentId) =>
-  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/toggle-include/`);
+  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/toggle-include/`, {}, withCoreBase());
 export const refreshStockAIAdvisoryComponent = (componentId) =>
-  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/refresh/`);
+  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/refresh/`, {}, withCoreBase());
 export const restoreStockAIAdvisoryComponent = (componentId) =>
-  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/restore/`);
+  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/restore/`, {}, withCoreBase());
 export const deleteStockAIAdvisoryComponent = (componentId) =>
-  apiClient.delete(`/stock-management/ai-advisory-components/${componentId}/`);
+  apiClient.delete(`/stock-management/ai-advisory-components/${componentId}/`, withCoreBase());
 export const clearDeletedStockAIAdvisoryComponents = (symbol) =>
-  apiClient.delete(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-components/deleted/`);
+  apiClient.delete(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-components/deleted/`, withCoreBase());
 export const regenerateStockAIExecutiveSummary = (symbol, payload = {}) =>
-  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/regenerate/`, payload);
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/regenerate/`, payload, withCoreBase());
 export const deleteStockAIExecutiveSummary = (symbol, summaryId) =>
-  apiClient.delete(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/${summaryId}/`);
-export const getRealtimeTicker = (symbol) => apiClient.get(`/realtime/ticker/${symbol}/`);
+  apiClient.delete(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/${summaryId}/`, withCoreBase());
+export const getRealtimeTicker = (symbol) => apiClient.get(`/realtime/ticker/${symbol}/`, withCoreBase());
 export const getRealtimeTickers = (symbols) => {
   const symbolList = Array.isArray(symbols) ? symbols : [symbols];
-  return apiClient.get(`/realtime/tickers/?symbols=${symbolList.join(',')}`);
+  return apiClient.get(`/realtime/tickers/?symbols=${symbolList.join(',')}`, withCoreBase());
 };
 export const getIntradayMatched = (symbol, pageSize = 50) =>
-  apiClient.get(`/realtime/intraday/${encodeURIComponent(symbol)}/?page_size=${pageSize}`);
+  apiClient.get(`/realtime/intraday/${encodeURIComponent(symbol)}/?page_size=${pageSize}`, withCoreBase());
 export const getPriceBoard = (symbol) =>
-  apiClient.get(`/realtime/price-board/${encodeURIComponent(symbol)}/`);
+  apiClient.get(`/realtime/price-board/${encodeURIComponent(symbol)}/`, withCoreBase());
 export const getSectorBreadth = (symbol) =>
-  apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
+  apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`, withCoreBase());
 export const getWhaleFeed = (symbol) =>
-  apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
+  apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`, withCoreBase());
 /**
  * Lấy SessionFacts (CVD, Strength, Dark Flow) cho một symbol.
  * Endpoint: GET /api/market/session-facts/<symbol>/
@@ -526,15 +566,14 @@ export const getSessionFactsCvd = (symbol, window = '15m', tradeDate = null) =>
       window,
       ...(tradeDate ? { trade_date: tradeDate } : {}),
     },
-  });export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate, includeBaseline } = {}) =>
-  apiClient.get(`/portfolio/whale/analytics/${encodeURIComponent(symbol)}/`, {
-    params: {
-      timeframe,
-      compact,
-      ...(tradeDate ? { trade_date: tradeDate } : {}),
-      ...(includeBaseline === undefined ? {} : { include_baseline: includeBaseline ? 1 : 0 }),
-    },
   });
+export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate, includeBaseline } = {}) =>
+  Promise.resolve(coreApiAdapter.getWhaleAnalyticsSnapshot(symbol, {
+    timeframe,
+    compact,
+    tradeDate,
+    includeBaseline,
+  })).then((data) => ({ data }));
 export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', window = 'session', limit = 12, cursor, signal } = {}) => {
   const params = new URLSearchParams();
   if (Array.isArray(symbols) && symbols.length > 0) {
@@ -696,8 +735,8 @@ export const getWhaleAdvisorySymbolStats = (params = {}) => {
   return apiClient.get(`/portfolio/ai-advisory-symbol-stats/${suffix}`);
 };
 export const updatePortfolioUserConfig = (data) => apiClient.put('/portfolio/userconfig/', data);
-export const getAICommandCenterConfig = () => apiClient.get('/portfolio/ai-command-center/');
-export const updateAICommandCenterConfig = (data) => apiClient.put('/portfolio/ai-command-center/', data);
+export const getAICommandCenterConfig = () => apiClient.get('/workspace/ai-command-center/', withCoreBase());
+export const updateAICommandCenterConfig = (data) => apiClient.put('/workspace/ai-command-center/', data, withCoreBase());
 export const testAICommandCenterConnection = (data) =>
   apiClient.post('/portfolio/ai-command-center/test-connection/', data);
 export const getAICommandCenterAuditLogs = (params = {}) => {
@@ -714,12 +753,12 @@ export const getAIConfig = getAICommandCenterConfig;
 export const updateAIConfig = updateAICommandCenterConfig;
 export const getAIOptions = () => apiClient.get('/ai-options/');
 export const getRVOL = (symbol) =>
-  apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`);
+  apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`, withCoreBase());
 export const getDepthChart = (symbol) =>
-  apiClient.get(`/realtime/depth-chart/${encodeURIComponent(symbol)}/`);
+  apiClient.get(`/realtime/depth-chart/${encodeURIComponent(symbol)}/`, withCoreBase());
 
 export const getStockFinancials = (symbol) =>
-  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/financials/`);
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/financials/`, withCoreBase());
 
 export const getRealtimeWebSocketUrl = (token) => {
   const normalizedToken = token || localStorage.getItem('access_token') || '';
@@ -762,14 +801,14 @@ export const addTrackedSymbol = (symbol, sourceGroupId = null, whaleAlertThresho
     symbol,
     source_group_id: sourceGroupId,
     whale_alert_threshold_million: whaleAlertThresholdMillion,
-  });
-export const updateTrackedSymbol = (id, data) => apiClient.patch(`/stock-management/tracked-symbols/${id}/`, data);
+  }, withCoreBase());
+export const updateTrackedSymbol = (id, data) => apiClient.patch(`/stock-management/tracked-symbols/${id}/`, data, withCoreBase());
 export const bulkUpdateTrackedSymbolThreshold = (trackedSymbolIds, whaleAlertThresholdMillion) =>
   apiClient.post('/stock-management/tracked-symbols/bulk-threshold/', {
     tracked_symbol_ids: trackedSymbolIds,
     whale_alert_threshold_million: whaleAlertThresholdMillion,
-  });
-export const deleteTrackedSymbol = (id) => apiClient.delete(`/stock-management/tracked-symbols/${id}/`);
+  }, withCoreBase());
+export const deleteTrackedSymbol = (id) => apiClient.delete(`/stock-management/tracked-symbols/${id}/`, withCoreBase());
 
 // ---------------------------------------------------------------------------
 // Sprint 28 — Legal content (public, no auth required)
@@ -792,15 +831,15 @@ export const fetchLegalPages = async (slug = null, locale = 'vi') => {
   return response.data?.results ?? [];
 };
 
-export const getPriceAlerts = () => apiClient.get('/stock-management/price-alerts/');
-export const createPriceAlert = (data) => apiClient.post('/stock-management/price-alerts/', data);
-export const updatePriceAlert = (id, data) => apiClient.patch(`/stock-management/price-alerts/${id}/`, data);
-export const deletePriceAlert = (id) => apiClient.delete(`/stock-management/price-alerts/${id}/`);
+export const getPriceAlerts = () => apiClient.get('/stock-management/price-alerts/', withCoreBase());
+export const createPriceAlert = (data) => apiClient.post('/stock-management/price-alerts/', data, withCoreBase());
+export const updatePriceAlert = (id, data) => apiClient.patch(`/stock-management/price-alerts/${id}/`, data, withCoreBase());
+export const deletePriceAlert = (id) => apiClient.delete(`/stock-management/price-alerts/${id}/`, withCoreBase());
 
 // --- Health / Observability (public, no auth needed) ---
 export const getRealtimeHealth = () =>
   axios.get(`${apiBaseURL.replace(/\/api$/, '')}/api/health/realtime/`);
-export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management/price-alerts/${id}/mark-triggered/`);
+export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management/price-alerts/${id}/mark-triggered/`, {}, withCoreBase());
 
 // --- Core operator (admin/core routes) ---
 export const getAdminAuditLog = (params = {}) => apiClient.get('/core/v1/audit-log', { params, baseURL: '' });

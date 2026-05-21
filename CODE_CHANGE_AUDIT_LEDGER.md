@@ -1,5 +1,127 @@
 # Code Change Audit Ledger
 
+# 2026-05-21 | OpenAPI OHLCV + dark-money-history implementation slice ✅
+
+## Problem Solved
+
+Completed the implementation slice that moved chart/dark-money-history stock-management reads to native OpenAPI owner routes and aligned adapter/frontend callsites.
+
+Key outcomes:
+- Added dark-money-history endpoint availability on both `/api/stock-management/...` and `/core/v1/stock-management/...`.
+- Added `30m` chart timeframe support and locked behavior with regression tests.
+- Added package adapter + frontend client wrappers so consuming UIs can call the new core path directly.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Added native `StockManagementDarkMoneyHistoryView`, dark-money helpers/schema usage, and chart intraday `30m` support |
+| `packages/core/backend/src/market_data/public_urls.py` | Added `/stock-management/stocks/<symbol>/dark-money-history/` public API route |
+| `packages/core/backend/src/market_data/core_urls.py` | Added `/stock-management/stocks/<symbol>/dark-money-history/` core v1 route |
+| `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py` | Added tests for `30m` chart timeframe, dark-money envelope, and `/api` vs `/core/v1` parity |
+| `packages/web/src/adapters/coreApiAdapter.js` | Added `getStockChartHistory` and `getDarkMoneyHistory` adapter methods |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added adapter route/query assertions for chart and dark-money-history methods |
+| `frontend/src/api/client.js` | Added `getStockDarkMoneyHistory` core-wrapper helper |
+| `frontend/src/api/client.coreRoutes.test.js` | Added wrapper regression for dark-money-history route + params |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this implementation slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+
+## Validation
+
+- `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:DJANGO_DEBUG='1'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test market_data.tests.test_stock_management_native_api --keepdb; Pop-Location` — PASS (`50` tests)
+- `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm test -- src/adapters/coreApiAdapter.test.js; Pop-Location` — PASS (`32` tests)
+- `Push-Location "c:/Mujoco Projects/vninvest/frontend"; $env:CI='true'; npm test -- --runTestsByPath src/api/client.coreRoutes.test.js; Pop-Location` — PASS (`10` tests)
+- `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` — PASS
+- `Push-Location "c:/Mujoco Projects/vninvest"; git diff --check -- packages/core/backend/src/market_data/stock_mgmt_native_views.py packages/core/backend/src/market_data/public_urls.py packages/core/backend/src/market_data/core_urls.py packages/core/backend/src/market_data/tests/test_stock_management_native_api.py packages/web/src/adapters/coreApiAdapter.js packages/web/src/adapters/coreApiAdapter.test.js frontend/src/api/client.js frontend/src/api/client.coreRoutes.test.js module_tree_full.md; Pop-Location` — PASS (no output)
+- `Push-Location "c:/Mujoco Projects/vninvest"; Select-String -Path "packages/core/backend/src/market_data/stock_mgmt_native_views.py","packages/core/backend/src/market_data/tests/test_stock_management_native_api.py","packages/web/src/adapters/coreApiAdapter.js","packages/web/src/adapters/coreApiAdapter.test.js","frontend/src/api/client.js","frontend/src/api/client.coreRoutes.test.js" -Pattern "print\(|vnbroker\.explorer|from\s+vnbroker\.explorer" -CaseSensitive; Pop-Location` — PASS (no matches)
+- `Push-Location "c:/Mujoco Projects/vninvest"; ./start_dev.ps1; Pop-Location` — PASS (core API health OK, frontend health OK, queue drift clean)
+
+## Residual Risk
+
+- In this session, `code-reviewer` subagent could not access workspace files due tool-context limitations; risk coverage therefore relies on focused regression tests + diff hygiene checks.
+
+# 2026-05-21 | OpenAPI cutover documentation handoff for OHLCV + dark-money-history ✅
+
+## Problem Solved
+
+User requested a complete, implementation-ready handoff documentation package so the coding team can execute OpenAPI upgrade and legacy route replacement for:
+- historical OHLCV timeframe endpoints
+- dark-money-history timeframe endpoints
+
+without needing additional clarification.
+
+This slice delivers the full project-standard format package, including design docs, runbooks, traceability, quality constitution, ownership matrix, and evidence template.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_HANDOFF_MASTER_20260521.md` | Added master handoff package definition and acceptance gates |
+| `docs/IMPLEMENTATION_PLAN_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md` | Added phased execution plan with risks, schedule, and DoD |
+| `docs/TECH_SPEC_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md` | Added contract spec for chart + dark-money-history core endpoints |
+| `docs/TASKBOARD_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md` | Added actionable taskboard with priorities |
+| `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_TRACEABILITY_MATRIX_20260521.md` | Added requirement-to-task-to-test traceability |
+| `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260521.md` | Added mandatory self-audit and test protocol |
+| `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260521.md` | Added execution evidence template |
+| `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_CONFIG_OWNERSHIP_MATRIX_20260521.md` | Added config/contract ownership map |
+| `docs/OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_CODE_QUALITY_CONSTITUTION_20260521.md` | Added package-level code quality constitution |
+| `docs/FRONTEND_DESIGN_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md` | Added frontend adapter cutover design |
+| `docs/BACKEND_DESIGN_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md` | Added backend endpoint + migration design |
+| `docs/RUN_CODE_REVIEW_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md` | Added code review runbook |
+| `docs/RUN_INTEGRATION_TESTS_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md` | Added integration test runbook |
+| `docs/RUN_SPEC_AUDIT_OHLCV_DARK_MONEY_HISTORY_OPENAPI_CUTOVER_20260521.md` | Added spec audit runbook |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for documentation handoff slice |
+
+## Validation
+
+- Verified deliverable set matches project handoff format used by existing major feature packs.
+- Verified alignment with OpenAPI governance documents:
+   - `docs/CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md`
+   - `docs/CORE_API_OPENAPI_PR_GATE_CHECKLIST_20260513.md`
+- Confirmed explicit development-stage policy recorded: no production shadow-run requirement for this package; dev parity replay remains mandatory.
+
+## Residual Risk
+
+- This slice is documentation-only; implementation risks and runtime regressions will be evaluated in subsequent coding slices via the newly created runbooks.
+
+# 2026-05-21 | Redesign Alert Center Workspace (Whale Alerts) 🟢.
+
+## Problem Solved
+
+Giao diện trang `/whale-alerts` cũ thiếu tính năng, không tối ưu và gặp lỗi crash transpile named imports cũng như lỗi `coreApiAdapter` invocation. 
+
+Slice này tiến hành thiết kế lại toàn bộ trang Whale Alerts mới theo kiến trúc SaaS native OpenAPI với các tính năng sau:
+- **Khắc phục triệt để lỗi crash:** Sửa lại khai báo import đặt tên `React` và dùng `coreApiAdapter` trực tiếp như một object instantiated thay vì gọi hàm.
+- **Visual WOW Aesthetics (Glassmorphic):** Nhúng động stylesheet CSS với thiết kế tối cao cấp, các viền neon phát sáng theo mức độ nghiêm trọng (severity), hiệu ứng kính mờ (glassmorphic blur), và các micro-animations chuyển tiếp mượt mà.
+- **Module 1 (Real-time Alert Statistics & Feed):** Hiển thị danh sách cảnh báo giao dịch dòng tiền lớn (Whale, Dark Flow, Price Shock, Stale Quote) kèm panel hiển thị bằng chứng (evidence details) dạng rút gọn/mở rộng, drawer pháp y (drawer detail context), bộ lọc thời gian thực và tự động làm mới (auto-refresh 5s) với đèn pulse nhấp nháy.
+- **Module 2 (Statistics by Stock Symbol):** Thống kê và gom nhóm cảnh báo tự động theo mã cổ phiếu, tính toán tần suất xuất hiện tương đối (Bùng nổ, Cao, Trung bình, Thấp), tích hợp biểu đồ thanh cường độ Mua/Bán (Buy/Sell Strength Meter) cực kỳ trực quan, lọc nhanh theo mã và liên kết trực tiếp tới Stock detail workspace `/stocks/:symbol`.
+- **Vietnamese i18n & Parity:** Toàn bộ văn bản hiển thị sử dụng tiếng Việt chuẩn hóa đầy đủ dấu, đồng thời bảo toàn 100% mã nguồn immutable bubble chart từ dashboard cũ để tránh gây regression.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/pages/AlertCenterPage.js` | Hoàn tất viết lại trang AlertCenterPage mới không sử dụng JSX, hỗ trợ Module 1, Module 2, dynamic styles và các endpoint OpenAPI |
+| `packages/web/src/adapters/coreApiAdapter.js` | Chuẩn hóa các route API `/signals/alert-center/feed` và `/signals/alert-center/summary` để khớp hoàn toàn contract |
+| `packages/web/src/features/dashboard/__tests__/dashboard_lifecycle.test.js` | Sửa lại mock lifecycle callback và loại bỏ thư mục test trùng lặp để phục hồi sự ổn định của Jest |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Ghi nhận nhật ký audit code change |
+| `PROGRESS_DASHBOARD.md` | Ghi nhận tiến độ công việc |
+
+## Validation
+
+- `npm test` bên trong `packages/web` -> PASS (`35/35 tests passed`, 2 suites)
+- `npm run build` trong `frontend` -> PASS (`Compiled successfully`, không gặp lỗi transpilation hay named export)
+- Hoàn tất self-audit code review đảm bảo diff sạch đối với 3 immutable files:
+  - `frontend/src/components/WhaleBubbleChart.jsx` - Sạch
+  - `frontend/src/components/WhaleAnalyticsTab.jsx` - Sạch
+  - `frontend/src/components/modern/ModularPositionDeck.jsx` - Sạch
+
+## Residual Risk
+
+- Phía client cần lưu sẵn token xác thực trong `localStorage` để các cuộc gọi API từ `coreApiAdapter` của AlertCenterPage trả về thành công 100%.
+
 # 2026-05-21 | Pre-5Y historical backfill service (market inception) ✅
 
 ## Problem Solved

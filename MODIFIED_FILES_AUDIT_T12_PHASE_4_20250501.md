@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-05-21 | OpenAPI OHLCV + dark-money-history implementation slice
+
+### Files changed in this session
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/public_urls.py`
+- `packages/core/backend/src/market_data/core_urls.py`
+- `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `frontend/src/api/client.js`
+- `frontend/src/api/client.coreRoutes.test.js`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Thuc hien cutover owner-route OpenAPI cho chart + dark-money-history, cap nhat adapter/client wrappers, va khoa contract bang focused regression tests.
+
+### Validation snapshot
+- `manage.py test market_data.tests.test_stock_management_native_api --keepdb` ✅ (50 tests)
+- `npm test -- src/adapters/coreApiAdapter.test.js` ✅ (32 tests)
+- `npm test -- --runTestsByPath src/api/client.coreRoutes.test.js` ✅ (10 tests)
+- `scripts/ops/generate_module_tree.py` ✅
+- `git diff --check` scoped files ✅
+- `Select-String` scan (`print(`, `vnbroker.explorer`) ✅ no matches
+- `./start_dev.ps1` ✅ core/frontend healthy + queue drift clean
+
+---
+
 ## 2026-05-19 | Global Market Data Backfill Effectiveness Hardening doc-pack handoff
 
 ### Files changed in this session
