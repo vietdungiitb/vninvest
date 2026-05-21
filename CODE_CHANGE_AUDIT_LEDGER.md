@@ -1,5 +1,45 @@
 # Code Change Audit Ledger
 
+# 2026-05-21 | Backfill stuck-state durable remediation + scheduler hardening ✅
+
+## Problem Solved
+
+Applied a durable fix set for the recurring "backfill stuck" symptom where scheduler status could stay running/degraded after worker/task drift.
+
+Key outcomes:
+- Added periodic stale running run-log reconciler task (`service_ops.reconcile_stale_running_service_run_logs`) that auto-closes orphan `ServiceRunLog(status='running')` entries based on Celery terminal state and stale thresholds.
+- Fixed scheduler `abort` action service resolution to use catalog `service_key` first (then fallback), so backfill jobs like `daily-backfill-prices-1700` correctly revoke/close inflight logs.
+- Added commercial quota flush throttle+lock guard to prevent queue backlog amplification by overlapping/redundant `flush_quota_counters` executions.
+- Wired reconciler into queue policy, beat schedule, and scheduler catalog metadata.
+- Added focused regression tests for reconciler behavior and abort service-key mapping.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/tasks.py` | Added stale-running run-log reconciler task and runtime guardrail helper |
+| `packages/core/backend/src/service_ops/views/scheduler.py` | Fixed abort mapping to resolve `ServiceDefinition` by catalog `service_key` |
+| `packages/core/backend/src/commercial/tasks.py` | Added throttle+lock protection for `flush_quota_counters` |
+| `packages/core/backend/src/vninvest_core/queue_policy.py` | Registered reconciler task route + periodic key mapping |
+| `packages/core/backend/src/vninvest_core/settings.py` | Added beat job `reconcile-stale-running-service-run-logs-5m` |
+| `packages/core/backend/src/service_ops/scheduler_catalog.py` | Added metadata for reconciler job |
+| `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` | Added reconciler task regression tests |
+| `packages/core/backend/src/service_ops/tests/test_scheduler_action.py` | Added abort mapping regression test for backfill job key |
+| `module_tree_full.md` | Regenerated module tree after this slice |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list entry |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+
+## Validation
+
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test service_ops.tests.test_scheduler_action.SchedulerJobActionS03ExecutionTests.test_abort_backfill_job_uses_catalog_service_key_mapping service_ops.tests.test_soc_tasks.ReconcileStaleRunningRunLogsTaskTestCase --keepdb` — PASS (`3` tests)
+- `./start_dev.ps1` — PASS (core API health OK, frontend health OK, queue drift check OK)
+- `python scripts/ops/generate_module_tree.py` — PASS (`module_tree_full.md` regenerated)
+
+## Residual Risk
+
+- Running the broader `service_ops.tests.test_soc_tasks` suite in this environment is currently affected by large realtime queue depth, which triggers expected dispatch-skipping behavior for queue-tier scheduler tests; this is unrelated to the reconciler/abort mapping fixes validated above.
+
 # 2026-05-21 | OHLCV bars endpoint native implementation + runtime fix ✅
 
 ## Problem Solved

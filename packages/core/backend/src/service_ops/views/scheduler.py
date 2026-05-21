@@ -575,7 +575,8 @@ def _execute_scheduler_action(
         except Exception:
             pass
         try:
-            service_def = ServiceDefinition.objects.filter(service_key=job_key).first()
+            service_key = str(meta.get('service_key') or '').strip() or job_key
+            service_def = ServiceDefinition.objects.filter(service_key=service_key).first()
             revoked_count = 0
             if service_def:
                 inflight_logs = ServiceRunLog.objects.filter(
@@ -600,7 +601,7 @@ def _execute_scheduler_action(
                     )
                     run_log.save(update_fields=['status', 'finished_at', 'error_detail'])
             message_parts.append(
-                f"Đã gửi revoke signal cho {revoked_count} celery task(s) của job '{job_key}'."
+                f"Đã gửi revoke signal cho {revoked_count} celery task(s) của job '{job_key}' (service_key='{service_key}')."
             )
         except Exception as exc:
             message_parts.append(f"Abort gặp lỗi: {exc}")

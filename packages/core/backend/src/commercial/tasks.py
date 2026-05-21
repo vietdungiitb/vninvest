@@ -16,6 +16,12 @@ from identity_access.models import CoreTenant
 logger = logging.getLogger(__name__)
 
 
+FLUSH_QUOTA_THROTTLE_KEY = 'commercial:flush_quota_counters:throttle'
+FLUSH_QUOTA_LOCK_KEY = 'commercial:flush_quota_counters:lock'
+FLUSH_QUOTA_MIN_INTERVAL_SECONDS = 55
+FLUSH_QUOTA_LOCK_SECONDS = 300
+
+
 def _iter_quota_counter_keys(day: date):
     client = getattr(cache, '_cache', None)
     if client is None or not hasattr(client, 'scan_iter'):
@@ -73,38 +79,54 @@ def _subscription_amount_due(subscription: Subscription) -> Decimal:
 @shared_task(name='commercial.tasks.flush_quota_counters', bind=True, max_retries=3, default_retry_delay=60)
 def flush_quota_counters(self, target_date: str | None = None):
     """Flush Redis-backed daily quota counters into QuotaRecord rows."""
+    request_id = str(getattr(self.request, 'id', '') or 'manual')
+    if not cache.add(FLUSH_QUOTA_THROTTLE_KEY, request_id, timeout=FLUSH_QUOTA_MIN_INTERVAL_SECONDS):
+        return {
+            'status': 'skipped',
+            'reason': 'throttled',
+            'processed': 0,
+        }
+    if not cache.add(FLUSH_QUOTA_LOCK_KEY, request_id, timeout=FLUSH_QUOTA_LOCK_SECONDS):
+        return {
+            'status': 'skipped',
+            'reason': 'inflight',
+            'processed': 0,
+        }
+
     today = date.fromisoformat(target_date) if target_date else timezone.now().date()
     period_start, period_end = _current_billing_period(today)
     processed = 0
+    try:
+        for raw_key in _iter_quota_counter_keys(today):
+            tenant_public_id = _extract_tenant_id_from_key(_normalize_cache_key(raw_key))
+            if not tenant_public_id:
+                continue
 
-    for raw_key in _iter_quota_counter_keys(today):
-        tenant_public_id = _extract_tenant_id_from_key(_normalize_cache_key(raw_key))
-        if not tenant_public_id:
-            continue
+            try:
+                tenant = CoreTenant.objects.get(public_id=tenant_public_id)
+            except CoreTenant.DoesNotExist:
+                logger.warning('flush_quota_counters: tenant %s missing for quota key.', tenant_public_id)
+                continue
 
-        try:
-            tenant = CoreTenant.objects.get(public_id=tenant_public_id)
-        except CoreTenant.DoesNotExist:
-            logger.warning('flush_quota_counters: tenant %s missing for quota key.', tenant_public_id)
-            continue
+            used_calls = _cache_get_int(raw_key)
+            quota_record, _ = QuotaRecord.objects.get_or_create(
+                tenant=tenant,
+                period_start=period_start,
+                period_end=period_end,
+                defaults={'api_calls_used': 0},
+            )
+            if quota_record.api_calls_used != used_calls:
+                quota_record.api_calls_used = used_calls
+                quota_record.save(update_fields=['api_calls_used', 'updated_at'])
+            processed += 1
 
-        used_calls = _cache_get_int(raw_key)
-        quota_record, _ = QuotaRecord.objects.get_or_create(
-            tenant=tenant,
-            period_start=period_start,
-            period_end=period_end,
-            defaults={'api_calls_used': 0},
-        )
-        if quota_record.api_calls_used != used_calls:
-            quota_record.api_calls_used = used_calls
-            quota_record.save(update_fields=['api_calls_used', 'updated_at'])
-        processed += 1
-
-    return {
-        'status': 'ok',
-        'date': today.isoformat(),
-        'processed': processed,
-    }
+        return {
+            'status': 'ok',
+            'date': today.isoformat(),
+            'processed': processed,
+        }
+    finally:
+        cache.delete(FLUSH_QUOTA_LOCK_KEY)
 
 
 @shared_task(name='commercial.tasks.generate_monthly_invoices', bind=True, max_retries=2, default_retry_delay=300)

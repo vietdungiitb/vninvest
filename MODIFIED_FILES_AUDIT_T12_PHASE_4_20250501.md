@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-05-21 | Backfill stuck-state durable remediation + scheduler hardening
+
+### Files changed in this session
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/views/scheduler.py`
+- `packages/core/backend/src/commercial/tasks.py`
+- `packages/core/backend/src/vninvest_core/queue_policy.py`
+- `packages/core/backend/src/vninvest_core/settings.py`
+- `packages/core/backend/src/service_ops/scheduler_catalog.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_scheduler_action.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sua triet de tinh trang backfill bi keo dai trang thai running/degraded sai thuc te bang co che auto reconcile stale run logs, sua abort mapping theo service_key, va bo sung throttle/lock de giam dồn queue quota flush.
+
+### Validation snapshot
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec core-api python /app/src/manage.py test service_ops.tests.test_scheduler_action.SchedulerJobActionS03ExecutionTests.test_abort_backfill_job_uses_catalog_service_key_mapping service_ops.tests.test_soc_tasks.ReconcileStaleRunningRunLogsTaskTestCase --keepdb` ✅ (`3` tests)
+- `./start_dev.ps1` ✅ core/frontend healthy + queue drift clean
+- `scripts/ops/generate_module_tree.py` ✅
+
+---
+
 ## 2026-05-21 | OHLCV bars endpoint native implementation + runtime fix
 
 ### Files changed in this session

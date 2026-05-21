@@ -55,6 +55,15 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'display_name': 'Parity retention health monitor (2h)',
         'freshness_warm_seconds': 2 * 3600,
     },
+    'reconcile-stale-running-service-run-logs-5m': {
+        'domain': 'dataops',
+        'data_types': ['service_run_logs'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Reconcile stale running service run logs (5m)',
+        'freshness_warm_seconds': 5 * 60,
+    },
     # === Native ingest ===
     'ingest-price-board-60s': {
         'domain': 'dataops',

@@ -386,6 +386,16 @@ CELERY_BEAT_SCHEDULE = {
             )
         },
     },
+    'reconcile-stale-running-service-run-logs-5m': {
+        'task': 'service_ops.reconcile_stale_running_service_run_logs',
+        'schedule': 300.0,
+        'options': {
+            'queue': SCHEDULER_QUEUE_MAP.get(
+                'reconcile-stale-running-service-run-logs-5m',
+                'manual_on_demand',
+            )
+        },
+    },
 
     # === C1: Native ingest — price board every 60s ===
     # Replaces legacy-worker as sole SymbolSnapshot update source.

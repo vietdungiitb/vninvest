@@ -211,3 +211,27 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
         data = response.json()
         self.assertTrue(data['accepted'])
         self.assertIn('revoke', data['message'])
+
+    def test_abort_backfill_job_uses_catalog_service_key_mapping(self):
+        """abort must resolve backfill service via CATALOG service_key, not job_key literal."""
+        from service_ops.models import ServiceRunLog
+        from service_ops.registry import get_registered_service
+
+        service = get_registered_service('backfill_daily_prices')
+        run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='running',
+            celery_task_id='abort-backfill-task-id',
+            input_summary={'trigger': 'test'},
+            output_summary={},
+        )
+
+        url = _ACTION_URL.format(job_key='daily-backfill-prices-1700')
+        with patch('celery.app.control.Control.revoke') as revoke_mock:
+            response = self.client.post(url, {'action': 'abort'}, format='json')
+
+        self.assertEqual(response.status_code, 202)
+        run_log.refresh_from_db()
+        self.assertEqual(run_log.status, 'failed')
+        self.assertIn('Bị abort bởi operator', run_log.error_detail)
+        revoke_mock.assert_called_once_with('abort-backfill-task-id', terminate=True, signal='SIGTERM')

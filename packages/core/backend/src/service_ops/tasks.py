@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from time import perf_counter
 
-from celery import shared_task
+from celery import current_app, shared_task
 from django.utils import timezone
 
 from market_data.global_symbol_planner import create_global_planner_run
@@ -104,6 +104,136 @@ def _mark_run_log_finished(
     run_log.error_detail = error_detail
     run_log.save(update_fields=['status', 'finished_at', 'duration_seconds', 'output_summary', 'error_detail'])
     return run_log
+
+
+def _build_service_runtime_guardrails() -> tuple[dict[str, int], dict[str, set[str]]]:
+    """Build service max runtime thresholds and related scheduler job mappings."""
+    from service_ops.scheduler_catalog import CATALOG_JOB_METADATA
+
+    service_to_max_expected_seconds: dict[str, int] = {}
+    service_to_job_keys: dict[str, set[str]] = {}
+
+    for job_key, meta in CATALOG_JOB_METADATA.items():
+        service_key = str(meta.get('service_key') or '').strip()
+        if not service_key:
+            continue
+
+        service_to_job_keys.setdefault(service_key, set()).add(job_key)
+
+        raw_max_expected = meta.get('max_expected_run_seconds')
+        if raw_max_expected is None:
+            continue
+        try:
+            max_expected_seconds = int(raw_max_expected)
+        except (TypeError, ValueError):
+            continue
+        if max_expected_seconds <= 0:
+            continue
+
+        service_to_max_expected_seconds[service_key] = max(
+            service_to_max_expected_seconds.get(service_key, 0),
+            max_expected_seconds,
+        )
+
+    return service_to_max_expected_seconds, service_to_job_keys
+
+
+@shared_task(bind=True, name='service_ops.reconcile_stale_running_service_run_logs', queue='manual_on_demand')
+def reconcile_stale_running_service_run_logs(self, stale_grace_seconds: int = 900):
+    """Close stale/orphan running ServiceRunLog entries to prevent status drift."""
+    from django.core.cache import cache
+
+    now = timezone.now()
+    grace_seconds = max(int(stale_grace_seconds or 0), 60)
+    fallback_expected_seconds = 3600
+    service_to_max_expected, service_to_job_keys = _build_service_runtime_guardrails()
+
+    examined = 0
+    recovered = 0
+    recovered_to_success = 0
+    recovered_to_failed = 0
+    skipped_live = 0
+
+    running_logs = ServiceRunLog.objects.select_related('service').filter(status='running')
+    for run_log in running_logs.iterator():
+        examined += 1
+
+        service_key = str(getattr(run_log.service, 'service_key', '') or '').strip()
+        max_expected_seconds = service_to_max_expected.get(service_key, fallback_expected_seconds)
+        started_at = run_log.started_at
+        elapsed_seconds = float((now - started_at).total_seconds()) if started_at else float(max_expected_seconds + grace_seconds + 1)
+        stale_threshold_seconds = float(max_expected_seconds + grace_seconds)
+        if elapsed_seconds < stale_threshold_seconds:
+            continue
+
+        celery_task_id = str(run_log.celery_task_id or '').strip()
+        task_state = 'UNKNOWN'
+        is_live_task: bool | None = None
+
+        if celery_task_id:
+            try:
+                task_state = str(current_app.AsyncResult(celery_task_id).state or 'UNKNOWN').upper()
+            except Exception as exc:
+                task_state = f'ERROR:{exc.__class__.__name__}'
+            is_live_task = _is_celery_task_live(celery_task_id)
+
+        if is_live_task is True:
+            skipped_live += 1
+            continue
+
+        next_status = 'failed'
+        if task_state == 'SUCCESS':
+            next_status = 'success'
+
+        output_summary = dict(run_log.output_summary or {})
+        output_summary.update({
+            'recovery_action': 'reconcile_stale_running_run_log',
+            'recovered_at': now.isoformat(),
+            'elapsed_seconds': round(elapsed_seconds, 2),
+            'stale_threshold_seconds': round(stale_threshold_seconds, 2),
+            'task_state': task_state,
+            'service_key': service_key,
+        })
+
+        existing_error = str(run_log.error_detail or '').strip()
+        recovery_error = (
+            f'Auto-recovered stale running log; task_state={task_state}; '
+            f'elapsed_seconds={round(elapsed_seconds, 2)}; '
+            f'stale_threshold_seconds={round(stale_threshold_seconds, 2)}'
+        )
+
+        run_log.status = next_status
+        run_log.finished_at = now
+        run_log.duration_seconds = max(int(round(elapsed_seconds)), 0)
+        run_log.output_summary = output_summary
+        run_log.error_detail = f'{existing_error}\n{recovery_error}'.strip() if existing_error else recovery_error
+        run_log.save(update_fields=['status', 'finished_at', 'duration_seconds', 'output_summary', 'error_detail'])
+
+        for job_key in service_to_job_keys.get(service_key, set()):
+            cache.delete(f'scheduler:inflight:{job_key}')
+
+        recovered += 1
+        if next_status == 'success':
+            recovered_to_success += 1
+        else:
+            recovered_to_failed += 1
+
+    logger.info(
+        'reconcile_stale_running_service_run_logs completed examined=%s recovered=%s success=%s failed=%s skipped_live=%s',
+        examined,
+        recovered,
+        recovered_to_success,
+        recovered_to_failed,
+        skipped_live,
+    )
+    return {
+        'examined': examined,
+        'recovered': recovered,
+        'recovered_to_success': recovered_to_success,
+        'recovered_to_failed': recovered_to_failed,
+        'skipped_live': skipped_live,
+        'stale_grace_seconds': grace_seconds,
+    }
 
 
 def _create_child_run_log(service_key: str, parent_run_log: ServiceRunLog, trigger: str) -> ServiceRunLog:

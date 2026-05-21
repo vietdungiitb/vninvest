@@ -1,3 +1,35 @@
+# 2026-05-21 — Backfill stuck-state durable remediation + scheduler hardening ✅
+
+Status: **✅ IMPLEMENTED + TARGETED REGRESSION GREEN + DEV STACK REFRESHED**
+
+## Summary
+- Added periodic stale run-log reconciler to auto-close orphan `running` logs and clear inflight cache drift.
+- Fixed scheduler abort to resolve backfill services through catalog `service_key` mapping.
+- Added throttle/lock guard for `commercial.tasks.flush_quota_counters` to reduce backlog amplification.
+- Registered new reconciler in queue policy, beat schedule, and scheduler metadata.
+- Added focused backend regressions for reconciler + abort mapping.
+
+## Files Updated In This Slice
+- `packages/core/backend/src/service_ops/tasks.py`
+- `packages/core/backend/src/service_ops/views/scheduler.py`
+- `packages/core/backend/src/commercial/tasks.py`
+- `packages/core/backend/src/vninvest_core/queue_policy.py`
+- `packages/core/backend/src/vninvest_core/settings.py`
+- `packages/core/backend/src/service_ops/scheduler_catalog.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
+- `packages/core/backend/src/service_ops/tests/test_scheduler_action.py`
+- `module_tree_full.md`
+
+## Validation
+- Targeted tests (3/3) PASS:
+  - `SchedulerJobActionS03ExecutionTests.test_abort_backfill_job_uses_catalog_service_key_mapping`
+  - `ReconcileStaleRunningRunLogsTaskTestCase` (2 tests)
+- `./start_dev.ps1` PASS with healthy core/frontend and queue drift check pass.
+- `scripts/ops/generate_module_tree.py` PASS.
+
+## Residual Risk
+- Full `service_ops.tests.test_soc_tasks` run in current runtime remains noisy due very high realtime queue depth and is not used as release gate for this focused remediation.
+
 # 2026-05-21 — OHLCV bars endpoint native route + test closure ✅
 
 Status: **✅ IMPLEMENTED + VERIFIED (28 backend tests pass, dev stack refreshed, HTTP smoke 200)**
