@@ -1,3 +1,34 @@
+# 2026-05-21 — OHLCV bars endpoint native route + test closure ✅
+
+Status: **✅ IMPLEMENTED + VERIFIED (28 backend tests pass, dev stack refreshed, HTTP smoke 200)**
+
+## Summary
+- Completed native OHLCV bars route exposure on both `/api` and `/core/v1` route families under stock-management.
+- Added focused test module `test_ohlcv_bars_native_api.py` with 28 tests covering auth, validation, cursor before/after, window mode, intraday, and weekly aggregation.
+- Fixed timeframe validation behavior so invalid raw inputs (for example `3H`) now return `INVALID_TIMEFRAME` instead of silently normalizing.
+- Fixed runtime compatibility bug by replacing `django.utils.timezone.utc` usage with Python datetime UTC constant.
+- Re-ran dev stack via mandatory `./start_dev.ps1` and confirmed endpoint smoke:
+  - `POST /api/auth/login/` -> `200`
+  - `GET /api/stock-management/stocks/SMK/bars/?timeframe=D&limit=5` -> `200`
+
+## Files Updated In This Slice
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/public_urls.py`
+- `packages/core/backend/src/market_data/core_urls.py`
+- `packages/core/backend/src/market_data/urls.py`
+- `packages/core/backend/src/market_data/tests/test_ohlcv_bars_native_api.py`
+- `module_tree_full.md`
+
+## Validation
+- Backend focused suite: `manage.py test market_data.tests.test_ohlcv_bars_native_api --verbosity=1` -> PASS (`28` tests).
+- Audit gate: `git diff --check` on OHLCV files -> PASS.
+- Forbidden pattern scan in touched OHLCV files (`print(`, `explorer`) -> clean.
+- Runtime refresh: `./start_dev.ps1` -> PASS (core API healthy, frontend healthy, queue drift clean).
+- HTTP smoke test on refreshed stack -> PASS (`bars_status=200`, valid payload returned).
+
+## Residual Risk
+- Focused test module passes and runtime smoke is green; full-repo unrelated modified files remain outside this slice scope.
+
 # 2026-05-21 — OpenAPI cutover handoff pack for OHLCV + dark-money-history ✅
 
 Status: **✅ IMPLEMENTATION + VALIDATION COMPLETE (core/public routes + adapter/client + tests + runtime refresh)**

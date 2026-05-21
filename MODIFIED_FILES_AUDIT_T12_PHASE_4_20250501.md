@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-05-21 | OHLCV bars endpoint native implementation + runtime fix
+
+### Files changed in this session
+- `packages/core/backend/src/market_data/stock_mgmt_native_views.py`
+- `packages/core/backend/src/market_data/public_urls.py`
+- `packages/core/backend/src/market_data/core_urls.py`
+- `packages/core/backend/src/market_data/urls.py`
+- `packages/core/backend/src/market_data/tests/test_ohlcv_bars_native_api.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Hoan tat owner-route OHLCV bars native endpoint, bo sung test bao phu contract, sua loi runtime timezone trong container, va chot full audit + smoke evidence.
+
+### Validation snapshot
+- `manage.py test market_data.tests.test_ohlcv_bars_native_api --verbosity=1` ✅ (`28` tests)
+- `git diff --check` scoped OHLCV files ✅
+- `Select-String` scan (`print(`, `explorer`) ✅ no matches
+- `./start_dev.ps1` ✅ core/frontend healthy + queue drift clean
+- HTTP smoke `/api/auth/login/` + `/api/stock-management/stocks/SMK/bars/` ✅ (`200`)
+- `scripts/ops/generate_module_tree.py` ✅
+
+---
+
 ## 2026-05-21 | OpenAPI OHLCV + dark-money-history implementation slice
 
 ### Files changed in this session

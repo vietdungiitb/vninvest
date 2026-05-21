@@ -11,7 +11,7 @@ Graceful stubs return empty/null for features not yet fully native.
 from collections import defaultdict
 from copy import deepcopy
 from decimal import Decimal
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from uuid import UUID
 
 from django.db import DatabaseError, connection
@@ -3260,6 +3260,394 @@ class StockManagementSyncView(APIView):
             'celery_task_id': planner_result.get('celery_task_id'),
             'plan_summary': dict(planner_result.get('plan_summary') or {}),
             'message': f'Đã ghi nhận yêu cầu làm mới SSOT cho {len(symbols)} mã.',
+        })
+
+
+# =============================================================================
+# OHLCV Bars endpoint — cursor-paginated bars contract
+# =============================================================================
+
+_OHLCV_VALID_TIMEFRAMES = frozenset(['1m', '5m', '15m', '1H', '2H', '4H', 'D', 'W', 'M'])
+_OHLCV_INTRADAY_TIMEFRAMES = frozenset(['1m', '5m', '15m', '1H', '2H', '4H'])
+_OHLCV_BAR_LIMIT_DEFAULT = 500
+_OHLCV_BAR_LIMIT_MAX = 1000
+
+
+def _parse_ohlcv_ts(raw):
+    """Parse Unix ms int/str or ISO 8601 string → UTC-aware datetime. Returns None if falsy."""
+    if raw is None or raw == '':
+        return None
+    try:
+        ms = int(raw)
+        return datetime.fromtimestamp(ms / 1000.0, tz=dt_timezone.utc)
+    except (TypeError, ValueError, OSError, OverflowError):
+        pass
+    try:
+        from django.utils.dateparse import parse_datetime as _parse_dt
+        dt = _parse_dt(str(raw))
+        if dt is not None:
+            return dt if dt.tzinfo else dt.replace(tzinfo=dt_timezone.utc)
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
+def _dt_to_unix_ms(dt):
+    """Convert UTC-aware datetime → Unix milliseconds int. Returns None if None."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=dt_timezone.utc)
+    return int(dt.timestamp() * 1000)
+
+
+def _ohlcv_bar_from_intraday(bar):
+    return {
+        'timestamp': _dt_to_unix_ms(bar.datetime),
+        'open': _to_float(bar.open),
+        'high': _to_float(bar.high),
+        'low': _to_float(bar.low),
+        'close': _to_float(bar.close),
+        'volume': _to_int(bar.volume) or 0,
+    }
+
+
+def _ohlcv_bar_from_daily(row):
+    dt = datetime.combine(row.date, time.min).replace(tzinfo=dt_timezone.utc)
+    return {
+        'timestamp': _dt_to_unix_ms(dt),
+        'open': _to_float(row.open),
+        'high': _to_float(row.high),
+        'low': _to_float(row.low),
+        'close': _to_float(row.close),
+        'volume': _to_int(row.volume) or 0,
+    }
+
+
+def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
+    """Aggregate DailyPrice rows into W or M OHLCV bars. Returns list of bar dicts."""
+    if not rows:
+        return []
+    buckets = []
+    current = None
+    for row in rows:
+        key = row.date.isocalendar()[:2] if timeframe == 'W' else (row.date.year, row.date.month)
+        if current is None or current['key'] != key:
+            current = {
+                'key': key,
+                'date': row.date,
+                'open': row.open,
+                'high': row.high,
+                'low': row.low,
+                'close': row.close,
+                'volume': _to_int(row.volume) or 0,
+            }
+            buckets.append(current)
+        else:
+            current['high'] = max(current['high'], row.high)
+            current['low'] = min(current['low'], row.low)
+            current['close'] = row.close
+            current['volume'] += _to_int(row.volume) or 0
+    result = []
+    for b in buckets:
+        dt = datetime.combine(b['date'], time.min).replace(tzinfo=dt_timezone.utc)
+        result.append({
+            'timestamp': _dt_to_unix_ms(dt),
+            'open': _to_float(b['open']),
+            'high': _to_float(b['high']),
+            'low': _to_float(b['low']),
+            'close': _to_float(b['close']),
+            'volume': b['volume'],
+        })
+    return result
+
+
+def _fetch_ohlcv_bars_before(symbol, timeframe, before_dt, limit):
+    """Return (bars_asc, has_more_before, has_more_after)."""
+    fetch = limit + 1
+    if timeframe in _OHLCV_INTRADAY_TIMEFRAMES:
+        qs = list(
+            IntradayBar.objects
+            .filter(symbol=symbol, timeframe__iexact=timeframe, datetime__lt=before_dt)
+            .order_by('-datetime')[:fetch]
+        )
+        has_more_before = len(qs) > limit
+        qs = qs[:limit]
+        qs.reverse()
+        bars = [_ohlcv_bar_from_intraday(r) for r in qs]
+        has_more_after = IntradayBar.objects.filter(
+            symbol=symbol, timeframe__iexact=timeframe, datetime__gte=before_dt
+        ).exists()
+    elif timeframe == 'D':
+        before_date = before_dt.date()
+        qs = list(
+            DailyPrice.objects
+            .filter(symbol=symbol, date__lt=before_date)
+            .order_by('-date')[:fetch]
+        )
+        has_more_before = len(qs) > limit
+        qs = qs[:limit]
+        qs.reverse()
+        bars = [_ohlcv_bar_from_daily(r) for r in qs]
+        has_more_after = DailyPrice.objects.filter(symbol=symbol, date__gte=before_date).exists()
+    else:
+        days_each = 7 if timeframe == 'W' else 31
+        span_days = (limit + 2) * days_each
+        start_date = before_dt.date() - timedelta(days=span_days)
+        daily_rows = list(
+            DailyPrice.objects
+            .filter(symbol=symbol, date__range=(start_date, before_dt.date() - timedelta(days=1)))
+            .order_by('date')
+        )
+        all_bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe)
+        has_more_before = len(all_bars) > limit
+        bars = all_bars[-limit:] if all_bars else []
+        has_more_after = DailyPrice.objects.filter(symbol=symbol, date__gte=before_dt.date()).exists()
+    return bars, has_more_before, has_more_after
+
+
+def _fetch_ohlcv_bars_after(symbol, timeframe, after_dt, limit):
+    """Return (bars_asc, has_more_before, has_more_after)."""
+    fetch = limit + 1
+    if timeframe in _OHLCV_INTRADAY_TIMEFRAMES:
+        qs = list(
+            IntradayBar.objects
+            .filter(symbol=symbol, timeframe__iexact=timeframe, datetime__gt=after_dt)
+            .order_by('datetime')[:fetch]
+        )
+        has_more_after = len(qs) > limit
+        bars = [_ohlcv_bar_from_intraday(r) for r in qs[:limit]]
+        has_more_before = IntradayBar.objects.filter(
+            symbol=symbol, timeframe__iexact=timeframe, datetime__lte=after_dt
+        ).exists()
+    elif timeframe == 'D':
+        after_date = after_dt.date()
+        qs = list(
+            DailyPrice.objects
+            .filter(symbol=symbol, date__gt=after_date)
+            .order_by('date')[:fetch]
+        )
+        has_more_after = len(qs) > limit
+        bars = [_ohlcv_bar_from_daily(r) for r in qs[:limit]]
+        has_more_before = DailyPrice.objects.filter(symbol=symbol, date__lte=after_date).exists()
+    else:
+        days_each = 7 if timeframe == 'W' else 31
+        span_days = (limit + 2) * days_each
+        end_date = after_dt.date() + timedelta(days=span_days)
+        daily_rows = list(
+            DailyPrice.objects
+            .filter(symbol=symbol, date__range=(after_dt.date() + timedelta(days=1), end_date))
+            .order_by('date')
+        )
+        all_bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe)
+        has_more_after = len(all_bars) > limit
+        bars = all_bars[:limit]
+        has_more_before = DailyPrice.objects.filter(symbol=symbol, date__lte=after_dt.date()).exists()
+    return bars, has_more_before, has_more_after
+
+
+def _fetch_ohlcv_bars_window(symbol, timeframe, from_dt, to_dt):
+    """Return (bars_asc, has_more_before, has_more_after)."""
+    if timeframe in _OHLCV_INTRADAY_TIMEFRAMES:
+        qs = list(
+            IntradayBar.objects
+            .filter(symbol=symbol, timeframe__iexact=timeframe,
+                    datetime__gte=from_dt, datetime__lte=to_dt)
+            .order_by('datetime')
+        )
+        bars = [_ohlcv_bar_from_intraday(r) for r in qs]
+        has_more_before = IntradayBar.objects.filter(
+            symbol=symbol, timeframe__iexact=timeframe, datetime__lt=from_dt
+        ).exists()
+        has_more_after = IntradayBar.objects.filter(
+            symbol=symbol, timeframe__iexact=timeframe, datetime__gt=to_dt
+        ).exists()
+    elif timeframe == 'D':
+        qs = list(
+            DailyPrice.objects
+            .filter(symbol=symbol, date__range=(from_dt.date(), to_dt.date()))
+            .order_by('date')
+        )
+        bars = [_ohlcv_bar_from_daily(r) for r in qs]
+        has_more_before = DailyPrice.objects.filter(symbol=symbol, date__lt=from_dt.date()).exists()
+        has_more_after = DailyPrice.objects.filter(symbol=symbol, date__gt=to_dt.date()).exists()
+    else:
+        daily_rows = list(
+            DailyPrice.objects
+            .filter(symbol=symbol, date__range=(from_dt.date(), to_dt.date()))
+            .order_by('date')
+        )
+        bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe)
+        has_more_before = DailyPrice.objects.filter(symbol=symbol, date__lt=from_dt.date()).exists()
+        has_more_after = DailyPrice.objects.filter(symbol=symbol, date__gt=to_dt.date()).exists()
+    return bars, has_more_before, has_more_after
+
+
+class StockManagementOHLCVBarsView(APIView):
+    """GET /api/stock-management/stocks/<symbol>/bars/ — cursor-paginated OHLCV bars.
+
+    Three mutually exclusive modes:
+      window:        ?timeframe=D&from=<unix_ms>&to=<unix_ms>
+      cursor_before: ?timeframe=D&before=<unix_ms>&limit=200   (default when no mode given)
+      cursor_after:  ?timeframe=D&after=<unix_ms>&limit=200
+    """
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    @extend_schema(
+        summary='Lấy OHLCV bars cursor-paginated',
+        description=(
+            'Endpoint `/stock-management/stocks/{symbol}/bars/` trả về OHLCV bars có phân trang theo cursor. '
+            'Ba mode: window (`from`+`to`), cursor before (`before`+`limit`), cursor after (`after`+`limit`). '
+            'Timestamp là Unix milliseconds. Mặc định: cursor before=now, limit=500.'
+        ),
+        parameters=[
+            OpenApiParameter('timeframe', OpenApiTypes.STR, OpenApiParameter.QUERY, required=True,
+                             description='Khung thời gian: 1m 5m 15m 1H 2H 4H D W M'),
+            OpenApiParameter('from', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False,
+                             description='Unix ms — window mode start (dùng cùng with `to`)'),
+            OpenApiParameter('to', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False,
+                             description='Unix ms — window mode end (dùng cùng với `from`)'),
+            OpenApiParameter('before', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False,
+                             description='Unix ms — lấy bars trước timestamp này'),
+            OpenApiParameter('after', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False,
+                             description='Unix ms — lấy bars sau timestamp này'),
+            OpenApiParameter('limit', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False,
+                             description=f'Số bars trả về (1–{_OHLCV_BAR_LIMIT_MAX}, mặc định {_OHLCV_BAR_LIMIT_DEFAULT})'),
+            OpenApiParameter('snapshot_id', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False,
+                             description='Client snapshot correlation ID, echo lại trong response'),
+        ],
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
+    def get(self, request, symbol):
+        symbol = symbol.upper()
+
+        # --- validate timeframe ---
+        raw_tf = request.query_params.get('timeframe', 'D')
+        tf_token = str(raw_tf or 'D').strip()
+        tf_token_upper = tf_token.upper()
+        tf_token_lower = tf_token.lower()
+
+        if tf_token_lower in {'1m', '5m', '15m'}:
+            timeframe = tf_token_lower
+        elif tf_token_upper in {'1H', '2H', '4H', 'D', '1D', 'W', '1W', 'M', '1MO'}:
+            timeframe = {
+                '1D': 'D',
+                '1W': 'W',
+                '1MO': 'M',
+            }.get(tf_token_upper, tf_token_upper)
+        else:
+            timeframe = None
+
+        if timeframe is None or timeframe not in _OHLCV_VALID_TIMEFRAMES:
+            return Response(
+                {'code': 'INVALID_TIMEFRAME', 'detail': f'Timeframe "{raw_tf}" không hợp lệ. Hợp lệ: 1m 5m 15m 1H 2H 4H D W M'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # --- validate limit ---
+        raw_limit = request.query_params.get('limit')
+        if raw_limit is not None:
+            try:
+                limit = int(raw_limit)
+            except (TypeError, ValueError):
+                return Response(
+                    {'code': 'INVALID_LIMIT', 'detail': 'limit phải là số nguyên dương.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not (1 <= limit <= _OHLCV_BAR_LIMIT_MAX):
+                return Response(
+                    {'code': 'LIMIT_EXCEEDED', 'detail': f'limit phải trong khoảng 1–{_OHLCV_BAR_LIMIT_MAX}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            limit = _OHLCV_BAR_LIMIT_DEFAULT
+
+        # --- determine mode ---
+        raw_from = request.query_params.get('from')
+        raw_to = request.query_params.get('to')
+        raw_before = request.query_params.get('before')
+        raw_after = request.query_params.get('after')
+        snapshot_id = request.query_params.get('snapshot_id')
+
+        mode_flags = [
+            raw_from is not None or raw_to is not None,
+            raw_before is not None,
+            raw_after is not None,
+        ]
+        if sum(mode_flags) > 1:
+            return Response(
+                {'code': 'INVALID_QUERY', 'detail': 'Chỉ dùng một trong ba mode: (from+to), before, hoặc after.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if raw_from is not None or raw_to is not None:
+            mode = 'window'
+            from_dt = _parse_ohlcv_ts(raw_from)
+            to_dt = _parse_ohlcv_ts(raw_to)
+            if from_dt is None or to_dt is None:
+                return Response(
+                    {'code': 'INVALID_TIMESTAMP', 'detail': 'Window mode yêu cầu cả from và to là timestamp hợp lệ (Unix ms hoặc ISO 8601).'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif raw_before is not None:
+            mode = 'cursor_before'
+            before_dt = _parse_ohlcv_ts(raw_before)
+            if before_dt is None:
+                return Response(
+                    {'code': 'INVALID_TIMESTAMP', 'detail': 'before không hợp lệ. Dùng Unix ms hoặc ISO 8601.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif raw_after is not None:
+            mode = 'cursor_after'
+            after_dt = _parse_ohlcv_ts(raw_after)
+            if after_dt is None:
+                return Response(
+                    {'code': 'INVALID_TIMESTAMP', 'detail': 'after không hợp lệ. Dùng Unix ms hoặc ISO 8601.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            mode = 'cursor_before'
+            before_dt = timezone.now()
+
+        # --- symbol check ---
+        if not _symbol_exists_for_stock_chart(symbol):
+            raise NotFound(f'Stock not found: {symbol}')
+
+        # --- fetch bars ---
+        if mode == 'window':
+            bars, has_more_before, has_more_after = _fetch_ohlcv_bars_window(
+                symbol, timeframe, from_dt, to_dt
+            )
+            next_before = _dt_to_unix_ms(from_dt)
+            next_after = _dt_to_unix_ms(to_dt)
+        elif mode == 'cursor_before':
+            bars, has_more_before, has_more_after = _fetch_ohlcv_bars_before(
+                symbol, timeframe, before_dt, limit
+            )
+            next_before = bars[0]['timestamp'] if bars else None
+            next_after = bars[-1]['timestamp'] if bars else None
+        else:
+            bars, has_more_before, has_more_after = _fetch_ohlcv_bars_after(
+                symbol, timeframe, after_dt, limit
+            )
+            next_before = bars[0]['timestamp'] if bars else None
+            next_after = bars[-1]['timestamp'] if bars else None
+
+        return Response({
+            'symbol': symbol,
+            'timeframe': timeframe,
+            'bars': bars,
+            'has_more_before': has_more_before,
+            'has_more_after': has_more_after,
+            'next_before': next_before,
+            'next_after': next_after,
+            'snapshot_id': snapshot_id,
         })
 
 

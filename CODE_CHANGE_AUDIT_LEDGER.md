@@ -1,5 +1,47 @@
 # Code Change Audit Ledger
 
+# 2026-05-21 | OHLCV bars endpoint native implementation + runtime fix ✅
+
+## Problem Solved
+
+Completed OHLCV bars native endpoint slice in core backend route owner files, added dedicated regression tests, and closed a runtime-only timezone compatibility bug found during live smoke verification.
+
+Key outcomes:
+- Added/confirmed OHLCV bars endpoint on stock-management API route families.
+- Added focused backend test module with 28 scenarios (auth, validation, cursor before/after, window, intraday, weekly aggregation).
+- Tightened timeframe validation so unsupported raw values return `INVALID_TIMEFRAME`.
+- Fixed container runtime `500` caused by `timezone.utc` attribute mismatch by switching to Python datetime UTC constant.
+- Refreshed dev stack with mandatory `./start_dev.ps1` and verified HTTP smoke to endpoint returns `200`.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/stock_mgmt_native_views.py` | Added OHLCV bars handlers/helpers, tightened timeframe parsing, and fixed UTC timezone constant usage for runtime compatibility |
+| `packages/core/backend/src/market_data/public_urls.py` | Added public route `/stock-management/stocks/<symbol>/bars/` |
+| `packages/core/backend/src/market_data/core_urls.py` | Added core route `/stock-management/stocks/<symbol>/bars/` |
+| `packages/core/backend/src/market_data/urls.py` | Included stock-management bars route wiring in market-data URL surface |
+| `packages/core/backend/src/market_data/tests/test_ohlcv_bars_native_api.py` | Added 28-test focused regression module for OHLCV bars contract |
+| `module_tree_full.md` | Regenerated module tree after this slice |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list entry |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+
+## Validation
+
+- `cd packages/core/backend; $env:DJANGO_DEBUG="True"; python manage.py test market_data.tests.test_ohlcv_bars_native_api --verbosity=1` — PASS (`28` tests)
+- `git diff --check -- packages/core/backend/src/market_data/stock_mgmt_native_views.py packages/core/backend/src/market_data/public_urls.py packages/core/backend/src/market_data/core_urls.py packages/core/backend/src/market_data/urls.py packages/core/backend/src/market_data/tests/test_ohlcv_bars_native_api.py` — PASS (no output)
+- `Select-String` scan for forbidden patterns (`print(`, `explorer`) in touched OHLCV files — PASS (no matches)
+- `./start_dev.ps1` — PASS (core API healthy, frontend healthy, queue drift clean)
+- HTTP smoke on refreshed stack:
+   - `POST /api/auth/login/` -> `200`
+   - `GET /api/stock-management/stocks/SMK/bars/?timeframe=D&limit=5` -> `200` (`bars_count=1`, `timeframe=D`, `symbol=SMK`)
+- `python scripts/ops/generate_module_tree.py` — PASS (`module_tree_full.md` regenerated)
+
+## Residual Risk
+
+- Workspace currently contains many unrelated modified files from other streams; this slice commit is intentionally scoped to OHLCV + required audit/progress artifacts only.
+
 # 2026-05-21 | OpenAPI OHLCV + dark-money-history implementation slice ✅
 
 ## Problem Solved
