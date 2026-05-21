@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-21 01:29:02`
+Generated at: `2026-05-21 13:45:00`
 
 ## Summary
 
-- Total modules: 1267
-- Python modules: 724
+- Total modules: 1268 (+1)
+- Python modules: 725 (+1)
 - JS/TS modules: 543
-- Total classes: 1464
-- Total functions: 3468
+- Total classes: 1468 (+4 from test_dark_money_history_multi_timeframe.py)
+- Total functions: 3476 (+8 from test_dark_money_history_multi_timeframe.py)
 - Total top-level variables: 5193
 
 ## Python Modules
@@ -1572,6 +1572,12 @@ Generated at: `2026-05-21 01:29:02`
 
 - Classes:
   - `TestDarkMoneyHistoryApi` -> methods: `setUp`, `test_deduplicates_exact_intraday_ticks_before_whale_aggregation`
+
+### `backend/portfolio/tests/test_dark_money_history_multi_timeframe.py`
+
+- Classes:
+  - `TestMultiTimeframeIntervalValidation` -> methods: `test_all_intervals_defined_in_vnbroker_map`, `test_intraday_max_days_coverage`, `test_valid_intervals_include_new_timeframes`
+  - `TestDarkMoneyHistoryMultiTimeframe` -> methods: `setUp`, `test_all_supported_intervals_accepted`, `test_daily_timestamps_are_date_strings`, `test_fetch_1h_interval`, `test_fetch_1m_interval`, `test_fetch_4h_interval`, `test_fetch_5m_interval`, `test_intraday_period_clamped_to_max_days`, `test_intraday_timestamps_are_unix_seconds`
 
 ### `backend/portfolio/tests/test_dashboard_aggregated_risk_api.py`
 
