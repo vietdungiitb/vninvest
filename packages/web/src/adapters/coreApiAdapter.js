@@ -286,6 +286,18 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   },
 
   /**
+   * Get alert-center symbol statistics (main lane).
+   * @param {object} [params] - Filters: symbol, alert_family, severity, session_date, timeframe, page, page_size
+   * @returns {Promise<object>}
+   */
+  getAlertCenterSymbolStats(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/signals/alert-center/symbol-stats${query ? `?${query}` : ""}`);
+  },
+
+  /**
    * Get alert-center event detail by alert_id.
    * @param {string} alertId
    * @returns {Promise<object>}
@@ -350,6 +362,18 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
       Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
     ).toString();
     return coreGet(`/signals/ai-alerts/summary${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Get AI Alerts symbol statistics (ai lane).
+   * @param {object} [params] - Filters: symbol, alert_family, severity, session_date, timeframe, page, page_size
+   * @returns {Promise<object>}
+   */
+  getAIAlertsSymbolStats(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/signals/ai-alerts/symbol-stats${query ? `?${query}` : ""}`);
   },
 
   /**
@@ -638,6 +662,38 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
       period: String(period),
     }).toString();
     return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/dark-money-history/${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Get stock order flow analytics (radar contract).
+   * @param {string} symbol
+   * @param {{ window?: string, limit?: number }} [params]
+   * @returns {Promise<object>}
+   */
+  getStockOrderFlow(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getStockOrderFlow");
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(
+      `/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/order-flow/${query ? `?${query}` : ""}`
+    );
+  },
+
+  /**
+   * Get SessionFacts CVD series for a symbol.
+   * @param {string} symbol
+   * @param {object} [params] - window (5m, 15m, 30m, 1h), trade_date (YYYY-MM-DD)
+   * @returns {Promise<object>}
+   */
+  getSessionFactsCvd(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getSessionFactsCvd");
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(
+      `/session-facts/${encodeURIComponent(symbol.toUpperCase())}/cvd${query ? `?${query}` : ""}`
+    );
   },
 
   // ─── Order Flow ───────────────────────────────────────────────────────────

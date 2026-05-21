@@ -1,3 +1,169 @@
+# 2026-05-21 — Alert-center parity remediation implementation (timeframe + symbol-stats) ✅
+
+Status: **✅ CODED + FRONTEND ADAPTER TESTS GREEN + DEV STACK REFRESHED**
+
+## Summary
+- Implemented backend timeframe semantics and symbol-stats truth endpoints for both lanes (`main`, `ai`).
+- Reworked summary unseen aggregate to user-scoped distinct counting.
+- Migrated `AlertCenterPage` module 2 from client-side page aggregation to backend-provided symbol-stats payload.
+- Added focused regression tests in backend and adapter unit tests in web package.
+
+## Files Updated In This Slice
+- `packages/core/backend/src/signal_intelligence/views.py`
+- `packages/core/backend/src/signal_intelligence/urls.py`
+- `packages/core/backend/src/signal_intelligence/api_urls.py`
+- `packages/core/backend/src/signal_intelligence/tests/test_alert_center_api.py`
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `packages/web/src/pages/AlertCenterPage.js`
+- `module_tree_full.md`
+
+## Validation
+- `npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` ✅ (34/34)
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec -T core-api python /app/src/manage.py test signal_intelligence.tests.test_alert_center_api --keepdb` ✅ (5/5)
+- `./start_dev.ps1` ✅ stack restarted + health/smoke OK (core-api, frontend)
+- `scripts/ops/generate_module_tree.py` ✅
+
+## Residual Risk
+- Frontend container image rebuild still encounters pre-existing `react-scripts` peer conflict with `typescript@6` in `npm ci`.
+
+# 2026-05-21 — Chot quy dinh cung bat buoc dung handoff doc-pack skills ✅
+
+Status: ✅ HARD RULE LOCKED | AGENTS + QUALITY da enforce dong bo
+
+## Summary
+- Da them quy dinh cung: tao bo tai lieu ban giao cho doi code bat buoc dung skill workflow chuan hoa.
+- Rule duoc enforce o 2 lop governance:
+  - `AGENTS.md` (operating discipline)
+  - `quality/QUALITY.md` (quality gate)
+- Thu tu chuan da khoa: scaffold (neu can) -> generator (bat buoc).
+
+## Files Updated In This Slice
+- `AGENTS.md`
+- `quality/QUALITY.md`
+
+## Validation
+- Verified hard-rule text present in both files with same intent.
+- Verified references to exact skill paths are explicit.
+- Regenerated `module_tree_full.md` after completion.
+
+## Residual Risk
+- Can review discipline de dam bao moi session thuc thi dung workflow skill theo quy dinh.
+
+# 2026-05-21 — Quick commands playbook cho chuoi skill doc-pack ✅
+
+Status: ✅ COMMAND PLAYBOOK READY | copy-paste commands cho scaffold/fill/one-shot chain
+
+## Summary
+- Da bo sung tai lieu command mau de team chay nhanh chuoi 2 skill lap bo tai lieu ban giao.
+- Tai lieu chuan hoa input variables va mandatory governance actions sau khi chay skill.
+- Giam rui ro goi sai command, thieu update ledger/progress/mod-tree.
+
+## Deliverable Created
+- `docs/QUICK_COMMANDS_HANDOFF_DOC_PACK_SKILLS_20260521.md`
+
+## Validation
+- Verified command playbook includes 3 execution modes and post-run checklist.
+- Verified governance updates are explicitly embedded in command text.
+- Regenerated `module_tree_full.md` after completion.
+
+## Residual Risk
+- Playbook chi la huong dan thao tac; van can review gate khi output docs duoc tao ra.
+
+# 2026-05-21 — Bổ sung skill scaffold doc-pack bàn giao ✅
+
+Status: ✅ SCAFFOLD SKILL READY | sinh nhanh skeleton 12 tài liệu | governance-aware
+
+## Summary
+- Đã thêm skill companion để khởi tạo nhanh bộ khung 12 tài liệu bàn giao theo chuẩn VNInvest.
+- Skill nhận PROGRAM_NAME + DATE_STAMP, validate naming, sinh checklist file chuẩn và ràng buộc bước hậu kiểm.
+- Giảm thời gian setup doc-pack trước khi đội code điền nội dung chi tiết.
+
+## Deliverable Created
+- `.copilot/skills/handoff-doc-pack-scaffold/SKILL.md`
+
+## Validation
+- Verified skill includes full mandatory 12-file set.
+- Verified workflow includes naming validation, placeholders, and governance updates.
+- Regenerated `module_tree_full.md` after slice completion.
+
+## Residual Risk
+- Đây là skill scaffold; vẫn cần skill generator chính hoặc reviewer để đảm bảo chiều sâu nội dung trước bàn giao thực thi.
+
+# 2026-05-21 — Skill hóa quy trình tạo bộ tài liệu bàn giao đội code ✅
+
+Status: **✅ REUSABLE SKILL READY** | workflow chuẩn hóa 12 tài liệu + governance steps | có thể tái dùng cho mọi chương trình handoff mới
+
+## Summary
+- Đã tạo skill chuyên dụng để tự động hóa quy trình lập bộ tài liệu bàn giao cho đội code.
+- Skill đóng gói đầy đủ naming pattern, checklist nội dung, quality gates, và bước hậu kiểm.
+- Skill cũng ràng buộc cập nhật `CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, và regenerate `module_tree_full.md`.
+
+## Deliverable Created
+- `.copilot/skills/handoff-doc-pack-generator/SKILL.md`
+
+## Validation
+- Verified skill has proper frontmatter and clear trigger/use conditions.
+- Verified all 12 required document roles are explicitly covered in workflow.
+- Regenerated `module_tree_full.md` after file changes.
+
+## Residual Risk
+- Skill đảm bảo khung quy trình; chất lượng output thực tế vẫn cần session thực thi bám đúng từng gate.
+
+# 2026-05-21 — Documentation handoff pack for Alert Center summary/symbol-stats parity remediation ✅
+
+Status: **✅ FULL HANDOFF DOC PACK READY** | 12/12 mandatory governance artifacts created | execution-ready for coding team
+
+## Summary
+- Created a complete handoff package to fix the Alert Center mismatch where KPI total and symbol statistics diverged due to scope inconsistency.
+- Locked remediation direction across data, algorithm, API contract, frontend behavior, and UI semantics.
+- Added full operational runbooks for code review, integration tests, and spec audit so implementation can proceed without clarification loops.
+
+## Deliverables Created
+- `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_HANDOFF_MASTER_20260521.md`
+- `docs/IMPLEMENTATION_PLAN_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md`
+- `docs/TECH_SPEC_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md`
+- `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md`
+- `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_TRACEABILITY_MATRIX_20260521.md`
+- `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260521.md`
+- `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_EXECUTION_EVIDENCE_TEMPLATE_20260521.md`
+- `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_CONFIG_OWNERSHIP_MATRIX_20260521.md`
+- `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_CODE_QUALITY_CONSTITUTION_20260521.md`
+- `docs/RUN_CODE_REVIEW_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md`
+- `docs/RUN_INTEGRATION_TESTS_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md`
+- `docs/RUN_SPEC_AUDIT_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md`
+
+## Validation
+- Verified all 12 files exist with consistent naming/date.
+- Verified document structure aligns with existing major handoff packs in repository.
+- Verified all docs are implementation-oriented and mapped through traceability and taskboard.
+
+## Residual Risk
+- This slice is documentation-only; code fix, tests, and runtime verification will be executed in subsequent implementation slices.
+
+# 2026-05-21 — Establishment of mandatory SaaS-native workspace governance rule ✅
+
+Status: **✅ IMPLEMENTED + CONSTITUTION AND QUALITY DISCIPLINE UPDATED**
+
+## Summary
+- Formally established the hard governance rule declaring legacy root `backend/` and `frontend/` directories retired (read-only reference files).
+- Mandated that all new features, enhancements, and bug fixes must reside entirely in `packages/core` (core-api) and `packages/web` (SaaS-native UI).
+- Updated project-wide constitution documents (`AGENTS.md`, `quality/QUALITY.md`, `docs/SAAS_MIGRATION_CODE_QUALITY_CONSTITUTION_20260504.md`) with explicit constraints, chế tài controls, and Quality Gate definitions.
+
+## Files Updated In This Slice
+- `AGENTS.md`
+- `quality/QUALITY.md`
+- `docs/SAAS_MIGRATION_CODE_QUALITY_CONSTITUTION_20260504.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+## Validation
+- Checked that warnings are clear, formatted, and strictly accurate.
+- Ensured zero source file changes in deprecated legacy directories (`backend/` or `frontend/`) during this session.
+- Bootstrapped stack successfully via `./start_dev.ps1`.
+
+---
+
 # 2026-05-21 — Backfill stuck-state durable remediation + scheduler hardening ✅
 
 Status: **✅ IMPLEMENTED + TARGETED REGRESSION GREEN + DEV STACK REFRESHED**

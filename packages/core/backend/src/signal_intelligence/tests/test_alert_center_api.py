@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -70,3 +71,63 @@ class AlertCenterAPITests(TestCase):
         ai_summary = self.client.get('/core/v1/signals/ai-alerts/summary')
         self.assertEqual(ai_summary.status_code, 200)
         self.assertEqual(ai_summary.json()['total'], 1)
+
+    def test_timeframe_filter_5m_applies_consistently(self):
+        recent = self._create_alert(symbol='VCI', source_ref='api-recent-alert')
+        old = self._create_alert(symbol='VCI', source_ref='api-old-alert')
+        UnifiedAlert.objects.filter(pk=old.pk).update(triggered_at=timezone.now() - timedelta(minutes=30))
+
+        feed = self.client.get('/core/v1/signals/alert-center/feed', {'timeframe': '5m'})
+        self.assertEqual(feed.status_code, 200)
+        feed_ids = {item['alert_id'] for item in feed.json().get('results', [])}
+        self.assertIn(str(recent.alert_id), feed_ids)
+        self.assertNotIn(str(old.alert_id), feed_ids)
+
+        summary = self.client.get('/core/v1/signals/alert-center/summary', {'timeframe': '5m'})
+        self.assertEqual(summary.status_code, 200)
+        self.assertEqual(summary.json()['total'], 1)
+
+    def test_symbol_stats_matches_summary_scope_main_lane(self):
+        self._create_alert(symbol='VCI', source_ref='api-main-vci-1')
+        self._create_alert(symbol='VCI', source_ref='api-main-vci-2')
+        self._create_alert(symbol='FPT', source_ref='api-main-fpt-1')
+
+        summary = self.client.get('/core/v1/signals/alert-center/summary', {'timeframe': 'session'})
+        self.assertEqual(summary.status_code, 200)
+        summary_total = int(summary.json().get('total') or 0)
+
+        symbol_stats = self.client.get('/core/v1/signals/alert-center/symbol-stats', {'timeframe': 'session'})
+        self.assertEqual(symbol_stats.status_code, 200)
+        symbol_stats_json = symbol_stats.json()
+        self.assertEqual(int(symbol_stats_json.get('total_alerts_in_scope') or 0), summary_total)
+
+        symbols = symbol_stats_json.get('symbols') or []
+        self.assertEqual(sum(int(item.get('count') or 0) for item in symbols), summary_total)
+        self.assertIn('VCI', {item.get('symbol') for item in symbols})
+        self.assertNotIn('FPT', {item.get('symbol') for item in symbols})
+
+    def test_symbol_stats_matches_summary_scope_ai_lane(self):
+        self._create_alert(
+            symbol='VCI',
+            alert_type=UnifiedAlert.AlertTypeChoices.AI_ALERT,
+            source_ref='api-ai-vci-1',
+        )
+        self._create_alert(
+            symbol='FPT',
+            alert_type=UnifiedAlert.AlertTypeChoices.AI_SUGGEST,
+            source_ref='api-ai-fpt-1',
+        )
+
+        summary = self.client.get('/core/v1/signals/ai-alerts/summary', {'timeframe': 'session'})
+        self.assertEqual(summary.status_code, 200)
+        summary_total = int(summary.json().get('total') or 0)
+
+        symbol_stats = self.client.get('/core/v1/signals/ai-alerts/symbol-stats', {'timeframe': 'session'})
+        self.assertEqual(symbol_stats.status_code, 200)
+        symbol_stats_json = symbol_stats.json()
+        self.assertEqual(int(symbol_stats_json.get('total_alerts_in_scope') or 0), summary_total)
+
+        symbols = symbol_stats_json.get('symbols') or []
+        self.assertEqual(sum(int(item.get('count') or 0) for item in symbols), summary_total)
+        self.assertIn('VCI', {item.get('symbol') for item in symbols})
+        self.assertNotIn('FPT', {item.get('symbol') for item in symbols})

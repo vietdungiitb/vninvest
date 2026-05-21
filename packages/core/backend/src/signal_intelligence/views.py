@@ -1,6 +1,7 @@
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.db.models import Case, Count, DecimalField, IntegerField, Max, Q, Sum, Value, When
+from django.db.models.functions import Coalesce
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework import generics, permissions, serializers
@@ -78,6 +79,25 @@ class AlertCenterSummaryResponseSerializer(serializers.Serializer):
     generated_at = serializers.DateTimeField()
 
 
+class SymbolStatsItemSerializer(serializers.Serializer):
+    symbol = serializers.CharField()
+    count = serializers.IntegerField()
+    buy_count = serializers.IntegerField()
+    sell_count = serializers.IntegerField()
+    neutral_count = serializers.IntegerField()
+    total_value = serializers.DecimalField(max_digits=24, decimal_places=2)
+    latest_triggered_at = serializers.DateTimeField(allow_null=True)
+    by_severity = serializers.DictField(child=serializers.IntegerField())
+
+
+class AlertCenterSymbolStatsResponseSerializer(serializers.Serializer):
+    lane = serializers.CharField()
+    total_alerts_in_scope = serializers.IntegerField()
+    symbols = SymbolStatsItemSerializer(many=True)
+    pagination = serializers.DictField(child=serializers.IntegerField())
+    generated_at = serializers.DateTimeField()
+
+
 class AlertCenterSymbolContextSerializer(serializers.Serializer):
     symbol = serializers.CharField()
     lane = serializers.CharField()
@@ -124,6 +144,7 @@ def _apply_common_alert_filters(qs, params, *, lane: str):
     alert_family = params.get('alert_family')
     severity = params.get('severity')
     session_date = params.get('session_date')
+    timeframe = str(params.get('timeframe') or '').strip().lower()
     main_lane_types = {
         UnifiedAlert.AlertTypeChoices.WHALE,
         UnifiedAlert.AlertTypeChoices.DARK_FLOW,
@@ -157,17 +178,37 @@ def _apply_common_alert_filters(qs, params, *, lane: str):
         qs = qs.filter(severity=severity)
     if session_date:
         qs = qs.filter(session_date=session_date)
+
+    if timeframe:
+        now = timezone.now()
+        timeframe_cutoffs = {
+            '5m': now - timedelta(minutes=5),
+            '15m': now - timedelta(minutes=15),
+            '1h': now - timedelta(hours=1),
+            '5d': now - timedelta(days=5),
+        }
+        cutoff = timeframe_cutoffs.get(timeframe)
+        if cutoff is not None:
+            qs = qs.filter(triggered_at__gte=cutoff)
+        elif timeframe == 'session' and not session_date:
+            latest_session_date = qs.order_by('-session_date').values_list('session_date', flat=True).first()
+            if latest_session_date is not None:
+                qs = qs.filter(session_date=latest_session_date)
     return qs
 
 
-def _build_summary_payload(qs, *, lane: str) -> dict:
+def _build_summary_payload(qs, *, lane: str, user=None) -> dict:
     aggregate = qs.aggregate(
-        total=Count('id'),
-        unseen=Count('id', filter=Q(deliveries__delivery_state='new')),
-        critical=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.CRITICAL)),
-        high=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.HIGH)),
-        medium=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.MEDIUM)),
-        low=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.LOW)),
+        total=Count('id', distinct=True),
+        unseen=Count(
+            'id',
+            filter=Q(deliveries__delivery_state='new', deliveries__user=user) if user is not None else Q(),
+            distinct=True,
+        ),
+        critical=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.CRITICAL), distinct=True),
+        high=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.HIGH), distinct=True),
+        medium=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.MEDIUM), distinct=True),
+        low=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.LOW), distinct=True),
     )
     return {
         'lane': lane,
@@ -178,6 +219,78 @@ def _build_summary_payload(qs, *, lane: str) -> dict:
             'high': aggregate.get('high') or 0,
             'medium': aggregate.get('medium') or 0,
             'low': aggregate.get('low') or 0,
+        },
+        'generated_at': timezone.now(),
+    }
+
+
+def _build_symbol_stats_payload(qs, *, lane: str, page: int, page_size: int) -> dict:
+    safe_page = max(page, 1)
+    safe_page_size = max(min(page_size, 200), 1)
+
+    grouped_qs = (
+        qs.values('symbol')
+        .annotate(
+            count=Count('id', distinct=True),
+            buy_count=Count('id', filter=Q(direction=UnifiedAlert.DirectionChoices.BUY), distinct=True),
+            sell_count=Count('id', filter=Q(direction=UnifiedAlert.DirectionChoices.SELL), distinct=True),
+            neutral_count=Count(
+                'id',
+                filter=Q(direction=UnifiedAlert.DirectionChoices.NEUTRAL)
+                | Q(direction__isnull=True)
+                | Q(direction=''),
+                distinct=True,
+            ),
+            total_value=Coalesce(
+                Sum('value'),
+                Value(0, output_field=DecimalField(max_digits=24, decimal_places=2)),
+                output_field=DecimalField(max_digits=24, decimal_places=2),
+            ),
+            latest_triggered_at=Max('triggered_at'),
+            critical_count=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.CRITICAL), distinct=True),
+            high_count=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.HIGH), distinct=True),
+            medium_count=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.MEDIUM), distinct=True),
+            low_count=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.LOW), distinct=True),
+        )
+        .order_by('-count', 'symbol')
+    )
+
+    total_symbols = grouped_qs.count()
+    start_idx = (safe_page - 1) * safe_page_size
+    end_idx = start_idx + safe_page_size
+
+    symbol_rows = []
+    for row in grouped_qs[start_idx:end_idx]:
+        symbol_rows.append(
+            {
+                'symbol': row.get('symbol') or 'UNKNOWN',
+                'count': int(row.get('count') or 0),
+                'buy_count': int(row.get('buy_count') or 0),
+                'sell_count': int(row.get('sell_count') or 0),
+                'neutral_count': int(row.get('neutral_count') or 0),
+                'total_value': row.get('total_value') or 0,
+                'latest_triggered_at': row.get('latest_triggered_at'),
+                'by_severity': {
+                    'critical': int(row.get('critical_count') or 0),
+                    'high': int(row.get('high_count') or 0),
+                    'medium': int(row.get('medium_count') or 0),
+                    'low': int(row.get('low_count') or 0),
+                },
+            }
+        )
+
+    total_alerts = qs.aggregate(total=Count('id', distinct=True)).get('total') or 0
+    total_pages = max((total_symbols + safe_page_size - 1) // safe_page_size, 1)
+
+    return {
+        'lane': lane,
+        'total_alerts_in_scope': int(total_alerts),
+        'symbols': symbol_rows,
+        'pagination': {
+            'page': safe_page,
+            'page_size': safe_page_size,
+            'total_pages': total_pages,
+            'total_symbols': total_symbols,
         },
         'generated_at': timezone.now(),
     }
@@ -233,6 +346,7 @@ class UserScopedAlertFeedBaseView(AlertFeedBaseListView):
             OpenApiParameter(name='alert_family', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(name='timeframe', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='cursor', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='page_size', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
         ],
@@ -265,6 +379,7 @@ class AlertCenterFeedView(UserScopedAlertFeedBaseView):
             OpenApiParameter(name='alert_family', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(name='timeframe', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='cursor', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='page_size', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
         ],
@@ -288,7 +403,7 @@ class _BaseAlertSummaryView(APIView):
         return delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
 
     def get(self, request):
-        payload = _build_summary_payload(self.get_scoped_queryset(request), lane=self.lane)
+        payload = _build_summary_payload(self.get_scoped_queryset(request), lane=self.lane, user=request.user)
         return Response(payload)
 
 
@@ -303,6 +418,7 @@ class _BaseAlertSummaryView(APIView):
         OpenApiParameter(name='symbol', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
         OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
         OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='timeframe', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
     ],
     responses={200: AlertCenterSummaryResponseSerializer, 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
 )
@@ -321,10 +437,83 @@ class AlertCenterSummaryView(_BaseAlertSummaryView):
         OpenApiParameter(name='symbol', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
         OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
         OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='timeframe', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
     ],
     responses={200: AlertCenterSummaryResponseSerializer, 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
 )
 class AIAlertsSummaryView(_BaseAlertSummaryView):
+    lane = 'ai'
+
+
+class _BaseAlertSymbolStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    lane = 'main'
+
+    def get_scoped_queryset(self, request):
+        qs = UnifiedAlert.objects.all().order_by('-triggered_at')
+        qs = _apply_common_alert_filters(qs, request.query_params, lane=self.lane)
+        return delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
+
+    def get(self, request):
+        try:
+            page = int(request.query_params.get('page') or 1)
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            page_size = int(request.query_params.get('page_size') or 20)
+        except (TypeError, ValueError):
+            page_size = 20
+
+        payload = _build_symbol_stats_payload(
+            self.get_scoped_queryset(request),
+            lane=self.lane,
+            page=page,
+            page_size=page_size,
+        )
+        return Response(payload)
+
+
+@extend_schema(
+    summary='Lấy thống kê theo mã cho alert-center (main lane)',
+    description=(
+        'Endpoint chuẩn hóa theo TECH_SPEC: trả về aggregate theo mã cho lane main '
+        'từ `/core/v1/signals/alert-center/symbol-stats`. '
+        'Hỗ trợ filter scope giống feed/summary và pagination theo page/page_size.'
+    ),
+    parameters=[
+        OpenApiParameter(name='symbol', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='alert_family', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='timeframe', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='page', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='page_size', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
+    ],
+    responses={200: AlertCenterSymbolStatsResponseSerializer, 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
+)
+class AlertCenterSymbolStatsView(_BaseAlertSymbolStatsView):
+    lane = 'main'
+
+
+@extend_schema(
+    summary='Lấy thống kê theo mã cho AI Alerts (ai lane)',
+    description=(
+        'Endpoint chuẩn hóa theo TECH_SPEC: trả về aggregate theo mã cho lane AI '
+        'từ `/core/v1/signals/ai-alerts/symbol-stats`. '
+        'Hỗ trợ filter scope giống feed/summary và pagination theo page/page_size.'
+    ),
+    parameters=[
+        OpenApiParameter(name='symbol', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='alert_family', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='timeframe', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='page', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
+        OpenApiParameter(name='page_size', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
+    ],
+    responses={200: AlertCenterSymbolStatsResponseSerializer, 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
+)
+class AIAlertsSymbolStatsView(_BaseAlertSymbolStatsView):
     lane = 'ai'
 
 

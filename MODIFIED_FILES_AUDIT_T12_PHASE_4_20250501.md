@@ -2,6 +2,69 @@
 
 ---
 
+## 2026-05-21 | Alert-center parity remediation implementation (timeframe + symbol-stats)
+
+### Files changed in this session
+- `packages/core/backend/src/signal_intelligence/views.py`
+- `packages/core/backend/src/signal_intelligence/urls.py`
+- `packages/core/backend/src/signal_intelligence/api_urls.py`
+- `packages/core/backend/src/signal_intelligence/tests/test_alert_center_api.py`
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `packages/web/src/pages/AlertCenterPage.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sửa mismatch KPI tổng alert và thống kê theo mã bằng cách chuyển symbol stats sang backend truth endpoint, chuẩn hóa timeframe ở backend, và đảm bảo summary unseen theo user scope.
+
+### Validation snapshot
+- `npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` ✅ (34 tests)
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec -T core-api python /app/src/manage.py test signal_intelligence.tests.test_alert_center_api --keepdb` ✅ (5 tests)
+- `./start_dev.ps1` ✅ stack up + smoke checks OK
+- `scripts/ops/generate_module_tree.py` ✅
+
+---
+
+## 2026-05-21 | Hard-rule enforcement cho handoff doc-pack skills
+
+### Files changed in this session
+- `AGENTS.md`
+- `quality/QUALITY.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+- `module_tree_full.md`
+
+### Purpose
+- Dua vao quy dinh cung o governance va quality gate: moi bo tai lieu ban giao cho doi code bat buoc dung skill workflow chuan hoa (`handoff-doc-pack-scaffold` neu can -> `handoff-doc-pack-generator` bat buoc).
+
+### Validation snapshot
+- Verified hard-rule presence in both `AGENTS.md` and `quality/QUALITY.md`.
+- `scripts/ops/generate_module_tree.py` ✅
+
+---
+
+## 2026-05-21 | Quick commands playbook cho chuoi skill scaffold -> generator
+
+### Files changed in this session
+- `docs/QUICK_COMMANDS_HANDOFF_DOC_PACK_SKILLS_20260521.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+- `module_tree_full.md`
+
+### Purpose
+- Bo sung command mau copy-paste cho team de goi nhanh chuoi 2 skill (`handoff-doc-pack-scaffold` -> `handoff-doc-pack-generator`) voi input chuan, checklist hau kiem, va governance steps bat buoc.
+
+### Validation snapshot
+- Documentation slice: verified file existence and command coverage for 3 modes (scaffold, fill, one-shot).
+- `scripts/ops/generate_module_tree.py` ✅
+
+---
+
 ## 2026-05-21 | Backfill stuck-state durable remediation + scheduler hardening
 
 ### Files changed in this session

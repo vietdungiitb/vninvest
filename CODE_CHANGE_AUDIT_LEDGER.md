@@ -1,5 +1,238 @@
 # Code Change Audit Ledger
 
+# 2026-05-21 | Alert-center parity remediation implementation (timeframe + symbol-stats) ✅
+
+## Problem Solved
+
+Triển khai slice code theo bộ tài liệu remediation để xử lý triệt để sai lệch giữa KPI tổng alert và thống kê theo mã.
+
+Key outcomes:
+1. Backend áp timeframe filter chuẩn (`5m`, `15m`, `1h`, `session`, `5d`) cho feed/summary/symbol-stats.
+2. Backend thêm endpoint truth theo lane:
+   - `/core/v1/signals/alert-center/symbol-stats`
+   - `/core/v1/signals/ai-alerts/symbol-stats`
+3. Summary unseen chuyển sang user-scoped aggregate (distinct-safe).
+4. Frontend `AlertCenterPage` bỏ aggregation cục bộ từ page feed; dùng symbol-stats backend làm nguồn thống nhất.
+5. Adapter + unit tests được cập nhật cho symbol-stats APIs.
+6. Thêm backend regression tests cho timeframe consistency + summary/symbol-stats parity invariant.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/signal_intelligence/views.py` | Added timeframe filtering, user-scoped summary aggregation, symbol-stats serializers/helpers/views, and OpenAPI params |
+| `packages/core/backend/src/signal_intelligence/urls.py` | Added non-trailing-slash symbol-stats routes for main and AI lanes |
+| `packages/core/backend/src/signal_intelligence/api_urls.py` | Added trailing-slash symbol-stats routes for main and AI lanes |
+| `packages/core/backend/src/signal_intelligence/tests/test_alert_center_api.py` | Added tests for timeframe filter consistency and symbol-stats/summary parity |
+| `packages/web/src/adapters/coreApiAdapter.js` | Added `getAlertCenterSymbolStats` and `getAIAlertsSymbolStats` |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added unit tests for new symbol-stats adapter methods |
+| `packages/web/src/pages/AlertCenterPage.js` | Switched Module 2 symbol stats to backend truth endpoint, removed page-sample aggregation |
+| `module_tree_full.md` | Regenerated after code updates |
+
+## Validation
+
+- `npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` ✅ (34 tests pass)
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec -T core-api python /app/src/manage.py test signal_intelligence.tests.test_alert_center_api --keepdb` ✅ (5 tests pass)
+- `./start_dev.ps1` ✅ stack up + smoke checks OK (core-api/frontend), while frontend image build step reports existing TS peer dependency conflict (`react-scripts@5` vs `typescript@6`).
+- `scripts/ops/generate_module_tree.py` ✅
+
+## Residual Risk
+
+- Frontend Docker build dependency conflict (`typescript@6` peer with `react-scripts@5`) vẫn tồn tại từ môi trường hiện tại, không phát sinh từ slice này nhưng có thể ảnh hưởng rebuild sạch.
+
+# 2026-05-21 | Hard-rule enforcement: bắt buộc dùng handoff doc-pack skills ✅
+
+## Problem Solved
+
+User yêu cầu đưa vào quy định cứng: mọi lần tạo bộ tài liệu bàn giao cho đội code phải dùng skill đã chuẩn hóa, tránh tình trạng làm tay thiếu artifact hoặc lệch governance.
+
+Key outcomes:
+1. Thêm hard rule vào `AGENTS.md` tại phần Required operating discipline.
+2. Thêm quality gate tương ứng vào `quality/QUALITY.md` để block các doc-pack tạo ngoài workflow skill.
+3. Chuẩn hóa rõ thứ tự dùng skill: scaffold (optional) -> generator (mandatory).
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `AGENTS.md` | Added hard rule mandating handoff doc-pack skill workflow |
+| `quality/QUALITY.md` | Added mandatory quality-gate rule for handoff doc-pack skill usage |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this slice |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+| `module_tree_full.md` | Regenerated after workspace changes |
+
+## Validation
+
+- Verified both governance layers (`AGENTS.md`, `quality/QUALITY.md`) now enforce the same hard rule.
+- Verified rule references exact skill paths and execution order.
+- Regenerated `module_tree_full.md` after updates.
+
+## Residual Risk
+
+- Enforcement is rule-based at governance layer; operational compliance still depends on session adherence and review gate execution.
+
+# 2026-05-21 | Quick commands playbook cho handoff doc-pack skills ✅
+
+## Problem Solved
+
+Sau khi đã có 2 skills (`generator` và `scaffold`), bổ sung thêm playbook command mẫu để team có thể copy-paste chạy chuỗi ngay, tránh gọi sai input hoặc bỏ sót governance steps.
+
+Key outcomes:
+1. Tạo tài liệu quick commands cho 3 mode: scaffold-only, fill-only, one-shot chain.
+2. Chuẩn hóa biến đầu vào (`PROGRAM_NAME`, `DATE_STAMP`, `SCOPE_SUMMARY`).
+3. Chốt checklist hậu kiểm và yêu cầu cập nhật governance artifacts sau mỗi lần chạy.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/QUICK_COMMANDS_HANDOFF_DOC_PACK_SKILLS_20260521.md` | Added copy-paste command playbook for chaining scaffold and generator skills |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized file-change entry for this slice |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this slice |
+| `module_tree_full.md` | Regenerated after workspace changes |
+
+## Validation
+
+- Verified quick commands document covers all required execution modes.
+- Verified commands include governance requirements (ledger/progress/modified-files/module-tree).
+- Regenerated `module_tree_full.md` after updates.
+
+## Residual Risk
+
+- Command playbook is guidance-level artifact; final output quality still depends on skill execution quality and review gates.
+
+# 2026-05-21 | Bổ sung skill scaffold tạo nhanh bộ 12 tài liệu bàn giao ✅
+
+## Problem Solved
+
+Triển khai thêm skill companion dạng scaffold để khởi tạo nhanh skeleton 12 tài liệu bàn giao theo chuẩn governance của dự án, giúp rút ngắn thời gian setup doc pack trước khi điền nội dung chi tiết.
+
+Key outcomes:
+1. Tạo skill `handoff-doc-pack-scaffold` với input chuẩn `PROGRAM_NAME + DATE_STAMP`.
+2. Khóa danh mục 12 file bắt buộc và validation naming trước khi scaffold.
+3. Đóng gói quy trình hậu kiểm governance: cập nhật ledger/progress và regenerate module tree.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `.copilot/skills/handoff-doc-pack-scaffold/SKILL.md` | Added scaffold skill for fast 12-document handoff pack skeleton generation |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this slice |
+| `module_tree_full.md` | Regenerated after workspace changes |
+
+## Validation
+
+- Verified scaffold skill file exists and includes complete 12-file checklist.
+- Verified naming validation rules and anti-pattern guards are defined.
+- Regenerated `module_tree_full.md` after updates.
+
+## Residual Risk
+
+- Scaffold skill creates structure only; execution quality still depends on filling content and passing runbook gates.
+
+# 2026-05-21 | Skill hóa quy trình tạo doc-pack bàn giao cho đội code ✅
+
+## Problem Solved
+
+Chuẩn hóa toàn bộ quy trình tạo bộ tài liệu bàn giao thành một skill tái sử dụng được, giúp mọi phiên sau có thể tạo đầy đủ 12 tài liệu theo đúng governance của dự án mà không thiếu bước.
+
+Key outcomes:
+1. Tạo skill `handoff-doc-pack-generator` với trigger, naming pattern, workflow 6 bước, checklist hậu kiểm và tiêu chí Done rõ ràng.
+2. Đóng gói đầy đủ mapping vai trò của 12 tài liệu bắt buộc (handoff/plan/spec/taskboard/traceability/self-audit/evidence/config/constitution/runbooks).
+3. Ghi rõ yêu cầu cập nhật ledger/progress và regenerate module tree trong chính skill để chống bỏ sót.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `.copilot/skills/handoff-doc-pack-generator/SKILL.md` | Added reusable skill for generating full handoff documentation packs |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this slice |
+| `module_tree_full.md` | Regenerated after workspace changes |
+
+## Validation
+
+- Verified skill file exists and follows frontmatter + actionable workflow structure.
+- Verified workflow contains complete 12-document coverage and governance update steps.
+- Regenerated `module_tree_full.md` after changes.
+
+## Residual Risk
+
+- Skill package defines process only; implementation quality still depends on each execution session following runbooks and gates.
+
+# 2026-05-21 | Documentation handoff pack — Alert Center summary/symbol-stats parity remediation ✅
+
+## Problem Solved
+
+Created the full governance-compliant handoff documentation pack so the coding team can execute a deterministic remediation for the Alert Center mismatch issue where KPI total and symbol statistics used different scopes.
+
+Package objective:
+- Eliminate total-vs-symbol mismatch.
+- Enforce backend timeframe semantics.
+- Replace frontend local sample aggregation with backend symbol-stats truth.
+- Lock review/test/spec-audit runbooks and evidence protocol.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_HANDOFF_MASTER_20260521.md` | Added master handoff package and success criteria |
+| `docs/IMPLEMENTATION_PLAN_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md` | Added phased implementation plan and DoD |
+| `docs/TECH_SPEC_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md` | Added technical spec, invariants, and API contract |
+| `docs/TASKBOARD_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md` | Added execution taskboard with gates |
+| `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_TRACEABILITY_MATRIX_20260521.md` | Added requirement-to-task traceability |
+| `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_SELF_AUDIT_AND_TEST_PROTOCOL_20260521.md` | Added self-audit checklist and fail conditions |
+| `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_EXECUTION_EVIDENCE_TEMPLATE_20260521.md` | Added per-slice evidence template |
+| `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_CONFIG_OWNERSHIP_MATRIX_20260521.md` | Added config ownership matrix |
+| `docs/GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_CODE_QUALITY_CONSTITUTION_20260521.md` | Added quality constitution |
+| `docs/RUN_CODE_REVIEW_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md` | Added code review runbook |
+| `docs/RUN_INTEGRATION_TESTS_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md` | Added integration test runbook |
+| `docs/RUN_SPEC_AUDIT_GLOBAL_ALERT_CENTER_SUMMARY_SYMBOL_STATS_PARITY_REMEDIATION_20260521.md` | Added spec audit runbook |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot entry |
+
+## Validation
+
+- Verified full 12-document set exists in `docs/` with consistent naming and date stamp.
+- Verified artifacts follow existing repo handoff pattern (master/plan/spec/taskboard/traceability/self-audit/evidence/config/constitution/runbooks).
+- Verified package scope is SaaS native (`packages/core`, `packages/web`) and documentation-only.
+
+## Residual Risk
+
+- This slice is documentation handoff only; implementation and runtime validation remain pending until coding slices execute the runbooks in this package.
+
+# 2026-05-21 | Establishment of mandatory SaaS-native workspace governance rule ✅
+
+## Problem Solved
+
+Formally established and strictly enforced a hard project governance rule: the legacy `backend/` and `frontend/` directories in the root are officially deprecated (retired, read-only feature references). All new features, components, and code changes must reside in `packages/core` (core-api) and `packages/web` (SaaS-native UI).
+
+Key outcomes:
+- Updated `AGENTS.md` under **1. Project summary** and **8. Hard constraints for SaaS Migration** to document and enforce the rule.
+- Registered the division as a Quality Gate blocker under **5. AI Session Quality Discipline** in `quality/QUALITY.md`.
+- Added the legacy directory edit ban to section **8. Nghiêm cấm** in `docs/SAAS_MIGRATION_CODE_QUALITY_CONSTITUTION_20260504.md`.
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `AGENTS.md` | Added mandatory legacy-to-SaaS division block and hard governance constraints |
+| `quality/QUALITY.md` | Registered new SaaS-native mandatory rules and Quality Gate blocking criteria |
+| `docs/SAAS_MIGRATION_CODE_QUALITY_CONSTITUTION_20260504.md` | Added legacy folder modifications as a forbidden rejection trigger |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added progress snapshot for this governance slice |
+
+## Validation
+
+- Verified the warnings and constraints in `AGENTS.md`, `quality/QUALITY.md`, and `docs/SAAS_MIGRATION_CODE_QUALITY_CONSTITUTION_20260504.md` are properly formatted and completely accurate.
+- Ensured no changes exist in legacy root directories (`backend/` or `frontend/`) in this work.
+- Executed `./start_dev.ps1` to ensure dev runtime successfully rebuilds, boots, and passes health checks.
+
+---
+
 # 2026-05-21 | Backfill stuck-state durable remediation + scheduler hardening ✅
 
 ## Problem Solved

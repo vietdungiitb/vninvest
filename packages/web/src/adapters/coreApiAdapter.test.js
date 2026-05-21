@@ -231,6 +231,24 @@ describe("coreApiAdapter", () => {
     expect(url).toContain("session_date=2026-05-16");
   });
 
+  test("getAlertCenterSymbolStats calls /core/v1/signals/alert-center/symbol-stats", async () => {
+    mockOkResponse({ lane: "main", symbols: [] });
+    await coreApiAdapter.getAlertCenterSymbolStats({ timeframe: "session", page_size: 200 });
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/signals/alert-center/symbol-stats");
+    expect(url).toContain("timeframe=session");
+    expect(url).toContain("page_size=200");
+  });
+
+  test("getAIAlertsSymbolStats calls /core/v1/signals/ai-alerts/symbol-stats", async () => {
+    mockOkResponse({ lane: "ai", symbols: [] });
+    await coreApiAdapter.getAIAlertsSymbolStats({ timeframe: "5d", page: 2 });
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/signals/ai-alerts/symbol-stats");
+    expect(url).toContain("timeframe=5d");
+    expect(url).toContain("page=2");
+  });
+
   // ---------------------------------------------------------------------------
   // getWhaleFeedAggregate
   // ---------------------------------------------------------------------------
