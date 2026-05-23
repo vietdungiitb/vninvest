@@ -2,6 +2,231 @@
 
 ---
 
+## 2026-05-23 | Fix PAT issue flow when admin has no tenant
+
+### Files changed in this session
+- `packages/core/backend/src/identity_access/views.py`
+- `packages/core/backend/tests/test_identity_access.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sua flow issue PAT de admin/staff khong co tenant van issue duoc PAT theo `service_account_id` da chon; dong thoi chan ro rang user thuong khong co tenant bang `403` de tranh loi validation chung.
+
+### Validation snapshot
+- `python -m pytest tests/test_identity_access.py -k "staff_without_tenant or non_staff_without_tenant or issue_pat_returns_frontend_contract_and_secret_authenticates"` ✅ `3 passed`.
+- `get_errors` on touched backend/test files ✅ khong co diagnostics.
+- `python scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md`.
+
+---
+
+## 2026-05-23 | Queue monitoring hardening + split-worker compose standardization (dev/prod/ghcr)
+
+### Files changed in this session
+- `docker-compose.dev.yml`
+- `docker-compose.prod.yml`
+- `docker-compose.ghcr.yml`
+- `infra/grafana/dashboards/queue-backlog-overview.json`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chuan hoa topology worker theo queue domain tren tat ca compose layer (dev/prod/ghcr), harden queue monitor bang healthcheck + restart guard, bo sung redis-exporter de scrape metric Redis queue, va dashboard Grafana de theo doi backlog/dain behavior de phuc vu SOC/DataOps.
+
+### Validation snapshot
+- `get_errors` on touched compose/json files ✅ khong co diagnostics.
+- Production rollout verify ✅ `core-worker`, `core-worker-realtime`, `queue-drain-monitor`, `redis-exporter` running.
+- `docker inspect ... queue-drain-monitor` ✅ health = `healthy`.
+- Prometheus API query `up{job="redis"}` ✅ value `1`.
+- Queue logs ✅ `realtime_prefetch_depth=...` emitted.
+- `python scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md`.
+
+---
+
+## 2026-05-23 | Fix missing historical OHLCV rendering in SaaS Stock Detail
+
+### Files changed in this session
+- `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sửa mismatch contract chart payload ở SaaS stock-detail (`packages/web`): backend trả `points` nhưng hook chỉ ưu tiên `results/bars`, làm chart lịch sử OHLCV rỗng dù API có dữ liệu.
+
+### Validation snapshot
+- `npm test -- --runInBand src/adapters/coreApiAdapter.test.js` ✅ (42 tests pass).
+- `python scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md`.
+- `get_errors` on `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js` ✅ no diagnostics.
+
+---
+
+## 2026-05-22 | Core API redeploy for native portfolio analytics routes
+
+### Files changed in this session
+- `docker-compose.ghcr.yml`
+- `compose.prod.env.example`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Kich hoat lai native workspace portfolio analytics route set tren production core-api, dong thoi forward `FRONTEND_URL` vao core-api/core-worker/core-beat de startup validation pass va dashboard khong con bao `Core API error 404` cho summary/holdings/analytics/technicals.
+
+### Validation snapshot
+- `docker build --secret id=vnbroker_github_token,env=VNBROKER_GITHUB_TOKEN -t ghcr.io/vietdungiitb/vninvest-core-api:20260510-enterprise .` ✅ build thanh cong.
+- `git diff --check -- docker-compose.ghcr.yml compose.prod.env.example` ✅ sach diff hygiene.
+- `docker compose -f docker-compose.ghcr.yml config --services` ✅ render service list thanh cong.
+- `user_workspace.test_portfolio_analytics_native_routes` ✅ pass.
+- Live browser/API smoke on `/core/v1/workspace/portfolios/1/holdings|summary|analytics|technicals/` ✅ `200`.
+- Live dashboard reload ✅ khong con banner 404.
+
+---
+
+## 2026-05-22 | Frontend image redeploy for /admin-ops SOC cutover
+
+### Files changed in this session
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Ghi nhan frontend image da duoc rebuild, chuyen sang server production, va recreate container frontend de route `/admin-ops` render SOC surface moi thay vi legacy shell cu.
+
+### Validation snapshot
+- `docker build --progress=plain -f "C:\Mujoco Projects\vninvest\frontend\Dockerfile.dev-package-shell" -t ghcr.io/vietdungiitb/vninvest-frontend:20260510-enterprise "C:\Mujoco Projects"` ✅ build thanh cong.
+- `docker save` + `scp` + `docker load` ✅ image da duoc transfer sang server va load vao Docker daemon.
+- `docker compose -f docker-compose.ghcr.yml --env-file .env.production up -d --no-deps --force-recreate frontend` ✅ frontend container recreated.
+- Browser smoke on logged-in `/admin-ops` ✅ redirect sang `/operations-center` va render `Trung tâm Hoạt động Dịch vụ`.
+
+---
+
+## 2026-05-22 | Rebased SaaS architecture cutover roadmap theo codebase audit
+
+### Files changed in this session
+- `docs/SAAS_ARCHITECTURE_AUDIT_AND_CUTOVER_ROADMAP_20260522.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Cap nhat lai roadmap kien truc SaaS de phan anh dung snapshot code hien tai: phan nao da native hoa, phan nao van con hybrid, va blocker thuc te nao can giai quyet truoc khi co the xoa `frontend/` va `backend/` an toan.
+
+### Validation snapshot
+- `get_errors` scoped roadmap doc ✅ khong co diagnostics.
+- `git diff --check -- "docs/SAAS_ARCHITECTURE_AUDIT_AND_CUTOVER_ROADMAP_20260522.md"` ✅ sach diff hygiene.
+
+---
+
+## 2026-05-22 | Full handoff doc pack cho Stock Detail SaaS-native VNStockChart redesign
+
+### Files changed in this session
+- `docs/STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_HANDOFF_MASTER_20260522.md`
+- `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_20260522.md`
+- `docs/TECH_SPEC_STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_20260522.md`
+- `docs/TASKBOARD_STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_20260522.md`
+- `docs/STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_TRACEABILITY_MATRIX_20260522.md`
+- `docs/STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_SELF_AUDIT_AND_TEST_PROTOCOL_20260522.md`
+- `docs/STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_EXECUTION_EVIDENCE_TEMPLATE_20260522.md`
+- `docs/STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_CONFIG_OWNERSHIP_MATRIX_20260522.md`
+- `docs/STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_CODE_QUALITY_CONSTITUTION_20260522.md`
+- `docs/FRONTEND_DESIGN_STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_20260522.md`
+- `docs/BACKEND_DESIGN_STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_20260522.md`
+- `docs/RUN_CODE_REVIEW_STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_20260522.md`
+- `docs/RUN_INTEGRATION_TESTS_STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_20260522.md`
+- `docs/RUN_SPEC_AUDIT_STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN_20260522.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Tao bo tai lieu ban giao day du cho doi code de trien khai `STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN` ma khong can hoi lai. Pack nay khoa chat execution plan, frontend design, backend design, traceability, self-audit, evidence template, va runbooks review/test/spec-audit.
+
+### Validation snapshot
+- `get_errors` scoped to the full stock-detail doc pack ✅ khong co diagnostics.
+- `python scripts/ops/generate_module_tree.py` ✅
+- `git diff --check -- docs/*STOCK_DETAIL_SAAS_NATIVE_VNSTOCKCHART_REDESIGN*_20260522.md CODE_CHANGE_AUDIT_LEDGER.md PROGRESS_DASHBOARD.md MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md module_tree_full.md` ✅ sach diff hygiene.
+
+---
+
+## 2026-05-22 | SaaS stock-detail route shell wiring in packages/web
+
+### Files changed in this session
+- `packages/web/src/components/OrderFlowRadarPanel.js`
+- `packages/web/src/components/VNStockChartPanel.js`
+- `packages/web/src/pages/StockDetailPage.js`
+- `packages/web/package.json`
+- `packages/web/scripts/check-stock-detail-shell.mjs`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Hoàn tất parity thực thi cho stock-detail trong `packages/web`: bỏ đường render fallback chart/radar, mount trực tiếp panel native của package, và thêm shell check cục bộ cho `core-stock-detail` để khóa wiring route-level sau slice shell-host trước đó.
+
+### Validation snapshot
+- `get_errors` scoped touched `packages/web` files ✅ không có diagnostics.
+- `node ./scripts/check-stock-detail-shell.mjs` ✅ `core-stock-detail shell wiring OK`.
+- `git diff --check -- ...` scoped stock-detail package files ✅ sạch diff hygiene.
+- Forbidden-pattern scan (`print(`, `explorer`, fallback component names) ✅ không có match.
+- `python scripts/ops/generate_module_tree.py` ✅
+- `./start_dev.ps1` ✅ stack healthy; frontend image build vẫn log peer-conflict cũ `react-scripts@5` vs `typescript@6`.
+
+---
+
+## 2026-05-22 | SaaS stock-detail route shell wiring in packages/web
+
+### Files changed in this session
+- `frontend/src/pages/StockDetailPageHost.jsx`
+- `frontend/src/pages/StockDetailPageHost.test.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Cắt route consumer thực tế `/stocks/:symbol` sang page mới trong `@vninvest/web`; nguyên nhân browser vẫn thấy trang cũ là vì route này vẫn bám `StockDetailPageHost.jsx` cũ ở `frontend/src`.
+
+### Validation snapshot
+- `get_errors` scoped `frontend/src/pages/StockDetailPageHost.jsx` + `StockDetailPageHost.test.jsx` ✅ không có diagnostics.
+- `CI=true npx react-scripts test --runInBand --runTestsByPath src/pages/StockDetailPageHost.test.jsx` ✅ pass.
+- Browser smoke on logged-in `http://localhost/stocks/FPT` ✅ đã hiện page mới với toolbar/panes chart mới.
+- `git diff --check -- frontend/src/pages/StockDetailPageHost.jsx frontend/src/pages/StockDetailPageHost.test.jsx module_tree_full.md` ✅ sạch diff hygiene.
+- Forbidden-pattern scan (`print(`, `explorer`, `console.log`) ✅ không có match.
+- `python scripts/ops/generate_module_tree.py` ✅
+- `./start_dev.ps1` ✅ stack healthy; frontend image build vẫn log peer-conflict cũ `react-scripts@5` vs `typescript@6`.
+
+---
+
+## 2026-05-22 | SaaS stock-detail route shell wiring in packages/web
+
+### Files changed in this session
+- `packages/web/src/pages/market/ShellStockDetailPage.js`
+- `packages/web/src/pages/pageRegistry.js`
+- `packages/web/src/index.js`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Dua route `/stocks/:symbol` trong `packages/web` ve dung shell-host architecture giong `whale-alerts`, de symbol duoc resolve ngay trong SaaS web package va page registry khong con map thang vao raw stock-detail page.
+
+### Validation snapshot
+- `node --input-type=module ... getPageLoader('core-stock-detail')` ✅ loader dang ky dung.
+- `get_errors` scoped `packages/web` files ✅ khong co diagnostics.
+- `python scripts/ops/generate_module_tree.py` ✅
+- `./start_dev.ps1` ✅ stack healthy; frontend image build van log peer-conflict cu `react-scripts@5` vs `typescript@6`.
+
+---
+
 ## 2026-05-21 | Alert-center parity remediation implementation (timeframe + symbol-stats)
 
 ### Files changed in this session

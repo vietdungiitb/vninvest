@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-21 23:14:30`
+Generated at: `2026-05-23 22:31:51`
 
 ## Summary
 
-- Total modules: 2186
+- Total modules: 2573
 - Python modules: 727
-- JS/TS modules: 1459
-- Total classes: 1704
-- Total functions: 5781
-- Total top-level variables: 14348
+- JS/TS modules: 1846
+- Total classes: 1811
+- Total functions: 6939
+- Total top-level variables: 18173
 
 ## Python Modules
 
@@ -3033,7 +3033,7 @@ Generated at: `2026-05-21 23:14:30`
   - `TenantDetailView` -> methods: `get_object`
   - `UserProfileView` -> methods: `get`, `patch`
 - Functions:
-  - `_is_human_session_pat`, `_normalize_scope_codes`, `_reject_human_session_markers`, `_require_partner_scope`, `_serialize_partner_pat`, `_validate_requested_pat_scopes`, `issue_pat`, `partner_issue_pat`, `partner_revoke_pat`, `partner_rotate_pat`
+  - `_is_human_session_pat`, `_normalize_scope_codes`, `_reject_human_session_markers`, `_require_partner_scope`, `_resolve_issue_target_service_account`, `_resolve_request_tenant_or_none`, `_serialize_partner_pat`, `_validate_requested_pat_scopes`, `issue_pat`, `partner_issue_pat`, `partner_revoke_pat`, `partner_rotate_pat`
 - Top-level variables:
   - `HUMAN_SESSION_PAT_AUDIT_REASON`, `HUMAN_SESSION_PAT_LABEL_PREFIX`, `PARTNER_SCOPE_MANAGE_PATS`, `PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS`, `PARTNER_SCOPE_MANAGE_TENANT`, `TENANT_PERMISSION_CLASSES`
 
@@ -5137,7 +5137,7 @@ Generated at: `2026-05-21 23:14:30`
 ### `packages/core/backend/tests/test_identity_access.py`
 
 - Classes:
-  - `CorePartnerPATApiTests` -> methods: `setUp`, `test_cross_tenant_pat_issue_is_blocked`, `test_issue_pat_rejects_disabled_service_account`, `test_issue_pat_rejects_scopes_outside_service_account_policy`, `test_issue_pat_returns_frontend_contract_and_secret_authenticates`, `test_partner_pat_list_excludes_human_session_credentials`, `test_revoke_human_session_pat_returns_not_found`, `test_revoke_pat_invalidates_token`, `test_rotate_human_session_pat_returns_not_found`, `test_rotate_pat_returns_nested_new_token_and_keeps_old_token_in_grace_window`
+  - `CorePartnerPATApiTests` -> methods: `setUp`, `test_cross_tenant_pat_issue_is_blocked`, `test_issue_pat_allows_staff_without_tenant_using_service_account_id`, `test_issue_pat_blocks_non_staff_without_tenant`, `test_issue_pat_rejects_disabled_service_account`, `test_issue_pat_rejects_scopes_outside_service_account_policy`, `test_issue_pat_returns_frontend_contract_and_secret_authenticates`, `test_partner_pat_list_excludes_human_session_credentials`, `test_revoke_human_session_pat_returns_not_found`, `test_revoke_pat_invalidates_token`, `test_rotate_human_session_pat_returns_not_found`, `test_rotate_pat_returns_nested_new_token_and_keeps_old_token_in_grace_window`
   - `CorePartnerServiceAccountApiTests` -> methods: `setUp`, `test_service_account_list_uses_created_at_cursor_pagination_and_create_succeeds`
   - `CorePATCredentialModelTests` -> methods: `setUp`, `test_issue_pat_returns_credential_and_raw_secret`, `test_pat_token_prefix_is_12_chars`, `test_resolve_from_raw_secret`, `test_resolve_returns_none_for_invalid_secret`, `test_revoke_pat`
   - `CoreServiceAccountModelTests` -> methods: `setUp`, `test_create_service_account`, `test_service_account_belongs_to_tenant`
@@ -6986,6 +6986,13 @@ Generated at: `2026-05-21 23:14:30`
 
 - No parseable top-level symbols found
 
+### `frontend/src/components/vnstockcharts/lib/core/canonicalSeriesStore.ts`
+
+- Functions:
+  - `createCanonicalSeriesStore`, `stableStringify`
+- Top-level variables:
+  - `entries`, `store`
+
 ### `frontend/src/components/vnstockcharts/lib/core/canvas/ChartRenderContext.ts`
 
 - Functions:
@@ -7615,6 +7622,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `base`, `loaded`, `result`, `saved`, `store`, `style`
 
+### `frontend/src/components/vnstockcharts/lib/drawing/engineCompat.ts`
+
+- Functions:
+  - `applyCanvasStyle`, `deleteDrawingGroup`, `distanceSquared`, `drawArrowHead`, `drawLine`, `drawRectangle`, `drawText`, `findNearestOverlayEndpointSnap`, `isFiniteNumber`, `measurementPointToPixelFromScales`, `renderOverlayPrimitiveToCanvas`, `resolveDasharray`, `resolveDrawingGroupMemberIds`, `resolveMeasurementPointFromValues`, `summarizeMeasurement`, `toDate`
+- Top-level variables:
+  - `MAGNET_TOLERANCE`, `angle`, `bestDate`, `bestDistance`, `bestIndex`, `bestMatch`, `candidateDate`, `candidateTime`, `chartHeight`, `chartWidth`, `distance`, `dx`, `dy`, `height`, `left`, `priceDelta`, `size`, `targetTime`, `toleranceSquared`, `top`, `width`, `x`, `y`
+
 ### `frontend/src/components/vnstockcharts/lib/drawing/evaluateDrawingAlerts.ts`
 
 - Functions:
@@ -7644,9 +7658,9 @@ Generated at: `2026-05-21 23:14:30`
 ### `frontend/src/components/vnstockcharts/lib/drawing/hitTest.ts`
 
 - Functions:
-  - `distanceToPolyline`, `distanceToSegment`, `getDrawingBoundingBox`, `getResizeHandleIndex`, `getTextBounds`, `hitTestAbcdPattern`, `hitTestActionHandles`, `hitTestChannelLike`, `hitTestDrawing`, `hitTestFibArc`, `hitTestFibTimeZone`, `hitTestFibonacciLike`, `hitTestLineLike`, `hitTestParallelChannel`, `hitTestPitchfork`, `hitTestPositionZones`, `hitTestRayLike`, `hitTestRectangleLike`, `hitTestRegressionChannel`, `isDrawingInRect`, `pathBounds`, `pointInRect`, `toOverlayPrimitive`, `toPixel`
+  - `distanceToPolyline`, `distanceToSegment`, `getDrawingBoundingBox`, `getResizeHandleIndex`, `getTextBounds`, `hitTestAbcdPattern`, `hitTestActionHandles`, `hitTestChannelLike`, `hitTestDrawing`, `hitTestFibArc`, `hitTestFibTimeZone`, `hitTestFibonacciLike`, `hitTestLineLike`, `hitTestOverlayPrimitive`, `hitTestParallelChannel`, `hitTestPitchfork`, `hitTestPositionZones`, `hitTestRayLike`, `hitTestRectangleLike`, `hitTestRegressionChannel`, `isDrawingInRect`, `pathBounds`, `pointInRect`, `toOverlayPrimitive`, `toPixel`
 - Top-level variables:
-  - `ACTION_HANDLE_RADIUS`, `HIT_TOLERANCE`, `bbox`, `best`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `effectiveDrawing`, `end`, `fontSize`, `geometry`, `h`, `handles`, `height`, `hitRadius`, `leftFork`, `length`, `lengthSquared`, `lower`, `maxX`, `maxY`, `median`, `metrics`, `middle`, `minX`, `minY`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `origin`, `overlayPrimitive`, `p`, `pixel`, `pixelDelta`, `pixels`, `point`, `priceDelta`, `primitiveStyle`, `pts`, `pts2`, `px1`, `px2`, `radius`, `rightFork`, `start`, `style`, `t`, `text`, `tolerance`, `upper`, `w`, `width`, `x`, `x1`, `x2`, `xs`, `y`, `y1`, `y2`, `ys`
+  - `ACTION_HANDLE_RADIUS`, `HIT_TOLERANCE`, `bbox`, `best`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `effectiveDrawing`, `end`, `fontSize`, `geometry`, `h`, `handles`, `height`, `hitRadius`, `leftFork`, `len`, `length`, `lengthSquared`, `lower`, `maxX`, `maxY`, `median`, `metrics`, `middle`, `minX`, `minY`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `origin`, `overlayPrimitive`, `p`, `pixel`, `pixelDelta`, `pixels`, `point`, `priceDelta`, `primitiveStyle`, `pts`, `pts2`, `px1`, `px2`, `radius`, `rightFork`, `start`, `style`, `t`, `text`, `tolerance`, `upper`, `w`, `width`, `x`, `x1`, `x2`, `xs`, `y`, `y1`, `y2`, `ys`
 
 ### `frontend/src/components/vnstockcharts/lib/drawing/hitTestTolerance.test.ts`
 
@@ -8978,9 +8992,16 @@ Generated at: `2026-05-21 23:14:30`
 ### `frontend/src/components/vnstockcharts/widget/DrawingPriceLabelsOverlay.tsx`
 
 - Functions:
-  - `clamp`, `resolveDrawingSnapshot`, `resolvePreferredScaleSlotId`
+  - `clamp`, `resolveDrawingSnapshot`, `resolvePreferredScaleSlotId`, `resolveScaleSlotStates`
 - Top-level variables:
-  - `anchorPoint`, `effectiveDrawing`, `fillColor`, `highlightFill`, `labelFill`, `markers`, `pixel`, `scaleSlotId`, `side`, `snapshot`, `strokeColor`, `targetedSnapshot`, `textColor`, `top`, `visibleScaleSlotIds`
+  - `anchorPoint`, `effectiveDrawing`, `fillColor`, `highlightFill`, `labelFill`, `markers`, `pixel`, `scaleSlotId`, `scaleSlotStates`, `side`, `snapshot`, `strokeColor`, `targetedSnapshot`, `textColor`, `top`, `visibleScaleSlotIds`
+
+### `frontend/src/components/vnstockcharts/widget/forkRuntimeCompat.ts`
+
+- Functions:
+  - `clamp`, `resolvePaneDataIndexAtPixel`, `resolvePanePixelAtDataIndex`, `resolvePanePixelAtValue`, `resolvePaneValueAtPixel`, `resolvePlotSpan`, `resolveScaleDomain`
+- Top-level variables:
+  - `domain`, `from`, `height`, `left`, `maxIndex`, `ratio`, `span`, `to`, `top`, `width`
 
 ### `frontend/src/components/vnstockcharts/widget/i18n/messages.en.ts`
 
@@ -9005,16 +9026,16 @@ Generated at: `2026-05-21 23:14:30`
 - Classes:
   - `MeasurementOverlayImpl`
 - Functions:
-  - `BridgeMeasurementOverlay`, `MeasurementOverlayWithI18n`, `drawMeasurementLabel`, `drawPoint`, `drawRoundedRect`, `formatSignedPrice`, `resolveBridgeMeasurementPoint`, `resolvePaneSnapshotAtPixel`, `resolvePreferredScaleSlotId`
+  - `BridgeMeasurementOverlay`, `MeasurementOverlayWithI18n`, `drawMeasurementLabel`, `drawPoint`, `drawRoundedRect`, `formatSignedPrice`, `resolveBridgeMeasurementPoint`, `resolvePaneSnapshotAtPixel`, `resolvePreferredScaleSlotId`, `resolveScaleSlotStates`
 - Top-level variables:
-  - `accentColor`, `bottom`, `boxHeight`, `boxWidth`, `boxX`, `boxY`, `canvas`, `canvasRef`, `chartConfig`, `ctx`, `drawOn`, `endPixel`, `handleCommit`, `handlePointerDown`, `handlePointerLeave`, `handlePointerMove`, `hoverPixel`, `hoverPoint`, `labels`, `lineHeight`, `lines`, `nextPoint`, `paddingX`, `paddingY`, `pixelRatio`, `point`, `rect`, `resolveLocalPosition`, `right`, `scaleSlotId`, `selection`, `snapshot`, `startPixel`, `summary`, `visibleScaleSlotIds`
+  - `accentColor`, `bottom`, `boxHeight`, `boxWidth`, `boxX`, `boxY`, `canvas`, `canvasRef`, `chartConfig`, `ctx`, `drawOn`, `endPixel`, `handleCommit`, `handlePointerDown`, `handlePointerLeave`, `handlePointerMove`, `hoverPixel`, `hoverPoint`, `labels`, `lineHeight`, `lines`, `nextPoint`, `paddingX`, `paddingY`, `pixelRatio`, `point`, `rect`, `resolveLocalPosition`, `right`, `scaleSlotId`, `scaleSlotStates`, `selection`, `snapshot`, `startPixel`, `summary`, `visibleScaleSlotIds`
 
 ### `frontend/src/components/vnstockcharts/widget/VNStockChart.tsx`
 
 - Functions:
-  - `VNStockChart`, `VNStockChartContent`, `arePaneSnapshotsEqual`, `buildLegacyPaneSnapshots`, `clampIndex`, `createWidgetCoordinateBridge`, `findPaneSnapshotAtPosition`, `findPlotDataIndex`, `findPlotDataIndexByTime`, `inferAxisSideFromScaleSlotId`, `lookbackDays`, `mergeBarsByDate`, `mergePaneSnapshotDomains`, `normalizeForkVisibleRange`, `normalizePaneDescriptorsForExplicitScaleSlots`, `resolveEngineSeriesValueForRuntime`, `resolveFetchWindow`, `resolveHoveredPaneId`, `resolvePreferredScaleSlotId`, `resolveVisiblePanes`, `safeXAccessor`
+  - `VNStockChart`, `VNStockChartContent`, `arePaneSnapshotsEqual`, `buildLegacyPaneSnapshots`, `clampIndex`, `createWidgetCoordinateBridge`, `findPaneSnapshotAtPosition`, `findPlotDataIndex`, `findPlotDataIndexByTime`, `inferAxisSideFromScaleSlotId`, `lookbackDays`, `mergeBarsByDate`, `mergePaneSnapshotDomains`, `normalizeForkVisibleRange`, `normalizePaneDescriptorsForExplicitScaleSlots`, `resolveEngineSeriesValueForRuntime`, `resolveFetchWindow`, `resolveHoveredPaneId`, `resolvePreferredScaleSlotId`, `resolveScaleSlotStates`, `resolveVisiblePanes`, `safeXAccessor`
 - Top-level variables:
-  - `CHART_MARGIN`, `NORMALIZED_DEFAULT_PANES`, `PANE_HEADER_HEIGHT`, `activeLocale`, `activeSeries`, `activeSnapshots`, `activeSymbol`, `activeTimeframe`, `adapterLabel`, `axisStroke`, `axisTickFill`, `bottom`, `buy`, `candidate`, `candidatePanes`, `canonicalStore`, `canvas`, `chartInnerHeight`, `chartPoint`, `chartSurfaceReady`, `columns`, `computedXExtents`, `context`, `controller`, `currentCharts`, `currentState`, `cvdData`, `dataIndex`, `dateFormat`, `datum`, `defaultLegacyVisibleRange`, `diff`, `disposed`, `effectiveRuntime`, `emitCoordinateBridge`, `emitHoveredPaneId`, `emitPaneSnapshots`, `endBar`, `engine`, `engineDataSource`, `engineInstanceRef`, `engineOptions`, `enginePanes`, `engineSeriesData`, `engineTheme`, `enrichedData`, `existingIndex`, `firstBar`, `forkCoordinateBridge`, `forkDegradeNotifiedRef`, `forkPaneSnapshotsRef`, `forkVisibleRangeRef`, `handleBoundaryError`, `handleEngineReady`, `handleForkClick`, `handleForkContextMenu`, `handleForkVisibleRangeChange`, `handleLegacyVisibleRangeChange`, `handleRuntimeDegraded`, `handleWidgetPointerLeave`, `handleWidgetPointerMove`, `hasExternalData`, `hasLeftAxis`, `hasRenderedPixels`, `hasRightAxis`, `headerBottom`, `headerTop`, `height`, `hoveredPaneIdRef`, `hoveredSnapshot`, `index`, `isDark`, `lastBar`, `lastIndex`, `leftBounds`, `legacyCoordinateBridge`, `legacyPaneSnapshots`, `localX`, `localY`, `mapped`, `matchedValue`, `mergedSnapshots`, `minDiff`, `nearestIdx`, `nextPanes`, `normalizedRange`, `normalizedSeries`, `normalizedVisibleRange`, `oneDay`, `paneHeights`, `paneSnapshotMap`, `paneSplitterNodes`, `paneToolbarNodes`, `pixel`, `plotData`, `plotWidth`, `previousTheme`, `priceFormat`, `rawEndIndex`, `rawStartIndex`, `ready`, `rect`, `requestedRuntime`, `resolveForkEventPayload`, `resolveWidgetChartPoint`, `resolveWidgetPointPixel`, `resolvedLegacyVisibleRange`, `resolvedScaleSlotId`, `resolvedTheme`, `resolvedXExtents`, `right`, `rightBounds`, `root`, `rows`, `runtimeCapabilities`, `scaleSlotBounds`, `scaleSlotDomains`, `scaleSlotIds`, `scaleSlotStates`, `sell`, `series`, `seriesId`, `seriesValuesById`, `snapshot`, `snapshotTop`, `startBar`, `themeState`, `timer`, `to`, `top`, `ts`, `unsubscribe`, `useForkRuntime`, `value`, `values`, `visiblePanes`, `visibleScaleSlotIds`, `volumeFormat`, `whaleEvents`, `x`, `y`
+  - `CHART_MARGIN`, `NORMALIZED_DEFAULT_PANES`, `PANE_HEADER_HEIGHT`, `activeLocale`, `activeSeries`, `activeSnapshots`, `activeSymbol`, `activeTimeframe`, `adapterLabel`, `axisStroke`, `axisTickFill`, `bottom`, `buy`, `candidate`, `candidatePanes`, `canonicalStore`, `canvas`, `chartInnerHeight`, `chartPoint`, `chartSurfaceReady`, `columns`, `computedXExtents`, `context`, `controller`, `currentCharts`, `currentScaleSlotStates`, `currentState`, `cvdData`, `dataIndex`, `dateFormat`, `datum`, `defaultLegacyVisibleRange`, `diff`, `disposed`, `effectiveRuntime`, `emitCoordinateBridge`, `emitHoveredPaneId`, `emitPaneSnapshots`, `endBar`, `engine`, `engineDataSource`, `engineInstanceRef`, `engineOptions`, `enginePanes`, `engineSeriesData`, `engineTheme`, `enrichedData`, `existingIndex`, `firstBar`, `forkCoordinateBridge`, `forkDegradeNotifiedRef`, `forkPaneSnapshotsRef`, `forkVisibleRangeRef`, `handleBoundaryError`, `handleEngineReady`, `handleForkClick`, `handleForkContextMenu`, `handleForkVisibleRangeChange`, `handleLegacyVisibleRangeChange`, `handleRuntimeDegraded`, `handleWidgetPointerLeave`, `handleWidgetPointerMove`, `hasExternalData`, `hasLeftAxis`, `hasRenderedPixels`, `hasRightAxis`, `headerBottom`, `headerTop`, `height`, `hoveredPaneIdRef`, `hoveredSnapshot`, `index`, `isDark`, `lastBar`, `lastIndex`, `leftBounds`, `legacyCoordinateBridge`, `legacyPaneSnapshots`, `localX`, `localY`, `mapped`, `matchedValue`, `mergedSnapshots`, `minDiff`, `nearestIdx`, `nextPanes`, `normalizedRange`, `normalizedSeries`, `normalizedVisibleRange`, `oneDay`, `paneHeights`, `paneSnapshotMap`, `paneSplitterNodes`, `paneToolbarNodes`, `pixel`, `plotData`, `plotWidth`, `previousTheme`, `priceFormat`, `rawEndIndex`, `rawStartIndex`, `ready`, `rect`, `requestedRuntime`, `resolveForkEventPayload`, `resolveWidgetChartPoint`, `resolveWidgetPointPixel`, `resolvedLegacyVisibleRange`, `resolvedScaleSlotId`, `resolvedTheme`, `resolvedXExtents`, `right`, `rightBounds`, `root`, `rows`, `runtimeCapabilities`, `scaleSlotBounds`, `scaleSlotDomains`, `scaleSlotIds`, `scaleSlotStates`, `sell`, `series`, `seriesId`, `seriesValuesById`, `snapshot`, `snapshotTop`, `startBar`, `themeState`, `timer`, `to`, `top`, `ts`, `unsubscribe`, `useForkRuntime`, `value`, `values`, `visiblePanes`, `visibleScaleSlotIds`, `volumeFormat`, `whaleEvents`, `x`, `y`
 
 ### `frontend/src/components/vnstockcharts/widget/WidgetEmptyState.tsx`
 
@@ -9541,10 +9562,12 @@ Generated at: `2026-05-21 23:14:30`
 
 ### `frontend/src/pages/StockDetailPageHost.jsx`
 
-- Functions:
-  - `fmtCompact`, `fmtPrice`, `load`, `signalColorClass`, `signalLabel`, `useStockDetailData`
 - Top-level variables:
-  - `change`, `changePct`, `handleSessionChange`, `handleVisibleRangeChange`, `isBuy`, `isUp`, `map`, `mountedRef`, `n`, `price`, `s`, `sessionDate`, `upperSymbol`
+  - `normalizedSymbol`
+
+### `frontend/src/pages/StockDetailPageHost.test.jsx`
+
+- No parseable top-level symbols found
 
 ### `frontend/src/pages/Support.jsx`
 
@@ -9633,6 +9656,10 @@ Generated at: `2026-05-21 23:14:30`
   - `bootstrapLoader`, `location`
 
 ### `frontend/src/setupProxy.js`
+
+- No parseable top-level symbols found
+
+### `frontend/src/types/vnstockcharts-compat.d.ts`
 
 - No parseable top-level symbols found
 
@@ -11110,7 +11137,7 @@ Generated at: `2026-05-21 23:14:30`
 - Functions:
   - `OrderFlowRadarPanel`, `fmtCompact`, `formatPercentDelta`, `getICTTime`, `useI18n`
 - Top-level variables:
-  - `chartData`, `cvdSeries`, `d`, `darkFlow`, `filteredCvdSeries`, `filteredSignals`, `formatter`, `hourPart`, `hours`, `ict`, `ictDate`, `itemTs`, `latestSignal`, `liveSignal`, `liveStrength`, `map`, `maxTs`, `minutePart`, `minutes`, `n`, `numericValue`, `parts`, `signals`, `sizeDistribution`, `smallOrderRatio`, `tickRate`, `utc`
+  - `chartData`, `cvdSeries`, `d`, `darkFlow`, `e`, `filteredCvdSeries`, `filteredSignals`, `formatter`, `hourPart`, `hours`, `ict`, `ictDate`, `itemTs`, `latestSignal`, `liveSignal`, `liveStrength`, `map`, `maxTs`, `minutePart`, `minutes`, `n`, `numericValue`, `parts`, `recentSignalNodes`, `signals`, `sizeDistribution`, `smallOrderRatio`, `tickRate`, `timeFilterButtons`, `utc`
 
 ### `packages/web/src/components/ShellPageTemplate.js`
 
@@ -11124,7 +11151,7 @@ Generated at: `2026-05-21 23:14:30`
 - Functions:
   - `HeatmapBandOverlay`, `ViewportSharkMarkersOverlay`, `buildFlowBucketLookup`, `buildHeatmapBandColor`, `clamp`, `pad`, `resolveHeatmapMetric`, `useI18n`
 - Top-level variables:
-  - `TIMEFRAMES`, `alpha`, `barWidth`, `bucket`, `buyHeat`, `color`, `customPanes`, `dateStr`, `draw`, `drawY`, `dx`, `emoji`, `endIndex`, `enrichedBars`, `flowBucketLookup`, `flowTimeframe`, `flowViewModel`, `handleClick`, `handleVisibleRangeChange`, `idx`, `intensity`, `isBuy`, `item`, `lookup`, `magnitude`, `map`, `mappedCvdSeries`, `mappedWhaleOrders`, `metric`, `minuteKey`, `netHeat`, `normalizedMode`, `offset`, `parsedDate`, `price`, `sellHeat`, `signalsOrders`, `startIndex`, `threshold`, `timestamp`, `topCount`, `val`, `values`, `visibleBars`, `whaleScore`, `x`, `y`
+  - `TIMEFRAMES`, `alpha`, `barWidth`, `bucket`, `buyHeat`, `chartBody`, `color`, `customPanes`, `dateStr`, `draw`, `drawY`, `dx`, `e`, `emoji`, `endIndex`, `enrichedBars`, `flowBucketLookup`, `flowTimeframe`, `flowViewModel`, `handleClick`, `handleVisibleRangeChange`, `heatmapButtons`, `idx`, `intensity`, `isBuy`, `item`, `lookup`, `magnitude`, `map`, `mappedCvdSeries`, `mappedWhaleOrders`, `metric`, `minuteKey`, `netHeat`, `normalizedMode`, `offset`, `parsedDate`, `price`, `sellHeat`, `signalsOrders`, `startIndex`, `threshold`, `timeframeButtons`, `timestamp`, `topCount`, `val`, `values`, `visibleBars`, `whaleScore`, `x`, `y`
 
 ### `packages/web/src/components/vnstockcharts/csv.d.ts`
 
@@ -11213,12 +11240,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `DemoI18nBoundary`, `WhalePanel`, `act`, `consoleErrorSpy`, `container`, `createRoot`, `reactActEnvironment`, `root`, `sampleWhaleData`
 
+### `packages/web/src/components/vnstockcharts/demo/ChartPaneSplitter.js`
+
+- Functions:
+  - `handlePointerDown`, `handlePointerMove`, `stopDragging`
+- Top-level variables:
+  - `applyDragDeltaRef`, `availableRef`, `drag`, `dragRef`, `node`, `rootRef`, `totalDelta`
+
 ### `packages/web/src/components/vnstockcharts/demo/ChartPaneSplitter.tsx`
 
 - Functions:
   - `handlePointerDown`, `handlePointerMove`, `stopDragging`
 - Top-level variables:
   - `applyDragDeltaRef`, `availableRef`, `drag`, `dragRef`, `node`, `rootRef`, `totalDelta`
+
+### `packages/web/src/components/vnstockcharts/demo/chartRange.js`
+
+- Functions:
+  - `normalizeDate`, `resolveChartRangeExtents`, `resolveChartRangeStart`, `subtractDays`, `subtractMonths`, `subtractYears`
+- Top-level variables:
+  - `CHART_RANGES`, `CHART_RANGE_LABEL_KEYS`, `DEFAULT_CHART_RANGE`, `dayOfMonth`, `first`, `last`, `lastDayOfMonth`, `next`, `rangeStart`, `single`
 
 ### `packages/web/src/components/vnstockcharts/demo/chartRange.ts`
 
@@ -11227,6 +11268,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `CHART_RANGES`, `CHART_RANGE_LABEL_KEYS`, `DEFAULT_CHART_RANGE`, `dayOfMonth`, `first`, `last`, `lastDayOfMonth`, `next`, `rangeStart`, `single`
 
+### `packages/web/src/components/vnstockcharts/demo/components/DataSourceSwitcher.js`
+
+- Functions:
+  - `DataSourceSwitcher`
+- Top-level variables:
+  - `sources`
+
 ### `packages/web/src/components/vnstockcharts/demo/components/DataSourceSwitcher.tsx`
 
 - Functions:
@@ -11234,9 +11282,20 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `sources`
 
+### `packages/web/src/components/vnstockcharts/demo/components/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/demo/components/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/demo/components/PATTokenModal.js`
+
+- Functions:
+  - `PATTokenModal`, `applyApiBaseInput`, `handleBackdropClick`, `handleClearToken`, `handleFileChange`, `handleLogin`, `handleSaveBase`, `handleSaveToken`, `parseCSVBars`
+- Top-level variables:
+  - `accessToken`, `backdropRef`, `bars`, `changed`, `cols`, `currentBase`, `data`, `dataLines`, `file`, `fileInputRef`, `firstField`, `hasHeader`, `lines`, `open`, `p`, `reader`, `res`, `text`, `token`, `trimmed`, `ts`, `u`
 
 ### `packages/web/src/components/vnstockcharts/demo/components/PATTokenModal.tsx`
 
@@ -11245,12 +11304,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `accessToken`, `backdropRef`, `bars`, `changed`, `cols`, `currentBase`, `data`, `dataLines`, `file`, `fileInputRef`, `firstField`, `hasHeader`, `lines`, `open`, `p`, `reader`, `res`, `text`, `token`, `trimmed`, `ts`, `u`
 
+### `packages/web/src/components/vnstockcharts/demo/components/VNSymbolSearch.js`
+
+- Functions:
+  - `VNSymbolSearch`, `commitRawQuery`, `handleClick`, `handleFocus`, `handleInputChange`, `handleKeyDown`, `handleSelect`, `handleSelectSymbol`, `readRecentItems`, `saveRecentItem`
+- Top-level variables:
+  - `EXCHANGE_OPTIONS`, `MAX_RECENT`, `RECENT_SYMBOLS_KEY`, `VN30_SYMBOLS`, `debounceRef`, `deduped`, `exchange`, `item`, `mapped`, `q`, `raw`, `searchSymbols`, `selected`, `showEmptyPanel`, `showResultsPanel`, `stocks`, `symbol`, `updated`, `wrapperRef`
+
 ### `packages/web/src/components/vnstockcharts/demo/components/VNSymbolSearch.tsx`
 
 - Functions:
   - `VNSymbolSearch`, `commitRawQuery`, `handleClick`, `handleFocus`, `handleInputChange`, `handleKeyDown`, `handleSelect`, `handleSelectSymbol`, `readRecentItems`, `saveRecentItem`
 - Top-level variables:
   - `EXCHANGE_OPTIONS`, `MAX_RECENT`, `RECENT_SYMBOLS_KEY`, `VN30_SYMBOLS`, `debounceRef`, `deduped`, `exchange`, `item`, `mapped`, `q`, `raw`, `searchSymbols`, `selected`, `showEmptyPanel`, `showResultsPanel`, `stocks`, `symbol`, `updated`, `wrapperRef`
+
+### `packages/web/src/components/vnstockcharts/demo/components/WhalePanel.js`
+
+- Functions:
+  - `WhalePanel`, `formatBillion`
+- Top-level variables:
+  - `billion`, `isNetPositive`, `netFlow`, `rows`
 
 ### `packages/web/src/components/vnstockcharts/demo/components/WhalePanel.tsx`
 
@@ -11271,6 +11344,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `MockWS`, `client`, `instance`, `lastCreatedSocket`, `msgs`, `onTicker`, `onWhale`, `payload`, `socket`, `socket1`
 
+### `packages/web/src/components/vnstockcharts/demo/dataSources/index.js`
+
+- Classes:
+  - `DemoDataSource`, `VNInvestDataSource`
+- Functions:
+  - `vniBarToRawOHLCV`
+- Top-level variables:
+  - `all`, `bars`, `q`, `stocks`
+
 ### `packages/web/src/components/vnstockcharts/demo/dataSources/index.ts`
 
 - Classes:
@@ -11280,9 +11362,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `all`, `bars`, `q`, `stocks`
 
+### `packages/web/src/components/vnstockcharts/demo/dataSources/types.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/demo/dataSources/types.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/demo/dataSources/VNInvestClient.js`
+
+- Classes:
+  - `VNInvestClient`
+- Functions:
+  - `asNumber`, `asObject`, `buildEndpoints`, `extractChartPoints`, `isWhaleFeedResponse`, `normalizeApiBase`, `normalizeChartBars`, `normalizeChartPoint`, `normalizeTimeframe`, `parseDateValue`, `resolveApiBase`, `resolveTechnical`
+- Top-level variables:
+  - `API_BASE_STORAGE_KEY`, `DEFAULT_API_BASE`, `PAT_STORAGE_KEY`, `TIMEFRAME_MAP`, `bars`, `candidates`, `close`, `data`, `dateRaw`, `dateValue`, `endpoints`, `globalScope`, `headers`, `high`, `low`, `nestedData`, `normalized`, `numeric`, `obj`, `open`, `params`, `parsed`, `payload`, `point`, `points`, `rawBars`, `response`, `stored`, `technical`, `text`, `trimmed`, `url`, `urlParams`, `volume`
 
 ### `packages/web/src/components/vnstockcharts/demo/dataSources/VNInvestClient.ts`
 
@@ -11293,12 +11388,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `API_BASE_STORAGE_KEY`, `DEFAULT_API_BASE`, `PAT_STORAGE_KEY`, `TIMEFRAME_MAP`, `bars`, `candidates`, `close`, `data`, `dateRaw`, `dateValue`, `endpoints`, `globalScope`, `headers`, `high`, `low`, `nestedData`, `normalized`, `numeric`, `obj`, `open`, `params`, `parsed`, `payload`, `point`, `points`, `rawBars`, `response`, `stored`, `technical`, `text`, `trimmed`, `url`, `urlParams`, `volume`
 
+### `packages/web/src/components/vnstockcharts/demo/dataSources/VNInvestWebSocketClient.js`
+
+- Classes:
+  - `VNInvestWebSocketClient`
+- Top-level variables:
+  - `available`, `hostname`, `httpBase`, `normalized`, `parsed`, `resolved`, `response`, `symbols`, `url`, `wsBase`, `wsPath`
+
 ### `packages/web/src/components/vnstockcharts/demo/dataSources/VNInvestWebSocketClient.ts`
 
 - Classes:
   - `VNInvestWebSocketClient`
 - Top-level variables:
   - `available`, `hostname`, `httpBase`, `normalized`, `parsed`, `resolved`, `response`, `symbols`, `url`, `wsBase`, `wsPath`
+
+### `packages/web/src/components/vnstockcharts/demo/demoData.js`
+
+- Functions:
+  - `computeIndicators`, `fetchBinanceKlinePage`, `fetchHistoricalDemoBars`, `fetchLiveDemoBars`, `fetchLiveDemoData`, `formatBinanceKlineBars`, `formatBinanceKlines`, `getOfflineDemoBars`, `getOfflineDemoData`, `mergeBarsByDate`, `normalizeBars`, `parseCsvRow`, `parseDateTime`, `sortBars`, `toTimeValue`
+- Top-level variables:
+  - `BINANCE_BASE`, `BINANCE_INTERVAL_MAP`, `BINANCE_MAX_LIMIT`, `BOLLINGER_BAND_OPTIONS`, `DEMO_CANONICAL_SERIES`, `DEMO_WINDOW`, `bars`, `binanceInterval`, `deduped`, `endTimeValue`, `json`, `lastBar`, `merged`, `nextEndTime`, `pageBars`, `params`, `response`, `sorted`, `startTimeValue`, `url`
 
 ### `packages/web/src/components/vnstockcharts/demo/demoData.ts`
 
@@ -11307,10 +11416,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `BINANCE_BASE`, `BINANCE_INTERVAL_MAP`, `BINANCE_MAX_LIMIT`, `BOLLINGER_BAND_OPTIONS`, `DEMO_CANONICAL_SERIES`, `DEMO_WINDOW`, `bars`, `binanceInterval`, `deduped`, `endTimeValue`, `json`, `lastBar`, `merged`, `nextEndTime`, `pageBars`, `params`, `response`, `sorted`, `startTimeValue`, `url`
 
+### `packages/web/src/components/vnstockcharts/demo/DemoPageShell.js`
+
+- Top-level variables:
+  - `frameClassNameValue`, `pageClassName`
+
 ### `packages/web/src/components/vnstockcharts/demo/DemoPageShell.tsx`
 
 - Top-level variables:
   - `frameClassNameValue`, `pageClassName`
+
+### `packages/web/src/components/vnstockcharts/demo/FullDemo.js`
+
+- Functions:
+  - `FullDemoContent`, `LegendRow`, `MetricTile`, `createOrigin`, `formatSigned`, `getInitialExtents`, `handleBrush`, `handleResetView`, `handleResize`, `normalizeBrushExtents`, `updateWidth`
+- Top-level variables:
+  - `axisTheme`, `bearishColor`, `bollingerAppearance`, `bottomXAxisTheme`, `bullishColor`, `cancelled`, `chartData`, `chartHeight`, `chartSurfaceRef`, `controller`, `coordinateTheme`, `dateFormat`, `ema20Stroke`, `ema50Stroke`, `emaTrendUp`, `endDate`, `endIndex`, `gridWidth`, `integerFormat`, `latest`, `macdAppearance`, `macdHeight`, `macdOrigin`, `margin`, `node`, `observer`, `offlineData`, `overviewHeight`, `overviewOrigin`, `percentFormat`, `plotHeight`, `previous`, `priceChange`, `priceChangePercent`, `priceFormat`, `priceHeight`, `priceYAxisTheme`, `resolvedChartWidth`, `rsiAppearance`, `rsiOrigin`, `rsiPanelHeight`, `rsiValue`, `sign`, `sourceStatusLabel`, `sourceTone`, `startDate`, `startIndex`, `themeFontFamily`, `tooltipDisplayTexts`, `topXAxisTheme`, `volumeFormat`, `volumeHeight`, `volumeOrigin`, `volumeYAxisTheme`
 
 ### `packages/web/src/components/vnstockcharts/demo/FullDemo.tsx`
 
@@ -11319,12 +11440,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `axisTheme`, `bearishColor`, `bollingerAppearance`, `bottomXAxisTheme`, `bullishColor`, `cancelled`, `chartData`, `chartHeight`, `chartSurfaceRef`, `controller`, `coordinateTheme`, `dateFormat`, `ema20Stroke`, `ema50Stroke`, `emaTrendUp`, `endDate`, `endIndex`, `gridWidth`, `integerFormat`, `latest`, `macdAppearance`, `macdHeight`, `macdOrigin`, `margin`, `node`, `observer`, `offlineData`, `overviewHeight`, `overviewOrigin`, `percentFormat`, `plotHeight`, `previous`, `priceChange`, `priceChangePercent`, `priceFormat`, `priceHeight`, `priceYAxisTheme`, `resolvedChartWidth`, `rsiAppearance`, `rsiOrigin`, `rsiPanelHeight`, `rsiValue`, `sign`, `sourceStatusLabel`, `sourceTone`, `startDate`, `startIndex`, `themeFontFamily`, `tooltipDisplayTexts`, `topXAxisTheme`, `volumeFormat`, `volumeHeight`, `volumeOrigin`, `volumeYAxisTheme`
 
+### `packages/web/src/components/vnstockcharts/demo/heikinAshi.js`
+
+- Functions:
+  - `transformHeikinAshi`
+- Top-level variables:
+  - `bar`, `close`, `high`, `low`, `open`, `result`
+
 ### `packages/web/src/components/vnstockcharts/demo/heikinAshi.ts`
 
 - Functions:
   - `transformHeikinAshi`
 - Top-level variables:
   - `bar`, `close`, `high`, `low`, `open`, `result`
+
+### `packages/web/src/components/vnstockcharts/demo/historyFetchQueue.js`
+
+- Classes:
+  - `HistoryFetchQueue`
+- Functions:
+  - `makeId`
+- Top-level variables:
+  - `candidates`, `existing`, `job`
 
 ### `packages/web/src/components/vnstockcharts/demo/historyFetchQueue.ts`
 
@@ -11335,10 +11472,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `candidates`, `existing`, `job`
 
+### `packages/web/src/components/vnstockcharts/demo/historySchedulerPolicy.js`
+
+- Functions:
+  - `canRunHistoryScheduler`
+
 ### `packages/web/src/components/vnstockcharts/demo/historySchedulerPolicy.ts`
 
 - Functions:
   - `canRunHistoryScheduler`
+
+### `packages/web/src/components/vnstockcharts/demo/historyWindowPlanner.js`
+
+- Functions:
+  - `computeLoadedWindow`, `computeMissingSegments`, `computeTargetWindow`, `shouldScheduleFetch`
+- Top-level variables:
+  - `leftMissing`, `leftRatio`, `leftTrigger`, `maxMs`, `minMs`, `ms`, `rightMissing`, `rightRatio`, `rightTrigger`, `span`
 
 ### `packages/web/src/components/vnstockcharts/demo/historyWindowPlanner.ts`
 
@@ -11347,6 +11496,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `leftMissing`, `leftRatio`, `leftTrigger`, `maxMs`, `minMs`, `ms`, `rightMissing`, `rightRatio`, `rightTrigger`, `span`
 
+### `packages/web/src/components/vnstockcharts/demo/i18n.js`
+
+- Functions:
+  - `DemoI18nBoundary`, `DemoI18nProvider`, `interpolate`, `readStoredLanguage`, `translate`, `useDemoI18n`
+- Top-level variables:
+  - `DEMO_LANGUAGE_STORAGE_KEY`, `DemoI18nContext`, `context`, `defaultContextValue`, `getPaneLabel`, `key`, `paneLabelKeys`, `setLanguage`, `stored`, `t`, `template`, `translations`, `value`
+
 ### `packages/web/src/components/vnstockcharts/demo/i18n.tsx`
 
 - Functions:
@@ -11354,10 +11510,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `DEMO_LANGUAGE_STORAGE_KEY`, `DemoI18nContext`, `context`, `defaultContextValue`, `getPaneLabel`, `key`, `paneLabelKeys`, `setLanguage`, `stored`, `t`, `template`, `translations`, `value`
 
+### `packages/web/src/components/vnstockcharts/demo/index.js`
+
+- Top-level variables:
+  - `container`, `root`
+
 ### `packages/web/src/components/vnstockcharts/demo/index.tsx`
 
 - Top-level variables:
   - `container`, `root`
+
+### `packages/web/src/components/vnstockcharts/demo/LibraryShowcaseDemo.js`
+
+- Functions:
+  - `ToolIcon`, `clonePoint`, `fetchOrderFlow`, `formatBarsHeld`, `formatSignedPrice`, `getSelectedDrawingId`, `handleDrawingShortcuts`, `handleEscape`, `handler`, `isEditableTarget`, `isYAxisSide`, `klineBarToRawOHLCV`, `loadChartType`, `loadDemoSettings`, `normalizeDate`, `normalizeVNITimeframe`, `paneTemplate`, `persistStyleOverrides`, `readSize`, `readStoredString`, `resolveDrawingPlacementForPane`, `resolveTimeframeMs`, `saveDemoSettings`, `sortDrawings`, `writeStoredValue`
+- Top-level variables:
+  - `BACKFILL_MAX_PAGES`, `BACKFILL_PAGE_LIMIT`, `BINANCE_TIMEFRAMES`, `CANDLE_TYPE_STORAGE_KEY`, `CHART_TYPES`, `CHART_TYPE_TO_SERIES`, `DAY_MS`, `DEFAULT_DEMO_SETTINGS`, `DEFAULT_MAX_VISIBLE_BARS`, `DEFAULT_MAX_VISIBLE_PANES`, `DEMO_SETTINGS_STORAGE_KEY`, `DRAWING_PANEL_WIDTH`, `DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `DRAWING_TOOL_FLYOUT_GAP`, `DRAWING_TOOL_FLYOUT_MARGIN`, `DRAWING_TOOL_FLYOUT_PADDING`, `DRAWING_TOOL_FLYOUT_WIDTH`, `INITIAL_HISTORY_MAX_PAGES`, `INITIAL_HISTORY_TARGET_BARS`, `MAIN_PRICE_SERIES_TYPES`, `MOBILE_DRAWING_TOOL_BREAKPOINT`, `MOBILE_DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `PERCENT_FORMAT`, `REPLAY_SPEEDS`, `SCHEDULER_TICK_MS`, `TOOL_GROUPS`, `TOOL_ICON_ALIASES`, `VNI_SYMBOL_STORAGE_KEY`, `VNI_TIMEFRAMES`, `VNI_TIMEFRAME_STORAGE_KEY`, `abortController`, `activeInGroup`, `activeSourceRef`, `adapter`, `addPane`, `allPrices`, `applyDelta`, `available`, `averageBarsHeld`, `averagePnl`, `backfillDebounceRef`, `backfillInFlightRef`, `bars`, `bestTrade`, `bringSelectedToFront`, `cancelled`, `candleTypeLabel`, `candleWidth`, `canvasBg`, `chartAdapter`, `chartData`, `chartRangeRef`, `chartReady`, `chartTimeframe`, `client`, `clipboardDrawing`, `cloneSelectedDrawing`, `closeDrawingContextMenu`, `closePaperTradePosition`, `closeReplayContextMenu`, `closeSettings`, `closedTrade`, `compactFlyoutButtonSize`, `controller`, `copySelectedDrawing`, `currentBars`, `currentItem`, `currentPosition`, `currentVisibleDomain`, `data`, `dataAdapter`, `dateFormat`, `deleteDrawingById`, `desiredType`, `domain`, `drawingClipboardRef`, `drawingContextMenuDrawing`, `drawingInspectorLabels`, `drawingInspectorPosition`, `drawingInteraction`, `drawingListPanelLabels`, `drawingListPosition`, `drawingPanelX`, `drawingStorage`, `drawingTextEditorLabels`, `earliestBar`, `enrichedData`, `ensureRangeHistory`, `estimatedFlyoutHeight`, `estimatedFlyoutWidth`, `existing`, `fallbackHeight`, `fallbackTop`, `file`, `first`, `firstBar`, `flyoutStyle`, `from`, `generation`, `h`, `handleAddPane`, `handleCancelTextEdit`, `handleChartRangeChange`, `handleChartTypeChange`, `handleClearDrawings`, `handleCloseDrawingInspector`, `handleCommitTextEdit`, `handleDrawingContextMenu`, `handleDrawingToolUsed`, `handleExportDrawings`, `handleFileLoaded`, `handleImportButtonClick`, `handleImportFileChange`, `handleLoadDrawings`, `handleLoadVNIChart`, `handlePATSaved`, `handlePaneAddSeriesRequest`, `handlePaperTradeClick`, `handlePaperTradeReset`, `handleReplayContextMenu`, `handleReplayFromHere`, `handleReplayJumpLatest`, `handleReplayRewind`, `handleReplaySpeedChange`, `handleReplayStepBack`, `handleReplayStepForward`, `handleReplayToggle`, `handleResetSettings`, `handleSourceSwitch`, `handleStartTextEdit`, `handleTickerUpdate`, `handleTimeframeChange`, `handleVisibleDomainChange`, `handleVniConfigChange`, `handleVniSymbolChange`, `hasWidgetData`, `iconId`, `importInputRef`, `inFlyout`, `inToolbar`, `indicatorLegendLabels`, `indicatorSeries`, `initialDemoSettings`, `initialWarmupRequestedRef`, `innerHeight`, `innerWidth`, `intervalId`, `isCompactDrawingToolbarViewport`, `isEditingText`, `isNearOldestEdge`, `isOpen`, `job`, `last`, `lastBar`, `lastClick`, `lastPaperTradeClickRef`, `lastPaperTradeSignatureRef`, `lastViewportMissingRef`, `lastVisibleBar`, `latestBar`, `latestBars`, `layout`, `leftBufferMs`, `leftZ`, `liveDataRef`, `liveMeasurementLabels`, `loaded`, `localCacheAdapter`, `localizePane`, `localizedMessage`, `localizedPane`, `losses`, `maxPrice`, `maxZ`, `message`, `minPrice`, `minZ`, `missing`, `mountedRef`, `msg`, `nativeEvent`, `neededStart`, `newHigh`, `newLow`, `newPrice`, `nextClone`, `nextDrawings`, `nextLabel`, `nextLeft`, `nextPaste`, `nextPosition`, `nextTop`, `nextWhaleData`, `node`, `normalizeDomain`, `normalizedDomain`, `now`, `observer`, `offlineBars`, `ohlcStatusLabel`, `olderBars`, `oldestBar`, `openPATModal`, `openSettings`, `page`, `pagesLoaded`, `paneHeaderLabels`, `paneHeights`, `paneLabel`, `paneOverlayLayout`, `paneState`, `panesMenuRef`, `paperTradeJournal`, `paperTradePanelVisible`, `paperTradePositionRef`, `paperTradeRealizedPnl`, `paperTradeReportVisible`, `paperTradeSummary`, `paperTradeUnrealizedPnl`, `parsed`, `pasteCopiedDrawing`, `pat`, `plotData`, `preferredSide`, `priceFormat`, `priceIsUp`, `priceOffset`, `pricePane`, `primary`, `profileMenuRef`, `queueRef`, `ratio`, `raw`, `realizedPnl`, `rect`, `renderWidgetPaneSplitter`, `renderWidgetPaneToolbar`, `replayController`, `replayControllerRef`, `replayFinished`, `replayProgressLabel`, `replayToggleTitle`, `replayVisibleData`, `requestId`, `requestOlderHistoryPage`, `resetToDefault`, `rightZ`, `saved`, `scheduleForViewport`, `schedulerGenerationRef`, `second`, `selectDrawingById`, `selectedDrawing`, `selectedDrawingId`, `selectedPane`, `selectedSymbol`, `sendSelectedToBack`, `shellNode`, `shellRef`, `shortcut`, `shouldEvaluateViewportBackfill`, `showOhlcMetrics`, `signature`, `snapshot`, `snapshotMap`, `sortedDrawings`, `stepPx`, `storageToolbarPosition`, `stored`, `supportsDrawingOverlays`, `supportsInteractiveChartOverlays`, `supportsMeasurementOverlay`, `sym`, `symbol`, `tagName`, `target`, `targetDrawing`, `targetSides`, `targetStart`, `timeOffset`, `timeframeMs`, `timer`, `to`, `toggleDrawingLockedById`, `toggleDrawingVisibleById`, `toggleSelectedLock`, `toggleSelectedVisible`, `toolLabel`, `toolbarRef`, `topbarStatusBadge`, `totalTrades`, `transformed`, `triggerBackfillDebounced`, `unsubscribeDrawings`, `unsubscribeSeries`, `updateSelectedDrawing`, `viewport`, `viewportStart`, `visibleDomainRef`, `visiblePanes`, `vniClientRef`, `vniRequestIdRef`, `vniSnapshotIdRef`, `vniSymbolRef`, `vniTimeframeRef`, `vniWsRef`, `volumeFormat`, `w`, `warmupInFlightRef`, `warmupInitialBinanceHistory`, `widgetData`, `widgetMessages`, `wins`, `worstTrade`, `ws`, `x`, `xExtents`, `y`
 
 ### `packages/web/src/components/vnstockcharts/demo/LibraryShowcaseDemo.tsx`
 
@@ -11366,12 +11534,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `BACKFILL_MAX_PAGES`, `BACKFILL_PAGE_LIMIT`, `BINANCE_TIMEFRAMES`, `CANDLE_TYPE_STORAGE_KEY`, `CHART_TYPES`, `CHART_TYPE_TO_SERIES`, `DAY_MS`, `DEFAULT_DEMO_SETTINGS`, `DEFAULT_MAX_VISIBLE_BARS`, `DEFAULT_MAX_VISIBLE_PANES`, `DEMO_SETTINGS_STORAGE_KEY`, `DRAWING_PANEL_WIDTH`, `DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `DRAWING_TOOL_FLYOUT_GAP`, `DRAWING_TOOL_FLYOUT_MARGIN`, `DRAWING_TOOL_FLYOUT_PADDING`, `DRAWING_TOOL_FLYOUT_WIDTH`, `INITIAL_HISTORY_MAX_PAGES`, `INITIAL_HISTORY_TARGET_BARS`, `MAIN_PRICE_SERIES_TYPES`, `MOBILE_DRAWING_TOOL_BREAKPOINT`, `MOBILE_DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `PERCENT_FORMAT`, `REPLAY_SPEEDS`, `SCHEDULER_TICK_MS`, `TOOL_GROUPS`, `TOOL_ICON_ALIASES`, `VNI_SYMBOL_STORAGE_KEY`, `VNI_TIMEFRAMES`, `VNI_TIMEFRAME_STORAGE_KEY`, `abortController`, `activeInGroup`, `activeSourceRef`, `adapter`, `addPane`, `allPrices`, `applyDelta`, `available`, `averageBarsHeld`, `averagePnl`, `backfillDebounceRef`, `backfillInFlightRef`, `bars`, `bestTrade`, `bringSelectedToFront`, `cancelled`, `candleTypeLabel`, `candleWidth`, `canvasBg`, `chartAdapter`, `chartData`, `chartRangeRef`, `chartReady`, `chartTimeframe`, `client`, `clipboardDrawing`, `cloneSelectedDrawing`, `closeDrawingContextMenu`, `closePaperTradePosition`, `closeReplayContextMenu`, `closeSettings`, `closedTrade`, `compactFlyoutButtonSize`, `controller`, `copySelectedDrawing`, `currentBars`, `currentItem`, `currentPosition`, `currentVisibleDomain`, `data`, `dataAdapter`, `dateFormat`, `deleteDrawingById`, `desiredType`, `domain`, `drawingClipboardRef`, `drawingContextMenuDrawing`, `drawingInspectorLabels`, `drawingInspectorPosition`, `drawingInteraction`, `drawingListPanelLabels`, `drawingListPosition`, `drawingPanelX`, `drawingStorage`, `drawingTextEditorLabels`, `earliestBar`, `enrichedData`, `ensureRangeHistory`, `estimatedFlyoutHeight`, `estimatedFlyoutWidth`, `existing`, `fallbackHeight`, `fallbackTop`, `file`, `first`, `firstBar`, `flyoutStyle`, `from`, `generation`, `h`, `handleAddPane`, `handleCancelTextEdit`, `handleChartRangeChange`, `handleChartTypeChange`, `handleClearDrawings`, `handleCloseDrawingInspector`, `handleCommitTextEdit`, `handleDrawingContextMenu`, `handleDrawingToolUsed`, `handleExportDrawings`, `handleFileLoaded`, `handleImportButtonClick`, `handleImportFileChange`, `handleLoadDrawings`, `handleLoadVNIChart`, `handlePATSaved`, `handlePaneAddSeriesRequest`, `handlePaperTradeClick`, `handlePaperTradeReset`, `handleReplayContextMenu`, `handleReplayFromHere`, `handleReplayJumpLatest`, `handleReplayRewind`, `handleReplaySpeedChange`, `handleReplayStepBack`, `handleReplayStepForward`, `handleReplayToggle`, `handleResetSettings`, `handleSourceSwitch`, `handleStartTextEdit`, `handleTickerUpdate`, `handleTimeframeChange`, `handleVisibleDomainChange`, `handleVniConfigChange`, `handleVniSymbolChange`, `hasWidgetData`, `iconId`, `importInputRef`, `inFlyout`, `inToolbar`, `indicatorLegendLabels`, `indicatorSeries`, `initialDemoSettings`, `initialWarmupRequestedRef`, `innerHeight`, `innerWidth`, `intervalId`, `isCompactDrawingToolbarViewport`, `isEditingText`, `isNearOldestEdge`, `isOpen`, `job`, `last`, `lastBar`, `lastClick`, `lastPaperTradeClickRef`, `lastPaperTradeSignatureRef`, `lastViewportMissingRef`, `lastVisibleBar`, `latestBar`, `latestBars`, `layout`, `leftBufferMs`, `leftZ`, `liveDataRef`, `liveMeasurementLabels`, `loaded`, `localCacheAdapter`, `localizePane`, `localizedMessage`, `localizedPane`, `losses`, `maxPrice`, `maxZ`, `message`, `minPrice`, `minZ`, `missing`, `mountedRef`, `msg`, `nativeEvent`, `neededStart`, `newHigh`, `newLow`, `newPrice`, `nextClone`, `nextDrawings`, `nextLabel`, `nextLeft`, `nextPaste`, `nextPosition`, `nextTop`, `nextWhaleData`, `node`, `normalizeDomain`, `normalizedDomain`, `now`, `observer`, `offlineBars`, `ohlcStatusLabel`, `olderBars`, `oldestBar`, `openPATModal`, `openSettings`, `page`, `pagesLoaded`, `paneHeaderLabels`, `paneHeights`, `paneLabel`, `paneOverlayLayout`, `paneState`, `panesMenuRef`, `paperTradeJournal`, `paperTradePanelVisible`, `paperTradePositionRef`, `paperTradeRealizedPnl`, `paperTradeReportVisible`, `paperTradeSummary`, `paperTradeUnrealizedPnl`, `parsed`, `pasteCopiedDrawing`, `pat`, `plotData`, `preferredSide`, `priceFormat`, `priceIsUp`, `priceOffset`, `pricePane`, `primary`, `profileMenuRef`, `queueRef`, `ratio`, `raw`, `realizedPnl`, `rect`, `renderWidgetPaneSplitter`, `renderWidgetPaneToolbar`, `replayController`, `replayControllerRef`, `replayFinished`, `replayProgressLabel`, `replayToggleTitle`, `replayVisibleData`, `requestId`, `requestOlderHistoryPage`, `resetToDefault`, `rightZ`, `saved`, `scheduleForViewport`, `schedulerGenerationRef`, `second`, `selectDrawingById`, `selectedDrawing`, `selectedDrawingId`, `selectedPane`, `selectedSymbol`, `sendSelectedToBack`, `shellNode`, `shellRef`, `shortcut`, `shouldEvaluateViewportBackfill`, `showOhlcMetrics`, `signature`, `snapshot`, `snapshotMap`, `sortedDrawings`, `stepPx`, `storageToolbarPosition`, `stored`, `supportsDrawingOverlays`, `supportsInteractiveChartOverlays`, `supportsMeasurementOverlay`, `sym`, `symbol`, `tagName`, `target`, `targetDrawing`, `targetSides`, `targetStart`, `timeOffset`, `timeframeMs`, `timer`, `to`, `toggleDrawingLockedById`, `toggleDrawingVisibleById`, `toggleSelectedLock`, `toggleSelectedVisible`, `toolLabel`, `toolbarRef`, `topbarStatusBadge`, `totalTrades`, `transformed`, `triggerBackfillDebounced`, `unsubscribeDrawings`, `unsubscribeSeries`, `updateSelectedDrawing`, `viewport`, `viewportStart`, `visibleDomainRef`, `visiblePanes`, `vniClientRef`, `vniRequestIdRef`, `vniSnapshotIdRef`, `vniSymbolRef`, `vniTimeframeRef`, `vniWsRef`, `volumeFormat`, `w`, `warmupInFlightRef`, `warmupInitialBinanceHistory`, `widgetData`, `widgetMessages`, `wins`, `worstTrade`, `ws`, `x`, `xExtents`, `y`
 
+### `packages/web/src/components/vnstockcharts/demo/LiveDemo.js`
+
+- Functions:
+  - `LiveDemoContent`
+- Top-level variables:
+  - `cancelled`, `height`, `margin`, `sourceLabel`, `width`
+
 ### `packages/web/src/components/vnstockcharts/demo/LiveDemo.tsx`
 
 - Functions:
   - `LiveDemoContent`
 - Top-level variables:
   - `cancelled`, `height`, `margin`, `sourceLabel`, `width`
+
+### `packages/web/src/components/vnstockcharts/demo/OriginalLikeDemo.js`
+
+- Functions:
+  - `OriginalLikeDemoContent`, `createOrigin`, `ema12Accessor`, `ema26Accessor`, `handleBrush`, `handleResetView`, `handleResize`, `handleVisibleDomainChange`, `macdAccessor`, `updateWidth`, `xAxisTickFormat`
+- Top-level variables:
+  - `BRUSH_TYPE`, `EMA12_SERIES`, `EMA26_SERIES`, `MACD_SERIES`, `axisTheme`, `bearishColor`, `bullishColor`, `calculatedData`, `chartHeight`, `chartSurfaceRef`, `coordinateTheme`, `ema12Stroke`, `ema26Stroke`, `endIndex`, `initialXExtents`, `isZoomedIn`, `left`, `macdAppearance`, `macdDateFormat`, `macdFormat`, `macdFormat3`, `macdHeight`, `macdOrigin`, `macdYAxisTheme`, `macdYAxisTickFormat`, `macdYAxisTicks`, `margin`, `node`, `observer`, `priceFormat`, `priceFormat1`, `priceFormat3`, `priceHeight`, `priceYAxisTheme`, `priceYAxisTickFormat`, `priceYAxisTicks`, `rawData`, `resolvedChartWidth`, `right`, `smaVolume10`, `startIndex`, `themeFontFamily`, `tickDatum`, `tickIndex`, `tooltipDateFormat`, `tooltipDisplayTexts`, `visibleBars`, `visibleDomainLabel`, `volumeAxisFormat`, `volumeFormat`, `volumeHeight`, `volumeMouseFormat`, `volumeOrigin`, `volumeYAxisTheme`, `xScaleProvider`
 
 ### `packages/web/src/components/vnstockcharts/demo/OriginalLikeDemo.tsx`
 
@@ -11380,12 +11562,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `BRUSH_TYPE`, `EMA12_SERIES`, `EMA26_SERIES`, `MACD_SERIES`, `axisTheme`, `bearishColor`, `bullishColor`, `calculatedData`, `chartHeight`, `chartSurfaceRef`, `coordinateTheme`, `ema12Stroke`, `ema26Stroke`, `endIndex`, `initialXExtents`, `isZoomedIn`, `left`, `macdAppearance`, `macdDateFormat`, `macdFormat`, `macdFormat3`, `macdHeight`, `macdOrigin`, `macdYAxisTheme`, `macdYAxisTickFormat`, `macdYAxisTicks`, `margin`, `node`, `observer`, `priceFormat`, `priceFormat1`, `priceFormat3`, `priceHeight`, `priceYAxisTheme`, `priceYAxisTickFormat`, `priceYAxisTicks`, `rawData`, `resolvedChartWidth`, `right`, `smaVolume10`, `startIndex`, `themeFontFamily`, `tickDatum`, `tickIndex`, `tooltipDateFormat`, `tooltipDisplayTexts`, `visibleBars`, `visibleDomainLabel`, `volumeAxisFormat`, `volumeFormat`, `volumeHeight`, `volumeMouseFormat`, `volumeOrigin`, `volumeYAxisTheme`, `xScaleProvider`
 
+### `packages/web/src/components/vnstockcharts/demo/PaneSettingsModal.js`
+
+- Functions:
+  - `PaneSettingsModal`, `colorPicker`, `describeSeries`, `getIndicatorSetLabel`, `handleAddSeries`, `handleApplyIndicatorSet`, `handleBackdropMouseDown`, `handleDeleteIndicatorSet`, `handleDeletePane`, `handleImportIndicatorSetChange`, `handleImportIndicatorSetClick`, `handleKeyDown`, `handleSaveCurrentIndicatorSet`, `handleSeriesParamChange`, `paneLabel`, `parseNumber`, `renderField`, `renderIndicatorSetsSection`, `renderIndicatorsSection`, `renderLayoutSection`, `renderResetSection`, `renderSeriesParams`, `renderSetCard`, `renderThemeSection`
+- Top-level variables:
+  - `availableSeriesTypes`, `builtinSets`, `canAddPane`, `canMoveDown`, `canMoveUp`, `composerEntry`, `currentValue`, `dialogRef`, `entry`, `fast`, `fields`, `file`, `gridClassName`, `hidden`, `importInputRef`, `imported`, `indicatorSets`, `isDefaultPane`, `isSelected`, `label`, `next`, `nextSelectedPaneId`, `numeric`, `overLimit`, `rawValue`, `resolvedComposerType`, `revealEnabled`, `saved`, `sectionLabels`, `selectedPane`, `set`, `slow`, `subColorSection`, `subComponents`, `userSets`, `visibleCount`, `visibleIndex`
+
 ### `packages/web/src/components/vnstockcharts/demo/PaneSettingsModal.tsx`
 
 - Functions:
   - `PaneSettingsModal`, `describeSeries`, `getIndicatorSetLabel`, `handleAddSeries`, `handleApplyIndicatorSet`, `handleBackdropMouseDown`, `handleDeleteIndicatorSet`, `handleDeletePane`, `handleImportIndicatorSetChange`, `handleImportIndicatorSetClick`, `handleKeyDown`, `handleSaveCurrentIndicatorSet`, `handleSeriesParamChange`, `paneLabel`, `parseNumber`, `renderField`, `renderIndicatorSetsSection`, `renderIndicatorsSection`, `renderLayoutSection`, `renderResetSection`, `renderSeriesParams`, `renderSetCard`, `renderThemeSection`
 - Top-level variables:
   - `availableSeriesTypes`, `builtinSets`, `canAddPane`, `canMoveDown`, `canMoveUp`, `colorPicker`, `composerEntry`, `currentValue`, `dialogRef`, `entry`, `fast`, `fields`, `file`, `gridClassName`, `hidden`, `importInputRef`, `imported`, `indicatorSets`, `isDefaultPane`, `isSelected`, `label`, `next`, `nextSelectedPaneId`, `numeric`, `overLimit`, `rawValue`, `resolvedComposerType`, `revealEnabled`, `saved`, `sectionLabels`, `selectedPane`, `set`, `slow`, `subColorSection`, `subComponents`, `userSets`, `visibleCount`, `visibleIndex`
+
+### `packages/web/src/components/vnstockcharts/demo/styleOverridesPersistence.js`
+
+- Functions:
+  - `getStorage`, `isEmptyOverrides`, `isPlainRecord`, `loadPersistedStyleOverrides`, `normalizeStyleMap`, `restorePersistedStyleOverrides`, `saveCurrentStyleOverrides`, `snapshotStyleOverrides`
+- Top-level variables:
+  - `STYLE_OVERRIDES_STORAGE_KEY`, `overrides`, `parsed`, `raw`, `resolvedStorage`
 
 ### `packages/web/src/components/vnstockcharts/demo/styleOverridesPersistence.ts`
 
@@ -11394,12 +11590,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `STYLE_OVERRIDES_STORAGE_KEY`, `overrides`, `parsed`, `raw`, `resolvedStorage`
 
+### `packages/web/src/components/vnstockcharts/demo/topbarStatusBadge.js`
+
+- Functions:
+  - `resolveDemoTopbarStatusBadge`
+- Top-level variables:
+  - `message`
+
 ### `packages/web/src/components/vnstockcharts/demo/topbarStatusBadge.ts`
 
 - Functions:
   - `resolveDemoTopbarStatusBadge`
 - Top-level variables:
   - `message`
+
+### `packages/web/src/components/vnstockcharts/demo/usePaneLayout.js`
+
+- Functions:
+  - `applyDelta`, `loadRatio`, `pxToRatio`, `ratioToPx`, `sanitize`, `saveRatio`, `usePaneLayout`
+- Top-level variables:
+  - `DEFAULT_RATIO`, `LS_KEY`, `MIN_PX`, `PANE_MARGIN_V`, `applyDragDelta`, `available`, `k`, `momentumH`, `newA`, `newB`, `newMomentumH`, `newPriceH`, `newVolumeH`, `overflow`, `priceH`, `px`, `r`, `resetLayout`, `stored`, `sum`, `total`, `volumeH`
 
 ### `packages/web/src/components/vnstockcharts/demo/usePaneLayout.ts`
 
@@ -11413,6 +11623,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `points`, `result`
 
+### `packages/web/src/components/vnstockcharts/demo/vninvest/adapters.js`
+
+- Functions:
+  - `chartPointsToRawOHLCV`
+- Top-level variables:
+  - `date`, `result`
+
 ### `packages/web/src/components/vnstockcharts/demo/vninvest/adapters.ts`
 
 - Functions:
@@ -11420,7 +11637,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `date`, `result`
 
+### `packages/web/src/components/vnstockcharts/demo/vninvest/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/demo/vninvest/index.ts`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/demo/vninvest/types.js`
 
 - No parseable top-level symbols found
 
@@ -11428,9 +11653,18 @@ Generated at: `2026-05-21 23:14:30`
 
 - No parseable top-level symbols found
 
+### `packages/web/src/components/vnstockcharts/demo/vninvest/VNInvestClient.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/demo/vninvest/VNInvestClient.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/index.js`
+
+- Top-level variables:
+  - `version`
 
 ### `packages/web/src/components/vnstockcharts/index.ts`
 
@@ -11446,10 +11680,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `adapter`, `bars`, `fetchMock`, `from`, `moreBars`, `onBar`, `onOrderbook`, `onTrade`, `sampleBars`, `sampleSymbols`, `symbols`, `to`, `unsubscribeBar`, `unsubscribeOrderbook`, `unsubscribeTrades`, `url`
 
+### `packages/web/src/components/vnstockcharts/lib/adapters/BaseAdapter.js`
+
+- Classes:
+  - `BaseAdapter`
+- Top-level variables:
+  - `cached`, `fallbackOrigin`, `now`, `rawDate`, `response`, `url`, `value`
+
 ### `packages/web/src/components/vnstockcharts/lib/adapters/BaseAdapter.ts`
 
 - Top-level variables:
   - `cached`, `fallbackOrigin`, `now`, `rawDate`, `response`, `url`, `value`
+
+### `packages/web/src/components/vnstockcharts/lib/adapters/BinanceAdapter.js`
+
+- Classes:
+  - `BinanceAdapter`
+- Functions:
+  - `parseKlines`, `resolveInterval`, `validateSymbol`
+- Top-level variables:
+  - `BINANCE_BASE`, `BINANCE_INTERVALS`, `INTERVAL_MAP`, `MAX_LIMIT`, `SYMBOL_RE`, `bars`, `binanceAdapter`, `json`, `mapped`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `upper`, `urlParams`
 
 ### `packages/web/src/components/vnstockcharts/lib/adapters/BinanceAdapter.test.ts`
 
@@ -11465,9 +11715,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `BINANCE_BASE`, `BINANCE_INTERVALS`, `INTERVAL_MAP`, `MAX_LIMIT`, `SYMBOL_RE`, `bars`, `binanceAdapter`, `json`, `mapped`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `upper`, `urlParams`
 
+### `packages/web/src/components/vnstockcharts/lib/adapters/DataAdapter.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/adapters/DataAdapter.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/adapters/DjangoVnstockAdapter.js`
+
+- Classes:
+  - `DjangoVnstockAdapter`
+- Functions:
+  - `createRestAdapter`, `normalizeOrderbook`, `normalizeTrade`
+- Top-level variables:
+  - `cacheKey`, `params`, `rawBar`, `rawBars`, `rawSnapshot`, `rawTrade`, `socket`
 
 ### `packages/web/src/components/vnstockcharts/lib/adapters/DjangoVnstockAdapter.ts`
 
@@ -11478,9 +11741,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `cacheKey`, `params`, `rawBar`, `rawBars`, `rawSnapshot`, `rawTrade`, `socket`
 
+### `packages/web/src/components/vnstockcharts/lib/adapters/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/adapters/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/adapters/LocalCacheAdapter.js`
+
+- Classes:
+  - `LocalCacheAdapter`
+- Functions:
+  - `cacheKey`, `isValidBar`
+- Top-level variables:
+  - `bars`, `before`, `key`, `slice`, `sorted`
 
 ### `packages/web/src/components/vnstockcharts/lib/adapters/LocalCacheAdapter.test.ts`
 
@@ -11496,6 +11772,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `bars`, `before`, `key`, `slice`, `sorted`
 
+### `packages/web/src/components/vnstockcharts/lib/adapters/MockAdapter.js`
+
+- Classes:
+  - `MockAdapter`
+- Functions:
+  - `cloneBar`, `createMockBars`, `createSampleBars`, `emitNext`, `emitSnapshot`, `emitTrade`
+- Top-level variables:
+  - `bar`, `bars`, `close`, `cursor`, `drift`, `high`, `low`, `normalizedQuery`, `open`, `snapshotIndex`, `timerId`, `tradeIndex`
+
 ### `packages/web/src/components/vnstockcharts/lib/adapters/MockAdapter.ts`
 
 - Classes:
@@ -11505,9 +11790,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `bar`, `bars`, `close`, `cursor`, `drift`, `high`, `low`, `normalizedQuery`, `open`, `snapshotIndex`, `timerId`, `tradeIndex`
 
+### `packages/web/src/components/vnstockcharts/lib/adapters/StockDataAdapter.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/adapters/StockDataAdapter.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/adapters/VNStocksAdapter.js`
+
+- Classes:
+  - `VNStocksAdapter`
+- Functions:
+  - `buildHeaders`, `clampDays`, `extractRawPoints`, `normalizeApiBase`, `normalizeInterval`, `normalizePoint`, `parseNumber`, `parseTimestamp`, `readStorageValue`, `resolveApiBase`, `resolveDays`, `resolveIntervalMs`, `resolvePatToken`, `validateSymbol`
+- Top-level variables:
+  - `API_BASE_STORAGE_KEY`, `DAY_MS`, `DEFAULT_API_BASE`, `MAX_DAYS`, `PAT_STORAGE_KEY`, `SYMBOL_RE`, `allBars`, `anchorWindowMs`, `backwardAnchor`, `bars`, `base`, `close`, `data`, `days`, `globalScope`, `high`, `intervalMs`, `low`, `normalized`, `numeric`, `open`, `parsed`, `patToken`, `payload`, `point`, `rawDate`, `requestedWindowMs`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `stored`, `timestamp`, `trimmed`, `url`, `volume`
 
 ### `packages/web/src/components/vnstockcharts/lib/adapters/VNStocksAdapter.test.ts`
 
@@ -11525,10 +11823,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `API_BASE_STORAGE_KEY`, `DAY_MS`, `DEFAULT_API_BASE`, `MAX_DAYS`, `PAT_STORAGE_KEY`, `SYMBOL_RE`, `allBars`, `anchorWindowMs`, `backwardAnchor`, `bars`, `base`, `close`, `data`, `days`, `globalScope`, `high`, `intervalMs`, `low`, `normalized`, `numeric`, `open`, `parsed`, `patToken`, `payload`, `point`, `rawDate`, `requestedWindowMs`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `stored`, `timestamp`, `trimmed`, `url`, `volume`
 
+### `packages/web/src/components/vnstockcharts/lib/algorithm/index.js`
+
+- Functions:
+  - `algorithm`
+- Top-level variables:
+  - `calculator`, `defaultAlgorithm`, `newData`, `windowSize`
+
 ### `packages/web/src/components/vnstockcharts/lib/algorithm/index.ts`
 
 - Top-level variables:
   - `algorithm`, `calculator`, `defaultAlgorithm`, `newData`, `windowSize`
+
+### `packages/web/src/components/vnstockcharts/lib/annotation/Annotate.js`
+
+- Classes:
+  - `Annotate`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `data`
 
 ### `packages/web/src/components/vnstockcharts/lib/annotation/Annotate.tsx`
 
@@ -11539,6 +11853,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `data`
 
+### `packages/web/src/components/vnstockcharts/lib/annotation/BarAnnotation.js`
+
+- Classes:
+  - `BarAnnotation`
+- Functions:
+  - `getArrowForTextIcon`, `helper`
+- Top-level variables:
+  - `arrows`, `xFunc`, `yFunc`
+
 ### `packages/web/src/components/vnstockcharts/lib/annotation/BarAnnotation.tsx`
 
 - Classes:
@@ -11548,12 +11871,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `arrows`, `xFunc`, `yFunc`
 
+### `packages/web/src/components/vnstockcharts/lib/annotation/index.js`
+
+- Functions:
+  - `buyPath`, `sellPath`
+- Top-level variables:
+  - `bottomWidth`, `halfWidth`, `height`
+
 ### `packages/web/src/components/vnstockcharts/lib/annotation/index.ts`
 
 - Functions:
   - `buyPath`, `sellPath`
 - Top-level variables:
   - `bottomWidth`, `halfWidth`, `height`
+
+### `packages/web/src/components/vnstockcharts/lib/annotation/Label.js`
+
+- Classes:
+  - `Label`
+- Functions:
+  - `drawOnCanvas`, `drawOnCanvas2`, `getText`, `getYScale`
+- Top-level variables:
+  - `radians`
 
 ### `packages/web/src/components/vnstockcharts/lib/annotation/Label.tsx`
 
@@ -11564,6 +11903,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `radians`
 
+### `packages/web/src/components/vnstockcharts/lib/annotation/LabelAnnotation.js`
+
+- Classes:
+  - `LabelAnnotation`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `defaultProps`, `xFunc`, `yFunc`
+
 ### `packages/web/src/components/vnstockcharts/lib/annotation/LabelAnnotation.tsx`
 
 - Classes:
@@ -11572,6 +11920,15 @@ Generated at: `2026-05-21 23:14:30`
   - `helper`
 - Top-level variables:
   - `defaultProps`, `xFunc`, `yFunc`
+
+### `packages/web/src/components/vnstockcharts/lib/annotation/SvgPathAnnotation.js`
+
+- Classes:
+  - `SvgPathAnnotation`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `xFunc`, `yFunc`
 
 ### `packages/web/src/components/vnstockcharts/lib/annotation/SvgPathAnnotation.tsx`
 
@@ -11582,6 +11939,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `xFunc`, `yFunc`
 
+### `packages/web/src/components/vnstockcharts/lib/axes/Axis.js`
+
+- Classes:
+  - `Axis`
+- Functions:
+  - `Tick`, `axisLineSVG`, `axisTicksSVG`, `drawAxisLine`, `drawEachTick`, `drawEachTickLabel`, `drawTicks`, `tickHelper`
+- Top-level variables:
+  - `GenericChartComponentAny`, `baseFormat`, `baseTickValues`, `d`, `domain`, `format`, `nodes`, `result`, `sign`, `simulation`, `tickProps`, `tickSpacing`, `tickValues`, `ticks`, `x`, `xAxis`, `y`, `zip`, `zoomCapture`
+
 ### `packages/web/src/components/vnstockcharts/lib/axes/Axis.tsx`
 
 - Classes:
@@ -11590,6 +11956,15 @@ Generated at: `2026-05-21 23:14:30`
   - `Tick`, `axisLineSVG`, `axisTicksSVG`, `drawAxisLine`, `drawEachTick`, `drawEachTickLabel`, `drawTicks`, `tickHelper`
 - Top-level variables:
   - `GenericChartComponentAny`, `baseFormat`, `baseTickValues`, `d`, `domain`, `format`, `nodes`, `result`, `sign`, `simulation`, `tickProps`, `tickSpacing`, `tickValues`, `ticks`, `x`, `xAxis`, `y`, `zip`, `zoomCapture`
+
+### `packages/web/src/components/vnstockcharts/lib/axes/AxisLine.js`
+
+- Classes:
+  - `AxisLine`
+- Functions:
+  - `d3_scaleExtent`, `d3_scaleRange`
+- Top-level variables:
+  - `d`, `sign`, `start`, `xAxis`
 
 ### `packages/web/src/components/vnstockcharts/lib/axes/AxisLine.tsx`
 
@@ -11600,6 +11975,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `d`, `sign`, `start`, `xAxis`
 
+### `packages/web/src/components/vnstockcharts/lib/axes/AxisTicks.js`
+
+- Classes:
+  - `AxisTicks`, `Tick`
+- Functions:
+  - `tickTransform_svg_axisX`, `tickTransform_svg_axisY`
+- Top-level variables:
+  - `baseFormat`, `format`, `origin`, `result`, `sign`, `tickSpacing`, `tickTransform`, `ticks`, `xAxis`
+
 ### `packages/web/src/components/vnstockcharts/lib/axes/AxisTicks.tsx`
 
 - Classes:
@@ -11609,6 +11993,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `baseFormat`, `format`, `origin`, `result`, `sign`, `tickSpacing`, `tickTransform`, `ticks`, `xAxis`
 
+### `packages/web/src/components/vnstockcharts/lib/axes/AxisZoomCapture.js`
+
+- Classes:
+  - `AxisZoomCapture`
+- Top-level variables:
+  - `center`, `cursor`, `diff`, `mouseXY`, `newDomain`, `startScale`, `startXY`, `tempRange`
+
 ### `packages/web/src/components/vnstockcharts/lib/axes/AxisZoomCapture.tsx`
 
 - Classes:
@@ -11616,9 +12007,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `center`, `cursor`, `diff`, `mouseXY`, `newDomain`, `startScale`, `startXY`, `tempRange`
 
+### `packages/web/src/components/vnstockcharts/lib/axes/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/axes/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/axes/XAxis.js`
+
+- Classes:
+  - `XAxis`
+- Functions:
+  - `getXScale`, `helper`
+- Top-level variables:
+  - `axisLocation`, `moreProps`, `trueDomain`, `trueRange`, `x`, `y`
 
 ### `packages/web/src/components/vnstockcharts/lib/axes/XAxis.tsx`
 
@@ -11629,6 +12033,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `axisLocation`, `moreProps`, `trueDomain`, `trueRange`, `x`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/axes/YAxis.js`
+
+- Classes:
+  - `YAxis`
+- Functions:
+  - `getYScale`, `helper`
+- Top-level variables:
+  - `axisLocation`, `trueDomain`, `trueRange`, `x`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/axes/YAxis.tsx`
 
 - Classes:
@@ -11638,12 +12051,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `axisLocation`, `trueDomain`, `trueRange`, `x`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/BackgroundText.js`
+
+- Classes:
+  - `BackgroundText`
+- Top-level variables:
+  - `contexts`, `interval`, `props`, `text`
+
 ### `packages/web/src/components/vnstockcharts/lib/BackgroundText.tsx`
 
 - Classes:
   - `BackgroundText`
 - Top-level variables:
   - `contexts`, `interval`, `props`, `text`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/atr.js`
+
+- Functions:
+  - `calculator`, `source`
+- Top-level variables:
+  - `atrAlgorithm`, `atrValue`, `d`, `newData`, `options`, `prev`, `prevATR`, `tr`, `trueRangeAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/atr.ts`
 
@@ -11652,12 +12079,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `atrAlgorithm`, `atrValue`, `d`, `newData`, `options`, `prev`, `prevATR`, `source`, `tr`, `trueRangeAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/bollingerband.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `avg`, `bollingerBandAlgorithm`, `meanAlgorithm`, `options`, `source`, `stdDev`, `tuples`, `zip`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/bollingerband.ts`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `avg`, `bollingerBandAlgorithm`, `meanAlgorithm`, `options`, `source`, `stdDev`, `tuples`, `zip`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/change.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `absoluteChange`, `algo`, `newData`, `options`, `percentChange`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/change.ts`
 
@@ -11666,6 +12107,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `absoluteChange`, `algo`, `newData`, `options`, `percentChange`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/compare.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `b`, `base`, `compareData`, `first`, `firsts`, `options`, `result`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/compare.ts`
 
 - Functions:
@@ -11673,10 +12121,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `b`, `base`, `compareData`, `first`, `firsts`, `options`, `result`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/defaultOptionsForComputation.js`
+
+- Top-level variables:
+  - `ATR`, `BollingerBand`, `Change`, `Compare`, `EMA`, `ElderImpulse`, `ElderRay`, `ForceIndex`, `FullStochasticOscillator`, `Kagi`, `MACD`, `PointAndFigure`, `RSI`, `Renko`, `SAR`, `SMA`, `SmoothedForceIndex`, `TMA`, `WMA`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/defaultOptionsForComputation.ts`
 
 - Top-level variables:
   - `ATR`, `BollingerBand`, `Change`, `Compare`, `EMA`, `ElderImpulse`, `ElderRay`, `ForceIndex`, `FullStochasticOscillator`, `Kagi`, `MACD`, `PointAndFigure`, `RSI`, `Renko`, `SAR`, `SMA`, `SmoothedForceIndex`, `TMA`, `WMA`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/elderRay.js`
+
+- Functions:
+  - `calculator`, `ohlc`
+- Top-level variables:
+  - `bearPower`, `bullPower`, `meanAlgorithm`, `newData`, `options`, `zip`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/elderRay.ts`
 
@@ -11685,12 +12145,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `bearPower`, `bullPower`, `meanAlgorithm`, `newData`, `ohlc`, `options`, `zip`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/ema.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `alpha`, `initialAccumulator`, `initialValue`, `nextValue`, `options`, `previous`, `skip`, `source`, `v`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/ema.ts`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `alpha`, `initialAccumulator`, `initialValue`, `nextValue`, `options`, `previous`, `skip`, `source`, `v`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/forceIndex.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `forceIndex`, `forceIndexCalulator`, `options`, `source`, `volume`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/forceIndex.ts`
 
@@ -11699,6 +12173,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `forceIndex`, `forceIndexCalulator`, `options`, `source`, `volume`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/heikinAshi.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `algorithm`, `close`, `high`, `low`, `open`, `source`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/heikinAshi.ts`
 
 - Functions:
@@ -11706,9 +12187,20 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `algorithm`, `close`, `high`, `low`, `open`, `source`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/kagi.js`
+
+- Functions:
+  - `calculator`, `dateAccessor`, `dateMutator`
+- Top-level variables:
+  - `atrAlgorithm`, `atrCalculator`, `dir`, `kagiData`, `line`, `nextChangePoint`, `nextLineOpen`, `options`, `prevPeak`, `priceMovement`, `reversalThreshold`, `source`, `startAs`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/kagi.ts`
 
@@ -11717,12 +12209,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `atrAlgorithm`, `atrCalculator`, `dateAccessor`, `dateMutator`, `dir`, `kagiData`, `line`, `nextChangePoint`, `nextLineOpen`, `options`, `prevPeak`, `priceMovement`, `reversalThreshold`, `source`, `startAs`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/macd.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `fastEMA`, `macdArray`, `macdCalculator`, `macdResult`, `options`, `signalArray`, `signalEMA`, `slowEMA`, `undefinedArray`, `zip`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/macd.ts`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `fastEMA`, `macdArray`, `macdCalculator`, `macdResult`, `options`, `signalArray`, `signalEMA`, `slowEMA`, `undefinedArray`, `zip`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/pointAndFigure.js`
+
+- Functions:
+  - `calculator`, `createBox`, `dateAccessor`, `dateMutator`, `updateColumns`
+- Top-level variables:
+  - `box`, `column`, `columnData`, `downwardMovement`, `noOfBoxes`, `options`, `prevBoxClose`, `pricingMethod`, `source`, `upwardMovement`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/pointAndFigure.ts`
 
@@ -11731,12 +12237,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `box`, `column`, `columnData`, `dateAccessor`, `dateMutator`, `downwardMovement`, `noOfBoxes`, `options`, `prevBoxClose`, `pricingMethod`, `source`, `upwardMovement`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/renko.js`
+
+- Functions:
+  - `calculator`, `dateAccessor`, `dateMutator`
+- Top-level variables:
+  - `atrAlgorithm`, `atrCalculator`, `brick`, `brickSize`, `index`, `j`, `newBrick`, `noOfBricks`, `options`, `prevCloseToHigh`, `pricingMethod`, `renkoData`, `source`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/renko.ts`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `atrAlgorithm`, `atrCalculator`, `brick`, `brickSize`, `dateAccessor`, `dateMutator`, `index`, `j`, `newBrick`, `noOfBricks`, `options`, `prevCloseToHigh`, `pricingMethod`, `renkoData`, `source`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/rsi.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `avgGain`, `avgLoss`, `change`, `gainsAndLosses`, `gainsAndLossesCalculator`, `now`, `options`, `prev`, `prevAvgGain`, `relativeStrength`, `rsiAlgorithm`, `rsiData`, `rsiValue`, `source`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/rsi.ts`
 
@@ -11745,12 +12265,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `avgGain`, `avgLoss`, `change`, `gainsAndLosses`, `gainsAndLossesCalculator`, `now`, `options`, `prev`, `prevAvgGain`, `relativeStrength`, `rsiAlgorithm`, `rsiData`, `rsiValue`, `source`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/sar.js`
+
+- Functions:
+  - `calc`, `calculator`
+- Top-level variables:
+  - `algorithm`, `calculatedData`, `current`, `fallingEp`, `fallingSar`, `options`, `risingEp`, `risingSar`, `use`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/sar.ts`
 
 - Functions:
   - `calc`, `calculator`
 - Top-level variables:
   - `algorithm`, `calculatedData`, `current`, `fallingEp`, `fallingSar`, `options`, `risingEp`, `risingSar`, `use`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/sma.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `average`, `options`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/sma.ts`
 
@@ -11759,12 +12293,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `average`, `options`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/smoothedForceIndex.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `algo`, `force`, `forceMA`, `ma`, `merge`, `options`, `smoothed`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/smoothedForceIndex.ts`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `algo`, `force`, `forceMA`, `ma`, `merge`, `options`, `smoothed`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/sto.js`
+
+- Functions:
+  - `calculator`, `high`, `source`
+- Top-level variables:
+  - `currentClose`, `dData`, `dWindow`, `highestHigh`, `indicatorData`, `k`, `kData`, `kSmoothed`, `kWindow`, `lowestLow`, `options`, `stoAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/sto.ts`
 
@@ -11773,12 +12321,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `currentClose`, `dData`, `dWindow`, `highestHigh`, `indicatorData`, `k`, `kData`, `kSmoothed`, `kWindow`, `lowestLow`, `options`, `source`, `stoAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/calculator/tma.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `n`, `options`, `total`, `triaverage`, `weight`
+
 ### `packages/web/src/components/vnstockcharts/lib/calculator/tma.ts`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `n`, `options`, `total`, `triaverage`, `weight`
+
+### `packages/web/src/components/vnstockcharts/lib/calculator/wma.js`
+
+- Functions:
+  - `calculator`
+- Top-level variables:
+  - `options`, `total`, `waverage`, `weight`
 
 ### `packages/web/src/components/vnstockcharts/lib/calculator/wma.ts`
 
@@ -11787,6 +12349,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `options`, `total`, `waverage`, `weight`
 
+### `packages/web/src/components/vnstockcharts/lib/CanvasContainer.js`
+
+- Classes:
+  - `CanvasContainer`
+- Top-level variables:
+  - `log`
+
 ### `packages/web/src/components/vnstockcharts/lib/CanvasContainer.tsx`
 
 - Classes:
@@ -11794,12 +12363,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `log`
 
+### `packages/web/src/components/vnstockcharts/lib/Chart.js`
+
+- Functions:
+  - `Chart`, `listener`
+- Top-level variables:
+  - `chartConfig`
+
 ### `packages/web/src/components/vnstockcharts/lib/Chart.tsx`
 
 - Functions:
   - `Chart`, `listener`
 - Top-level variables:
   - `chartConfig`
+
+### `packages/web/src/components/vnstockcharts/lib/ChartCanvas.js`
+
+- Classes:
+  - `ChartCanvas`
+- Functions:
+  - `calculateFullData`, `calculateState`, `getCursorStyle`, `getDimensions`, `getXScaleDirection`, `resetChart`, `setXRange`, `shouldResetChart`, `updateChart`
+- Top-level variables:
+  - `CANDIDATES_FOR_RESET`, `c`, `candleWidth`, `canvases`, `chartConfig`, `contextValue`, `currentCharts`, `currentItem`, `cursor`, `cursorStyle`, `cx`, `dimensions`, `direction`, `dragableComponents`, `dx`, `endIndex`, `endValue`, `extent`, `firstItem`, `initialPlotData`, `interaction`, `item`, `lastItem`, `lastItemX`, `log`, `newDomain`, `newDomainExtent`, `newStart`, `nextVisibleRange`, `plotData`, `previousVisibleRange`, `renderContextValue`, `reset`, `response`, `result`, `s`, `sizeChanged`, `startIndex`, `startValue`, `state`, `tooltipStyle`, `updatedScale`, `updatedXScale`, `useWholeData`, `visibleRange`
 
 ### `packages/web/src/components/vnstockcharts/lib/ChartCanvas.tsx`
 
@@ -11810,12 +12395,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `CANDIDATES_FOR_RESET`, `c`, `candleWidth`, `canvases`, `chartConfig`, `contextValue`, `currentCharts`, `currentItem`, `cursor`, `cursorStyle`, `cx`, `dimensions`, `direction`, `dragableComponents`, `dx`, `endIndex`, `endValue`, `extent`, `firstItem`, `initialPlotData`, `interaction`, `item`, `lastItem`, `lastItemX`, `log`, `newDomain`, `newDomainExtent`, `newStart`, `nextVisibleRange`, `plotData`, `previousVisibleRange`, `renderContextValue`, `reset`, `response`, `result`, `s`, `sizeChanged`, `startIndex`, `startValue`, `state`, `tooltipStyle`, `updatedScale`, `updatedXScale`, `useWholeData`, `visibleRange`
 
+### `packages/web/src/components/vnstockcharts/lib/ChartContext.js`
+
+- Functions:
+  - `useChart`
+- Top-level variables:
+  - `ChartContext`, `ChartProvider`, `context`
+
 ### `packages/web/src/components/vnstockcharts/lib/ChartContext.tsx`
 
 - Functions:
   - `useChart`
 - Top-level variables:
   - `ChartContext`, `ChartProvider`, `context`
+
+### `packages/web/src/components/vnstockcharts/lib/coordinates/CrossHairCursor.js`
+
+- Classes:
+  - `CrossHairCursor`
+- Functions:
+  - `customX`, `helper`
+- Top-level variables:
+  - `dashArray`, `line1`, `line2`, `lines`, `originX`, `originY`, `safeLines`, `x`
 
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/CrossHairCursor.tsx`
 
@@ -11826,6 +12427,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `dashArray`, `line1`, `line2`, `lines`, `originX`, `originY`, `safeLines`, `x`
 
+### `packages/web/src/components/vnstockcharts/lib/coordinates/CurrentCoordinate.js`
+
+- Classes:
+  - `CurrentCoordinate`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `circle`, `fillColor`, `x`, `xValue`, `y`, `yValue`
+
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/CurrentCoordinate.tsx`
 
 - Classes:
@@ -11834,6 +12444,15 @@ Generated at: `2026-05-21 23:14:30`
   - `helper`
 - Top-level variables:
   - `circle`, `fillColor`, `x`, `xValue`, `y`, `yValue`
+
+### `packages/web/src/components/vnstockcharts/lib/coordinates/Cursor.js`
+
+- Classes:
+  - `Cursor`
+- Functions:
+  - `customSnapX`
+- Top-level variables:
+  - `centerX`, `cursors`, `dashArray`, `originX`, `originY`, `safeCursors`, `shapeWidth`, `x`, `xCursor`, `xPos`, `xShape`, `xShapeFill`, `xShapeStroke`, `xValue`, `yCursor`
 
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/Cursor.tsx`
 
@@ -11844,12 +12463,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `centerX`, `cursors`, `dashArray`, `originX`, `originY`, `safeCursors`, `shapeWidth`, `x`, `xCursor`, `xPos`, `xShape`, `xShapeFill`, `xShapeStroke`, `xValue`, `yCursor`
 
+### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinate.js`
+
+- Classes:
+  - `EdgeCoordinate`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `coordinateBase`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `line`, `path`, `textAnchor`, `x`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinate.tsx`
 
 - Classes:
   - `EdgeCoordinate`
 - Functions:
   - `helper`
+- Top-level variables:
+  - `coordinateBase`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `line`, `path`, `textAnchor`, `x`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinateV2.js`
+
+- Functions:
+  - `drawOnCanvas`, `helper`, `renderSVG`
 - Top-level variables:
   - `coordinateBase`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `line`, `path`, `textAnchor`, `x`, `y`
 
@@ -11860,12 +12495,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `coordinateBase`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `line`, `path`, `textAnchor`, `x`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinateV3.js`
+
+- Functions:
+  - `drawOnCanvas`, `helper`, `renderSVG`, `roundRect`
+- Top-level variables:
+  - `coordinate`, `coordinateBase`, `dashArray`, `dy`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `halfHeight`, `line`, `path`, `textAnchor`, `width`, `x`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinateV3.tsx`
 
 - Functions:
   - `drawOnCanvas`, `helper`, `renderSVG`, `roundRect`
 - Top-level variables:
   - `coordinate`, `coordinateBase`, `dashArray`, `dy`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `halfHeight`, `line`, `path`, `textAnchor`, `width`, `x`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeIndicator.js`
+
+- Classes:
+  - `EdgeIndicator`
+- Functions:
+  - `getEdge`, `helper`
+- Top-level variables:
+  - `edge`, `edgeX`, `item`, `props`, `x1`, `yValue`
 
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeIndicator.tsx`
 
@@ -11876,9 +12527,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `edge`, `edgeX`, `item`, `props`, `x1`, `yValue`
 
+### `packages/web/src/components/vnstockcharts/lib/coordinates/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateX.js`
+
+- Classes:
+  - `MouseCoordinateX`
+- Functions:
+  - `customX`, `helper`
+- Top-level variables:
+  - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `type`, `x`, `y1`
 
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateX.tsx`
 
@@ -11889,6 +12553,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `type`, `x`, `y1`
 
+### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateXV2.js`
+
+- Classes:
+  - `MouseCoordinateXV2`
+- Functions:
+  - `drawCoordinate`, `getXCoordinateInfo`, `xPosition`
+- Top-level variables:
+  - `defaultProps`, `halfWidth`, `height`, `pad`, `propTypes`, `shape`, `sign`, `t`, `textWidth`, `x`, `xValue`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateXV2.tsx`
 
 - Classes:
@@ -11898,6 +12571,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `defaultProps`, `halfWidth`, `height`, `pad`, `propTypes`, `shape`, `sign`, `t`, `textWidth`, `x`, `xValue`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateY.js`
+
+- Classes:
+  - `MouseCoordinateY`
+- Functions:
+  - `getYCoordinate`, `helper`
+- Top-level variables:
+  - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `type`, `x1`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateY.tsx`
 
 - Classes:
@@ -11906,6 +12588,15 @@ Generated at: `2026-05-21 23:14:30`
   - `getYCoordinate`, `helper`
 - Top-level variables:
   - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `type`, `x1`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/coordinates/PriceCoordinate.js`
+
+- Classes:
+  - `PriceCoordinate`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `show`, `type`, `width`, `x1`, `y`, `yScale`
 
 ### `packages/web/src/components/vnstockcharts/lib/coordinates/PriceCoordinate.tsx`
 
@@ -11972,12 +12663,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `bar`, `bar13`, `bar20`, `bigData`, `cumulative`, `ema13Only`, `ema20Only`, `enriched`, `result`, `series`, `singleBar`, `startedAt`
 
+### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcCVDApprox.js`
+
+- Functions:
+  - `calcCVDApprox`
+- Top-level variables:
+  - `buyVol`, `cumulative`, `delta`, `range`, `sellVol`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcCVDApprox.ts`
 
 - Functions:
   - `calcCVDApprox`
 - Top-level variables:
   - `buyVol`, `cumulative`, `delta`, `range`, `sellVol`
+
+### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcStrengthElder.js`
+
+- Functions:
+  - `blankUntil`, `calcStrengthElder`
+- Top-level variables:
+  - `closes`, `ema`, `ema13`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcStrengthElder.ts`
 
@@ -11986,6 +12691,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `closes`, `ema`, `ema13`
 
+### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcWhaleApprox.js`
+
+- Functions:
+  - `calcWhaleApprox`
+- Top-level variables:
+  - `buyDollar`, `buyShare`, `dollarVolume`, `next`, `range`, `sellDollar`, `sellShare`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcWhaleApprox.ts`
 
 - Functions:
@@ -11993,12 +12705,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `buyDollar`, `buyShare`, `dollarVolume`, `next`, `range`, `sellDollar`, `sellShare`
 
+### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichData.js`
+
+- Functions:
+  - `enrichData`, `normalizeOptions`
+- Top-level variables:
+  - `aoColors`, `firstBias`, `firstBrar`, `firstCci`, `firstCr`, `firstDma`, `firstDmi`, `firstEmv`, `firstKdj`, `firstMtm`, `firstPsy`, `firstRoc`, `firstTrix`, `indicatorValues`, `options`, `plan`, `result`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichData.ts`
 
 - Functions:
   - `enrichData`, `normalizeOptions`
 - Top-level variables:
   - `aoColors`, `firstBias`, `firstBrar`, `firstCci`, `firstCr`, `firstDma`, `firstDmi`, `firstEmv`, `firstKdj`, `firstMtm`, `firstPsy`, `firstRoc`, `firstTrix`, `indicatorValues`, `options`, `plan`, `result`
+
+### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichDataWithCanonicalStore.js`
+
+- Functions:
+  - `enrichDataWithCanonicalStore`, `seriesConfigHash`
+- Top-level variables:
+  - `aParamsStr`, `aoColors`, `bParamsStr`, `cachedEntry`, `dataSignature`, `firstBias`, `firstBrar`, `firstCci`, `firstCr`, `firstDma`, `firstDmi`, `firstEmv`, `firstKdj`, `firstMtm`, `firstPsy`, `firstRoc`, `firstTrix`, `indicatorValues`, `plan`, `result`, `sorted`, `storeKeyInput`, `typeOrder`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichDataWithCanonicalStore.test.ts`
 
@@ -12012,10 +12738,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `aParamsStr`, `aoColors`, `bParamsStr`, `cachedEntry`, `dataSignature`, `firstBias`, `firstBrar`, `firstCci`, `firstCr`, `firstDma`, `firstDmi`, `firstEmv`, `firstKdj`, `firstMtm`, `firstPsy`, `firstRoc`, `firstTrix`, `indicatorValues`, `plan`, `result`, `sorted`, `storeKeyInput`, `typeOrder`
 
+### `packages/web/src/components/vnstockcharts/lib/core/calculators/fixtures/mockData.js`
+
+- Top-level variables:
+  - `base`, `close`, `drift`, `high`, `low`, `mockOHLCV300`, `open`, `volume`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/calculators/fixtures/mockData.ts`
 
 - Top-level variables:
   - `base`, `close`, `drift`, `high`, `low`, `mockOHLCV300`, `open`, `volume`
+
+### `packages/web/src/components/vnstockcharts/lib/core/calculators/indicatorComputation.js`
+
+- Functions:
+  - `blankUntil`, `buildIndicatorComputationPlan`, `computeIndicatorComputationResult`, `defaultSeries`, `indicatorKey`, `materializeIndicatorValues`, `mergeBand`, `numberParam`
+- Top-level variables:
+  - `adx`, `ama`, `amaValues`, `ao`, `aoEnabled`, `aoKey`, `ar`, `bbi`, `bbiEnabled`, `biasByPeriod`, `biasPeriods`, `bollingerByKey`, `bollingerConfigs`, `br`, `brarByPeriod`, `brarPeriods`, `cciByPeriod`, `cciPeriods`, `closes`, `cr`, `crByKey`, `crConfigs`, `cvd`, `d`, `ddd`, `dddValues`, `defaultBollingerKey`, `defaultBollingerSeries`, `defaultMacdKey`, `defaultMacdSeries`, `defaultWhaleKey`, `defaultWhaleSeries`, `dmaByKey`, `dmaConfigs`, `dmiByPeriod`, `dmiPeriods`, `emaByPeriod`, `emaPeriods`, `emv`, `emvByPeriod`, `emvPeriods`, `histogramLine`, `histogramValue`, `indicatorValues`, `j`, `k`, `kdjByKey`, `kdjConfigs`, `key`, `ma1`, `ma2`, `ma3`, `ma4`, `macd`, `macdByKey`, `macdConfigs`, `macdLine`, `macdValue`, `minusDI`, `mtm`, `mtmByKey`, `mtmConfigs`, `obv`, `obvEnabled`, `plusDI`, `psy`, `psyByKey`, `psyConfigs`, `pvt`, `pvtEnabled`, `pvtKey`, `rocByPeriod`, `rocPeriods`, `rsiByPeriod`, `rsiPeriods`, `sarByKey`, `series`, `signal`, `signalLine`, `signalValue`, `signalValues`, `smaByPeriod`, `smaPeriods`, `strength`, `trix`, `trixByKey`, `trixConfigs`, `trixValues`, `value`, `vrByPeriod`, `vrPeriods`, `warmup`, `whaleByKey`, `whaleThresholds`, `wrByPeriod`, `wrPeriods`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/calculators/indicatorComputation.ts`
 
@@ -12024,9 +12762,34 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `adx`, `ama`, `amaValues`, `ao`, `aoEnabled`, `aoKey`, `ar`, `bbi`, `bbiEnabled`, `biasByPeriod`, `biasPeriods`, `bollingerByKey`, `bollingerConfigs`, `br`, `brarByPeriod`, `brarPeriods`, `cciByPeriod`, `cciPeriods`, `closes`, `cr`, `crByKey`, `crConfigs`, `cvd`, `d`, `ddd`, `dddValues`, `defaultBollingerKey`, `defaultBollingerSeries`, `defaultMacdKey`, `defaultMacdSeries`, `defaultWhaleKey`, `defaultWhaleSeries`, `dmaByKey`, `dmaConfigs`, `dmiByPeriod`, `dmiPeriods`, `emaByPeriod`, `emaPeriods`, `emv`, `emvByPeriod`, `emvPeriods`, `histogramLine`, `histogramValue`, `indicatorValues`, `j`, `k`, `kdjByKey`, `kdjConfigs`, `key`, `ma1`, `ma2`, `ma3`, `ma4`, `macd`, `macdByKey`, `macdConfigs`, `macdLine`, `macdValue`, `minusDI`, `mtm`, `mtmByKey`, `mtmConfigs`, `obv`, `obvEnabled`, `plusDI`, `psy`, `psyByKey`, `psyConfigs`, `pvt`, `pvtEnabled`, `pvtKey`, `rocByPeriod`, `rocPeriods`, `rsiByPeriod`, `rsiPeriods`, `sarByKey`, `series`, `signal`, `signalLine`, `signalValue`, `signalValues`, `smaByPeriod`, `smaPeriods`, `strength`, `trix`, `trixByKey`, `trixConfigs`, `trixValues`, `value`, `vrByPeriod`, `vrPeriods`, `warmup`, `whaleByKey`, `whaleThresholds`, `wrByPeriod`, `wrPeriods`
 
+### `packages/web/src/components/vnstockcharts/lib/core/calculators/types.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/core/calculators/types.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/core/canonicalSeriesStore.js`
+
+- Functions:
+  - `createCanonicalSeriesStore`, `stableStringify`
+- Top-level variables:
+  - `entries`, `store`
+
+### `packages/web/src/components/vnstockcharts/lib/core/canonicalSeriesStore.ts`
+
+- Functions:
+  - `createCanonicalSeriesStore`, `stableStringify`
+- Top-level variables:
+  - `entries`, `store`
+
+### `packages/web/src/components/vnstockcharts/lib/core/canvas/ChartRenderContext.js`
+
+- Functions:
+  - `useChartRenderContext`
+- Top-level variables:
+  - `ChartRenderContext`, `context`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/canvas/ChartRenderContext.ts`
 
@@ -12035,12 +12798,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `ChartRenderContext`, `context`
 
+### `packages/web/src/components/vnstockcharts/lib/core/canvas/OverlayCanvas.js`
+
+- Functions:
+  - `OverlayCanvas`
+- Top-level variables:
+  - `canvas`, `canvasRef`, `context`, `physicalHeight`, `physicalWidth`, `renderContext`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/canvas/OverlayCanvas.tsx`
 
 - Functions:
   - `OverlayCanvas`
 - Top-level variables:
   - `canvas`, `canvasRef`, `context`, `physicalHeight`, `physicalWidth`, `renderContext`
+
+### `packages/web/src/components/vnstockcharts/lib/core/ChartPane.js`
+
+- Functions:
+  - `ChartPane`
+- Top-level variables:
+  - `chartScales`, `mainCanvasRef`, `mergedStyle`, `overlayCanvasRef`, `resolvedHeight`, `resolvedWidth`, `syncValue`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/ChartPane.tsx`
 
@@ -12049,12 +12826,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `chartScales`, `mainCanvasRef`, `mergedStyle`, `overlayCanvasRef`, `resolvedHeight`, `resolvedWidth`, `syncValue`
 
+### `packages/web/src/components/vnstockcharts/lib/core/ChartSplitter.js`
+
+- Functions:
+  - `ChartSplitter`, `handlePointerDown`, `handlePointerMove`, `stopDragging`
+- Top-level variables:
+  - `availableRef`, `cls`, `commitRef`, `drag`, `dragRef`, `node`, `rootRef`, `totalDelta`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/ChartSplitter.tsx`
 
 - Functions:
   - `ChartSplitter`, `handlePointerDown`, `handlePointerMove`, `stopDragging`
 - Top-level variables:
   - `availableRef`, `cls`, `commitRef`, `drag`, `dragRef`, `node`, `rootRef`, `totalDelta`
+
+### `packages/web/src/components/vnstockcharts/lib/core/ChartTerminal.js`
+
+- Functions:
+  - `ChartTerminal`
+- Top-level variables:
+  - `mergedStyle`, `paneState`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/ChartTerminal.tsx`
 
@@ -12063,12 +12854,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `mergedStyle`, `paneState`
 
+### `packages/web/src/components/vnstockcharts/lib/core/context/ChartSyncContext.js`
+
+- Functions:
+  - `ChartSyncProvider`, `useChartSync`
+- Top-level variables:
+  - `ChartSyncContext`, `context`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/context/ChartSyncContext.ts`
 
 - Functions:
   - `ChartSyncProvider`, `useChartSync`
 - Top-level variables:
   - `ChartSyncContext`, `context`
+
+### `packages/web/src/components/vnstockcharts/lib/core/context/DataContext.js`
+
+- Functions:
+  - `DataProvider`, `useDataContext`
+- Top-level variables:
+  - `DataContext`, `context`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/context/DataContext.ts`
 
@@ -12077,12 +12882,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `DataContext`, `context`
 
+### `packages/web/src/components/vnstockcharts/lib/core/context/PaneManagerContext.js`
+
+- Functions:
+  - `PaneManagerProvider`, `usePaneManagerContext`
+- Top-level variables:
+  - `PaneManagerContext`, `context`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/context/PaneManagerContext.ts`
 
 - Functions:
   - `PaneManagerProvider`, `usePaneManagerContext`
 - Top-level variables:
   - `PaneManagerContext`, `context`
+
+### `packages/web/src/components/vnstockcharts/lib/core/DynamicChart.js`
+
+- Functions:
+  - `accessor`, `axisFormatForSeriesTypes`, `buildChartSlots`, `buildPriceTooltipEntries`, `buildTooltipEntriesForSeries`, `buildYExtents`, `candleBodyWidth`, `computeExtentsForIndex`, `createChartSlot`, `createKlineXAxisFormatter`, `createSmartDateFormatter`, `dashPatternToSeriesDasharray`, `fieldAccessor`, `finiteExtent`, `getSeriesStyleOverrideForSeries`, `inferMinimumPositiveDateDiffMs`, `origin`, `renderDynamicChartChildren`, `renderSeries`, `resolveScaleSlotIdForSeries`, `resolveSeriesDisplayColor`, `sc`, `structured`, `withAlpha`
+- Top-level variables:
+  - `BAR_SERIES_TYPES`, `DynamicChartComponent`, `INNER_PANE_GAP`, `ONE_DAY_MS`, `OSCILLATOR_SERIES`, `PRICE_SERIES`, `VOLUME_SERIES`, `accessors`, `activeSeries`, `adaptiveDateFormat`, `adxColor`, `arColor`, `barCount`, `bbBotRaw`, `bbMidColor`, `bbTopRaw`, `brColor`, `canvas`, `chartCanvasRef`, `chartChildren`, `chartId`, `chartSlots`, `clampedIndex`, `currentBar`, `currentMs`, `d`, `dColor`, `dashArray`, `date`, `dayMonthFmt`, `diff`, `divergeColor`, `downColor`, `end`, `endDate`, `entry`, `extents`, `fillColor`, `fillOpacity`, `finiteValues`, `first`, `fullData`, `gap`, `groupingMode`, `half`, `handleVisibleRangeChange`, `hasBottomAxis`, `hasExplicitScaleSlotIds`, `hour`, `hourMinFmt`, `index`, `isDiscontinuousScale`, `isInnerPane`, `isIntraday`, `isLastSlot`, `jColor`, `kColor`, `lineColor`, `lineWidth`, `macdColor`, `maxValue`, `min`, `minDiff`, `minValue`, `minimumDateDiffMs`, `minusColor`, `monthYearFmt`, `orderedScaleSlotIds`, `paneHeight`, `paneIndex`, `paneSlotCounter`, `paramColor`, `params`, `plusColor`, `previousBar`, `previousMs`, `ratio`, `rsiLine`, `rsiMid`, `rsiOB`, `rsiOS`, `sampleXValue`, `scaleSlotId`, `second`, `seriesKey`, `seriesTypes`, `signalColor`, `slotInPane`, `slotSeries`, `slotsByScaleSlotId`, `start`, `startDate`, `stepPx`, `strokeOpacity`, `styleOverride`, `tooltip`, `tooltipY`, `type`, `upColor`, `visibleBarCount`, `whale`, `xAxisDateFormat`, `yAxisFormat`, `yExtents`, `yScaleId`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/DynamicChart.tsx`
 
@@ -12098,12 +12917,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `blocked`, `blockedPane`, `customPane`, `customPaneId`, `defaultState`, `hiddenPane`, `next`, `panes`, `payload`, `restoredPane`, `rsi`, `state`, `storage`, `sum`, `value`
 
+### `packages/web/src/components/vnstockcharts/lib/core/hooks/useCanvasResize.js`
+
+- Functions:
+  - `updateSize`, `useCanvasResize`
+- Top-level variables:
+  - `element`, `observer`, `ref`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/hooks/useCanvasResize.ts`
 
 - Functions:
   - `updateSize`, `useCanvasResize`
 - Top-level variables:
   - `element`, `observer`, `ref`
+
+### `packages/web/src/components/vnstockcharts/lib/core/hooks/useChartTheme.js`
+
+- Functions:
+  - `useChartTheme`
+- Top-level variables:
+  - `STORAGE_KEY`, `setTheme`, `stored`, `toggleTheme`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/hooks/useChartTheme.ts`
 
@@ -12112,6 +12945,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `STORAGE_KEY`, `setTheme`, `stored`, `toggleTheme`
 
+### `packages/web/src/components/vnstockcharts/lib/core/hooks/useDynamicPanes.js`
+
+- Functions:
+  - `clonePane`, `clonePaneList`, `cloneSeries`, `createDefaultPaneLayout`, `createId`, `createScaleSlotId`, `createSeriesId`, `dynamicPanesReducer`, `getVisiblePanes`, `heightsToRatios`, `loadPaneLayout`, `makeDefaultLayout`, `mutateVisibleRatio`, `normalizeDefaultPane`, `normalizeLoadedPaneLayout`, `normalizeVisibleRatios`, `ratiosToHeights`, `readStoredPaneLayout`, `reorderVisiblePanes`, `replacePaneLayout`, `resolveSeriesIndex`, `sanitizeLayout`, `savePaneLayout`, `syncSplitScale`, `useDynamicPanes`, `validatePane`, `visibleCount`, `visibleIndices`, `writeStoredPaneLayout`
+- Top-level variables:
+  - `FRAME_VERTICAL_MARGIN`, `MIN_PANE_HEIGHT`, `activeSeries`, `addPane`, `addSeries`, `allocated`, `anyVisible`, `applyDelta`, `available`, `bottomHeight`, `bottomPane`, `byId`, `cloned`, `cursor`, `customPanes`, `defaultPanes`, `deletePane`, `height`, `heights`, `indices`, `layout`, `maxVisiblePanes`, `minBottom`, `minTop`, `next`, `nextBottom`, `nextLabel`, `nextTop`, `orderedVisible`, `pairTotal`, `pane`, `parsed`, `ratio`, `raw`, `removePane`, `removeSeries`, `renamePane`, `reorderPanes`, `replaceLayout`, `replacement`, `resetToDefault`, `restorePane`, `series`, `seriesIndex`, `stored`, `toggleSeriesVisible`, `toggleVisible`, `topHeight`, `topPane`, `total`, `updateSeriesColor`, `updateSeriesParams`, `updateSeriesSubColor`, `updateSeriesYAxis`, `updated`, `visible`, `visibleCursor`, `visiblePanes`, `visibleSlots`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/hooks/useDynamicPanes.ts`
 
 - Functions:
@@ -12119,12 +12959,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `FRAME_VERTICAL_MARGIN`, `MIN_PANE_HEIGHT`, `activeSeries`, `addPane`, `addSeries`, `allocated`, `anyVisible`, `applyDelta`, `available`, `bottomHeight`, `bottomPane`, `byId`, `cloned`, `cursor`, `customPanes`, `defaultPanes`, `deletePane`, `height`, `heights`, `indices`, `layout`, `maxVisiblePanes`, `minBottom`, `minTop`, `next`, `nextBottom`, `nextLabel`, `nextTop`, `orderedVisible`, `pairTotal`, `pane`, `parsed`, `ratio`, `raw`, `removePane`, `removeSeries`, `renamePane`, `reorderPanes`, `replaceLayout`, `replacement`, `resetToDefault`, `restorePane`, `series`, `seriesIndex`, `stored`, `toggleSeriesVisible`, `toggleVisible`, `topHeight`, `topPane`, `total`, `updateSeriesColor`, `updateSeriesParams`, `updateSeriesSubColor`, `updateSeriesYAxis`, `updated`, `visible`, `visibleCursor`, `visiblePanes`, `visibleSlots`
 
+### `packages/web/src/components/vnstockcharts/lib/core/hooks/useIndicatorSets.js`
+
+- Functions:
+  - `mergeSets`, `pickStorage`, `readFileAsText`, `useIndicatorSets`
+- Top-level variables:
+  - `allowedSeriesTypes`, `applySet`, `blob`, `builtinSets`, `deleteSet`, `exportSet`, `getSetById`, `importSet`, `imported`, `link`, `loaded`, `merged`, `nextSet`, `parsed`, `reader`, `removed`, `renameSet`, `renamed`, `saveCurrentAsSet`, `set`, `sets`, `storage`, `text`, `trimmed`, `url`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/hooks/useIndicatorSets.ts`
 
 - Functions:
   - `mergeSets`, `pickStorage`, `readFileAsText`, `useIndicatorSets`
 - Top-level variables:
   - `allowedSeriesTypes`, `applySet`, `blob`, `builtinSets`, `deleteSet`, `exportSet`, `getSetById`, `importSet`, `imported`, `link`, `loaded`, `merged`, `nextSet`, `parsed`, `reader`, `removed`, `renameSet`, `renamed`, `saveCurrentAsSet`, `set`, `sets`, `storage`, `text`, `trimmed`, `url`
+
+### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneManager.js`
+
+- Functions:
+  - `clampHeight`, `createPaneId`, `normalizePane`, `paneManagerReducer`, `usePaneManager`
+- Top-level variables:
+  - `addIndicator`, `addPane`, `normalizedPane`, `paneIdSeed`, `removeIndicator`, `removePane`, `resizePane`, `updateIndicator`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneManager.test.ts`
 
@@ -12138,6 +12992,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `addIndicator`, `addPane`, `normalizedPane`, `paneIdSeed`, `removeIndicator`, `removePane`, `resizePane`, `updateIndicator`
 
+### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneSizes.js`
+
+- Functions:
+  - `applyDeltaBetween`, `loadRatios`, `normalise`, `pxToRatios`, `ratiosToPx`, `sanitize`, `saveRatios`, `usePaneSizes`
+- Top-level variables:
+  - `a`, `applyDelta`, `available`, `b`, `consumed`, `count`, `defaultRatios`, `defaultRatiosRef`, `heights`, `minA`, `minB`, `minH`, `minHRef`, `minTotal`, `n`, `newA`, `newB`, `px`, `reset`, `result`, `stored`, `sum`, `total`, `updated`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneSizes.ts`
 
 - Functions:
@@ -12145,9 +13006,20 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `a`, `applyDelta`, `available`, `b`, `consumed`, `count`, `defaultRatios`, `defaultRatiosRef`, `heights`, `minA`, `minB`, `minH`, `minHRef`, `minTotal`, `n`, `newA`, `newB`, `px`, `reset`, `result`, `stored`, `sum`, `total`, `updated`
 
+### `packages/web/src/components/vnstockcharts/lib/core/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/core/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/core/IndicatorLegend.js`
+
+- Functions:
+  - `IndicatorLegend`, `paramNumber`, `seriesLabel`
+- Top-level variables:
+  - `PRIMARY_CHART_TYPES`, `SERIES_LABELS`, `base`, `chipStyle`, `chips`, `fast`, `hidden`, `seriesIndex`, `shortLabel`, `slow`, `value`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/IndicatorLegend.tsx`
 
@@ -12156,10 +13028,24 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `PRIMARY_CHART_TYPES`, `SERIES_LABELS`, `base`, `chipStyle`, `chips`, `fast`, `hidden`, `seriesIndex`, `shortLabel`, `slow`, `value`
 
+### `packages/web/src/components/vnstockcharts/lib/core/PaneHeader.js`
+
+- Functions:
+  - `PaneHeader`
+- Top-level variables:
+  - `style`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/PaneHeader.tsx`
 
 - Functions:
   - `PaneHeader`
+- Top-level variables:
+  - `style`
+
+### `packages/web/src/components/vnstockcharts/lib/core/PaneLabel.js`
+
+- Functions:
+  - `PaneLabel`
 - Top-level variables:
   - `style`
 
@@ -12170,6 +13056,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `style`
 
+### `packages/web/src/components/vnstockcharts/lib/core/paneScaleSlotDomains.js`
+
+- Functions:
+  - `buildAxisAccessors`, `computeAxisDomain`, `computePaneScaleSlotDomains`, `finiteExtent`, `isSeriesVisible`
+- Top-level variables:
+  - `BAR_SERIES_TYPES`, `accessors`, `axisSeries`, `domains`, `finiteValues`, `leftDomain`, `maxValue`, `minValue`, `rightDomain`, `styleOverride`, `values`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/paneScaleSlotDomains.ts`
 
 - Functions:
@@ -12177,12 +13070,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `BAR_SERIES_TYPES`, `accessors`, `axisSeries`, `domains`, `finiteValues`, `leftDomain`, `maxValue`, `minValue`, `rightDomain`, `styleOverride`, `values`
 
+### `packages/web/src/components/vnstockcharts/lib/core/PaneSplitter.js`
+
+- Functions:
+  - `PaneSplitter`, `clamp`, `handleMove`, `handlePointerDown`, `handleUp`
+- Top-level variables:
+  - `availableHeight`, `bottomPaneElement`, `deltaY`, `dragState`, `dragStateRef`, `mergedStyle`, `nextHeight`, `splitterElement`, `startTopHeight`, `topPaneElement`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/PaneSplitter.tsx`
 
 - Functions:
   - `PaneSplitter`, `clamp`, `handleMove`, `handlePointerDown`, `handleUp`
 - Top-level variables:
   - `availableHeight`, `bottomPaneElement`, `deltaY`, `dragState`, `dragStateRef`, `mergedStyle`, `nextHeight`, `splitterElement`, `startTopHeight`, `topPaneElement`
+
+### `packages/web/src/components/vnstockcharts/lib/core/PaneTooltip.js`
+
+- Functions:
+  - `PaneTooltip`, `defaultDateValue`, `toDisplayValue`
+- Top-level variables:
+  - `chartConfigList`, `config`, `currentItem`, `lines`, `rawValue`, `renderSVG`, `resolvedOrigin`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/PaneTooltip.tsx`
 
@@ -12196,10 +13103,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `entry`, `phaseOneTypes`, `registered`
 
+### `packages/web/src/components/vnstockcharts/lib/core/registry/registerAll.js`
+
+- Functions:
+  - `initRegistry`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/registry/registerAll.ts`
 
 - Functions:
   - `initRegistry`
+
+### `packages/web/src/components/vnstockcharts/lib/core/registry/SeriesRegistry.js`
+
+- Functions:
+  - `clearRegistry`, `clearSeriesStyleOverride`, `clearSeriesStyleOverrides`, `cloneSeriesStyleOverride`, `colorFromConfig`, `dashPatternToStrokeDasharray`, `getSeries`, `getSeriesStyleOverride`, `listRegistered`, `listSeriesStyleOverrides`, `normalizeSeriesStyleOverride`, `notifyAllSeriesStyleChanges`, `notifySeriesStyleChange`, `overrideSeriesStyle`, `periodFromConfig`, `registerLineSeries`, `registerPhaseOneSeries`, `registerSeries`, `subscribeSeriesStyle`, `subscribeSeriesStyleChanges`
+- Top-level variables:
+  - `current`, `dashPattern`, `entry`, `listeners`, `next`, `normalized`, `period`, `registry`, `seriesStyleChangeListeners`, `seriesStyleListeners`, `seriesStyleOverrides`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/registry/SeriesRegistry.test.ts`
 
@@ -12212,6 +13131,15 @@ Generated at: `2026-05-21 23:14:30`
   - `clearRegistry`, `clearSeriesStyleOverride`, `clearSeriesStyleOverrides`, `cloneSeriesStyleOverride`, `colorFromConfig`, `dashPatternToStrokeDasharray`, `getSeries`, `getSeriesStyleOverride`, `listRegistered`, `listSeriesStyleOverrides`, `normalizeSeriesStyleOverride`, `notifyAllSeriesStyleChanges`, `notifySeriesStyleChange`, `overrideSeriesStyle`, `periodFromConfig`, `registerLineSeries`, `registerPhaseOneSeries`, `registerSeries`, `subscribeSeriesStyle`, `subscribeSeriesStyleChanges`
 - Top-level variables:
   - `current`, `dashPattern`, `entry`, `listeners`, `next`, `normalized`, `period`, `registry`, `seriesStyleChangeListeners`, `seriesStyleListeners`, `seriesStyleOverrides`
+
+### `packages/web/src/components/vnstockcharts/lib/core/replay/BarReplayController.js`
+
+- Classes:
+  - `BarReplayController`
+- Functions:
+  - `clampIndex`, `intervalForSpeed`, `toTimeValue`
+- Top-level variables:
+  - `foundIndex`, `nextStartIndex`, `state`, `targetTime`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/replay/BarReplayController.test.ts`
 
@@ -12229,6 +13157,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `foundIndex`, `nextStartIndex`, `state`, `targetTime`
 
+### `packages/web/src/components/vnstockcharts/lib/core/scales/computeScales.js`
+
+- Functions:
+  - `collectAxisExtents`, `computeScales`, `finiteExtent`, `mergeExtents`
+- Top-level variables:
+  - `computed`, `definition`, `extents`, `finiteValues`, `flattened`, `hasRightAxis`, `leftScale`, `leftSeriesExtents`, `leftValues`, `maxValue`, `minValue`, `rightScale`, `rightSeriesExtents`, `rightValues`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/scales/computeScales.ts`
 
 - Functions:
@@ -12236,12 +13171,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `computed`, `definition`, `extents`, `finiteValues`, `flattened`, `hasRightAxis`, `leftScale`, `leftSeriesExtents`, `leftValues`, `maxValue`, `minValue`, `rightScale`, `rightSeriesExtents`, `rightValues`
 
+### `packages/web/src/components/vnstockcharts/lib/core/SeriesPicker.js`
+
+- Functions:
+  - `SeriesPicker`, `buildDefaultSeries`, `handleKeyDown`, `handleMouseDown`, `updatePosition`
+- Top-level variables:
+  - `active`, `anchor`, `anchorRect`, `clickInsideAnchor`, `clickInsidePicker`, `container`, `containerRect`, `entry`, `picker`, `pickerRef`, `seriesTypes`, `target`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/SeriesPicker.tsx`
 
 - Functions:
   - `SeriesPicker`, `buildDefaultSeries`, `handleKeyDown`, `handleMouseDown`, `updatePosition`
 - Top-level variables:
   - `active`, `anchor`, `anchorRect`, `clickInsideAnchor`, `clickInsidePicker`, `container`, `containerRect`, `entry`, `picker`, `pickerRef`, `seriesTypes`, `target`
+
+### `packages/web/src/components/vnstockcharts/lib/core/seriesValueResolver.js`
+
+- Functions:
+  - `asNumber`, `buildIndicatorSeriesKey`, `exactLegacyValue`, `numberParam`, `resolveSeriesDatumValue`, `resolveSeriesStructuredValue`, `resolveSeriesValue`, `resolveSeriesValueAccessors`
+- Top-level variables:
+  - `fast`, `fastPeriod`, `key`, `m1`, `m2`, `m3`, `m4`, `period`, `signal`, `signalPeriod`, `slow`, `slowPeriod`, `stdDev`, `threshold`, `value`, `whale`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/seriesValueResolver.ts`
 
@@ -12257,10 +13206,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `exported`, `imported`, `layout`, `loaded`, `next`, `original`, `payload`, `samplePane`, `savedSet`, `set`, `storage`, `value`
 
+### `packages/web/src/components/vnstockcharts/lib/core/sets/builtins.js`
+
+- Top-level variables:
+  - `BUILTIN_INDICATOR_SETS`
+
 ### `packages/web/src/components/vnstockcharts/lib/core/sets/builtins.ts`
 
 - Top-level variables:
   - `BUILTIN_INDICATOR_SETS`
+
+### `packages/web/src/components/vnstockcharts/lib/core/sets/indicatorSetCodec.js`
+
+- Functions:
+  - `buildIndicatorSetFileName`, `cloneIndicatorSet`, `clonePane`, `cloneSeries`, `createId`, `createIndicatorSet`, `createSeriesId`, `indicatorSetToPaneLayout`, `isPaneDescriptor`, `isPlainObject`, `isSeriesConfig`, `isSeriesTypeId`, `isTooltipMode`, `isYAxisSide`, `loadIndicatorSets`, `sanitizeIndicatorSet`, `sanitizeIndicatorSetsStorage`, `saveIndicatorSets`, `stringifyIndicatorSet`
+- Top-level variables:
+  - `allowed`, `byId`, `parsed`, `payload`, `raw`, `sanitized`, `slug`, `stamp`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/sets/indicatorSetCodec.ts`
 
@@ -12274,7 +13235,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `ids`, `sum`, `visible`
 
+### `packages/web/src/components/vnstockcharts/lib/core/types/chart.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/core/types/chart.ts`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/core/types/index.js`
 
 - No parseable top-level symbols found
 
@@ -12282,14 +13251,30 @@ Generated at: `2026-05-21 23:14:30`
 
 - No parseable top-level symbols found
 
+### `packages/web/src/components/vnstockcharts/lib/core/types/indicator-catalog.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/core/types/indicator-catalog.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/core/types/indicator-set.js`
+
+- Top-level variables:
+  - `INDICATOR_SETS_STORAGE_KEY`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/types/indicator-set.ts`
 
 - Top-level variables:
   - `INDICATOR_SETS_STORAGE_KEY`
+
+### `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.js`
+
+- Functions:
+  - `isDefaultPaneId`
+- Top-level variables:
+  - `DEFAULT_PANES`, `DEFAULT_PANE_ID_SET`, `PANE_LAYOUT_STORAGE_KEY`, `PANE_MAX_VISIBLE`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.ts`
 
@@ -12297,6 +13282,11 @@ Generated at: `2026-05-21 23:14:30`
   - `isDefaultPaneId`
 - Top-level variables:
   - `DEFAULT_PANES`, `DEFAULT_PANE_ID_SET`, `PANE_LAYOUT_STORAGE_KEY`, `PANE_MAX_VISIBLE`
+
+### `packages/web/src/components/vnstockcharts/lib/core/types/seriesComponents.js`
+
+- Top-level variables:
+  - `SERIES_SUB_COMPONENTS`
 
 ### `packages/web/src/components/vnstockcharts/lib/core/types/seriesComponents.ts`
 
@@ -12310,6 +13300,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `bbox`, `ctx`, `deleteX`, `deleteY`, `drawing`, `hitRadius`, `now`, `result`, `scales`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/abcdPattern.js`
+
+- Functions:
+  - `calculateAbcdPatternMetrics`
+- Top-level variables:
+  - `AbcdPattern`, `ab`, `bc`, `cd`, `points`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/abcdPattern.ts`
 
 - Functions:
@@ -12317,15 +13314,32 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `AbcdPattern`, `ab`, `bc`, `cd`, `points`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/arrow.js`
+
+- Top-level variables:
+  - `Arrow`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/arrow.ts`
 
 - Top-level variables:
   - `Arrow`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/channel.js`
+
+- Top-level variables:
+  - `Channel`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/channel.ts`
 
 - Top-level variables:
   - `Channel`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/cycles.js`
+
+- Functions:
+  - `calculateCycleGeometry`
+- Top-level variables:
+  - `CyclicLines`, `SineLine`, `TimeCycles`, `amplitude`, `count`, `p1`, `p2`, `pts`, `rawAmp`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/cycles.test.ts`
 
@@ -12341,10 +13355,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `CyclicLines`, `SineLine`, `TimeCycles`, `amplitude`, `count`, `p1`, `p2`, `pts`, `rawAmp`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/dateAndPriceRange.js`
+
+- Top-level variables:
+  - `DateAndPriceRange`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/dateAndPriceRange.ts`
 
 - Top-level variables:
   - `DateAndPriceRange`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/elliottWaves.js`
+
+- Functions:
+  - `calculateElliottWaveGeometry`, `makeElliottTool`
+- Top-level variables:
+  - `ELLIOTT_LABELS`, `ELLIOTT_POINT_COUNT`, `ElliottCorrection`, `ElliottDoubleCombo`, `ElliottImpulse`, `ElliottTriangle`, `ElliottTripleCombo`, `labels`, `pixels`, `pointCount`, `waveType`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/elliottWaves.test.ts`
 
@@ -12360,10 +13386,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `ELLIOTT_LABELS`, `ELLIOTT_POINT_COUNT`, `ElliottCorrection`, `ElliottDoubleCombo`, `ElliottImpulse`, `ElliottTriangle`, `ElliottTripleCombo`, `labels`, `pixels`, `pointCount`, `waveType`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/extendedLine.js`
+
+- Top-level variables:
+  - `ExtendedLine`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/extendedLine.ts`
 
 - Top-level variables:
   - `ExtendedLine`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibArc.js`
+
+- Functions:
+  - `calculateFibArcGeometry`
+- Top-level variables:
+  - `DEFAULT_FIB_ARC_LEVELS`, `FibArc`, `baseRadius`, `center`, `levels`, `reference`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibArc.ts`
 
@@ -12371,6 +13409,13 @@ Generated at: `2026-05-21 23:14:30`
   - `calculateFibArcGeometry`
 - Top-level variables:
   - `DEFAULT_FIB_ARC_LEVELS`, `FibArc`, `baseRadius`, `center`, `levels`, `reference`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtended.js`
+
+- Functions:
+  - `calculateFibExtendedGeometry`, `createTool`
+- Top-level variables:
+  - `FIB_EXTENDED_LEVELS`, `FIB_FAN_RATIOS`, `FibChannel`, `FibCircles`, `FibSpeedResistanceArcs`, `FibSpeedResistanceFan`, `FibSpiral`, `FibWedge`, `Pitchfan`, `THREE_POINT`, `TWO_POINT`, `TrendBasedFibTime`, `p1`, `p2`, `p3`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtended.test.ts`
 
@@ -12386,15 +13431,32 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `FIB_EXTENDED_LEVELS`, `FIB_FAN_RATIOS`, `FibChannel`, `FibCircles`, `FibSpeedResistanceArcs`, `FibSpeedResistanceFan`, `FibSpiral`, `FibWedge`, `Pitchfan`, `THREE_POINT`, `TWO_POINT`, `TrendBasedFibTime`, `p1`, `p2`, `p3`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtension.js`
+
+- Top-level variables:
+  - `DEFAULT_FIB_EXTENSION_CONFIGS`, `FibExtension`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtension.ts`
 
 - Top-level variables:
   - `DEFAULT_FIB_EXTENSION_CONFIGS`, `FibExtension`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibonacci.js`
+
+- Top-level variables:
+  - `DEFAULT_FIB_LEVEL_CONFIGS`, `Fibonacci`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibonacci.ts`
 
 - Top-level variables:
   - `DEFAULT_FIB_LEVEL_CONFIGS`, `Fibonacci`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibTimeZone.js`
+
+- Functions:
+  - `calculateFibTimeZoneGeometry`
+- Top-level variables:
+  - `DEFAULT_FIB_TIME_ZONE_LEVELS`, `FibTimeZone`, `end`, `levels`, `start`, `stepX`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibTimeZone.ts`
 
@@ -12402,6 +13464,13 @@ Generated at: `2026-05-21 23:14:30`
   - `calculateFibTimeZoneGeometry`
 - Top-level variables:
   - `DEFAULT_FIB_TIME_ZONE_LEVELS`, `FibTimeZone`, `end`, `levels`, `start`, `stepX`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannAdvanced.js`
+
+- Functions:
+  - `calculateGannAdvancedGeometry`
+- Top-level variables:
+  - `GANN_FRACTIONS`, `GannBox`, `GannSquare`, `GannSquareFixed`, `p1`, `p2`, `side`, `size`, `sizeInPx`, `x2`, `y2`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannAdvanced.test.ts`
 
@@ -12417,12 +13486,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `GANN_FRACTIONS`, `GannBox`, `GannSquare`, `GannSquareFixed`, `p1`, `p2`, `side`, `size`, `sizeInPx`, `x2`, `y2`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannFan.js`
+
+- Functions:
+  - `calculateGannFanGeometry`, `clampToBoundary`
+- Top-level variables:
+  - `GANN_RATIOS`, `GannFan`, `dx`, `dy`, `lines`, `t`, `tMax`, `tx`, `ty`, `unitBarX`, `unitPriceY`, `vx`, `vy`, `x2`, `y2`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannFan.ts`
 
 - Functions:
   - `calculateGannFanGeometry`, `clampToBoundary`
 - Top-level variables:
   - `GANN_RATIOS`, `GannFan`, `dx`, `dy`, `lines`, `t`, `tMax`, `tx`, `ty`, `unitBarX`, `unitPriceY`, `vx`, `vy`, `x2`, `y2`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/harmonicPatterns.js`
+
+- Functions:
+  - `calculateHarmonicPatternGeometry`, `makeHarmonicTool`
+- Top-level variables:
+  - `CypherPattern`, `HeadAndShoulders`, `PATTERN_HAS_CLOSING_LINE`, `PATTERN_POINT_COUNT`, `PATTERN_POINT_LABELS`, `ThreeDrivesPattern`, `TrianglePattern`, `XabcdPattern`, `hasClosingLine`, `labels`, `patternType`, `pixels`, `pointCount`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/harmonicPatterns.test.ts`
 
@@ -12438,10 +13521,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `CypherPattern`, `HeadAndShoulders`, `PATTERN_HAS_CLOSING_LINE`, `PATTERN_POINT_COUNT`, `PATTERN_POINT_LABELS`, `ThreeDrivesPattern`, `TrianglePattern`, `XabcdPattern`, `hasClosingLine`, `labels`, `patternType`, `pixels`, `pointCount`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/hLine.js`
+
+- Top-level variables:
+  - `HLine`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/hLine.ts`
 
 - Top-level variables:
   - `HLine`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/longPosition.js`
+
+- Functions:
+  - `calculateRiskReward`
+- Top-level variables:
+  - `LongPosition`, `updated`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/longPosition.ts`
 
@@ -12450,12 +13545,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `LongPosition`, `updated`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/parallelChannel.js`
+
+- Functions:
+  - `calculateParallelChannelGeometry`
+- Top-level variables:
+  - `ParallelChannel`, `dx`, `dy`, `end`, `length`, `normal`, `offsetAnchor`, `offsetDistance`, `start`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/parallelChannel.ts`
 
 - Functions:
   - `calculateParallelChannelGeometry`
 - Top-level variables:
   - `ParallelChannel`, `dx`, `dy`, `end`, `length`, `normal`, `offsetAnchor`, `offsetDistance`, `start`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/pitchfork.js`
+
+- Functions:
+  - `calculatePitchforkGeometry`
+- Top-level variables:
+  - `Pitchfork`, `leftSwing`, `midpoint`, `pivot`, `rightSwing`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/pitchfork.ts`
 
@@ -12464,20 +13573,42 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `Pitchfork`, `leftSwing`, `midpoint`, `pivot`, `rightSwing`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/polyline.js`
+
+- Top-level variables:
+  - `Polyline`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/polyline.ts`
 
 - Top-level variables:
   - `Polyline`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/ray.js`
+
+- Top-level variables:
+  - `Ray`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/ray.ts`
 
 - Top-level variables:
   - `Ray`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/rectangle.js`
+
+- Top-level variables:
+  - `Rectangle`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/rectangle.ts`
 
 - Top-level variables:
   - `Rectangle`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/regressionChannel.js`
+
+- Functions:
+  - `calculateRegressionChannelMetrics`, `toTimeValue`
+- Top-level variables:
+  - `RegressionChannel`, `barTime`, `bars`, `closes`, `denominator`, `end`, `endPrice`, `endTime`, `endX`, `intercept`, `leftBar`, `meanY`, `n`, `rSquared`, `residuals`, `rightBar`, `slope`, `ssRes`, `ssTot`, `start`, `startPrice`, `startTime`, `startX`, `stdDev`, `sumX`, `sumXX`, `sumXY`, `sumY`, `xs`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/regressionChannel.ts`
 
@@ -12486,6 +13617,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `RegressionChannel`, `barTime`, `bars`, `closes`, `denominator`, `end`, `endPrice`, `endTime`, `endX`, `intercept`, `leftBar`, `meanY`, `n`, `rSquared`, `residuals`, `rightBar`, `slope`, `ssRes`, `ssTot`, `start`, `startPrice`, `startTime`, `startX`, `stdDev`, `sumX`, `sumXX`, `sumXY`, `sumY`, `xs`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/shortPosition.js`
+
+- Functions:
+  - `calculateRiskReward`
+- Top-level variables:
+  - `ShortPosition`, `updated`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/shortPosition.ts`
 
 - Functions:
@@ -12493,20 +13631,42 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `ShortPosition`, `updated`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/text.js`
+
+- Top-level variables:
+  - `Text`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/text.ts`
 
 - Top-level variables:
   - `Text`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/trendLine.js`
+
+- Top-level variables:
+  - `TrendLine`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/trendLine.ts`
 
 - Top-level variables:
   - `TrendLine`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/vLine.js`
+
+- Top-level variables:
+  - `VLine`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/vLine.ts`
 
 - Top-level variables:
   - `VLine`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/clipboard.js`
+
+- Functions:
+  - `cloneDrawingSnapshot`, `offsetDrawingByPixels`
+- Top-level variables:
+  - `now`, `snapshot`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/clipboard.test.ts`
 
@@ -12520,6 +13680,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `now`, `snapshot`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/contextMenu.js`
+
+- Functions:
+  - `DrawingContextMenu`, `handleKeyDown`, `resolvePalette`
+- Top-level variables:
+  - `backdropStyle`, `itemListStyle`, `overlayStyle`, `palette`, `panelStyle`, `titleStyle`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/contextMenu.test.tsx`
 
 - Top-level variables:
@@ -12532,12 +13699,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `backdropStyle`, `itemListStyle`, `overlayStyle`, `palette`, `panelStyle`, `titleStyle`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateBridge.js`
+
+- Functions:
+  - `buildRenderScalesFromBridge`, `chartPointToPixelWithBridge`, `fromBridgePixel`, `isFiniteNumber`, `measurementPointToPixelWithBridge`, `resolveChartPointWithBridge`, `resolveMeasurementPointWithBridge`, `resolveReferenceDate`, `resolveReferencePrice`, `toBridgePixel`, `toDate`
+- Top-level variables:
+  - `bridgeReferencePixel`, `candidates`, `pixel`, `pixelOffset`, `referenceDate`, `referencePixel`, `referencePoint`, `referencePrice`, `resolved`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateBridge.ts`
 
 - Functions:
   - `buildRenderScalesFromBridge`, `chartPointToPixelWithBridge`, `isFiniteNumber`, `measurementPointToPixelWithBridge`, `resolveChartPointWithBridge`, `resolveMeasurementPointWithBridge`, `resolveReferenceDate`, `resolveReferencePrice`, `toBridgePixel`, `toDate`
 - Top-level variables:
   - `bridgeReferencePixel`, `candidates`, `fromBridgePixel`, `pixel`, `pixelOffset`, `referenceDate`, `referencePixel`, `referencePoint`, `referencePrice`, `resolved`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateUtils.js`
+
+- Functions:
+  - `chartPointToPixel`, `pixelToChartPoint`
+- Top-level variables:
+  - `localX`, `localY`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateUtils.test.ts`
 
@@ -12565,6 +13746,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `drawing`, `events`, `now`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingInspector.js`
+
+- Functions:
+  - `DrawingAlertPanel`, `addNewFibLevel`, `dashPatternFromStyle`, `isColorString`, `setCondition`, `toggleEnabled`, `updateStyle`
+- Top-level variables:
+  - `condition`, `configs`, `cooldownSec`, `direction`, `effectiveDrawing`, `enabled`, `labelText`, `left`, `locked`, `newLevelInputRef`, `next`, `parsed`, `strokeDasharray`, `style`, `top`, `updated`, `visible`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingInspector.test.tsx`
 
 - Top-level variables:
@@ -12576,6 +13764,13 @@ Generated at: `2026-05-21 23:14:30`
   - `DrawingAlertPanel`, `addNewFibLevel`, `dashPatternFromStyle`, `isColorString`, `setCondition`, `toggleEnabled`, `updateStyle`
 - Top-level variables:
   - `condition`, `configs`, `cooldownSec`, `direction`, `effectiveDrawing`, `enabled`, `labelText`, `left`, `locked`, `newLevelInputRef`, `next`, `parsed`, `strokeDasharray`, `style`, `top`, `updated`, `visible`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/drawingInteractionBridge.js`
+
+- Functions:
+  - `findHitDrawingWithContext`, `findSnapPointWithContext`, `hitTestDrawingWithContext`, `resolveDrawingInteractionContext`, `resolveDrawingPointWithContext`, `sortVisibleDrawings`
+- Top-level variables:
+  - `chartPoint`, `offsetX`, `offsetY`, `orderedDrawings`, `renderScales`, `snap`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/drawingInteractionBridge.test.ts`
 
@@ -12596,6 +13791,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `actual`, `baseChartConfig`, `baseMoreProps`, `capturedProps`, `container`, `drawing`, `interaction`, `momentumChartConfig`, `onToolUsed`, `reactActEnvironment`, `root`, `xScale`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingLayer.js`
+
+- Functions:
+  - `calculatePositionRiskReward`, `constrainResizePoint`, `currentDrawing`, `findHitDrawing`, `getSelectedDrawingId`, `getVisibleDrawings`, `handleKeyDown`, `handleModifierKeyChange`, `handlePointerUp`, `handleSelect`, `hasRemainingPlaceholder`, `isMultiStepTool`, `resetSelectionModifier`, `resizeDrawing`, `resizeDrawingsByIds`, `resolveDrawingInteractionContextForDrawing`, `resolveDrawingInteractionContextFromMoreProps`, `sortVisibleDrawings`, `syncSelectionModifierPressed`, `toDrawingPoint`, `translateDrawing`, `translateDrawingsByIds`, `withChartTranslation`
+- Top-level variables:
+  - `MEASURE_TOOLS`, `actionHandle`, `allIds`, `anchorIndex`, `anchorPoint`, `barsText`, `base`, `baseChartConfig`, `baseDrawings`, `bridge`, `canDragSelectedDrawing`, `canGroupDrag`, `canvasOptions`, `chartConfig`, `chartCursorClass`, `cloned`, `completed`, `constrainedPoint`, `context`, `currentChartPoint`, `deltaX`, `deltaY`, `draft`, `draftChartConfig`, `draftObj`, `dragPreviewRef`, `dragSessionRef`, `draggableIds`, `drawToCanvas`, `drawings`, `dx`, `dy`, `handleClick`, `handleContextMenu`, `handleDoubleClick`, `handleDrag`, `handleDragComplete`, `handleDragStart`, `handleHover`, `handleMouseDown`, `handleMouseMove`, `handleUnHover`, `hit`, `interactionRef`, `isHover`, `lastMovePropsRef`, `matchingIds`, `measurement`, `midX`, `midY`, `modifierEvent`, `moreProps`, `nativeDown`, `nativeEvent`, `nextSelectedIds`, `p0`, `p1`, `pctText`, `pendingResizeHandleRef`, `pointerDeviceRef`, `previewDrawings`, `priceDeltaText`, `pt`, `rect`, `renderScales`, `resizeHandleIndex`, `resized`, `resolved`, `rubberBandJustCommittedRef`, `rubberBandRef`, `selectedCursorClass`, `selectedDrawing`, `selectedDrawingId`, `selectedObjectIdSet`, `selectedObjectIds`, `session`, `shouldDisablePan`, `shouldDisablePanOnMouseDown`, `sign`, `snap`, `snapRef`, `startChartPoint`, `startPoint`, `targetIndex`, `tool`, `toolName`, `updated`, `xy`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingLayer.test.ts`
 
 - Top-level variables:
@@ -12607,6 +13809,13 @@ Generated at: `2026-05-21 23:14:30`
   - `calculatePositionRiskReward`, `constrainResizePoint`, `currentDrawing`, `findHitDrawing`, `getSelectedDrawingId`, `getVisibleDrawings`, `handleKeyDown`, `handleModifierKeyChange`, `handlePointerUp`, `handleSelect`, `hasRemainingPlaceholder`, `isMultiStepTool`, `resetSelectionModifier`, `resizeDrawing`, `resizeDrawingsByIds`, `resolveDrawingInteractionContextForDrawing`, `resolveDrawingInteractionContextFromMoreProps`, `sortVisibleDrawings`, `syncSelectionModifierPressed`, `toDrawingPoint`, `translateDrawing`, `translateDrawingsByIds`, `withChartTranslation`
 - Top-level variables:
   - `MEASURE_TOOLS`, `actionHandle`, `allIds`, `anchorIndex`, `anchorPoint`, `barsText`, `base`, `baseChartConfig`, `baseDrawings`, `bridge`, `canDragSelectedDrawing`, `canGroupDrag`, `canvasOptions`, `chartConfig`, `chartCursorClass`, `cloned`, `completed`, `constrainedPoint`, `context`, `currentChartPoint`, `deltaX`, `deltaY`, `draft`, `draftChartConfig`, `draftObj`, `dragPreviewRef`, `dragSessionRef`, `draggableIds`, `drawToCanvas`, `drawings`, `dx`, `dy`, `handleClick`, `handleContextMenu`, `handleDoubleClick`, `handleDrag`, `handleDragComplete`, `handleDragStart`, `handleHover`, `handleMouseDown`, `handleMouseMove`, `handleUnHover`, `hit`, `interactionRef`, `isHover`, `lastMovePropsRef`, `matchingIds`, `measurement`, `midX`, `midY`, `modifierEvent`, `moreProps`, `nativeDown`, `nativeEvent`, `nextSelectedIds`, `p0`, `p1`, `pctText`, `pendingResizeHandleRef`, `pointerDeviceRef`, `previewDrawings`, `priceDeltaText`, `pt`, `rect`, `renderScales`, `resizeHandleIndex`, `resized`, `resolved`, `rubberBandJustCommittedRef`, `rubberBandRef`, `selectedCursorClass`, `selectedDrawing`, `selectedDrawingId`, `selectedObjectIdSet`, `selectedObjectIds`, `session`, `shouldDisablePan`, `shouldDisablePanOnMouseDown`, `sign`, `snap`, `snapRef`, `startChartPoint`, `startPoint`, `targetIndex`, `tool`, `toolName`, `updated`, `xy`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingListPanel.js`
+
+- Functions:
+  - `formatTimestamp`, `generateDrawingLabel`, `loadCollapsedGroups`, `saveCollapsedGroups`
+- Top-level variables:
+  - `STORAGE_KEY`, `TOOL_LABELS`, `existing`, `groupLabel`, `grouped`, `isCollapsed`, `isHidden`, `isLocked`, `isSelected`, `left`, `map`, `next`, `parsed`, `raw`, `toggleGroup`, `top`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/drawingListPanel.test.ts`
 
@@ -12621,6 +13830,15 @@ Generated at: `2026-05-21 23:14:30`
   - `formatTimestamp`, `generateDrawingLabel`, `loadCollapsedGroups`, `saveCollapsedGroups`
 - Top-level variables:
   - `STORAGE_KEY`, `TOOL_LABELS`, `existing`, `groupLabel`, `grouped`, `isCollapsed`, `isHidden`, `isLocked`, `isSelected`, `left`, `map`, `next`, `parsed`, `raw`, `toggleGroup`, `top`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingStorage.js`
+
+- Classes:
+  - `DrawingImportError`
+- Functions:
+  - `createLocalStorageAdapter`, `getStorage`, `getStorageKey`, `isCycleParams`, `isDrawingType`, `isFibLevelConfig`, `isHarmonicRatioConfig`, `isPoint`, `isRecord`, `isRiskReward`, `isStyle`, `migrateFibLevelConfigs`, `normalizeDasharray`, `normalizeDrawingObject`, `normalizeDrawings`, `parseAlertCondition`
+- Top-level variables:
+  - `DRAWING_TOOL_TYPES`, `converted`, `cooldownMs`, `createdAt`, `direction`, `enabled`, `normalized`, `parsed`, `raw`, `style`, `triggeredAt`, `updatedAt`, `validDirections`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingStorage.test.ts`
 
@@ -12637,6 +13855,13 @@ Generated at: `2026-05-21 23:14:30`
   - `createLocalStorageAdapter`, `getStorage`, `getStorageKey`, `isCycleParams`, `isDrawingType`, `isFibLevelConfig`, `isHarmonicRatioConfig`, `isPoint`, `isRecord`, `isRiskReward`, `isStyle`, `migrateFibLevelConfigs`, `normalizeDasharray`, `normalizeDrawingObject`, `normalizeDrawings`, `parseAlertCondition`
 - Top-level variables:
   - `DRAWING_TOOL_TYPES`, `converted`, `cooldownMs`, `createdAt`, `direction`, `enabled`, `normalized`, `parsed`, `raw`, `style`, `triggeredAt`, `updatedAt`, `validDirections`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/drawingStyleRegistry.js`
+
+- Functions:
+  - `applyDrawingTemplate`, `clearDrawingStyleOverride`, `clearDrawingStyleOverrides`, `clearDrawingTemplate`, `cloneDrawingStyleOverride`, `dashPatternToStrokeDasharray`, `getDrawingStyleOverride`, `listDrawingStyleOverrides`, `loadDrawingTemplate`, `normalizeDrawingStyleOverride`, `notifyAllDrawingStyleChanges`, `notifyDrawingStyleChange`, `overrideDrawingStyle`, `resolveDrawingStyle`, `saveDrawingTemplate`, `subscribeDrawingStyle`, `subscribeDrawingStyleChanges`, `validateDrawingStyleTemplate`
+- Top-level variables:
+  - `HEX_COLOR_RE`, `TEMPLATE_STORAGE_KEY_PREFIX`, `current`, `dashPattern`, `drawingStyleChangeListeners`, `drawingStyleListeners`, `drawingStyleOverrides`, `listeners`, `normalized`, `obj`, `override`, `parsed`, `raw`, `result`, `template`, `valid`, `validated`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/drawingStyleRegistry.test.ts`
 
@@ -12657,6 +13882,27 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `base`, `loaded`, `result`, `saved`, `store`, `style`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/engineCompat.js`
+
+- Functions:
+  - `applyCanvasStyle`, `deleteDrawingGroup`, `distanceSquared`, `drawArrowHead`, `drawLine`, `drawRectangle`, `drawText`, `findNearestOverlayEndpointSnap`, `isFiniteNumber`, `measurementPointToPixelFromScales`, `renderOverlayPrimitiveToCanvas`, `resolveDasharray`, `resolveDrawingGroupMemberIds`, `resolveMeasurementPointFromValues`, `summarizeMeasurement`, `toDate`
+- Top-level variables:
+  - `MAGNET_TOLERANCE`, `angle`, `bestDate`, `bestDistance`, `bestIndex`, `bestMatch`, `candidateDate`, `candidateTime`, `chartHeight`, `chartWidth`, `distance`, `dx`, `dy`, `height`, `left`, `priceDelta`, `size`, `targetTime`, `toleranceSquared`, `top`, `width`, `x`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/engineCompat.ts`
+
+- Functions:
+  - `applyCanvasStyle`, `deleteDrawingGroup`, `distanceSquared`, `drawArrowHead`, `drawLine`, `drawRectangle`, `drawText`, `findNearestOverlayEndpointSnap`, `isFiniteNumber`, `measurementPointToPixelFromScales`, `renderOverlayPrimitiveToCanvas`, `resolveDasharray`, `resolveDrawingGroupMemberIds`, `resolveMeasurementPointFromValues`, `summarizeMeasurement`, `toDate`
+- Top-level variables:
+  - `MAGNET_TOLERANCE`, `angle`, `bestDate`, `bestDistance`, `bestIndex`, `bestMatch`, `candidateDate`, `candidateTime`, `chartHeight`, `chartWidth`, `distance`, `dx`, `dy`, `height`, `left`, `priceDelta`, `size`, `targetTime`, `toleranceSquared`, `top`, `width`, `x`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/evaluateDrawingAlerts.js`
+
+- Functions:
+  - `detectPriceCross`, `evaluateDrawingAlerts`, `isCooldownElapsed`, `resolveReferencePriceForAlert`
+- Top-level variables:
+  - `DEFAULT_COOLDOWN_MS`, `actualDirection`, `condition`, `cooldown`, `crossedAbove`, `crossedBelow`, `fired`, `refPrice`, `triggered`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/evaluateDrawingAlerts.ts`
 
 - Functions:
@@ -12676,6 +13922,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `chartHeight`, `chartWidth`, `dx`, `dy`, `geometry`, `labels`, `nonPrincipal`, `principal`, `ratio`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/history.js`
+
+- Functions:
+  - `cloneDrawings`, `createDrawingHistory`, `historyReducer`
+- Top-level variables:
+  - `nextPast`, `previousPresent`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/history.ts`
 
 - Functions:
@@ -12683,12 +13936,19 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `nextPast`, `previousPresent`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/hitTest.js`
+
+- Functions:
+  - `distanceToPolyline`, `distanceToSegment`, `getDrawingBoundingBox`, `getResizeHandleIndex`, `getTextBounds`, `hitTestAbcdPattern`, `hitTestActionHandles`, `hitTestChannelLike`, `hitTestDrawing`, `hitTestFibArc`, `hitTestFibTimeZone`, `hitTestFibonacciLike`, `hitTestLineLike`, `hitTestOverlayPrimitive`, `hitTestParallelChannel`, `hitTestPitchfork`, `hitTestPositionZones`, `hitTestRayLike`, `hitTestRectangleLike`, `hitTestRegressionChannel`, `isDrawingInRect`, `pathBounds`, `pointInRect`, `toOverlayPrimitive`, `toPixel`
+- Top-level variables:
+  - `ACTION_HANDLE_RADIUS`, `HIT_TOLERANCE`, `bbox`, `best`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `effectiveDrawing`, `end`, `fontSize`, `geometry`, `h`, `handles`, `height`, `hitRadius`, `leftFork`, `len`, `length`, `lengthSquared`, `lower`, `maxX`, `maxY`, `median`, `metrics`, `middle`, `minX`, `minY`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `origin`, `overlayPrimitive`, `p`, `pixel`, `pixelDelta`, `pixels`, `point`, `priceDelta`, `primitiveStyle`, `pts`, `pts2`, `px1`, `px2`, `radius`, `rightFork`, `start`, `style`, `t`, `text`, `tolerance`, `upper`, `w`, `width`, `x`, `x1`, `x2`, `xs`, `y`, `y1`, `y2`, `ys`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/hitTest.ts`
 
 - Functions:
-  - `distanceToPolyline`, `distanceToSegment`, `getDrawingBoundingBox`, `getResizeHandleIndex`, `getTextBounds`, `hitTestAbcdPattern`, `hitTestActionHandles`, `hitTestChannelLike`, `hitTestDrawing`, `hitTestFibArc`, `hitTestFibTimeZone`, `hitTestFibonacciLike`, `hitTestLineLike`, `hitTestParallelChannel`, `hitTestPitchfork`, `hitTestPositionZones`, `hitTestRayLike`, `hitTestRectangleLike`, `hitTestRegressionChannel`, `isDrawingInRect`, `pathBounds`, `pointInRect`, `toOverlayPrimitive`, `toPixel`
+  - `distanceToPolyline`, `distanceToSegment`, `getDrawingBoundingBox`, `getResizeHandleIndex`, `getTextBounds`, `hitTestAbcdPattern`, `hitTestActionHandles`, `hitTestChannelLike`, `hitTestDrawing`, `hitTestFibArc`, `hitTestFibTimeZone`, `hitTestFibonacciLike`, `hitTestLineLike`, `hitTestOverlayPrimitive`, `hitTestParallelChannel`, `hitTestPitchfork`, `hitTestPositionZones`, `hitTestRayLike`, `hitTestRectangleLike`, `hitTestRegressionChannel`, `isDrawingInRect`, `pathBounds`, `pointInRect`, `toOverlayPrimitive`, `toPixel`
 - Top-level variables:
-  - `ACTION_HANDLE_RADIUS`, `HIT_TOLERANCE`, `bbox`, `best`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `effectiveDrawing`, `end`, `fontSize`, `geometry`, `h`, `handles`, `height`, `hitRadius`, `leftFork`, `length`, `lengthSquared`, `lower`, `maxX`, `maxY`, `median`, `metrics`, `middle`, `minX`, `minY`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `origin`, `overlayPrimitive`, `p`, `pixel`, `pixelDelta`, `pixels`, `point`, `priceDelta`, `primitiveStyle`, `pts`, `pts2`, `px1`, `px2`, `radius`, `rightFork`, `start`, `style`, `t`, `text`, `tolerance`, `upper`, `w`, `width`, `x`, `x1`, `x2`, `xs`, `y`, `y1`, `y2`, `ys`
+  - `ACTION_HANDLE_RADIUS`, `HIT_TOLERANCE`, `bbox`, `best`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `effectiveDrawing`, `end`, `fontSize`, `geometry`, `h`, `handles`, `height`, `hitRadius`, `leftFork`, `len`, `length`, `lengthSquared`, `lower`, `maxX`, `maxY`, `median`, `metrics`, `middle`, `minX`, `minY`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `origin`, `overlayPrimitive`, `p`, `pixel`, `pixelDelta`, `pixels`, `point`, `priceDelta`, `primitiveStyle`, `pts`, `pts2`, `px1`, `px2`, `radius`, `rightFork`, `start`, `style`, `t`, `text`, `tolerance`, `upper`, `w`, `width`, `x`, `x1`, `x2`, `xs`, `y`, `y1`, `y2`, `ys`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/hitTestTolerance.test.ts`
 
@@ -12696,6 +13956,10 @@ Generated at: `2026-05-21 23:14:30`
   - `makeHLine`, `makeRectangle`, `makeScales`, `makeText`, `makeTrendLine`, `makeVLine`
 - Top-level variables:
   - `allTypes`, `drawing`, `hLine`, `invisible`, `mouseX`, `mouseY`, `now`, `options`, `rectangle`, `scales`, `text`, `vLine`, `xScale`, `yScale`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/index.js`
+
+- No parseable top-level symbols found
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/index.ts`
 
@@ -12722,6 +13986,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `abcd`, `drawing`, `endPoint`, `fibArc`, `fibTimeZone`, `metrics`, `midPoint`, `names`, `options`, `parallel`, `pitchfork`, `plotData`, `regression`, `regressionElements`, `scales`, `startPoint`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/measuring.js`
+
+- Functions:
+  - `computeLiveMeasurement`, `measurementPointToPixel`, `resolveChartConfig`, `resolveMeasurementPoint`, `summarizeMeasurement`
+- Top-level variables:
+  - `avgBarMs`, `barCount`, `chartConfig`, `chartConfigList`, `currentItem`, `dateValue`, `dates`, `first`, `last`, `priceDelta`, `pricePct`, `priceValue`, `px0`, `px1`, `t0`, `t1`, `tMax`, `tMin`, `timeDeltaMs`, `totalMs`, `xValue`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/measuring.test.ts`
 
 - Top-level variables:
@@ -12733,6 +14004,13 @@ Generated at: `2026-05-21 23:14:30`
   - `computeLiveMeasurement`, `measurementPointToPixel`, `resolveChartConfig`, `resolveMeasurementPoint`, `summarizeMeasurement`
 - Top-level variables:
   - `avgBarMs`, `barCount`, `chartConfig`, `chartConfigList`, `currentItem`, `dateValue`, `dates`, `first`, `last`, `priceDelta`, `pricePct`, `priceValue`, `px0`, `px1`, `t0`, `t1`, `tMax`, `tMin`, `timeDeltaMs`, `totalMs`, `xValue`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/morePropsCoordinateBridge.js`
+
+- Functions:
+  - `buildRenderScalesFromMoreProps`, `createDrawingCoordinateBridgeFromMoreProps`, `getAdjustedMousePosition`, `getChartConfigList`, `resolveActiveChartConfig`, `resolveBaseChartConfig`, `resolveBridgePixelOffset`, `resolveChartPaneId`, `resolveChartPointDirect`, `resolveChartPointFromMoreProps`, `resolveChartScaleDomain`, `resolveDrawingChartConfig`
+- Top-level variables:
+  - `adjustedMousePosition`, `baseChartConfig`, `bridge`, `chartConfigList`, `currentCharts`, `currentMatch`, `dateValue`, `domain`, `exactMatch`, `match`, `offset`, `paneChartConfigs`, `pixel`, `plotData`, `renderScales`, `targetChartConfig`, `xValue`, `yValue`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/morePropsCoordinateBridge.test.ts`
 
@@ -12748,6 +14026,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `adjustedMousePosition`, `baseChartConfig`, `bridge`, `chartConfigList`, `currentCharts`, `currentMatch`, `dateValue`, `domain`, `exactMatch`, `match`, `offset`, `paneChartConfigs`, `pixel`, `plotData`, `renderScales`, `targetChartConfig`, `xValue`, `yValue`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/priceLabel.js`
+
+- Functions:
+  - `DrawingPriceLabels`, `addPriceMarker`, `collectPointPriceMarkers`, `isFinitePrice`, `resolveDrawingPriceMarkers`, `resolveFibExtensionMarkers`, `resolveFibonacciMarkers`
+- Top-level variables:
+  - `effectiveDrawing`, `firstPoint`, `highlightFill`, `labelFill`, `labelStroke`, `labelStrokeWidth`, `labelTextFill`, `lastPoint`, `levels`, `markers`, `normalized`, `priceDelta`, `riskReward`, `seen`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/priceLabel.test.ts`
 
 - Top-level variables:
@@ -12759,6 +14044,13 @@ Generated at: `2026-05-21 23:14:30`
   - `DrawingPriceLabels`, `addPriceMarker`, `collectPointPriceMarkers`, `isFinitePrice`, `resolveDrawingPriceMarkers`, `resolveFibExtensionMarkers`, `resolveFibonacciMarkers`
 - Top-level variables:
   - `effectiveDrawing`, `firstPoint`, `highlightFill`, `labelFill`, `labelStroke`, `labelStrokeWidth`, `labelTextFill`, `lastPoint`, `levels`, `markers`, `normalized`, `priceDelta`, `riskReward`, `seen`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/registry.js`
+
+- Functions:
+  - `createDraftFromTool`, `createTool`, `getDrawingPlugin`, `isDrawingToolName`, `listDrawingPlugins`, `listDrawingTools`, `registerDrawingPlugin`, `registerDrawingTool`
+- Top-level variables:
+  - `_pluginTools`, `draft`, `drawingToolRegistry`, `tool`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/registry.test.ts`
 
@@ -12774,12 +14066,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `_pluginTools`, `draft`, `drawingToolRegistry`, `tool`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/renderCanvas.js`
+
+- Functions:
+  - `applyLineStyle`, `clipSegmentToBox`, `computeBoundingBox`, `drawAbcdPattern`, `drawArrow`, `drawChannel`, `drawCycleTools`, `drawDateAndPriceRange`, `drawElliottWave`, `drawExtendedLine`, `drawFibArc`, `drawFibExtended`, `drawFibTimeZone`, `drawFibonacci`, `drawFilledRect`, `drawGannAdvanced`, `drawGannFan`, `drawHLine`, `drawHarmonicPattern`, `drawLine`, `drawLongPosition`, `drawParallelChannel`, `drawPitchfork`, `drawPolygonFill`, `drawPolyline`, `drawPolylineTool`, `drawPositionZones`, `drawRay`, `drawRectangle`, `drawRegressionChannel`, `drawSelectionHandles`, `drawShortPosition`, `drawStrokedRect`, `drawText`, `drawTextLabel`, `drawTrendLine`, `drawVLine`, `extendLineThroughBox`, `numberFormatter`, `renderDrawingActionHandles`, `renderDrawingAlertIcon`, `renderDrawingShape`, `renderDrawingToCanvas`, `renderMeasurementLabel`, `renderRubberBand`, `strokeDasharrayForStyle`, `toPixel`, `toPrimitiveStyle`
+- Top-level variables:
+  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `FIBS`, `FONT`, `LINE_HEIGHT`, `PADDING`, `PHI`, `angle0`, `apex`, `badge`, `badgeStyle`, `bars`, `base`, `baseRadius`, `bbox`, `bottom`, `boxH`, `boxW`, `bx`, `by`, `canvasH`, `canvasHeight`, `channelDy`, `clipped`, `cx`, `dashedStyle`, `distance`, `dx`, `dy`, `edges`, `effectiveDrawing`, `end`, `entryY`, `ext`, `extX`, `extY`, `extensionPrice`, `fill`, `fillAlpha`, `fillColor`, `first`, `geo`, `geometry`, `gx`, `gy`, `h`, `halfPeriod`, `handles`, `headLength`, `headWidth`, `height`, `isArcs`, `label`, `labelX`, `labelY`, `last`, `left`, `leftFork`, `length`, `levelStyle`, `levels`, `lineY1`, `lineY2`, `lines`, `lower`, `lx`, `ly`, `maxWidth`, `median`, `metrics`, `midX`, `midY`, `middle`, `nl`, `normal`, `nr`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `offsetY`, `opacity`, `origin`, `p`, `percent`, `period`, `pixel`, `pixelDelta`, `pixels`, `point`, `price`, `priceDelta`, `px`, `py`, `r`, `r0`, `radius`, `ratio`, `ratioAB`, `ratioBC`, `reward`, `right`, `rightFork`, `risk`, `riskReward`, `slBounds`, `slFill`, `start`, `steps`, `stopY`, `stroke`, `strokeWidth`, `t0`, `t1`, `targetY`, `text`, `theta`, `top`, `totalWidth`, `tpBounds`, `tpFill`, `turns`, `tx`, `ty`, `upper`, `ux`, `uy`, `vector`, `vx`, `w`, `width`, `x`, `xs`, `y`, `ys`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/renderCanvas.ts`
 
 - Functions:
   - `applyLineStyle`, `clipSegmentToBox`, `computeBoundingBox`, `drawAbcdPattern`, `drawArrow`, `drawChannel`, `drawCycleTools`, `drawDateAndPriceRange`, `drawElliottWave`, `drawExtendedLine`, `drawFibArc`, `drawFibExtended`, `drawFibTimeZone`, `drawFibonacci`, `drawFilledRect`, `drawGannAdvanced`, `drawGannFan`, `drawHLine`, `drawHarmonicPattern`, `drawLine`, `drawLongPosition`, `drawParallelChannel`, `drawPitchfork`, `drawPolygonFill`, `drawPolyline`, `drawPolylineTool`, `drawPositionZones`, `drawRay`, `drawRectangle`, `drawRegressionChannel`, `drawSelectionHandles`, `drawShortPosition`, `drawStrokedRect`, `drawText`, `drawTextLabel`, `drawTrendLine`, `drawVLine`, `extendLineThroughBox`, `numberFormatter`, `renderDrawingActionHandles`, `renderDrawingAlertIcon`, `renderDrawingShape`, `renderDrawingToCanvas`, `renderMeasurementLabel`, `renderRubberBand`, `strokeDasharrayForStyle`, `toPixel`, `toPrimitiveStyle`
 - Top-level variables:
   - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `FIBS`, `FONT`, `LINE_HEIGHT`, `PADDING`, `PHI`, `angle0`, `apex`, `badge`, `badgeStyle`, `bars`, `base`, `baseRadius`, `bbox`, `bottom`, `boxH`, `boxW`, `bx`, `by`, `canvasH`, `canvasHeight`, `channelDy`, `clipped`, `cx`, `dashedStyle`, `distance`, `dx`, `dy`, `edges`, `effectiveDrawing`, `end`, `entryY`, `ext`, `extX`, `extY`, `extensionPrice`, `fill`, `fillAlpha`, `fillColor`, `first`, `geo`, `geometry`, `gx`, `gy`, `h`, `halfPeriod`, `handles`, `headLength`, `headWidth`, `height`, `isArcs`, `label`, `labelX`, `labelY`, `last`, `left`, `leftFork`, `length`, `levelStyle`, `levels`, `lineY1`, `lineY2`, `lines`, `lower`, `lx`, `ly`, `maxWidth`, `median`, `metrics`, `midX`, `midY`, `middle`, `nl`, `normal`, `nr`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `offsetY`, `opacity`, `origin`, `p`, `percent`, `period`, `pixel`, `pixelDelta`, `pixels`, `point`, `price`, `priceDelta`, `px`, `py`, `r`, `r0`, `radius`, `ratio`, `ratioAB`, `ratioBC`, `reward`, `right`, `rightFork`, `risk`, `riskReward`, `slBounds`, `slFill`, `start`, `steps`, `stopY`, `stroke`, `strokeWidth`, `t0`, `t1`, `targetY`, `text`, `theta`, `top`, `totalWidth`, `tpBounds`, `tpFill`, `turns`, `tx`, `ty`, `upper`, `ux`, `uy`, `vector`, `vx`, `w`, `width`, `x`, `xs`, `y`, `ys`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/renderSvg.js`
+
+- Functions:
+  - `circleElement`, `clipSegmentToBox`, `extendLineThroughBox`, `interactiveProps`, `lineElement`, `numberFormatter`, `pathElement`, `polygonElement`, `polylineElement`, `rectElement`, `renderAbcdPattern`, `renderArrow`, `renderChannel`, `renderDateAndPriceRange`, `renderDrawingToSvg`, `renderExtendedLine`, `renderFibArc`, `renderFibExtension`, `renderFibTimeZone`, `renderFibonacci`, `renderHLine`, `renderLineWithHandles`, `renderLongPosition`, `renderParallelChannel`, `renderPitchfork`, `renderPolyline`, `renderPositionZones`, `renderRay`, `renderRectangle`, `renderRegressionChannel`, `renderShortPosition`, `renderText`, `renderTrendLine`, `renderVLine`, `selectionHandles`, `strokeDasharrayForStyle`, `textElement`, `toPixel`
+- Top-level variables:
+  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `arcs`, `badge`, `badgeProps`, `badgeText`, `bars`, `base`, `bottom`, `clipped`, `dashedStroke`, `distance`, `dx`, `dy`, `edges`, `effectiveDrawing`, `element`, `elements`, `end`, `entryLine`, `entryY`, `extensionPrice`, `fill`, `geometry`, `headLength`, `headWidth`, `height`, `labels`, `left`, `leftFork`, `leftX`, `length`, `levels`, `line`, `lineProps`, `median`, `metrics`, `middle`, `negativeBoundary`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `path`, `percent`, `pixel`, `pixelDelta`, `pixels`, `point`, `polygon`, `positiveBoundary`, `price`, `priceDelta`, `px`, `py`, `r`, `ratio`, `ratioAB`, `ratioBC`, `rect`, `reward`, `right`, `rightFork`, `rightX`, `risk`, `riskReward`, `slZone`, `slZoneClass`, `start`, `stopLine`, `stopY`, `stroke`, `t0`, `t1`, `targetLine`, `targetY`, `text`, `top`, `tpZone`, `tpZoneClass`, `ux`, `uy`, `vector`, `width`, `x`, `y`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/renderSvg.test.ts`
 
@@ -12802,10 +14108,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `action`, `drawing`, `idle`, `next`, `rect`, `rubberBandState`, `scales`, `selectedMultiple`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/serialization.js`
+
+- Functions:
+  - `deserializeDrawingHistory`, `deserializeDrawingObject`, `deserializeDrawings`, `serializeDrawingHistory`, `serializeDrawingObject`, `serializeDrawings`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/serialization.ts`
 
 - Functions:
   - `deserializeDrawingHistory`, `deserializeDrawingObject`, `deserializeDrawings`, `serializeDrawingHistory`, `serializeDrawingObject`, `serializeDrawings`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/shared.js`
+
+- Functions:
+  - `appendPoint`, `clonePoint`, `createDrawingId`, `createDrawingObject`, `replaceNextPoint`, `replacePoint`
+- Top-level variables:
+  - `defaultDrawingStyle`, `drawingIdSeed`, `now`, `placeholderIndex`, `startPoint`, `targetIndex`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/shared.ts`
 
@@ -12813,6 +14131,13 @@ Generated at: `2026-05-21 23:14:30`
   - `appendPoint`, `clonePoint`, `createDrawingId`, `createDrawingObject`, `replaceNextPoint`, `replacePoint`
 - Top-level variables:
   - `defaultDrawingStyle`, `drawingIdSeed`, `now`, `placeholderIndex`, `startPoint`, `targetIndex`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/shortcutMap.js`
+
+- Functions:
+  - `normalizeShortcutKey`, `resolveDrawingShortcut`
+- Top-level variables:
+  - `DRAWING_SHORTCUTS`, `hasModifier`, `key`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/shortcutMap.test.ts`
 
@@ -12824,6 +14149,13 @@ Generated at: `2026-05-21 23:14:30`
   - `normalizeShortcutKey`, `resolveDrawingShortcut`
 - Top-level variables:
   - `DRAWING_SHORTCUTS`, `hasModifier`, `key`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/snap.js`
+
+- Functions:
+  - `findNearestBar`, `findSnapPoint`, `getDatumDate`, `pickEndpointSnap`, `toDate`
+- Top-level variables:
+  - `MAGNET_TOLERANCE`, `best`, `bestDistance`, `bestOhlc`, `candidates`, `date`, `distance`, `nearestBar`, `pixelPoint`, `pixelX`, `snap`, `value`, `xAccessor`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/snap.test.ts`
 
@@ -12839,6 +14171,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `MAGNET_TOLERANCE`, `best`, `bestDistance`, `bestOhlc`, `candidates`, `date`, `distance`, `nearestBar`, `pixelPoint`, `pixelX`, `snap`, `value`, `xAccessor`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/stateMachine.js`
+
+- Functions:
+  - `drawingReducer`, `getSelectedObjectIds`, `isLineFamilyType`, `lineTypeFlagsFor`, `normalizeSelectedObjectIds`, `selectionStateFor`
+- Top-level variables:
+  - `LINE_FAMILY_TYPES`, `normalized`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/stateMachine.ts`
 
 - Functions:
@@ -12853,9 +14192,20 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `pt`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/types.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/types.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingAlertEvaluator.js`
+
+- Functions:
+  - `useDrawingAlertEvaluator`
+- Top-level variables:
+  - `currentPrice`, `fired`, `lastBar`, `prevBar`, `prevPriceRef`, `previousPrice`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingAlertEvaluator.ts`
 
@@ -12863,6 +14213,13 @@ Generated at: `2026-05-21 23:14:30`
   - `useDrawingAlertEvaluator`
 - Top-level variables:
   - `currentPrice`, `fired`, `lastBar`, `prevBar`, `prevPriceRef`, `previousPrice`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingInteraction.js`
+
+- Functions:
+  - `cloneDrawingPoints`, `createDrawingInteractionState`, `deleteSelectedInteractionState`, `drawingInteractionReducer`, `getSelectedObjectIds`, `isHistoryAction`, `patchDrawing`, `replaceDrawingById`, `useDrawingInteraction`
+- Top-level variables:
+  - `cancelDrawing`, `deleteGroup`, `deleteSelected`, `didChange`, `nextDrawings`, `nextHistory`, `redo`, `replaceDrawings`, `selectGroup`, `selectObject`, `selectedDrawings`, `selectedObjectIds`, `setSelectedObjects`, `startEditing`, `startMoving`, `startResizing`, `undo`, `updateDrawing`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingInteraction.test.ts`
 
@@ -12878,12 +14235,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `cancelDrawing`, `deleteGroup`, `deleteSelected`, `didChange`, `nextDrawings`, `nextHistory`, `redo`, `replaceDrawings`, `selectGroup`, `selectObject`, `selectedDrawings`, `selectedObjectIds`, `setSelectedObjects`, `startEditing`, `startMoving`, `startResizing`, `undo`, `updateDrawing`
 
+### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingStorage.js`
+
+- Functions:
+  - `useDrawingStorage`
+- Top-level variables:
+  - `anchor`, `blob`, `clearAll`, `exportJSON`, `hydratedRef`, `importJSON`, `imported`, `loaded`, `payload`, `storage`, `timeoutId`, `url`
+
 ### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingStorage.ts`
 
 - Functions:
   - `useDrawingStorage`
 - Top-level variables:
   - `anchor`, `blob`, `clearAll`, `exportJSON`, `hydratedRef`, `importJSON`, `imported`, `loaded`, `payload`, `storage`, `timeoutId`, `url`
+
+### `packages/web/src/components/vnstockcharts/lib/drawing/useLongPress.js`
+
+- Functions:
+  - `clearTimer`, `onPointerCancel`, `onPointerDown`, `onPointerMove`, `onPointerUp`, `useLongPress`
+- Top-level variables:
+  - `callbackRef`, `captured`, `dx`, `dy`, `startPosRef`, `timerRef`
 
 ### `packages/web/src/components/vnstockcharts/lib/drawing/useLongPress.test.ts`
 
@@ -12899,6 +14270,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `callbackRef`, `captured`, `dx`, `dy`, `startPosRef`, `timerRef`
 
+### `packages/web/src/components/vnstockcharts/lib/EventCapture.js`
+
+- Classes:
+  - `EventCapture`
+- Top-level variables:
+  - `className`, `currentCharts`, `dx`, `dxdy`, `dy`, `eSnapshot`, `interactionProps`, `mouseXY`, `newPos`, `normalizedPanConditions`, `pan`, `panConditions`, `rect`, `touchXY`, `win`, `yZoom`, `zoomDir`
+
 ### `packages/web/src/components/vnstockcharts/lib/EventCapture.test.tsx`
 
 - Top-level variables:
@@ -12911,6 +14289,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `className`, `currentCharts`, `dx`, `dxdy`, `dy`, `eSnapshot`, `interactionProps`, `mouseXY`, `newPos`, `normalizedPanConditions`, `pan`, `panConditions`, `rect`, `touchXY`, `win`, `yZoom`, `zoomDir`
 
+### `packages/web/src/components/vnstockcharts/lib/GenericChartComponent.js`
+
+- Classes:
+  - `GenericChartComponent`
+- Functions:
+  - `GenericChartComponentWrapper`
+- Top-level variables:
+  - `ALWAYS_TRUE_TYPES`, `canvasOriginX`, `canvasOriginY`, `chartConfig`, `chartContext`, `chartId`
+
 ### `packages/web/src/components/vnstockcharts/lib/GenericChartComponent.tsx`
 
 - Classes:
@@ -12919,6 +14306,15 @@ Generated at: `2026-05-21 23:14:30`
   - `GenericChartComponentWrapper`
 - Top-level variables:
   - `ALWAYS_TRUE_TYPES`, `canvasOriginX`, `canvasOriginY`, `chartConfig`, `chartContext`, `chartId`
+
+### `packages/web/src/components/vnstockcharts/lib/GenericComponent.js`
+
+- Classes:
+  - `GenericComponent`
+- Functions:
+  - `getAxisCanvas`, `getMouseCanvas`
+- Top-level variables:
+  - `aliases`, `ctx`, `draggable`, `moreProps`, `newType`, `prevHover`, `proceed`, `style`, `suffix`, `type`
 
 ### `packages/web/src/components/vnstockcharts/lib/GenericComponent.tsx`
 
@@ -12929,6 +14325,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `aliases`, `ctx`, `draggable`, `moreProps`, `newType`, `prevHover`, `proceed`, `style`, `suffix`, `type`
 
+### `packages/web/src/components/vnstockcharts/lib/helper/fitDimensions.js`
+
+- Classes:
+  - `ResponsiveComponent`
+- Functions:
+  - `getDimensions`, `getDisplayName`
+- Top-level variables:
+  - `backingStoreRatio`, `context`, `devicePixelRatio`, `dimensions`, `h`, `name`, `node`, `ratio`, `ref`, `w`
+
 ### `packages/web/src/components/vnstockcharts/lib/helper/fitDimensions.tsx`
 
 - Classes:
@@ -12937,6 +14342,15 @@ Generated at: `2026-05-21 23:14:30`
   - `getDimensions`, `getDisplayName`
 - Top-level variables:
   - `backingStoreRatio`, `context`, `devicePixelRatio`, `dimensions`, `h`, `name`, `node`, `ratio`, `ref`, `w`
+
+### `packages/web/src/components/vnstockcharts/lib/helper/fitWidth.js`
+
+- Classes:
+  - `ResponsiveComponent`
+- Functions:
+  - `getDisplayName`
+- Top-level variables:
+  - `backingStoreRatio`, `context`, `devicePixelRatio`, `el`, `name`, `ratio`, `ref`, `w`
 
 ### `packages/web/src/components/vnstockcharts/lib/helper/fitWidth.tsx`
 
@@ -12947,24 +14361,52 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `backingStoreRatio`, `context`, `devicePixelRatio`, `el`, `name`, `ratio`, `ref`, `w`
 
+### `packages/web/src/components/vnstockcharts/lib/helper/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/helper/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/helper/SaveChartAsImage.js`
+
+- Top-level variables:
+  - `SaveChartAsImage`, `a`, `canvas`, `canvasList`, `context`, `dx`, `dy`, `each`, `image`, `parent`, `rect`
 
 ### `packages/web/src/components/vnstockcharts/lib/helper/SaveChartAsImage.ts`
 
 - Top-level variables:
   - `SaveChartAsImage`, `a`, `canvas`, `canvasList`, `context`, `dx`, `dy`, `each`, `image`, `parent`, `rect`
 
+### `packages/web/src/components/vnstockcharts/lib/helper/TypeChooser.js`
+
+- Classes:
+  - `TypeChooser`
+
 ### `packages/web/src/components/vnstockcharts/lib/helper/TypeChooser.tsx`
 
 - Classes:
   - `TypeChooser`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/atr.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/atr.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/baseIndicator.js`
+
+- Functions:
+  - `baseIndicator`
+- Top-level variables:
+  - `accessor`, `echo`, `fill`, `i`, `id`, `stroke`, `type`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/baseIndicator.ts`
 
@@ -12973,66 +14415,153 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `accessor`, `echo`, `fill`, `i`, `id`, `stroke`, `type`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/bollingerBand.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/bollingerBand.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/change.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/change.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/compare.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/compare.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/defaultOptionsForAppearance.js`
+
+- Top-level variables:
+  - `BollingerBand`, `ElderImpulse`, `FullStochasticOscillator`, `MACD`, `themes`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/defaultOptionsForAppearance.ts`
 
 - Top-level variables:
   - `BollingerBand`, `ElderImpulse`, `FullStochasticOscillator`, `MACD`, `themes`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/elderImpulse.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `currEMA`, `currMACDDivergence`, `macdSource`, `mergedAlgorithm`, `newData`, `prevEMA`, `prevMACDDivergence`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/elderImpulse.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `currEMA`, `currMACDDivergence`, `indicator`, `macdSource`, `mergedAlgorithm`, `newData`, `prevEMA`, `prevMACDDivergence`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/elderRay.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/elderRay.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/ema.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/ema.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/forceIndex.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/forceIndex.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/heikinAshi.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/heikinAshi.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/kagi.js`
+
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/kagi.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/macd.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/macd.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/pointAndFigure.js`
+
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/pointAndFigure.ts`
+
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/renko.js`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
@@ -13042,30 +14571,72 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/rsi.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/rsi.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/sar.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/sar.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/sma.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/sma.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/stochasticOscillator.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/stochasticOscillator.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
 
+### `packages/web/src/components/vnstockcharts/lib/indicator/tma.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicator/tma.ts`
 
 - Top-level variables:
   - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
+
+### `packages/web/src/components/vnstockcharts/lib/indicator/wma.js`
+
+- Functions:
+  - `indicator`
+- Top-level variables:
+  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicator/wma.ts`
 
@@ -13086,140 +14657,279 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `bars`, `result`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ao.js`
+
+- Top-level variables:
+  - `AO`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ao.ts`
 
 - Top-level variables:
   - `AO`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bbi.js`
+
+- Top-level variables:
+  - `BBI`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bbi.ts`
 
 - Top-level variables:
   - `BBI`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bias.js`
+
+- Top-level variables:
+  - `BIAS`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bias.ts`
 
 - Top-level variables:
   - `BIAS`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bollinger.js`
+
+- Top-level variables:
+  - `BOLLINGER`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bollinger.ts`
 
 - Top-level variables:
   - `BOLLINGER`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/brar.js`
+
+- Top-level variables:
+  - `BRAR`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/brar.ts`
 
 - Top-level variables:
   - `BRAR`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cci.js`
+
+- Top-level variables:
+  - `CCI`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cci.ts`
 
 - Top-level variables:
   - `CCI`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cr.js`
+
+- Top-level variables:
+  - `CR`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cr.ts`
 
 - Top-level variables:
   - `CR`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cvd.js`
+
+- Top-level variables:
+  - `CVD`, `cumulative`, `delta`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cvd.ts`
 
 - Top-level variables:
   - `CVD`, `cumulative`, `delta`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/dma.js`
+
+- Top-level variables:
+  - `DMA`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/dma.ts`
 
 - Top-level variables:
   - `DMA`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/dmi.js`
+
+- Top-level variables:
+  - `DMI`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/dmi.ts`
 
 - Top-level variables:
   - `DMI`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ema.js`
+
+- Top-level variables:
+  - `EMA`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ema.ts`
 
 - Top-level variables:
   - `EMA`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/emv.js`
+
+- Top-level variables:
+  - `EMV`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/emv.ts`
 
 - Top-level variables:
   - `EMV`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/kdj.js`
+
+- Top-level variables:
+  - `KDJ`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/kdj.ts`
 
 - Top-level variables:
   - `KDJ`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ma.js`
+
+- Top-level variables:
+  - `MA`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ma.ts`
 
 - Top-level variables:
   - `MA`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/macd.js`
+
+- Top-level variables:
+  - `MACD`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/macd.ts`
 
 - Top-level variables:
   - `MACD`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/mtm.js`
+
+- Top-level variables:
+  - `MTM`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/mtm.ts`
 
 - Top-level variables:
   - `MTM`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/obv.js`
+
+- Top-level variables:
+  - `OBV`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/obv.ts`
 
 - Top-level variables:
   - `OBV`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/psy.js`
+
+- Top-level variables:
+  - `PSY`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/psy.ts`
 
 - Top-level variables:
   - `PSY`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/pvt.js`
+
+- Top-level variables:
+  - `PVT`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/pvt.ts`
 
 - Top-level variables:
   - `PVT`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/roc.js`
+
+- Top-level variables:
+  - `ROC`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/roc.ts`
 
 - Top-level variables:
   - `ROC`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/rsi.js`
+
+- Top-level variables:
+  - `RSI`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/rsi.ts`
 
 - Top-level variables:
   - `RSI`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/sar.js`
+
+- Top-level variables:
+  - `SAR`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/sar.ts`
 
 - Top-level variables:
   - `SAR`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/sma.js`
+
+- Top-level variables:
+  - `SMA`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/sma.ts`
 
 - Top-level variables:
   - `SMA`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/trix.js`
+
+- Top-level variables:
+  - `TRIX`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/trix.ts`
 
 - Top-level variables:
   - `TRIX`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/volume.js`
+
+- Top-level variables:
+  - `VOLUME`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/volume.ts`
 
 - Top-level variables:
   - `VOLUME`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/vr.js`
+
+- Top-level variables:
+  - `VR`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/vr.ts`
 
 - Top-level variables:
   - `VR`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/wr.js`
+
+- Top-level variables:
+  - `WR`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/wr.ts`
 
 - Top-level variables:
   - `WR`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/index.js`
+
+- No parseable top-level symbols found
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/index.ts`
 
@@ -13242,12 +14952,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `act`, `contextValue`, `createRoot`, `elem`, `events`, `props`, `visibleRange`, `whaleEvent`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/CVDIndicator.js`
+
+- Functions:
+  - `CVDIndicator`, `cvdYScale`
+- Top-level variables:
+  - `barHeight`, `barIndex`, `barStartY`, `barWidth`, `barX`, `cvdApprox`, `drawCVD`, `isPositive`, `maxCVD`, `minCVD`, `normalized`, `paddedMax`, `paddedMin`, `rangeCV`, `visibleData`, `zeroY`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/CVDIndicator.tsx`
 
 - Functions:
   - `CVDIndicator`
 - Top-level variables:
   - `barHeight`, `barIndex`, `barStartY`, `barWidth`, `barX`, `cvdApprox`, `cvdYScale`, `drawCVD`, `isPositive`, `maxCVD`, `minCVD`, `normalized`, `paddedMax`, `paddedMin`, `rangeCV`, `visibleData`, `zeroY`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/DarkFlowBadge.js`
+
+- Functions:
+  - `DarkFlowBadge`, `strengthTier`
+- Top-level variables:
+  - `SIGNAL_LABELS`, `sigLabel`, `tier`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/DarkFlowBadge.tsx`
 
@@ -13256,12 +14980,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `SIGNAL_LABELS`, `sigLabel`, `tier`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/ExternalCVDOverlay.js`
+
+- Functions:
+  - `ExternalCVDOverlay`, `cvdY`, `drawOverlay`
+- Top-level variables:
+  - `draw`, `fillColor`, `grad`, `hi`, `isPositive`, `lastPt`, `lineColor`, `lo`, `maxCvd`, `minCvd`, `padded`, `pts`, `span`, `ySpan`, `zeroY`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/ExternalCVDOverlay.tsx`
 
 - Functions:
   - `ExternalCVDOverlay`, `drawOverlay`
 - Top-level variables:
   - `cvdY`, `draw`, `fillColor`, `grad`, `hi`, `isPositive`, `lastPt`, `lineColor`, `lo`, `maxCvd`, `minCvd`, `padded`, `pts`, `span`, `ySpan`, `zeroY`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/WhaleBubbleOverlay.js`
+
+- Functions:
+  - `WhaleBubbleOverlay`
+- Top-level variables:
+  - `alpha`, `bar`, `barDate`, `barsByTimestamp`, `dateValue`, `draw`, `fillColor`, `radius`, `rawRadius`, `strokeColor`, `x`, `y`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/WhaleBubbleOverlay.tsx`
 
@@ -13270,6 +15008,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `alpha`, `bar`, `barDate`, `barsByTimestamp`, `dateValue`, `draw`, `fillColor`, `radius`, `rawRadius`, `strokeColor`, `x`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/whaleDetector.js`
+
+- Functions:
+  - `detectWhaleEvents`, `formatVolume`, `formatWhaleEvent`, `getBubbleColor`, `getBubbleRadius`, `getBubbleStrokeColor`
+- Top-level variables:
+  - `abs`, `buyVol`, `netDelta`, `radiusMap`, `sellVol`, `side`, `sizeCategory`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/whaleDetector.ts`
 
 - Functions:
@@ -13277,12 +15022,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `abs`, `buyVol`, `netDelta`, `radiusMap`, `sellVol`, `side`, `sizeCategory`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/WhaleMarketBubbleOverlay.js`
+
+- Functions:
+  - `WhaleMarketBubbleOverlay`, `formatBubbleLabel`
+- Top-level variables:
+  - `abs`, `bar`, `bubbleY`, `candleX`, `candleY`, `close`, `drawBubbles`, `radius`, `visibleEvents`, `volumeLabel`
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/WhaleMarketBubbleOverlay.tsx`
 
 - Functions:
   - `WhaleMarketBubbleOverlay`, `formatBubbleLabel`
 - Top-level variables:
   - `abs`, `bar`, `bubbleY`, `candleX`, `candleY`, `close`, `drawBubbles`, `radius`, `visibleEvents`, `volumeLabel`
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/registry.js`
+
+- Functions:
+  - `getIndicator`, `listIndicators`, `normalizeIndicatorName`, `registerIndicator`
+- Top-level variables:
+  - `indicatorRegistry`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/registry.test.ts`
 
@@ -13296,9 +15055,20 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `indicatorRegistry`
 
+### `packages/web/src/components/vnstockcharts/lib/indicators/types.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/indicators/types.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/indicators/utils.js`
+
+- Functions:
+  - `aoColorSeries`, `aoSeries`, `bbiSeries`, `biasSeries`, `bollingerSeries`, `brarSeries`, `cciSeries`, `collectNumbers`, `crSeries`, `dmaSeries`, `dmiSeries`, `emaSeries`, `emaSeriesSkipNaN`, `emvSeries`, `isFiniteNumber`, `kdjSeries`, `macdSeries`, `meanAbsoluteDeviationSeries`, `midpointSeries`, `mtmSeries`, `numericExtent`, `obvSeries`, `psySeries`, `pvtSeries`, `risingVolumeColor`, `rocSeries`, `rollingStandardDeviation`, `rsiSeries`, `sarSeries`, `smaSeries`, `smaSeriesSkipNaN`, `trixSeries`, `typicalPriceSeries`, `vrSeries`, `wilderSeries`, `wilderSeriesSkipNaN`, `wrSeries`
+- Top-level variables:
+  - `adx`, `af`, `ar`, `arDenominator`, `arNumerator`, `average`, `averageGain`, `averageLoss`, `bar`, `boxRatio`, `br`, `brDenominator`, `brNumerator`, `change`, `close`, `closes`, `cr`, `cumulative`, `current`, `currentIndex`, `currentMid`, `d`, `dValue`, `ddd`, `delta`, `denom`, `denominator`, `deviation`, `divisor`, `downMove`, `dx`, `ema1`, `ema2`, `ema3`, `emv`, `ep`, `fast`, `fastEma`, `finiteCount`, `finiteValues`, `gain`, `gainAverage`, `hh`, `highestHigh`, `histogram`, `hm`, `isUpTrend`, `j`, `k`, `ll`, `loss`, `lossAverage`, `lower`, `lowestLow`, `ma12`, `ma24`, `ma3`, `ma6`, `macd`, `mad`, `maxValue`, `mean`, `meanDeviation`, `middle`, `midpoints`, `minValue`, `minus`, `minusDI`, `minusDm`, `movingAverage`, `mtm`, `numerator`, `open`, `plusDI`, `plusDm`, `prevSar`, `previous`, `previousEma`, `previousMid`, `psy`, `queue`, `range`, `relativeStrength`, `removed`, `result`, `rollingSum`, `rsv`, `sar`, `series`, `signal`, `slice`, `slow`, `slowEma`, `sma`, `sma34`, `sma5`, `smoothMinus`, `smoothPlus`, `smoothTr`, `smoothing`, `startIndex`, `tp`, `tr`, `trix`, `up`, `upCount`, `upMove`, `upper`, `variance`, `window`
 
 ### `packages/web/src/components/vnstockcharts/lib/indicators/utils.ts`
 
@@ -13307,6 +15077,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `adx`, `af`, `ar`, `arDenominator`, `arNumerator`, `average`, `averageGain`, `averageLoss`, `bar`, `boxRatio`, `br`, `brDenominator`, `brNumerator`, `change`, `close`, `closes`, `cr`, `cumulative`, `current`, `currentIndex`, `currentMid`, `d`, `dValue`, `ddd`, `delta`, `denom`, `denominator`, `deviation`, `divisor`, `downMove`, `dx`, `ema1`, `ema2`, `ema3`, `emv`, `ep`, `fast`, `fastEma`, `finiteCount`, `finiteValues`, `gain`, `gainAverage`, `hh`, `highestHigh`, `histogram`, `hm`, `isUpTrend`, `j`, `k`, `ll`, `loss`, `lossAverage`, `lower`, `lowestLow`, `ma12`, `ma24`, `ma3`, `ma6`, `macd`, `mad`, `maxValue`, `mean`, `meanDeviation`, `middle`, `midpoints`, `minValue`, `minus`, `minusDI`, `minusDm`, `movingAverage`, `mtm`, `numerator`, `open`, `plusDI`, `plusDm`, `prevSar`, `previous`, `previousEma`, `previousMid`, `psy`, `queue`, `range`, `relativeStrength`, `removed`, `result`, `rollingSum`, `rsv`, `sar`, `series`, `signal`, `slice`, `slow`, `slowEma`, `sma`, `sma34`, `sma5`, `smoothMinus`, `smoothPlus`, `smoothTr`, `smoothing`, `startIndex`, `tp`, `tr`, `trix`, `up`, `upCount`, `upMove`, `upper`, `variance`, `window`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/Brush.js`
+
+- Classes:
+  - `Brush`
+- Top-level variables:
+  - `dashArray`, `height`, `shouldBrush`, `width`, `x`, `x1y1`, `xValue`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/Brush.tsx`
 
 - Classes:
@@ -13314,10 +15091,24 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `dashArray`, `height`, `shouldBrush`, `width`, `x`, `x1y1`, `xValue`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/ClickCallback.js`
+
+- Classes:
+  - `ClickCallback`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/ClickCallback.tsx`
 
 - Classes:
   - `ClickCallback`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/ChannelWithArea.js`
+
+- Classes:
+  - `ChannelWithArea`
+- Functions:
+  - `getLines`, `getPath`, `helper`
+- Top-level variables:
+  - `area`, `ctx`, `line`, `line1`, `line1Hovering`, `line2`, `line2Hovering`, `lines`, `x1`, `x2`, `y1`, `y2`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/ChannelWithArea.tsx`
 
@@ -13328,6 +15119,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `area`, `ctx`, `line`, `line1`, `line1Hovering`, `line2`, `line2Hovering`, `lines`, `x1`, `x2`, `y1`, `y2`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/ClickableCircle.js`
+
+- Classes:
+  - `ClickableCircle`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `hover`, `r`, `x`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/ClickableCircle.tsx`
 
 - Classes:
@@ -13336,6 +15136,15 @@ Generated at: `2026-05-21 23:14:30`
   - `helper`
 - Top-level variables:
   - `hover`, `r`, `x`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/ClickableShape.js`
+
+- Classes:
+  - `ClickableShape`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `end1`, `end2`, `halfWidth`, `start1`, `start2`, `x`, `y`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/ClickableShape.tsx`
 
@@ -13346,6 +15155,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `end1`, `end2`, `halfWidth`, `start1`, `start2`, `x`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/GannFan.js`
+
+- Classes:
+  - `GannFan`
+- Functions:
+  - `getLineCoordinates`, `helper`
+- Top-level variables:
+  - `bottom`, `ctx`, `dx`, `dy`, `end`, `halfX`, `halfY`, `hovering`, `isWithinLineBounds`, `left`, `line1`, `lineCoods`, `lines`, `oneEighthX`, `oneEighthY`, `oneFourthX`, `oneFourthY`, `oneThirdX`, `oneThirdY`, `pairsOfLines`, `right`, `top`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/GannFan.tsx`
 
 - Classes:
@@ -13354,6 +15172,15 @@ Generated at: `2026-05-21 23:14:30`
   - `getLineCoordinates`, `helper`
 - Top-level variables:
   - `bottom`, `ctx`, `dx`, `dy`, `end`, `halfX`, `halfY`, `hovering`, `isWithinLineBounds`, `left`, `line1`, `lineCoods`, `lines`, `oneEighthX`, `oneEighthY`, `oneFourthX`, `oneFourthY`, `oneThirdX`, `oneThirdY`, `pairsOfLines`, `right`, `top`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/HoverTextNearMouse.js`
+
+- Classes:
+  - `HoverTextNearMouse`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `MIN_WIDTH`, `PADDING`, `cx`, `cy`, `numberOrString`, `rect`, `text`, `textMetaData`, `textNode`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/HoverTextNearMouse.tsx`
 
@@ -13364,6 +15191,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `MIN_WIDTH`, `PADDING`, `cx`, `cy`, `numberOrString`, `rect`, `text`, `textMetaData`, `textNode`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/InteractiveText.js`
+
+- Classes:
+  - `InteractiveText`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `rect`, `x`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/InteractiveText.tsx`
 
 - Classes:
@@ -13372,6 +15208,15 @@ Generated at: `2026-05-21 23:14:30`
   - `helper`
 - Top-level variables:
   - `rect`, `x`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/InteractiveYCoordinate.js`
+
+- Classes:
+  - `InteractiveYCoordinate`
+- Functions:
+  - `helper`
+- Top-level variables:
+  - `newEdge`, `rect`, `values`, `y`, `yCoord`, `yValue`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/InteractiveYCoordinate.tsx`
 
@@ -13382,6 +15227,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `newEdge`, `rect`, `values`, `y`, `yCoord`, `yValue`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/LinearRegressionChannelWithArea.js`
+
+- Classes:
+  - `LinearRegressionChannelWithArea`
+- Functions:
+  - `edge1Provider`, `edge2Provider`, `helper`
+- Top-level variables:
+  - `a`, `array`, `b`, `combine`, `ctx`, `dy`, `endIndex`, `hovering`, `line`, `n`, `newy1`, `newy2`, `startIndex`, `stdDev`, `x1`, `x2`, `xSquareds`, `xs`, `xys`, `y1`, `y2`, `yDiffs`, `ys`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/LinearRegressionChannelWithArea.tsx`
 
 - Classes:
@@ -13391,12 +15245,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `a`, `array`, `b`, `combine`, `ctx`, `dy`, `endIndex`, `hovering`, `line`, `n`, `newy1`, `newy2`, `startIndex`, `stdDev`, `x1`, `x2`, `xSquareds`, `xs`, `xys`, `y1`, `y2`, `yDiffs`, `ys`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/MouseLocationIndicator.js`
+
+- Classes:
+  - `MouseLocationIndicator`
+- Top-level variables:
+  - `pos`, `x`, `xValue`, `y`, `yValue`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/MouseLocationIndicator.tsx`
 
 - Classes:
   - `MouseLocationIndicator`
 - Top-level variables:
   - `pos`, `x`, `xValue`, `y`, `yValue`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/StraightLine.js`
+
+- Classes:
+  - `StraightLine`
+- Functions:
+  - `generateLine`, `getLineCoordinates`, `getRayCoordinates`, `getSlope`, `getXLineCoordinates`, `getYIntercept`, `helper`, `isHovering`, `isHovering2`
+- Top-level variables:
+  - `b`, `end`, `hovering`, `line`, `lineWidth`, `m`, `modLine`, `start`, `x1`, `x2`, `y`, `y1`, `y2`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/StraightLine.tsx`
 
@@ -13407,10 +15277,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `b`, `end`, `hovering`, `line`, `lineWidth`, `m`, `modLine`, `start`, `x1`, `x2`, `y`, `y1`, `y2`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/components/Text.js`
+
+- Classes:
+  - `Text`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/components/Text.tsx`
 
 - Classes:
   - `Text`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/DrawingObjectSelector.js`
+
+- Classes:
+  - `DrawingObjectSelector`
+- Top-level variables:
+  - `allSelected`, `interactiveNodes`, `interactives`, `item`, `key`, `morePropsForChart`, `objects`, `selected`, `valueArray`, `valuePresent`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/DrawingObjectSelector.tsx`
 
@@ -13419,12 +15301,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `allSelected`, `interactiveNodes`, `interactives`, `item`, `key`, `morePropsForChart`, `objects`, `selected`, `valueArray`, `valuePresent`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/EquidistantChannel.js`
+
+- Classes:
+  - `EquidistantChannel`
+- Top-level variables:
+  - `b`, `dy`, `eachAppearance`, `m`, `newChannels`, `overrideIndex`, `tempChannel`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/EquidistantChannel.tsx`
 
 - Classes:
   - `EquidistantChannel`
 - Top-level variables:
   - `b`, `dy`, `eachAppearance`, `m`, `newChannels`, `overrideIndex`, `tempChannel`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/FibonacciRetracement.js`
+
+- Classes:
+  - `FibonacciRetracement`
+- Top-level variables:
+  - `currentRetracement`, `dx`, `eachAppearance`, `eachHoverText`, `hoverTextWidthDefault`, `newRetracements`, `overrideIndex`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/FibonacciRetracement.tsx`
 
@@ -13433,6 +15329,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `currentRetracement`, `dx`, `eachAppearance`, `eachHoverText`, `hoverTextWidthDefault`, `newRetracements`, `overrideIndex`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/GannFan.js`
+
+- Classes:
+  - `GannFan`
+- Top-level variables:
+  - `eachAppearance`, `newfans`, `overrideIndex`, `tempChannel`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/GannFan.tsx`
 
 - Classes:
@@ -13440,9 +15343,20 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `eachAppearance`, `newfans`, `overrideIndex`, `tempChannel`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/InteractiveText.js`
+
+- Classes:
+  - `InteractiveText`
+- Top-level variables:
+  - `defaultHoverText`, `newText`, `newTextList`, `props`, `selected`, `xyValue`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/InteractiveText.tsx`
 
@@ -13451,12 +15365,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `defaultHoverText`, `newText`, `newTextList`, `props`, `selected`, `xyValue`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/InteractiveYCoordinate.js`
+
+- Classes:
+  - `InteractiveYCoordinate`
+- Top-level variables:
+  - `draggedAlert`, `newAlertList`, `props`, `selected`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/InteractiveYCoordinate.tsx`
 
 - Classes:
   - `InteractiveYCoordinate`
 - Top-level variables:
   - `draggedAlert`, `newAlertList`, `props`, `selected`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/StandardDeviationChannel.js`
+
+- Classes:
+  - `StandardDeviationChannel`
+- Top-level variables:
+  - `eachAppearance`, `eachDefaultAppearance`, `eachHoverText`, `hoverTextDefault`, `newChannels`, `tempLine`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/StandardDeviationChannel.tsx`
 
@@ -13465,12 +15393,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `eachAppearance`, `eachDefaultAppearance`, `eachHoverText`, `hoverTextDefault`, `newChannels`, `tempLine`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/TrendLine.js`
+
+- Classes:
+  - `TrendLine`
+- Top-level variables:
+  - `eachAppearance`, `hoverTextWithDefault`, `newTrends`, `tempLine`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/TrendLine.tsx`
 
 - Classes:
   - `TrendLine`
 - Top-level variables:
   - `eachAppearance`, `hoverTextWithDefault`, `newTrends`, `tempLine`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/utils.js`
+
+- Functions:
+  - `getMorePropsForChart`, `getMouseXY`, `getSelected`, `getValueFromOverride`, `isHover`, `isHoverForInteractiveType`, `saveNodeType`, `terminate`
+- Top-level variables:
+  - `chartConfig`, `hovering`, `interactive`, `mouseXY`, `objects`, `selecedNodes`, `selected`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/utils.ts`
 
@@ -13479,12 +15421,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `chartConfig`, `hovering`, `interactive`, `mouseXY`, `objects`, `selecedNodes`, `selected`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachEquidistantChannel.js`
+
+- Classes:
+  - `EachEquidistantChannel`
+- Top-level variables:
+  - `dx`, `dy`, `hoverHandler`, `line1Edge`, `line2Edge`, `newDy`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `x1`, `x2`, `y1`, `y2`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachEquidistantChannel.tsx`
 
 - Classes:
   - `EachEquidistantChannel`
 - Top-level variables:
   - `dx`, `dy`, `hoverHandler`, `line1Edge`, `line2Edge`, `newDy`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `x1`, `x2`, `y1`, `y2`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachFibRetracement.js`
+
+- Classes:
+  - `EachFibRetracement`
+- Functions:
+  - `helper`, `xyProvider`
+- Top-level variables:
+  - `dir`, `dragHandler`, `dx`, `dy`, `edge1DragHandler`, `edge2DragHandler`, `firstOrLast`, `hoverHandler`, `interactiveCursorClass`, `interactiveEdgeCursorClass`, `lineType`, `lines`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `retracements`, `text`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachFibRetracement.tsx`
 
@@ -13495,6 +15453,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `dir`, `dragHandler`, `dx`, `dy`, `edge1DragHandler`, `edge2DragHandler`, `firstOrLast`, `hoverHandler`, `interactiveCursorClass`, `interactiveEdgeCursorClass`, `lineType`, `lines`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `retracements`, `text`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachGannFan.js`
+
+- Classes:
+  - `EachGannFan`
+- Top-level variables:
+  - `dx`, `dy`, `hoverHandler`, `line1Edge`, `newDy`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `x1`, `x2`, `y1`, `y2`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachGannFan.tsx`
 
 - Classes:
@@ -13502,12 +15467,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `dx`, `dy`, `hoverHandler`, `line1Edge`, `newDy`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `x1`, `x2`, `y1`, `y2`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachInteractiveYCoordinate.js`
+
+- Classes:
+  - `EachInteractiveYCoordinate`
+- Top-level variables:
+  - `dragProps`, `dy`, `hoverHandler`, `newYValue`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachInteractiveYCoordinate.tsx`
 
 - Classes:
   - `EachInteractiveYCoordinate`
 - Top-level variables:
   - `dragProps`, `dy`, `hoverHandler`, `newYValue`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachLinearRegressionChannel.js`
+
+- Classes:
+  - `EachLinearRegressionChannel`
+- Functions:
+  - `getNewXY`
+- Top-level variables:
+  - `currentItem`, `hoverHandler`, `x`, `y`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachLinearRegressionChannel.tsx`
 
@@ -13518,12 +15499,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `currentItem`, `hoverHandler`, `x`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachText.js`
+
+- Classes:
+  - `EachText`
+- Top-level variables:
+  - `dx`, `dy`, `hoverHandler`, `xValue`, `xyValue`
+
 ### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachText.tsx`
 
 - Classes:
   - `EachText`
 - Top-level variables:
   - `dx`, `dy`, `hoverHandler`, `xValue`, `xyValue`
+
+### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachTrendLine.js`
+
+- Classes:
+  - `EachTrendLine`
+- Functions:
+  - `getNewXY`
+- Top-level variables:
+  - `dx`, `dy`, `mouseY`, `newX1Value`, `newX2Value`, `newY`, `newY1Value`, `newY2Value`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
 
 ### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachTrendLine.tsx`
 
@@ -13534,12 +15531,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `dx`, `dy`, `mouseY`, `newX1Value`, `newX2Value`, `newY`, `newY1Value`, `newY2Value`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
 
+### `packages/web/src/components/vnstockcharts/lib/scale/discontinuousTimeScaleProvider.js`
+
+- Functions:
+  - `discontinuousTimeScaleProvider`, `discontinuousTimeScaleProviderBuilder`, `doStuff`, `evaluateLevel`, `inputDateAccessor`
+- Top-level variables:
+  - `calculate`, `currentFormatters`, `date`, `dateAccessor`, `discontinuousIndexCalculator`, `discontinuousIndexCalculatorLocalTime`, `finalData`, `i`, `index`, `initialIndex`, `inputIndex`, `level`, `mergedData`, `offsetInMillis`, `response`, `row`, `startOf15Minutes`, `startOf30Minutes`, `startOf30Seconds`, `startOf5Minutes`, `startOfDay`, `startOfEighthOfADay`, `startOfHalfDay`, `startOfHour`, `startOfMinute`, `startOfMonth`, `startOfQuarter`, `startOfQuarterDay`, `startOfWeek`, `startOfYear`, `xScale`
+
 ### `packages/web/src/components/vnstockcharts/lib/scale/discontinuousTimeScaleProvider.ts`
 
 - Functions:
   - `discontinuousTimeScaleProviderBuilder`, `doStuff`, `evaluateLevel`
 - Top-level variables:
   - `calculate`, `currentFormatters`, `date`, `dateAccessor`, `discontinuousIndexCalculator`, `discontinuousIndexCalculatorLocalTime`, `discontinuousTimeScaleProvider`, `finalData`, `i`, `index`, `initialIndex`, `inputDateAccessor`, `inputIndex`, `level`, `mergedData`, `offsetInMillis`, `response`, `row`, `startOf15Minutes`, `startOf30Minutes`, `startOf30Seconds`, `startOf5Minutes`, `startOfDay`, `startOfEighthOfADay`, `startOfHalfDay`, `startOfHour`, `startOfMinute`, `startOfMonth`, `startOfQuarter`, `startOfQuarterDay`, `startOfWeek`, `startOfYear`, `xScale`
+
+### `packages/web/src/components/vnstockcharts/lib/scale/evaluator.js`
+
+- Functions:
+  - `canShowTheseManyPeriods`, `extentsWrapper`, `filterData`, `getFilteredResponse`, `getNewEnd`, `showMax`, `showMaxThreshold`, `showMinThreshold`
+- Top-level variables:
+  - `chartWidth`, `clampedDomain`, `filteredData`, `firstItem`, `lastItem`, `lastItemXValue`, `left`, `log`, `newEnd`, `newLeftIndex`, `newRightIndex`, `newWidth`, `newXScale`, `plotData`, `realInputDomain`, `right`, `width`, `xScale`
 
 ### `packages/web/src/components/vnstockcharts/lib/scale/evaluator.ts`
 
@@ -13548,6 +15559,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `chartWidth`, `clampedDomain`, `filteredData`, `firstItem`, `lastItem`, `lastItemXValue`, `left`, `log`, `newEnd`, `newLeftIndex`, `newRightIndex`, `newWidth`, `newXScale`, `plotData`, `realInputDomain`, `right`, `width`, `xScale`
 
+### `packages/web/src/components/vnstockcharts/lib/scale/financeDiscontinuousScale.js`
+
+- Functions:
+  - `scale`
+- Top-level variables:
+  - `MAX_LEVEL`, `backingTicks`, `d`, `desiredTickCount`, `distance`, `end`, `inverted`, `start`, `temp`, `tickValues`, `ticks`, `ticksAtLevel`, `ticksMap`, `ticksSet`, `unsortedTicks`
+
 ### `packages/web/src/components/vnstockcharts/lib/scale/financeDiscontinuousScale.ts`
 
 - Functions:
@@ -13555,14 +15573,30 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `MAX_LEVEL`, `backingTicks`, `d`, `desiredTickCount`, `distance`, `end`, `inverted`, `start`, `temp`, `tickValues`, `ticks`, `ticksAtLevel`, `ticksMap`, `ticksSet`, `unsortedTicks`
 
+### `packages/web/src/components/vnstockcharts/lib/scale/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/scale/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/scale/levels.js`
+
+- Top-level variables:
+  - `defaultFormatters`, `levelDefinition`
 
 ### `packages/web/src/components/vnstockcharts/lib/scale/levels.ts`
 
 - Top-level variables:
   - `defaultFormatters`, `levelDefinition`
+
+### `packages/web/src/components/vnstockcharts/lib/series/AlternatingFillAreaSeries.js`
+
+- Classes:
+  - `AlternatingFillAreaSeries`
+- Top-level variables:
+  - `id1`, `id2`, `style1`, `style2`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/AlternatingFillAreaSeries.tsx`
 
@@ -13571,6 +15605,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `id1`, `id2`, `style1`, `style2`
 
+### `packages/web/src/components/vnstockcharts/lib/series/AreaOnlySeries.js`
+
+- Classes:
+  - `AreaOnlySeries`
+- Top-level variables:
+  - `areaSeries`, `d`, `newBase`, `newClassName`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/AreaOnlySeries.tsx`
 
 - Classes:
@@ -13578,10 +15619,24 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `areaSeries`, `d`, `newBase`, `newClassName`
 
+### `packages/web/src/components/vnstockcharts/lib/series/AreaSeries.js`
+
+- Functions:
+  - `AreaSeries`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/AreaSeries.tsx`
 
 - Functions:
   - `AreaSeries`
+
+### `packages/web/src/components/vnstockcharts/lib/series/BarSeries.js`
+
+- Classes:
+  - `BarSeries`
+- Functions:
+  - `getBars`
+- Top-level variables:
+  - `bars`, `getBase`, `getFill`, `h`, `offset`, `width`, `widthFunctor`, `x`, `y`, `yValue`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/BarSeries.tsx`
 
@@ -13592,10 +15647,24 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `bars`, `getBase`, `getFill`, `h`, `offset`, `width`, `widthFunctor`, `x`, `y`, `yValue`
 
+### `packages/web/src/components/vnstockcharts/lib/series/BollingerSeries.js`
+
+- Classes:
+  - `BollingerSeries`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/BollingerSeries.tsx`
 
 - Classes:
   - `BollingerSeries`
+
+### `packages/web/src/components/vnstockcharts/lib/series/CandlestickSeries.js`
+
+- Classes:
+  - `CandlestickSeries`
+- Functions:
+  - `drawOnCanvas`, `getCandleData`, `getCandlesSVG`, `getWicksSVG`
+- Top-level variables:
+  - `candleData`, `d`, `fill`, `height`, `offset`, `ohlc`, `stroke`, `wickStroke`, `width`, `widthFunctor`, `x`, `y`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/CandlestickSeries.tsx`
 
@@ -13606,12 +15675,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `candleData`, `d`, `fill`, `height`, `offset`, `ohlc`, `stroke`, `wickStroke`, `width`, `widthFunctor`, `x`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/series/CircleMarker.js`
+
+- Functions:
+  - `Circle`
+- Top-level variables:
+  - `radius`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/CircleMarker.tsx`
 
 - Functions:
   - `Circle`
 - Top-level variables:
   - `radius`
+
+### `packages/web/src/components/vnstockcharts/lib/series/ElderRaySeries.js`
+
+- Classes:
+  - `ElderRaySeries`
+- Top-level variables:
+  - `y`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/ElderRaySeries.tsx`
 
@@ -13620,6 +15703,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `y`
 
+### `packages/web/src/components/vnstockcharts/lib/series/GroupedBarSeries.js`
+
+- Classes:
+  - `GroupedBarSeries`
+- Functions:
+  - `postProcessor`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/GroupedBarSeries.tsx`
 
 - Classes:
@@ -13627,9 +15717,22 @@ Generated at: `2026-05-21 23:14:30`
 - Functions:
   - `postProcessor`
 
+### `packages/web/src/components/vnstockcharts/lib/series/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/series/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/series/KagiSeries.js`
+
+- Classes:
+  - `KagiSeries`
+- Functions:
+  - `drawOnCanvas`, `helper`
+- Top-level variables:
+  - `begin`, `d`, `dataSeries`, `idx`, `kagi`, `kagiLine`, `last`, `lastPlot`, `pathD`, `paths`, `prevX`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/KagiSeries.tsx`
 
@@ -13640,6 +15743,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `begin`, `d`, `dataSeries`, `idx`, `kagi`, `kagiLine`, `last`, `lastPlot`, `pathD`, `paths`, `prevX`
 
+### `packages/web/src/components/vnstockcharts/lib/series/LineSeries.js`
+
+- Classes:
+  - `LineSeries`
+- Top-level variables:
+  - `d`, `dataSeries`, `hoverProps`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/LineSeries.tsx`
 
 - Classes:
@@ -13647,12 +15757,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `d`, `dataSeries`, `hoverProps`
 
+### `packages/web/src/components/vnstockcharts/lib/series/MACDSeries.js`
+
+- Functions:
+  - `MACDSeries`, `yAccessorForDivergence`, `yAccessorForDivergenceBase`, `yAccessorForMACD`, `yAccessorForSignal`
+- Top-level variables:
+  - `fillConfig`, `strokeConfig`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/MACDSeries.tsx`
 
 - Functions:
   - `MACDSeries`, `yAccessorForDivergence`, `yAccessorForDivergenceBase`, `yAccessorForMACD`, `yAccessorForSignal`
 - Top-level variables:
   - `fillConfig`, `strokeConfig`
+
+### `packages/web/src/components/vnstockcharts/lib/series/OHLCSeries.js`
+
+- Classes:
+  - `OHLCSeries`
+- Functions:
+  - `drawOnCanvas`, `getOHLCBars`
+- Top-level variables:
+  - `barData`, `barWidth`, `bars`, `classNameFunc`, `ohlc`, `strokeFunc`, `strokeWidth`, `wickNest`, `width`, `x`, `y1`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/OHLCSeries.tsx`
 
@@ -13663,6 +15789,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `barData`, `barWidth`, `bars`, `classNameFunc`, `ohlc`, `strokeFunc`, `strokeWidth`, `wickNest`, `width`, `x`, `y1`
 
+### `packages/web/src/components/vnstockcharts/lib/series/OverlayBarSeries.js`
+
+- Classes:
+  - `OverlayBarSeries`
+- Functions:
+  - `getBars`
+- Top-level variables:
+  - `b`, `bars`, `getBase`, `getClassName`, `getFill`, `h`, `innerBars`, `offset`, `width`, `widthFunctor`, `x`, `xValue`, `y`, `yValue`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/OverlayBarSeries.tsx`
 
 - Classes:
@@ -13671,6 +15806,15 @@ Generated at: `2026-05-21 23:14:30`
   - `getBars`
 - Top-level variables:
   - `b`, `bars`, `getBase`, `getClassName`, `getFill`, `h`, `innerBars`, `offset`, `width`, `widthFunctor`, `x`, `xValue`, `y`, `yValue`
+
+### `packages/web/src/components/vnstockcharts/lib/series/PointAndFigureSeries.js`
+
+- Classes:
+  - `PointAndFigureSeries`
+- Functions:
+  - `drawOnCanvas`, `getColumns`
+- Top-level variables:
+  - `anyBox`, `boxHeight`, `boxes`, `columnWidth`, `columns`, `width`, `xOffset`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/PointAndFigureSeries.tsx`
 
@@ -13681,6 +15825,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `anyBox`, `boxHeight`, `boxes`, `columnWidth`, `columns`, `width`, `xOffset`
 
+### `packages/web/src/components/vnstockcharts/lib/series/RenkoSeries.js`
+
+- Classes:
+  - `RenkoSeries`
+- Functions:
+  - `drawOnCanvas`, `getRenko`
+- Top-level variables:
+  - `candleWidth`, `candles`, `ohlc`, `svgfill`, `width`, `x`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/RenkoSeries.tsx`
 
 - Classes:
@@ -13690,6 +15843,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `candleWidth`, `candles`, `ohlc`, `svgfill`, `width`, `x`
 
+### `packages/web/src/components/vnstockcharts/lib/series/RSISeries.js`
+
+- Functions:
+  - `RSISeries`, `renderClip`
+- Top-level variables:
+  - `clipId1`, `clipId2`, `defaultOpacity`, `defaultStroke`, `defaultStrokeDasharray`, `defaultStrokeWidth`, `opacityConfig`, `strokeConfig`, `strokeDasharrayConfig`, `strokeWidthConfig`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/RSISeries.tsx`
 
 - Functions:
@@ -13697,12 +15857,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `clipId1`, `clipId2`, `defaultOpacity`, `defaultStroke`, `defaultStrokeDasharray`, `defaultStrokeWidth`, `opacityConfig`, `strokeConfig`, `strokeDasharrayConfig`, `strokeWidthConfig`
 
+### `packages/web/src/components/vnstockcharts/lib/series/SARSeries.js`
+
+- Classes:
+  - `SARSeries`
+- Top-level variables:
+  - `centerX`, `centerY`, `color`, `currentY`, `d`, `hoverProps`, `radius`, `width`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/SARSeries.tsx`
 
 - Classes:
   - `SARSeries`
 - Top-level variables:
   - `centerX`, `centerY`, `color`, `currentY`, `d`, `hoverProps`, `radius`, `width`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/series/ScatterSeries.js`
+
+- Classes:
+  - `ScatterSeries`
+- Functions:
+  - `drawOnCanvas`, `helper`
+- Top-level variables:
+  - `fill`, `groupedByFill`, `mProps`, `points`, `stroke`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/ScatterSeries.tsx`
 
@@ -13713,12 +15889,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `fill`, `groupedByFill`, `mProps`, `points`, `stroke`
 
+### `packages/web/src/components/vnstockcharts/lib/series/SquareMarker.js`
+
+- Functions:
+  - `Square`
+- Top-level variables:
+  - `w`, `x`, `y`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/SquareMarker.tsx`
 
 - Functions:
   - `Square`
 - Top-level variables:
   - `w`, `x`, `y`
+
+### `packages/web/src/components/vnstockcharts/lib/series/StackedBarSeries.js`
+
+- Classes:
+  - `StackedBarSeries`
+- Functions:
+  - `convertToArray`, `doStuff`, `drawOnCanvas2`, `drawOnCanvasHelper`, `getBars`, `getBarsSVG2`, `identityStack`, `rotateXY`, `stack`, `svgHelper`
+- Top-level variables:
+  - `appearance`, `array`, `arrays`, `barWidth`, `bars`, `d`, `data`, `ds`, `eachBarWidth`, `fillStyle`, `getBase`, `getClassName`, `getFill`, `groupedByFill`, `h`, `key`, `keys`, `modifiedXAccessor`, `modifiedXScale`, `modifiedYAccessor`, `modifiedYScale`, `newData`, `offset`, `postProcessor`, `response`, `stackFn`, `width`, `widthFunctor`, `y`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/StackedBarSeries.tsx`
 
@@ -13729,10 +15921,24 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `appearance`, `array`, `arrays`, `barWidth`, `bars`, `d`, `data`, `ds`, `eachBarWidth`, `fillStyle`, `getBase`, `getClassName`, `getFill`, `groupedByFill`, `h`, `key`, `keys`, `modifiedXAccessor`, `modifiedXScale`, `modifiedYAccessor`, `modifiedYScale`, `newData`, `offset`, `postProcessor`, `response`, `stackFn`, `width`, `widthFunctor`, `y`
 
+### `packages/web/src/components/vnstockcharts/lib/series/StochasticSeries.js`
+
+- Classes:
+  - `StochasticSeries`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/StochasticSeries.tsx`
 
 - Classes:
   - `StochasticSeries`
+
+### `packages/web/src/components/vnstockcharts/lib/series/StraightLine.js`
+
+- Classes:
+  - `StraightLine`
+- Functions:
+  - `getLineCoordinates`
+- Top-level variables:
+  - `lineCoordinates`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/StraightLine.tsx`
 
@@ -13743,10 +15949,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `lineCoordinates`
 
+### `packages/web/src/components/vnstockcharts/lib/series/SVGComponent.js`
+
+- Classes:
+  - `SVGComponent`
+
 ### `packages/web/src/components/vnstockcharts/lib/series/SVGComponent.tsx`
 
 - Classes:
   - `SVGComponent`
+
+### `packages/web/src/components/vnstockcharts/lib/series/TriangleMarker.js`
+
+- Functions:
+  - `Triangle`, `getFillColor`, `getRotationInDegrees`, `getStrokeColor`, `getTrianglePoints`
+- Top-level variables:
+  - `directionVal`, `fillColor`, `innerHypotenuse`, `innerOpposite`, `points`, `rotate`, `rotation`, `rotationDeg`, `strokeColor`, `w`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/TriangleMarker.tsx`
 
@@ -13754,6 +15972,15 @@ Generated at: `2026-05-21 23:14:30`
   - `Triangle`, `getFillColor`, `getRotationInDegrees`, `getStrokeColor`, `getTrianglePoints`
 - Top-level variables:
   - `directionVal`, `fillColor`, `innerHypotenuse`, `innerOpposite`, `points`, `rotate`, `rotation`, `rotationDeg`, `strokeColor`, `w`
+
+### `packages/web/src/components/vnstockcharts/lib/series/VolumeProfileSeries.js`
+
+- Classes:
+  - `VolumeProfileSeries`
+- Functions:
+  - `base`, `drawOnCanvas`, `helper`
+- Top-level variables:
+  - `allRects`, `begin`, `d`, `directionComparator`, `dx`, `finish`, `histogram2`, `rects`, `sessionBg`, `sessionBgSvg`, `sessionBuilder`, `sessionWidth`, `sessions`, `totalVolume`, `totalVolumeX`, `totalVolumes`, `totalsByDirection`, `values`, `volumeInBins`, `volumeValues`, `w1`, `w2`, `widthValue`, `ws`, `x`, `xScale`
 
 ### `packages/web/src/components/vnstockcharts/lib/series/VolumeProfileSeries.tsx`
 
@@ -13764,12 +15991,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `allRects`, `begin`, `d`, `directionComparator`, `dx`, `finish`, `histogram2`, `rects`, `sessionBg`, `sessionBgSvg`, `sessionBuilder`, `sessionWidth`, `sessions`, `totalVolume`, `totalVolumeX`, `totalVolumes`, `totalsByDirection`, `values`, `volumeInBins`, `volumeValues`, `w1`, `w2`, `widthValue`, `ws`, `x`, `xScale`
 
+### `packages/web/src/components/vnstockcharts/lib/StockChartContext.js`
+
+- Functions:
+  - `useStockChart`
+- Top-level variables:
+  - `StockChartContext`, `StockChartProvider`, `context`
+
 ### `packages/web/src/components/vnstockcharts/lib/StockChartContext.tsx`
 
 - Functions:
   - `useStockChart`
 - Top-level variables:
   - `StockChartContext`, `StockChartProvider`, `context`
+
+### `packages/web/src/components/vnstockcharts/lib/tooltip/BollingerBandTooltip.js`
+
+- Classes:
+  - `BollingerBandTooltip`
+- Top-level variables:
+  - `currentItem`, `item`, `origin`, `tooltipLabel`, `tooltipValue`, `top`
 
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/BollingerBandTooltip.tsx`
 
@@ -13778,9 +16019,22 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `currentItem`, `item`, `origin`, `tooltipLabel`, `tooltipValue`, `top`
 
+### `packages/web/src/components/vnstockcharts/lib/tooltip/displayValuesFor.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/displayValuesFor.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/tooltip/GroupTooltip.js`
+
+- Classes:
+  - `GroupTooltip`, `SingleTooltip`
+- Functions:
+  - `orig`
+- Top-level variables:
+  - `VALID_LAYOUTS`, `comp`, `currentItem`, `dx`, `dy`, `groupTextAnchor`, `singleTooltip`, `textAnchor`, `xPos`, `xyPos`, `yDisplayValue`, `yPos`, `yValue`
 
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/GroupTooltip.tsx`
 
@@ -13791,6 +16045,15 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `VALID_LAYOUTS`, `comp`, `currentItem`, `dx`, `dy`, `groupTextAnchor`, `singleTooltip`, `textAnchor`, `xPos`, `xyPos`, `yDisplayValue`, `yPos`, `yValue`
 
+### `packages/web/src/components/vnstockcharts/lib/tooltip/HoverTooltip.js`
+
+- Classes:
+  - `HoverTooltip`
+- Functions:
+  - `backgroundShapeCanvas`, `backgroundShapeSVG`, `calculateTooltipSize`, `drawOnCanvas`, `helper`, `measureText`, `normalizeX`, `normalizeY`, `origin`, `sumSizes`, `tooltipCanvas`, `tooltipSVG`
+- Top-level variables:
+  - `PADDING`, `X`, `Y`, `bgShape`, `bgSize`, `canvas`, `centerX`, `chartIndex`, `content`, `originX`, `originY`, `pointWidth`, `pointer`, `safePointer`, `startY`, `textY`, `tspans`, `x`, `xValue`, `y`, `yValue`
+
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/HoverTooltip.tsx`
 
 - Classes:
@@ -13800,9 +16063,20 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `PADDING`, `X`, `Y`, `bgShape`, `bgSize`, `canvas`, `centerX`, `chartIndex`, `content`, `originX`, `originY`, `pointWidth`, `pointer`, `safePointer`, `startY`, `textY`, `tspans`, `x`, `xValue`, `y`, `yValue`
 
+### `packages/web/src/components/vnstockcharts/lib/tooltip/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/tooltip/MACDTooltip.js`
+
+- Classes:
+  - `MACDTooltip`
+- Top-level variables:
+  - `chartConfigList`, `config`, `currentItem`, `divergence`, `macd`, `macdValue`, `origin`, `signal`
 
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/MACDTooltip.tsx`
 
@@ -13811,12 +16085,28 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `chartConfigList`, `config`, `currentItem`, `divergence`, `macd`, `macdValue`, `origin`, `signal`
 
+### `packages/web/src/components/vnstockcharts/lib/tooltip/MovingAverageTooltip.js`
+
+- Classes:
+  - `MovingAverageTooltip`, `SingleMAToolTip`
+- Top-level variables:
+  - `chartConfigList`, `config`, `currentItem`, `origin`, `tooltipLabel`, `translate`, `yDisplayValue`, `yValue`
+
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/MovingAverageTooltip.tsx`
 
 - Classes:
   - `MovingAverageTooltip`, `SingleMAToolTip`
 - Top-level variables:
   - `chartConfigList`, `config`, `currentItem`, `origin`, `tooltipLabel`, `translate`, `yDisplayValue`, `yValue`
+
+### `packages/web/src/components/vnstockcharts/lib/tooltip/OHLCTooltip.js`
+
+- Classes:
+  - `OHLCTooltip`
+- Functions:
+  - `defaultDisplay`
+- Top-level variables:
+  - `chartConfigList`, `config`, `currentItem`, `displayDate`, `displayTextsDefault`, `item`, `itemsToDisplay`, `origin`
 
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/OHLCTooltip.tsx`
 
@@ -13827,12 +16117,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `chartConfigList`, `config`, `currentItem`, `displayDate`, `displayTextsDefault`, `item`, `itemsToDisplay`, `origin`
 
+### `packages/web/src/components/vnstockcharts/lib/tooltip/RSITooltip.js`
+
+- Classes:
+  - `RSITooltip`
+- Top-level variables:
+  - `currentItem`, `origin`, `rsi`, `tooltipLabel`, `value`
+
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/RSITooltip.tsx`
 
 - Classes:
   - `RSITooltip`
 - Top-level variables:
   - `currentItem`, `origin`, `rsi`, `tooltipLabel`, `value`
+
+### `packages/web/src/components/vnstockcharts/lib/tooltip/SingleValueTooltip.js`
+
+- Classes:
+  - `SingleValueTooltip`
+- Top-level variables:
+  - `currentItem`, `origin`, `xDisplayValue`, `yDisplayValue`
 
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/SingleValueTooltip.tsx`
 
@@ -13841,6 +16145,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `currentItem`, `origin`, `xDisplayValue`, `yDisplayValue`
 
+### `packages/web/src/components/vnstockcharts/lib/tooltip/StochasticTooltip.js`
+
+- Classes:
+  - `StochasticTooltip`
+- Top-level variables:
+  - `D`, `K`, `currentItem`, `origin`, `stochastic`
+
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/StochasticTooltip.tsx`
 
 - Classes:
@@ -13848,17 +16159,35 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `D`, `K`, `currentItem`, `origin`, `stochastic`
 
+### `packages/web/src/components/vnstockcharts/lib/tooltip/ToolTipText.js`
+
+- Classes:
+  - `ToolTipText`
+
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/ToolTipText.tsx`
 
 - Classes:
   - `ToolTipText`
+
+### `packages/web/src/components/vnstockcharts/lib/tooltip/ToolTipTSpanLabel.js`
+
+- Functions:
+  - `ToolTipTSpanLabel`
 
 ### `packages/web/src/components/vnstockcharts/lib/tooltip/ToolTipTSpanLabel.tsx`
 
 - Functions:
   - `ToolTipTSpanLabel`
 
+### `packages/web/src/components/vnstockcharts/lib/types.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/types.ts`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/types/adapter.js`
 
 - No parseable top-level symbols found
 
@@ -13866,7 +16195,15 @@ Generated at: `2026-05-21 23:14:30`
 
 - No parseable top-level symbols found
 
+### `packages/web/src/components/vnstockcharts/lib/types/index.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/types/index.ts`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/types/indicator.js`
 
 - No parseable top-level symbols found
 
@@ -13874,7 +16211,15 @@ Generated at: `2026-05-21 23:14:30`
 
 - No parseable top-level symbols found
 
+### `packages/web/src/components/vnstockcharts/lib/types/ohlcv.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/types/ohlcv.ts`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/types/pane.js`
 
 - No parseable top-level symbols found
 
@@ -13882,10 +16227,24 @@ Generated at: `2026-05-21 23:14:30`
 
 - No parseable top-level symbols found
 
+### `packages/web/src/components/vnstockcharts/lib/utils/accumulatingWindow.js`
+
+- Functions:
+  - `accumulatingWindowFn`
+- Top-level variables:
+  - `accumulateTill`, `accumulatedWindow`, `accumulatorIdx`, `d`, `i`, `response`
+
 ### `packages/web/src/components/vnstockcharts/lib/utils/accumulatingWindow.ts`
 
 - Top-level variables:
   - `accumulateTill`, `accumulatedWindow`, `accumulatingWindowFn`, `accumulatorIdx`, `d`, `i`, `response`
+
+### `packages/web/src/components/vnstockcharts/lib/utils/barWidth.js`
+
+- Functions:
+  - `plotDataLengthBarWidth`, `timeIntervalBarWidth`
+- Top-level variables:
+  - `first`, `totalWidth`, `width`
 
 ### `packages/web/src/components/vnstockcharts/lib/utils/barWidth.ts`
 
@@ -13894,6 +16253,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `first`, `totalWidth`, `width`
 
+### `packages/web/src/components/vnstockcharts/lib/utils/ChartDataUtil.js`
+
+- Functions:
+  - `getChartConfigWithUpdatedYScales`, `getChartOrigin`, `getCurrentCharts`, `getCurrentItem`, `getDimensions`, `getNewChartConfig`, `getXValue`, `isArraySize2AndNumber`, `setRange`, `values`, `yDomainFromYExtents`
+- Top-level variables:
+  - `allYValues`, `another`, `bottom`, `chartHeight`, `chartProps`, `combine`, `currentCharts`, `d`, `domain`, `newYScale`, `obj`, `originCoordinates`, `prevChartConfig`, `realYDomain`, `top`, `updatedChartConfig`, `xValue`, `yDomainDY`, `yDomains`, `yExtents`, `yScale`, `yValues`
+
 ### `packages/web/src/components/vnstockcharts/lib/utils/ChartDataUtil.ts`
 
 - Functions:
@@ -13901,21 +16267,46 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `allYValues`, `another`, `bottom`, `chartHeight`, `chartProps`, `combine`, `currentCharts`, `d`, `domain`, `newYScale`, `obj`, `originCoordinates`, `prevChartConfig`, `realYDomain`, `top`, `updatedChartConfig`, `xValue`, `yDomainDY`, `yDomains`, `yExtents`, `yScale`, `yValues`
 
+### `packages/web/src/components/vnstockcharts/lib/utils/identity.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/utils/identity.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/utils/index.js`
+
+- Functions:
+  - `capitalizeFirst`, `clearCanvas`, `createVerticalLinearGradient`, `d3Window`, `degrees`, `find`, `forOwn`, `functor`, `getClosestItem`, `getClosestItemIndexes`, `getClosestItemIndexes2`, `getClosestValue`, `getLogger`, `getTouchProps`, `head`, `hexToRGBA`, `isDefined`, `isNotDefined`, `isObject`, `last`, `mapObject`, `mapValue`, `mousePosition`, `path`, `radians`, `replaceAtIndex`, `sign`, `tail`, `toObject`, `touchPosition`, `yes`
+- Top-level variables:
+  - `MOUSEENTER`, `MOUSELEAVE`, `MOUSEMOVE`, `MOUSEUP`, `TOUCHEND`, `TOUCHMOVE`, `b`, `closest`, `container`, `d3win`, `diff`, `first`, `g`, `grd`, `hex`, `index`, `isArray`, `item`, `key`, `left`, `length`, `lo`, `mappedValue`, `mid`, `multiplier`, `object`, `overlayColors`, `props`, `r`, `rect`, `result`, `right`, `value`, `values`
 
 ### `packages/web/src/components/vnstockcharts/lib/utils/index.ts`
 
 - Functions:
   - `capitalizeFirst`, `clearCanvas`, `createVerticalLinearGradient`, `d3Window`, `degrees`, `find`, `forOwn`, `functor`, `getClosestItem`, `getClosestItemIndexes`, `getClosestItemIndexes2`, `getClosestValue`, `getLogger`, `getTouchProps`, `head`, `hexToRGBA`, `isDefined`, `isNotDefined`, `isObject`, `last`, `mapObject`, `mapValue`, `mousePosition`, `path`, `radians`, `replaceAtIndex`, `sign`, `tail`, `toObject`, `touchPosition`, `yes`
 - Top-level variables:
-  - `MOUSEENTER`, `MOUSELEAVE`, `MOUSEMOVE`, `MOUSEUP`, `TOUCHEND`, `TOUCHMOVE`, `b`, `closest`, `container`, `d3win`, `diff`, `first`, `g`, `grd`, `hex`, `index`, `isArray`, `isProduction`, `item`, `key`, `left`, `length`, `lo`, `logger`, `mappedValue`, `mid`, `multiplier`, `object`, `overlayColors`, `props`, `r`, `rect`, `result`, `right`, `value`, `values`
+  - `MOUSEENTER`, `MOUSELEAVE`, `MOUSEMOVE`, `MOUSEUP`, `TOUCHEND`, `TOUCHMOVE`, `b`, `closest`, `container`, `d3win`, `diff`, `first`, `g`, `grd`, `hex`, `index`, `isArray`, `item`, `key`, `left`, `length`, `lo`, `mappedValue`, `mid`, `multiplier`, `object`, `overlayColors`, `props`, `r`, `rect`, `result`, `right`, `value`, `values`
+
+### `packages/web/src/components/vnstockcharts/lib/utils/mappedSlidingWindow.js`
+
+- Functions:
+  - `mappedSlidingWindowFn`
+- Top-level variables:
+  - `accumulatorIdx`, `mapped`, `result`, `size`, `undef`, `undefinedValue`, `windowData`
 
 ### `packages/web/src/components/vnstockcharts/lib/utils/mappedSlidingWindow.ts`
 
 - Top-level variables:
   - `accumulatorIdx`, `mapped`, `mappedSlidingWindowFn`, `result`, `size`, `undef`, `undefinedValue`, `windowData`
+
+### `packages/web/src/components/vnstockcharts/lib/utils/merge.js`
+
+- Functions:
+  - `mergeCompute`
+- Top-level variables:
+  - `algorithm`, `result`, `zip`
 
 ### `packages/web/src/components/vnstockcharts/lib/utils/merge.ts`
 
@@ -13924,14 +16315,30 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `algorithm`, `result`, `zip`
 
+### `packages/web/src/components/vnstockcharts/lib/utils/noop.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/lib/utils/noop.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/lib/utils/PureComponent.js`
+
+- Classes:
+  - `PureComponent`
 
 ### `packages/web/src/components/vnstockcharts/lib/utils/PureComponent.ts`
 
 - Classes:
   - `PureComponent`
+
+### `packages/web/src/components/vnstockcharts/lib/utils/rebind.js`
+
+- Functions:
+  - `createReboundMethod`
+- Top-level variables:
+  - `method`, `value`
 
 ### `packages/web/src/components/vnstockcharts/lib/utils/rebind.ts`
 
@@ -13940,6 +16347,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `method`, `value`
 
+### `packages/web/src/components/vnstockcharts/lib/utils/shallowEqual.js`
+
+- Functions:
+  - `isDate`, `isEqual`
+- Top-level variables:
+  - `numKeysA`
+
 ### `packages/web/src/components/vnstockcharts/lib/utils/shallowEqual.ts`
 
 - Functions:
@@ -13947,10 +16361,24 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `numKeysA`
 
+### `packages/web/src/components/vnstockcharts/lib/utils/slidingWindow.js`
+
+- Functions:
+  - `slidingWindowFn`
+- Top-level variables:
+  - `accumulatorIdx`, `size`, `sourceFunction`, `undef`, `undefinedValue`, `windowData`
+
 ### `packages/web/src/components/vnstockcharts/lib/utils/slidingWindow.ts`
 
 - Top-level variables:
   - `accumulatorIdx`, `size`, `slidingWindowFn`, `sourceFunction`, `undef`, `undefinedValue`, `windowData`
+
+### `packages/web/src/components/vnstockcharts/lib/utils/strokeDasharray.js`
+
+- Functions:
+  - `getStrokeDasharray`, `getStrokeDasharrayCanvas`
+- Top-level variables:
+  - `a`, `strokeDashTypes`
 
 ### `packages/web/src/components/vnstockcharts/lib/utils/strokeDasharray.ts`
 
@@ -13959,12 +16387,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `a`, `strokeDashTypes`
 
+### `packages/web/src/components/vnstockcharts/lib/utils/zipper.js`
+
+- Functions:
+  - `d3_zipLength`, `zip`
+- Top-level variables:
+  - `combine`, `i`, `m`, `n`
+
 ### `packages/web/src/components/vnstockcharts/lib/utils/zipper.ts`
 
 - Functions:
   - `d3_zipLength`, `zip`
 - Top-level variables:
   - `combine`, `i`, `m`, `n`
+
+### `packages/web/src/components/vnstockcharts/lib/utils/zoomBehavior.js`
+
+- Functions:
+  - `lastVisibleItemBasedZoomAnchor`, `mouseBasedZoomAnchor`, `rightDomainBasedZoomAnchor`
+- Top-level variables:
+  - `currentItem`, `lastItem`
 
 ### `packages/web/src/components/vnstockcharts/lib/utils/zoomBehavior.ts`
 
@@ -13973,12 +16415,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `currentItem`, `lastItem`
 
+### `packages/web/src/components/vnstockcharts/lib/withContext.js`
+
+- Functions:
+  - `withChart`, `withChartAndStockChart`, `withStockChart`
+- Top-level variables:
+  - `chartContext`, `context`, `stockChartContext`
+
 ### `packages/web/src/components/vnstockcharts/lib/withContext.tsx`
 
 - Functions:
   - `withChart`, `withChartAndStockChart`, `withStockChart`
 - Top-level variables:
   - `chartContext`, `context`, `stockChartContext`
+
+### `packages/web/src/components/vnstockcharts/lib/ZoomButtons.js`
+
+- Classes:
+  - `ZoomButtons`
+- Top-level variables:
+  - `c`, `centerX`, `cx`, `foo`, `hLength`, `left`, `resetX`, `right`, `textY`, `wLength`, `y`, `zoomIn`, `zoomInX`, `zoomOut`, `zoomOutX`
 
 ### `packages/web/src/components/vnstockcharts/lib/ZoomButtons.tsx`
 
@@ -14010,12 +16466,26 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `WidgetI18nProvider`, `act`, `container`, `createRoot`, `originalConsoleError`, `probe`, `reactActEnvironment`, `root`, `setLocaleForTest`, `useWidgetI18n`
 
+### `packages/web/src/components/vnstockcharts/widget/context/WidgetI18nContext.js`
+
+- Functions:
+  - `WidgetI18nProvider`, `interpolate`, `isWidgetLocale`, `resolveInitialLocale`, `useWidgetI18n`
+- Top-level variables:
+  - `WidgetI18nContext`, `defaultValue`, `documentLocale`, `primaryDictionary`, `resolvedLocale`, `secondaryDictionary`, `setLocale`, `t`, `template`, `value`
+
 ### `packages/web/src/components/vnstockcharts/widget/context/WidgetI18nContext.tsx`
 
 - Functions:
   - `WidgetI18nProvider`, `interpolate`, `isWidgetLocale`, `resolveInitialLocale`, `useWidgetI18n`
 - Top-level variables:
   - `WidgetI18nContext`, `defaultValue`, `documentLocale`, `primaryDictionary`, `resolvedLocale`, `secondaryDictionary`, `setLocale`, `t`, `template`, `value`
+
+### `packages/web/src/components/vnstockcharts/widget/DrawingPriceLabelsOverlay.js`
+
+- Functions:
+  - `clamp`, `resolveDrawingSnapshot`, `resolvePreferredScaleSlotId`
+- Top-level variables:
+  - `anchorPoint`, `effectiveDrawing`, `fillColor`, `highlightFill`, `labelFill`, `markers`, `pixel`, `scaleSlotId`, `side`, `snapshot`, `strokeColor`, `targetedSnapshot`, `textColor`, `top`, `visibleScaleSlotIds`
 
 ### `packages/web/src/components/vnstockcharts/widget/DrawingPriceLabelsOverlay.tsx`
 
@@ -14024,23 +16494,64 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `anchorPoint`, `effectiveDrawing`, `fillColor`, `highlightFill`, `labelFill`, `markers`, `pixel`, `scaleSlotId`, `side`, `snapshot`, `strokeColor`, `targetedSnapshot`, `textColor`, `top`, `visibleScaleSlotIds`
 
+### `packages/web/src/components/vnstockcharts/widget/forkRuntimeCompat.js`
+
+- Functions:
+  - `clamp`, `resolvePaneDataIndexAtPixel`, `resolvePanePixelAtDataIndex`, `resolvePanePixelAtValue`, `resolvePaneValueAtPixel`, `resolvePlotSpan`, `resolveScaleDomain`
+- Top-level variables:
+  - `domain`, `from`, `height`, `left`, `maxIndex`, `ratio`, `span`, `to`, `top`, `width`
+
+### `packages/web/src/components/vnstockcharts/widget/forkRuntimeCompat.ts`
+
+- Functions:
+  - `clamp`, `resolvePaneDataIndexAtPixel`, `resolvePanePixelAtDataIndex`, `resolvePanePixelAtValue`, `resolvePaneValueAtPixel`, `resolvePlotSpan`, `resolveScaleDomain`
+- Top-level variables:
+  - `domain`, `from`, `height`, `left`, `maxIndex`, `ratio`, `span`, `to`, `top`, `width`
+
+### `packages/web/src/components/vnstockcharts/widget/i18n/messages.en.js`
+
+- Top-level variables:
+  - `widgetMessagesEn`
+
 ### `packages/web/src/components/vnstockcharts/widget/i18n/messages.en.ts`
 
 - Top-level variables:
   - `widgetMessagesEn`
+
+### `packages/web/src/components/vnstockcharts/widget/i18n/messages.vi.js`
+
+- Top-level variables:
+  - `widgetMessagesVi`
 
 ### `packages/web/src/components/vnstockcharts/widget/i18n/messages.vi.ts`
 
 - Top-level variables:
   - `widgetMessagesVi`
 
+### `packages/web/src/components/vnstockcharts/widget/i18n/types.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/components/vnstockcharts/widget/i18n/types.ts`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/widget/index.js`
 
 - No parseable top-level symbols found
 
 ### `packages/web/src/components/vnstockcharts/widget/index.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/components/vnstockcharts/widget/MeasurementOverlay.js`
+
+- Classes:
+  - `MeasurementOverlayImpl`
+- Functions:
+  - `BridgeMeasurementOverlay`, `MeasurementOverlayWithI18n`, `drawMeasurementLabel`, `drawPoint`, `drawRoundedRect`, `formatSignedPrice`, `resolveBridgeMeasurementPoint`, `resolvePaneSnapshotAtPixel`, `resolvePreferredScaleSlotId`
+- Top-level variables:
+  - `accentColor`, `bottom`, `boxHeight`, `boxWidth`, `boxX`, `boxY`, `canvas`, `canvasRef`, `chartConfig`, `ctx`, `drawOn`, `endPixel`, `handleCommit`, `handlePointerDown`, `handlePointerLeave`, `handlePointerMove`, `hoverPixel`, `hoverPoint`, `labels`, `lineHeight`, `lines`, `nextPoint`, `paddingX`, `paddingY`, `pixelRatio`, `point`, `rect`, `resolveLocalPosition`, `right`, `scaleSlotId`, `selection`, `snapshot`, `startPixel`, `summary`, `visibleScaleSlotIds`
 
 ### `packages/web/src/components/vnstockcharts/widget/MeasurementOverlay.tsx`
 
@@ -14051,6 +16562,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `accentColor`, `bottom`, `boxHeight`, `boxWidth`, `boxX`, `boxY`, `canvas`, `canvasRef`, `chartConfig`, `ctx`, `drawOn`, `endPixel`, `handleCommit`, `handlePointerDown`, `handlePointerLeave`, `handlePointerMove`, `hoverPixel`, `hoverPoint`, `labels`, `lineHeight`, `lines`, `nextPoint`, `paddingX`, `paddingY`, `pixelRatio`, `point`, `rect`, `resolveLocalPosition`, `right`, `scaleSlotId`, `selection`, `snapshot`, `startPixel`, `summary`, `visibleScaleSlotIds`
 
+### `packages/web/src/components/vnstockcharts/widget/VNStockChart.js`
+
+- Functions:
+  - `VNStockChart`, `VNStockChartContent`, `arePaneSnapshotsEqual`, `buildLegacyPaneSnapshots`, `clampIndex`, `createWidgetCoordinateBridge`, `findPaneSnapshotAtPosition`, `findPlotDataIndex`, `findPlotDataIndexByTime`, `inferAxisSideFromScaleSlotId`, `lookbackDays`, `mergeBarsByDate`, `mergePaneSnapshotDomains`, `normalizeForkVisibleRange`, `normalizePaneDescriptorsForExplicitScaleSlots`, `resolveEngineSeriesValueForRuntime`, `resolveFetchWindow`, `resolveHoveredPaneId`, `resolvePreferredScaleSlotId`, `resolveVisiblePanes`, `resolveWidgetChartPoint`, `resolveWidgetPointPixel`, `safeXAccessor`
+- Top-level variables:
+  - `CHART_MARGIN`, `NORMALIZED_DEFAULT_PANES`, `PANE_HEADER_HEIGHT`, `activeLocale`, `activeSeries`, `activeSnapshots`, `activeSymbol`, `activeTimeframe`, `adapterLabel`, `axisStroke`, `axisTickFill`, `bottom`, `buy`, `candidate`, `candidatePanes`, `canonicalStore`, `canvas`, `chartInnerHeight`, `chartPoint`, `chartSurfaceReady`, `columns`, `computedXExtents`, `context`, `controller`, `currentCharts`, `currentState`, `cvdData`, `dataIndex`, `dateFormat`, `datum`, `defaultLegacyVisibleRange`, `diff`, `disposed`, `effectiveRuntime`, `emitCoordinateBridge`, `emitHoveredPaneId`, `emitPaneSnapshots`, `endBar`, `engine`, `engineDataSource`, `engineInstanceRef`, `engineOptions`, `enginePanes`, `engineSeriesData`, `engineTheme`, `enrichedData`, `existingIndex`, `firstBar`, `forkCoordinateBridge`, `forkDegradeNotifiedRef`, `forkPaneSnapshotsRef`, `forkVisibleRangeRef`, `handleBoundaryError`, `handleEngineReady`, `handleForkClick`, `handleForkContextMenu`, `handleForkVisibleRangeChange`, `handleLegacyVisibleRangeChange`, `handleRuntimeDegraded`, `handleWidgetPointerLeave`, `handleWidgetPointerMove`, `hasExternalData`, `hasLeftAxis`, `hasRenderedPixels`, `hasRightAxis`, `headerBottom`, `headerTop`, `height`, `hoveredPaneIdRef`, `hoveredSnapshot`, `index`, `isDark`, `lastBar`, `lastIndex`, `leftBounds`, `legacyCoordinateBridge`, `legacyPaneSnapshots`, `localX`, `localY`, `mapped`, `matchedValue`, `mergedSnapshots`, `minDiff`, `nearestIdx`, `nextPanes`, `normalizedRange`, `normalizedSeries`, `normalizedVisibleRange`, `oneDay`, `paneHeights`, `paneSnapshotMap`, `paneSplitterNodes`, `paneToolbarNodes`, `pixel`, `plotData`, `plotWidth`, `previousTheme`, `priceFormat`, `rawEndIndex`, `rawStartIndex`, `ready`, `rect`, `requestedRuntime`, `resolveForkEventPayload`, `resolvedLegacyVisibleRange`, `resolvedScaleSlotId`, `resolvedTheme`, `resolvedXExtents`, `right`, `rightBounds`, `root`, `rows`, `runtimeCapabilities`, `scaleSlotBounds`, `scaleSlotDomains`, `scaleSlotIds`, `scaleSlotStates`, `sell`, `series`, `seriesId`, `seriesValuesById`, `snapshot`, `snapshotTop`, `startBar`, `themeState`, `timer`, `to`, `top`, `ts`, `unsubscribe`, `useForkRuntime`, `value`, `values`, `visiblePanes`, `visibleScaleSlotIds`, `volumeFormat`, `whaleEvents`, `x`, `y`
+
 ### `packages/web/src/components/vnstockcharts/widget/VNStockChart.tsx`
 
 - Functions:
@@ -14058,12 +16576,24 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `CHART_MARGIN`, `NORMALIZED_DEFAULT_PANES`, `PANE_HEADER_HEIGHT`, `activeLocale`, `activeSeries`, `activeSnapshots`, `activeSymbol`, `activeTimeframe`, `adapterLabel`, `axisStroke`, `axisTickFill`, `bottom`, `buy`, `candidate`, `candidatePanes`, `canonicalStore`, `canvas`, `chartInnerHeight`, `chartPoint`, `chartSurfaceReady`, `columns`, `computedXExtents`, `context`, `controller`, `currentCharts`, `currentState`, `cvdData`, `dataIndex`, `dateFormat`, `datum`, `defaultLegacyVisibleRange`, `diff`, `disposed`, `effectiveRuntime`, `emitCoordinateBridge`, `emitHoveredPaneId`, `emitPaneSnapshots`, `endBar`, `engine`, `engineDataSource`, `engineInstanceRef`, `engineOptions`, `enginePanes`, `engineSeriesData`, `engineTheme`, `enrichedData`, `existingIndex`, `firstBar`, `forkCoordinateBridge`, `forkDegradeNotifiedRef`, `forkPaneSnapshotsRef`, `forkVisibleRangeRef`, `handleBoundaryError`, `handleEngineReady`, `handleForkClick`, `handleForkContextMenu`, `handleForkVisibleRangeChange`, `handleLegacyVisibleRangeChange`, `handleRuntimeDegraded`, `handleWidgetPointerLeave`, `handleWidgetPointerMove`, `hasExternalData`, `hasLeftAxis`, `hasRenderedPixels`, `hasRightAxis`, `headerBottom`, `headerTop`, `height`, `hoveredPaneIdRef`, `hoveredSnapshot`, `index`, `isDark`, `lastBar`, `lastIndex`, `leftBounds`, `legacyCoordinateBridge`, `legacyPaneSnapshots`, `localX`, `localY`, `mapped`, `matchedValue`, `mergedSnapshots`, `minDiff`, `nearestIdx`, `nextPanes`, `normalizedRange`, `normalizedSeries`, `normalizedVisibleRange`, `oneDay`, `paneHeights`, `paneSnapshotMap`, `paneSplitterNodes`, `paneToolbarNodes`, `pixel`, `plotData`, `plotWidth`, `previousTheme`, `priceFormat`, `rawEndIndex`, `rawStartIndex`, `ready`, `rect`, `requestedRuntime`, `resolveForkEventPayload`, `resolveWidgetChartPoint`, `resolveWidgetPointPixel`, `resolvedLegacyVisibleRange`, `resolvedScaleSlotId`, `resolvedTheme`, `resolvedXExtents`, `right`, `rightBounds`, `root`, `rows`, `runtimeCapabilities`, `scaleSlotBounds`, `scaleSlotDomains`, `scaleSlotIds`, `scaleSlotStates`, `sell`, `series`, `seriesId`, `seriesValuesById`, `snapshot`, `snapshotTop`, `startBar`, `themeState`, `timer`, `to`, `top`, `ts`, `unsubscribe`, `useForkRuntime`, `value`, `values`, `visiblePanes`, `visibleScaleSlotIds`, `volumeFormat`, `whaleEvents`, `x`, `y`
 
+### `packages/web/src/components/vnstockcharts/widget/WidgetEmptyState.js`
+
+- Functions:
+  - `WidgetEmptyState`
+- Top-level variables:
+  - `copy`
+
 ### `packages/web/src/components/vnstockcharts/widget/WidgetEmptyState.tsx`
 
 - Functions:
   - `WidgetEmptyState`
 - Top-level variables:
   - `copy`
+
+### `packages/web/src/components/vnstockcharts/widget/WidgetErrorBoundary.js`
+
+- Classes:
+  - `WidgetErrorBoundary`
 
 ### `packages/web/src/components/vnstockcharts/widget/WidgetErrorBoundary.tsx`
 
@@ -14150,6 +16680,41 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `saasFeaturePages`
 
+### `packages/web/src/features/stock-detail/components/StockContextDeck.js`
+
+- Functions:
+  - `StockContextDeck`, `fmtCompact`, `fmtPrice`
+- Top-level variables:
+  - `e`, `hasActiveSession`, `institutionalBuy`, `isBuy`, `n`, `retailBuy`, `side`, `totalBuyStrength`
+
+### `packages/web/src/features/stock-detail/components/StockDetailHeader.js`
+
+- Functions:
+  - `StockDetailHeader`, `fmtCompact`, `fmtPrice`
+- Top-level variables:
+  - `change`, `changePct`, `e`, `isUp`, `marketCap`, `n`, `price`
+
+### `packages/web/src/features/stock-detail/components/StockInsightDeck.js`
+
+- Functions:
+  - `StockInsightDeck`, `signalColorClass`, `signalLabel`
+- Top-level variables:
+  - `e`, `map`, `s`, `sessionLabel`
+
+### `packages/web/src/features/stock-detail/components/StockSessionWitness.js`
+
+- Functions:
+  - `StockSessionWitness`
+- Top-level variables:
+  - `e`, `hasActiveSession`, `sessionDateStr`
+
+### `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js`
+
+- Functions:
+  - `loadBlocking`, `loadDeferred`, `loadInsights`, `normalizeChartBarsPayload`, `useStockDetailPageModel`
+- Top-level variables:
+  - `DEFAULT_ENV`, `adapter`, `candidates`, `handleRealtimeSnapshot`, `mountedRef`, `pendingSnapshotRef`, `realtimeTimeoutRef`, `sessionDate`
+
 ### `packages/web/src/features/vip/components/index.js`
 
 - Top-level variables:
@@ -14202,6 +16767,13 @@ Generated at: `2026-05-21 23:14:30`
 - Top-level variables:
   - `e`, `prevReadyTokenRef`, `rawList`, `resolvedRenderAlertLane`, `showSkeleton`, `token`, `uniqueSorted`
 
+### `packages/web/src/pages/market/ShellStockDetailPage.js`
+
+- Functions:
+  - `ShellStockDetailPage`, `handleStockSymbolChange`, `handleStockSymbolSubmit`, `normalizeStockSymbol`, `resolveRouteParamSymbol`, `resolveStockPathname`, `resolveStockSearch`, `resolveStockSymbolFromPathname`, `resolveStockSymbolFromSearch`, `resolveStockSymbolState`, `syncStockLocation`
+- Top-level variables:
+  - `DEFAULT_STOCK_SYMBOL`, `STOCK_ROUTE_IDS`, `enabledSurfaces`, `explicitSymbol`, `match`, `metrics`, `nextSymbol`, `nextUrl`, `pathname`, `resolvedStockSymbol`, `resolvedStockSymbolState`, `search`, `stockAbilities`, `stockRoutes`, `summaryCards`
+
 ### `packages/web/src/pages/pageRegistry.js`
 
 - Functions:
@@ -14233,9 +16805,9 @@ Generated at: `2026-05-21 23:14:30`
 ### `packages/web/src/pages/StockDetailPage.js`
 
 - Functions:
-  - `AdvisoryCard`, `StockDetailPage`, `StockHeaderPanel`, `fmtCompact`, `fmtPrice`, `load`, `signalColorClass`, `signalLabel`, `useStockDetail`
+  - `StockDetailPage`, `fmtCompact`, `fmtPrice`, `signalColorClass`, `signalLabel`
 - Top-level variables:
-  - `DEFAULT_ENV`, `adapter`, `change`, `changePct`, `e`, `handleSessionChange`, `handleVisibleRangeChange`, `handleWatch`, `isUp`, `map`, `marketCap`, `mountedRef`, `n`, `price`, `s`, `sessionDate`, `sessionLabel`
+  - `DEFAULT_ENV`, `e`, `handleAlertTrigger`, `handleSessionChange`, `handleTradeTrigger`, `handleVisibleRangeChange`, `handleWatch`, `map`, `n`, `s`, `showToast`, `timer`
 
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 
