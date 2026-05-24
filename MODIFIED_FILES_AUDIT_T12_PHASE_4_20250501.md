@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-05-24 | Close remaining registration spam-protection gaps (R8 + DWD docs sync)
+
+### Files changed in this session
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `docs/plans/REMEDIATION_CHECKLIST_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md`
+- `docs/plans/IMPLEMENTATION_PLAN_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Hoan tat phan web production integration cho flow dang ky/chong spam qua `coreApiAdapter` (register/resend/verify + anti-spam payload + envelope parser).
+- Dong bo tai lieu ve Gmail mode theo huong DWD-only de loai bo mieu ta OAuth2 xung dot.
+
+### Validation snapshot
+- `npm test -- src/adapters/coreApiAdapter.test.js` ✅ (`46 passed`).
+- `manage.py test src.identity_access.tests.test_register_upgrade src.identity_access.tests.test_operator_mail_config src.vninvest_core.tests.test_status_codes_and_errors.ErrorEnvelopeConsistencyTests --keepdb` ✅ (`22 passed`).
+- `./start_dev.ps1` ✅ complete, smoke checks: Core API `OK`, Frontend `OK`.
+- `python scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` (`2588` modules).
+
+---
+
 ## 2026-05-24 | TenantMemberAdmin action-level hardening (`create/remove`) + permission regression tests
 
 ### Files changed in this session

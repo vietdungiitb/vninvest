@@ -26,6 +26,22 @@ function resolveCoreApiBase(env = {}) {
   return "/core/v1";
 }
 
+function resolvePublicApiBase(env = {}) {
+  if (env && typeof env.API_BASE_URL === "string" && env.API_BASE_URL.trim()) {
+    return env.API_BASE_URL.trim();
+  }
+  if (env && typeof env.REACT_APP_API_BASE_URL === "string" && env.REACT_APP_API_BASE_URL.trim()) {
+    return env.REACT_APP_API_BASE_URL.trim();
+  }
+  if (typeof window !== "undefined" && typeof window.API_BASE_URL === "string" && window.API_BASE_URL.trim()) {
+    return window.API_BASE_URL.trim();
+  }
+  if (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) {
+    return process.env.REACT_APP_API_BASE_URL;
+  }
+  return "/api";
+}
+
 function generateRequestId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -46,6 +62,20 @@ function getAuthorizationHeader(getToken) {
   const token = typeof getToken === "function" ? getToken() : null;
   if (!token) return {};
   return { "Authorization": `Bearer ${token}` };
+}
+
+export class CoreApiRequestError extends Error {
+  constructor(message, options = {}) {
+    super(message);
+    this.name = "CoreApiRequestError";
+    this.status = options.status ?? null;
+    this.statusText = options.statusText ?? "";
+    this.path = options.path ?? "";
+    this.payload = options.payload ?? null;
+    this.code = options.code ?? null;
+    this.fieldErrors = options.fieldErrors ?? null;
+    this.requestId = options.requestId ?? null;
+  }
 }
 
 function normalizeRefreshResponsePayload(payload) {
@@ -75,6 +105,33 @@ function createCoreTransport(env = {}, options = {}) {
     clearTokens = () => {},
   } = options;
   let refreshPromise = null;
+
+  function toCoreApiRequestError(path, response, payload, fallbackText = "") {
+    const detail =
+      (payload && typeof payload === "object" && (payload.detail || payload.message)) ||
+      fallbackText ||
+      response.statusText ||
+      "Request failed";
+    const fieldErrors =
+      (payload && typeof payload === "object" && (payload.field_errors || payload.errors)) || null;
+    const requestId =
+      (payload && typeof payload === "object" && payload.request_id) || null;
+    const code =
+      (payload && typeof payload === "object" && payload.code) || null;
+
+    return new CoreApiRequestError(
+      `Core API request error ${response.status} ${response.statusText} - ${path}: ${detail}`,
+      {
+        status: response.status,
+        statusText: response.statusText,
+        path,
+        payload,
+        fieldErrors,
+        requestId,
+        code,
+      },
+    );
+  }
 
   function shouldTryRefresh(path, responseStatus) {
     return (
@@ -217,7 +274,29 @@ function createCoreTransport(env = {}, options = {}) {
     return null;
   }
 
-  return { coreGet, corePost, corePatch, coreDelete };
+  async function publicPost(path, body = undefined) {
+    const base = resolvePublicApiBase(env);
+    const requestId = generateRequestId();
+    const response = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-ID": requestId,
+      },
+      credentials: "include",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const fallbackText = await response.text().catch(() => "");
+      throw toCoreApiRequestError(path, response, payload, fallbackText);
+    }
+
+    return payload;
+  }
+
+  return { coreGet, corePost, corePatch, coreDelete, publicPost };
 }
 
 /**
@@ -228,7 +307,7 @@ function createCoreTransport(env = {}, options = {}) {
  *   const snapshot = await coreApiAdapter.getSymbolSnapshot('VCI');
  */
 export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setTokens, clearTokens } = {}) {
-  const { coreGet, corePost, corePatch, coreDelete } = createCoreTransport(env, {
+  const { coreGet, corePost, corePatch, coreDelete, publicPost } = createCoreTransport(env, {
     getToken,
     getRefreshToken,
     setTokens,
@@ -413,6 +492,45 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getTenantLifecycle() {
     return coreGet("/tenant/lifecycle/");
+  },
+
+  /**
+   * Register a new user through native public auth endpoint.
+   * Web anti-spam fields `website` (honeypot) and `turnstile_token` are forwarded as-is.
+   * @param {{username: string, email: string, password: string, password_confirm?: string, website?: string, turnstile_token?: string}} payload
+   * @returns {Promise<object>}
+   */
+  registerUser(payload) {
+    return publicPost("/auth/register/", {
+      username: String(payload?.username || "").trim(),
+      email: String(payload?.email || "").trim().toLowerCase(),
+      password: String(payload?.password || ""),
+      password_confirm: String(payload?.password_confirm || payload?.password || ""),
+      website: String(payload?.website || ""),
+      turnstile_token: String(payload?.turnstile_token || ""),
+    });
+  },
+
+  /**
+   * Request to resend email verification link.
+   * @param {string} email
+   * @returns {Promise<object>}
+   */
+  resendVerificationEmail(email) {
+    return publicPost("/auth/resend-verification/", {
+      email: String(email || "").trim().toLowerCase(),
+    });
+  },
+
+  /**
+   * Verify email by one-time token.
+   * @param {string} token
+   * @returns {Promise<object>}
+   */
+  verifyEmailToken(token) {
+    return publicPost("/auth/verify-email/", {
+      token: String(token || "").trim(),
+    });
   },
 
   // ─── Advisory ────────────────────────────────────────────────────────────
@@ -897,6 +1015,110 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
    */
   getLegacyWatchlistGroups() {
     return coreGet("/stock-management/groups/?include_prices=0");
+  },
+
+  /**
+   * Add a tracked symbol for the authenticated user.
+   * POST /core/v1/stock-management/tracked-symbols/
+   * @param {string} symbol
+   * @param {number|string} sourceGroupId
+   * @param {number} whaleAlertThresholdMillion
+   * @returns {Promise<object>}
+   */
+  addTrackedSymbol(symbol, sourceGroupId, whaleAlertThresholdMillion) {
+    if (!symbol) throw new Error("symbol is required for addTrackedSymbol");
+    return corePost("/stock-management/tracked-symbols/", {
+      symbol: symbol.toUpperCase(),
+      source_group_id: sourceGroupId,
+      whale_alert_threshold_million: whaleAlertThresholdMillion,
+    });
+  },
+
+  /**
+   * Remove a tracked symbol.
+   * DELETE /core/v1/stock-management/tracked-symbols/{id}/
+   * @param {number|string} id
+   * @returns {Promise<void>}
+   */
+  removeTrackedSymbol(id) {
+    if (!id) throw new Error("id is required for removeTrackedSymbol");
+    return coreDelete(`/stock-management/tracked-symbols/${encodeURIComponent(id)}/`);
+  },
+
+  /**
+   * Get price alerts for the authenticated user.
+   * GET /core/v1/stock-management/price-alerts/
+   * @param {object} [params] - Filters: symbol, cursor, page_size
+   * @returns {Promise<{results: object[], next: string|null}>}
+   */
+  getPriceAlerts(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/stock-management/price-alerts/${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Create a price alert.
+   * POST /core/v1/stock-management/price-alerts/
+   * @param {{ symbol: string, condition: string, target_price: number, cooldown_seconds: number, is_active: boolean }} payload
+   * @returns {Promise<object>}
+   */
+  createPriceAlert(payload) {
+    if (!payload || !payload.symbol) throw new Error("symbol is required in price alert payload");
+    return corePost("/stock-management/price-alerts/", {
+      ...payload,
+      symbol: payload.symbol.toUpperCase(),
+    });
+  },
+
+  /**
+   * Update a price alert.
+   * PATCH /core/v1/stock-management/price-alerts/{id}/
+   * @param {number|string} id
+   * @param {object} payload
+   * @returns {Promise<object>}
+   */
+  updatePriceAlert(id, payload) {
+    if (!id) throw new Error("id is required for updatePriceAlert");
+    return corePatch(`/stock-management/price-alerts/${encodeURIComponent(id)}/`, payload);
+  },
+
+  /**
+   * Delete a price alert.
+   * DELETE /core/v1/stock-management/price-alerts/{id}/
+   * @param {number|string} id
+   * @returns {Promise<void>}
+   */
+  deletePriceAlert(id) {
+    if (!id) throw new Error("id is required for deletePriceAlert");
+    return coreDelete(`/stock-management/price-alerts/${encodeURIComponent(id)}/`);
+  },
+
+  /**
+   * Get stock news feed for a symbol.
+   * GET /core/v1/stock-management/stocks/{symbol}/news/
+   * @param {string} symbol
+   * @param {object} [params]
+   * @returns {Promise<{results: object[]}>}
+   */
+  getStockNews(symbol, params = {}) {
+    if (!symbol) throw new Error("symbol is required for getStockNews");
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/news/${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Get stock financial details/indicators for a symbol.
+   * GET /core/v1/stock-management/stocks/{symbol}/financials/
+   * @param {string} symbol
+   * @returns {Promise<object>}
+   */
+  getStockFinancials(symbol) {
+    if (!symbol) throw new Error("symbol is required for getStockFinancials");
+    return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/financials/`);
   },
   };
 }

@@ -1,5 +1,39 @@
 # Code Change Audit Ledger
 
+# 2026-05-24 | Close remaining SaaS registration spam-protection gaps (R8 + DWD docs sync) ✅
+
+## Problem Solved
+
+- Dong gap R8 web integration theo production path bang cach bo sung native auth APIs trong `packages/web` adapter (khong dung demo component): register/resend/verify.
+- Chuan hoa docs Gmail mode ve mot su that duy nhat `DWD-only`, loai bo mo ta OAuth2 song song gay xung dot tai lieu.
+- Xac nhan lai gate test backend/frontend sau thay doi va refresh dev runtime qua `./start_dev.ps1` thanh cong.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Web adapter tests | ✅ `npm test -- src/adapters/coreApiAdapter.test.js` (`46 passed`) |
+| Backend auth/spam gates | ✅ `manage.py test src.identity_access.tests.test_register_upgrade src.identity_access.tests.test_operator_mail_config src.vninvest_core.tests.test_status_codes_and_errors.ErrorEnvelopeConsistencyTests --keepdb` (`22 passed`) |
+| Dev stack refresh | ✅ `./start_dev.ps1` completed; `Core API health: OK`, `Frontend health: OK` |
+| Module tree refresh | ✅ `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2588` modules) |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/adapters/coreApiAdapter.js` | Added production public auth APIs (`registerUser`, `resendVerificationEmail`, `verifyEmailToken`) with structured `CoreApiRequestError` envelope parsing |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added/updated tests for new auth API methods and envelope metadata assertions |
+| `docs/plans/REMEDIATION_CHECKLIST_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md` | Marked R8 as completed with concrete production adapter integration note |
+| `docs/plans/IMPLEMENTATION_PLAN_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md` | Reconciled Gmail mode to DWD-only and removed conflicting OAuth2 wording |
+| `module_tree_full.md` | Regenerated after code/docs updates |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- `start_dev.ps1` build output still reports frontend bundle size warning (non-blocking).
+
 # 2026-05-24 | TenantMemberAdmin action-level hardening (`create/remove`) + permission tests ✅
 
 ## Problem Solved

@@ -1,3 +1,35 @@
+# 2026-05-24 — Close remaining registration spam-protection gaps (R8 + DWD sync) ✅
+
+Status: **✅ DONE (code + docs + runtime refresh complete)**
+
+## Summary
+
+- Added production-facing auth methods in `packages/web` adapter for native registration flow: `registerUser`, `resendVerificationEmail`, `verifyEmailToken`.
+- Added structured error mapping (`CoreApiRequestError`) so UI can consume `detail/code/request_id/field_errors` directly from standard envelope.
+- Closed checklist item R8 and synchronized plan wording to Gmail `DWD-only` (removed OAuth2 split narrative).
+
+## Files Updated
+
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `docs/plans/REMEDIATION_CHECKLIST_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md`
+- `docs/plans/IMPLEMENTATION_PLAN_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `npm test -- src/adapters/coreApiAdapter.test.js` ✅ (`46 passed`).
+- `manage.py test src.identity_access.tests.test_register_upgrade src.identity_access.tests.test_operator_mail_config src.vninvest_core.tests.test_status_codes_and_errors.ErrorEnvelopeConsistencyTests --keepdb` ✅ (`22 passed`).
+- `./start_dev.ps1` ✅ completed; smoke checks: `Core API health: OK`, `Frontend health: OK`.
+- `python scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2588` modules).
+
+## Residual Risk
+
+- Frontend production build still logs bundle-size warning (advisory only, not release-blocking).
+
 # 2026-05-24 — TenantMemberAdmin action-level hardening (`create/remove`) ✅
 
 Status: **✅ DONE (permission split complete + tests green) | ⚠️ local runtime smoke blocked by Docker daemon**

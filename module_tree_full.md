@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-24 15:15:25`
+Generated at: `2026-05-24 21:54:13`
 
 ## Summary
 
-- Total modules: 2575
-- Python modules: 727
+- Total modules: 2588
+- Python modules: 740
 - JS/TS modules: 1848
-- Total classes: 1813
-- Total functions: 6953
-- Total top-level variables: 18191
+- Total classes: 1836
+- Total functions: 6968
+- Total top-level variables: 18231
 
 ## Python Modules
 
@@ -2721,6 +2721,11 @@ Generated at: `2026-05-24 15:15:25`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/data_ingest/migrations/0002_rename_data_ingest_job_id_idx_data_ingest_job_id_4d6b96_idx_and_more.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/data_ingest/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -2742,7 +2747,7 @@ Generated at: `2026-05-24 15:15:25`
 ### `packages/core/backend/src/data_ingest/tasks.py`
 
 - Functions:
-  - `_attach_ingest_run_to_service_run_log`, `_b01_clear_inflight_cache`, `_b02_mark_run_failed_on_crash`, `_b08_finalize_stale_running_runs`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_build_intraday_symbol_plan`, `_classify_daily_price_rows`, `_compute_latency_percentile_ms`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_fetch_daily_history_with_retry`, `_floor_intraday_bucket`, `_get_default_global_registry_symbols`, `_hydrate_intraday_symbols`, `_normalize_daily_plan_items`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_date_range_from_window`, `_resolve_history_days_from_window`, `_resolve_intraday_page_size_from_window`, `backfill_daily_prices`, `backfill_intraday_tick_system`, `backfill_intraday_tick_user`, `backfill_pre5y_to_market_inception`, `enqueue_dnse_quarterly_backfill`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `warm_intraday_universe`
+  - `_attach_ingest_run_to_service_run_log`, `_b01_clear_inflight_cache`, `_b02_mark_run_failed_on_crash`, `_b08_finalize_stale_running_runs`, `_build_default_daily_price_plan_items`, `_build_intraday_bar_payloads`, `_build_intraday_symbol_plan`, `_classify_daily_price_rows`, `_compute_latency_percentile_ms`, `_empty_result_counts`, `_extract_intraday_datasets_from_plan_items`, `_extract_symbols_from_plan_items`, `_fetch_and_upsert_bucket`, `_fetch_daily_history_with_retry`, `_floor_intraday_bucket`, `_get_default_global_registry_symbols`, `_hydrate_intraday_symbols`, `_normalize_daily_plan_items`, `_normalize_intraday_side`, `_normalize_intraday_trade_row`, `_normalize_symbols`, `_refresh_coverage_for_symbols`, `_resolve_history_date_range_from_window`, `_resolve_history_days_from_window`, `_resolve_intraday_page_size_from_window`, `backfill_daily_prices`, `backfill_intraday_tick_system`, `backfill_intraday_tick_user`, `backfill_pre5y_to_market_inception`, `enqueue_dnse_quarterly_backfill`, `execute_provisioning_consumer`, `fetch_and_upsert_price_board`, `ingest_daily_prices`, `process_outbox_events`, `run_global_market_data_planner`, `run_vnbroker_price_board_benchmark`, `send_email_verification_token`, `send_password_reset_email`, `sync_market_groups`, `trigger_email_verification_flow`, `warm_intraday_universe`
 - Top-level variables:
   - `_B08_STALE_GRACE_SECONDS`, `_B08_STALE_RUNNING_TTL_SECONDS`, `_BACKFILL_BATCH_SIZE`, `_DAILY_HISTORY_RETRY_ATTEMPTS`, `_DAILY_HISTORY_RETRY_BACKOFF_MAX_SECONDS`, `_DAILY_HISTORY_RETRY_BACKOFF_SECONDS`, `_DEFAULT_INTER_SYMBOL_DELAY`, `_HISTORY_PROVIDERS`, `_INTRADAY_BAR_TIMEFRAMES`, `_INTRADAY_PAGE_SIZE_BY_DEPTH_TIER`, `_INTRADAY_PLAN_DATASETS`, `_MAX_BACKFILL_DAYS`, `_PROVIDER_INTER_SYMBOL_DELAY`, `_USER_BACKFILL_MAX_DAYS`, `logger`
 
@@ -2827,7 +2832,7 @@ Generated at: `2026-05-24 15:15:25`
 ### `packages/core/backend/src/identity_access/apps.py`
 
 - Classes:
-  - `IdentityAccessConfig`
+  - `IdentityAccessConfig` -> methods: `ready`
 
 ### `packages/core/backend/src/identity_access/authentication.py`
 
@@ -2864,6 +2869,13 @@ Generated at: `2026-05-24 15:15:25`
 
 - No parseable top-level symbols found
 
+### `packages/core/backend/src/identity_access/management/commands/backfill_missing_tenants.py`
+
+- Classes:
+  - `Command` -> methods: `add_arguments`, `handle`
+- Top-level variables:
+  - `User`, `logger`
+
 ### `packages/core/backend/src/identity_access/management/commands/issue_vnbrokerchart_pat.py`
 
 - Classes:
@@ -2873,6 +2885,13 @@ Generated at: `2026-05-24 15:15:25`
 
 - Classes:
   - `Command` -> methods: `_fetch_legacy_userconfigs`, `add_arguments`, `handle`
+
+### `packages/core/backend/src/identity_access/management/commands/rotate_mail_credential_key.py`
+
+- Classes:
+  - `Command` -> methods: `add_arguments`, `handle`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/identity_access/middleware.py`
 
@@ -2920,6 +2939,16 @@ Generated at: `2026-05-24 15:15:25`
 - Top-level variables:
   - `POLICY_TO_SCOPE_CODES`, `SCOPE_CODE_TO_POLICY`
 
+### `packages/core/backend/src/identity_access/migrations/0008_outboxevent_processedevent_and_more.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/identity_access/migrations/0009_emailverificationtoken.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/identity_access/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -2930,7 +2959,12 @@ Generated at: `2026-05-24 15:15:25`
   - `CorePATCredential` -> methods: `__str__`, `effective_status`, `issue_for_service_account`, `mark_rotating`, `resolve_from_raw_secret`, `revoke_pat`, `save`
   - `CoreServiceAccount` -> methods: `__str__`, `clean`, `save`
   - `CoreTenant` -> methods: `__str__`, `save`, `tenant_id`
+  - `EmailVerificationToken` -> methods: `__str__`
+  - `MailConfigAuditLog` -> methods: `__str__`
+  - `OutboxEvent` -> methods: `__str__`
   - `PasswordResetToken` -> methods: `__str__`, `cleanup_expired`, `generate_and_save`, `is_expired`, `is_valid`, `verify_and_mark_used`
+  - `ProcessedEvent` -> methods: `__str__`
+  - `SystemMailConfig` -> methods: `__str__`, `clean`, `get_google_service_account_json`, `get_smtp_password`, `set_google_service_account_json`, `set_smtp_password`
   - `TenantInvite` -> methods: `__str__`, `generate_token`, `is_expired`, `save`
   - `TenantMember` -> methods: `__str__`, `save`
   - `UserDNSECredential` -> methods: `__str__`, `get_api_key`, `get_api_secret`, `set_credentials`
@@ -2968,13 +3002,14 @@ Generated at: `2026-05-24 15:15:25`
   - `PartnerPATIssueSerializer` -> methods: `validate`
   - `PartnerPATRevokeSerializer`
   - `PartnerPATRotateSerializer` -> methods: `validate`
+  - `SaaSRegisterSerializer` -> methods: `_verify_turnstile`, `validate`, `validate_email`, `validate_username`
   - `TenantInviteCreateSerializer`
   - `TenantInviteSerializer` -> methods: `get_is_expired`
   - `TenantMemberSerializer`
 - Functions:
   - `_normalize_identifier_list`, `_policy_ids_to_scope_codes`, `_scope_codes_to_policy_ids`
 - Top-level variables:
-  - `POLICY_TO_SCOPE_CODES`, `SCOPE_CODE_TO_POLICY`
+  - `POLICY_TO_SCOPE_CODES`, `SCOPE_CODE_TO_POLICY`, `User`, `logger`
 
 ### `packages/core/backend/src/identity_access/tenant_member_views.py`
 
@@ -3014,11 +3049,32 @@ Generated at: `2026-05-24 15:15:25`
   - `EmailVerificationTokenTaskTests` -> methods: `setUp`, `test_send_email_verification_token_default_frontend_url`, `test_send_email_verification_token_failure`, `test_send_email_verification_token_success`
   - `PasswordResetEmailTaskTests` -> methods: `setUp`, `test_send_password_reset_email_default_frontend_url`, `test_send_password_reset_email_failure`, `test_send_password_reset_email_success`
 
+### `packages/core/backend/src/identity_access/tests/test_login_upgrade.py`
+
+- Classes:
+  - `SaaSUserLoginUpgradeTests` -> methods: `setUp`, `test_login_inactive_user`, `test_login_invalid_credentials`, `test_login_rate_limiting_ip`, `test_login_rate_limiting_user`, `test_login_service_account_inactive`, `test_login_success_email`, `test_login_success_username`, `test_login_tenant_not_found`, `test_login_validation_missing_fields`, `test_refresh_token_invalid`, `test_refresh_token_missing`, `test_refresh_token_success`
+- Top-level variables:
+  - `User`
+
+### `packages/core/backend/src/identity_access/tests/test_operator_mail_config.py`
+
+- Classes:
+  - `OperatorMailConfigAPITests` -> methods: `setUp`, `test_activate_config_and_concurrency_deactivation`, `test_create_gmail_dwd_configuration`, `test_create_smtp_configuration`, `test_delete_active_config_blocked`, `test_permission_gates`, `test_retrieve_and_update_configuration`, `test_test_connection_endpoint`, `test_validation_errors`
+- Top-level variables:
+  - `TEST_FERNET_KEY`, `User`
+
 ### `packages/core/backend/src/identity_access/tests/test_password_reset.py`
 
 - Classes:
   - `PasswordResetTokenModelTests` -> methods: `setUp`, `test_cleanup_expired`, `test_generate_and_save_creates_token`, `test_is_expired_property`, `test_is_valid_property`, `test_token_hash_uniqueness`, `test_token_persists_across_sessions`, `test_verify_and_mark_used_already_used`, `test_verify_and_mark_used_expired`, `test_verify_and_mark_used_invalid_token`, `test_verify_and_mark_used_success`
   - `PasswordResetViewTests` -> methods: `setUp`, `test_password_reset_confirm_already_used`, `test_password_reset_confirm_expired_token`, `test_password_reset_confirm_invalid_token`, `test_password_reset_confirm_short_password`, `test_password_reset_confirm_success`, `test_password_reset_flow_end_to_end`, `test_password_reset_request_creates_db_token`, `test_password_reset_request_no_user_enumeration`
+
+### `packages/core/backend/src/identity_access/tests/test_register_upgrade.py`
+
+- Classes:
+  - `SaaSUserRegistrationSpamProtectionTests` -> methods: `setUp`, `test_backfill_missing_tenants_command`, `test_disposable_domain_validation_blocked`, `test_happy_path_registration_atomic_provisioning`, `test_honeypot_field_validation_blocked`, `test_tc_chaos_failover_02_google_api_crash_fallback`, `test_tc_concurrency_01_active_mail_config_constraint`, `test_tc_migration_key_05_credential_rotation`, `test_tc_outbox_atomic_03_atomic_failure_rollback`, `test_tc_outbox_consume_04_idempotent_event_processing`, `test_turnstile_token_invalid_blocked`
+- Top-level variables:
+  - `TEST_FERNET_KEY`, `User`
 
 ### `packages/core/backend/src/identity_access/urls.py`
 
@@ -3044,9 +3100,22 @@ Generated at: `2026-05-24 15:15:25`
 - Classes:
   - `AuthBootstrapThrottle`
 - Functions:
-  - `_build_abilities`, `_build_auth_payload`, `_build_capabilities_payload`, `_build_entitlements`, `_build_navigation`, `_build_target`, `_current_user_config`, `_human_session_pat_expires_at`, `_human_session_pat_lifetime`, `_make_token`, `_normalize_user_config_payload`, `_resolve_request_service_account`, `_service_account_payload`, `_tenant_payload`, `_token_expired`, `_user_payload`, `capabilities_view`, `login_view`, `logout_view`, `password_reset_confirm_view`, `password_reset_request_view`, `profile_view`, `refresh_token_view`, `register_view`, `user_config_view`, `verify_email_view`
+  - `_build_abilities`, `_build_auth_payload`, `_build_capabilities_payload`, `_build_entitlements`, `_build_navigation`, `_build_target`, `_current_user_config`, `_human_session_pat_expires_at`, `_human_session_pat_lifetime`, `_normalize_user_config_payload`, `_resolve_request_service_account`, `_service_account_payload`, `_tenant_payload`, `_user_payload`, `capabilities_view`, `login_view`, `logout_view`, `password_reset_confirm_view`, `password_reset_request_view`, `profile_view`, `refresh_token_view`, `register_view`, `resend_email_verification_view`, `success_response`, `user_config_view`, `verify_email_view`
 - Top-level variables:
-  - `DEFAULT_HUMAN_SESSION_PAT_HOURS`, `TENANT_PERMISSION_CLASSES`, `User`, `_DEFAULT_USER_CONFIG`, `_EMAIL_VERIFY_TOKENS`, `_TOKEN_TTL_HOURS`, `_USER_CONFIG_STORE`, `logger`
+  - `DEFAULT_HUMAN_SESSION_PAT_HOURS`, `TENANT_PERMISSION_CLASSES`, `User`, `_DEFAULT_USER_CONFIG`, `_USER_CONFIG_STORE`, `logger`
+
+### `packages/core/backend/src/identity_access/views_operator.py`
+
+- Classes:
+  - `MailConfigCursorPagination`
+  - `OperatorMailConfigActivateView` -> methods: `post`
+  - `OperatorMailConfigDetailView` -> methods: `_get_config`, `delete`, `get`, `patch`
+  - `OperatorMailConfigListView` -> methods: `get`, `post`
+  - `OperatorMailConfigTestView` -> methods: `post`
+- Functions:
+  - `success_response`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/market_data/__init__.py`
 
@@ -3569,6 +3638,11 @@ Generated at: `2026-05-24 15:15:25`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/ops_audit/migrations/0003_delete_paritylog_delete_parityphasecheckpoint_and_more.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/ops_audit/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -3726,6 +3800,11 @@ Generated at: `2026-05-24 15:15:25`
   - `Migration`
 
 ### `packages/core/backend/src/service_ops/migrations/0006_add_backfill_execution_models.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/service_ops/migrations/0007_rename_svc_beb_run_state_idx_service_ops_run_id_0c8c61_idx_and_more.py`
 
 - Classes:
   - `Migration`
@@ -4631,6 +4710,11 @@ Generated at: `2026-05-24 15:15:25`
 - Functions:
   - `backfill_tracked_symbols_from_default_watchlists`, `noop_reverse`
 
+### `packages/core/backend/src/user_workspace/migrations/0010_remove_subaccount_user_ws_subaccount_tenant_user_idx_and_more.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/user_workspace/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -4960,7 +5044,7 @@ Generated at: `2026-05-24 15:15:25`
 ### `packages/core/backend/src/vninvest_core/settings.py`
 
 - Top-level variables:
-  - `ADVISORY_TOKEN_BUDGET`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `BASE_DIR`, `CACHES`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_ROUTES`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYERS`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DATABASE_ROUTERS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST_USER`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `FRONTEND_URL`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MAX`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MIN`, `INSTALLED_APPS`, `LANGUAGE_CODE`, `LEGACY_BACKEND_URL`, `LOGGING`, `MIDDLEWARE`, `OPENAI_API_KEY`, `OPENAI_DEFAULT_MODEL`, `REDIS_URL`, `REST_FRAMEWORK`, `ROOT_URLCONF`, `SECRET_KEY`, `SECURE_PROXY_SSL_HEADER`, `SPECTACULAR_SETTINGS`, `STATIC_ROOT`, `STATIC_URL`, `TEMPLATES`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `WSGI_APPLICATION`, `_allowed_hosts_raw`, `_cors_origins_default`, `_cors_origins_raw`, `_csrf_trusted_origins_default`, `_csrf_trusted_origins_raw`, `_legacy_db_url`, `_redis_url`, `_secret_key_default`, `_sentry_dsn`
+  - `ADVISORY_TOKEN_BUDGET`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `BASE_DIR`, `BLOCKED_DISPOSABLE_DOMAINS`, `CACHES`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_ROUTES`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYERS`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DATABASE_ROUTERS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST_USER`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_VERIFICATION_LOCKOUT_TIMEOUT`, `EMAIL_VERIFICATION_MAX_ATTEMPTS`, `EMAIL_VERIFICATION_RESEND_COOLDOWN`, `EMAIL_VERIFICATION_TOKEN_TTL_MINUTES`, `FRONTEND_URL`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MAX`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MIN`, `INSTALLED_APPS`, `LANGUAGE_CODE`, `LEGACY_BACKEND_URL`, `LOGGING`, `LOGIN_IP_LIMIT_THRESHOLD`, `LOGIN_SUBNET_LIMIT_THRESHOLD`, `LOGIN_USER_LIMIT_THRESHOLD`, `MIDDLEWARE`, `OPENAI_API_KEY`, `OPENAI_DEFAULT_MODEL`, `REDIS_URL`, `REGISTER_EMAIL_LIMIT_THRESHOLD`, `REGISTER_IP_LIMIT_THRESHOLD`, `REGISTER_SUBNET_LIMIT_THRESHOLD`, `REST_FRAMEWORK`, `ROOT_URLCONF`, `SECRET_KEY`, `SECURE_PROXY_SSL_HEADER`, `SPECTACULAR_SETTINGS`, `STATIC_ROOT`, `STATIC_URL`, `STRICT_TURNSTILE_ENFORCEMENT`, `TEMPLATES`, `TIME_ZONE`, `TURNSTILE_SECRET_KEY`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `WSGI_APPLICATION`, `_allowed_hosts_raw`, `_cors_origins_default`, `_cors_origins_raw`, `_csrf_trusted_origins_default`, `_csrf_trusted_origins_raw`, `_legacy_db_url`, `_redis_url`, `_secret_key_default`, `_sentry_dsn`
 
 ### `packages/core/backend/src/vninvest_core/stub_heartbeat.py`
 
@@ -5051,6 +5135,11 @@ Generated at: `2026-05-24 15:15:25`
 ### `packages/core/backend/src/vninvest_core/utils/__init__.py`
 
 - No parseable top-level symbols found
+
+### `packages/core/backend/src/vninvest_core/utils/crypto.py`
+
+- Functions:
+  - `decrypt_secret`, `encrypt_secret`, `get_crypto_cipher`
 
 ### `packages/core/backend/src/vninvest_core/utils/encryption.py`
 
@@ -11104,15 +11193,17 @@ Generated at: `2026-05-24 15:15:25`
 
 ### `packages/web/src/adapters/coreApiAdapter.js`
 
+- Classes:
+  - `CoreApiRequestError`
 - Functions:
-  - `coreDelete`, `coreGet`, `corePatch`, `corePost`, `createCoreApiAdapter`, `createCoreTransport`, `generateRequestId`, `getAuthorizationHeader`, `getBrowserStorageToken`, `normalizeRefreshResponsePayload`, `requestTokenRefresh`, `requestWithAuth`, `resolveCoreApiBase`, `shouldTryRefresh`
+  - `coreDelete`, `coreGet`, `corePatch`, `corePost`, `createCoreApiAdapter`, `createCoreTransport`, `generateRequestId`, `getAuthorizationHeader`, `getBrowserStorageToken`, `normalizeRefreshResponsePayload`, `publicPost`, `requestTokenRefresh`, `requestWithAuth`, `resolveCoreApiBase`, `resolvePublicApiBase`, `shouldTryRefresh`, `toCoreApiRequestError`
 - Top-level variables:
-  - `base`, `coreApiAdapter`, `days`, `defaultCoreApiAdapter`, `directAccess`, `directRefresh`, `interval`, `nestedData`, `nextAccessToken`, `params`, `payload`, `period`, `q`, `query`, `r`, `refreshPromise`, `refreshToken`, `requestId`, `response`, `text`, `timeframe`, `token`, `tokenPayload`
+  - `base`, `code`, `coreApiAdapter`, `days`, `defaultCoreApiAdapter`, `detail`, `directAccess`, `directRefresh`, `fallbackText`, `fieldErrors`, `interval`, `nestedData`, `nextAccessToken`, `params`, `payload`, `period`, `q`, `query`, `r`, `refreshPromise`, `refreshToken`, `requestId`, `response`, `text`, `timeframe`, `token`, `tokenPayload`
 
 ### `packages/web/src/adapters/coreApiAdapter.test.js`
 
 - Functions:
-  - `mockErrorResponse`, `mockErrorResponseWithBody`, `mockOkResponse`
+  - `mockErrorJsonResponse`, `mockErrorResponse`, `mockErrorResponseWithBody`, `mockOkResponse`
 - Top-level variables:
   - `adapter`, `clearTokens`, `fetchMock`, `payload`, `result`, `setTokens`
 
@@ -11316,9 +11407,9 @@ Generated at: `2026-05-24 15:15:25`
 ### `packages/web/src/components/vnstockcharts/demo/components/PATTokenModal.tsx`
 
 - Functions:
-  - `PATTokenModal`, `applyApiBaseInput`, `handleBackdropClick`, `handleClearToken`, `handleFileChange`, `handleLogin`, `handleSaveBase`, `handleSaveToken`, `parseCSVBars`
+  - `PATTokenModal`, `TurnstileWidget`, `applyApiBaseInput`, `handleBackdropClick`, `handleClearToken`, `handleFileChange`, `handleLogin`, `handleRegister`, `handleSaveBase`, `handleSaveToken`, `parseApiErrors`, `parseCSVBars`, `renderWidget`
 - Top-level variables:
-  - `accessToken`, `backdropRef`, `bars`, `changed`, `cols`, `currentBase`, `data`, `dataLines`, `file`, `fileInputRef`, `firstField`, `hasHeader`, `lines`, `open`, `p`, `reader`, `res`, `text`, `token`, `trimmed`, `ts`, `u`
+  - `accessToken`, `backdropRef`, `bars`, `changed`, `cols`, `containerRef`, `currentBase`, `data`, `dataLines`, `detail`, `e`, `file`, `fileInputRef`, `firstField`, `fn`, `hasHeader`, `lines`, `ln`, `open`, `p`, `parsed`, `pc`, `reader`, `res`, `resJson`, `response`, `script`, `siteKey`, `text`, `token`, `trimmed`, `ts`, `u`, `widgetIdRef`, `win`, `ws`
 
 ### `packages/web/src/components/vnstockcharts/demo/components/VNSymbolSearch.js`
 

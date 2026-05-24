@@ -5,7 +5,7 @@
  * Uses jsdom / fetch mock — no real network calls.
  */
 import { jest, describe, test, expect, beforeEach, afterEach } from "@jest/globals";
-import { coreApiAdapter, createCoreApiAdapter } from "./coreApiAdapter.js";
+import { CoreApiRequestError, coreApiAdapter, createCoreApiAdapter } from "./coreApiAdapter.js";
 
 describe("coreApiAdapter", () => {
   let fetchMock;
@@ -42,6 +42,16 @@ describe("coreApiAdapter", () => {
       status,
       statusText,
       text: () => Promise.resolve(body),
+    });
+  }
+
+  function mockErrorJsonResponse(status, payload, statusText = "Error") {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status,
+      statusText,
+      json: () => Promise.resolve(payload),
+      text: () => Promise.resolve(JSON.stringify(payload)),
     });
   }
 
@@ -438,5 +448,165 @@ describe("coreApiAdapter", () => {
     await coreApiAdapter.getTenantLifecycle();
     const [url] = fetchMock.mock.calls[0];
     expect(url).toContain("/tenant/lifecycle/");
+  });
+
+  // ---------------------------------------------------------------------------
+  // public auth endpoints for registration hardening
+  // ---------------------------------------------------------------------------
+  test("registerUser posts anti-spam payload to /api/auth/register/", async () => {
+    mockOkResponse({ status: "success", data: { message: "ok" } });
+
+    await coreApiAdapter.registerUser({
+      username: "newuser",
+      email: "NEWUSER@example.com",
+      password: "StrongPassword123!",
+      website: "",
+      turnstile_token: "cf-token",
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/auth/register/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({
+      username: "newuser",
+      email: "newuser@example.com",
+      password: "StrongPassword123!",
+      password_confirm: "StrongPassword123!",
+      website: "",
+      turnstile_token: "cf-token",
+    });
+  });
+
+  test("registerUser throws CoreApiRequestError with envelope metadata", async () => {
+    mockErrorJsonResponse(400, {
+      detail: "Validation error",
+      code: "validation_error",
+      request_id: "req_test_123",
+      field_errors: {
+        email: ["Email không hợp lệ"],
+      },
+    }, "Bad Request");
+
+    try {
+      await coreApiAdapter.registerUser({
+        username: "u1",
+        email: "bad-email",
+        password: "x",
+      });
+      throw new Error("Expected registerUser to throw CoreApiRequestError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CoreApiRequestError);
+      expect(error.status).toBe(400);
+      expect(error.code).toBe("validation_error");
+      expect(error.requestId).toBe("req_test_123");
+      expect(error.fieldErrors?.email?.[0]).toBe("Email không hợp lệ");
+    }
+  });
+
+  test("resendVerificationEmail posts to /api/auth/resend-verification/", async () => {
+    mockOkResponse({ status: "success", data: { message: "resent" } });
+    await coreApiAdapter.resendVerificationEmail("A@Example.com");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/auth/resend-verification/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ email: "a@example.com" });
+  });
+
+  test("verifyEmailToken posts to /api/auth/verify-email/", async () => {
+    mockOkResponse({ status: "success", data: { message: "verified" } });
+    await coreApiAdapter.verifyEmailToken("token_abc");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/auth/verify-email/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ token: "token_abc" });
+  });
+
+  // ---------------------------------------------------------------------------
+  // tracked symbols and price alerts extensions
+  // ---------------------------------------------------------------------------
+  test("addTrackedSymbol posts to /core/v1/stock-management/tracked-symbols/", async () => {
+    const payload = { symbol: "HPG", source_group_id: 10, whale_alert_threshold_million: 50 };
+    mockOkResponse({ id: 123, ...payload });
+
+    const result = await coreApiAdapter.addTrackedSymbol("hpg", 10, 50);
+    expect(result).toEqual({ id: 123, ...payload });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/tracked-symbols/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({
+      symbol: "HPG",
+      source_group_id: 10,
+      whale_alert_threshold_million: 50,
+    });
+  });
+
+  test("removeTrackedSymbol deletes to /core/v1/stock-management/tracked-symbols/{id}/", async () => {
+    mockOkResponse(null);
+    await coreApiAdapter.removeTrackedSymbol(123);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/tracked-symbols/123/");
+    expect(init.method).toBe("DELETE");
+  });
+
+  test("getPriceAlerts calls /core/v1/stock-management/price-alerts/", async () => {
+    mockOkResponse({ results: [] });
+    await coreApiAdapter.getPriceAlerts({ symbol: "FPT" });
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/price-alerts/?symbol=FPT");
+  });
+
+  test("createPriceAlert posts to /core/v1/stock-management/price-alerts/", async () => {
+    const payload = { symbol: "FPT", condition: "above", target_price: 150000, cooldown_seconds: 60, is_active: true };
+    mockOkResponse({ id: 99, ...payload });
+
+    const result = await coreApiAdapter.createPriceAlert(payload);
+    expect(result).toEqual({ id: 99, ...payload });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/price-alerts/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({
+      ...payload,
+      symbol: "FPT",
+    });
+  });
+
+  test("updatePriceAlert patches /core/v1/stock-management/price-alerts/{id}/", async () => {
+    mockOkResponse({ id: 99, is_active: false });
+    await coreApiAdapter.updatePriceAlert(99, { is_active: false });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/price-alerts/99/");
+    expect(init.method).toBe("PATCH");
+  });
+
+  test("deletePriceAlert deletes /core/v1/stock-management/price-alerts/{id}/", async () => {
+    mockOkResponse(null);
+    await coreApiAdapter.deletePriceAlert(99);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/price-alerts/99/");
+    expect(init.method).toBe("DELETE");
+  });
+
+  test("getStockNews calls /core/v1/stock-management/stocks/{symbol}/news/", async () => {
+    mockOkResponse({ results: [] });
+    await coreApiAdapter.getStockNews("HPG", { page_size: 10 });
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/stocks/HPG/news/?page_size=10");
+  });
+
+  test("getStockFinancials calls /core/v1/stock-management/stocks/{symbol}/financials/", async () => {
+    mockOkResponse({ revenue: 1000 });
+    await coreApiAdapter.getStockFinancials("HPG");
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/stock-management/stocks/HPG/financials/");
   });
 });
