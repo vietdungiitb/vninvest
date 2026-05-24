@@ -2,14 +2,14 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-23 22:31:51`
+Generated at: `2026-05-24 14:33:48`
 
 ## Summary
 
 - Total modules: 2573
 - Python modules: 727
 - JS/TS modules: 1846
-- Total classes: 1811
+- Total classes: 1813
 - Total functions: 6939
 - Total top-level variables: 18173
 
@@ -2815,6 +2815,8 @@ Generated at: `2026-05-23 22:31:51`
   - `CoreServiceAccountAdmin`
   - `CoreServiceAccountInline`
   - `CoreTenantAdmin`
+  - `TenantInviteAdmin`
+  - `TenantMemberAdmin`
   - `UserProfileAdmin`
 
 ### `packages/core/backend/src/identity_access/api_urls.py`

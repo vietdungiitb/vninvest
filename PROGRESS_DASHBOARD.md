@@ -1,3 +1,30 @@
+# 2026-05-24 — Expose TenantMember/TenantInvite in Django Admin ✅
+
+Status: **✅ ADMIN REGISTRATION ADDED (runtime verify pending local Docker up)**
+
+## Summary
+
+- Added Django admin registrations for `TenantMember` and `TenantInvite` so they appear as first-class menu entries in `/admin`.
+- Configured list display, filters, search fields, and readonly fields for safe operator usage.
+
+## Files Updated
+
+- `packages/core/backend/src/identity_access/admin.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `get_errors` on touched admin file ✅ no diagnostics.
+- `python scripts/ops/generate_module_tree.py` ✅ regenerated module tree.
+- `./start_dev.ps1` ✅ invoked, but local Docker daemon unavailable (cannot complete live UI smoke on this machine state).
+
+## Residual Risk
+
+- UI confirmation of the new menu requires Docker Desktop (or the target Django runtime) to be up.
+
 # 2026-05-23 — Fix PAT issue flow for admin without tenant ✅
 
 Status: **✅ CORE PAT ISSUE ENDPOINTS UPDATED + REGRESSION TESTS GREEN**

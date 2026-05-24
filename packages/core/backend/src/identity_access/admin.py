@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant, UserProfile
+from .models import (
+    CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
+    TenantInvite,
+    TenantMember,
+    UserProfile,
+)
 
 # ---------------------------------------------------------------------------
 # Admin site branding (set once, in the identity_access app — the root domain)
@@ -73,3 +80,21 @@ class UserProfileAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'display_name')
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('-updated_at',)
+
+
+@admin.register(TenantMember)
+class TenantMemberAdmin(admin.ModelAdmin):
+    list_display = ('tenant', 'user', 'role', 'invited_by', 'joined_at')
+    list_filter = ('role', 'tenant')
+    search_fields = ('tenant__display_name', 'tenant__tenant_code', 'user__username', 'user__email')
+    readonly_fields = ('public_id', 'joined_at', 'updated_at')
+    ordering = ('-joined_at',)
+
+
+@admin.register(TenantInvite)
+class TenantInviteAdmin(admin.ModelAdmin):
+    list_display = ('tenant', 'invited_email', 'role', 'status', 'inviter', 'expires_at', 'created_at')
+    list_filter = ('status', 'role', 'tenant')
+    search_fields = ('tenant__display_name', 'tenant__tenant_code', 'invited_email', 'token')
+    readonly_fields = ('public_id', 'token', 'accepted_at', 'created_at', 'updated_at')
+    ordering = ('-created_at',)

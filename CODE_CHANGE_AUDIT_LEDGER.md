@@ -1,5 +1,35 @@
 # Code Change Audit Ledger
 
+# 2026-05-24 | Expose TenantMember/TenantInvite in Django Admin menu ✅
+
+## Problem Solved
+
+- Người dùng không thấy menu `TenantMember/TenantInvite` trong trang `/admin` dù feature có tồn tại ở API.
+- Root cause: hai model `TenantMember` và `TenantInvite` chưa được register trong `identity_access/admin.py`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Admin registration | ✅ Added `@admin.register(TenantMember)` and `@admin.register(TenantInvite)` |
+| Diagnostics | ✅ `get_errors` on `identity_access/admin.py` no diagnostics |
+| Module tree refresh | ✅ `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` |
+| Dev stack refresh | ⚠️ `./start_dev.ps1` executed but local Docker daemon unavailable (`dockerDesktopLinuxEngine` not found) |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/admin.py` | Registered `TenantMember` and `TenantInvite` with list/search/filter admin configs |
+| `module_tree_full.md` | Regenerated after backend admin changes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- Khi Docker daemon local chưa chạy, bạn chưa thể xác nhận menu mới bằng runtime dev stack; code đã sẵn trong branch và sẽ hiện ngay khi core-admin chạy lại.
+
 # 2026-05-23 | Fix PAT issue flow when admin has no tenant ✅
 
 ## Problem Solved

@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-24 | Expose TenantMember/TenantInvite in Django Admin
+
+### Files changed in this session
+- `packages/core/backend/src/identity_access/admin.py`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Hien thi ro rang menu `TenantMember` va `TenantInvite` trong Django Admin de operator co the quan tri thanh vien/invite truc tiep thay vi chi co API endpoint.
+
+### Validation snapshot
+- `get_errors` on `identity_access/admin.py` ✅ khong co diagnostics.
+- `python scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md`.
+- `./start_dev.ps1` ✅ da chay, nhung Docker daemon local dang unavailable nen chua smoke UI duoc tren may hien tai.
+
+---
+
 ## 2026-05-23 | Fix PAT issue flow when admin has no tenant
 
 ### Files changed in this session
