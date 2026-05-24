@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-24 14:57:36`
+Generated at: `2026-05-24 15:15:25`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-24 14:57:36`
 - Python modules: 727
 - JS/TS modules: 1848
 - Total classes: 1813
-- Total functions: 6952
-- Total top-level variables: 18188
+- Total functions: 6953
+- Total top-level variables: 18191
 
 ## Python Modules
 
@@ -9321,14 +9321,14 @@ Generated at: `2026-05-24 14:57:36`
 - Functions:
   - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleInviteSubmit`, `handleRemoveMember`, `loadData`, `resolveErrorMessage`
 - Top-level variables:
-  - `canManage`, `canRead`, `canRemove`, `cancelled`, `confirmed`, `ownerEmail`, `removableMembers`
+  - `canInvite`, `canRead`, `canRemove`, `canRemoveMember`, `cancelled`, `confirmed`, `ownerEmail`, `removableMembers`
 
 ### `frontend/src/pages/admin/tenant/TenantMembers.test.jsx`
 
 - Functions:
-  - `mockTranslations`
+  - `mockAbility`, `mockTranslations`
 - Top-level variables:
-  - `labels`, `mockCreateTenantInvite`, `mockGetTenantInvites`, `mockGetTenantMembers`, `mockRemoveTenantMember`, `user`
+  - `inviteButton`, `labels`, `mockCreateTenantInvite`, `mockGetTenantInvites`, `mockGetTenantMembers`, `mockRemoveTenantMember`, `removeButtons`, `user`
 
 ### `frontend/src/pages/admin/tenant/TenantPATs.jsx`
 

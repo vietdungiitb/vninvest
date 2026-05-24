@@ -38,7 +38,8 @@ export default function TenantMembers() {
   const { t, locale } = useI18n();
   const { ability, userIdentity } = usePortfolio();
   const canRead = ability.can('read', 'TenantMemberAdmin');
-  const canManage = ability.can('manage', 'TenantMemberAdmin');
+  const canInvite = ability.can('create', 'TenantMemberAdmin') || ability.can('manage', 'TenantMemberAdmin');
+  const canRemoveMember = ability.can('remove', 'TenantMemberAdmin') || ability.can('manage', 'TenantMemberAdmin');
 
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
@@ -104,7 +105,7 @@ export default function TenantMembers() {
 
   async function handleInviteSubmit(event) {
     event.preventDefault();
-    if (!canManage) {
+    if (!canInvite) {
       return;
     }
 
@@ -128,7 +129,7 @@ export default function TenantMembers() {
   }
 
   async function handleRemoveMember(memberId) {
-    if (!canManage || !memberId) {
+    if (!canRemoveMember || !memberId) {
       return;
     }
 
@@ -183,7 +184,7 @@ export default function TenantMembers() {
             <SummaryCard label={t('tenantMembers.metricMembers')} value={String(members.length)} hint={t('tenantMembers.membersListTitle')} />
             <SummaryCard label={t('tenantMembers.metricInvites')} value={String(invites.length)} hint={t('tenantMembers.invitesListTitle')} />
             <SummaryCard label={t('tenantMembers.metricRoles')} value={String(new Set(members.map((item) => item.role)).size)} hint={t('tenantMembers.rolesHint')} />
-            <SummaryCard label={t('tenantMembers.metricManage')} value={canManage ? t('tenantMembers.manageEnabled') : t('tenantMembers.manageDisabled')} hint={t('tenantMembers.inviteTitle')} />
+            <SummaryCard label={t('tenantMembers.metricManage')} value={canRead ? t('tenantMembers.manageEnabled') : t('tenantMembers.manageDisabled')} hint={t('tenantMembers.inviteTitle')} />
           </div>
         </section>
 
@@ -221,7 +222,7 @@ export default function TenantMembers() {
               </label>
               <button
                 type="submit"
-                disabled={submitting || !canManage}
+                disabled={submitting || !canInvite}
                 className="rounded-2xl border border-cyan-500/40 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition-colors hover:border-cyan-400 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? t('tenantMembers.submitting') : t('tenantMembers.inviteAction')}
@@ -267,7 +268,7 @@ export default function TenantMembers() {
                 </div>
               ) : null}
               {members.map((item) => {
-                const canRemove = canManage && removableMembers.some((member) => member.member_id === item.member_id);
+                const canRemove = canRemoveMember && removableMembers.some((member) => member.member_id === item.member_id);
                 return (
                   <div key={item.member_id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">

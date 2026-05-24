@@ -131,7 +131,8 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
         {'action': 'read', 'subject': 'TenantUsageView'},
         {'action': 'read', 'subject': 'TenantBillingView'},
         {'action': 'read', 'subject': 'TenantMemberAdmin'},
-        {'action': 'manage', 'subject': 'TenantMemberAdmin'},
+        {'action': 'create', 'subject': 'TenantMemberAdmin'},
+        {'action': 'remove', 'subject': 'TenantMemberAdmin'},
         {'action': 'manage', 'subject': 'TenantServiceAccountAdmin'},
         {'action': 'manage', 'subject': 'TenantPATAdmin'},
     ]

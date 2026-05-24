@@ -1,3 +1,36 @@
+# 2026-05-24 — TenantMemberAdmin action-level hardening (`create/remove`) ✅
+
+Status: **✅ DONE (permission split complete + tests green) | ⚠️ local runtime smoke blocked by Docker daemon**
+
+## Summary
+
+- Hoàn tất refinement quyền theo action cho tenant members: invite dùng `create`, remove dùng `remove`.
+- Backend capability payload đã đổi từ `manage TenantMemberAdmin` sang `read/create/remove`.
+- Bổ sung test negative cho read-only permission để đảm bảo UI disable đúng mutation controls và không gọi API mutation.
+
+## Files Updated
+
+- `packages/core/backend/src/identity_access/views_auth.py`
+- `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py`
+- `frontend/src/pages/admin/tenant/TenantMembers.jsx`
+- `frontend/src/pages/admin/tenant/TenantMembers.test.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ✅ (`5 passed`).
+- `Set-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py test identity_access.tests.test_capabilities_soc --keepdb` ✅ (`3 passed`).
+- `get_errors` on touched backend/frontend files ✅ no diagnostics.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2575` modules).
+- `./start_dev.ps1` ✅ executed nhưng Docker daemon local unavailable nên smoke health vẫn fail.
+
+## Residual Risk
+
+- React Router v7 deprecation warnings còn xuất hiện trong test logs; không ảnh hưởng pass/fail.
+
 # 2026-05-24 — TenantMemberAdmin permission split + App.test ESM fix ✅
 
 Status: **✅ DONE (permission split + tests green) | ⚠️ local runtime smoke still blocked by Docker daemon**

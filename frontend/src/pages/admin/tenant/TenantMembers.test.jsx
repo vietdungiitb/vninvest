@@ -78,18 +78,22 @@ function mockTranslations() {
 }
 
 describe('TenantMembers', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockTranslations();
-
+  function mockAbility(allowedActions = ['read', 'create', 'remove']) {
     usePortfolio.mockReturnValue({
       ability: {
-        can: jest.fn(() => true),
+        can: jest.fn((action, subject) => subject === 'TenantMemberAdmin' && allowedActions.includes(action)),
       },
       userIdentity: {
         email: 'owner@example.com',
       },
     });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTranslations();
+
+    mockAbility();
 
     mockGetTenantMembers.mockResolvedValue({
       data: {
@@ -168,5 +172,33 @@ describe('TenantMembers', () => {
         role: 'admin',
       });
     });
+  });
+
+  it('disables invite and remove actions when action-level permissions are missing', async () => {
+    mockAbility(['read']);
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/tenant-admin/members']}>
+        <Routes>
+          <Route path="/tenant-admin/members" element={<TenantMembers />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Thành viên tenant')).toBeInTheDocument();
+    expect(await screen.findByText('analyst@example.com')).toBeInTheDocument();
+
+    const inviteButton = screen.getByRole('button', { name: 'Gửi lời mời' });
+    expect(inviteButton).toBeDisabled();
+
+    const removeButtons = screen.getAllByRole('button', { name: 'Gỡ thành viên' });
+    removeButtons.forEach((button) => {
+      expect(button).toBeDisabled();
+    });
+
+    await user.click(inviteButton);
+    expect(mockCreateTenantInvite).not.toHaveBeenCalled();
+    expect(mockRemoveTenantMember).not.toHaveBeenCalled();
   });
 });

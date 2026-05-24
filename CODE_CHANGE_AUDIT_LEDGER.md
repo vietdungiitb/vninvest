@@ -1,5 +1,40 @@
 # Code Change Audit Ledger
 
+# 2026-05-24 | TenantMemberAdmin action-level hardening (`create/remove`) + permission tests ✅
+
+## Problem Solved
+
+- Sau khi tách subject `TenantMemberAdmin`, action gate trong page vẫn gom vào `manage`, chưa phản ánh đúng model quyền chi tiết cho invite/remove.
+- Frontend test suite chưa có negative case cho user chỉ có quyền `read`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Frontend tests | ✅ `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` (`5 passed`) |
+| Backend capability tests | ✅ `manage.py test identity_access.tests.test_capabilities_soc --keepdb` (`3 passed`) |
+| Diagnostics | ✅ `get_errors` clean trên các file backend/frontend của slice |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2575` modules) |
+| Dev stack refresh | ⚠️ `./start_dev.ps1` executed but local Docker daemon unavailable (`dockerDesktopLinuxEngine` not found); smoke checks reported `Core API health: FAIL`, `Frontend health: FAIL` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/views_auth.py` | Replaced `manage TenantMemberAdmin` with explicit `create` and `remove` abilities (kept `read`) |
+| `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py` | Added assertions for `create/remove TenantMemberAdmin` in capability payload |
+| `frontend/src/pages/admin/tenant/TenantMembers.jsx` | Split action checks into `canInvite` and `canRemoveMember` (with `manage` fallback for compatibility) |
+| `frontend/src/pages/admin/tenant/TenantMembers.test.jsx` | Added permission-negative regression for read-only member admin (invite/remove controls disabled) |
+| `module_tree_full.md` | Regenerated after the final action-level hardening changes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- React Router v7 deprecation warnings vẫn xuất hiện trong Jest logs (warning only, không fail test).
+- Runtime smoke local vẫn chưa xác nhận được do Docker daemon trên máy hiện tại chưa chạy.
+
 # 2026-05-24 | TenantMemberAdmin permission split + App.test ESM stabilization ✅
 
 ## Problem Solved
