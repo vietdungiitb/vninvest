@@ -37,7 +37,8 @@ function formatDateTime(value, locale) {
 export default function TenantMembers() {
   const { t, locale } = useI18n();
   const { ability, userIdentity } = usePortfolio();
-  const canManage = ability.can('read', 'TenantAdminHome');
+  const canRead = ability.can('read', 'TenantMemberAdmin');
+  const canManage = ability.can('manage', 'TenantMemberAdmin');
 
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);

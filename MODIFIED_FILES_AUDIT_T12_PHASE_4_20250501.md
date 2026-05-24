@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-05-24 | TenantMemberAdmin permission split + App.test ESM stabilization
+
+### Files changed in this session
+- `packages/core/backend/src/identity_access/views_auth.py`
+- `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py`
+- `frontend/src/App.jsx`
+- `frontend/src/components/TopNav.jsx`
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`
+- `frontend/src/pages/admin/tenant/TenantMembers.jsx`
+- `frontend/src/App.test.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Tach quyen members route sang subject rieng `TenantMemberAdmin` de align governance va capabilites contract.
+- On dinh `App.test.jsx` trong Jest env bang cach mock host pages de tranh import chain vao `echarts/core` ESM-only.
+
+### Validation snapshot
+- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ✅ (`4 passed`).
+- `Set-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py test identity_access.tests.test_capabilities_soc --keepdb` ✅ (`3 passed`).
+- `get_errors` on touched files ✅ khong co diagnostics.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` (`2575` modules).
+- `./start_dev.ps1` ✅ da chay, nhung Docker daemon local unavailable nen smoke checks fail tren may hien tai.
+
+---
+
 ## 2026-05-24 | Tenant-members SaaS/OpenAPI frontend integration
 
 ### Files changed in this session

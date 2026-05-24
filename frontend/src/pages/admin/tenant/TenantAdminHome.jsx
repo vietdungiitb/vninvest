@@ -42,7 +42,7 @@ export default function TenantAdminHome() {
   const quotaCaps = entitlements.quota_caps || {};
   const planLabel = t(`plans.${userPlan || 'free'}`);
   const tenantCanOpen = ability.can('read', 'TenantAdminHome');
-  const tenantCanManageMembers = ability.can('read', 'TenantAdminHome');
+  const tenantCanManageMembers = ability.can('read', 'TenantMemberAdmin');
   const tenantCanInspect = ability.can('read', 'TenantCapabilityView');
   const tenantCanReadUsage = ability.can('read', 'TenantUsageView');
   const tenantCanReadBilling = ability.can('read', 'TenantBillingView');

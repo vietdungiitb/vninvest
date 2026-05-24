@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-24 14:45:59`
+Generated at: `2026-05-24 14:57:36`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Generated at: `2026-05-24 14:45:59`
 - JS/TS modules: 1848
 - Total classes: 1813
 - Total functions: 6952
-- Total top-level variables: 18187
+- Total top-level variables: 18188
 
 ## Python Modules
 
@@ -9321,7 +9321,7 @@ Generated at: `2026-05-24 14:45:59`
 - Functions:
   - `SummaryCard`, `bootstrap`, `formatDateTime`, `handleInviteSubmit`, `handleRemoveMember`, `loadData`, `resolveErrorMessage`
 - Top-level variables:
-  - `canManage`, `canRemove`, `cancelled`, `confirmed`, `ownerEmail`, `removableMembers`
+  - `canManage`, `canRead`, `canRemove`, `cancelled`, `confirmed`, `ownerEmail`, `removableMembers`
 
 ### `frontend/src/pages/admin/tenant/TenantMembers.test.jsx`
 

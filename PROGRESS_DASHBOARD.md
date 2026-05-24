@@ -1,3 +1,39 @@
+# 2026-05-24 — TenantMemberAdmin permission split + App.test ESM fix ✅
+
+Status: **✅ DONE (permission split + tests green) | ⚠️ local runtime smoke still blocked by Docker daemon**
+
+## Summary
+
+- Tách quyền route members sang subject riêng `TenantMemberAdmin` thay vì dùng gate tổng `TenantAdminHome`.
+- Đồng bộ gate này ở backend capabilities builder, App route, TopNav, TenantAdminHome shortcut và page-level action checks.
+- Sửa `App.test.jsx` fail do ESM `echarts/core` bằng cách mock host pages (`PackageDashboardHost`, `StockDetailPageHost`) để chặn import chain vào ESM-only dependency.
+
+## Files Updated
+
+- `packages/core/backend/src/identity_access/views_auth.py`
+- `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py`
+- `frontend/src/App.jsx`
+- `frontend/src/components/TopNav.jsx`
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`
+- `frontend/src/pages/admin/tenant/TenantMembers.jsx`
+- `frontend/src/App.test.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ✅ (`4 passed`).
+- `Set-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py test identity_access.tests.test_capabilities_soc --keepdb` ✅ (`3 passed`).
+- `get_errors` on all touched files ✅ no diagnostics.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2575` modules).
+- `./start_dev.ps1` ✅ executed nhưng Docker daemon local unavailable nên health smoke fail trên máy hiện tại.
+
+## Residual Risk
+
+- React Router v7 deprecation warnings vẫn xuất hiện khi chạy Jest; không ảnh hưởng kết quả pass/fail.
+
 # 2026-05-24 — Tenant-members SaaS/OpenAPI frontend integration ✅
 
 Status: **✅ ROUTE + MENU + PAGE + I18N DONE (runtime smoke blocked by local Docker daemon)**

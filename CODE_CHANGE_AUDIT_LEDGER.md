@@ -1,5 +1,43 @@
 # Code Change Audit Ledger
 
+# 2026-05-24 | TenantMemberAdmin permission split + App.test ESM stabilization ✅
+
+## Problem Solved
+
+- Members route đang dùng gate `TenantAdminHome`, chưa tách quyền rõ ràng cho member/invite management.
+- `frontend/src/App.test.jsx` fail với lỗi Jest parse `echarts/core` do import chain đi qua `PackageDashboardHost`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Frontend tests | ✅ `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` (`4 passed`) |
+| Backend capability tests | ✅ `manage.py test identity_access.tests.test_capabilities_soc --keepdb` (`3 passed`) |
+| Diagnostics | ✅ `get_errors` clean trên toàn bộ file touched |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2575` modules) |
+| Dev stack refresh | ⚠️ `./start_dev.ps1` executed but local Docker daemon unavailable (`dockerDesktopLinuxEngine` not found) |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/views_auth.py` | Added dedicated abilities `read/manage` for `TenantMemberAdmin` |
+| `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py` | Added assertion for `TenantMemberAdmin` ability in capability payload builder |
+| `frontend/src/App.jsx` | Updated `/tenant-admin/members` route gate to `TenantMemberAdmin` |
+| `frontend/src/components/TopNav.jsx` | Updated members nav visibility check to `TenantMemberAdmin` |
+| `frontend/src/pages/admin/tenant/TenantAdminHome.jsx` | Updated members quick-link capability check to `TenantMemberAdmin` |
+| `frontend/src/pages/admin/tenant/TenantMembers.jsx` | Enforced `read/manage` checks against `TenantMemberAdmin` |
+| `frontend/src/App.test.jsx` | Mocked `PackageDashboardHost` and `StockDetailPageHost` to avoid `echarts/core` ESM parsing path in Jest |
+| `module_tree_full.md` | Regenerated after code changes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- `App.test.jsx` vẫn log React Router v7 deprecation warnings (chỉ warning, không fail test).
+- Local runtime smoke còn blocked bởi Docker daemon chưa chạy.
+
 # 2026-05-24 | SaaS/OpenAPI tenant-members frontend integration ✅
 
 ## Problem Solved

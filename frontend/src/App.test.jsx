@@ -30,6 +30,14 @@ jest.mock('./pages/DashboardShellHost', () => function MockDashboardShellHost() 
   return <div data-testid="dashboard-shell-page" />;
 });
 
+jest.mock('./pages/PackageDashboardHost', () => function MockPackageDashboardHost() {
+  return <div data-testid="package-dashboard-host-page" />;
+});
+
+jest.mock('./pages/StockDetailPageHost', () => function MockStockDetailPageHost() {
+  return <div data-testid="stock-detail-host-page" />;
+});
+
 jest.mock('./pages/StockDetail', () => function MockStockDetail() {
   return <div data-testid="stock-detail-page" />;
 });

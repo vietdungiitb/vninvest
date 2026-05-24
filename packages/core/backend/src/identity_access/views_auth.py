@@ -7,11 +7,13 @@ Endpoints:
     POST /core/v1/auth/logout  — invalidate session
 """
 import os
+from datetime import timedelta
 
 import logging
 from django.contrib.auth import authenticate
 from django.conf import settings
 from django.core.cache import cache
+from django.utils import timezone
 from rest_framework import permissions, status
 
 logger = logging.getLogger(__name__)
@@ -20,8 +22,8 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.response import Response
 
 from .authentication import CorePATAuthentication
-from .models import CorePATCredential, CoreTenant, PasswordResetToken
-from .permissions import IsTenantActive
+from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PasswordResetToken
+from .permissions import IsTenantActive, require_human_session
 from data_ingest.tasks import send_email_verification_token, send_password_reset_email
 from vninvest_core.exceptions import (
     ValidationErrorException,
@@ -48,14 +50,31 @@ _DEFAULT_USER_CONFIG = {
     'advisory_whale_signal_enabled': True,
 }
 _USER_CONFIG_STORE = {}
+DEFAULT_HUMAN_SESSION_PAT_HOURS = 12
 
 
 def _build_target() -> str:
     return os.environ.get('CORE_BUILD_TARGET', 'saas').strip().lower() or 'saas'
 
 
+def _human_session_pat_lifetime() -> timedelta:
+    raw_hours = str(
+        os.environ.get('CORE_HUMAN_SESSION_PAT_HOURS', DEFAULT_HUMAN_SESSION_PAT_HOURS)
+    ).strip()
+    try:
+        hours = int(raw_hours)
+    except (TypeError, ValueError):
+        hours = DEFAULT_HUMAN_SESSION_PAT_HOURS
+    return timedelta(hours=max(1, hours))
+
+
+def _human_session_pat_expires_at():
+    return timezone.now() + _human_session_pat_lifetime()
+
+
 def _tenant_payload(tenant: CoreTenant) -> dict:
     return {
+        'tenant_id': str(tenant.public_id),
         'public_id': str(tenant.public_id),
         'tenant_code': tenant.tenant_code,
         'display_name': tenant.display_name,
@@ -90,6 +109,16 @@ def _service_account_payload(service_account) -> dict:
     }
 
 
+def _resolve_request_service_account(request, tenant: CoreTenant):
+    auth = getattr(request, 'auth', None)
+    if isinstance(auth, CorePATCredential):
+        service_account = auth.service_account
+        if service_account.tenant_id == tenant.id:
+            return service_account
+
+    return tenant.service_accounts.filter(status=CoreServiceAccount.StatusChoices.ACTIVE).first()
+
+
 def _build_abilities(user, tenant: CoreTenant) -> list:
     abilities = [
         {'action': 'read', 'subject': 'Dashboard'},
@@ -101,6 +130,8 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
         {'action': 'read', 'subject': 'TenantCapabilityView'},
         {'action': 'read', 'subject': 'TenantUsageView'},
         {'action': 'read', 'subject': 'TenantBillingView'},
+        {'action': 'read', 'subject': 'TenantMemberAdmin'},
+        {'action': 'manage', 'subject': 'TenantMemberAdmin'},
         {'action': 'manage', 'subject': 'TenantServiceAccountAdmin'},
         {'action': 'manage', 'subject': 'TenantPATAdmin'},
     ]
@@ -326,8 +357,10 @@ def login_view(request):
     credential, raw_secret = CorePATCredential.issue_for_service_account(
         service_account=service_account,
         scopes=list(service_account.scopes or []),
+        expires_at=_human_session_pat_expires_at(),
         label=f'login:{user.username}',
         audit_reason='core login',
+        is_human_session=True,
     )
 
     return Response(
@@ -348,7 +381,12 @@ def refresh_token_view(request):
         )
 
     credential = CorePATCredential.resolve_from_raw_secret(refresh)
-    if credential is None or credential.effective_status != CorePATCredential.StatusChoices.ACTIVE:
+    if (
+        credential is None
+        or credential.effective_status != CorePATCredential.StatusChoices.ACTIVE
+        or credential.service_account.status != CoreServiceAccount.StatusChoices.ACTIVE
+        or not credential.is_human_session
+    ):
         return Response(
             {'detail': 'Invalid or revoked refresh token.'},
             status=status.HTTP_401_UNAUTHORIZED,
@@ -356,8 +394,24 @@ def refresh_token_view(request):
 
     tenant = credential.service_account.tenant
     user = tenant.owner_user
+    next_credential, next_raw_secret = CorePATCredential.issue_for_service_account(
+        service_account=credential.service_account,
+        scopes=list(credential.scopes or []),
+        expires_at=_human_session_pat_expires_at(),
+        label=credential.label,
+        audit_reason='core refresh rotation',
+        is_human_session=True,
+    )
+    credential.revoke_pat(reason='core refresh rotation')
+
     return Response(
-        _build_auth_payload(user, tenant, credential.service_account, credential, refresh),
+        _build_auth_payload(
+            user,
+            tenant,
+            credential.service_account,
+            next_credential,
+            next_raw_secret,
+        ),
         status=status.HTTP_200_OK,
     )
 
@@ -381,7 +435,7 @@ def profile_view(request):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    service_account = tenant.service_accounts.filter(status='active').first()
+    service_account = _resolve_request_service_account(request, tenant)
     subscription = getattr(tenant, 'subscription', None)
     capabilities = _build_capabilities_payload(user, tenant, service_account)
 
@@ -434,7 +488,7 @@ def capabilities_view(request):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    service_account = tenant.service_accounts.filter(status='active').first()
+    service_account = _resolve_request_service_account(request, tenant)
     return Response(_build_capabilities_payload(user, tenant, service_account), status=status.HTTP_200_OK)
 
 
@@ -442,6 +496,7 @@ def capabilities_view(request):
 @authentication_classes([CorePATAuthentication])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def user_config_view(request):
+    require_human_session(request)
     user = request.user
     try:
         tenant = user.core_tenant

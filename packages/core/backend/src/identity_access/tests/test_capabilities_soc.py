@@ -35,6 +35,10 @@ class ServiceOpsCenterCapabilityTests(TestCase):
             {'action': 'read', 'subject': 'ServiceOpsCenter'},
             abilities,
         )
+        self.assertIn(
+            {'action': 'read', 'subject': 'TenantMemberAdmin'},
+            abilities,
+        )
 
     def test_internal_admin_navigation_includes_operations_center_route(self):
         navigation = _build_navigation(self.user, self.tenant)

@@ -304,7 +304,7 @@ export default function App() {
                   <Route
                     path="tenant-admin/members"
                     element={(
-                      <ProtectedRoute action="read" subject="TenantAdminHome">
+                      <ProtectedRoute action="read" subject="TenantMemberAdmin">
                         <TenantMembers />
                       </ProtectedRoute>
                     )}
