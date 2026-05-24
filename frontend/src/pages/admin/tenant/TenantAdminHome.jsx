@@ -42,6 +42,7 @@ export default function TenantAdminHome() {
   const quotaCaps = entitlements.quota_caps || {};
   const planLabel = t(`plans.${userPlan || 'free'}`);
   const tenantCanOpen = ability.can('read', 'TenantAdminHome');
+  const tenantCanManageMembers = ability.can('read', 'TenantAdminHome');
   const tenantCanInspect = ability.can('read', 'TenantCapabilityView');
   const tenantCanReadUsage = ability.can('read', 'TenantUsageView');
   const tenantCanReadBilling = ability.can('read', 'TenantBillingView');
@@ -123,6 +124,14 @@ export default function TenantAdminHome() {
                 className="rounded-2xl border border-violet-500/25 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-100 transition-colors hover:border-violet-400/50 hover:bg-violet-500/20"
               >
                 {t('tenantHome.capabilitiesRoute')}
+              </Link>
+            ) : null}
+            {tenantCanManageMembers ? (
+              <Link
+                to="/tenant-admin/members"
+                className="rounded-2xl border border-indigo-500/25 bg-indigo-500/10 px-4 py-3 text-sm font-semibold text-indigo-100 transition-colors hover:border-indigo-400/50 hover:bg-indigo-500/20"
+              >
+                {t('tenantHome.membersRoute')}
               </Link>
             ) : null}
             {tenantCanReadUsage ? (

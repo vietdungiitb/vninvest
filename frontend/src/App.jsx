@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginModal from './components/LoginModal';
 import DashboardShellHost from './pages/DashboardShellHost';
@@ -32,6 +32,7 @@ import UserConfig from './pages/UserConfig';
 import TenantAdminHome from './pages/admin/tenant/TenantAdminHome';
 import TenantBilling from './pages/admin/tenant/TenantBilling';
 import TenantCapabilities from './pages/admin/tenant/TenantCapabilities';
+import TenantMembers from './pages/admin/tenant/TenantMembers';
 import TenantPATs from './pages/admin/tenant/TenantPATs';
 import TenantServiceAccounts from './pages/admin/tenant/TenantServiceAccounts';
 import TenantUsage from './pages/admin/tenant/TenantUsage';
@@ -46,6 +47,15 @@ import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AlertCenterPage } from '@vninvest/web';
 import ModernDashboard from './pages/modern/ModernDashboard';
+import PackageDashboardHost from './pages/PackageDashboardHost';
+import StockDetailPageHost from './pages/StockDetailPageHost';
+
+// Redirect /whale-alerts/:symbol → /stocks/:symbol (pages đã được gộp)
+function WhaleAlertsSymbolRedirect() {
+  const { symbol } = useParams();
+  return <Navigate to={`/stocks/${symbol || ''}`} replace />;
+}
+
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -98,13 +108,20 @@ export default function App() {
                 <Route path="reset-password" element={<ResetPassword />} />
                 <Route path="/" element={<ProtectedLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
-                  {/* /dashboard → ModernDashboard (legacy UI, core-native data plane) */}
-                  <Route path="dashboard" element={<ModernDashboard />} />
+                  {/*
+                    Canonical SaaS-native target path is PackageDashboardHost -> DashboardPage -> coreApiAdapter.
+                    ModernDashboard remains as a temporary parity shadow route (/dashboard/legacy).
+                  */}
+                  <Route path="dashboard" element={<PackageDashboardHost />} />
+                  <Route path="dashboard/legacy" element={<ModernDashboard />} />
                   {packageShellHostEnabled ? (
                     <Route path="dashboard/shell" element={<DashboardShellHost />} />
                   ) : null}
+                  {packageShellHostEnabled ? (
+                    <Route path="dashboard/package-host" element={<PackageDashboardHost />} />
+                  ) : null}
                   <Route path="upgrade" element={<Upgrade />} />
-                  <Route path="stocks/:symbol" element={<StockDetail />} />
+                  <Route path="stocks/:symbol" element={<StockDetailPageHost />} />
                   <Route
                     path="ai-advisory"
                     element={(
@@ -134,7 +151,7 @@ export default function App() {
                       )}
                     />
                   ) : null}
-                  <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
+                  <Route path="whale-alerts/:symbol" element={<WhaleAlertsSymbolRedirect />} />
                   <Route
                     path="transactions"
                     element={(
@@ -281,6 +298,14 @@ export default function App() {
                     element={(
                       <ProtectedRoute action="read" subject="TenantBillingView">
                         <TenantBilling />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/members"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantAdminHome">
+                        <TenantMembers />
                       </ProtectedRoute>
                     )}
                   />

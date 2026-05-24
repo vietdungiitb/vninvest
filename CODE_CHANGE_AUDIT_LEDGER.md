@@ -1,5 +1,45 @@
 # Code Change Audit Ledger
 
+# 2026-05-24 | SaaS/OpenAPI tenant-members frontend integration ✅
+
+## Problem Solved
+
+- Tenant member/invite APIs (`/core/v1/tenant-members/*`) đã có backend nhưng chưa có menu và màn hình quản trị tương ứng ở tenant console frontend.
+- Mục tiêu slice này: nối đúng SaaS native contract và OpenAPI path hiện có, không thêm compat endpoint mới, để operator thấy và thao tác trực tiếp từ UI.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Focused page tests | ✅ `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx` (`2 passed`) |
+| Wiring sanity | ⚠️ `src/App.test.jsx` fail do Jest ESM với `echarts/core` (không phát sinh từ slice tenant-members) |
+| Diagnostics | ✅ `get_errors` clean trên toàn bộ file touched của slice |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2575` modules) |
+| Dev stack refresh | ⚠️ `./start_dev.ps1` executed, nhưng Docker daemon local unavailable (`dockerDesktopLinuxEngine` not found) nên smoke checks fail |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/src/api/client.js` | Added SaaS tenant-member client methods: list members, list/create invites, accept invite, remove member |
+| `frontend/src/pages/admin/tenant/TenantMembers.jsx` | Added tenant members/invites management page wired to `/core/v1/tenant-members/*` |
+| `frontend/src/pages/admin/tenant/TenantMembers.test.jsx` | Added focused tests for load + invite payload correctness (`invited_email`, `role`) |
+| `frontend/src/App.jsx` | Added route `/tenant-admin/members` under protected tenant admin surface |
+| `frontend/src/components/TopNav.jsx` | Added tenant menu item for members page |
+| `frontend/src/pages/admin/tenant/TenantAdminHome.jsx` | Added quick-link card to tenant members page |
+| `frontend/src/i18n/vi.js` | Added Vietnamese nav + page translations for tenant members |
+| `frontend/src/i18n/en.js` | Added English nav + page translations for tenant members |
+| `frontend/src/App.test.jsx` | Added mock for new `TenantMembers` page import |
+| `module_tree_full.md` | Regenerated after source changes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- Runtime/browser smoke trên local máy này chưa xác nhận được vì Docker daemon chưa chạy.
+- Gate quyền cho route members hiện reuse `TenantAdminHome` read permission; nếu cần granularity tách riêng (`TenantMemberAdmin`) thì cần bổ sung ability contract ở backend trong slice tiếp theo.
+
 # 2026-05-24 | Expose TenantMember/TenantInvite in Django Admin menu ✅
 
 ## Problem Solved

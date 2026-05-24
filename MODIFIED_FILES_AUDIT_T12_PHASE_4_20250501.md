@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-05-24 | Tenant-members SaaS/OpenAPI frontend integration
+
+### Files changed in this session
+- `frontend/src/api/client.js`
+- `frontend/src/pages/admin/tenant/TenantMembers.jsx`
+- `frontend/src/pages/admin/tenant/TenantMembers.test.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/components/TopNav.jsx`
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `frontend/src/App.test.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Dua giao dien quan tri thanh vien/invite vao tenant console theo dung SaaS native OpenAPI contract, de user thay duoc menu va thao tac truc tiep tren frontend.
+
+### Validation snapshot
+- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx` ✅ (`2 passed`).
+- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ⚠️ `App.test.jsx` fail do ESM `echarts/core` trong Jest env, khong lien quan den slice tenant-members.
+- `get_errors` on all touched files ✅ khong co diagnostics.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` (`2575` modules).
+- `./start_dev.ps1` ✅ da chay, nhung Docker daemon local unavailable nen smoke checks frontend/core-api fail tren may hien tai.
+
+---
+
 ## 2026-05-24 | Expose TenantMember/TenantInvite in Django Admin
 
 ### Files changed in this session

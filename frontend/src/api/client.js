@@ -339,6 +339,25 @@ export const createTenantServiceAccount = (payload) =>
 export const getTenantPATs = (params = {}) =>
   apiClient.get('/core/v1/partner/pats/', { params }).then(normalizeListResponse);
 
+export const getTenantMembers = () =>
+  apiClient.get('/core/v1/tenant-members/');
+
+export const getTenantInvites = () =>
+  apiClient.get('/core/v1/tenant-members/invites/');
+
+export const createTenantInvite = (payload) =>
+  apiClient.post('/core/v1/tenant-members/invites/', payload, {
+    headers: {
+      'Idempotency-Key': buildIdempotencyKey('tenant-member-invite'),
+    },
+  });
+
+export const acceptTenantInvite = (token) =>
+  apiClient.post(`/core/v1/tenant-members/invites/${token}/accept/`);
+
+export const removeTenantMember = (memberId) =>
+  apiClient.delete(`/core/v1/tenant-members/${memberId}/`);
+
 export const getTenantUsageMeters = (params = {}) =>
   apiClient.get('/core/v1/partner/usage/meters/', { params });
 

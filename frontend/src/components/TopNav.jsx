@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useInterface } from '../context/InterfaceContext';
@@ -60,6 +60,17 @@ export default function TopNav() {
   const { t, locale, setLanguage } = useI18n();
   const { ability, capabilitySnapshot, userIdentity } = usePortfolio();
   const { uiMode, toggleUiMode, modernLeftSidebarOpen, toggleModernLeftSidebar } = useInterface();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/stocks/${searchQuery.trim().toUpperCase()}`);
+      setSearchQuery('');
+    }
+  };
+
   const capabilityMenus = capabilitySnapshot?.navigation?.menus || [];
   const hasCapabilityMenus = capabilityMenus.length > 0;
   const visibleRoutes = useMemo(
@@ -70,6 +81,7 @@ export default function TopNav() {
   const canNavigateTo = (route, fallback) => (hasCapabilityMenus ? visibleRoutes.has(route) : fallback);
   const canReadSOC = canNavigateTo('/operations-center', ability.can('read', 'ServiceOpsCenter') || Boolean(userIdentity?.isStaff));
   const canReadTenantHome = canNavigateTo('/tenant-admin/home', ability.can('read', 'TenantAdminHome'));
+  const canReadTenantMembers = canNavigateTo('/tenant-admin/members', ability.can('read', 'TenantAdminHome'));
   const canReadTenantCapabilities = canNavigateTo('/tenant-admin/capabilities', ability.can('read', 'TenantCapabilityView'));
   const canReadTenantUsage = canNavigateTo('/tenant-admin/usage', ability.can('read', 'TenantUsageView'));
   const canReadTenantBilling = canNavigateTo('/tenant-admin/billing', ability.can('read', 'TenantBillingView'));
@@ -100,6 +112,7 @@ export default function TopNav() {
 
   const tenantItems = [
     { to: '/tenant-admin/home', label: t('layout.nav.tenantHome'), visible: canReadTenantHome },
+    { to: '/tenant-admin/members', label: t('layout.nav.tenantMembers'), visible: canReadTenantMembers },
     { to: '/tenant-admin/capabilities', label: t('layout.nav.tenantCapabilities'), visible: canReadTenantCapabilities },
     { to: '/tenant-admin/usage', label: t('layout.nav.tenantUsage'), visible: canReadTenantUsage },
     { to: '/tenant-admin/billing', label: t('layout.nav.tenantBilling'), visible: canReadTenantBilling },
@@ -132,6 +145,19 @@ export default function TopNav() {
         </div>
 
         <div className="flex items-center gap-1.5">
+          <form onSubmit={handleSearch} className="relative hidden md:block mr-2">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-500 text-[10px]">
+              🔍
+            </span>
+            <input
+              type="text"
+              placeholder="Tìm mã (VD: SSI)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-48 bg-slate-900 border border-slate-700/80 rounded-full py-1.5 pl-7 pr-3 text-xs text-slate-200 outline-none focus:border-emerald-500 transition-colors shadow-inner"
+            />
+          </form>
+
           <button
             type="button"
             onClick={toggleUiMode}

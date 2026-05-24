@@ -1,3 +1,45 @@
+# 2026-05-24 — Tenant-members SaaS/OpenAPI frontend integration ✅
+
+Status: **✅ ROUTE + MENU + PAGE + I18N DONE (runtime smoke blocked by local Docker daemon)**
+
+## Summary
+
+- Added tenant-members management UI into tenant console using existing SaaS native endpoints:
+  - `GET /core/v1/tenant-members/`
+  - `GET/POST /core/v1/tenant-members/invites/`
+  - `DELETE /core/v1/tenant-members/{member_id}/`
+- Added discoverability path end-to-end: route in `App`, nav item in `TopNav`, and quick-link from `TenantAdminHome`.
+- Kept implementation OpenAPI-aligned by reusing backend field names (`invited_email`, `role`) in client payload and tests.
+
+## Files Updated
+
+- `frontend/src/api/client.js`
+- `frontend/src/pages/admin/tenant/TenantMembers.jsx`
+- `frontend/src/pages/admin/tenant/TenantMembers.test.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/components/TopNav.jsx`
+- `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`
+- `frontend/src/i18n/vi.js`
+- `frontend/src/i18n/en.js`
+- `frontend/src/App.test.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx` ✅ (`2 passed`).
+- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ⚠️ `App.test.jsx` fail do Jest ESM của `echarts/core` (không phải regression từ tenant-members slice).
+- `get_errors` on all touched files ✅ no diagnostics.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2575` modules).
+- `./start_dev.ps1` ✅ executed nhưng Docker daemon local unavailable nên `core-api/frontend` smoke checks fail trên máy hiện tại.
+
+## Residual Risk
+
+- Chưa có browser/runtime evidence local cho route mới do Docker daemon down.
+- Permission gate cho members route hiện dùng `TenantAdminHome` read capability; nếu cần tách quyền riêng cho member admin thì cần backend ability contract bổ sung.
+
 # 2026-05-24 — Expose TenantMember/TenantInvite in Django Admin ✅
 
 Status: **✅ ADMIN REGISTRATION ADDED (runtime verify pending local Docker up)**

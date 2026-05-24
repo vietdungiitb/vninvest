@@ -152,6 +152,10 @@ jest.mock('./pages/admin/tenant/TenantCapabilities', () => function MockTenantCa
   return <div data-testid="tenant-capabilities-page" />;
 });
 
+jest.mock('./pages/admin/tenant/TenantMembers', () => function MockTenantMembers() {
+  return <div data-testid="tenant-members-page" />;
+});
+
 jest.mock('./pages/admin/tenant/TenantPATs', () => function MockTenantPATs() {
   return <div data-testid="tenant-pats-page" />;
 });
