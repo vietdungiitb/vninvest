@@ -1,3 +1,35 @@
+# 2026-05-25 — Hardening auth cutover bang component tests packages/web ✅
+
+Status: **✅ DONE (component gate covered + runtime smoke green)**
+
+## Summary
+
+- Bo sung component tests cho auth pages trong packages/web de dong checklist A2 (idle/loading/success/error va submit flows).
+- Bo sung test dependencies can thiet trong package web de chay test ESM on dinh.
+- Re-run gate full cho scope hardening va refresh runtime qua `start_dev.ps1`.
+
+## Files Updated
+
+- `packages/web/src/pages/auth/AuthPages.test.js`
+- `packages/web/package.json`
+- `packages/web/package-lock.json`
+- `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `cd packages/web && npm test -- src/pages/auth/AuthPages.test.js src/adapters/coreApiAdapter.test.js` ✅ (`57 passed`).
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ (`2594` modules).
+- `./start_dev.ps1 -SkipBuild` ✅ exit `0`; stack ready; smoke checks `Core API health: OK`, `Frontend health: OK`.
+- `git diff --check -- packages/web/package.json packages/web/package-lock.json packages/web/src/pages/auth/AuthPages.test.js module_tree_full.md` ✅ clean.
+
+## Residual Risk
+
+- React Router future warnings trong test log van o muc advisory.
+
 # 2026-05-25 — Chot A4-A6, auth cutover dat production-ready ✅
 
 Status: **✅ DONE (A1-A6 closed with evidence + runtime smoke green)**

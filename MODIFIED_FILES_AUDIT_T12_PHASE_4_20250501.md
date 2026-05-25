@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-05-25 | Hardening A2 component gate with packages/web auth page tests
+
+### Files changed in this session
+- `packages/web/src/pages/auth/AuthPages.test.js`
+- `packages/web/package.json`
+- `packages/web/package-lock.json`
+- `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Dong checklist component test cho auth pages packages/web de giam rui ro regression sau cutover production-ready.
+
+### Validation snapshot
+- `cd packages/web && npm test -- src/pages/auth/AuthPages.test.js src/adapters/coreApiAdapter.test.js` ✅ (`57 passed`).
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` (`2594` modules).
+- `./start_dev.ps1 -SkipBuild` ✅ exit `0`; smoke checks `Core API health: OK`, `Frontend health: OK`.
+- `git diff --check -- packages/web/package.json packages/web/package-lock.json packages/web/src/pages/auth/AuthPages.test.js module_tree_full.md` ✅ clean.
+
+---
+
 ## 2026-05-25 | Close A4-A6 and reach production-ready for packages/web auth cutover
 
 ### Files changed in this session

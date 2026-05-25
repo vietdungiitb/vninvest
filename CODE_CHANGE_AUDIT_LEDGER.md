@@ -1,5 +1,38 @@
 # Code Change Audit Ledger
 
+# 2026-05-25 | Auth cutover hardening: add packages/web auth component tests ✅
+
+## Problem Solved
+
+- Dong residual risk A2 component gate bang bo test cho 4 auth pages trong `packages/web` (login/register/verify/reset).
+- Chuan hoa dev dependencies test cho package (`react-test-renderer`, `react-router-dom`) de test chay on dinh trong Jest ESM.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Component + adapter gate | ✅ `cd packages/web && npm test -- src/pages/auth/AuthPages.test.js src/adapters/coreApiAdapter.test.js` (`57 passed`) |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` (`2594` modules) |
+| Runtime refresh | ✅ `./start_dev.ps1 -SkipBuild` exit `0`; smoke checks `Core API health: OK`, `Frontend health: OK` |
+| Audit gate (slice files) | ✅ `git diff --check -- packages/web/package.json packages/web/package-lock.json packages/web/src/pages/auth/AuthPages.test.js module_tree_full.md` no output; no `print(` and no `explorer` marker |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/pages/auth/AuthPages.test.js` | Added component tests for auth page major states and submit flows |
+| `packages/web/package.json` | Added dev dependencies for component-test runtime |
+| `packages/web/package-lock.json` | Locked newly added test dependencies |
+| `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md` | Updated A2/A6 notes and execution evidence with component gate |
+| `module_tree_full.md` | Regenerated after hardening changes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- React Router future warnings van xuat hien trong test logs (warning only, khong fail gate).
+
 # 2026-05-25 | Close A4-A6 and declare auth cutover production-ready ✅
 
 ## Problem Solved

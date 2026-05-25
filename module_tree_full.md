@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-25 09:30:49`
+Generated at: `2026-05-25 09:58:25`
 
 ## Summary
 
-- Total modules: 2593
+- Total modules: 2594
 - Python modules: 740
-- JS/TS modules: 1853
+- JS/TS modules: 1854
 - Total classes: 1836
-- Total functions: 6983
-- Total top-level variables: 18255
+- Total functions: 6985
+- Total top-level variables: 18268
 
 ## Python Modules
 
@@ -16866,6 +16866,13 @@ Generated at: `2026-05-25 09:30:49`
   - `AuthLoginPage`, `handleSubmit`, `readTokenPayload`, `resolveMessage`
 - Top-level variables:
   - `destination`, `detail`, `location`, `mounted`, `payload`, `tokenPayload`
+
+### `packages/web/src/pages/auth/AuthPages.test.js`
+
+- Functions:
+  - `flushEffects`, `renderAtRoute`
+- Top-level variables:
+  - `confirmSpy`, `emailInput`, `form`, `initialEntry`, `inputs`, `loginSpy`, `passwordConfirmInput`, `passwordInput`, `renderer`, `requestSpy`, `storage`, `usernameInput`, `verifySpy`
 
 ### `packages/web/src/pages/auth/AuthRegisterPage.js`
 
