@@ -1,3 +1,42 @@
+# 2026-05-25 — Slice 7 registration frontend anti-spam DONE ✅
+
+Status: **✅ DONE (Turnstile + honeypot + field error parsing + runtime smoke green)**
+
+## Summary
+
+- Tich hop Turnstile vao `AuthRegisterPage` production trong package-web.
+- Chuyen honeypot `website` sang CSS class `.invisible-honeypot` theo spec.
+- Them parse field-level API errors (`username`, `email`, `password_confirm`, `turnstile_token`) va hiển thị inline cho form đăng ký.
+- Dam bao host Docker build resolve dependency Turnstile thong qua frontend lock graph.
+
+## Files Updated
+
+- `packages/web/src/components/auth/TurnstileWidget.js`
+- `packages/web/src/pages/auth/AuthRegisterPage.js`
+- `packages/web/src/pages/auth/AuthRegisterPage.css`
+- `packages/web/src/pages/auth/AuthPages.test.js`
+- `packages/web/jest.config.js`
+- `packages/web/package.json`
+- `packages/web/package-lock.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `docs/plans/TASKBOARD_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `cd packages/web && npm test -- src/pages/auth/AuthPages.test.js src/adapters/coreApiAdapter.test.js` ✅ (`58 passed`).
+- `cd packages/core/backend && DJANGO_DEBUG=true python manage.py test src.identity_access.tests.test_register_upgrade src.identity_access.tests.test_operator_mail_config src.identity_access.tests.test_login_upgrade --keepdb` ✅ (`30 passed`).
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ (`2595` modules).
+- `./start_dev.ps1 -SkipBuild` ✅ build success; smoke checks `Core API health: OK`, `Frontend health: OK`.
+
+## Residual Risk
+
+- Bundle-size warning va React Router future warning tiep tuc o muc advisory.
+
 # 2026-05-25 — Hardening auth cutover bang component tests packages/web ✅
 
 Status: **✅ DONE (component gate covered + runtime smoke green)**

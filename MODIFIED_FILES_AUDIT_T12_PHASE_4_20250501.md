@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-05-25 | Slice 7 frontend anti-spam integration (Turnstile + honeypot)
+
+### Files changed in this session
+- `packages/web/src/components/auth/TurnstileWidget.js`
+- `packages/web/src/pages/auth/AuthRegisterPage.js`
+- `packages/web/src/pages/auth/AuthRegisterPage.css`
+- `packages/web/src/pages/auth/AuthPages.test.js`
+- `packages/web/jest.config.js`
+- `packages/web/package.json`
+- `packages/web/package-lock.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `docs/plans/TASKBOARD_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Hoan tat slice frontend trong chuong trinh registration spam protection: Turnstile widget, honeypot CSS, va field-level API error mapping cho register form production.
+
+### Validation snapshot
+- `cd packages/web && npm test -- src/pages/auth/AuthPages.test.js src/adapters/coreApiAdapter.test.js` ✅ (`58 passed`).
+- `cd packages/core/backend && DJANGO_DEBUG=true python manage.py test src.identity_access.tests.test_register_upgrade src.identity_access.tests.test_operator_mail_config src.identity_access.tests.test_login_upgrade --keepdb` ✅ (`30 passed`).
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` (`2595` modules).
+- `./start_dev.ps1 -SkipBuild` ✅ build success; smoke checks `Core API health: OK`, `Frontend health: OK`.
+
+---
+
 ## 2026-05-25 | Hardening A2 component gate with packages/web auth page tests
 
 ### Files changed in this session

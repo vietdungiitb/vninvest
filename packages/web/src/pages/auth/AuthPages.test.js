@@ -6,7 +6,7 @@ import { AuthLoginPage } from "./AuthLoginPage.js";
 import { AuthRegisterPage } from "./AuthRegisterPage.js";
 import { AuthVerifyEmailPage } from "./AuthVerifyEmailPage.js";
 import { AuthResetPasswordPage } from "./AuthResetPasswordPage.js";
-import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { CoreApiRequestError, coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 function renderAtRoute(path, element, entry) {
   const initialEntry = entry || path;
@@ -82,6 +82,42 @@ describe("packages/web auth pages", () => {
     });
 
     expect(JSON.stringify(renderer.toJSON())).toContain("Mật khẩu xác nhận không khớp.");
+  });
+
+  test("AuthRegisterPage maps API field errors to register form", async () => {
+    const registerSpy = jest.spyOn(coreApiAdapter, "registerUser").mockRejectedValue(
+      new CoreApiRequestError("Validation error", {
+        payload: { detail: { email: ["Email đã tồn tại"], turnstile_token: ["Token hết hạn"] } },
+      }),
+    );
+
+    const renderer = renderAtRoute("/register", React.createElement(AuthRegisterPage));
+    const usernameInput = renderer.root.findByProps({ placeholder: "Tên đăng nhập" });
+    const emailInput = renderer.root.findByProps({ placeholder: "Email" });
+    const passwordInput = renderer.root.findByProps({ placeholder: "Mật khẩu" });
+    const passwordConfirmInput = renderer.root.findByProps({ placeholder: "Nhập lại mật khẩu" });
+    const verifyButton = renderer.root.findByProps({ "data-testid": "turnstile-test-trigger" });
+    const form = renderer.root.findByType("form");
+
+    await act(async () => {
+      usernameInput.props.onChange({ target: { value: "newuser" } });
+      emailInput.props.onChange({ target: { value: "newuser@example.com" } });
+      passwordInput.props.onChange({ target: { value: "password-123" } });
+      passwordConfirmInput.props.onChange({ target: { value: "password-123" } });
+      verifyButton.props.onClick();
+    });
+
+    await act(async () => {
+      form.props.onSubmit({ preventDefault() {} });
+    });
+
+    expect(registerSpy).toHaveBeenCalledWith(expect.objectContaining({
+      username: "newuser",
+      email: "newuser@example.com",
+      turnstile_token: "cf-test-token",
+    }));
+    expect(JSON.stringify(renderer.toJSON())).toContain("Email đã tồn tại");
+    expect(JSON.stringify(renderer.toJSON())).toContain("Token hết hạn");
   });
 
   test("AuthVerifyEmailPage shows missing token state", async () => {

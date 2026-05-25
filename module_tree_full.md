@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-25 09:58:25`
+Generated at: `2026-05-25 10:12:18`
 
 ## Summary
 
-- Total modules: 2594
+- Total modules: 2595
 - Python modules: 740
-- JS/TS modules: 1854
+- JS/TS modules: 1855
 - Total classes: 1836
-- Total functions: 6985
-- Total top-level variables: 18268
+- Total functions: 6987
+- Total top-level variables: 18277
 
 ## Python Modules
 
@@ -11232,6 +11232,13 @@ Generated at: `2026-05-25 09:58:25`
 - Top-level variables:
   - `ALL_BUILD_TARGETS`, `normalizedTarget`, `routeCatalog`
 
+### `packages/web/src/components/auth/TurnstileWidget.js`
+
+- Functions:
+  - `TurnstileWidget`, `resolveSiteKey`
+- Top-level variables:
+  - `siteKey`
+
 ### `packages/web/src/components/DNSEConnectionPanel.js`
 
 - Functions:
@@ -16872,14 +16879,14 @@ Generated at: `2026-05-25 09:58:25`
 - Functions:
   - `flushEffects`, `renderAtRoute`
 - Top-level variables:
-  - `confirmSpy`, `emailInput`, `form`, `initialEntry`, `inputs`, `loginSpy`, `passwordConfirmInput`, `passwordInput`, `renderer`, `requestSpy`, `storage`, `usernameInput`, `verifySpy`
+  - `confirmSpy`, `emailInput`, `form`, `initialEntry`, `inputs`, `loginSpy`, `passwordConfirmInput`, `passwordInput`, `registerSpy`, `renderer`, `requestSpy`, `storage`, `usernameInput`, `verifyButton`, `verifySpy`
 
 ### `packages/web/src/pages/auth/AuthRegisterPage.js`
 
 - Functions:
-  - `AuthRegisterPage`, `handleSubmit`, `resolveRegisterError`
+  - `AuthRegisterPage`, `handleSubmit`, `parseApiErrors`
 - Top-level variables:
-  - `detail`, `firstValue`, `payload`, `successMessage`
+  - `EMPTY_FIELD_ERRORS`, `detail`, `fieldErrors`, `firstValue`, `globalMessage`, `parsedError`, `payload`, `payloadFieldErrors`, `successMessage`, `value`
 
 ### `packages/web/src/pages/auth/AuthResetPasswordPage.js`
 

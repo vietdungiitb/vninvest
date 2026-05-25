@@ -1,5 +1,45 @@
 # Code Change Audit Ledger
 
+# 2026-05-25 | Slice 7: frontend register anti-spam integration (Turnstile + honeypot) ✅
+
+## Problem Solved
+
+- Hoan tat slice frontend cho chuong trinh `SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION`: them Turnstile widget vao register page production trong `packages/web`, giu honeypot `website`, parse field-level API errors, va chan submit khi chua co token.
+- Sua regression build trong host pipeline bang cach bo sung dependency Turnstile cho `frontend` de Docker build resolve duoc import tu package.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Auth package tests | ✅ `cd packages/web && npm test -- src/pages/auth/AuthPages.test.js src/adapters/coreApiAdapter.test.js` (`58 passed`) |
+| Backend registration baseline | ✅ `cd packages/core/backend && DJANGO_DEBUG=true python manage.py test src.identity_access.tests.test_register_upgrade src.identity_access.tests.test_operator_mail_config src.identity_access.tests.test_login_upgrade --keepdb` (`30 passed`) |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` (`2595` modules) |
+| Runtime refresh | ✅ `./start_dev.ps1 -SkipBuild` build success; smoke checks `Core API health: OK`, `Frontend health: OK` |
+| Audit gate (slice files) | ✅ `git diff --check -- <slice-files>` no output; no `print(` and no `explorer` marker |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/components/auth/TurnstileWidget.js` | Added production Turnstile wrapper with deterministic test fallback |
+| `packages/web/src/pages/auth/AuthRegisterPage.js` | Integrated Turnstile + honeypot CSS class + field-level API error mapping |
+| `packages/web/src/pages/auth/AuthRegisterPage.css` | Added `.invisible-honeypot` class for offscreen anti-bot field |
+| `packages/web/src/pages/auth/AuthPages.test.js` | Extended tests for register field-error mapping and Turnstile token flow |
+| `packages/web/jest.config.js` | Added CSS moduleNameMapper for Jest |
+| `packages/web/package.json` | Added `@marsidev/react-turnstile` dependency |
+| `packages/web/package-lock.json` | Updated lock for new package-web dependency graph |
+| `frontend/package.json` | Added host dependency for Turnstile resolution during Docker build |
+| `frontend/package-lock.json` | Updated lockfile with Turnstile package |
+| `docs/plans/TASKBOARD_SAAS_NATIVE_USER_REGISTRATION_SPAM_PROTECTION_20260524.md` | Marked Slice 7 DONE and appended execution evidence |
+| `module_tree_full.md` | Regenerated after code updates |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- React Router future warnings van xuat hien trong test logs (advisory only).
+
 # 2026-05-25 | Auth cutover hardening: add packages/web auth component tests ✅
 
 ## Problem Solved
