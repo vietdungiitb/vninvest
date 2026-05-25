@@ -1,3 +1,119 @@
+# 2026-05-25 — Chot A4-A6, auth cutover dat production-ready ✅
+
+Status: **✅ DONE (A1-A6 closed with evidence + runtime smoke green)**
+
+## Summary
+
+- Hoan tat full chuoi slices theo docs da phe duyet den muc production-ready cho auth cutover sang packages/web.
+- Dong bo token ownership ve package layer (`authTokenStorage`), deprecate legacy auth API bang compatibility shim, va dong bo host auth guard.
+- Chot taskboard A1-A6 sang DONE kem execution evidence.
+
+## Files Updated
+
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `packages/web/src/pages/auth/AuthLoginPage.js`
+- `packages/web/src/index.js`
+- `frontend/src/context/PortfolioContext.jsx`
+- `frontend/src/api/auth.js`
+- `frontend/src/App.jsx`
+- `frontend/src/App.test.jsx`
+- `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `cd packages/web && npm test -- coreApiAdapter.test.js` ✅ (`51 passed`).
+- `cd frontend && npm test -- --watchAll=false src/App.test.jsx` ✅ (`2 passed`).
+- `cd frontend && npm run build` ✅ compiled successfully.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ (`2593` modules).
+- `./start_dev.ps1` ✅ exit `0`; `Core API health: OK`; `Frontend health: OK`.
+- Scaled audit gate on touched files ✅ no `print(`, no `explorer` marker, `git diff --check` clean.
+
+## Residual Risk
+
+- Bundle-size warning va React Router future warning o muc advisory, khong chan release.
+
+# 2026-05-24 — Implement auth cutover A1-A3 (packages/web + frontend routes) ✅
+
+Status: **✅ DONE (adapter + pages + route cutover + runtime refresh)**
+
+## Summary
+
+- Hoan tat implementation phase A1-A3 cho migration auth frontend sang packages/web theo handoff docs.
+- Public auth routes production da duoc cutover sang package pages: `/login`, `/register`, `/verify-email`, `/reset-password`.
+- Adapter native da ho tro day du login + reset password flow tren base `/api` voi envelope error handling.
+
+## Files Updated
+
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `packages/web/src/pages/auth/AuthLoginPage.js`
+- `packages/web/src/pages/auth/AuthRegisterPage.js`
+- `packages/web/src/pages/auth/AuthVerifyEmailPage.js`
+- `packages/web/src/pages/auth/AuthResetPasswordPage.js`
+- `packages/web/src/pages/auth/index.js`
+- `packages/web/src/index.js`
+- `packages/web/src/pages/pageRegistry.js`
+- `packages/web/src/app/routeCatalog.js`
+- `frontend/src/App.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `cd packages/web && npm test -- coreApiAdapter.test.js` ✅ (`49 passed`).
+- `cd frontend && npm run build` ✅ compiled successfully.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2593` modules).
+- `./start_dev.ps1` ✅ exit `0`; stack ready; smoke checks `Core API health: OK`, `Frontend health: OK`.
+
+## Residual Risk
+
+- Login flow hien tai su dung reload sau khi set token de dam bao host auth state bootstrap dung; se toi uu tiep trong A4 neu can no-reload UX.
+
+# 2026-05-24 — Handoff doc pack chuan cho cutover auth packages/web ✅
+
+Status: **✅ DONE (12/12 docs + governance artifacts + module tree refresh)**
+
+## Summary
+
+- Tao bo tai lieu ban giao day du theo skill cho chuong trinh `SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER`.
+- Muc tieu handoff: cutover toan bo login/register/verify/resend/reset frontend production sang packages/web.
+
+## Files Updated
+
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_HANDOFF_MASTER_20260524.md`
+- `docs/plans/IMPLEMENTATION_PLAN_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/TECH_SPEC_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_TRACEABILITY_MATRIX_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_CONFIG_OWNERSHIP_MATRIX_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_CODE_QUALITY_CONSTITUTION_20260524.md`
+- `docs/plans/RUN_CODE_REVIEW_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/RUN_INTEGRATION_TESTS_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/RUN_SPEC_AUDIT_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+- `module_tree_full.md`
+
+## Validation
+
+- Doc pack completeness: ✅ 12/12 file.
+- Governance update: ✅ ledger/progress/modified-files updated.
+- Module tree discipline: ✅ regenerated via `python scripts/ops/generate_module_tree.py`.
+
+## Residual Risk
+
+- Chua co execution evidence runtime vi day la phase handoff tai lieu; evidence se duoc dien theo template trong giai doan code.
+
 # 2026-05-24 — Close remaining registration spam-protection gaps (R8 + DWD sync) ✅
 
 Status: **✅ DONE (code + docs + runtime refresh complete)**

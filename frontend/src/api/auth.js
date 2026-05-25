@@ -1,25 +1,42 @@
 import apiClient from './client';
+import { coreApiAdapter } from '@vninvest/web';
 
 /**
- * Auth API functions for JWT.
+ * @deprecated Legacy auth API shim for rollback window only.
+ * Production auth flows must use packages/web auth pages + coreApiAdapter.
  */
-export const login = (username, password) => apiClient.post('/auth/token/', { username, password });
 
-export const register = (payload) => apiClient.post('/auth/register/', payload);
+function wrapAdapterPayload(promise) {
+	return promise.then((data) => ({ data }));
+}
 
-export const verifyEmail = (token) => apiClient.post('/auth/verify-email/', { token });
+export const login = (username, password) => wrapAdapterPayload(
+	coreApiAdapter.loginUser({ username, password }),
+);
 
-export const resendVerification = (identifier) => apiClient.post('/auth/resend-verification/', { identifier });
+export const register = (payload) => wrapAdapterPayload(
+	coreApiAdapter.registerUser(payload),
+);
 
-export const requestPasswordReset = (identifier) => apiClient.post('/auth/password-reset/request/', { identifier });
+export const verifyEmail = (token) => wrapAdapterPayload(
+	coreApiAdapter.verifyEmailToken(token),
+);
 
-export const confirmPasswordReset = (token, newPassword, newPasswordConfirm) => apiClient.post('/auth/password-reset/confirm/', {
-	token,
-	new_password: newPassword,
-	new_password_confirm: newPasswordConfirm,
-});
+export const resendVerification = (identifier) => wrapAdapterPayload(
+	coreApiAdapter.resendVerificationEmail(identifier),
+);
 
-export const refreshToken = (refresh) => apiClient.post('/auth/token/refresh/', { refresh });
+export const requestPasswordReset = (identifier) => wrapAdapterPayload(
+	coreApiAdapter.requestPasswordReset(identifier),
+);
+
+export const confirmPasswordReset = (token, newPassword, newPasswordConfirm) => wrapAdapterPayload(
+	coreApiAdapter.confirmPasswordReset(token, newPassword, newPasswordConfirm),
+);
+
+export const refreshToken = (refresh) => wrapAdapterPayload(
+	coreApiAdapter.refreshAuthToken(refresh),
+);
 
 export const getCapabilitySnapshot = () => apiClient.get('/core/v1/access/capabilities/');
 

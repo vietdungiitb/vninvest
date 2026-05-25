@@ -54,6 +54,21 @@ jest.mock('@vninvest/web', () => ({
   AlertCenterPage: function MockAlertCenterPage() {
     return <div data-testid="whale-alerts-hub-page" />;
   },
+  AuthLoginPage: function MockAuthLoginPage() {
+    return <div data-testid="auth-login-page" />;
+  },
+  AuthRegisterPage: function MockAuthRegisterPage() {
+    return <div data-testid="auth-register-page" />;
+  },
+  AuthVerifyEmailPage: function MockAuthVerifyEmailPage() {
+    return <div data-testid="auth-verify-email-page" />;
+  },
+  AuthResetPasswordPage: function MockAuthResetPasswordPage() {
+    return <div data-testid="auth-reset-password-page" />;
+  },
+  authTokenStorage: {
+    hasTokens: () => true,
+  },
 }));
 
 jest.mock('./pages/WhaleAlertsDashboard', () => function MockWhaleAlertsDashboard() {

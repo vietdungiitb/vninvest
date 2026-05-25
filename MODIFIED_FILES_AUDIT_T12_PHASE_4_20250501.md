@@ -2,6 +2,97 @@
 
 ---
 
+## 2026-05-25 | Close A4-A6 and reach production-ready for packages/web auth cutover
+
+### Files changed in this session
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `packages/web/src/pages/auth/AuthLoginPage.js`
+- `packages/web/src/index.js`
+- `frontend/src/context/PortfolioContext.jsx`
+- `frontend/src/api/auth.js`
+- `frontend/src/App.jsx`
+- `frontend/src/App.test.jsx`
+- `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Hoan tat runtime alignment + legacy detach cho auth cutover, dong bo token lifecycle ve package layer, va chot toan bo gates de dat production-ready.
+
+### Validation snapshot
+- `cd packages/web && npm test -- coreApiAdapter.test.js` ✅ (`51 passed`).
+- `cd frontend && npm test -- --watchAll=false src/App.test.jsx` ✅ (`2 passed`).
+- `cd frontend && npm run build` ✅ compile thanh cong.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` (`2593` modules).
+- `./start_dev.ps1` ✅ exit `0`; smoke checks `Core API health: OK`, `Frontend health: OK`.
+- Scoped audit gate ✅ `git diff --check` clean, khong co `print(` va khong co `explorer` marker trong touched files.
+
+---
+
+## 2026-05-24 | Implement SaaS-native auth cutover A1-A3 (packages/web + frontend route handoff)
+
+### Files changed in this session
+- `packages/web/src/adapters/coreApiAdapter.js`
+- `packages/web/src/adapters/coreApiAdapter.test.js`
+- `packages/web/src/pages/auth/AuthLoginPage.js`
+- `packages/web/src/pages/auth/AuthRegisterPage.js`
+- `packages/web/src/pages/auth/AuthVerifyEmailPage.js`
+- `packages/web/src/pages/auth/AuthResetPasswordPage.js`
+- `packages/web/src/pages/auth/index.js`
+- `packages/web/src/index.js`
+- `packages/web/src/pages/pageRegistry.js`
+- `packages/web/src/app/routeCatalog.js`
+- `frontend/src/App.jsx`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chuyen public auth flow production tu legacy frontend sang package-hosted pages theo kien truc SaaS native.
+- Hoan tat adapter auth methods con thieu cho login/reset password va giu dong bo error envelope contract.
+
+### Validation snapshot
+- `cd packages/web && npm test -- coreApiAdapter.test.js` ✅ (`49 passed`).
+- `cd frontend && npm run build` ✅ compile thanh cong.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` (`2593` modules).
+- `./start_dev.ps1` ✅ exit `0`; stack ready; smoke checks `Core API health: OK`, `Frontend health: OK`.
+
+---
+
+## 2026-05-24 | Create full handoff doc pack for SaaS-native packages/web auth cutover
+
+### Files changed in this session
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_HANDOFF_MASTER_20260524.md`
+- `docs/plans/IMPLEMENTATION_PLAN_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/TECH_SPEC_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_TRACEABILITY_MATRIX_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_CONFIG_OWNERSHIP_MATRIX_20260524.md`
+- `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_CODE_QUALITY_CONSTITUTION_20260524.md`
+- `docs/plans/RUN_CODE_REVIEW_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/RUN_INTEGRATION_TESTS_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `docs/plans/RUN_SPEC_AUDIT_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+- `module_tree_full.md`
+
+### Purpose
+- Cung cap bo tai lieu ban giao chuan 12/12 de doi code trien khai migration frontend auth production sang packages/web theo kien truc SaaS native.
+
+### Validation snapshot
+- Completeness check: ✅ du 12 file handoff pack.
+- Governance artifacts: ✅ cap nhat ledger/progress/central modified files.
+- Module tree discipline: ✅ `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md`.
+
+---
+
 ## 2026-05-24 | Close remaining registration spam-protection gaps (R8 + DWD docs sync)
 
 ### Files changed in this session

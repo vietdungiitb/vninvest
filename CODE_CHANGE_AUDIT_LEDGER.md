@@ -1,5 +1,127 @@
 # Code Change Audit Ledger
 
+# 2026-05-25 | Close A4-A6 and declare auth cutover production-ready ✅
+
+## Problem Solved
+
+- Hoan tat cac slice con lai A4-A6 theo taskboard da phe duyet: dong bo token ownership ve package layer, tach production path khoi legacy auth frontend, va dong release gates full evidence.
+- Sua regression test `App.test.jsx` de phu hop export moi cua `@vninvest/web` sau cutover auth route.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Adapter unit tests | ✅ `cd packages/web && npm test -- coreApiAdapter.test.js` (`51 passed`) |
+| Frontend route regression tests | ✅ `cd frontend && npm test -- --watchAll=false src/App.test.jsx` (`2 passed`) |
+| Frontend compile | ✅ `cd frontend && npm run build` (compiled successfully) |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` (`2593` modules) |
+| Runtime refresh | ✅ `./start_dev.ps1` exit `0`; smoke checks `Core API health: OK`, `Frontend health: OK` |
+| Audit gate (slice files) | ✅ `git diff --check -- <touched-files>` no output; no `print(` and no `explorer` marker in touched files |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/adapters/coreApiAdapter.js` | Added `authTokenStorage` utility and `refreshAuthToken` for centralized token lifecycle |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added tests for token storage + refresh auth token behavior |
+| `packages/web/src/pages/auth/AuthLoginPage.js` | Added deterministic session validation flow to avoid stale-token redirect loops |
+| `packages/web/src/index.js` | Exported `authTokenStorage` for host integration |
+| `frontend/src/context/PortfolioContext.jsx` | Migrated login/register/resend/refresh to package adapter/token storage |
+| `frontend/src/api/auth.js` | Converted to deprecated compatibility shim backed by package adapter |
+| `frontend/src/App.jsx` | Switched guard token check to package `authTokenStorage` |
+| `frontend/src/App.test.jsx` | Updated `@vninvest/web` mock to include new auth exports and token storage helper |
+| `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md` | Marked A1-A6 DONE with evidence section |
+| `module_tree_full.md` | Regenerated after latest code changes |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this closure entry |
+| `PROGRESS_DASHBOARD.md` | Added matching production-ready closure snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- Frontend bundle size warning van ton tai (advisory), khong blocker release.
+- React Router future warning xuat hien trong test log (warning only).
+
+# 2026-05-24 | Implement SaaS-native auth cutover A1-A3 in packages/web + frontend routes ✅
+
+## Problem Solved
+
+- Hoan tat code implementation cho A1-A3 theo handoff doc da phe duyet: mo rong adapter auth native, tao auth pages production trong `packages/web`, va cutover route public auth tu legacy `frontend/src` sang package-hosted pages.
+- Dong bo endpoint contract voi backend core auth APIs (`/api/auth/token/`, `/api/auth/register/`, `/api/auth/verify-email/`, `/api/auth/resend-verification/`, `/api/auth/password-reset/`, `/api/auth/password-reset/confirm/`).
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Adapter unit tests | ✅ `cd packages/web && npm test -- coreApiAdapter.test.js` (`49 passed`) |
+| Frontend compile gate | ✅ `cd frontend && npm run build` (compiled successfully) |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2593` modules) |
+| Dev runtime refresh | ✅ `./start_dev.ps1` exit code `0`, stack ready, smoke checks: `Core API health: OK`, `Frontend health: OK` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/adapters/coreApiAdapter.js` | Added `loginUser`, `requestPasswordReset`, `confirmPasswordReset` with token persistence after login |
+| `packages/web/src/adapters/coreApiAdapter.test.js` | Added tests for login/reset public auth API methods |
+| `packages/web/src/pages/auth/AuthLoginPage.js` | Added package-hosted login page (Vietnamese UX, error handling, token-based redirect) |
+| `packages/web/src/pages/auth/AuthRegisterPage.js` | Added package-hosted registration page |
+| `packages/web/src/pages/auth/AuthVerifyEmailPage.js` | Added package-hosted verify-email page |
+| `packages/web/src/pages/auth/AuthResetPasswordPage.js` | Added package-hosted password-reset request/confirm page |
+| `packages/web/src/pages/auth/index.js` | Added auth pages export barrel |
+| `packages/web/src/index.js` | Exported new auth pages for host app consumption |
+| `packages/web/src/pages/pageRegistry.js` | Registered auth page route IDs for package registry |
+| `packages/web/src/app/routeCatalog.js` | Added public auth routes in package route catalog |
+| `frontend/src/App.jsx` | Switched `/login`, `/register`, `/verify-email`, `/reset-password` to `@vninvest/web` auth pages |
+| `module_tree_full.md` | Regenerated after code updates |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this audit entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file entry |
+
+## Residual Risk
+
+- Auth login cutover hien tai dong bo token qua package adapter va reload route de bootstrap auth state host; co the toi uu tiep o A4 bang auth runtime bridge de khong can full page reload.
+
+# 2026-05-24 | Create full handoff doc pack for SaaS-native packages/web auth cutover ✅
+
+## Problem Solved
+
+- Bo tri mot bo tai lieu 12/12 theo dung governance skill de doi code trien khai cutover toan bo frontend login/register/verify/resend/reset sang packages/web.
+- Chot package identity rieng de khong tron scope voi registration-spam plan cu.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Doc pack completeness | ✅ 12/12 files created under docs/plans |
+| Naming consistency | ✅ PROGRAM_NAME + DATE_STAMP dong nhat |
+| Governance artifacts | ✅ Ledger + Progress + Modified files list updated |
+| Module tree refresh | ✅ `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_HANDOFF_MASTER_20260524.md` | Added handoff master |
+| `docs/plans/IMPLEMENTATION_PLAN_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md` | Added detailed implementation plan |
+| `docs/plans/TECH_SPEC_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md` | Added technical specification |
+| `docs/plans/TASKBOARD_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md` | Added taskboard and gates |
+| `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_TRACEABILITY_MATRIX_20260524.md` | Added requirement traceability |
+| `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_SELF_AUDIT_AND_TEST_PROTOCOL_20260524.md` | Added self-audit protocol |
+| `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_EXECUTION_EVIDENCE_TEMPLATE_20260524.md` | Added execution evidence template |
+| `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_CONFIG_OWNERSHIP_MATRIX_20260524.md` | Added ownership matrix |
+| `docs/plans/SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_CODE_QUALITY_CONSTITUTION_20260524.md` | Added quality constitution |
+| `docs/plans/RUN_CODE_REVIEW_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md` | Added code review runbook |
+| `docs/plans/RUN_INTEGRATION_TESTS_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md` | Added integration test runbook |
+| `docs/plans/RUN_SPEC_AUDIT_SAAS_NATIVE_PACKAGES_WEB_AUTH_CUTOVER_20260524.md` | Added spec audit runbook |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress entry |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file audit entry |
+| `module_tree_full.md` | Regenerated module tree |
+
+## Residual Risk
+
+- Doc pack moi o muc implementation-ready; doi code can bo sung execution evidence trong qua trinh code va rollout.
+
 # 2026-05-24 | Close remaining SaaS registration spam-protection gaps (R8 + DWD docs sync) ✅
 
 ## Problem Solved

@@ -17,6 +17,7 @@ export { getPageComponent, getPageLoader, getPageRegistryRouteIds, pageRegistry 
 export { ShellOperationsCenterPage } from "./pages/admin/ShellOperationsCenterPage.js";
 export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.js";
 export { ShellWhaleAlertsPage } from "./pages/signals/ShellWhaleAlertsPage.js";
+export { ShellStockDetailPage } from "./pages/market/ShellStockDetailPage.js";
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.js";
 export { ShellDashboardPage } from "./pages/workspace/ShellDashboardPage.js";
 export { ShellPortfoliosPage } from "./pages/workspace/ShellPortfoliosPage.js";
@@ -33,6 +34,8 @@ export { StockDetailPage } from "./pages/StockDetailPage.js";
 export { PortfoliosPage } from "./pages/PortfoliosPage.js";
 export { TransactionsPage } from "./pages/TransactionsPage.js";
 export { UserSettingsPage } from "./pages/UserSettingsPage.js";
+export { AuthLoginPage, AuthRegisterPage, AuthVerifyEmailPage, AuthResetPasswordPage } from "./pages/auth/index.js";
+export { authTokenStorage, coreApiAdapter, createCoreApiAdapter } from "./adapters/coreApiAdapter.js";
 export { coreAdapter, createCoreAdvisorySessionClient, createCoreWhaleAnalyticsSnapshotClient } from "./adapters/core/index.js";
 export { createVipAppControlClient, vipAppAdapter } from "./adapters/vip-app/index.js";
 export {

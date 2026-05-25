@@ -13,14 +13,11 @@ import {
   deleteSubAccount as deleteSubAccountRequest,
 } from '../api/client';
 import {
-  login as loginRequest,
-  register as registerRequest,
-  resendVerification as resendVerificationRequest,
-  refreshToken as refreshTokenRequest,
   getCapabilitySnapshot,
   getUserConfig,
   updateUserConfig as updateUserConfigRequest,
 } from '../api/auth';
+import { authTokenStorage, coreApiAdapter } from '@vninvest/web';
 import apiClient from '../api/client';
 import { AbilityContext, createAbilityFromRules } from './AbilityContext';
 import { isRequestCanceled } from '../utils/requestCancellation';
@@ -43,8 +40,8 @@ function shouldSuppressAuthBootstrapError(errorLike) {
 export function PortfolioProvider({ children }) {
   const [portfolios, setPortfolios] = useState([]);
   const [activePortfolioId, setActivePortfolioId] = useState(null);
-  const initialAccessToken = localStorage.getItem('access_token');
-  const initialRefreshToken = localStorage.getItem('refresh_token');
+  const initialAccessToken = authTokenStorage.getAccessToken();
+  const initialRefreshToken = authTokenStorage.getRefreshToken();
   const hasInitialTokens = Boolean(initialAccessToken && initialRefreshToken);
   const [accessToken, setAccessToken] = useState(initialAccessToken);
   const [refreshTokenValue, setRefreshTokenValue] = useState(initialRefreshToken);
@@ -59,8 +56,7 @@ export function PortfolioProvider({ children }) {
   const [ability, setAbility] = useState(() => createAbilityFromRules([]));
 
   const logout = useCallback(() => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    authTokenStorage.clearTokens();
     setAccessToken(null);
     setRefreshTokenValue(null);
     setIsAuthenticated(false);
@@ -76,11 +72,8 @@ export function PortfolioProvider({ children }) {
   }, []);
 
   const saveTokens = useCallback((access, refresh) => {
-    const nextRefresh = refresh || localStorage.getItem('refresh_token');
-    localStorage.setItem('access_token', access);
-    if (nextRefresh) {
-      localStorage.setItem('refresh_token', nextRefresh);
-    }
+    const nextRefresh = refresh || authTokenStorage.getRefreshToken();
+    authTokenStorage.setTokens({ access, refresh: nextRefresh });
     setAccessToken(access);
     setRefreshTokenValue(nextRefresh);
     setIsAuthenticated(true);
@@ -158,36 +151,42 @@ export function PortfolioProvider({ children }) {
   }, [logout]);
 
   const login = useCallback(async (username, password) => {
-    const response = await loginRequest(username.trim(), password);
-    saveTokens(response.data.access, response.data.refresh);
+    const payload = await coreApiAdapter.loginUser({ username: username.trim(), password });
+    const tokenPayload = payload?.data?.access ? payload.data : payload;
+    if (!tokenPayload?.access) {
+      throw new Error('Không nhận được access token hợp lệ từ phiên đăng nhập.');
+    }
+    saveTokens(tokenPayload?.access, tokenPayload?.refresh);
     await syncAuthState();
-    return response.data;
+    return tokenPayload;
   }, [syncAuthState]);
 
   const register = useCallback(async ({ username, email, password, passwordConfirm }) => {
-    const response = await registerRequest({
+    return coreApiAdapter.registerUser({
       username: username.trim(),
       email: email.trim(),
       password,
       password_confirm: passwordConfirm,
     });
-    return response.data;
   }, []);
 
   const resendVerification = useCallback(async (identifier) => {
-    const response = await resendVerificationRequest(identifier.trim());
-    return response.data;
+    return coreApiAdapter.resendVerificationEmail(identifier.trim());
   }, []);
 
   const refreshAccessToken = useCallback(async () => {
     try {
-      const activeRefreshToken = refreshTokenValue || localStorage.getItem('refresh_token');
+      const activeRefreshToken = refreshTokenValue || authTokenStorage.getRefreshToken();
       if (!activeRefreshToken) {
         logout();
         return false;
       }
-      const response = await refreshTokenRequest(activeRefreshToken);
-      saveTokens(response.data.access, response.data.refresh);
+      const payload = await coreApiAdapter.refreshAuthToken(activeRefreshToken);
+      const tokenPayload = payload?.data?.access ? payload.data : payload;
+      if (!tokenPayload?.access) {
+        throw new Error('Không nhận được access token hợp lệ khi làm mới phiên.');
+      }
+      saveTokens(tokenPayload?.access, tokenPayload?.refresh);
       return true;
     } catch {
       logout();

@@ -58,6 +58,43 @@ function getBrowserStorageToken(key) {
   return window.localStorage?.getItem(key) || null;
 }
 
+function setBrowserStorageToken(key, value) {
+  if (typeof window === "undefined") return;
+  if (!value) {
+    window.localStorage?.removeItem(key);
+    return;
+  }
+  window.localStorage?.setItem(key, value);
+}
+
+function clearBrowserStorageToken(key) {
+  if (typeof window === "undefined") return;
+  window.localStorage?.removeItem(key);
+}
+
+export const authTokenStorage = Object.freeze({
+  getAccessToken() {
+    return getBrowserStorageToken("access_token");
+  },
+  getRefreshToken() {
+    return getBrowserStorageToken("refresh_token");
+  },
+  hasTokens() {
+    return Boolean(getBrowserStorageToken("access_token") && getBrowserStorageToken("refresh_token"));
+  },
+  setTokens(tokens = {}) {
+    if (!tokens?.access) return;
+    setBrowserStorageToken("access_token", tokens.access);
+    if (tokens.refresh) {
+      setBrowserStorageToken("refresh_token", tokens.refresh);
+    }
+  },
+  clearTokens() {
+    clearBrowserStorageToken("access_token");
+    clearBrowserStorageToken("refresh_token");
+  },
+});
+
 function getAuthorizationHeader(getToken) {
   const token = typeof getToken === "function" ? getToken() : null;
   if (!token) return {};
@@ -313,6 +350,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     setTokens,
     clearTokens,
   });
+  const persistTokens = typeof setTokens === "function" ? setTokens : () => {};
 
   return {
   
@@ -495,6 +533,41 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   },
 
   /**
+   * Login user via native public token endpoint.
+   * On success, persists access/refresh tokens through configured token storage callback.
+   * @param {{username: string, password: string}} payload
+   * @returns {Promise<object>}
+   */
+  async loginUser(payload) {
+    const responsePayload = await publicPost("/auth/token/", {
+      username: String(payload?.username || "").trim(),
+      password: String(payload?.password || ""),
+    });
+    const tokenPayload = normalizeRefreshResponsePayload(responsePayload);
+    if (tokenPayload?.access) {
+      persistTokens(tokenPayload);
+    }
+    return responsePayload;
+  },
+
+  /**
+   * Refresh access token via public refresh endpoint and persist latest tokens.
+   * @param {string} [refresh]
+   * @returns {Promise<object>}
+   */
+  async refreshAuthToken(refresh) {
+    const refreshValue = String(refresh || getRefreshToken?.() || "").trim();
+    const responsePayload = await publicPost("/auth/token/refresh/", {
+      refresh: refreshValue,
+    });
+    const tokenPayload = normalizeRefreshResponsePayload(responsePayload);
+    if (tokenPayload?.access) {
+      persistTokens(tokenPayload);
+    }
+    return responsePayload;
+  },
+
+  /**
    * Register a new user through native public auth endpoint.
    * Web anti-spam fields `website` (honeypot) and `turnstile_token` are forwarded as-is.
    * @param {{username: string, email: string, password: string, password_confirm?: string, website?: string, turnstile_token?: string}} payload
@@ -530,6 +603,32 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   verifyEmailToken(token) {
     return publicPost("/auth/verify-email/", {
       token: String(token || "").trim(),
+    });
+  },
+
+  /**
+   * Request password reset email.
+   * @param {string} email
+   * @returns {Promise<object>}
+   */
+  requestPasswordReset(email) {
+    return publicPost("/auth/password-reset/", {
+      email: String(email || "").trim().toLowerCase(),
+    });
+  },
+
+  /**
+   * Confirm password reset by token.
+   * @param {string} token
+   * @param {string} newPassword
+   * @param {string} newPasswordConfirm
+   * @returns {Promise<object>}
+   */
+  confirmPasswordReset(token, newPassword, newPasswordConfirm) {
+    return publicPost("/auth/password-reset/confirm/", {
+      token: String(token || "").trim(),
+      new_password: String(newPassword || ""),
+      new_password_confirm: String(newPasswordConfirm || ""),
     });
   },
 
@@ -1124,20 +1223,10 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
 }
 
 export const defaultCoreApiAdapter = createCoreApiAdapter({
-  getToken: () => getBrowserStorageToken("access_token"),
-  getRefreshToken: () => getBrowserStorageToken("refresh_token"),
-  setTokens: (tokens) => {
-    if (typeof window === "undefined" || !tokens?.access) return;
-    window.localStorage?.setItem("access_token", tokens.access);
-    if (tokens.refresh) {
-      window.localStorage?.setItem("refresh_token", tokens.refresh);
-    }
-  },
-  clearTokens: () => {
-    if (typeof window === "undefined") return;
-    window.localStorage?.removeItem("access_token");
-    window.localStorage?.removeItem("refresh_token");
-  },
+  getToken: () => authTokenStorage.getAccessToken(),
+  getRefreshToken: () => authTokenStorage.getRefreshToken(),
+  setTokens: (tokens) => authTokenStorage.setTokens(tokens),
+  clearTokens: () => authTokenStorage.clearTokens(),
 });
 
 export const coreApiAdapter = defaultCoreApiAdapter;

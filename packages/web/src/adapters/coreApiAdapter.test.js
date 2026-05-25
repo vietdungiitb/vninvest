@@ -5,7 +5,7 @@
  * Uses jsdom / fetch mock — no real network calls.
  */
 import { jest, describe, test, expect, beforeEach, afterEach } from "@jest/globals";
-import { CoreApiRequestError, coreApiAdapter, createCoreApiAdapter } from "./coreApiAdapter.js";
+import { CoreApiRequestError, authTokenStorage, coreApiAdapter, createCoreApiAdapter } from "./coreApiAdapter.js";
 
 describe("coreApiAdapter", () => {
   let fetchMock;
@@ -521,6 +521,97 @@ describe("coreApiAdapter", () => {
     expect(url).toContain("/api/auth/verify-email/");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({ token: "token_abc" });
+  });
+
+  test("loginUser posts credentials to /api/auth/token/", async () => {
+    const setTokens = jest.fn();
+    const adapter = createCoreApiAdapter({
+      env: { API_BASE_URL: "/api" },
+      getToken: () => null,
+      getRefreshToken: () => null,
+      setTokens,
+      clearTokens: jest.fn(),
+    });
+
+    mockOkResponse({ access: "acc_1", refresh: "ref_1" });
+    await adapter.loginUser({ username: "demo", password: "secret" });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/auth/token/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ username: "demo", password: "secret" });
+    expect(setTokens).toHaveBeenCalledWith({ access: "acc_1", refresh: "ref_1" });
+  });
+
+  test("requestPasswordReset posts to /api/auth/password-reset/", async () => {
+    mockOkResponse({ detail: "ok" });
+    await coreApiAdapter.requestPasswordReset("USER@Example.com");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/auth/password-reset/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ email: "user@example.com" });
+  });
+
+  test("confirmPasswordReset posts to /api/auth/password-reset/confirm/", async () => {
+    mockOkResponse({ detail: "ok" });
+    await coreApiAdapter.confirmPasswordReset("token_1", "NewPass123!", "NewPass123!");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/auth/password-reset/confirm/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({
+      token: "token_1",
+      new_password: "NewPass123!",
+      new_password_confirm: "NewPass123!",
+    });
+  });
+
+  test("refreshAuthToken posts to /api/auth/token/refresh/ and stores tokens", async () => {
+    const setTokens = jest.fn();
+    const adapter = createCoreApiAdapter({
+      env: { API_BASE_URL: "/api" },
+      getToken: () => null,
+      getRefreshToken: () => "refresh_old",
+      setTokens,
+      clearTokens: jest.fn(),
+    });
+
+    mockOkResponse({ access: "acc_new", refresh: "ref_new" });
+    await adapter.refreshAuthToken();
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/auth/token/refresh/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ refresh: "refresh_old" });
+    expect(setTokens).toHaveBeenCalledWith({ access: "acc_new", refresh: "ref_new" });
+  });
+
+  test("authTokenStorage tracks get/set/clear lifecycle", () => {
+    global.window = {
+      localStorage: {
+        store: {},
+        getItem(key) {
+          return Object.prototype.hasOwnProperty.call(this.store, key) ? this.store[key] : null;
+        },
+        setItem(key, value) {
+          this.store[key] = String(value);
+        },
+        removeItem(key) {
+          delete this.store[key];
+        },
+      },
+    };
+
+    authTokenStorage.setTokens({ access: "acc1", refresh: "ref1" });
+    expect(authTokenStorage.getAccessToken()).toBe("acc1");
+    expect(authTokenStorage.getRefreshToken()).toBe("ref1");
+    expect(authTokenStorage.hasTokens()).toBe(true);
+
+    authTokenStorage.clearTokens();
+    expect(authTokenStorage.getAccessToken()).toBeNull();
+    expect(authTokenStorage.getRefreshToken()).toBeNull();
+    expect(authTokenStorage.hasTokens()).toBe(false);
   });
 
   // ---------------------------------------------------------------------------

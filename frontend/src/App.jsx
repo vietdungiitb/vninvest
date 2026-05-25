@@ -1,9 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
-import LoginModal from './components/LoginModal';
 import DashboardShellHost from './pages/DashboardShellHost';
-import StockDetail from './pages/StockDetail';
 import WhaleAdvisory from './pages/WhaleAdvisory';
 import AiAdvisoryShellHost from './pages/AiAdvisoryShellHost';
 import WhaleAlertsDashboard from './pages/WhaleAlertsDashboard';
@@ -38,14 +36,19 @@ import TenantServiceAccounts from './pages/admin/tenant/TenantServiceAccounts';
 import TenantUsage from './pages/admin/tenant/TenantUsage';
 import AICommandCenter from './pages/AICommandCenter';
 import Upgrade from './pages/Upgrade';
-import VerifyEmail from './pages/VerifyEmail';
-import ResetPassword from './pages/ResetPassword';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 import { LangProvider } from './context/LangContext';
 import { RealtimeProvider } from './context/RealtimeContext';
 import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AlertCenterPage } from '@vninvest/web';
+import {
+  AlertCenterPage,
+  AuthLoginPage,
+  AuthRegisterPage,
+  AuthVerifyEmailPage,
+  AuthResetPasswordPage,
+  authTokenStorage,
+} from '@vninvest/web';
 import ModernDashboard from './pages/modern/ModernDashboard';
 import PackageDashboardHost from './pages/PackageDashboardHost';
 import StockDetailPageHost from './pages/StockDetailPageHost';
@@ -56,27 +59,10 @@ function WhaleAlertsSymbolRedirect() {
   return <Navigate to={`/stocks/${symbol || ''}`} replace />;
 }
 
-
-function LoginPage() {
-  const navigate = useNavigate();
-  const { isAuthenticated } = usePortfolio();
-  const hasStoredTokens = Boolean(
-    localStorage.getItem('access_token') && localStorage.getItem('refresh_token'),
-  );
-
-  if (isAuthenticated && hasStoredTokens) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <LoginModal onSuccess={() => navigate('/dashboard', { replace: true })} />;
-}
-
 function ProtectedLayout() {
   const location = useLocation();
   const { isAuthenticated } = usePortfolio();
-  const hasStoredTokens = Boolean(
-    localStorage.getItem('access_token') && localStorage.getItem('refresh_token'),
-  );
+  const hasStoredTokens = authTokenStorage.hasTokens();
 
   if (!isAuthenticated || !hasStoredTokens) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -103,9 +89,10 @@ export default function App() {
           <InterfaceProvider>
             <RealtimeProvider>
               <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/verify-email" element={<VerifyEmail />} />
-                <Route path="reset-password" element={<ResetPassword />} />
+                <Route path="/login" element={<AuthLoginPage />} />
+                <Route path="/register" element={<AuthRegisterPage />} />
+                <Route path="/verify-email" element={<AuthVerifyEmailPage />} />
+                <Route path="/reset-password" element={<AuthResetPasswordPage />} />
                 <Route path="/" element={<ProtectedLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   {/*
