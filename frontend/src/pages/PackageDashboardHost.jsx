@@ -3,6 +3,8 @@
  *
  * Cầu nối giữa packages/web DashboardPage và các component legacy của frontend.
  * Nhận dữ liệu realtime từ hooks legacy, tạo render-prop và truyền vào DashboardPage.
+ * Đây là bề mặt parity/canonical target cho cutover SaaS-native của dashboard;
+ * `ModernDashboard` chỉ còn là bridge tạm thời cho route `/dashboard` hiện hành.
  *
  * Quy tắc:
  *  - File này thuộc frontend/src — được phép dùng JSX, React context legacy.
@@ -10,19 +12,20 @@
  *  - Component legacy được inject vào DashboardPage qua render props.
  */
 import React, { Suspense, lazy, useMemo } from 'react';
-import { DashboardPage } from '@vninvest/web';
+import { DashboardPage, coreApiAdapter } from '@vninvest/web';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import useAlertCenterFeed from '../hooks/useAlertCenterFeed';
 import usePersistentAlertState from '../hooks/usePersistentAlertState';
 import { buildLiveHoldingsOverlay } from '../utils/dashboardRealtimeSelectors';
-import { buildModernDashboardSymbolUniverse } from '../utils/modernDashboardSymbolUniverse';
+import { buildModernDashboardSymbolUniverse, normalizeSymbol } from '../utils/modernDashboardSymbolUniverse';
 
 import SmartStatsHeader from '../components/modern/SmartStatsHeader';
 import FactsFirstModularPositionDeck from '../components/modern/FactsFirstModularPositionDeck';
 import PortfolioHeatmap from '../components/PortfolioHeatmap';
 import UnifiedAlertCenter from '../components/UnifiedAlertCenter';
+const AIAdvisorAlertPanel = lazy(() => import('../components/modern/AIAdvisorAlertPanel'));
 
 const DashboardPanelFallback = ({ minHeightClass = 'min-h-[220px]' }) => (
   <div className={`rounded-2xl border border-slate-800/50 bg-slate-900/40 ${minHeightClass} flex items-center justify-center px-4 text-xs font-medium text-slate-500`}>
@@ -47,6 +50,8 @@ export default function PackageDashboardHost() {
   const [holdings, setHoldings] = React.useState(EMPTY);
   const [trackedSymbols, setTrackedSymbols] = React.useState(EMPTY);
   const [watchlistGroups, setWatchlistGroups] = React.useState(EMPTY);
+  const [digest, setDigest] = React.useState(null);
+  const digestFetchInFlightRef = React.useRef(false);
 
   const baseSymbolUniverse = useMemo(
     () => buildModernDashboardSymbolUniverse({ holdings, trackedSymbols, watchlistGroups }),
@@ -67,6 +72,80 @@ export default function PackageDashboardHost() {
     () => buildLiveHoldingsOverlay(holdings, quotesBySymbol),
     [holdings, quotesBySymbol],
   );
+
+  const symbolUniverse = useMemo(
+    () => buildModernDashboardSymbolUniverse({
+      holdings: liveHoldings,
+      trackedSymbols,
+      watchlistGroups,
+      quotesBySymbol,
+    }),
+    [liveHoldings, trackedSymbols, watchlistGroups, quotesBySymbol],
+  );
+
+  const heatmapData = useMemo(() => {
+    if (!monitoredSymbols.length) return [];
+
+    const holdingsMap = new Map(liveHoldings.map((h) => [normalizeSymbol(h.symbol), h]));
+    const trackedMap = new Map(trackedSymbols.map((t) => [normalizeSymbol(t.symbol), t]));
+
+    const totalHeldValue = liveHoldings.reduce(
+      (sum, h) => sum + Number(h.live_market_value || h.market_value || 0),
+      0,
+    );
+    const avgPositionSize = liveHoldings.length > 0 ? totalHeldValue / liveHoldings.length : 10000;
+    const nominalSize = Math.max(avgPositionSize * 0.4, 2000);
+
+    const buildFallbackSparkline = (quote, held, tracked) => {
+      const current = Number(quote?.current_price || held?.live_current_price || held?.current_price || tracked?.current_price || 0);
+      const prev = Number(quote?.prev_price || held?.prev_close || tracked?.prev_price || current || 0);
+      if (!(current > 0) || !(prev > 0)) return [];
+      const delta = current - prev;
+      const base = prev;
+      return [base, base + delta * 0.12, base + delta * 0.28, base + delta * 0.22,
+              base + delta * 0.41, base + delta * 0.58, base + delta * 0.76, current]
+        .map((v) => Number(v.toFixed(2)));
+    };
+
+    return monitoredSymbols.map((symbol) => {
+      const held = holdingsMap.get(symbol);
+      const quote = quotesBySymbol[symbol] || {};
+      const trackedInfo = trackedMap.get(symbol);
+      const changePct = quote.change_pct ?? held?.live_change_pct ?? trackedInfo?.change_pct ?? 0;
+      const sparkline24 = buildFallbackSparkline(quote, held, trackedInfo);
+      const industry = String(held?.industry || trackedInfo?.industry || 'Khác').trim() || 'Khác';
+
+      if (held) {
+        return {
+          ...held,
+          symbol,
+          industry,
+          company_name: held.company_name || held.name || symbol,
+          market_cap_bn: held.market_cap_bn ?? trackedInfo?.market_cap_bn ?? null,
+          live_current_price: Number(quote.current_price || held.live_current_price || held.current_price || trackedInfo?.current_price || 0),
+          live_market_cap: Number(quote.market_cap || held.live_market_cap || held.market_cap || 0),
+          live_volume: Number(quote.volume || held.live_volume || held.volume || 0),
+          live_market_value: Number(held.live_market_value || held.market_value || 0),
+          live_change_pct: changePct,
+          sparkline24,
+          is_holding: true,
+        };
+      }
+      return {
+        symbol,
+        industry,
+        company_name: trackedInfo?.name || trackedInfo?.company_name || symbol,
+        market_cap_bn: trackedInfo?.market_cap_bn ?? null,
+        live_current_price: Number(quote.current_price || trackedInfo?.current_price || 0),
+        live_market_cap: Number(quote.market_cap || 0),
+        live_volume: Number(quote.volume || 0),
+        live_market_value: Number(quote.market_cap || 0) || nominalSize,
+        live_change_pct: changePct,
+        sparkline24,
+        is_holding: false,
+      };
+    });
+  }, [liveHoldings, monitoredSymbols, quotesBySymbol, trackedSymbols]);
 
   const trackedSymbolNames = useMemo(
     () => trackedSymbols.map((s) => s?.symbol || s?.name || s).filter(Boolean),
@@ -126,14 +205,37 @@ export default function PackageDashboardHost() {
     );
   }, [monitoredSymbols, quotesBySymbol]);
 
+  React.useEffect(() => {
+    setDigest(null);
+    digestFetchInFlightRef.current = false;
+  }, [activePortfolioId, isAuthenticated]);
+
+  const requestPortfolioDigest = React.useCallback(async () => {
+    if (!isAuthenticated || digest !== null || digestFetchInFlightRef.current) {
+      return;
+    }
+
+    digestFetchInFlightRef.current = true;
+    try {
+      const response = await coreApiAdapter.getPortfolioNewsDigest();
+      setDigest(response?.data ?? response ?? null);
+    } catch (error) {
+      console.warn('Portfolio news digest fetch failed:', error);
+      setDigest(null);
+    } finally {
+      digestFetchInFlightRef.current = false;
+    }
+  }, [digest, isAuthenticated]);
+
   // ── Render props ───────────────────────────────────────────────────────
 
   const renderStats = React.useCallback(
-    ({ summary, onRefresh }) => (
+    ({ summary, analytics, onRefresh }) => (
       <SmartStatsHeader
         summary={summary}
         loading={false}
         realtimeBreadth={realtimeBreadth}
+        analytics={analytics}
         onRefresh={onRefresh}
       />
     ),
@@ -141,23 +243,30 @@ export default function PackageDashboardHost() {
   );
 
   const renderDeck = React.useCallback(
-    ({ holdings: h, technicals, analytics, loading }) => (
+    ({ holdings: h, technicals, analytics, loading, selectedSession, onSelectSession, selectedSymbol, onSelectSymbol }) => (
       <Suspense fallback={<DashboardPanelFallback minHeightClass="min-h-[420px]" />}>
         <FactsFirstModularPositionDeck
           holdings={liveHoldings.length ? liveHoldings : h}
+          symbolUniverse={symbolUniverse}
           quotesBySymbol={quotesBySymbol}
           technicals={technicals}
           analytics={analytics}
           alerts={alerts}
+          digest={digest}
+          onRequestDigest={requestPortfolioDigest}
           loading={loading}
+          selectedSession={selectedSession}
+          onSelectSession={onSelectSession}
+          selectedSymbol={selectedSymbol}
+          onSelectSymbol={onSelectSymbol}
         />
       </Suspense>
     ),
-    [liveHoldings, quotesBySymbol, alerts],
+    [liveHoldings, symbolUniverse, quotesBySymbol, alerts, digest, requestPortfolioDigest],
   );
 
-  const renderAlerts = React.useCallback(
-    () => (
+  const renderAlertLane = React.useCallback(
+    ({ selectedSession, onSelectSession, selectedSymbol, onSelectSymbol }) => (
       <UnifiedAlertCenter
         alerts={filteredUnifiedAlerts}
         alertSummary={alertSummary}
@@ -187,6 +296,10 @@ export default function PackageDashboardHost() {
         showSummaryChips
         minHeightClass="h-full"
         className="h-full overflow-hidden"
+        selectedSession={selectedSession}
+        onSelectSession={onSelectSession}
+        selectedSymbol={selectedSymbol}
+        onSelectSymbol={onSelectSymbol}
       />
     ),
     [
@@ -199,20 +312,40 @@ export default function PackageDashboardHost() {
   );
 
   const renderHeatmap = React.useCallback(
-    ({ holdings: h, loading }) => (
+    ({ loading }) => (
       <Suspense fallback={<DashboardPanelFallback minHeightClass="min-h-[320px]" />}>
         <PortfolioHeatmap
-          data={liveHoldings.length ? liveHoldings : h}
+          holdings={heatmapData}
           quotesBySymbol={quotesBySymbol}
           loading={loading}
+          compact={true}
         />
       </Suspense>
     ),
-    [liveHoldings, quotesBySymbol],
+    [heatmapData, quotesBySymbol],
   );
 
-  // Bubble slot: minimal fallback (no dedicated legacy bubble component yet)
-  const renderBubble = React.useCallback(() => null, []);
+  const renderAiPanel = React.useCallback(
+    ({ holdings: h, technicals, alerts: slotAlerts, selectedSession, onSelectSession, selectedSymbol, onSelectSymbol }) => (
+      <Suspense fallback={<DashboardPanelFallback minHeightClass="min-h-[420px]" />}>
+        <AIAdvisorAlertPanel
+          holdings={liveHoldings.length ? liveHoldings : h}
+          watchlist={trackedSymbols}
+          technicals={technicals}
+          alerts={slotAlerts}
+          newsDigest={digest}
+          onRequestDigest={requestPortfolioDigest}
+          criticalSoundEnabled={criticalSoundEnabled}
+          selectedSession={selectedSession}
+          onSelectSession={onSelectSession}
+          selectedSymbol={selectedSymbol}
+          onSelectSymbol={onSelectSymbol}
+          expandedClassName="h-full"
+        />
+      </Suspense>
+    ),
+    [liveHoldings, trackedSymbols, digest, requestPortfolioDigest, criticalSoundEnabled],
+  );
 
   // ── Lift holdings/tracked from DashboardPage via onDataReady prop ─────
   // We pass a side-channel callback so PackageDashboardHost can update local
@@ -236,10 +369,11 @@ export default function PackageDashboardHost() {
       realtimeBreadth={realtimeBreadth}
       renderStats={renderStats}
       renderDeck={renderDeck}
-      renderAlerts={renderAlerts}
+      renderAlertLane={renderAlertLane}
       renderHeatmap={renderHeatmap}
-      renderBubble={renderBubble}
+      renderAiPanel={renderAiPanel}
       onDataReady={handleDataReady}
+      t={t}
       className="min-h-screen bg-slate-950 text-slate-100"
     />
   );

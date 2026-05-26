@@ -729,7 +729,7 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
       <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-teal-500/5 rounded-full blur-[96px] pointer-events-none group-hover:bg-teal-500/10 transition-colors duration-700" />
 
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-700/55 bg-red-900/80 flex flex-col gap-4 z-10">
+      <div className="px-5 py-4 border-b border-slate-700/55 bg-slate-950/40 flex flex-col gap-4 z-10">
         {/* Row 1: Title */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">

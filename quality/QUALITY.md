@@ -178,7 +178,11 @@ How to verify:
 4. Không đánh dấu slice complete nếu chưa có evidence template và ledger/progress sync.
 5. Nếu contract backend chưa rõ, dừng ở plan/adapter contract thay vì hard-code workaround trong UI.
 6. Không thêm heatmap hoặc marker layer trực tiếp vào chart khi chưa khóa `Flow View Model`.
-7. Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.8. **Tuyệt đối cấm gọi vnbroker API trực tiếp** (`VciQuote`, `Vnbroker()`, v.v.) từ bất kỳ module nào ngoài `market_data/vnbroker_adapter.py` — mọi vi phạm là blocker không thể merge.
+7. Sau mỗi lần sửa code, bắt buộc chạy lệnh build/update docker dev (ví dụ: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend`) để đảm bảo code mới được cập nhật; nếu không hệ thống sẽ vẫn chạy code cũ.
+8. **Tuyệt đối cấm gọi vnbroker API trực tiếp** (`VciQuote`, `Vnbroker()`, v.v.) từ bất kỳ module nào ngoài `market_data/vnbroker_adapter.py` — mọi vi phạm là blocker không thể merge.
+9. **QUY ĐỊNH BẮT BUỘC SAAS NATIVE**: Thư mục `backend/` và `frontend/` cũ ở thư mục gốc hoàn toàn chỉ để tham khảo tính năng (deprecated). Mọi chức năng mới bắt buộc phải theo kiến trúc SaaS native và nằm trong `packages/core` (core-api) và `packages/web`. Mọi vi phạm viết tính năng mới vào các thư mục cũ sẽ bị đánh giá là Quality Gate Failure.
+10. **QUY ĐỊNH BẮT BUỘC DOC PACK**: Khi tạo bộ tài liệu bàn giao cho đội code, phải dùng skill `.copilot/skills/handoff-doc-pack-generator/SKILL.md` (và dùng `.copilot/skills/handoff-doc-pack-scaffold/SKILL.md` nếu cần scaffold trước). Mọi bộ tài liệu bàn giao không qua workflow skill này được coi là không đạt Quality Gate.
+11. **QUY ĐỊNH BẮT BUỘC QUY TRÌNH BÀN GIAO FEATURE PACK (SOP)**: Quy trình thiết kế và bàn giao lập trình phải tuân thủ tuyệt đối [FEATURE_PACK_HANDOVER_SOP.md](file:///c:/Mujoco%20Projects/vninvest/quality/FEATURE_PACK_HANDOVER_SOP.md) (5 bước và hệ thống 10 tài liệu bàn giao bắt buộc). Mọi Feature Pack không đi kèm đầy đủ bằng chứng chạy test và di cư dữ liệu theo SOP sẽ bị đánh giá là Quality Gate Failure.
 
 ## 5a. VnBroker Data Access — SSOT Hard Rules
 

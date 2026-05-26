@@ -1,0 +1,28 @@
+export { ChartTerminal } from "./ChartTerminal.js";
+export { ChartPane } from "./ChartPane.js";
+export { PaneSplitter } from "./PaneSplitter.js";
+export { usePaneManager, paneManagerReducer } from "./hooks/usePaneManager.js";
+export { useCanvasResize } from "./hooks/useCanvasResize.js";
+export { computeScales } from "./scales/computeScales.js";
+// ── Pane sizing & splitter ────────────────────────────────────────────────────
+export { ChartSplitter } from "./ChartSplitter.js";
+export { usePaneSizes } from "./hooks/usePaneSizes.js";
+export { useChartTheme } from "./hooks/useChartTheme.js";
+export { useIndicatorSets } from "./hooks/useIndicatorSets.js";
+export { DynamicChart } from "./DynamicChart.js";
+export { PaneLabel } from "./PaneLabel.js";
+export { PaneHeader } from "./PaneHeader.js";
+export { PaneTooltip } from "./PaneTooltip.js";
+export { SeriesPicker } from "./SeriesPicker.js";
+export { IndicatorLegend } from "./IndicatorLegend.js";
+export { BarReplayController } from "./replay/BarReplayController.js";
+export { ChartRenderContext, useChartRenderContext } from "./canvas/ChartRenderContext.js";
+export { OverlayCanvas } from "./canvas/OverlayCanvas.js";
+export { useDynamicPanes, dynamicPanesReducer, createDefaultPaneLayout, loadPaneLayout, savePaneLayout } from "./hooks/useDynamicPanes.js";
+export { DEFAULT_PANES, PANE_LAYOUT_STORAGE_KEY, PANE_MAX_VISIBLE } from "./types/pane-descriptor.js";
+export { isDefaultPaneId } from "./types/pane-descriptor.js";
+export { SERIES_SUB_COMPONENTS } from "./types/seriesComponents.js";
+export { INDICATOR_SETS_STORAGE_KEY } from "./types/indicator-set.js";
+export { getSeries, listRegistered, registerSeries } from "./registry/SeriesRegistry.js";
+export { clearSeriesStyleOverride, clearSeriesStyleOverrides, getSeriesStyleOverride, listSeriesStyleOverrides, overrideSeriesStyle, subscribeSeriesStyle, subscribeSeriesStyleChanges } from "./registry/SeriesRegistry.js";
+export { initRegistry } from "./registry/registerAll.js";

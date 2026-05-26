@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import KLineChartPanel from '../components/KLineChartPanel';
+import VNStockChartPanel from '../components/VNStockChartPanel';
 import {
   addTrackedSymbol,
   addWatchlistItem,
@@ -43,6 +43,7 @@ import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
 import { OrderFlowRadarPanel } from '../components/OrderFlowRadarPanel';
 import AIAdvisoryPromptConfigDrawer from '../components/AIAdvisoryPromptConfigDrawer';
 import useWhaleAnalyticsData from '../hooks/useWhaleAnalyticsData';
+import AnalyticsTabDeck from '../components/AnalyticsTabDeck';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -363,23 +364,6 @@ function governanceDeltaSeverityClass(level) {
   if (level === 'cooldown') return 'border-emerald-700/70 bg-emerald-500/10 text-emerald-300';
   return 'border-slate-700 bg-slate-900/60 text-slate-300';
 }
-
-const KLineChartComponent = React.memo(function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange, onSessionChange, flowData = null, whaleSignals = [] }) {
-  return (
-    <KLineChartPanel
-      data={data}
-      activePeriod={activePeriod}
-      activeTimeframe={activeTimeframeProp}
-      onPeriodChange={onPeriodChange}
-      onTimeframeChange={onTimeframeChange}
-      onVisibleRangeChange={onVisibleRangeChange}
-      onActiveIndicatorsChange={onActiveIndicatorsChange}
-      onSessionChange={onSessionChange}
-      flowData={flowData}
-      whaleSignals={whaleSignals}
-    />
-  );
-});
 
 function IntradayMatchedPanel({ symbol, liveVolume }) {
   const STALE_RESYNC_RETRY_MS = 3000;
@@ -2097,11 +2081,11 @@ export default function StockDetail() {
     }
   };
 
-  const handleRemoveFromWatchlist = async (itemId, groupName) => {
+  const handleRemoveFromWatchlist = async (watchlistId, groupName) => {
     setWorkspaceError('');
-    setActionLoading(`watchlist-remove-${itemId}`);
+    setActionLoading(`watchlist-remove-${watchlistId}`);
     try {
-      await deleteWatchlistItem(itemId);
+      await deleteWatchlistItem(Number(watchlistId), normalizedSymbol);
       showWorkspaceMessage(t('stockDetail.removedFromGroup', { symbol: normalizedSymbol, group: groupName }));
       await refreshWorkspace();
     } catch (err) {
@@ -2528,12 +2512,9 @@ export default function StockDetail() {
                 {t('stockDetail.feed')} {realtimeStatus === 'live' ? t('stockDetail.statusRealtime') : realtimeStatus === 'polling' ? t('stockDetail.statusFallback') : t('stockDetail.statusConnecting')}
                 {lastEventAt ? ` · ${formatDateTime(lastEventAt, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
               </div>
-              <Link
-                to={`/whale-alerts/${normalizedSymbol}`}
-                className="flex items-center gap-1.5 rounded-full border border-cyan-700/60 bg-cyan-950/30 px-3 py-1.5 text-[11px] font-semibold text-cyan-300 transition-colors hover:bg-cyan-900/30"
-              >
+              <span className="flex items-center gap-1.5 rounded-full border border-cyan-700/60 bg-cyan-950/30 px-3 py-1.5 text-[11px] font-semibold text-cyan-300">
                 🦈 {t('stockDetail.whaleDashboard')}
-              </Link>
+              </span>
             </div>
           </div>
         </div>
@@ -2741,32 +2722,44 @@ export default function StockDetail() {
                   {t('stockDetail.noChartData')}
                 </div>
               ) : (
-<KLineChartComponent
+                <VNStockChartPanel
                   data={chartData}
                   activePeriod={activePeriod}
                   activeTimeframe={activeTimeframe}
                   onPeriodChange={setActivePeriod}
                   onTimeframeChange={handleKlineTimeframeChange}
                   onVisibleRangeChange={setChartVisibleRange}
-                  onActiveIndicatorsChange={setChartActiveIndicators}
                   onSessionChange={handleKlineSessionChange}
                   flowData={klineFlowData}
                   whaleSignals={whaleSignalsForChart}
+                  orderFlowData={orderFlowData}
                 />
               )}
             </div>
           </section>
 
-          <OrderFlowRadarPanel
-            symbol={normalizedSymbol}
-            loading={orderFlowLoading}
-            orderFlowData={orderFlowData}
-            latestRealtimeAlert={symbolDarkFlowAlert}
-            window={orderFlowWindow}
-            onWindowChange={setOrderFlowWindow}
-          />
-
-          <section className="card-section p-4">
+          {/* ── 70/30 Split Layout: OrderFlowRadarPanel + AnalyticsTabDeck ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-10 gap-4 mt-4">
+            <div className="xl:col-span-7">
+              <OrderFlowRadarPanel
+                symbol={normalizedSymbol}
+                loading={orderFlowLoading}
+                orderFlowData={orderFlowData}
+                latestRealtimeAlert={symbolDarkFlowAlert}
+              />
+            </div>
+            <div className="xl:col-span-3">
+              <AnalyticsTabDeck
+                symbol={normalizedSymbol}
+                selectedTradeDate={selectedTradeDate}
+                chartVisibleRange={chartVisibleRange}
+                whaleFeedData={whaleFeedData}
+                whaleFeedLoading={whaleFeedLoading}
+                onRefreshFeed={refreshWhaleFeed}
+                realtimeAlerts={symbolAlerts}
+                defaultTab="whale"
+                advisoryContent={(
+              <section className="card-section" style={{ border: 'none', borderRadius: 0, boxShadow: 'none', padding: 0 }}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <p className="text-label">
@@ -3083,14 +3076,16 @@ export default function StockDetail() {
               </div>
             )}
           </section>
+                )}
+              />
+            </div>
+          </div>
 
         </div>
         {/* Right side-bar — same column ratio as Whale Alerts Dashboard */}
         <div className="page-body-grid__side flex flex-col gap-4">
           <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
           <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
-          <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} compact />
-          <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
         </div>
         {/* Cảnh báo giá - toàn chiều rộng */}
         {symbolAlerts.length > 0 && (

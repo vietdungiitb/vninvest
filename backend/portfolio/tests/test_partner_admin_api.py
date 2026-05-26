@@ -6,7 +6,12 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from portfolio.models import CorePATCredential, CoreServiceAccount, CoreTenant, UserConfig
+from portfolio.models import CorePATCredential, CoreServiceAccount, UserConfig
+try:
+    from identity_access.models import CoreTenant
+except (ImportError, RuntimeError):
+    class CoreTenant:
+        pass
 from portfolio.partner_tenant_context import resolve_partner_tenant_context
 from portfolio.opencore_revenue import DPIInvoice, DPIRevenuePlan, DPISubscription
 from portfolio.quota_service import VN_TZ

@@ -6,19 +6,34 @@
  * các component legacy mà không import trực tiếp.
  *
  * Slots:
- *   renderStats({ summary, holdings, loading, realtimeBreadth, onRefresh })
- *   renderDeck({ holdings, technicals, analytics, quotesBySymbol, alerts, loading })
- *   renderAlerts({ alertProps, loading })
+ *   renderStats({ summary, analytics, holdings, loading, realtimeBreadth, onRefresh })
+ *   renderAlertLane({ alerts, alertSummary, alertProps, loading })
  *   renderHeatmap({ holdings, quotesBySymbol, technicals, analytics, loading })
- *   renderBubble({ holdings, quotesBySymbol, technicals, loading })
+ *   renderAiPanel({ holdings, technicals, analytics, alerts, loading })
+ *   renderDeck({ holdings, technicals, analytics, quotesBySymbol, alerts, loading })
  */
-import { createElement, useCallback, useEffect, useRef, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 
-import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
 
 const e = createElement;
 const NOOP = () => null;
+
+export const collectUniqueSortedSymbols = (holdings, trackedSymbols, watchlists, watchlistGroups) => {
+  const rawList = [
+    ...(holdings || []).map(h => h?.symbol),
+    ...(trackedSymbols || []).map(s => s?.symbol),
+    ...(watchlists || []).flatMap(w => (w?.items || []).map(i => i?.symbol)),
+    ...(watchlistGroups || []).flatMap(g => (g?.items || []).map(i => i?.symbol))
+  ];
+  
+  // Normalization, Deduplication và Alphabetical Sorting
+  const uniqueSorted = Array.from(
+    new Set(rawList.map(s => String(s || "").trim().toUpperCase()).filter(Boolean))
+  ).sort();
+  
+  return uniqueSorted.join("|");
+};
 
 function LoadingSkeleton({ rows = 3 }) {
   return e(
@@ -30,12 +45,12 @@ function LoadingSkeleton({ rows = 3 }) {
   );
 }
 
-function ErrorBanner({ message }) {
+function ErrorBanner({ message, t = (key, defaultText) => defaultText }) {
   return e(
     "div",
     { className: "core-dashboard-error" },
     e("span", { className: "core-dashboard-error-icon" }, "⚠"),
-    e("span", null, message || "Không thể tải dữ liệu tổng quan.")
+    e("span", null, message || t("dashboard.errorLoad", "Không thể tải dữ liệu tổng quan."))
   );
 }
 
@@ -49,10 +64,12 @@ function ErrorBanner({ message }) {
  *   realtimeBreadth?: { up: number, down: number, flat: number },
  *   alertProps?: object,
  *   renderStats?: function,
+ *   renderAlertLane?: function,
  *   renderDeck?: function,
- *   renderAlerts?: function,
  *   renderHeatmap?: function,
- *   renderBubble?: function,
+ *   renderAiPanel?: function,
+ *   onDataReady?: function,
+ *   t?: function,
  *   className?: string,
  * }} props
  */
@@ -65,11 +82,13 @@ export function DashboardPage({
   realtimeBreadth = { up: 0, down: 0, flat: 0 },
   alertProps = {},
   renderStats = NOOP,
+  renderAlertLane = null,
+  renderAlerts = null,
   renderDeck = NOOP,
-  renderAlerts = NOOP,
   renderHeatmap = NOOP,
-  renderBubble = NOOP,
+  renderAiPanel = NOOP,
   onDataReady = null,
+  t = (key, defaultText) => defaultText,
   className = "",
 }) {
   const {
@@ -81,23 +100,32 @@ export function DashboardPage({
     technicals,
     trackedSymbols,
     watchlistGroups,
+    watchlists,
+    hasHydrated,
     refresh,
   } = useCoreDashboardData({ portfolioId, enabled });
 
-  // Notify parent (PackageDashboardHost) when core data is ready
-  const prevHoldingsRef = useRef(null);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [selectedSymbol, setSelectedSymbol] = useState(null);
+
+  const resolvedRenderAlertLane = renderAlertLane || renderAlerts || NOOP;
+  const showSkeleton = loading && !hasHydrated;
+
+  // Notify parent (PackageDashboardHost) when core data is ready using stable readyToken
+  const prevReadyTokenRef = useRef("");
   useEffect(() => {
-    if (!loading && !error && onDataReady && holdings !== prevHoldingsRef.current) {
-      prevHoldingsRef.current = holdings;
+    const token = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
+    if (!loading && !error && onDataReady && token !== prevReadyTokenRef.current) {
+      prevReadyTokenRef.current = token;
       onDataReady({ holdings, trackedSymbols, watchlistGroups });
     }
-  }, [loading, error, holdings, trackedSymbols, watchlistGroups, onDataReady]);
+  }, [loading, error, holdings, trackedSymbols, watchlists, watchlistGroups, onDataReady]);
 
   if (!enabled || !portfolioId) {
     return e(
       "div",
       { className: "core-dashboard-page core-dashboard-page--empty " + className },
-      e("p", { className: "core-dashboard-empty-hint" }, "Chọn danh mục để xem tổng quan.")
+      e("p", { className: "core-dashboard-empty-hint" }, t("dashboard.empty", "Chọn danh mục để xem tổng quan."))
     );
   }
 
@@ -105,7 +133,7 @@ export function DashboardPage({
     return e(
       "div",
       { className: "core-dashboard-page " + className },
-      e(ErrorBanner, { message: error })
+      e(ErrorBanner, { message: error, t })
     );
   }
 
@@ -117,43 +145,86 @@ export function DashboardPage({
     e(
       "div",
       { className: "core-dashboard-slot core-dashboard-slot--stats" },
-      loading
+      showSkeleton
         ? e(LoadingSkeleton, { rows: 1 })
-        : renderStats({ summary, holdings, loading, realtimeBreadth, onRefresh: refresh })
+        : renderStats({ summary, analytics, holdings, loading, realtimeBreadth, onRefresh: refresh })
     ),
 
-    // ── Slot: Position deck ───────────────────────────────────────────────
+    // ── Top triad: alert lane | heatmap | AI lane ───────────────────────
     e(
       "div",
-      { className: "core-dashboard-slot core-dashboard-slot--deck" },
-      loading
+      { className: "dashboard-triad-grid core-dashboard-slot core-dashboard-slot--triad" },
+
+      e(
+        "div",
+        { className: "dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--alert-lane" },
+        resolvedRenderAlertLane({
+          alerts,
+          alertSummary: alertProps?.alertSummary ?? null,
+          alertProps,
+          loading,
+          selectedSession,
+          onSelectSession: setSelectedSession,
+          selectedSymbol,
+          onSelectSymbol: setSelectedSymbol,
+        })
+      ),
+
+      e(
+        "div",
+        { className: "dashboard-triad-lane dashboard-triad-lane--center core-dashboard-slot core-dashboard-slot--heatmap" },
+        showSkeleton
+          ? e(LoadingSkeleton, { rows: 3 })
+          : renderHeatmap({
+              holdings,
+              quotesBySymbol,
+              technicals,
+              analytics,
+              loading,
+              selectedSession,
+              onSelectSession: setSelectedSession,
+              selectedSymbol,
+              onSelectSymbol: setSelectedSymbol,
+            })
+      ),
+
+      e(
+        "div",
+        { className: "dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--ai" },
+        showSkeleton
+          ? e(LoadingSkeleton, { rows: 3 })
+          : renderAiPanel({
+              holdings,
+              technicals,
+              analytics,
+              alerts,
+              loading,
+              selectedSession,
+              onSelectSession: setSelectedSession,
+              selectedSymbol,
+              onSelectSymbol: setSelectedSymbol,
+            })
+      )
+    ),
+
+    // ── Full-width deck ───────────────────────────────────────────────────
+    e(
+      "div",
+      { className: "dashboard-full-width-deck core-dashboard-slot core-dashboard-slot--deck" },
+      showSkeleton
         ? e(LoadingSkeleton, { rows: 4 })
-        : renderDeck({ holdings, technicals, analytics, quotesBySymbol, alerts, loading })
-    ),
-
-    // ── Slot: Alert center ────────────────────────────────────────────────
-    e(
-      "div",
-      { className: "core-dashboard-slot core-dashboard-slot--alerts" },
-      renderAlerts({ alertProps, loading })
-    ),
-
-    // ── Slot: Portfolio heatmap ───────────────────────────────────────────
-    e(
-      "div",
-      { className: "core-dashboard-slot core-dashboard-slot--heatmap" },
-      loading
-        ? e(LoadingSkeleton, { rows: 3 })
-        : renderHeatmap({ holdings, quotesBySymbol, technicals, analytics, loading })
-    ),
-
-    // ── Slot: Bubble / position bubble ───────────────────────────────────
-    e(
-      "div",
-      { className: "core-dashboard-slot core-dashboard-slot--bubble" },
-      loading
-        ? e(LoadingSkeleton, { rows: 2 })
-        : renderBubble({ holdings, quotesBySymbol, technicals, loading })
+        : renderDeck({
+            holdings,
+            technicals,
+            analytics,
+            quotesBySymbol,
+            alerts,
+            loading,
+            selectedSession,
+            onSelectSession: setSelectedSession,
+            selectedSymbol,
+            onSelectSymbol: setSelectedSymbol,
+          })
     )
   );
 }

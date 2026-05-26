@@ -28,6 +28,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$SkipBuild = $false
 
 $ComposeFiles = @("-f", "docker-compose.yml", "-f", "docker-compose.dev.yml")
 $ComposeEnvFile = "compose.dev.env"
@@ -226,6 +227,7 @@ try {
 }
 
 # ── Build image ──────────────────────────────────────────────────────────────
+Write-Host "DEBUG SkipBuild value: '$SkipBuild', type: '$($SkipBuild.GetType().FullName)'"
 if (-not $SkipBuild) {
     Write-Step "Build Docker images (lần đầu mất 3–5 phút)"
     Invoke-Compose build --parallel

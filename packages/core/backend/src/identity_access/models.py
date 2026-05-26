@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import os
 import secrets
+from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -176,6 +177,7 @@ class CoreServiceAccount(models.Model):
 class CorePATCredential(models.Model):
     class StatusChoices(models.TextChoices):
         ACTIVE = 'active', 'Active'
+        ROTATING = 'rotating', 'Rotating'
         REVOKED = 'revoked', 'Revoked'
         EXPIRED = 'expired', 'Expired'
 
@@ -205,6 +207,7 @@ class CorePATCredential(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
     revoked = models.BooleanField(default=False, db_index=True)
+    is_human_session = models.BooleanField(default=False, db_index=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
     audit_reason = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -266,6 +269,7 @@ class CorePATCredential(models.Model):
         expires_at=None,
         label: str = '',
         audit_reason: str = '',
+        is_human_session: bool = False,
     ):
         """Issue a new PAT and return (credential, raw_secret). raw_secret shown once only."""
         raw_secret = _build_pat_secret()
@@ -277,6 +281,7 @@ class CorePATCredential(models.Model):
             scopes=list(scopes or []),
             expires_at=expires_at,
             audit_reason=str(audit_reason or '').strip(),
+            is_human_session=bool(is_human_session),
         )
         service_account.last_rotated_at = timezone.now()
         service_account.save(update_fields=['last_rotated_at', 'updated_at'])
@@ -288,6 +293,22 @@ class CorePATCredential(models.Model):
         self.status = self.StatusChoices.REVOKED
         self.audit_reason = str(reason or '').strip()
         self.save(update_fields=['revoked', 'revoked_at', 'status', 'audit_reason', 'updated_at'])
+
+    def mark_rotating(self, *, grace_period_seconds: int = 3600, reason: str = ''):
+        grace_seconds = max(0, int(grace_period_seconds or 0))
+        if grace_seconds == 0:
+            self.revoke_pat(reason=reason)
+            return None
+
+        grace_until = timezone.now() + timedelta(seconds=grace_seconds)
+        if self.expires_at and self.expires_at < grace_until:
+            grace_until = self.expires_at
+
+        self.status = self.StatusChoices.ROTATING
+        self.expires_at = grace_until
+        self.audit_reason = str(reason or '').strip()
+        self.save(update_fields=['status', 'expires_at', 'audit_reason', 'updated_at'])
+        return grace_until
 
 
 class UserProfile(models.Model):
@@ -706,11 +727,184 @@ class UserDNSECredential(models.Model):
 
 def get_system_provider_credentials() -> 'tuple[str, str] | None':
     """
-    Trả về (api_key, api_secret) của system provider, hoặc None nếu chưa set.
+    Trả về (client_id, client_secret) của admin system provider từ
+    user_workspace.DNSECredential — dùng credential của admin is_staff=True.
     Task backfill phải abort khi hàm này trả về None.
     """
     try:
-        cred = UserDNSECredential.objects.get(is_system_provider=True)
-        return cred.get_api_key(), cred.get_api_secret()
-    except UserDNSECredential.DoesNotExist:
+        from user_workspace.models import DNSECredential as _WorkspaceDNSECred
+        cred = (
+            _WorkspaceDNSECred.objects
+            .filter(user__is_staff=True, is_active=True)
+            .select_related('user')
+            .order_by('user__date_joined')
+            .first()
+        )
+        if cred is None:
+            return None
+        return cred.get_client_id(), cred.get_client_secret()
+    except Exception:
         return None
+
+
+# ---------------------------------------------------------------------------
+# SaaS Native User Registration & Dynamic Mail System (Slice 1)
+# ---------------------------------------------------------------------------
+import uuid
+from vninvest_core.utils.crypto import encrypt_secret, decrypt_secret
+
+class SystemMailConfig(models.Model):
+    PROVIDER_SMTP = 'smtp'
+    PROVIDER_GMAIL = 'gmail_api'
+    PROVIDER_CHOICES = [
+        (PROVIDER_SMTP, 'SMTP Server'),
+        (PROVIDER_GMAIL, 'Google Gmail API (Service Account DWD)'),
+    ]
+
+    provider = models.CharField(
+        max_length=24,
+        choices=PROVIDER_CHOICES,
+        default=PROVIDER_SMTP,
+        verbose_name="Mail Provider"
+    )
+    is_active = models.BooleanField(default=False, db_index=True, verbose_name="Active Configuration")
+    from_email = models.EmailField(max_length=255, verbose_name="Sender Email (From)")
+    
+    # SMTP Parameters
+    smtp_host = models.CharField(max_length=255, blank=True, null=True, verbose_name="SMTP Host")
+    smtp_port = models.IntegerField(default=587, blank=True, null=True, verbose_name="SMTP Port")
+    smtp_username = models.CharField(max_length=255, blank=True, null=True, verbose_name="SMTP Username")
+    smtp_password_encrypted = models.BinaryField(blank=True, null=True, verbose_name="SMTP Password (Encrypted)")
+    smtp_use_tls = models.BooleanField(default=True, verbose_name="Use TLS")
+    smtp_use_ssl = models.BooleanField(default=False, verbose_name="Use SSL")
+
+    # Google API Service Account Parameters
+    google_service_account_json_encrypted = models.BinaryField(blank=True, null=True, verbose_name="Service Account JSON (Encrypted)")
+    google_delegated_user_email = models.EmailField(max_length=255, blank=True, null=True, verbose_name="Delegated Admin Email")
+
+    # Audit Trail Fields
+    last_modified_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='mail_configs_modified',
+        verbose_name="Last modified by staff"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'core_system_mail_config'
+        verbose_name = 'System Mail Configuration'
+        verbose_name_plural = 'System Mail Configurations'
+        constraints = [
+            # SQL level constraint: Chỉ cho phép duy nhất 1 bản ghi có is_active=True
+            models.UniqueConstraint(
+                fields=['is_active'],
+                condition=models.Q(is_active=True),
+                name='unique_active_system_mail_config'
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.provider} Config ({self.from_email}) - Active={self.is_active}'
+
+    def set_smtp_password(self, password: str):
+        self.smtp_password_encrypted = encrypt_secret(password) if password else None
+
+    def get_smtp_password(self) -> str:
+        return decrypt_secret(self.smtp_password_encrypted) if self.smtp_password_encrypted else ""
+
+    def set_google_service_account_json(self, json_str: str):
+        self.google_service_account_json_encrypted = encrypt_secret(json_str) if json_str else None
+
+    def get_google_service_account_json(self) -> str:
+        return decrypt_secret(self.google_service_account_json_encrypted) if self.google_service_account_json_encrypted else ""
+
+    def clean(self):
+        super().clean()
+        if self.provider == self.PROVIDER_SMTP:
+            if not all([self.smtp_host, self.smtp_port, self.smtp_username]):
+                raise ValidationError("Cấu hình SMTP yêu cầu điền đầy đủ host, port và username.")
+        elif self.provider == self.PROVIDER_GMAIL:
+            # google_service_account_json_encrypted được set bằng property, có thể rỗng lúc clean nếu chưa gán
+            if not self.google_delegated_user_email:
+                raise ValidationError("Cấu hình Google Gmail API yêu cầu đầy đủ Email ủy quyền (DWD).")
+
+
+class OutboxEvent(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_PROCESSED = 'processed'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_PROCESSED, 'Processed'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
+    event_type = models.CharField(max_length=100, db_index=True)
+    payload = models.JSONField(verbose_name="Event JSON Payload")
+    status = models.CharField(max_length=24, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    retry_count = models.IntegerField(default=0)
+    last_error = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    processed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'core_outbox_event'
+        ordering = ['created_at']
+        verbose_name = 'Outbox Event'
+        verbose_name_plural = 'Outbox Events'
+
+    def __str__(self) -> str:
+        return f'Event {self.event_type} ({self.status})'
+
+
+class ProcessedEvent(models.Model):
+    event_id = models.UUIDField(unique=True, primary_key=True, editable=False)
+    processed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'core_processed_event'
+        verbose_name = 'Processed Event'
+        verbose_name_plural = 'Processed Events'
+
+    def __str__(self) -> str:
+        return f'Processed {self.event_id}'
+
+
+class MailConfigAuditLog(models.Model):
+    operator_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mail_config_audits')
+    action = models.CharField(max_length=50) # create, update, activate, deactivate
+    target_config_id = models.IntegerField()
+    description = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'core_mail_config_audit_log'
+        ordering = ['-timestamp']
+        verbose_name = 'Mail Config Audit Log'
+        verbose_name_plural = 'Mail Config Audit Logs'
+
+    def __str__(self) -> str:
+        return f'{self.operator_user.username} - {self.action} - Config ID {self.target_config_id}'
+
+
+class EmailVerificationToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_verification_tokens')
+    token_hash = models.CharField(max_length=64, unique=True, db_index=True) # SHA-256 hash of token
+    is_used = models.BooleanField(default=False)
+    attempts = models.IntegerField(default=0)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'core_email_verification_token'
+        verbose_name = 'Email Verification Token'
+        verbose_name_plural = 'Email Verification Tokens'
+
+    def __str__(self) -> str:
+        return f'Token for {self.user.username} - Used: {self.is_used}'
+

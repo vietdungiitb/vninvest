@@ -1,0 +1,735 @@
+ Image vninvest-dev-frontend:latest Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 6.59kB done
+#1 DONE 0.0s
+
+#2 [core-api internal] load build definition from Dockerfile
+#2 transferring dockerfile:
+#2 transferring dockerfile: 2.37kB 0.0s done
+#2 DONE 0.3s
+
+#3 [frontend internal] load build definition from Dockerfile.dev-package-shell
+#3 transferring dockerfile: 2.23kB done
+#3 DONE 0.3s
+
+#4 [core-worker-realtime-prefetch] resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#4 ...
+
+#5 [auth] library/nginx:pull token for registry-1.docker.io
+#5 DONE 0.0s
+
+#6 [auth] library/node:pull token for registry-1.docker.io
+#6 DONE 0.0s
+
+#7 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#7 DONE 0.0s
+
+#8 [frontend internal] load metadata for docker.io/library/node:20-alpine
+#8 DONE 1.9s
+
+#4 [core-worker] resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#4 DONE 2.0s
+
+#9 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#9 DONE 1.9s
+
+#10 [frontend internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#11 [core-worker-realtime-prefetch] docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#11 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#11 CACHED
+
+#12 [frontend internal] load build context
+#12 DONE 0.0s
+
+#13 [frontend builder  1/16] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#13 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#13 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.1s done
+#13 DONE 0.1s
+
+#14 [frontend stage-1 1/3] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#14 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.1s done
+#14 DONE 0.1s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#15 [core-worker-realtime-stream internal] load build definition from Dockerfile
+#15 transferring dockerfile: 2.37kB 0.0s done
+#15 DONE 0.1s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#16 [core-beat internal] load build definition from Dockerfile
+#16 transferring dockerfile: 2.37kB done
+#16 DONE 0.3s
+
+#17 [core-worker-manual internal] load build definition from Dockerfile
+#17 transferring dockerfile: 2.37kB done
+#17 DONE 0.3s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#18 [core-worker-realtime-prefetch internal] load build definition from Dockerfile
+#18 transferring dockerfile: 2.37kB done
+#18 DONE 0.3s
+
+#19 [core-api internal] load build definition from Dockerfile
+#19 transferring dockerfile: 2.37kB done
+#19 DONE 0.4s
+
+#20 [core-worker-enrichment internal] load build definition from Dockerfile
+#20 transferring dockerfile: 2.37kB done
+#20 DONE 0.4s
+
+#21 [core-worker internal] load build definition from Dockerfile
+#21 transferring dockerfile: 2.37kB done
+#21 DONE 0.4s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#22 [core-worker-analytics internal] load build definition from Dockerfile
+#22 transferring dockerfile: 2.37kB done
+#22 DONE 0.4s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#23 [auth] library/python:pull token for registry-1.docker.io
+#23 DONE 0.0s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#24 [core-worker-realtime-prefetch internal] load metadata for docker.io/library/python:3.13-slim
+#24 DONE 1.8s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#25 [core-worker-realtime-stream internal] load .dockerignore
+#25 transferring context: 2B done
+#25 DONE 0.0s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#26 [core-worker-realtime-stream internal] load build context
+#26 DONE 0.0s
+
+#27 [core-worker-realtime-stream builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.1s done
+#27 DONE 0.1s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#28 [core-worker-realtime-prefetch internal] load .dockerignore
+#28 transferring context: 2B done
+#28 DONE 0.3s
+
+#29 [core-worker-analytics internal] load .dockerignore
+#29 transferring context: 2B done
+#29 DONE 0.3s
+
+#30 [core-worker-enrichment internal] load .dockerignore
+#30 transferring context: 2B done
+#30 DONE 0.3s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#27 [core-worker-realtime-prefetch builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.1s done
+#27 DONE 0.1s
+
+#31 [core-api internal] load .dockerignore
+#31 transferring context: 2B done
+#31 DONE 0.3s
+
+#32 [core-beat internal] load .dockerignore
+#32 transferring context: 2B done
+#32 DONE 0.4s
+
+#33 [core-worker-manual internal] load .dockerignore
+#33 transferring context: 2B done
+#33 DONE 0.4s
+
+#34 [core-worker internal] load .dockerignore
+#34 transferring context: 2B done
+#34 DONE 0.4s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#27 [core-worker builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.1s done
+#27 DONE 0.1s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#27 [core-worker-manual builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.1s done
+#27 DONE 0.1s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#26 [core-worker-realtime-stream internal] load build context
+#26 transferring context: 64.95kB 0.9s done
+#26 DONE 1.2s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#35 [core-worker-realtime-prefetch internal] load build context
+#35 transferring context: 64.95kB 0.8s done
+#35 DONE 1.4s
+
+#36 [core-worker-analytics internal] load build context
+#36 transferring context: 64.95kB 0.8s done
+#36 DONE 1.3s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#37 [core-worker-realtime-stream runtime 5/8] COPY src/ /app/src/
+#37 CACHED
+
+#38 [core-worker-realtime-stream builder 2/5] WORKDIR /build
+#38 CACHED
+
+#39 [core-worker-realtime-stream runtime 7/8] COPY entrypoint.sh /app/entrypoint.sh
+#39 CACHED
+
+#40 [core-worker-realtime-stream runtime 3/8] RUN apt-get update     && apt-get install -y --no-install-recommends libpq5 curl     && rm -rf /var/lib/apt/lists/*
+#40 CACHED
+
+#41 [core-worker-realtime-stream runtime 4/8] COPY --from=builder /install /usr/local
+#41 CACHED
+
+#42 [core-worker-realtime-stream builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#42 CACHED
+
+#43 [core-worker-realtime-stream runtime 6/8] COPY manage.py /app/src/manage.py
+#43 CACHED
+
+#44 [core-worker-realtime-stream runtime 2/8] WORKDIR /app
+#44 CACHED
+
+#45 [core-worker-realtime-stream builder 3/5] RUN apt-get update     && apt-get install -y --no-install-recommends gcc libpq-dev git     && rm -rf /var/lib/apt/lists/*
+#45 CACHED
+
+#46 [core-worker-realtime-stream builder 4/5] COPY requirements.txt .
+#46 CACHED
+
+#47 [core-worker-realtime-stream runtime 8/8] RUN sed -i 's/\r$//' /app/entrypoint.sh     && chmod +x /app/entrypoint.sh
+#47 CACHED
+
+#12 [frontend internal] load build context
+#12 ...
+
+#48 [core-worker-analytics] exporting to image
+#48 exporting layers 0.0s done
+#48 exporting manifest sha256:6e3816e03cac37e56cee887ca3c2da884b53cceb6cbd7feb0ba18eda850b6a23 0.0s done
+#48 exporting config sha256:5538aaec8bb689237d3e32f40ac0e370ee882b651467ed53be5cc2f92d9ffcd4 0.0s done
+#48 exporting attestation manifest sha256:616d5e2f6c0c50803356a2abd775d27e29f6761834f37e62ef22a94e04c9e80c 0.2s done
+#48 exporting manifest list sha256:c7e661bbbaef215ba275ddb52a1de1075803a4d500e07d32a5192e3e025d7e0f 0.1s done
+#48 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#48 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#48 DONE 0.8s
+
+#49 [core-worker-realtime-stream] exporting to image
+#49 exporting layers 0.0s done
+#49 exporting manifest sha256:f1aece0e1be2a594a42b5a91c764e6bfe3e8fc74f0ff9b46f261e8e0288cfb5d 0.0s done
+#49 exporting config sha256:257475173871ed5d9943e230a6ea55178e46ce2709e91dce70d260474213ad0c 0.0s done
+#49 exporting attestation manifest sha256:0599583808567a1b8730bee0967178ca42f0e808290c6659922bbbd9d166d195 0.2s done
+#49 exporting manifest list sha256:cf12389314c1eef480165d682ccac6aab588fe6bbb1f726dd27841296866a054 0.1s done
+#49 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#49 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#49 DONE 0.8s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#50 [core-worker-realtime-prefetch] exporting to image
+#50 exporting layers 0.0s done
+#50 exporting manifest sha256:c990376b5d09782c6aa6fa5663a64c6a897f500e817592ad08830ab5bc8ce4d9 0.0s done
+#50 exporting config sha256:9fd4be07d9616e3c3f5b936f3e5ee6d05a10532bde191175825472d4e096d82b 0.0s done
+#50 exporting attestation manifest sha256:aed95309c1f60c288e2c9032ed6640241b4c75a9eada2d2a411d0ec272a4435d 0.2s done
+#50 exporting manifest list sha256:420b1cf455c5d02c9e3a44896d73f5e54fb64f2b66a137c3099a3e15ecb6a590 0.2s done
+#50 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#50 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 0.2s done
+#50 DONE 1.2s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#51 [core-worker-analytics] resolving provenance for metadata file
+#51 DONE 0.3s
+
+#52 [core-worker-realtime-stream] resolving provenance for metadata file
+#52 DONE 0.2s
+
+#53 [core-worker-realtime-prefetch] resolving provenance for metadata file
+#53 DONE 0.1s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#54 [core-worker-manual internal] load build context
+#54 transferring context: 11.15MB 4.5s done
+#54 DONE 4.9s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#55 [core-api internal] load build context
+#55 transferring context: 11.15MB 4.7s done
+#55 DONE 5.0s
+
+#56 [core-worker-enrichment internal] load build context
+#56 transferring context: 11.15MB 4.6s done
+#56 DONE 5.0s
+
+#57 [core-worker internal] load build context
+#57 transferring context: 11.15MB 4.6s done
+#57 DONE 5.0s
+
+#58 [core-beat internal] load build context
+#58 transferring context: 11.15MB 4.7s done
+#58 DONE 5.0s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#59 [core-worker-manual runtime 5/8] COPY src/ /app/src/
+#59 CACHED
+
+#60 [core-worker-manual runtime 6/8] COPY manage.py /app/src/manage.py
+#60 CACHED
+
+#38 [core-worker-manual builder 2/5] WORKDIR /build
+#38 CACHED
+
+#61 [core-worker-manual runtime 4/8] COPY --from=builder /install /usr/local
+#61 CACHED
+
+#45 [core-worker-manual builder 3/5] RUN apt-get update     && apt-get install -y --no-install-recommends gcc libpq-dev git     && rm -rf /var/lib/apt/lists/*
+#45 CACHED
+
+#62 [core-worker-manual builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#62 CACHED
+
+#40 [core-worker-manual runtime 3/8] RUN apt-get update     && apt-get install -y --no-install-recommends libpq5 curl     && rm -rf /var/lib/apt/lists/*
+#40 CACHED
+
+#63 [core-worker-manual builder 4/5] COPY requirements.txt .
+#63 CACHED
+
+#64 [core-worker-manual runtime 7/8] COPY entrypoint.sh /app/entrypoint.sh
+#64 CACHED
+
+#44 [core-worker-manual runtime 2/8] WORKDIR /app
+#44 CACHED
+
+#65 [core-beat runtime 8/8] RUN sed -i 's/\r$//' /app/entrypoint.sh     && chmod +x /app/entrypoint.sh
+#65 CACHED
+
+#12 [frontend internal] load build context
+#12 ...
+
+#66 [core-api] exporting to image
+#66 exporting layers done
+#66 exporting manifest sha256:a677e734c0a4e6821b4e2b00b8d43a8851f1900df92d6ff5e19cbcca2042bb04 0.0s done
+#66 exporting config sha256:20f96055e25b37e4416363a85108e7e990450f697be2587ee9309cbdebb6b681 0.0s done
+#66 exporting attestation manifest sha256:4f76ae7ecc5b5fc6775d65ec4e739836a695ceb3611afaa01cfee66ed27c4591 0.2s done
+#66 exporting manifest list sha256:4e2d2540586a8340bc1aefdbd6613ebed0ea44dc7c59648a12dda1cf6e19fec0 0.1s done
+#66 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#66 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#66 DONE 0.4s
+
+#67 [core-worker] exporting to image
+#67 exporting layers done
+#67 exporting manifest sha256:d3f8daefd4961f56b5e4a8d9363bfcf5e35e50f29676f4a7b9097ceff3512583 0.0s done
+#67 exporting config sha256:fe4c464be77393fb1a65b0878c76699cccf77c9f87d10836010f32dd41c4acd9 0.0s done
+#67 exporting attestation manifest sha256:032606caa5a068ee08bda902211f409a0e4d2a3acc863da992298aac88baafee 0.2s done
+#67 exporting manifest list sha256:91ff0358875387f1499eca240038d6781785e0cc8d0fed93d76869ad4f293c69 0.1s done
+#67 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#67 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#67 DONE 0.4s
+
+#68 [core-worker-manual] exporting to image
+#68 exporting layers done
+#68 exporting manifest sha256:86e2f631408dd056e92c09bb06f8a135ea104c3a6e5b9ca66e656c7207021492 0.0s done
+#68 exporting config sha256:7d9adb3db83734b5d90b581deff7fd17aa065432c694fd6aa3587b5a7f9c3c8b 0.0s done
+#68 exporting attestation manifest sha256:f3381e4e6701d4e4b21fc2af22621901d63bf702f24dd7b3573d10b8f47be350 0.2s done
+#68 exporting manifest list sha256:207e1d0634b1f5cf6a50474abaa3917195db0e445f150578543c887078599773 0.1s done
+#68 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#68 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#68 DONE 0.5s
+
+#69 [core-worker-enrichment] exporting to image
+#69 exporting layers done
+#69 exporting manifest sha256:69c68bc62882ce9e306f3dfa8a1849e3b6f2931da694fba74115b7db8fd78169 0.0s done
+#69 exporting config sha256:43cde613368840d4babdddf6a316a1af1bc6074ee109db3386d6dbbf21f8aa3b 0.0s done
+#69 exporting attestation manifest sha256:23291d5f5957b741d73aaafb08691f4cde3392a39eeb4cbc05ff4b6e45460dbc 0.2s done
+#69 exporting manifest list sha256:a45c1b36712894cbba498d133260279439b1930bebaa3c4394ca23eea15b510e 0.1s done
+#69 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#69 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#69 DONE 0.5s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#70 [core-beat] exporting to image
+#70 exporting layers done
+#70 exporting manifest sha256:f9dfb02e9ddd0f5f9820430305c0f7e80f80f14e8629b3639e3180d7722cec18 0.0s done
+#70 exporting config sha256:2bb249b0342ce70bba683fc02678892ce848c32ec03811389baeee655bb1b02f 0.1s done
+#70 exporting attestation manifest sha256:4b67dcf8eebb3d00d35f310cbf1b1ebab5c62cce26a32aab0848f8ecd6f8975c 0.2s done
+#70 exporting manifest list sha256:1d69ef1c029f420bdb23730e51ef10cfab29376c148a16f788ec9948bc32aaed 0.1s done
+#70 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#70 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 0.0s done
+#70 DONE 0.5s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#71 [core-api] resolving provenance for metadata file
+#71 DONE 0.1s
+
+#12 [frontend internal] load build context
+#12 ...
+
+#72 [core-worker] resolving provenance for metadata file
+#72 DONE 0.2s
+
+#73 [core-worker-manual] resolving provenance for metadata file
+#73 DONE 0.1s
+
+#74 [core-worker-enrichment] resolving provenance for metadata file
+#74 DONE 0.1s
+
+#75 [core-beat] resolving provenance for metadata file
+#75 DONE 0.0s
+
+#12 [frontend internal] load build context
+#12 transferring context: 6.94MB 12.5s
+#12 transferring context: 11.69MB 17.6s
+#12 transferring context: 12.01MB 18.0s done
+#12 DONE 18.3s
+
+#13 [frontend builder  1/16] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#13 CACHED
+
+#76 [frontend builder  2/16] COPY vnstockchars /vnstockchars
+#76 DONE 19.0s
+
+#77 [frontend builder  3/16] WORKDIR /vnstockchars
+#77 DONE 0.5s
+
+#78 [frontend builder  4/16] RUN npm ci --legacy-peer-deps
+#78 14.60 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#78 17.09 npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#78 17.21 npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+#78 17.24 npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+#78 18.82 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+#78 18.82 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#78 19.96 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+#78 19.97 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#78 21.07 npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+#78 23.41 npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+#78 26.17 npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+#78 27.38 
+#78 27.38 added 993 packages, and audited 994 packages in 26s
+#78 27.38 
+#78 27.38 239 packages are looking for funding
+#78 27.38   run `npm fund` for details
+#78 27.41 
+#78 27.41 14 vulnerabilities (11 moderate, 3 high)
+#78 27.41 
+#78 27.41 To address issues that do not require attention, run:
+#78 27.41   npm audit fix
+#78 27.41 
+#78 27.41 To address all issues (including breaking changes), run:
+#78 27.41   npm audit fix --force
+#78 27.41 
+#78 27.41 Run `npm audit` for details.
+#78 27.41 npm notice
+#78 27.41 npm notice New major version of npm available! 10.8.2 -> 11.15.0
+#78 27.41 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.15.0
+#78 27.41 npm notice To update run: npm install -g npm@11.15.0
+#78 27.41 npm notice
+#78 DONE 27.8s
+
+#79 [frontend builder  5/16] RUN npm run build:engine-react
+#79 1.265 
+#79 1.265 > vnstockcharts@1.0.0 build:engine-react
+#79 1.265 > npm run build:engine-core && cd packages/vn-kline-engine-react && tsup
+#79 1.265 
+#79 1.475 
+#79 1.475 > vnstockcharts@1.0.0 build:engine-core
+#79 1.475 > cd packages/vn-kline-engine-core && tsup
+#79 1.475 
+#79 2.043 CLI Building entry: src/index.ts
+#79 2.045 CLI Using tsconfig: tsconfig.json
+#79 2.045 CLI tsup v8.5.1
+#79 2.045 CLI Using tsup config: /vnstockchars/packages/vn-kline-engine-core/tsup.config.ts
+#79 2.060 CLI Target: esnext
+#79 2.065 CLI Cleaning output folder
+#79 2.067 ESM Build start
+#79 2.068 CJS Build start
+#79 2.853 DTS Build start
+#79 3.018 CJS dist/index.cjs     93.53 KB
+#79 3.018 CJS dist/index.cjs.map 240.17 KB
+#79 3.018 CJS ΓÜí∩╕Å Build success in 950ms
+#79 3.018 ESM dist/index.js     91.97 KB
+#79 3.018 ESM dist/index.js.map 240.16 KB
+#79 3.018 ESM ΓÜí∩╕Å Build success in 951ms
+#79 5.058 DTS ΓÜí∩╕Å Build success in 2357ms
+#79 5.058 DTS dist/index.d.mts 37.79 KB
+#79 5.058 DTS dist/index.d.ts  37.79 KB
+#79 5.689 CLI Building entry: src/index.ts
+#79 5.690 CLI Using tsconfig: tsconfig.json
+#79 5.691 CLI tsup v8.5.1
+#79 5.691 CLI Using tsup config: /vnstockchars/packages/vn-kline-engine-react/tsup.config.ts
+#79 5.698 CLI Target: esnext
+#79 5.703 CLI Cleaning output folder
+#79 5.706 ESM Build start
+#79 5.706 CJS Build start
+#79 5.925 CJS dist/index.cjs     5.95 KB
+#79 5.925 CJS dist/index.cjs.map 13.96 KB
+#79 5.925 CJS ΓÜí∩╕Å Build success in 219ms
+#79 5.925 ESM dist/index.js     5.77 KB
+#79 5.925 ESM dist/index.js.map 13.92 KB
+#79 5.926 ESM ΓÜí∩╕Å Build success in 220ms
+#79 6.159 DTS Build start
+#79 7.824 DTS ΓÜí∩╕Å Build success in 1667ms
+#79 7.824 DTS dist/index.d.mts 2.28 KB
+#79 7.825 DTS dist/index.d.ts  2.28 KB
+#79 DONE 8.0s
+
+#80 [frontend builder  6/16] WORKDIR /app/frontend
+#80 DONE 0.3s
+
+#81 [frontend builder  7/16] COPY vninvest/frontend/package*.json ./
+#81 DONE 0.8s
+
+#82 [frontend builder  8/16] COPY vninvest/frontend/patches/ ./patches/
+#82 DONE 0.1s
+
+#83 [frontend builder  9/16] COPY vninvest/packages/web/ ../packages/web/
+#83 DONE 3.9s
+
+#84 [frontend builder 10/16] COPY vninvest/packages/web/ ./packages/web/
+#84 DONE 1.7s
+
+#85 [frontend builder 11/16] RUN npm ci --legacy-peer-deps
+#85 6.821 npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+#85 6.842 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+#85 7.176 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#85 7.225 npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+#85 8.316 npm warn deprecated w3c-hr-time@1.0.2: Use your platform's native performance.now() and performance.timeOrigin.
+#85 8.319 npm warn deprecated whatwg-encoding@1.0.5: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+#85 8.620 npm warn deprecated stable@0.1.8: Modern JS already guarantees Array#sort() is a stable sort, so this library is deprecated. See the compatibility table on MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#browser_compatibility
+#85 8.796 npm warn deprecated rollup-plugin-terser@7.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-terser
+#85 8.895 npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
+#85 9.481 npm warn deprecated q@1.5.1: You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+#85 9.481 npm warn deprecated
+#85 9.481 npm warn deprecated (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
+#85 9.707 npm warn deprecated workbox-cacheable-response@6.6.0: workbox-background-sync@6.6.0
+#85 10.56 npm warn deprecated workbox-google-analytics@6.6.0: It is not compatible with newer versions of GA starting with v4, as long as you are using GAv3 it should be ok, but the package is not longer being maintained
+#85 11.00 npm warn deprecated domexception@2.0.1: Use your platform's native DOMException instead
+#85 11.83 npm warn deprecated abab@2.0.6: Use your platform's native atob() and btoa() methods instead
+#85 12.49 npm warn deprecated svgo@1.3.2: This SVGO version is no longer supported. Upgrade to v2.x.x.
+#85 13.75 npm warn deprecated @babel/plugin-proposal-private-methods@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-methods instead.
+#85 13.75 npm warn deprecated @babel/plugin-proposal-numeric-separator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-numeric-separator instead.
+#85 13.75 npm warn deprecated @babel/plugin-proposal-nullish-coalescing-operator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
+#85 13.75 npm warn deprecated @babel/plugin-proposal-optional-chaining@7.21.0: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
+#85 13.79 npm warn deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+#85 14.88 npm warn deprecated source-map@0.8.0-beta.0: The work that was done in this beta branch won't be included in future versions
+#85 15.02 npm warn deprecated @babel/plugin-proposal-private-property-in-object@7.21.11: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-property-in-object instead.
+#85 15.15 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#85 18.11 npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+#85 25.35 
+#85 25.35 > vninvest-frontend@1.0.0 postinstall
+#85 25.35 > patch-package
+#85 25.35 
+#85 25.79 patch-package 8.0.1
+#85 25.79 Applying patches...
+#85 26.27 echarts@6.0.0 Γ£ö
+#85 26.32 
+#85 26.32 added 1427 packages, and audited 1431 packages in 26s
+#85 26.32 
+#85 26.32 275 packages are looking for funding
+#85 26.32   run `npm fund` for details
+#85 26.36 
+#85 26.36 37 vulnerabilities (9 low, 11 moderate, 17 high)
+#85 26.36 
+#85 26.36 To address issues that do not require attention, run:
+#85 26.36   npm audit fix
+#85 26.36 
+#85 26.36 To address all issues (including breaking changes), run:
+#85 26.36   npm audit fix --force
+#85 26.36 
+#85 26.36 Run `npm audit` for details.
+#85 DONE 27.2s
+
+#86 [frontend builder 12/16] COPY vninvest/frontend/ ./
+#86 DONE 55.4s
+
+#87 [frontend builder 13/16] COPY vninvest/packages/web/ ../packages/web/
+#87 DONE 3.2s
+
+#88 [frontend builder 14/16] COPY vninvest/packages/web/ ./packages/web/
+#88 DONE 2.4s
+
+#89 [frontend builder 15/16] RUN rm -rf node_modules/@vnstockcharts 	&& mkdir -p node_modules/@vnstockcharts 	&& cp -r /vnstockchars/packages/vn-kline-engine-core node_modules/@vnstockcharts/vn-kline-engine-core 	&& cp -r /vnstockchars/packages/vn-kline-engine-react node_modules/@vnstockcharts/vn-kline-engine-react 	&& rm -rf node_modules/@vninvest/web 	&& mkdir -p node_modules/@vninvest/web 	&& cp -R ../packages/web/. node_modules/@vninvest/web/ 	&& rm -rf node_modules/@vninvest/web/node_modules 	&& rm -f node_modules/@vninvest/web/package-lock.json
+#89 DONE 2.4s
+
+#90 [frontend builder 16/16] RUN npm run build
+#90 1.289 
+#90 1.289 > vninvest-frontend@1.0.0 build
+#90 1.289 > react-scripts build
+#90 1.289 
+#90 3.236 Creating an optimized production build...
+#90 79.09 Compiled successfully.
+#90 79.09 
+#90 79.09 File sizes after gzip:
+#90 79.09 
+#90 79.19   862.75 kB (+2.16 kB)  build/static/js/main.b6709886.js
+#90 79.19   28.91 kB (-15 B)      build/static/css/main.deb45ccb.css
+#90 79.19   3.53 kB               build/static/js/839.e62b0640.chunk.js
+#90 79.19   3.03 kB               build/static/js/606.f10d405c.chunk.js
+#90 79.19 
+#90 79.19 The bundle size is significantly larger than recommended.
+#90 79.19 Consider reducing it with code splitting: https://goo.gl/9VhYWB
+#90 79.19 You can also analyze the project dependencies: https://goo.gl/LeUzfb
+#90 79.19 
+#90 79.19 The project was built assuming it is hosted at /.
+#90 79.19 You can control this with the homepage field in your package.json.
+#90 79.19 
+#90 79.19 The build folder is ready to be deployed.
+#90 79.19 You may serve it with a static server:
+#90 79.19 
+#90 79.20   npm install -g serve
+#90 79.20   serve -s build
+#90 79.20 
+#90 79.20 Find out more about deployment here:
+#90 79.20 
+#90 79.20   https://cra.link/deployment
+#90 79.20 
+#90 DONE 80.0s
+
+#91 [frontend stage-1 2/3] COPY vninvest/frontend/docker/nginx.conf /etc/nginx/conf.d/default.conf
+#91 CACHED
+
+#92 [frontend stage-1 3/3] COPY --from=builder /app/frontend/build /usr/share/nginx/html
+#92 DONE 0.1s
+
+#93 [frontend] exporting to image
+#93 exporting layers
+#93 exporting layers 0.2s done
+#93 exporting manifest sha256:ccee33dc5f8e84e8bf2c8ee830330985911d9177d0c672ba09444fd4ce13e12c 0.0s done
+#93 exporting config sha256:d4094782b7897e8c678973112b040a2344ad6aca3a8b206347e09835370c7896 0.0s done
+#93 exporting attestation manifest sha256:0f16528b6bf0e842ce541da5e2b40c5bd96c6b3abb440e43fe8e9ad601824e2c 0.0s done
+#93 exporting manifest list sha256:25e42ed7c75d94f03d417d83d6dd7d2d8b9c8521a1cdd12c7d65575cd6d814c4 0.0s done
+#93 naming to docker.io/library/vninvest-dev-frontend:latest done
+#93 unpacking to docker.io/library/vninvest-dev-frontend:latest 0.1s done
+#93 DONE 0.4s
+
+#94 [frontend] resolving provenance for metadata file
+#94 DONE 0.1s
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-frontend:latest Built 
+ Image vninvest-dev-core-runtime Built 
+ Container vninvest-dev-mailpit Creating 
+ Container vninvest-dev-core-db Running 
+ Container vninvest-prometheus Running 
+ Container vninvest-dev-core-redis Running 
+ Container vninvest-grafana Running 
+ Container vninvest-dev-redis-exporter Running 
+ Container vninvest-dev-queue-drain-monitor Running 
+ Container vninvest-dev-core-api Creating 
+ Container vninvest-dev-mailpit Created 
+ Container vninvest-dev-core-api Created 
+ Container vninvest-dev-frontend Creating 
+ Container vninvest-dev-core-worker-analytics Creating 
+ Container vninvest-dev-core-worker-realtime-stream Creating 
+ Container vninvest-dev-core-worker Creating 
+ Container vninvest-dev-core-worker-manual Creating 
+ Container vninvest-dev-core-worker-enrichment Creating 
+ Container vninvest-dev-core-beat Creating 
+ Container vninvest-dev-core-worker-realtime-prefetch Creating 
+ Container vninvest-dev-core-worker-realtime-stream Created 
+ Container vninvest-dev-frontend Created 
+ Container vninvest-dev-core-worker-analytics Created 
+ Container vninvest-dev-core-worker-realtime-prefetch Created 
+ Container vninvest-dev-core-beat Created 
+ Container vninvest-dev-core-worker-enrichment Created 
+ Container vninvest-dev-core-worker Created 
+ Container vninvest-dev-core-worker-manual Created 
+ Container vninvest-dev-mailpit Starting 
+ Container vninvest-dev-core-redis Waiting 
+ Container vninvest-dev-core-redis Waiting 
+ Container vninvest-dev-core-db Waiting 
+ Container vninvest-dev-core-redis Waiting 
+ Container vninvest-dev-mailpit Started 
+ Container vninvest-dev-core-redis Healthy 
+ Container vninvest-dev-core-db Healthy 
+ Container vninvest-dev-core-redis Healthy 
+ Container vninvest-dev-core-redis Healthy 
+ Container vninvest-dev-core-api Starting 
+ Container vninvest-dev-core-api Started 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-realtime-prefetch Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-analytics Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-realtime-stream Starting 
+ Container vninvest-dev-frontend Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-manual Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-enrichment Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-beat Starting 
+ Container vninvest-dev-core-worker-enrichment Started 
+ Container vninvest-dev-core-worker-analytics Started 
+ Container vninvest-dev-core-worker-realtime-prefetch Started 
+ Container vninvest-dev-core-worker Started 
+ Container vninvest-dev-core-worker-manual Started 
+ Container vninvest-dev-frontend Started 
+ Container vninvest-dev-core-worker-realtime-stream Started 
+ Container vninvest-dev-core-beat Started 

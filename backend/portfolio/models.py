@@ -173,7 +173,7 @@ class DNSECredential(models.Model):
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='dnse_credential',
+        related_name='legacy_dnse_credential',
         null=True,
         blank=True,
         verbose_name='Người dùng',

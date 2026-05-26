@@ -4,8 +4,7 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from portfolio.models import Portfolio, SubAccount, UserConfig
-from portfolio.starter_portfolio_service import STARTER_PORTFOLIO_TEMPLATES, STARTER_SUBACCOUNT_TEMPLATES
+from portfolio.models import UserConfig
 
 
 class ApiRouteAuthBasicTests(APITestCase):
@@ -26,9 +25,9 @@ class ApiRouteAuthBasicTests(APITestCase):
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
+        self.assertEqual(response.status_code, status.HTTP_410_GONE)
+        self.assertEqual(response.data['code'], 'LEGACY_AUTH_DECOMMISSIONED')
+        self.assertIn('Các endpoint xác thực cũ đã bị gỡ bỏ khỏi hệ thống', response.data['detail'])
 
     @patch('portfolio.auth_views.send_verification_email', return_value=1)
     def test_register_endpoint_creates_unverified_user_and_sends_verification_email(self, mock_send_verification_email):
@@ -51,12 +50,4 @@ class ApiRouteAuthBasicTests(APITestCase):
         self.assertEqual(created_user.email, 'new-register@example.com')
         self.assertTrue(UserConfig.objects.filter(user=created_user, email_verified=False).exists())
         self.assertIsNotNone(created_user.user_config.email_verification_sent_at)
-        self.assertEqual(
-            Portfolio.objects.filter(user=created_user).count(),
-            len(STARTER_PORTFOLIO_TEMPLATES),
-        )
-        self.assertEqual(
-            SubAccount.objects.filter(portfolio__user=created_user).count(),
-            len(STARTER_PORTFOLIO_TEMPLATES) * len(STARTER_SUBACCOUNT_TEMPLATES),
-        )
         mock_send_verification_email.assert_called_once_with(created_user)

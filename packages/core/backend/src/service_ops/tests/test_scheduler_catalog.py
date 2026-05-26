@@ -8,10 +8,12 @@ Verifies:
 4. Ownership guard được nhúng vào plan response.
 """
 
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from service_ops.registry import ensure_service_registry
@@ -53,6 +55,10 @@ _CRON_SCHEDULE = {
 
 class SchedulerCatalogUnitTests(TestCase):
     """Unit tests cho build_scheduler_catalog()."""
+
+    @classmethod
+    def setUpTestData(cls):
+        ensure_service_registry()
 
     def test_catalog_returns_list(self):
         catalog = build_scheduler_catalog(schedule_map=_MINIMAL_SCHEDULE)
@@ -145,6 +151,161 @@ class SchedulerCatalogUnitTests(TestCase):
     def test_catalog_empty_schedule_returns_empty(self):
         catalog = build_scheduler_catalog(schedule_map={})
         self.assertEqual(catalog, [])
+
+    def test_daily_backfill_uses_daily_freshness_window(self):
+        from django.core.cache import cache
+        from service_ops.models import ServiceRunLog
+        from service_ops.registry import get_registered_service
+
+        finished_at = timezone.now() - timedelta(hours=6)
+        service = get_registered_service('backfill_daily_prices')
+        ServiceRunLog.objects.filter(
+            service=service,
+            status__in=['queued', 'running'],
+        ).update(
+            status='failed',
+            finished_at=finished_at - timedelta(minutes=30),
+            duration_seconds=0.0,
+            error_detail='Cleared by test isolation',
+        )
+        cache.delete('scheduler:inflight:daily-backfill-prices-1700')
+        cache.delete('scheduler:manual_run:daily-backfill-prices-1700')
+        run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='success',
+            input_summary={'job_key': 'daily-backfill-prices-1700', 'triggered_by': 'beat_schedule'},
+            output_summary={'planned_items': 1536},
+        )
+        ServiceRunLog.objects.filter(pk=run_log.pk).update(
+            started_at=finished_at - timedelta(minutes=15),
+            finished_at=finished_at,
+            duration_seconds=900.0,
+        )
+
+        catalog = build_scheduler_catalog(schedule_map=_CRON_SCHEDULE)
+        job = next(j for j in catalog if j['job_key'] == 'daily-backfill-prices-1700')
+
+        self.assertEqual(job['status'], 'enabled')
+        self.assertEqual(job['freshness_state'], 'warm')
+        self.assertGreaterEqual(job['lag_seconds'], 6 * 3600)
+        self.assertLess(job['lag_seconds'], (6 * 3600) + 60)
+        self.assertFalse(job['is_inflight'])
+        self.assertEqual(job['queue'], 'enrichment_offhours')
+
+    def test_daily_backfill_reports_daily_threshold_when_truly_stale(self):
+        from django.core.cache import cache
+        from service_ops.models import ServiceRunLog
+        from service_ops.registry import get_registered_service
+
+        finished_at = timezone.now() - timedelta(hours=30)
+        service = get_registered_service('backfill_daily_prices')
+        ServiceRunLog.objects.filter(
+            service=service,
+            status__in=['queued', 'running'],
+        ).update(
+            status='failed',
+            finished_at=finished_at - timedelta(minutes=30),
+            duration_seconds=0.0,
+            error_detail='Cleared by test isolation',
+        )
+        cache.delete('scheduler:inflight:daily-backfill-prices-1700')
+        cache.delete('scheduler:manual_run:daily-backfill-prices-1700')
+
+        run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='success',
+            input_summary={'job_key': 'daily-backfill-prices-1700', 'triggered_by': 'beat_schedule'},
+            output_summary={'planned_items': 1536},
+        )
+        ServiceRunLog.objects.filter(pk=run_log.pk).update(
+            started_at=finished_at - timedelta(minutes=15),
+            finished_at=finished_at,
+            duration_seconds=900.0,
+        )
+
+        catalog = build_scheduler_catalog(schedule_map=_CRON_SCHEDULE)
+        job = next(j for j in catalog if j['job_key'] == 'daily-backfill-prices-1700')
+
+        self.assertEqual(job['status'], 'degraded')
+        self.assertEqual(job['freshness_state'], 'stale')
+        self.assertIn('(86400s)', job['status_reason'])
+        self.assertIn('lag=', job['status_reason'])
+
+    def test_hourly_job_uses_hourly_freshness_window(self):
+        from django_celery_beat.models import IntervalSchedule, PeriodicTask
+
+        last_run_at = timezone.now() - timedelta(minutes=30)
+        interval, _ = IntervalSchedule.objects.get_or_create(every=1, period=IntervalSchedule.HOURS)
+        PeriodicTask.objects.update_or_create(
+            name='market-data-parity-snapshot-retention-cleanup-hourly',
+            defaults={
+                'task': 'service_ops.tasks.cleanup_market_data_parity_snapshots',
+                'interval': interval,
+                'enabled': True,
+                'last_run_at': last_run_at,
+                'total_run_count': 3,
+                'queue': 'manual_on_demand',
+            },
+        )
+
+        schedule_map = {
+            'market-data-parity-snapshot-retention-cleanup-hourly': {
+                'task': 'service_ops.tasks.cleanup_market_data_parity_snapshots',
+                'schedule': 3600.0,
+                'options': {'queue': 'manual_on_demand'},
+            },
+        }
+
+        catalog = build_scheduler_catalog(schedule_map=schedule_map)
+        job = next(j for j in catalog if j['job_key'] == 'market-data-parity-snapshot-retention-cleanup-hourly')
+
+        self.assertEqual(job['status'], 'enabled')
+        self.assertEqual(job['freshness_state'], 'warm')
+        self.assertIsNone(job['status_reason'])
+        self.assertGreaterEqual(job['lag_seconds'], 30 * 60)
+        self.assertLess(job['lag_seconds'], (30 * 60) + 60)
+
+    def test_weekly_job_uses_weekly_freshness_window(self):
+        from django_celery_beat.models import CrontabSchedule, PeriodicTask
+
+        last_run_at = timezone.now() - timedelta(days=2)
+        crontab, _ = CrontabSchedule.objects.get_or_create(
+            minute='0',
+            hour='1',
+            day_of_week='0',
+            day_of_month='*',
+            month_of_year='*',
+            timezone='UTC',
+        )
+        PeriodicTask.objects.update_or_create(
+            name='auto-deprovision-stale',
+            defaults={
+                'task': 'tenant_lifecycle.tasks.auto_deprovision_stale',
+                'crontab': crontab,
+                'enabled': True,
+                'last_run_at': last_run_at,
+                'total_run_count': 2,
+                'queue': 'celery',
+            },
+        )
+
+        schedule_map = {
+            'auto-deprovision-stale': {
+                'task': 'tenant_lifecycle.tasks.auto_deprovision_stale',
+                'schedule': 'cron(day_of_week=0, hour=1, minute=0)',
+                'options': {'queue': 'celery'},
+            },
+        }
+
+        catalog = build_scheduler_catalog(schedule_map=schedule_map)
+        job = next(j for j in catalog if j['job_key'] == 'auto-deprovision-stale')
+
+        self.assertEqual(job['status'], 'enabled')
+        self.assertEqual(job['freshness_state'], 'warm')
+        self.assertIsNone(job['status_reason'])
+        self.assertGreaterEqual(job['lag_seconds'], 2 * 24 * 3600)
+        self.assertLess(job['lag_seconds'], (2 * 24 * 3600) + 60)
+
 
 
 class SchedulerHealthSummaryUnitTests(TestCase):

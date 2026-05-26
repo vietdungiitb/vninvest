@@ -66,6 +66,10 @@ function mockTranslations() {
     'tenantPats.listTitle': 'Danh sách PAT',
     'tenantPats.selectAllLabel': 'Chọn tất cả',
     'tenantPats.bulkRevokeAction': 'Thu hồi PAT đã chọn',
+    'tenantPats.showRevokedAction': 'Hiện PAT đã thu hồi',
+    'tenantPats.hideRevokedAction': 'Ẩn PAT đã thu hồi',
+    'tenantPats.revokedHiddenHint': 'Đang ẩn {{count}} PAT đã thu hồi khỏi danh sách.',
+    'tenantPats.onlyRevokedHiddenState': 'Tất cả PAT hiện có đều đã thu hồi và đang bị ẩn. Bấm "Hiện PAT đã thu hồi" để xem lại.',
     'tenantPats.itemsPerPageLabel': 'Số mục trên trang',
     'tenantPats.pageSize5': '5 mục',
     'tenantPats.pageSize10': '10 mục',
@@ -82,9 +86,9 @@ function mockTranslations() {
     'tenantPats.issueError': 'Không cấp PAT được',
     'tenantPats.rotateError': 'Không xoay PAT được',
     'tenantPats.revokeError': 'Không thu hồi PAT được',
-    'tenantPats.bulkRevokeWarning': 'Bạn chắc chứ?',
+    'tenantPats.bulkRevokeWarning': 'Bạn sắp thu hồi {{count}} PAT. Hành động này không thể hoàn tác.',
     'tenantPats.bulkRevokeError': 'Không thu hồi PAT hàng loạt được',
-    'tenantPats.noTokensSelected': 'Chưa chọn PAT nào',
+    'tenantPats.noTokensSelected': 'Chọn ít nhất một PAT để thu hồi.',
   };
 
   useI18n.mockReturnValue({
@@ -205,5 +209,277 @@ describe('TenantPATs', () => {
 
     await waitFor(() => expect(mockRotateTenantPAT).toHaveBeenCalledWith('pat_001', { grace_period_seconds: 3600 }));
     expect(await screen.findByText('vni_secret_rotated')).toBeInTheDocument();
+  });
+
+  it('hides revoked PATs by default and can reveal them on demand', async () => {
+    const user = userEvent.setup();
+
+    mockGetTenantPATs.mockResolvedValueOnce({
+      data: {
+        data: [
+          {
+            id: 'pat_001',
+            service_account_id: 'svc_001',
+            token_prefix: 'vni_active_001',
+            scope_codes: ['market:read'],
+            status: 'active',
+            expires_at: null,
+            last_used_at: null,
+            created_at: '2026-05-16T00:00:00Z',
+            revoked_at: null,
+          },
+          {
+            id: 'pat_002',
+            service_account_id: 'svc_001',
+            token_prefix: 'vni_revoked_002',
+            scope_codes: ['market:read'],
+            status: 'revoked',
+            expires_at: null,
+            last_used_at: null,
+            created_at: '2026-05-15T00:00:00Z',
+            revoked_at: '2026-05-16T12:00:00Z',
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/tenant-admin/pats']}>
+        <Routes>
+          <Route path="/tenant-admin/pats" element={<TenantPATs />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('PAT thành viên');
+    expect(await screen.findByText('vni_active_001')).toBeInTheDocument();
+    expect(screen.queryByText('vni_revoked_002')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hiện PAT đã thu hồi (1)' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Hiện PAT đã thu hồi (1)' }));
+
+    expect(await screen.findByText('vni_revoked_002')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ẩn PAT đã thu hồi (1)' })).toBeInTheDocument();
+  });
+
+  it('does not expose select-all on a page that only contains revoked PATs', async () => {
+    const user = userEvent.setup();
+
+    mockGetTenantPATs.mockResolvedValueOnce({
+      data: {
+        data: [
+          ...Array.from({ length: 10 }, (_, index) => ({
+            id: `pat_active_${index + 1}`,
+            service_account_id: 'svc_001',
+            token_prefix: `vni_active_${index + 1}`,
+            scope_codes: ['market:read'],
+            status: 'active',
+            expires_at: null,
+            last_used_at: null,
+            created_at: '2026-05-16T00:00:00Z',
+            revoked_at: null,
+          })),
+          {
+            id: 'pat_revoked_011',
+            service_account_id: 'svc_001',
+            token_prefix: 'vni_revoked_011',
+            scope_codes: ['market:read'],
+            status: 'revoked',
+            expires_at: null,
+            last_used_at: null,
+            created_at: '2026-05-16T00:00:00Z',
+            revoked_at: '2026-05-16T12:00:00Z',
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/tenant-admin/pats']}>
+        <Routes>
+          <Route path="/tenant-admin/pats" element={<TenantPATs />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('vni_active_1');
+    await user.click(screen.getByRole('button', { name: 'Hiện PAT đã thu hồi (1)' }));
+    await user.click(screen.getByRole('button', { name: 'Trang sau' }));
+
+    expect(await screen.findByText('vni_revoked_011')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Chọn tất cả' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Thu hồi PAT đã chọn/i })).not.toBeInTheDocument();
+  });
+
+  it('clears bulk selection when the admin changes page', async () => {
+    const user = userEvent.setup();
+
+    mockGetTenantPATs.mockResolvedValueOnce({
+      data: {
+        data: Array.from({ length: 11 }, (_, index) => ({
+          id: `pat_active_${index + 1}`,
+          service_account_id: 'svc_001',
+          token_prefix: `vni_active_${index + 1}`,
+          scope_codes: ['market:read'],
+          status: 'active',
+          expires_at: null,
+          last_used_at: null,
+          created_at: '2026-05-16T00:00:00Z',
+          revoked_at: null,
+        })),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/tenant-admin/pats']}>
+        <Routes>
+          <Route path="/tenant-admin/pats" element={<TenantPATs />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('vni_active_1');
+    await user.click(screen.getByRole('checkbox', { name: 'Chọn tất cả' }));
+
+    expect(screen.getByRole('button', { name: 'Thu hồi PAT đã chọn (10)' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Trang sau' }));
+
+    expect(await screen.findByText('vni_active_11')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Thu hồi PAT đã chọn/i })).not.toBeInTheDocument();
+  });
+
+  it('clears bulk selection when revoked PATs are hidden again', async () => {
+    const user = userEvent.setup();
+
+    mockGetTenantPATs.mockResolvedValueOnce({
+      data: {
+        data: [
+          ...Array.from({ length: 10 }, (_, index) => ({
+            id: `pat_revoked_${index + 1}`,
+            service_account_id: 'svc_001',
+            token_prefix: `vni_revoked_${index + 1}`,
+            scope_codes: ['market:read'],
+            status: 'revoked',
+            expires_at: null,
+            last_used_at: null,
+            created_at: '2026-05-16T00:00:00Z',
+            revoked_at: '2026-05-16T12:00:00Z',
+          })),
+          ...Array.from({ length: 20 }, (_, index) => ({
+            id: `pat_active_${index + 1}`,
+            service_account_id: 'svc_001',
+            token_prefix: `vni_active_${index + 1}`,
+            scope_codes: ['market:read'],
+            status: 'active',
+            expires_at: null,
+            last_used_at: null,
+            created_at: '2026-05-16T00:00:00Z',
+            revoked_at: null,
+          })),
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/tenant-admin/pats']}>
+        <Routes>
+          <Route path="/tenant-admin/pats" element={<TenantPATs />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('vni_active_1');
+    await user.click(screen.getByRole('button', { name: 'Hiện PAT đã thu hồi (10)' }));
+    await user.click(screen.getByRole('button', { name: 'Trang sau' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Chọn tất cả' }));
+
+    expect(screen.getByRole('button', { name: 'Thu hồi PAT đã chọn (10)' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Ẩn PAT đã thu hồi (10)' }));
+
+    expect(screen.queryByRole('button', { name: /Thu hồi PAT đã chọn/i })).not.toBeInTheDocument();
+  });
+
+  it('clears bulk selection when the page size changes', async () => {
+    const user = userEvent.setup();
+
+    mockGetTenantPATs.mockResolvedValueOnce({
+      data: {
+        data: Array.from({ length: 11 }, (_, index) => ({
+          id: `pat_active_${index + 1}`,
+          service_account_id: 'svc_001',
+          token_prefix: `vni_active_${index + 1}`,
+          scope_codes: ['market:read'],
+          status: 'active',
+          expires_at: null,
+          last_used_at: null,
+          created_at: '2026-05-16T00:00:00Z',
+          revoked_at: null,
+        })),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/tenant-admin/pats']}>
+        <Routes>
+          <Route path="/tenant-admin/pats" element={<TenantPATs />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('vni_active_1');
+    await user.click(screen.getByRole('checkbox', { name: 'Chọn tất cả' }));
+
+    expect(screen.getByRole('button', { name: 'Thu hồi PAT đã chọn (10)' })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getAllByRole('combobox')[1], '5');
+
+    expect(screen.queryByRole('button', { name: /Thu hồi PAT đã chọn/i })).not.toBeInTheDocument();
+  });
+
+  it('clears bulk selection after the PAT list reloads', async () => {
+    const user = userEvent.setup();
+    const tokens = Array.from({ length: 11 }, (_, index) => ({
+      id: `pat_active_${index + 1}`,
+      service_account_id: 'svc_001',
+      token_prefix: `vni_active_${index + 1}`,
+      scope_codes: ['market:read'],
+      status: 'active',
+      expires_at: null,
+      last_used_at: null,
+      created_at: '2026-05-16T00:00:00Z',
+      revoked_at: null,
+    }));
+
+    mockGetTenantPATs
+      .mockResolvedValueOnce({
+        data: {
+          data: tokens,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [...tokens].reverse(),
+        },
+      });
+
+    render(
+      <MemoryRouter initialEntries={['/tenant-admin/pats']}>
+        <Routes>
+          <Route path="/tenant-admin/pats" element={<TenantPATs />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('vni_active_1');
+    await user.click(screen.getByRole('checkbox', { name: 'Chọn tất cả' }));
+
+    expect(screen.getByRole('button', { name: 'Thu hồi PAT đã chọn (10)' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Tải lại danh sách' }));
+    await waitFor(() => expect(mockGetTenantPATs).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('vni_active_11')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Thu hồi PAT đã chọn/i })).not.toBeInTheDocument();
   });
 });

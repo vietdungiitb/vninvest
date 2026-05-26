@@ -1,0 +1,1623 @@
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-frontend:latest Building 
+ Image vninvest-dev-core-runtime Building 
+ Image vninvest-dev-core-runtime Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 6.59kB done
+#1 DONE 0.0s
+
+#2 [frontend internal] load build definition from Dockerfile.dev-package-shell
+#2 transferring dockerfile: 2.23kB 0.0s done
+#2 DONE 0.1s
+
+#3 [core-worker-enrichment internal] load build definition from Dockerfile
+#3 transferring dockerfile: 2.37kB done
+#3 DONE 0.1s
+
+#4 [auth] library/node:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [auth] library/nginx:pull token for registry-1.docker.io
+#5 DONE 0.0s
+
+#6 [core-worker-realtime-prefetch] resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#6 ...
+
+#7 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#7 DONE 0.0s
+
+#8 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#8 ...
+
+#9 [frontend internal] load metadata for docker.io/library/node:20-alpine
+#9 DONE 1.4s
+
+#8 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#8 DONE 1.4s
+
+#10 [frontend internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#6 [core-worker-realtime-prefetch] resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#6 DONE 1.6s
+
+#11 [frontend stage-1 1/3] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#11 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.0s done
+#11 DONE 0.0s
+
+#12 [frontend builder  1/16] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#12 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#12 DONE 0.0s
+
+#13 [core-api] docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#13 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#13 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#13 CACHED
+
+#14 [frontend internal] load build context
+#14 ...
+
+#15 [core-worker-analytics internal] load build definition from Dockerfile
+#15 transferring dockerfile: 2.37kB done
+#15 DONE 0.0s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#16 [core-worker-enrichment internal] load build definition from Dockerfile
+#16 transferring dockerfile: 2.37kB done
+#16 DONE 0.3s
+
+#17 [core-worker-realtime-stream internal] load build definition from Dockerfile
+#17 transferring dockerfile: 2.37kB done
+#17 DONE 0.3s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#18 [core-worker-manual internal] load build definition from Dockerfile
+#18 transferring dockerfile: 2.37kB done
+#18 DONE 0.4s
+
+#19 [core-beat internal] load build definition from Dockerfile
+#19 transferring dockerfile: 2.37kB done
+#19 DONE 0.4s
+
+#20 [core-worker internal] load build definition from Dockerfile
+#20 transferring dockerfile: 2.37kB done
+#20 DONE 0.4s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#21 [core-worker-realtime-prefetch internal] load build definition from Dockerfile
+#21 transferring dockerfile: 2.37kB done
+#21 DONE 0.5s
+
+#22 [core-api internal] load build definition from Dockerfile
+#22 transferring dockerfile: 2.37kB done
+#22 DONE 0.4s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#23 [auth] library/python:pull token for registry-1.docker.io
+#23 DONE 0.0s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#24 [core-api internal] load metadata for docker.io/library/python:3.13-slim
+#24 DONE 1.7s
+
+#25 [core-api internal] load .dockerignore
+#25 transferring context: 2B done
+#25 DONE 0.0s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#26 [core-api internal] load build context
+#26 DONE 0.0s
+
+#27 [core-api builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.0s done
+#27 DONE 0.0s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#28 [core-worker-enrichment internal] load .dockerignore
+#28 transferring context: 2B done
+#28 DONE 0.3s
+
+#29 [core-worker-realtime-prefetch internal] load .dockerignore
+#29 transferring context: 2B done
+#29 DONE 0.3s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#27 [core-worker-enrichment builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.0s done
+#27 DONE 0.0s
+
+#30 [core-worker-analytics internal] load .dockerignore
+#30 transferring context: 2B done
+#30 DONE 0.3s
+
+#31 [core-worker-manual internal] load .dockerignore
+#31 transferring context: 2B done
+#31 DONE 0.3s
+
+#32 [core-worker internal] load .dockerignore
+#32 transferring context: 2B done
+#32 DONE 0.3s
+
+#33 [core-worker-realtime-stream internal] load .dockerignore
+#33 transferring context: 2B done
+#33 DONE 0.3s
+
+#34 [core-beat internal] load .dockerignore
+#34 transferring context: 2B done
+#34 DONE 0.4s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#27 [core-worker-analytics builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.0s done
+#27 DONE 0.0s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#27 [core-worker-realtime-stream builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.0s done
+#27 DONE 0.0s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#27 [core-worker-realtime-prefetch builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 resolve docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 0.0s done
+#27 DONE 0.0s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#35 [core-worker-enrichment internal] load build context
+#35 transferring context: 65.74kB 0.3s done
+#35 DONE 0.5s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#26 [core-api internal] load build context
+#26 transferring context: 65.74kB 0.4s done
+#26 DONE 0.5s
+
+#27 [core-beat builder 1/5] FROM docker.io/library/python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+#27 CACHED
+
+#14 [frontend internal] load build context
+#14 ...
+
+#36 [core-api builder 2/5] WORKDIR /build
+#36 DONE 0.3s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#37 [core-worker-manual internal] load build context
+#37 transferring context: 11.15MB 2.3s done
+#37 DONE 2.5s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#38 [core-worker-analytics internal] load build context
+#38 transferring context: 11.15MB 2.5s done
+#38 DONE 2.6s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#39 [core-worker internal] load build context
+#39 transferring context: 11.15MB 2.5s done
+#39 DONE 2.7s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#40 [core-beat internal] load build context
+#40 transferring context: 11.15MB 2.7s done
+#40 DONE 2.9s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#41 [core-worker-realtime-prefetch internal] load build context
+#41 transferring context: 11.15MB 2.8s done
+#41 DONE 2.9s
+
+#14 [frontend internal] load build context
+#14 ...
+
+#42 [core-worker-realtime-stream internal] load build context
+#42 transferring context: 11.15MB 3.2s done
+#42 DONE 3.4s
+
+#14 [frontend internal] load build context
+#14 transferring context: 7.58MB 11.3s
+#14 ...
+
+#43 [core-worker-realtime-prefetch builder 3/5] RUN apt-get update     && apt-get install -y --no-install-recommends gcc libpq-dev git     && rm -rf /var/lib/apt/lists/*
+#43 1.255 Hit:1 http://deb.debian.org/debian trixie InRelease
+#43 1.289 Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+#43 1.436 Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+#43 1.539 Get:4 http://deb.debian.org/debian trixie/main amd64 Packages [9671 kB]
+#43 2.876 Get:5 http://deb.debian.org/debian trixie-updates/main amd64 Packages [5412 B]
+#43 2.941 Get:6 http://deb.debian.org/debian-security trixie-security/main amd64 Packages [171 kB]
+#43 3.820 Fetched 9938 kB in 3s (3448 kB/s)
+#43 3.820 Reading package lists...
+#43 4.889 Reading package lists...
+#43 5.881 Building dependency tree...
+#43 6.232 Reading state information...
+#43 6.813 The following additional packages will be installed:
+#43 6.813   binutils binutils-common binutils-x86-64-linux-gnu cpp cpp-14
+#43 6.813   cpp-14-x86-64-linux-gnu cpp-x86-64-linux-gnu gcc-14 gcc-14-x86-64-linux-gnu
+#43 6.814   gcc-x86-64-linux-gnu git-man libasan8 libatomic1 libbinutils libbrotli1
+#43 6.814   libcc1-0 libcom-err2 libctf-nobfd0 libctf0 libcurl3t64-gnutls liberror-perl
+#43 6.815   libexpat1 libgcc-14-dev libgdbm-compat4t64 libgnutls30t64 libgomp1
+#43 6.815   libgprofng0 libgssapi-krb5-2 libhwasan0 libidn2-0 libisl23 libitm1
+#43 6.815   libjansson4 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0 libldap2
+#43 6.816   liblsan0 libmpc3 libmpfr6 libnghttp2-14 libnghttp3-9 libngtcp2-16
+#43 6.817   libngtcp2-crypto-gnutls8 libp11-kit0 libperl5.40 libpq5 libpsl5t64
+#43 6.818   libquadmath0 librtmp1 libsasl2-2 libsasl2-modules-db libsframe1 libssh2-1t64
+#43 6.819   libssl-dev libtasn1-6 libtsan2 libubsan1 libunistring5 perl
+#43 6.821   perl-modules-5.40
+#43 6.827 Suggested packages:
+#43 6.827   binutils-doc gprofng-gui binutils-gold cpp-doc gcc-14-locales cpp-14-doc
+#43 6.827   gcc-multilib make manpages-dev autoconf automake libtool flex bison gdb
+#43 6.827   gcc-doc gcc-14-multilib gcc-14-doc gdb-x86-64-linux-gnu gettext-base git-doc
+#43 6.827   git-email git-gui gitk gitweb git-cvs git-mediawiki git-svn gnutls-bin
+#43 6.827   krb5-doc krb5-user sensible-utils postgresql-doc-17 libssl-doc perl-doc
+#43 6.827   libterm-readline-gnu-perl | libterm-readline-perl-perl
+#43 6.827   libtap-harness-archive-perl
+#43 6.827 Recommended packages:
+#43 6.827   libc6-dev | libc-dev libc6-dev libc-dev patch less ssh-client krb5-locales
+#43 6.827   libldap-common publicsuffix libsasl2-modules
+#43 7.117 The following NEW packages will be installed:
+#43 7.117   binutils binutils-common binutils-x86-64-linux-gnu cpp cpp-14
+#43 7.117   cpp-14-x86-64-linux-gnu cpp-x86-64-linux-gnu gcc gcc-14
+#43 7.118   gcc-14-x86-64-linux-gnu gcc-x86-64-linux-gnu git git-man libasan8 libatomic1
+#43 7.118   libbinutils libbrotli1 libcc1-0 libcom-err2 libctf-nobfd0 libctf0
+#43 7.118   libcurl3t64-gnutls liberror-perl libexpat1 libgcc-14-dev libgdbm-compat4t64
+#43 7.118   libgnutls30t64 libgomp1 libgprofng0 libgssapi-krb5-2 libhwasan0 libidn2-0
+#43 7.118   libisl23 libitm1 libjansson4 libk5crypto3 libkeyutils1 libkrb5-3
+#43 7.118   libkrb5support0 libldap2 liblsan0 libmpc3 libmpfr6 libnghttp2-14
+#43 7.118   libnghttp3-9 libngtcp2-16 libngtcp2-crypto-gnutls8 libp11-kit0 libperl5.40
+#43 7.119   libpq-dev libpq5 libpsl5t64 libquadmath0 librtmp1 libsasl2-2
+#43 7.120   libsasl2-modules-db libsframe1 libssh2-1t64 libssl-dev libtasn1-6 libtsan2
+#43 7.121   libubsan1 libunistring5 perl perl-modules-5.40
+#43 7.431 0 upgraded, 65 newly installed, 0 to remove and 0 not upgraded.
+#43 7.431 Need to get 78.9 MB of archives.
+#43 7.431 After this operation, 329 MB of additional disk space will be used.
+#43 7.431 Get:1 http://deb.debian.org/debian trixie/main amd64 libexpat1 amd64 2.7.1-2 [108 kB]
+#43 7.597 Get:2 http://deb.debian.org/debian trixie/main amd64 perl-modules-5.40 all 5.40.1-6 [3019 kB]
+#43 8.100 Get:3 http://deb.debian.org/debian trixie/main amd64 libgdbm-compat4t64 amd64 1.24-2 [50.3 kB]
+#43 8.162 Get:4 http://deb.debian.org/debian trixie/main amd64 libperl5.40 amd64 5.40.1-6 [4341 kB]
+#43 8.639 Get:5 http://deb.debian.org/debian trixie/main amd64 perl amd64 5.40.1-6 [267 kB]
+#43 8.667 Get:6 http://deb.debian.org/debian trixie/main amd64 libsframe1 amd64 2.44-3 [78.4 kB]
+#43 8.685 Get:7 http://deb.debian.org/debian trixie/main amd64 binutils-common amd64 2.44-3 [2509 kB]
+#43 8.990 Get:8 http://deb.debian.org/debian trixie/main amd64 libbinutils amd64 2.44-3 [534 kB]
+#43 9.052 Get:9 http://deb.debian.org/debian trixie/main amd64 libgprofng0 amd64 2.44-3 [808 kB]
+#43 9.202 Get:10 http://deb.debian.org/debian trixie/main amd64 libctf-nobfd0 amd64 2.44-3 [156 kB]
+#43 9.326 Get:11 http://deb.debian.org/debian trixie/main amd64 libctf0 amd64 2.44-3 [88.6 kB]
+#43 9.382 Get:12 http://deb.debian.org/debian trixie/main amd64 libjansson4 amd64 2.14-2+b3 [39.8 kB]
+#43 9.384 Get:13 http://deb.debian.org/debian trixie/main amd64 binutils-x86-64-linux-gnu amd64 2.44-3 [1014 kB]
+#43 9.637 Get:14 http://deb.debian.org/debian trixie/main amd64 binutils amd64 2.44-3 [265 kB]
+#43 9.671 Get:15 http://deb.debian.org/debian trixie/main amd64 libisl23 amd64 0.27-1 [659 kB]
+#43 9.779 Get:16 http://deb.debian.org/debian trixie/main amd64 libmpfr6 amd64 4.2.2-1 [729 kB]
+#43 9.878 Get:17 http://deb.debian.org/debian trixie/main amd64 libmpc3 amd64 1.3.1-1+b3 [52.2 kB]
+#43 9.884 Get:18 http://deb.debian.org/debian trixie/main amd64 cpp-14-x86-64-linux-gnu amd64 14.2.0-19 [11.0 MB]
+#43 ...
+
+#14 [frontend internal] load build context
+#14 transferring context: 11.11MB 16.3s
+#14 transferring context: 11.36MB 17.2s done
+#14 DONE 17.9s
+
+#43 [core-worker-realtime-prefetch builder 3/5] RUN apt-get update     && apt-get install -y --no-install-recommends gcc libpq-dev git     && rm -rf /var/lib/apt/lists/*
+#43 11.34 Get:19 http://deb.debian.org/debian trixie/main amd64 cpp-14 amd64 14.2.0-19 [1280 B]
+#43 11.34 Get:20 http://deb.debian.org/debian trixie/main amd64 cpp-x86-64-linux-gnu amd64 4:14.2.0-1 [4840 B]
+#43 11.34 Get:21 http://deb.debian.org/debian trixie/main amd64 cpp amd64 4:14.2.0-1 [1568 B]
+#43 11.34 Get:22 http://deb.debian.org/debian trixie/main amd64 libcc1-0 amd64 14.2.0-19 [42.8 kB]
+#43 11.35 Get:23 http://deb.debian.org/debian trixie/main amd64 libgomp1 amd64 14.2.0-19 [137 kB]
+#43 11.36 Get:24 http://deb.debian.org/debian trixie/main amd64 libitm1 amd64 14.2.0-19 [26.0 kB]
+#43 11.36 Get:25 http://deb.debian.org/debian trixie/main amd64 libatomic1 amd64 14.2.0-19 [9308 B]
+#43 11.36 Get:26 http://deb.debian.org/debian trixie/main amd64 libasan8 amd64 14.2.0-19 [2725 kB]
+#43 11.69 Get:27 http://deb.debian.org/debian trixie/main amd64 liblsan0 amd64 14.2.0-19 [1204 kB]
+#43 11.83 Get:28 http://deb.debian.org/debian trixie/main amd64 libtsan2 amd64 14.2.0-19 [2460 kB]
+#43 12.12 Get:29 http://deb.debian.org/debian trixie/main amd64 libubsan1 amd64 14.2.0-19 [1074 kB]
+#43 12.25 Get:30 http://deb.debian.org/debian trixie/main amd64 libhwasan0 amd64 14.2.0-19 [1488 kB]
+#43 12.41 Get:31 http://deb.debian.org/debian trixie/main amd64 libquadmath0 amd64 14.2.0-19 [145 kB]
+#43 12.43 Get:32 http://deb.debian.org/debian trixie/main amd64 libgcc-14-dev amd64 14.2.0-19 [2672 kB]
+#43 12.74 Get:33 http://deb.debian.org/debian trixie/main amd64 gcc-14-x86-64-linux-gnu amd64 14.2.0-19 [21.4 MB]
+#43 ...
+
+#12 [frontend builder  1/16] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#12 CACHED
+
+#44 [frontend builder  2/16] COPY vnstockchars /vnstockchars
+#44 ...
+
+#43 [core-worker-realtime-prefetch builder 3/5] RUN apt-get update     && apt-get install -y --no-install-recommends gcc libpq-dev git     && rm -rf /var/lib/apt/lists/*
+#43 15.11 Get:34 http://deb.debian.org/debian trixie/main amd64 gcc-14 amd64 14.2.0-19 [540 kB]
+#43 15.16 Get:35 http://deb.debian.org/debian trixie/main amd64 gcc-x86-64-linux-gnu amd64 4:14.2.0-1 [1436 B]
+#43 15.16 Get:36 http://deb.debian.org/debian trixie/main amd64 gcc amd64 4:14.2.0-1 [5136 B]
+#43 15.17 Get:37 http://deb.debian.org/debian trixie/main amd64 libbrotli1 amd64 1.1.0-2+b7 [307 kB]
+#43 15.20 Get:38 http://deb.debian.org/debian trixie/main amd64 libunistring5 amd64 1.3-2 [477 kB]
+#43 15.25 Get:39 http://deb.debian.org/debian trixie/main amd64 libidn2-0 amd64 2.3.8-2 [109 kB]
+#43 15.26 Get:40 http://deb.debian.org/debian trixie/main amd64 libp11-kit0 amd64 0.25.5-3 [425 kB]
+#43 15.31 Get:41 http://deb.debian.org/debian trixie/main amd64 libtasn1-6 amd64 4.20.0-2 [49.9 kB]
+#43 15.31 Get:42 http://deb.debian.org/debian-security trixie-security/main amd64 libgnutls30t64 amd64 3.8.9-3+deb13u4 [1469 kB]
+#43 15.47 Get:43 http://deb.debian.org/debian-security trixie-security/main amd64 libkrb5support0 amd64 1.21.3-5+deb13u1 [33.1 kB]
+#43 15.47 Get:44 http://deb.debian.org/debian trixie/main amd64 libcom-err2 amd64 1.47.2-3+b11 [25.0 kB]
+#43 15.48 Get:45 http://deb.debian.org/debian-security trixie-security/main amd64 libk5crypto3 amd64 1.21.3-5+deb13u1 [81.2 kB]
+#43 15.49 Get:46 http://deb.debian.org/debian trixie/main amd64 libkeyutils1 amd64 1.6.3-6 [9456 B]
+#43 15.49 Get:47 http://deb.debian.org/debian-security trixie-security/main amd64 libkrb5-3 amd64 1.21.3-5+deb13u1 [326 kB]
+#43 15.52 Get:48 http://deb.debian.org/debian-security trixie-security/main amd64 libgssapi-krb5-2 amd64 1.21.3-5+deb13u1 [138 kB]
+#43 15.54 Get:49 http://deb.debian.org/debian trixie/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg1-9 [19.8 kB]
+#43 15.54 Get:50 http://deb.debian.org/debian trixie/main amd64 libsasl2-2 amd64 2.1.28+dfsg1-9 [57.5 kB]
+#43 15.55 Get:51 http://deb.debian.org/debian trixie/main amd64 libldap2 amd64 2.6.10+dfsg-1 [194 kB]
+#43 15.57 Get:52 http://deb.debian.org/debian-security trixie-security/main amd64 libnghttp2-14 amd64 1.64.0-1.1+deb13u1 [76.2 kB]
+#43 15.57 Get:53 http://deb.debian.org/debian trixie/main amd64 libnghttp3-9 amd64 1.8.0-1 [67.7 kB]
+#43 15.58 Get:54 http://deb.debian.org/debian trixie/main amd64 libngtcp2-16 amd64 1.11.0-1+deb13u1 [132 kB]
+#43 15.60 Get:55 http://deb.debian.org/debian trixie/main amd64 libngtcp2-crypto-gnutls8 amd64 1.11.0-1+deb13u1 [29.5 kB]
+#43 15.60 Get:56 http://deb.debian.org/debian trixie/main amd64 libpsl5t64 amd64 0.21.2-1.1+b1 [57.2 kB]
+#43 15.61 Get:57 http://deb.debian.org/debian trixie/main amd64 librtmp1 amd64 2.4+20151223.gitfa8646d.1-2+b5 [58.8 kB]
+#43 15.62 Get:58 http://deb.debian.org/debian trixie/main amd64 libssh2-1t64 amd64 1.11.1-1 [245 kB]
+#43 15.64 Get:59 http://deb.debian.org/debian trixie/main amd64 libcurl3t64-gnutls amd64 8.14.1-2+deb13u3 [384 kB]
+#43 15.68 Get:60 http://deb.debian.org/debian trixie/main amd64 liberror-perl all 0.17030-1 [26.9 kB]
+#43 15.69 Get:61 http://deb.debian.org/debian trixie/main amd64 git-man all 1:2.47.3-0+deb13u1 [2205 kB]
+#43 15.93 Get:62 http://deb.debian.org/debian trixie/main amd64 git amd64 1:2.47.3-0+deb13u1 [8862 kB]
+#43 16.97 Get:63 http://deb.debian.org/debian-security trixie-security/main amd64 libpq5 amd64 17.10-0+deb13u1 [230 kB]
+#43 17.15 Get:64 http://deb.debian.org/debian trixie/main amd64 libssl-dev amd64 3.5.6-1~deb13u1 [2958 kB]
+#43 17.68 Get:65 http://deb.debian.org/debian-security trixie-security/main amd64 libpq-dev amd64 17.10-0+deb13u1 [154 kB]
+#43 18.04 debconf: unable to initialize frontend: Dialog
+#43 18.04 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#43 18.04 debconf: falling back to frontend: Readline
+#43 18.05 debconf: unable to initialize frontend: Readline
+#43 18.05 debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC entries checked: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.40.1 /usr/local/share/perl/5.40.1 /usr/lib/x86_64-linux-gnu/perl5/5.40 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.40 /usr/share/perl/5.40 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 8, <STDIN> line 65.)
+#43 18.05 debconf: falling back to frontend: Teletype
+#43 18.05 debconf: unable to initialize frontend: Teletype
+#43 18.05 debconf: (This frontend requires a controlling tty.)
+#43 18.05 debconf: falling back to frontend: Noninteractive
+#43 20.95 Fetched 78.9 MB in 11s (7483 kB/s)
+#43 21.03 Selecting previously unselected package libexpat1:amd64.
+#43 21.03 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 5645 files and directories currently installed.)
+#43 21.13 Preparing to unpack .../00-libexpat1_2.7.1-2_amd64.deb ...
+#43 21.14 Unpacking libexpat1:amd64 (2.7.1-2) ...
+#43 21.20 Selecting previously unselected package perl-modules-5.40.
+#43 21.20 Preparing to unpack .../01-perl-modules-5.40_5.40.1-6_all.deb ...
+#43 21.21 Unpacking perl-modules-5.40 (5.40.1-6) ...
+#43 22.12 Selecting previously unselected package libgdbm-compat4t64:amd64.
+#43 22.13 Preparing to unpack .../02-libgdbm-compat4t64_1.24-2_amd64.deb ...
+#43 22.13 Unpacking libgdbm-compat4t64:amd64 (1.24-2) ...
+#43 22.19 Selecting previously unselected package libperl5.40:amd64.
+#43 22.19 Preparing to unpack .../03-libperl5.40_5.40.1-6_amd64.deb ...
+#43 22.20 Unpacking libperl5.40:amd64 (5.40.1-6) ...
+#43 23.01 Selecting previously unselected package perl.
+#43 23.01 Preparing to unpack .../04-perl_5.40.1-6_amd64.deb ...
+#43 23.03 Unpacking perl (5.40.1-6) ...
+#43 23.18 Selecting previously unselected package libsframe1:amd64.
+#43 23.19 Preparing to unpack .../05-libsframe1_2.44-3_amd64.deb ...
+#43 23.19 Unpacking libsframe1:amd64 (2.44-3) ...
+#43 23.27 Selecting previously unselected package binutils-common:amd64.
+#43 23.27 Preparing to unpack .../06-binutils-common_2.44-3_amd64.deb ...
+#43 23.28 Unpacking binutils-common:amd64 (2.44-3) ...
+#43 23.52 Selecting previously unselected package libbinutils:amd64.
+#43 23.53 Preparing to unpack .../07-libbinutils_2.44-3_amd64.deb ...
+#43 23.54 Unpacking libbinutils:amd64 (2.44-3) ...
+#43 23.64 Selecting previously unselected package libgprofng0:amd64.
+#43 23.64 Preparing to unpack .../08-libgprofng0_2.44-3_amd64.deb ...
+#43 23.66 Unpacking libgprofng0:amd64 (2.44-3) ...
+#43 23.78 Selecting previously unselected package libctf-nobfd0:amd64.
+#43 23.79 Preparing to unpack .../09-libctf-nobfd0_2.44-3_amd64.deb ...
+#43 23.79 Unpacking libctf-nobfd0:amd64 (2.44-3) ...
+#43 23.87 Selecting previously unselected package libctf0:amd64.
+#43 23.88 Preparing to unpack .../10-libctf0_2.44-3_amd64.deb ...
+#43 23.89 Unpacking libctf0:amd64 (2.44-3) ...
+#43 23.95 Selecting previously unselected package libjansson4:amd64.
+#43 23.96 Preparing to unpack .../11-libjansson4_2.14-2+b3_amd64.deb ...
+#43 23.96 Unpacking libjansson4:amd64 (2.14-2+b3) ...
+#43 24.02 Selecting previously unselected package binutils-x86-64-linux-gnu.
+#43 24.02 Preparing to unpack .../12-binutils-x86-64-linux-gnu_2.44-3_amd64.deb ...
+#43 24.03 Unpacking binutils-x86-64-linux-gnu (2.44-3) ...
+#43 24.27 Selecting previously unselected package binutils.
+#43 24.28 Preparing to unpack .../13-binutils_2.44-3_amd64.deb ...
+#43 24.29 Unpacking binutils (2.44-3) ...
+#43 24.40 Selecting previously unselected package libisl23:amd64.
+#43 24.41 Preparing to unpack .../14-libisl23_0.27-1_amd64.deb ...
+#43 24.41 Unpacking libisl23:amd64 (0.27-1) ...
+#43 24.53 Selecting previously unselected package libmpfr6:amd64.
+#43 24.53 Preparing to unpack .../15-libmpfr6_4.2.2-1_amd64.deb ...
+#43 24.54 Unpacking libmpfr6:amd64 (4.2.2-1) ...
+#43 24.63 Selecting previously unselected package libmpc3:amd64.
+#43 24.63 Preparing to unpack .../16-libmpc3_1.3.1-1+b3_amd64.deb ...
+#43 24.64 Unpacking libmpc3:amd64 (1.3.1-1+b3) ...
+#43 24.69 Selecting previously unselected package cpp-14-x86-64-linux-gnu.
+#43 24.69 Preparing to unpack .../17-cpp-14-x86-64-linux-gnu_14.2.0-19_amd64.deb ...
+#43 24.70 Unpacking cpp-14-x86-64-linux-gnu (14.2.0-19) ...
+#43 25.35 Selecting previously unselected package cpp-14.
+#43 25.36 Preparing to unpack .../18-cpp-14_14.2.0-19_amd64.deb ...
+#43 25.36 Unpacking cpp-14 (14.2.0-19) ...
+#43 25.41 Selecting previously unselected package cpp-x86-64-linux-gnu.
+#43 25.41 Preparing to unpack .../19-cpp-x86-64-linux-gnu_4%3a14.2.0-1_amd64.deb ...
+#43 25.42 Unpacking cpp-x86-64-linux-gnu (4:14.2.0-1) ...
+#43 25.47 Selecting previously unselected package cpp.
+#43 25.48 Preparing to unpack .../20-cpp_4%3a14.2.0-1_amd64.deb ...
+#43 25.50 Unpacking cpp (4:14.2.0-1) ...
+#43 25.55 Selecting previously unselected package libcc1-0:amd64.
+#43 25.55 Preparing to unpack .../21-libcc1-0_14.2.0-19_amd64.deb ...
+#43 25.55 Unpacking libcc1-0:amd64 (14.2.0-19) ...
+#43 25.60 Selecting previously unselected package libgomp1:amd64.
+#43 25.61 Preparing to unpack .../22-libgomp1_14.2.0-19_amd64.deb ...
+#43 25.61 Unpacking libgomp1:amd64 (14.2.0-19) ...
+#43 25.67 Selecting previously unselected package libitm1:amd64.
+#43 25.67 Preparing to unpack .../23-libitm1_14.2.0-19_amd64.deb ...
+#43 25.68 Unpacking libitm1:amd64 (14.2.0-19) ...
+#43 25.73 Selecting previously unselected package libatomic1:amd64.
+#43 25.74 Preparing to unpack .../24-libatomic1_14.2.0-19_amd64.deb ...
+#43 25.74 Unpacking libatomic1:amd64 (14.2.0-19) ...
+#43 25.79 Selecting previously unselected package libasan8:amd64.
+#43 25.80 Preparing to unpack .../25-libasan8_14.2.0-19_amd64.deb ...
+#43 25.80 Unpacking libasan8:amd64 (14.2.0-19) ...
+#43 25.99 Selecting previously unselected package liblsan0:amd64.
+#43 25.99 Preparing to unpack .../26-liblsan0_14.2.0-19_amd64.deb ...
+#43 26.00 Unpacking liblsan0:amd64 (14.2.0-19) ...
+#43 26.11 Selecting previously unselected package libtsan2:amd64.
+#43 26.11 Preparing to unpack .../27-libtsan2_14.2.0-19_amd64.deb ...
+#43 26.11 Unpacking libtsan2:amd64 (14.2.0-19) ...
+#43 26.30 Selecting previously unselected package libubsan1:amd64.
+#43 26.30 Preparing to unpack .../28-libubsan1_14.2.0-19_amd64.deb ...
+#43 26.31 Unpacking libubsan1:amd64 (14.2.0-19) ...
+#43 26.40 Selecting previously unselected package libhwasan0:amd64.
+#43 26.41 Preparing to unpack .../29-libhwasan0_14.2.0-19_amd64.deb ...
+#43 26.41 Unpacking libhwasan0:amd64 (14.2.0-19) ...
+#43 26.53 Selecting previously unselected package libquadmath0:amd64.
+#43 26.53 Preparing to unpack .../30-libquadmath0_14.2.0-19_amd64.deb ...
+#43 26.53 Unpacking libquadmath0:amd64 (14.2.0-19) ...
+#43 26.58 Selecting previously unselected package libgcc-14-dev:amd64.
+#43 26.58 Preparing to unpack .../31-libgcc-14-dev_14.2.0-19_amd64.deb ...
+#43 26.59 Unpacking libgcc-14-dev:amd64 (14.2.0-19) ...
+#43 26.78 Selecting previously unselected package gcc-14-x86-64-linux-gnu.
+#43 26.78 Preparing to unpack .../32-gcc-14-x86-64-linux-gnu_14.2.0-19_amd64.deb ...
+#43 26.78 Unpacking gcc-14-x86-64-linux-gnu (14.2.0-19) ...
+#43 28.41 Selecting previously unselected package gcc-14.
+#43 28.41 Preparing to unpack .../33-gcc-14_14.2.0-19_amd64.deb ...
+#43 28.42 Unpacking gcc-14 (14.2.0-19) ...
+#43 28.47 Selecting previously unselected package gcc-x86-64-linux-gnu.
+#43 28.48 Preparing to unpack .../34-gcc-x86-64-linux-gnu_4%3a14.2.0-1_amd64.deb ...
+#43 28.48 Unpacking gcc-x86-64-linux-gnu (4:14.2.0-1) ...
+#43 28.53 Selecting previously unselected package gcc.
+#43 28.53 Preparing to unpack .../35-gcc_4%3a14.2.0-1_amd64.deb ...
+#43 28.53 Unpacking gcc (4:14.2.0-1) ...
+#43 28.58 Selecting previously unselected package libbrotli1:amd64.
+#43 28.59 Preparing to unpack .../36-libbrotli1_1.1.0-2+b7_amd64.deb ...
+#43 28.59 Unpacking libbrotli1:amd64 (1.1.0-2+b7) ...
+#43 28.66 Selecting previously unselected package libunistring5:amd64.
+#43 28.66 Preparing to unpack .../37-libunistring5_1.3-2_amd64.deb ...
+#43 28.66 Unpacking libunistring5:amd64 (1.3-2) ...
+#43 28.79 Selecting previously unselected package libidn2-0:amd64.
+#43 28.79 Preparing to unpack .../38-libidn2-0_2.3.8-2_amd64.deb ...
+#43 28.80 Unpacking libidn2-0:amd64 (2.3.8-2) ...
+#43 28.88 Selecting previously unselected package libp11-kit0:amd64.
+#43 28.88 Preparing to unpack .../39-libp11-kit0_0.25.5-3_amd64.deb ...
+#43 28.89 Unpacking libp11-kit0:amd64 (0.25.5-3) ...
+#43 28.96 Selecting previously unselected package libtasn1-6:amd64.
+#43 28.96 Preparing to unpack .../40-libtasn1-6_4.20.0-2_amd64.deb ...
+#43 28.96 Unpacking libtasn1-6:amd64 (4.20.0-2) ...
+#43 29.02 Selecting previously unselected package libgnutls30t64:amd64.
+#43 29.02 Preparing to unpack .../41-libgnutls30t64_3.8.9-3+deb13u4_amd64.deb ...
+#43 29.03 Unpacking libgnutls30t64:amd64 (3.8.9-3+deb13u4) ...
+#43 29.13 Selecting previously unselected package libkrb5support0:amd64.
+#43 29.13 Preparing to unpack .../42-libkrb5support0_1.21.3-5+deb13u1_amd64.deb ...
+#43 29.13 Unpacking libkrb5support0:amd64 (1.21.3-5+deb13u1) ...
+#43 29.18 Selecting previously unselected package libcom-err2:amd64.
+#43 29.19 Preparing to unpack .../43-libcom-err2_1.47.2-3+b11_amd64.deb ...
+#43 29.19 Unpacking libcom-err2:amd64 (1.47.2-3+b11) ...
+#43 29.25 Selecting previously unselected package libk5crypto3:amd64.
+#43 29.26 Preparing to unpack .../44-libk5crypto3_1.21.3-5+deb13u1_amd64.deb ...
+#43 29.26 Unpacking libk5crypto3:amd64 (1.21.3-5+deb13u1) ...
+#43 29.32 Selecting previously unselected package libkeyutils1:amd64.
+#43 29.33 Preparing to unpack .../45-libkeyutils1_1.6.3-6_amd64.deb ...
+#43 29.34 Unpacking libkeyutils1:amd64 (1.6.3-6) ...
+#43 29.39 Selecting previously unselected package libkrb5-3:amd64.
+#43 29.39 Preparing to unpack .../46-libkrb5-3_1.21.3-5+deb13u1_amd64.deb ...
+#43 29.40 Unpacking libkrb5-3:amd64 (1.21.3-5+deb13u1) ...
+#43 29.47 Selecting previously unselected package libgssapi-krb5-2:amd64.
+#43 29.47 Preparing to unpack .../47-libgssapi-krb5-2_1.21.3-5+deb13u1_amd64.deb ...
+#43 29.48 Unpacking libgssapi-krb5-2:amd64 (1.21.3-5+deb13u1) ...
+#43 29.53 Selecting previously unselected package libsasl2-modules-db:amd64.
+#43 29.53 Preparing to unpack .../48-libsasl2-modules-db_2.1.28+dfsg1-9_amd64.deb ...
+#43 29.54 Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+#43 29.58 Selecting previously unselected package libsasl2-2:amd64.
+#43 29.58 Preparing to unpack .../49-libsasl2-2_2.1.28+dfsg1-9_amd64.deb ...
+#43 29.59 Unpacking libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+#43 29.64 Selecting previously unselected package libldap2:amd64.
+#43 29.64 Preparing to unpack .../50-libldap2_2.6.10+dfsg-1_amd64.deb ...
+#43 29.64 Unpacking libldap2:amd64 (2.6.10+dfsg-1) ...
+#43 29.70 Selecting previously unselected package libnghttp2-14:amd64.
+#43 29.70 Preparing to unpack .../51-libnghttp2-14_1.64.0-1.1+deb13u1_amd64.deb ...
+#43 29.70 Unpacking libnghttp2-14:amd64 (1.64.0-1.1+deb13u1) ...
+#43 29.74 Selecting previously unselected package libnghttp3-9:amd64.
+#43 29.75 Preparing to unpack .../52-libnghttp3-9_1.8.0-1_amd64.deb ...
+#43 29.75 Unpacking libnghttp3-9:amd64 (1.8.0-1) ...
+#43 29.79 Selecting previously unselected package libngtcp2-16:amd64.
+#43 29.79 Preparing to unpack .../53-libngtcp2-16_1.11.0-1+deb13u1_amd64.deb ...
+#43 29.80 Unpacking libngtcp2-16:amd64 (1.11.0-1+deb13u1) ...
+#43 29.84 Selecting previously unselected package libngtcp2-crypto-gnutls8:amd64.
+#43 29.85 Preparing to unpack .../54-libngtcp2-crypto-gnutls8_1.11.0-1+deb13u1_amd64.deb ...
+#43 29.85 Unpacking libngtcp2-crypto-gnutls8:amd64 (1.11.0-1+deb13u1) ...
+#43 29.90 Selecting previously unselected package libpsl5t64:amd64.
+#43 29.90 Preparing to unpack .../55-libpsl5t64_0.21.2-1.1+b1_amd64.deb ...
+#43 29.90 Unpacking libpsl5t64:amd64 (0.21.2-1.1+b1) ...
+#43 29.95 Selecting previously unselected package librtmp1:amd64.
+#43 29.95 Preparing to unpack .../56-librtmp1_2.4+20151223.gitfa8646d.1-2+b5_amd64.deb ...
+#43 29.95 Unpacking librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+#43 29.99 Selecting previously unselected package libssh2-1t64:amd64.
+#43 30.00 Preparing to unpack .../57-libssh2-1t64_1.11.1-1_amd64.deb ...
+#43 30.00 Unpacking libssh2-1t64:amd64 (1.11.1-1) ...
+#43 30.05 Selecting previously unselected package libcurl3t64-gnutls:amd64.
+#43 30.05 Preparing to unpack .../58-libcurl3t64-gnutls_8.14.1-2+deb13u3_amd64.deb ...
+#43 30.05 Unpacking libcurl3t64-gnutls:amd64 (8.14.1-2+deb13u3) ...
+#43 30.10 Selecting previously unselected package liberror-perl.
+#43 30.11 Preparing to unpack .../59-liberror-perl_0.17030-1_all.deb ...
+#43 30.11 Unpacking liberror-perl (0.17030-1) ...
+#43 30.15 Selecting previously unselected package git-man.
+#43 30.15 Preparing to unpack .../60-git-man_1%3a2.47.3-0+deb13u1_all.deb ...
+#43 30.16 Unpacking git-man (1:2.47.3-0+deb13u1) ...
+#43 30.24 Selecting previously unselected package git.
+#43 30.24 Preparing to unpack .../61-git_1%3a2.47.3-0+deb13u1_amd64.deb ...
+#43 30.26 Unpacking git (1:2.47.3-0+deb13u1) ...
+#43 31.19 Selecting previously unselected package libpq5:amd64.
+#43 31.19 Preparing to unpack .../62-libpq5_17.10-0+deb13u1_amd64.deb ...
+#43 31.20 Unpacking libpq5:amd64 (17.10-0+deb13u1) ...
+#43 31.28 Selecting previously unselected package libssl-dev:amd64.
+#43 31.28 Preparing to unpack .../63-libssl-dev_3.5.6-1~deb13u1_amd64.deb ...
+#43 31.29 Unpacking libssl-dev:amd64 (3.5.6-1~deb13u1) ...
+#43 31.55 Selecting previously unselected package libpq-dev.
+#43 31.55 Preparing to unpack .../64-libpq-dev_17.10-0+deb13u1_amd64.deb ...
+#43 31.56 Unpacking libpq-dev (17.10-0+deb13u1) ...
+#43 31.65 Setting up libexpat1:amd64 (2.7.1-2) ...
+#43 31.67 Setting up libkeyutils1:amd64 (1.6.3-6) ...
+#43 31.68 Setting up libgdbm-compat4t64:amd64 (1.24-2) ...
+#43 31.71 Setting up libbrotli1:amd64 (1.1.0-2+b7) ...
+#43 31.73 Setting up binutils-common:amd64 (2.44-3) ...
+#43 31.74 Setting up libnghttp2-14:amd64 (1.64.0-1.1+deb13u1) ...
+#43 31.75 Setting up libctf-nobfd0:amd64 (2.44-3) ...
+#43 31.78 Setting up libcom-err2:amd64 (1.47.2-3+b11) ...
+#43 31.80 Setting up libgomp1:amd64 (14.2.0-19) ...
+#43 31.82 Setting up libsframe1:amd64 (2.44-3) ...
+#43 31.84 Setting up libjansson4:amd64 (2.14-2+b3) ...
+#43 31.86 Setting up libkrb5support0:amd64 (1.21.3-5+deb13u1) ...
+#43 31.88 Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+#43 31.89 Setting up libmpfr6:amd64 (4.2.2-1) ...
+#43 31.90 Setting up libquadmath0:amd64 (14.2.0-19) ...
+#43 31.91 Setting up libp11-kit0:amd64 (0.25.5-3) ...
+#43 31.92 Setting up libunistring5:amd64 (1.3-2) ...
+#43 31.93 Setting up libssl-dev:amd64 (3.5.6-1~deb13u1) ...
+#43 31.95 Setting up libmpc3:amd64 (1.3.1-1+b3) ...
+#43 31.96 Setting up libatomic1:amd64 (14.2.0-19) ...
+#43 31.97 Setting up libk5crypto3:amd64 (1.21.3-5+deb13u1) ...
+#43 31.98 Setting up libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+#43 31.99 Setting up libnghttp3-9:amd64 (1.8.0-1) ...
+#43 32.00 Setting up libubsan1:amd64 (14.2.0-19) ...
+#43 32.01 Setting up perl-modules-5.40 (5.40.1-6) ...
+#43 32.03 Setting up libhwasan0:amd64 (14.2.0-19) ...
+#43 32.04 Setting up libasan8:amd64 (14.2.0-19) ...
+#43 32.05 Setting up libtasn1-6:amd64 (4.20.0-2) ...
+#43 32.06 Setting up git-man (1:2.47.3-0+deb13u1) ...
+#43 32.07 Setting up libngtcp2-16:amd64 (1.11.0-1+deb13u1) ...
+#43 32.09 Setting up libkrb5-3:amd64 (1.21.3-5+deb13u1) ...
+#43 32.10 Setting up libssh2-1t64:amd64 (1.11.1-1) ...
+#43 32.11 Setting up libtsan2:amd64 (14.2.0-19) ...
+#43 32.12 Setting up libbinutils:amd64 (2.44-3) ...
+#43 32.13 Setting up libisl23:amd64 (0.27-1) ...
+#43 32.15 Setting up libcc1-0:amd64 (14.2.0-19) ...
+#43 32.16 Setting up libldap2:amd64 (2.6.10+dfsg-1) ...
+#43 32.17 Setting up liblsan0:amd64 (14.2.0-19) ...
+#43 32.19 Setting up libitm1:amd64 (14.2.0-19) ...
+#43 32.20 Setting up libctf0:amd64 (2.44-3) ...
+#43 32.21 Setting up libidn2-0:amd64 (2.3.8-2) ...
+#43 32.22 Setting up libperl5.40:amd64 (5.40.1-6) ...
+#43 32.23 Setting up perl (5.40.1-6) ...
+#43 32.26 Setting up libgprofng0:amd64 (2.44-3) ...
+#43 32.27 Setting up libgssapi-krb5-2:amd64 (1.21.3-5+deb13u1) ...
+#43 32.28 Setting up cpp-14-x86-64-linux-gnu (14.2.0-19) ...
+#43 32.30 Setting up cpp-14 (14.2.0-19) ...
+#43 32.31 Setting up libgcc-14-dev:amd64 (14.2.0-19) ...
+#43 32.32 Setting up binutils-x86-64-linux-gnu (2.44-3) ...
+#43 32.33 Setting up cpp-x86-64-linux-gnu (4:14.2.0-1) ...
+#43 32.35 Setting up libgnutls30t64:amd64 (3.8.9-3+deb13u4) ...
+#43 32.36 Setting up libpsl5t64:amd64 (0.21.2-1.1+b1) ...
+#43 32.37 Setting up libpq5:amd64 (17.10-0+deb13u1) ...
+#43 32.39 Setting up libpq-dev (17.10-0+deb13u1) ...
+#43 32.40 Setting up binutils (2.44-3) ...
+#43 32.42 Setting up liberror-perl (0.17030-1) ...
+#43 32.43 Setting up librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+#43 32.44 Setting up cpp (4:14.2.0-1) ...
+#43 32.48 Setting up gcc-14-x86-64-linux-gnu (14.2.0-19) ...
+#43 32.49 Setting up libngtcp2-crypto-gnutls8:amd64 (1.11.0-1+deb13u1) ...
+#43 32.50 Setting up gcc-x86-64-linux-gnu (4:14.2.0-1) ...
+#43 32.52 Setting up libcurl3t64-gnutls:amd64 (8.14.1-2+deb13u3) ...
+#43 32.53 Setting up gcc-14 (14.2.0-19) ...
+#43 32.54 Setting up git (1:2.47.3-0+deb13u1) ...
+#43 32.57 Setting up gcc (4:14.2.0-1) ...
+#43 32.59 Processing triggers for libc-bin (2.41-12+deb13u3) ...
+#43 DONE 33.4s
+
+#45 [core-api builder 4/5] COPY requirements.txt .
+#45 DONE 0.3s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 2.431 Requirement already satisfied: pip in /usr/local/lib/python3.13/site-packages (26.0.1)
+#46 2.752 Collecting pip
+#46 3.114   Downloading pip-26.1.1-py3-none-any.whl.metadata (4.6 kB)
+#46 3.214 Downloading pip-26.1.1-py3-none-any.whl (1.8 MB)
+#46 3.765    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 1.8/1.8 MB 4.4 MB/s  0:00:00
+#46 3.794 Installing collected packages: pip
+#46 3.794   Attempting uninstall: pip
+#46 3.798     Found existing installation: pip 26.0.1
+#46 3.863     Uninstalling pip-26.0.1:
+#46 4.632       Successfully uninstalled pip-26.0.1
+#46 6.562 Successfully installed pip-26.1.1
+#46 6.563 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#46 7.696 Collecting vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0 (from -r requirements.build.txt (line 25))
+#46 7.696   Cloning https://github.com/vietdungiitb/vnbroker.git (to revision v1.1.0) to /tmp/pip-install-nwl83b81/vnbroker_7cebdf5544224334a971f1bf21d0713f
+#46 7.700   Running command git clone --filter=blob:none --quiet https://github.com/vietdungiitb/vnbroker.git /tmp/pip-install-nwl83b81/vnbroker_7cebdf5544224334a971f1bf21d0713f
+#46 ...
+
+#44 [frontend builder  2/16] COPY vnstockchars /vnstockchars
+#44 DONE 29.5s
+
+#47 [frontend builder  3/16] WORKDIR /vnstockchars
+#47 DONE 1.6s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 ...
+
+#48 [frontend builder  4/16] RUN npm ci --legacy-peer-deps
+#48 ...
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 14.36   Running command git checkout -q d20238a06fb3c0a730def8bf9083ab9ceb036e1e
+#46 15.67   Resolved https://github.com/vietdungiitb/vnbroker.git to commit d20238a06fb3c0a730def8bf9083ab9ceb036e1e
+#46 15.68   Installing build dependencies: started
+#46 19.30   Installing build dependencies: finished with status 'done'
+#46 19.30   Getting requirements to build wheel: started
+#46 20.22   Getting requirements to build wheel: finished with status 'done'
+#46 20.22   Preparing metadata (pyproject.toml): started
+#46 20.54   Preparing metadata (pyproject.toml): finished with status 'done'
+#46 20.92 Collecting Django<6.0,>=5.2 (from -r requirements.build.txt (line 1))
+#46 21.12   Downloading django-5.2.14-py3-none-any.whl.metadata (4.1 kB)
+#46 21.21 Collecting djangorestframework<4.0,>=3.15 (from -r requirements.build.txt (line 2))
+#46 21.27   Downloading djangorestframework-3.17.1-py3-none-any.whl.metadata (7.9 kB)
+#46 21.37 Collecting drf-spectacular<1.0,>=0.27 (from -r requirements.build.txt (line 3))
+#46 21.42   Downloading drf_spectacular-0.29.0-py3-none-any.whl.metadata (14 kB)
+#46 21.51 Collecting dj-database-url>=2.0 (from -r requirements.build.txt (line 4))
+#46 21.57   Downloading dj_database_url-3.1.2-py3-none-any.whl.metadata (13 kB)
+#46 21.74 Collecting psycopg2-binary>=2.9 (from -r requirements.build.txt (line 5))
+#46 21.80   Downloading psycopg2_binary-2.9.12-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+#46 21.90 Collecting celery<6.0,>=5.3 (from -r requirements.build.txt (line 6))
+#46 21.96   Downloading celery-5.6.3-py3-none-any.whl.metadata (23 kB)
+#46 22.06 Collecting django-celery-beat<3.0,>=2.6 (from -r requirements.build.txt (line 7))
+#46 22.12   Downloading django_celery_beat-2.9.0-py3-none-any.whl.metadata (13 kB)
+#46 22.22 Collecting redis<6.0,>=5.0 (from -r requirements.build.txt (line 8))
+#46 22.28   Downloading redis-5.3.1-py3-none-any.whl.metadata (9.2 kB)
+#46 22.37 Collecting django-cors-headers>=4.0 (from -r requirements.build.txt (line 9))
+#46 22.43   Downloading django_cors_headers-4.9.0-py3-none-any.whl.metadata (16 kB)
+#46 22.51 Collecting django-ratelimit<5.0,>=4.1 (from -r requirements.build.txt (line 10))
+#46 22.57   Downloading django_ratelimit-4.1.0-py2.py3-none-any.whl.metadata (2.3 kB)
+#46 22.65 Collecting gunicorn>=21.0 (from -r requirements.build.txt (line 11))
+#46 22.73   Downloading gunicorn-26.0.0-py3-none-any.whl.metadata (5.4 kB)
+#46 22.86 Collecting sentry-sdk<2.0,>=1.40 (from sentry-sdk[django]<2.0,>=1.40->-r requirements.build.txt (line 12))
+#46 22.92   Downloading sentry_sdk-1.45.1-py2.py3-none-any.whl.metadata (9.9 kB)
+#46 23.04 Collecting django-prometheus<3.0,>=2.3 (from -r requirements.build.txt (line 13))
+#46 23.10   Downloading django_prometheus-2.4.1-py2.py3-none-any.whl.metadata (9.6 kB)
+#46 23.19 Collecting httpx<1.0,>=0.27 (from -r requirements.build.txt (line 14))
+#46 23.25   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+#46 23.59 Collecting pandas>=2.0 (from -r requirements.build.txt (line 16))
+#46 23.65   Downloading pandas-3.0.3-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (79 kB)
+#46 23.85 Collecting channels<5.0,>=4.0 (from -r requirements.build.txt (line 18))
+#46 23.91   Downloading channels-4.3.2-py3-none-any.whl.metadata (4.7 kB)
+#46 23.99 Collecting channels-redis<5.0,>=4.1 (from -r requirements.build.txt (line 19))
+#46 24.05   Downloading channels_redis-4.3.0-py3-none-any.whl.metadata (13 kB)
+#46 24.14 Collecting daphne<5.0,>=4.0 (from -r requirements.build.txt (line 20))
+#46 24.20   Downloading daphne-4.2.1-py3-none-any.whl.metadata (1.7 kB)
+#46 24.30 Collecting google-auth<3.0,>=2.0 (from -r requirements.build.txt (line 22))
+#46 24.36   Downloading google_auth-2.53.0-py3-none-any.whl.metadata (5.5 kB)
+#46 24.46 Collecting google-api-python-client<3.0,>=2.0 (from -r requirements.build.txt (line 23))
+#46 24.53   Downloading google_api_python_client-2.196.0-py3-none-any.whl.metadata (7.0 kB)
+#46 24.61 Collecting requests (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 24.67   Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+#46 24.75 Collecting beautifulsoup4 (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 24.81   Downloading beautifulsoup4-4.14.3-py3-none-any.whl.metadata (3.8 kB)
+#46 24.89 Collecting openpyxl (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 24.95   Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+#46 25.12 Collecting pydantic (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 25.18   Downloading pydantic-2.13.4-py3-none-any.whl.metadata (109 kB)
+#46 25.39 Collecting pytz (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 25.46   Downloading pytz-2026.2-py2.py3-none-any.whl.metadata (22 kB)
+#46 25.62 Collecting psutil (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 25.68   Downloading psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl.metadata (22 kB)
+#46 25.76 Collecting packaging>=20.0 (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 25.82   Downloading packaging-26.2-py3-none-any.whl.metadata (3.5 kB)
+#46 25.92 Collecting importlib-metadata>=1.0 (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 25.98   Downloading importlib_metadata-9.0.0-py3-none-any.whl.metadata (4.5 kB)
+#46 26.06 Collecting tenacity (from vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 26.12   Downloading tenacity-9.1.4-py3-none-any.whl.metadata (1.2 kB)
+#46 26.21 Collecting asgiref>=3.8.1 (from Django<6.0,>=5.2->-r requirements.build.txt (line 1))
+#46 26.27   Downloading asgiref-3.11.1-py3-none-any.whl.metadata (9.3 kB)
+#46 26.35 Collecting sqlparse>=0.3.1 (from Django<6.0,>=5.2->-r requirements.build.txt (line 1))
+#46 26.41   Downloading sqlparse-0.5.5-py3-none-any.whl.metadata (4.7 kB)
+#46 26.50 Collecting uritemplate>=2.0.0 (from drf-spectacular<1.0,>=0.27->-r requirements.build.txt (line 3))
+#46 26.56   Downloading uritemplate-4.2.0-py3-none-any.whl.metadata (2.6 kB)
+#46 26.67 Collecting PyYAML>=5.1 (from drf-spectacular<1.0,>=0.27->-r requirements.build.txt (line 3))
+#46 26.73   Downloading pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+#46 26.82 Collecting jsonschema>=2.6.0 (from drf-spectacular<1.0,>=0.27->-r requirements.build.txt (line 3))
+#46 26.88   Downloading jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+#46 26.95 Collecting inflection>=0.3.1 (from drf-spectacular<1.0,>=0.27->-r requirements.build.txt (line 3))
+#46 27.01   Downloading inflection-0.5.1-py2.py3-none-any.whl.metadata (1.7 kB)
+#46 27.10 Collecting billiard<5.0,>=4.2.1 (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 27.16   Downloading billiard-4.2.4-py3-none-any.whl.metadata (4.8 kB)
+#46 27.25 Collecting kombu>=5.6.0 (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 27.31   Downloading kombu-5.6.2-py3-none-any.whl.metadata (3.5 kB)
+#46 27.39 Collecting vine<6.0,>=5.1.0 (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 27.45   Downloading vine-5.1.0-py3-none-any.whl.metadata (2.7 kB)
+#46 27.54 Collecting click<9.0,>=8.1.2 (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 27.60   Downloading click-8.4.1-py3-none-any.whl.metadata (2.6 kB)
+#46 27.68 Collecting click-didyoumean>=0.3.0 (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 27.74   Downloading click_didyoumean-0.3.1-py3-none-any.whl.metadata (3.9 kB)
+#46 27.82 Collecting click-repl>=0.2.0 (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 27.88   Downloading click_repl-0.3.0-py3-none-any.whl.metadata (3.6 kB)
+#46 27.96 Collecting click-plugins>=1.1.1 (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 28.02   Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl.metadata (6.5 kB)
+#46 28.10 Collecting python-dateutil>=2.8.2 (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 28.16   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+#46 28.24 Collecting tzlocal (from celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 28.30   Downloading tzlocal-5.3.1-py3-none-any.whl.metadata (7.6 kB)
+#46 28.39 Collecting django-timezone-field>=5.0 (from django-celery-beat<3.0,>=2.6->-r requirements.build.txt (line 7))
+#46 28.46   Downloading django_timezone_field-7.2.1-py3-none-any.whl.metadata (13 kB)
+#46 29.24 Collecting tzdata (from django-celery-beat<3.0,>=2.6->-r requirements.build.txt (line 7))
+#46 29.30   Downloading tzdata-2026.2-py2.py3-none-any.whl.metadata (1.4 kB)
+#46 29.45 Collecting python-crontab>=2.3.4 (from django-celery-beat<3.0,>=2.6->-r requirements.build.txt (line 7))
+#46 29.51   Downloading python_crontab-3.3.0-py3-none-any.whl.metadata (17 kB)
+#46 29.60 Collecting cron-descriptor<2.0.0,>=1.2.32 (from django-celery-beat<3.0,>=2.6->-r requirements.build.txt (line 7))
+#46 29.66   Downloading cron_descriptor-1.4.5-py3-none-any.whl.metadata (5.7 kB)
+#46 29.95 Collecting PyJWT>=2.9.0 (from redis<6.0,>=5.0->-r requirements.build.txt (line 8))
+#46 30.01   Downloading pyjwt-2.13.0-py3-none-any.whl.metadata (3.4 kB)
+#46 30.16 Collecting certifi (from sentry-sdk<2.0,>=1.40->sentry-sdk[django]<2.0,>=1.40->-r requirements.build.txt (line 12))
+#46 30.22   Downloading certifi-2026.5.20-py3-none-any.whl.metadata (2.5 kB)
+#46 30.38 Collecting urllib3>=1.26.11 (from sentry-sdk<2.0,>=1.40->sentry-sdk[django]<2.0,>=1.40->-r requirements.build.txt (line 12))
+#46 30.45   Downloading urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+#46 30.57 Collecting prometheus-client>=0.7 (from django-prometheus<3.0,>=2.3->-r requirements.build.txt (line 13))
+#46 30.63   Downloading prometheus_client-0.25.0-py3-none-any.whl.metadata (2.1 kB)
+#46 30.76 Collecting anyio (from httpx<1.0,>=0.27->-r requirements.build.txt (line 14))
+#46 30.84   Downloading anyio-4.13.0-py3-none-any.whl.metadata (4.5 kB)
+#46 31.20 Collecting httpcore==1.* (from httpx<1.0,>=0.27->-r requirements.build.txt (line 14))
+#46 31.27   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+#46 31.38 Collecting idna (from httpx<1.0,>=0.27->-r requirements.build.txt (line 14))
+#46 31.44   Downloading idna-3.16-py3-none-any.whl.metadata (6.4 kB)
+#46 32.15 Collecting msgpack~=1.0 (from channels-redis<5.0,>=4.1->-r requirements.build.txt (line 19))
+#46 32.21   Downloading msgpack-1.1.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.1 kB)
+#46 32.49 Collecting autobahn>=22.4.2 (from daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 32.55   Downloading autobahn-25.12.2-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (32 kB)
+#46 32.80 Collecting twisted>=22.4 (from twisted[tls]>=22.4->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 32.86   Downloading twisted-26.4.0-py3-none-any.whl.metadata (15 kB)
+#46 33.07 Collecting pyasn1-modules>=0.2.1 (from google-auth<3.0,>=2.0->-r requirements.build.txt (line 22))
+#46 33.14   Downloading pyasn1_modules-0.4.2-py3-none-any.whl.metadata (3.5 kB)
+#46 34.63 Collecting cryptography>=38.0.3 (from google-auth<3.0,>=2.0->-r requirements.build.txt (line 22))
+#46 34.70   Downloading cryptography-48.0.0-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (4.3 kB)
+#46 34.80 Collecting httplib2<1.0.0,>=0.19.0 (from google-api-python-client<3.0,>=2.0->-r requirements.build.txt (line 23))
+#46 34.87   Downloading httplib2-0.31.2-py3-none-any.whl.metadata (2.2 kB)
+#46 34.96 Collecting google-auth-httplib2<1.0.0,>=0.2.0 (from google-api-python-client<3.0,>=2.0->-r requirements.build.txt (line 23))
+#46 35.02   Downloading google_auth_httplib2-0.4.0-py3-none-any.whl.metadata (3.0 kB)
+#46 35.25 Collecting google-api-core!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.0,<3.0.0,>=1.31.5 (from google-api-python-client<3.0,>=2.0->-r requirements.build.txt (line 23))
+#46 35.31   Downloading google_api_core-2.30.3-py3-none-any.whl.metadata (3.1 kB)
+#46 35.66 Collecting googleapis-common-protos<2.0.0,>=1.63.2 (from google-api-core!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.0,<3.0.0,>=1.31.5->google-api-python-client<3.0,>=2.0->-r requirements.build.txt (line 23))
+#46 35.72   Downloading googleapis_common_protos-1.75.0-py3-none-any.whl.metadata (8.6 kB)
+#46 37.56 Collecting protobuf<8.0.0,>=4.25.8 (from google-api-core!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.0,<3.0.0,>=1.31.5->google-api-python-client<3.0,>=2.0->-r requirements.build.txt (line 23))
+#46 37.62   Downloading protobuf-7.35.0-cp310-abi3-manylinux2014_x86_64.whl.metadata (595 bytes)
+#46 37.74 Collecting proto-plus<2.0.0,>=1.22.3 (from google-api-core!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.0,<3.0.0,>=1.31.5->google-api-python-client<3.0,>=2.0->-r requirements.build.txt (line 23))
+#46 37.81   Downloading proto_plus-1.28.0-py3-none-any.whl.metadata (2.2 kB)
+#46 37.91 Collecting h11>=0.16 (from httpcore==1.*->httpx<1.0,>=0.27->-r requirements.build.txt (line 14))
+#46 37.98   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+#46 38.23 Collecting pyparsing<4,>=3.1 (from httplib2<1.0.0,>=0.19.0->google-api-python-client<3.0,>=2.0->-r requirements.build.txt (line 23))
+#46 38.29   Downloading pyparsing-3.3.2-py3-none-any.whl.metadata (5.8 kB)
+#46 39.20 Collecting charset_normalizer<4,>=2 (from requests->vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 39.27   Downloading charset_normalizer-3.4.7-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+#46 40.95 Collecting numpy>=1.26.0 (from pandas>=2.0->-r requirements.build.txt (line 16))
+#46 41.02   Downloading numpy-2.4.6-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+#46 41.40 Collecting cbor2>=5.2.0 (from autobahn>=22.4.2->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 41.46   Downloading cbor2-6.1.1-cp313-cp313-manylinux_2_28_x86_64.whl.metadata (5.5 kB)
+#46 42.03 Collecting cffi>=2.0.0 (from autobahn>=22.4.2->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 42.09   Downloading cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.6 kB)
+#46 42.18 Collecting hyperlink>=21.0.0 (from autobahn>=22.4.2->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 42.25   Downloading hyperlink-21.0.0-py2.py3-none-any.whl.metadata (1.5 kB)
+#46 42.33 Collecting py-ubjson>=0.16.1 (from autobahn>=22.4.2->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 42.51   Downloading py-ubjson-0.16.1.tar.gz (50 kB)
+#46 42.55   Installing build dependencies: started
+#46 ...
+
+#48 [frontend builder  4/16] RUN npm ci --legacy-peer-deps
+#48 20.44 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#48 24.32 npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+#48 24.32 npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+#48 26.43 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+#48 26.51 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#48 27.52 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#48 27.56 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+#48 27.64 npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#48 28.50 npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+#48 31.27 npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+#48 ...
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 44.36   Installing build dependencies: finished with status 'done'
+#46 44.36   Getting requirements to build wheel: started
+#46 45.04   Getting requirements to build wheel: finished with status 'done'
+#46 45.05   Preparing metadata (pyproject.toml): started
+#46 45.42   Preparing metadata (pyproject.toml): finished with status 'done'
+#46 45.52 Collecting txaio>=25.12.2 (from autobahn>=22.4.2->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 45.58   Downloading txaio-25.12.2-py3-none-any.whl.metadata (7.0 kB)
+#46 45.93 Collecting ujson>=4.0.2 (from autobahn>=22.4.2->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 46.01   Downloading ujson-5.12.1-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (9.6 kB)
+#46 46.09 Collecting pycparser (from cffi>=2.0.0->autobahn>=22.4.2->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 46.15   Downloading pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+#46 46.32 Collecting prompt-toolkit>=3.0.36 (from click-repl>=0.2.0->celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 46.37   Downloading prompt_toolkit-3.0.52-py3-none-any.whl.metadata (6.4 kB)
+#46 46.49 Collecting zipp>=3.20 (from importlib-metadata>=1.0->vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 46.55   Downloading zipp-4.1.0-py3-none-any.whl.metadata (3.6 kB)
+#46 46.64 Collecting attrs>=22.2.0 (from jsonschema>=2.6.0->drf-spectacular<1.0,>=0.27->-r requirements.build.txt (line 3))
+#46 46.71   Downloading attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+#46 46.79 Collecting jsonschema-specifications>=2023.03.6 (from jsonschema>=2.6.0->drf-spectacular<1.0,>=0.27->-r requirements.build.txt (line 3))
+#46 46.85   Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+#46 46.97 Collecting referencing>=0.28.4 (from jsonschema>=2.6.0->drf-spectacular<1.0,>=0.27->-r requirements.build.txt (line 3))
+#46 47.04   Downloading referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+#46 ...
+
+#48 [frontend builder  4/16] RUN npm ci --legacy-peer-deps
+#48 33.23 npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+#48 34.58 
+#48 34.58 added 993 packages, and audited 994 packages in 33s
+#48 34.58 
+#48 34.58 239 packages are looking for funding
+#48 34.58   run `npm fund` for details
+#48 34.61 
+#48 34.61 14 vulnerabilities (11 moderate, 3 high)
+#48 34.61 
+#48 34.61 To address issues that do not require attention, run:
+#48 34.61   npm audit fix
+#48 34.61 
+#48 34.61 To address all issues (including breaking changes), run:
+#48 34.61   npm audit fix --force
+#48 34.61 
+#48 34.61 Run `npm audit` for details.
+#48 34.62 npm notice
+#48 34.62 npm notice New major version of npm available! 10.8.2 -> 11.15.0
+#48 34.62 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.15.0
+#48 34.62 npm notice To update run: npm install -g npm@11.15.0
+#48 34.62 npm notice
+#48 DONE 35.9s
+
+#49 [frontend builder  5/16] RUN npm run build:engine-react
+#49 1.067 
+#49 1.067 > vnstockcharts@1.0.0 build:engine-react
+#49 1.067 > npm run build:engine-core && cd packages/vn-kline-engine-react && tsup
+#49 1.067 
+#49 1.260 
+#49 1.260 > vnstockcharts@1.0.0 build:engine-core
+#49 1.260 > cd packages/vn-kline-engine-core && tsup
+#49 1.260 
+#49 1.929 CLI Building entry: src/index.ts
+#49 1.930 CLI Using tsconfig: tsconfig.json
+#49 1.931 CLI tsup v8.5.1
+#49 1.931 CLI Using tsup config: /vnstockchars/packages/vn-kline-engine-core/tsup.config.ts
+#49 1.950 CLI Target: esnext
+#49 1.956 CLI Cleaning output folder
+#49 1.959 ESM Build start
+#49 1.959 CJS Build start
+#49 2.708 DTS Build start
+#49 2.839 ESM dist/index.js     91.97 KB
+#49 2.839 ESM dist/index.js.map 240.16 KB
+#49 2.839 ESM ΓÜí∩╕Å Build success in 880ms
+#49 2.840 CJS dist/index.cjs     93.53 KB
+#49 2.840 CJS dist/index.cjs.map 240.17 KB
+#49 2.840 CJS ΓÜí∩╕Å Build success in 880ms
+#49 5.223 DTS ΓÜí∩╕Å Build success in 2548ms
+#49 5.223 DTS dist/index.d.mts 37.79 KB
+#49 5.224 DTS dist/index.d.ts  37.79 KB
+#49 5.817 CLI Building entry: src/index.ts
+#49 5.818 CLI Using tsconfig: tsconfig.json
+#49 5.819 CLI tsup v8.5.1
+#49 5.819 CLI Using tsup config: /vnstockchars/packages/vn-kline-engine-react/tsup.config.ts
+#49 5.833 CLI Target: esnext
+#49 5.842 CLI Cleaning output folder
+#49 5.846 ESM Build start
+#49 5.846 CJS Build start
+#49 6.129 ESM dist/index.js     5.77 KB
+#49 6.129 ESM dist/index.js.map 13.92 KB
+#49 6.129 ESM ΓÜí∩╕Å Build success in 283ms
+#49 6.130 CJS dist/index.cjs     5.95 KB
+#49 6.131 CJS dist/index.cjs.map 13.96 KB
+#49 6.131 CJS ΓÜí∩╕Å Build success in 285ms
+#49 6.405 DTS Build start
+#49 ...
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 48.12 Collecting rpds-py>=0.25.0 (from jsonschema>=2.6.0->drf-spectacular<1.0,>=0.27->-r requirements.build.txt (line 3))
+#46 48.18   Downloading rpds_py-0.30.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.1 kB)
+#46 48.52 Collecting amqp<6.0.0,>=5.1.1 (from kombu>=5.6.0->celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 48.58   Downloading amqp-5.3.1-py3-none-any.whl.metadata (8.9 kB)
+#46 48.68 Collecting wcwidth (from prompt-toolkit>=3.0.36->click-repl>=0.2.0->celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 48.74   Downloading wcwidth-0.7.0-py3-none-any.whl.metadata (36 kB)
+#46 48.88 Collecting pyasn1<0.7.0,>=0.6.1 (from pyasn1-modules>=0.2.1->google-auth<3.0,>=2.0->-r requirements.build.txt (line 22))
+#46 48.94   Downloading pyasn1-0.6.3-py3-none-any.whl.metadata (8.4 kB)
+#46 49.02 Collecting six>=1.5 (from python-dateutil>=2.8.2->celery<6.0,>=5.3->-r requirements.build.txt (line 6))
+#46 49.08   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+#46 49.16 Collecting automat>=24.8.0 (from twisted>=22.4->twisted[tls]>=22.4->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 49.23   Downloading automat-25.4.16-py3-none-any.whl.metadata (8.4 kB)
+#46 49.30 Collecting constantly>=15.1 (from twisted>=22.4->twisted[tls]>=22.4->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 49.36   Downloading constantly-23.10.4-py3-none-any.whl.metadata (1.8 kB)
+#46 49.44 Collecting incremental>=24.7.0 (from twisted>=22.4->twisted[tls]>=22.4->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 49.50   Downloading incremental-24.11.0-py3-none-any.whl.metadata (9.5 kB)
+#46 49.59 Collecting typing-extensions>=4.2.0 (from twisted>=22.4->twisted[tls]>=22.4->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 49.65   Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+#46 50.13 Collecting zope-interface>=5 (from twisted>=22.4->twisted[tls]>=22.4->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 50.20   Downloading zope_interface-8.4-cp313-cp313-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl.metadata (46 kB)
+#46 50.31 Collecting pyopenssl>=25.2.0 (from twisted[tls]>=22.4->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 50.37   Downloading pyopenssl-26.2.0-py3-none-any.whl.metadata (19 kB)
+#46 50.45 Collecting service-identity>=18.1.0 (from twisted[tls]>=22.4->daphne<5.0,>=4.0->-r requirements.build.txt (line 20))
+#46 50.51   Downloading service_identity-24.2.0-py3-none-any.whl.metadata (5.1 kB)
+#46 50.63 Collecting soupsieve>=1.6.1 (from beautifulsoup4->vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 50.69   Downloading soupsieve-2.8.4-py3-none-any.whl.metadata (4.6 kB)
+#46 50.77 Collecting et-xmlfile (from openpyxl->vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 50.83   Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+#46 50.91 Collecting annotated-types>=0.6.0 (from pydantic->vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 50.97   Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+#46 53.29 Collecting pydantic-core==2.46.4 (from pydantic->vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 53.36   Downloading pydantic_core-2.46.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+#46 53.43 Collecting typing-inspection>=0.4.2 (from pydantic->vnbroker @ git+https://github.com/vietdungiitb/vnbroker.git@v1.1.0->-r requirements.build.txt (line 25))
+#46 53.49   Downloading typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+#46 53.57 Downloading django-5.2.14-py3-none-any.whl (8.3 MB)
+#46 54.73    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 8.3/8.3 MB 7.4 MB/s  0:00:01
+#46 54.80 Downloading djangorestframework-3.17.1-py3-none-any.whl (898 kB)
+#46 54.89    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 898.8/898.8 kB 8.9 MB/s  0:00:00
+#46 54.95 Downloading drf_spectacular-0.29.0-py3-none-any.whl (105 kB)
+#46 55.03 Downloading celery-5.6.3-py3-none-any.whl (451 kB)
+#46 55.12 Downloading django_celery_beat-2.9.0-py3-none-any.whl (105 kB)
+#46 55.20 Downloading redis-5.3.1-py3-none-any.whl (272 kB)
+#46 55.28 Downloading django_ratelimit-4.1.0-py2.py3-none-any.whl (11 kB)
+#46 55.35 Downloading sentry_sdk-1.45.1-py2.py3-none-any.whl (267 kB)
+#46 55.43 Downloading django_prometheus-2.4.1-py2.py3-none-any.whl (29 kB)
+#46 55.49 Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+#46 55.56 Downloading channels-4.3.2-py3-none-any.whl (31 kB)
+#46 55.63 Downloading channels_redis-4.3.0-py3-none-any.whl (20 kB)
+#46 55.70 Downloading daphne-4.2.1-py3-none-any.whl (29 kB)
+#46 55.76 Downloading google_auth-2.53.0-py3-none-any.whl (246 kB)
+#46 55.85 Downloading google_api_python_client-2.196.0-py3-none-any.whl (15.2 MB)
+#46 ...
+
+#49 [frontend builder  5/16] RUN npm run build:engine-react
+#49 8.337 DTS ΓÜí∩╕Å Build success in 1936ms
+#49 8.338 DTS dist/index.d.mts 2.28 KB
+#49 8.338 DTS dist/index.d.ts  2.28 KB
+#49 DONE 8.7s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 ...
+
+#50 [frontend builder  6/16] WORKDIR /app/frontend
+#50 DONE 0.3s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 ...
+
+#51 [frontend builder  7/16] COPY vninvest/frontend/package*.json ./
+#51 DONE 1.0s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 57.61    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 15.2/15.2 MB 8.7 MB/s  0:00:01
+#46 57.67 Downloading asgiref-3.11.1-py3-none-any.whl (24 kB)
+#46 57.74 Downloading billiard-4.2.4-py3-none-any.whl (87 kB)
+#46 57.80 Downloading click-8.4.1-py3-none-any.whl (116 kB)
+#46 57.88 Downloading cron_descriptor-1.4.5-py3-none-any.whl (50 kB)
+#46 57.94 Downloading google_api_core-2.30.3-py3-none-any.whl (173 kB)
+#46 58.01 Downloading google_auth_httplib2-0.4.0-py3-none-any.whl (9.5 kB)
+#46 58.07 Downloading googleapis_common_protos-1.75.0-py3-none-any.whl (300 kB)
+#46 ...
+
+#52 [frontend builder  8/16] COPY vninvest/frontend/patches/ ./patches/
+#52 DONE 0.1s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 58.16 Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+#46 58.23 Downloading httplib2-0.31.2-py3-none-any.whl (91 kB)
+#46 58.31 Downloading msgpack-1.1.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (424 kB)
+#46 58.40 Downloading proto_plus-1.28.0-py3-none-any.whl (50 kB)
+#46 58.47 Downloading protobuf-7.35.0-cp310-abi3-manylinux2014_x86_64.whl (327 kB)
+#46 58.55 Downloading pyparsing-3.3.2-py3-none-any.whl (122 kB)
+#46 58.62 Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+#46 58.69 Downloading charset_normalizer-3.4.7-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (215 kB)
+#46 58.76 Downloading idna-3.16-py3-none-any.whl (74 kB)
+#46 58.83 Downloading uritemplate-4.2.0-py3-none-any.whl (11 kB)
+#46 58.89 Downloading urllib3-2.7.0-py3-none-any.whl (131 kB)
+#46 58.97 Downloading vine-5.1.0-py3-none-any.whl (9.6 kB)
+#46 59.04 Downloading dj_database_url-3.1.2-py3-none-any.whl (9.0 kB)
+#46 59.10 Downloading psycopg2_binary-2.9.12-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.3 MB)
+#46 59.56    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 4.3/4.3 MB 9.4 MB/s  0:00:00
+#46 59.62 Downloading django_cors_headers-4.9.0-py3-none-any.whl (12 kB)
+#46 59.68 Downloading gunicorn-26.0.0-py3-none-any.whl (212 kB)
+#46 59.77 Downloading pandas-3.0.3-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (10.9 MB)
+#46 60.90    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 10.9/10.9 MB 9.7 MB/s  0:00:01
+#46 60.96 Downloading autobahn-25.12.2-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (2.2 MB)
+#46 61.18    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 2.2/2.2 MB 10.0 MB/s  0:00:00
+#46 61.25 Downloading cbor2-6.1.1-cp313-cp313-manylinux_2_28_x86_64.whl (466 kB)
+#46 61.35 Downloading certifi-2026.5.20-py3-none-any.whl (134 kB)
+#46 61.42 Downloading cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (219 kB)
+#46 61.49 Downloading click_didyoumean-0.3.1-py3-none-any.whl (3.6 kB)
+#46 61.55 Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl (11 kB)
+#46 61.61 Downloading click_repl-0.3.0-py3-none-any.whl (10 kB)
+#46 61.67 Downloading cryptography-48.0.0-cp311-abi3-manylinux_2_34_x86_64.whl (4.7 MB)
+#46 62.15    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 4.7/4.7 MB 10.3 MB/s  0:00:00
+#46 62.21 Downloading django_timezone_field-7.2.1-py3-none-any.whl (13 kB)
+#46 62.27 Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+#46 62.34 Downloading hyperlink-21.0.0-py2.py3-none-any.whl (74 kB)
+#46 ...
+
+#53 [frontend builder  9/16] COPY vninvest/packages/web/ ../packages/web/
+#53 DONE 4.2s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 62.40 Downloading importlib_metadata-9.0.0-py3-none-any.whl (27 kB)
+#46 62.46 Downloading inflection-0.5.1-py2.py3-none-any.whl (9.5 kB)
+#46 62.52 Downloading jsonschema-4.26.0-py3-none-any.whl (90 kB)
+#46 62.58 Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+#46 62.65 Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+#46 62.71 Downloading kombu-5.6.2-py3-none-any.whl (214 kB)
+#46 62.79 Downloading amqp-5.3.1-py3-none-any.whl (50 kB)
+#46 62.86 Downloading numpy-2.4.6-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.6 MB)
+#46 64.55    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 16.6/16.6 MB 9.9 MB/s  0:00:01
+#46 64.61 Downloading packaging-26.2-py3-none-any.whl (100 kB)
+#46 64.67 Downloading prometheus_client-0.25.0-py3-none-any.whl (64 kB)
+#46 64.74 Downloading prompt_toolkit-3.0.52-py3-none-any.whl (391 kB)
+#46 64.83 Downloading pyasn1_modules-0.4.2-py3-none-any.whl (181 kB)
+#46 ...
+
+#54 [frontend builder 10/16] COPY vninvest/packages/web/ ./packages/web/
+#54 DONE 2.5s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 64.90 Downloading pyasn1-0.6.3-py3-none-any.whl (83 kB)
+#46 64.97 Downloading pyjwt-2.13.0-py3-none-any.whl (31 kB)
+#46 65.04 Downloading python_crontab-3.3.0-py3-none-any.whl (27 kB)
+#46 65.10 Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#46 65.17 Downloading pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (801 kB)
+#46 65.25    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 801.6/801.6 kB 10.3 MB/s  0:00:00
+#46 65.31 Downloading referencing-0.37.0-py3-none-any.whl (26 kB)
+#46 65.37 Downloading rpds_py-0.30.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (394 kB)
+#46 65.47 Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#46 65.53 Downloading sqlparse-0.5.5-py3-none-any.whl (46 kB)
+#46 65.59 Downloading twisted-26.4.0-py3-none-any.whl (3.2 MB)
+#46 65.92    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 3.2/3.2 MB 9.9 MB/s  0:00:00
+#46 65.98 Downloading automat-25.4.16-py3-none-any.whl (42 kB)
+#46 66.05 Downloading constantly-23.10.4-py3-none-any.whl (13 kB)
+#46 66.11 Downloading incremental-24.11.0-py3-none-any.whl (21 kB)
+#46 66.17 Downloading pyopenssl-26.2.0-py3-none-any.whl (55 kB)
+#46 66.23 Downloading service_identity-24.2.0-py3-none-any.whl (11 kB)
+#46 66.31 Downloading txaio-25.12.2-py3-none-any.whl (31 kB)
+#46 66.38 Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+#46 66.44 Downloading tzdata-2026.2-py2.py3-none-any.whl (349 kB)
+#46 66.53 Downloading ujson-5.12.1-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (59 kB)
+#46 66.59 Downloading zipp-4.1.0-py3-none-any.whl (10 kB)
+#46 66.65 Downloading zope_interface-8.4-cp313-cp313-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl (269 kB)
+#46 66.73 Downloading anyio-4.13.0-py3-none-any.whl (114 kB)
+#46 66.80 Downloading beautifulsoup4-4.14.3-py3-none-any.whl (107 kB)
+#46 66.87 Downloading soupsieve-2.8.4-py3-none-any.whl (37 kB)
+#46 66.93 Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+#46 67.01 Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+#46 67.07 Downloading psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl (155 kB)
+#46 67.15 Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+#46 67.21 Downloading pydantic-2.13.4-py3-none-any.whl (472 kB)
+#46 67.32 Downloading pydantic_core-2.46.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+#46 67.52    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 2.1/2.1 MB 9.8 MB/s  0:00:00
+#46 67.59 Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+#46 67.65 Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+#46 67.70 Downloading pytz-2026.2-py2.py3-none-any.whl (510 kB)
+#46 67.81 Downloading tenacity-9.1.4-py3-none-any.whl (28 kB)
+#46 67.87 Downloading tzlocal-5.3.1-py3-none-any.whl (18 kB)
+#46 67.93 Downloading wcwidth-0.7.0-py3-none-any.whl (110 kB)
+#46 68.12 Building wheels for collected packages: vnbroker, py-ubjson
+#46 68.13   Building wheel for vnbroker (pyproject.toml): started
+#46 68.87   Building wheel for vnbroker (pyproject.toml): finished with status 'done'
+#46 68.87   Created wheel for vnbroker: filename=vnbroker-1.0.2-py3-none-any.whl size=390390 sha256=a01359a2366c9232d00591a755c6f8894b10c1313c50a2e88ef0ddb59783c883
+#46 68.87   Stored in directory: /tmp/pip-ephem-wheel-cache-yjgwctmq/wheels/c3/3a/c6/d3f424e3b33c7af14ab03fa06d0bf5271495bf6aafcc3b77b9
+#46 68.88   Building wheel for py-ubjson (pyproject.toml): started
+#46 69.46   Building wheel for py-ubjson (pyproject.toml): finished with status 'done'
+#46 69.47   Created wheel for py-ubjson: filename=py_ubjson-0.16.1-cp313-cp313-linux_x86_64.whl size=19333 sha256=d253c3c5444c58e4a77b63102e5db29c6b9c5192322b7973e6a99832a6ae52d4
+#46 69.47   Stored in directory: /tmp/pip-ephem-wheel-cache-yjgwctmq/wheels/14/a0/25/eb722ee8b90832ddd807a43c878817096ed4c65227a63011e5
+#46 69.47 Successfully built vnbroker py-ubjson
+#46 69.82 Installing collected packages: pytz, python-crontab, py-ubjson, cron-descriptor, zope-interface, zipp, wcwidth, vine, urllib3, uritemplate, ujson, tzlocal, tzdata, typing-extensions, txaio, tenacity, sqlparse, soupsieve, six, rpds-py, PyYAML, pyparsing, PyJWT, pycparser, pyasn1, psycopg2-binary, psutil, protobuf, prometheus-client, packaging, numpy, msgpack, inflection, idna, h11, et-xmlfile, django-ratelimit, constantly, click, charset_normalizer, certifi, cbor2, billiard, automat, attrs, asgiref, annotated-types, typing-inspection, sentry-sdk, requests, referencing, redis, python-dateutil, pydantic-core, pyasn1-modules, proto-plus, prompt-toolkit, openpyxl, incremental, importlib-metadata, hyperlink, httplib2, httpcore, gunicorn, googleapis-common-protos, Django, click-plugins, click-didyoumean, cffi, beautifulsoup4, anyio, amqp, twisted, pydantic, pandas, kombu, jsonschema-specifications, httpx, djangorestframework, django-timezone-field, django-prometheus, django-cors-headers, dj-database-url, cryptography, click-repl, channels, vnbroker, service-identity, pyopenssl, jsonschema, google-auth, channels-redis, celery, autobahn, google-auth-httplib2, google-api-core, drf-spectacular, django-celery-beat, google-api-python-client, daphne
+#46 ...
+
+#55 [frontend builder 11/16] RUN npm ci --legacy-peer-deps
+#55 7.806 npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+#55 7.829 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+#55 8.188 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#55 8.208 npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+#55 9.264 npm warn deprecated whatwg-encoding@1.0.5: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+#55 9.589 npm warn deprecated w3c-hr-time@1.0.2: Use your platform's native performance.now() and performance.timeOrigin.
+#55 9.661 npm warn deprecated stable@0.1.8: Modern JS already guarantees Array#sort() is a stable sort, so this library is deprecated. See the compatibility table on MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#browser_compatibility
+#55 9.788 npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
+#55 9.795 npm warn deprecated rollup-plugin-terser@7.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-terser
+#55 11.02 npm warn deprecated workbox-cacheable-response@6.6.0: workbox-background-sync@6.6.0
+#55 11.03 npm warn deprecated q@1.5.1: You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+#55 11.03 npm warn deprecated
+#55 11.03 npm warn deprecated (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
+#55 12.20 npm warn deprecated workbox-google-analytics@6.6.0: It is not compatible with newer versions of GA starting with v4, as long as you are using GAv3 it should be ok, but the package is not longer being maintained
+#55 12.54 npm warn deprecated domexception@2.0.1: Use your platform's native DOMException instead
+#55 13.37 npm warn deprecated abab@2.0.6: Use your platform's native atob() and btoa() methods instead
+#55 15.50 npm warn deprecated @babel/plugin-proposal-numeric-separator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-numeric-separator instead.
+#55 15.51 npm warn deprecated @babel/plugin-proposal-private-methods@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-methods instead.
+#55 15.51 npm warn deprecated @babel/plugin-proposal-nullish-coalescing-operator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
+#55 15.51 npm warn deprecated @babel/plugin-proposal-optional-chaining@7.21.0: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
+#55 15.57 npm warn deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+#55 16.34 npm warn deprecated svgo@1.3.2: This SVGO version is no longer supported. Upgrade to v2.x.x.
+#55 16.49 npm warn deprecated @babel/plugin-proposal-private-property-in-object@7.21.11: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-property-in-object instead.
+#55 16.67 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#55 16.72 npm warn deprecated source-map@0.8.0-beta.0: The work that was done in this beta branch won't be included in future versions
+#55 21.50 npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+#55 30.68 
+#55 30.68 > vninvest-frontend@1.0.0 postinstall
+#55 30.68 > patch-package
+#55 30.68 
+#55 31.13 patch-package 8.0.1
+#55 31.13 Applying patches...
+#55 31.51 echarts@6.0.0 Γ£ö
+#55 31.56 
+#55 31.56 added 1427 packages, and audited 1431 packages in 31s
+#55 31.56 
+#55 31.56 275 packages are looking for funding
+#55 31.56   run `npm fund` for details
+#55 31.60 
+#55 31.60 37 vulnerabilities (9 low, 11 moderate, 17 high)
+#55 31.60 
+#55 31.60 To address issues that do not require attention, run:
+#55 31.60   npm audit fix
+#55 31.60 
+#55 31.60 To address all issues (including breaking changes), run:
+#55 31.60   npm audit fix --force
+#55 31.60 
+#55 31.60 Run `npm audit` for details.
+#55 DONE 33.1s
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 ...
+
+#56 [frontend builder 12/16] COPY vninvest/frontend/ ./
+#56 ...
+
+#46 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#46 105.0 
+#46 105.0 Successfully installed Django-5.2.14 PyJWT-2.13.0 PyYAML-6.0.3 amqp-5.3.1 annotated-types-0.7.0 anyio-4.13.0 asgiref-3.11.1 attrs-26.1.0 autobahn-25.12.2 automat-25.4.16 beautifulsoup4-4.14.3 billiard-4.2.4 cbor2-6.1.1 celery-5.6.3 certifi-2026.5.20 cffi-2.0.0 channels-4.3.2 channels-redis-4.3.0 charset_normalizer-3.4.7 click-8.4.1 click-didyoumean-0.3.1 click-plugins-1.1.1.2 click-repl-0.3.0 constantly-23.10.4 cron-descriptor-1.4.5 cryptography-48.0.0 daphne-4.2.1 dj-database-url-3.1.2 django-celery-beat-2.9.0 django-cors-headers-4.9.0 django-prometheus-2.4.1 django-ratelimit-4.1.0 django-timezone-field-7.2.1 djangorestframework-3.17.1 drf-spectacular-0.29.0 et-xmlfile-2.0.0 google-api-core-2.30.3 google-api-python-client-2.196.0 google-auth-2.53.0 google-auth-httplib2-0.4.0 googleapis-common-protos-1.75.0 gunicorn-26.0.0 h11-0.16.0 httpcore-1.0.9 httplib2-0.31.2 httpx-0.28.1 hyperlink-21.0.0 idna-3.16 importlib-metadata-9.0.0 incremental-24.11.0 inflection-0.5.1 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 kombu-5.6.2 msgpack-1.1.2 numpy-2.4.6 openpyxl-3.1.5 packaging-26.2 pandas-3.0.3 prometheus-client-0.25.0 prompt-toolkit-3.0.52 proto-plus-1.28.0 protobuf-7.35.0 psutil-7.2.2 psycopg2-binary-2.9.12 py-ubjson-0.16.1 pyasn1-0.6.3 pyasn1-modules-0.4.2 pycparser-3.0 pydantic-2.13.4 pydantic-core-2.46.4 pyopenssl-26.2.0 pyparsing-3.3.2 python-crontab-3.3.0 python-dateutil-2.9.0.post0 pytz-2026.2 redis-5.3.1 referencing-0.37.0 requests-2.34.2 rpds-py-0.30.0 sentry-sdk-1.45.1 service-identity-24.2.0 six-1.17.0 soupsieve-2.8.4 sqlparse-0.5.5 tenacity-9.1.4 twisted-26.4.0 txaio-25.12.2 typing-extensions-4.15.0 typing-inspection-0.4.2 tzdata-2026.2 tzlocal-5.3.1 ujson-5.12.1 uritemplate-4.2.0 urllib3-2.7.0 vine-5.1.0 vnbroker-1.0.2 wcwidth-0.7.0 zipp-4.1.0 zope-interface-8.4
+#46 105.0 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#46 DONE 106.9s
+
+#57 [core-worker-manual builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#57 CACHED
+
+#58 [core-worker-manual builder 4/5] COPY requirements.txt .
+#58 CACHED
+
+#59 [core-worker-manual runtime 4/8] COPY --from=builder /install /usr/local
+#59 CANCELED
+
+#60 [core-worker-analytics builder 4/5] COPY requirements.txt .
+#60 CACHED
+
+#61 [core-worker-analytics builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#61 CACHED
+
+#62 [core-worker-analytics runtime 4/8] COPY --from=builder /install /usr/local
+#62 CANCELED
+
+#63 [core-worker-realtime-stream builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#63 CACHED
+
+#64 [core-worker-realtime-stream builder 4/5] COPY requirements.txt .
+#64 CACHED
+
+#65 [core-worker-realtime-stream runtime 4/8] COPY --from=builder /install /usr/local
+#65 CANCELED
+
+#66 [core-beat builder 4/5] COPY requirements.txt .
+#66 CACHED
+
+#67 [core-beat builder 5/5] RUN --mount=type=secret,id=vnbroker_github_token     set -eu;     token_file='/run/secrets/vnbroker_github_token';     test -f "$token_file";     token="$(cat "$token_file")";     test -n "$token";     printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc;     chmod 600 /root/.netrc;     sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt;     pip install --upgrade pip;     mkdir -p /install;     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt;     rm -f /root/.netrc requirements.build.txt
+#67 CACHED
+
+#68 [core-worker-realtime-stream runtime 3/8] RUN apt-get update     && apt-get install -y --no-install-recommends libpq5 curl     && rm -rf /var/lib/apt/lists/*
+#68 CACHED
+
+#69 [core-worker-realtime-stream runtime 2/8] WORKDIR /app
+#69 CACHED
+
+#70 [core-beat runtime 4/8] COPY --from=builder /install /usr/local
+#70 CANCELED
+
+#56 [frontend builder 12/16] COPY vninvest/frontend/ ./
+#56 ...
+
+#69 [core-api runtime 2/8] WORKDIR /app
+#69 CACHED
+
+#68 [core-api runtime 3/8] RUN apt-get update     && apt-get install -y --no-install-recommends libpq5 curl     && rm -rf /var/lib/apt/lists/*
+#68 CACHED
+
+#69 [core-worker-enrichment runtime 2/8] WORKDIR /app
+#69 CACHED
+
+#71 [core-worker runtime 4/8] COPY --from=builder /install /usr/local
+#71 DONE 24.2s
+
+#72 [core-worker runtime 5/8] COPY src/ /app/src/
+#72 DONE 1.2s
+
+#73 [core-beat runtime 6/8] COPY manage.py /app/src/manage.py
+#73 DONE 0.2s
+
+#74 [core-worker-enrichment runtime 7/8] COPY entrypoint.sh /app/entrypoint.sh
+#74 DONE 0.3s
+
+#75 [core-worker runtime 8/8] RUN sed -i 's/\r$//' /app/entrypoint.sh     && chmod +x /app/entrypoint.sh
+#75 DONE 1.2s
+
+#76 [core-worker-manual] exporting to image
+#76 exporting layers
+#76 ...
+
+#77 [core-api] exporting to image
+#77 ...
+
+#78 [core-beat] exporting to image
+#78 ...
+
+#79 [core-worker-analytics] exporting to image
+#79 ...
+
+#80 [core-worker] exporting to image
+#80 ...
+
+#81 [core-worker-realtime-prefetch] exporting to image
+#81 ...
+
+#82 [core-worker-enrichment] exporting to image
+#82 ...
+
+#83 [core-worker-realtime-stream] exporting to image
+#83 ...
+
+#77 [core-api] exporting to image
+#77 exporting layers 19.1s done
+#77 exporting manifest sha256:59994e8d83242ee9ee99e46319a2a11e6e9b4746d228c53cbc6c61d6fe4cd8cd
+#77 exporting manifest sha256:59994e8d83242ee9ee99e46319a2a11e6e9b4746d228c53cbc6c61d6fe4cd8cd 0.3s done
+#77 exporting config sha256:95a7dcab2cc7fe52e077906554a923884f42bd384b4f10337dca8c1a75683791
+#77 exporting config sha256:95a7dcab2cc7fe52e077906554a923884f42bd384b4f10337dca8c1a75683791 0.3s done
+#77 exporting attestation manifest sha256:bbaf3babf5181082bea14f3ea135e1f7cb1025d3a42305d6d3593d305bc078a1
+#77 exporting attestation manifest sha256:bbaf3babf5181082bea14f3ea135e1f7cb1025d3a42305d6d3593d305bc078a1 0.6s done
+#77 exporting manifest list sha256:f7daa7e69f19b19cfb4d693c1139a80517eb33a303ecd27288d3b65f45613e02
+#77 exporting manifest list sha256:f7daa7e69f19b19cfb4d693c1139a80517eb33a303ecd27288d3b65f45613e02 0.3s done
+#77 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#77 unpacking to docker.io/library/vninvest-dev-core-runtime:latest
+#77 ...
+
+#79 [core-worker-analytics] exporting to image
+#79 exporting layers 19.1s done
+#79 exporting manifest sha256:5126fdc2824c3bbf0a55d785d2e63a4726fe542c973baae32bbfbcdd3ea45811 0.3s done
+#79 exporting config sha256:e50b2a845a24c626bcd557790e217881ea5d654e430e3ca9067c0322c07bc822 0.4s done
+#79 exporting attestation manifest sha256:f92afa65f5c9d2f0efd1ac653bb36e6bd32e605dd1253bd636d2267d8e61bdb8 0.6s done
+#79 exporting manifest list sha256:7759e0ae485ceb0809163a893a24c3125293590685d356e7464b5971a4b72493 0.3s done
+#79 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#79 ...
+
+#82 [core-worker-enrichment] exporting to image
+#82 exporting layers 19.1s done
+#82 exporting manifest sha256:5ca676a153ce99d083e07607c9581d4a95d76bf4938648b83f540ca58bcf7de8 0.2s done
+#82 exporting config sha256:51b38116acfd8bc25cafd5380b03db8e36037b734870d8bdad684e43e23d61e8 0.3s done
+#82 exporting attestation manifest sha256:bd168258dd712ec0f7ba637f91378b7f35b1a9a3b7b29b01a416f7e2017805c8 0.6s done
+#82 exporting manifest list sha256:a00b0a36c6fefd4197cc993c4e7a7a940b8c4c9c3b1d166f1728ffda2055eec0 0.3s done
+#82 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#82 ...
+
+#78 [core-beat] exporting to image
+#78 exporting layers 19.2s done
+#78 exporting manifest sha256:a5d64eb17a8766e1536b86c26f51bf6410dd27056bf53dcc8a881e522a18a978 0.3s done
+#78 exporting config sha256:cb899a15311781cf632774bfdcc5b7ac4259a94b7535834215ab41d55f153182 0.4s done
+#78 exporting attestation manifest sha256:f0e082c169933684783e5f3d186335366805fb5e31384330a721b11688078214 0.6s done
+#78 exporting manifest list sha256:ee0a8a52c7a64bec53739d51fe4fa2b59abcbb7944983cc724ce2bbd4585b491 0.3s done
+#78 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#78 ...
+
+#76 [core-worker-manual] exporting to image
+#76 exporting layers 19.1s done
+#76 exporting manifest sha256:0be5b6692300c562db49f116db5e096c0b35aaa515d94cc4c6402fea185b2043 0.3s done
+#76 exporting config sha256:da2ac8901b9111007c19ebec84eb6e20c370c7f2877c49610177c33114315534 0.1s done
+#76 exporting attestation manifest sha256:f7520a9743401b5319487465975f3d6934f8a6835ff43c9eb40722036bbf28a7 0.5s done
+#76 exporting manifest list sha256:175132005ee0af1b64e2fbd7f443db943a4c9b8fc2d2a089b6790c592e7f17ae 0.3s done
+#76 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.2s done
+#76 ...
+
+#81 [core-worker-realtime-prefetch] exporting to image
+#81 exporting layers 19.2s done
+#81 exporting manifest sha256:780708f1252f4d01e46d32405a23348c39ad882d8a4b61d0fa10b9f96c5ab63e 0.3s done
+#81 exporting config sha256:2fbc01841cb9000daf506a7d6ab6994530af451564e5417cc73e5b01430e530e 0.4s done
+#81 exporting attestation manifest sha256:0cbd3a7982354879b9724e5e4823fae34bd84eadf6cd714047f4714b3b33e4c4 0.6s done
+#81 exporting manifest list sha256:badae23589560a68d1e699e37f397ca2ace9aebfadc205a0155aff54f080475e 0.3s done
+#81 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#81 ...
+
+#80 [core-worker] exporting to image
+#80 exporting layers 19.2s done
+#80 exporting manifest sha256:5bbcf110f0d4ae72cb57dc344f302d0ea336156e0abe220e53fdc2eb9981e73c 0.2s done
+#80 exporting config sha256:6c4068ba2af84b2dc96f6f65bc147bc5b9c6f2e1084ffd8f4dd3f9ae36c6dab2 0.3s done
+#80 exporting attestation manifest sha256:9657a5cfc4cbae20ae13a02673860cd59505057fb109d6e1dc1632d5eb0a4e18 0.6s done
+#80 exporting manifest list sha256:ecb52923c12a1d70ec648c521da468da660b2312190bfa120dd47e036aca7a60 0.3s done
+#80 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#80 ...
+
+#83 [core-worker-realtime-stream] exporting to image
+#83 exporting layers 19.1s done
+#83 exporting manifest sha256:5643d913ea57801025efb57061f438440c7d3302107e59b51be95420a0bbb339 0.2s done
+#83 exporting config sha256:b43cacdffa7830dfcf666ed00f5eb190e760513426063c71f28e7bbd13684c92 0.2s done
+#83 exporting attestation manifest sha256:45af2fa06733a7a6f40165873f60289f323319437bd5a4cff71d1bcc6578c912 0.6s done
+#83 exporting manifest list sha256:85ad4f1788816a3398a7449a65117a71c10c916d9d2a760e79a9c2a053b5e15b 0.3s done
+#83 naming to docker.io/library/vninvest-dev-core-runtime:latest 0.1s done
+#83 ...
+
+#78 [core-beat] exporting to image
+#78 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 30.4s done
+#78 DONE 51.5s
+
+#81 [core-worker-realtime-prefetch] exporting to image
+#81 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 30.5s done
+#81 DONE 51.5s
+
+#76 [core-worker-manual] exporting to image
+#76 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 30.6s done
+#76 DONE 51.5s
+
+#80 [core-worker] exporting to image
+#80 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 30.5s done
+#80 DONE 51.5s
+
+#83 [core-worker-realtime-stream] exporting to image
+#83 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 30.6s done
+#83 DONE 51.5s
+
+#82 [core-worker-enrichment] exporting to image
+#82 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 30.5s done
+#82 DONE 51.5s
+
+#77 [core-api] exporting to image
+#77 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 30.5s done
+#77 DONE 51.5s
+
+#79 [core-worker-analytics] exporting to image
+#79 unpacking to docker.io/library/vninvest-dev-core-runtime:latest 30.5s done
+#79 DONE 51.6s
+
+#56 [frontend builder 12/16] COPY vninvest/frontend/ ./
+#56 ...
+
+#84 [core-worker-manual] resolving provenance for metadata file
+#84 ...
+
+#85 [core-worker-analytics] resolving provenance for metadata file
+#85 DONE 0.5s
+
+#84 [core-worker-manual] resolving provenance for metadata file
+#84 DONE 0.5s
+
+#86 [core-worker-realtime-prefetch] resolving provenance for metadata file
+#86 DONE 0.5s
+
+#87 [core-beat] resolving provenance for metadata file
+#87 DONE 0.5s
+
+#88 [core-worker] resolving provenance for metadata file
+#88 DONE 0.5s
+
+#89 [core-worker-enrichment] resolving provenance for metadata file
+#89 DONE 0.5s
+
+#90 [core-worker-realtime-stream] resolving provenance for metadata file
+#90 DONE 0.4s
+
+#91 [core-api] resolving provenance for metadata file
+#91 DONE 0.2s
+
+#56 [frontend builder 12/16] COPY vninvest/frontend/ ./
+#56 DONE 102.2s
+
+#92 [frontend builder 13/16] COPY vninvest/packages/web/ ../packages/web/
+#92 DONE 6.7s
+
+#93 [frontend builder 14/16] COPY vninvest/packages/web/ ./packages/web/
+#93 DONE 2.9s
+
+#94 [frontend builder 15/16] RUN rm -rf node_modules/@vnstockcharts 	&& mkdir -p node_modules/@vnstockcharts 	&& cp -r /vnstockchars/packages/vn-kline-engine-core node_modules/@vnstockcharts/vn-kline-engine-core 	&& cp -r /vnstockchars/packages/vn-kline-engine-react node_modules/@vnstockcharts/vn-kline-engine-react 	&& rm -rf node_modules/@vninvest/web 	&& mkdir -p node_modules/@vninvest/web 	&& cp -R ../packages/web/. node_modules/@vninvest/web/ 	&& rm -rf node_modules/@vninvest/web/node_modules 	&& rm -f node_modules/@vninvest/web/package-lock.json
+#94 DONE 2.3s
+
+#95 [frontend builder 16/16] RUN npm run build
+#95 0.837 
+#95 0.837 > vninvest-frontend@1.0.0 build
+#95 0.837 > react-scripts build
+#95 0.837 
+#95 3.443 Creating an optimized production build...
+#95 80.56 Compiled successfully.
+#95 80.56 
+#95 80.56 File sizes after gzip:
+#95 80.56 
+#95 80.65   862.75 kB (+2.16 kB)  build/static/js/main.b6709886.js
+#95 80.65   28.91 kB (-15 B)      build/static/css/main.deb45ccb.css
+#95 80.65   3.53 kB               build/static/js/839.e62b0640.chunk.js
+#95 80.65   3.03 kB               build/static/js/606.f10d405c.chunk.js
+#95 80.65 
+#95 80.65 The bundle size is significantly larger than recommended.
+#95 80.65 Consider reducing it with code splitting: https://goo.gl/9VhYWB
+#95 80.65 You can also analyze the project dependencies: https://goo.gl/LeUzfb
+#95 80.65 
+#95 80.65 The project was built assuming it is hosted at /.
+#95 80.65 You can control this with the homepage field in your package.json.
+#95 80.65 
+#95 80.65 The build folder is ready to be deployed.
+#95 80.65 You may serve it with a static server:
+#95 80.65 
+#95 80.66   npm install -g serve
+#95 80.66   serve -s build
+#95 80.66 
+#95 80.66 Find out more about deployment here:
+#95 80.66 
+#95 80.66   https://cra.link/deployment
+#95 80.66 
+#95 DONE 81.6s
+
+#96 [frontend stage-1 2/3] COPY vninvest/frontend/docker/nginx.conf /etc/nginx/conf.d/default.conf
+#96 CACHED
+
+#97 [frontend stage-1 3/3] COPY --from=builder /app/frontend/build /usr/share/nginx/html
+#97 CACHED
+
+#98 [frontend] exporting to image
+#98 exporting layers done
+#98 exporting manifest sha256:ccee33dc5f8e84e8bf2c8ee830330985911d9177d0c672ba09444fd4ce13e12c done
+#98 exporting config sha256:d4094782b7897e8c678973112b040a2344ad6aca3a8b206347e09835370c7896 done
+#98 exporting attestation manifest sha256:324e0f02c0aaa780eee91e09e368af14524f670bd55f7fe42ffcf95803edd0d0 0.1s done
+#98 exporting manifest list sha256:f907c18afe8a9a31c713141a105a4c18afba93703560370760a778ec3bb308c2
+#98 exporting manifest list sha256:f907c18afe8a9a31c713141a105a4c18afba93703560370760a778ec3bb308c2 0.0s done
+#98 naming to docker.io/library/vninvest-dev-frontend:latest done
+#98 unpacking to docker.io/library/vninvest-dev-frontend:latest 0.0s done
+#98 DONE 0.2s
+
+#99 [frontend] resolving provenance for metadata file
+#99 DONE 0.2s
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-frontend:latest Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Image vninvest-dev-core-runtime Built 
+ Container vninvest-dev-mailpit Creating 
+ Container vninvest-dev-core-db Running 
+ Container vninvest-prometheus Running 
+ Container vninvest-dev-core-redis Running 
+ Container vninvest-dev-core-api Creating 
+ Container vninvest-dev-redis-exporter Running 
+ Container vninvest-dev-queue-drain-monitor Running 
+ Container vninvest-grafana Running 
+ Container vninvest-dev-mailpit Created 
+ Container vninvest-dev-core-api Created 
+ Container vninvest-dev-core-worker-manual Creating 
+ Container vninvest-dev-core-beat Creating 
+ Container vninvest-dev-core-worker Creating 
+ Container vninvest-dev-frontend Creating 
+ Container vninvest-dev-core-worker-enrichment Creating 
+ Container vninvest-dev-core-worker-analytics Creating 
+ Container vninvest-dev-core-worker-realtime-prefetch Creating 
+ Container vninvest-dev-core-worker-realtime-stream Creating 
+ Container vninvest-dev-core-worker Created 
+ Container vninvest-dev-core-worker-realtime-prefetch Created 
+ Container vninvest-dev-core-worker-manual Created 
+ Container vninvest-dev-core-beat Created 
+ Container vninvest-dev-core-worker-enrichment Created 
+ Container vninvest-dev-core-worker-realtime-stream Created 
+ Container vninvest-dev-frontend Created 
+ Container vninvest-dev-core-worker-analytics Created 
+ Container vninvest-dev-core-redis Waiting 
+ Container vninvest-dev-core-db Waiting 
+ Container vninvest-dev-core-redis Waiting 
+ Container vninvest-dev-mailpit Starting 
+ Container vninvest-dev-core-redis Waiting 
+ Container vninvest-dev-mailpit Started 
+ Container vninvest-dev-core-redis Healthy 
+ Container vninvest-dev-core-redis Healthy 
+ Container vninvest-dev-core-redis Healthy 
+ Container vninvest-dev-core-db Healthy 
+ Container vninvest-dev-core-api Starting 
+ Container vninvest-dev-core-api Started 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Waiting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-enrichment Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-beat Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-frontend Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-manual Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-realtime-stream Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-analytics Starting 
+ Container vninvest-dev-core-api Healthy 
+ Container vninvest-dev-core-worker-realtime-prefetch Starting 
+ Container vninvest-dev-core-worker-enrichment Started 
+ Container vninvest-dev-core-worker Started 
+ Container vninvest-dev-core-worker-realtime-prefetch Started 
+ Container vninvest-dev-core-worker-analytics Started 
+ Container vninvest-dev-core-worker-manual Started 
+ Container vninvest-dev-core-worker-realtime-stream Started 
+ Container vninvest-dev-frontend Started 
+ Container vninvest-dev-core-beat Started 

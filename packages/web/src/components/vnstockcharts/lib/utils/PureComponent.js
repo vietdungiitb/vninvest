@@ -1,0 +1,10 @@
+import React from "react";
+import shallowEqual from "./shallowEqual.js";
+class PureComponent extends React.Component {
+    shouldComponentUpdate(nextProps, nextState, nextContext) {
+        return !shallowEqual(this.props, nextProps)
+            || !shallowEqual(this.state, nextState)
+            || !shallowEqual(this.context, nextContext);
+    }
+}
+export default PureComponent;

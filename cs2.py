@@ -1,0 +1,1 @@
+import django,os; os.environ.setdefault("DJANGO_SETTINGS_MODULE","vninvest_core.settings"); django.setup(); from identity_access.models import SystemMailConfig; c=SystemMailConfig.objects.first(); sa=c.get_google_service_account_json() if c else None; print("SA:", repr(sa[:300]) if sa else "EMPTY")

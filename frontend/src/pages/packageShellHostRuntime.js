@@ -3,6 +3,8 @@ import { loadShellBootstrap } from '@vninvest/web';
 export const packageShellHostEnv = {
   VNINVEST_API_BASE_URL: process.env.REACT_APP_API_BASE_URL || '/api',
   VNINVEST_CORE_BASE_URL: process.env.REACT_APP_PACKAGE_SHELL_CORE_BASE_URL || '/core/v1',
+  CORE_API_BASE_URL: process.env.REACT_APP_PACKAGE_SHELL_CORE_BASE_URL || '/core/v1',
+  getToken: () => globalThis.localStorage?.getItem('access_token') || null,
 };
 
 function normalizePackageShellIdentity(userIdentity = {}) {

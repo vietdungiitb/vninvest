@@ -1219,6 +1219,44 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     if (!symbol) throw new Error("symbol is required for getStockFinancials");
     return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/financials/`);
   },
+
+  // --- OPERATOR MAIL CONFIGURATIONS ---
+
+  getOperatorMailConfigs(params = {}) {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+    ).toString();
+    return coreGet(`/operator/mail-configs/${query ? `?${query}` : ""}`);
+  },
+
+  getOperatorMailConfigDetail(id) {
+    if (!id) throw new Error("id is required");
+    return coreGet(`/operator/mail-configs/${encodeURIComponent(id)}/`);
+  },
+
+  createOperatorMailConfig(data) {
+    return corePost("/operator/mail-configs/", data);
+  },
+
+  updateOperatorMailConfig(id, data) {
+    if (!id) throw new Error("id is required");
+    return corePatch(`/operator/mail-configs/${encodeURIComponent(id)}/`, data);
+  },
+
+  deleteOperatorMailConfig(id) {
+    if (!id) throw new Error("id is required");
+    return coreDelete(`/operator/mail-configs/${encodeURIComponent(id)}/`);
+  },
+
+  activateOperatorMailConfig(id) {
+    if (!id) throw new Error("id is required");
+    return corePost(`/operator/mail-configs/${encodeURIComponent(id)}/activate/`, {});
+  },
+
+  testOperatorMailConfig(data) {
+    return corePost("/operator/mail-configs/test/", data);
+  },
+
   };
 }
 

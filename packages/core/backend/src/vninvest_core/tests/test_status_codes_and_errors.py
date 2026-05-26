@@ -5,8 +5,10 @@ Validates that all endpoints return correct HTTP status codes and
 error responses follow standard envelope format per Constitutional R3 and R4.
 """
 import json
+from unittest.mock import patch
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
@@ -16,11 +18,13 @@ from vninvest_core.exceptions import StandardErrorEnvelope
 User = get_user_model()
 
 
+@patch('identity_access.serializers.SaaSRegisterSerializer._verify_turnstile', lambda *args, **kwargs: None)
 class StatusCodeSemanticsTests(APITestCase):
     """A4: Verify HTTP status code semantics across endpoints."""
 
     def setUp(self):
         """Set up test fixtures."""
+        cache.clear()
         self.client = APIClient()
         self.admin_user = User.objects.create_user(
             username='admin',
@@ -53,8 +57,10 @@ class StatusCodeSemanticsTests(APITestCase):
                 'username': 'newuser',
                 'email': 'newuser@example.com',
                 'password': 'ValidPass123!',
+                'password_confirm': 'ValidPass123!',
                 'first_name': 'New',
                 'last_name': 'User',
+                'turnstile_token': 'dummy-token',
             },
             format='json'
         )
@@ -67,6 +73,7 @@ class StatusCodeSemanticsTests(APITestCase):
             {
                 'username': 'newuser',
                 'email': 'newuser@example.com',
+                'turnstile_token': 'dummy-token',
                 # Missing password
             },
             format='json'
@@ -81,6 +88,8 @@ class StatusCodeSemanticsTests(APITestCase):
                 'username': 'testuser',  # Already exists
                 'email': 'another@example.com',
                 'password': 'ValidPass123!',
+                'password_confirm': 'ValidPass123!',
+                'turnstile_token': 'dummy-token',
             },
             format='json'
         )
@@ -94,6 +103,8 @@ class StatusCodeSemanticsTests(APITestCase):
                 'username': 'anotheruser',
                 'email': 'test@example.com',  # Already exists
                 'password': 'ValidPass123!',
+                'password_confirm': 'ValidPass123!',
+                'turnstile_token': 'dummy-token',
             },
             format='json'
         )
@@ -148,11 +159,13 @@ class StatusCodeSemanticsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
+@patch('identity_access.serializers.SaaSRegisterSerializer._verify_turnstile', lambda *args, **kwargs: None)
 class ErrorEnvelopeConsistencyTests(APITestCase):
     """A5: Verify all errors follow standard envelope format."""
 
     def setUp(self):
         """Set up test fixtures."""
+        cache.clear()
         self.client = APIClient()
 
     def test_validation_error_has_standard_envelope(self):
@@ -163,6 +176,7 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
                 'username': 'test',
                 # Missing email
                 'password': 'short',  # Too short
+                'turnstile_token': 'dummy-token',
             },
             format='json'
         )
@@ -188,6 +202,7 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
                 'username': 'test',
                 'email': 'invalid',
                 'password': 'short',
+                'turnstile_token': 'dummy-token',
             },
             format='json'
         )
@@ -209,6 +224,7 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
                 'username': 'test',
                 'email': 'invalid',
                 'password': 'short',
+                'turnstile_token': 'dummy-token',
             },
             format='json'
         )
@@ -228,8 +244,10 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
                 'username': 'newuser',
                 'email': 'newuser@example.com',
                 'password': 'ValidPass123!',
+                'password_confirm': 'ValidPass123!',
                 'first_name': 'New',
                 'last_name': 'User',
+                'turnstile_token': 'dummy-token',
             },
             format='json'
         )
@@ -237,8 +255,9 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         data = response.json()
         
-        # Success response should have detail at minimum
-        self.assertIn('detail', data)
+        # Success response should have status and data envelope fields
+        self.assertIn('status', data)
+        self.assertIn('data', data)
 
 
 class StandardErrorEnvelopeTests(TestCase):

@@ -13,6 +13,11 @@ import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 const EMPTY_ARRAY = [];
 
+function normalizeSymbol(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  return normalized || null;
+}
+
 function safeResults(res) {
   if (!res) return EMPTY_ARRAY;
   if (Array.isArray(res)) return res;
@@ -20,18 +25,58 @@ function safeResults(res) {
   return EMPTY_ARRAY;
 }
 
+function extractTechnicalsResponse(res) {
+  if (!res) return EMPTY_ARRAY;
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res.technicals)) return res.technicals;
+  if (Array.isArray(res.results)) return res.results;
+  return EMPTY_ARRAY;
+}
+
+function collectDashboardSymbols({ holdings, trackedSymbols, watchlists, watchlistGroups }) {
+  const symbolSet = new Set();
+  const addSymbol = (value) => {
+    const symbol = normalizeSymbol(value);
+    if (symbol) {
+      symbolSet.add(symbol);
+    }
+  };
+
+  holdings.forEach((item) => addSymbol(item?.symbol));
+  trackedSymbols.forEach((item) => addSymbol(item?.symbol));
+  watchlists.forEach((watchlist) => {
+    addSymbol(watchlist?.symbol);
+    (Array.isArray(watchlist?.items) ? watchlist.items : EMPTY_ARRAY).forEach((item) => addSymbol(item?.symbol));
+  });
+  watchlistGroups.forEach((group) => {
+    (Array.isArray(group?.items) ? group.items : EMPTY_ARRAY).forEach((item) => addSymbol(item?.symbol));
+  });
+
+  return Array.from(symbolSet);
+}
+
+const wrapWithErrorCode = (promise, errorCode) => {
+  return promise.catch((err) => {
+    err.errorCode = errorCode;
+    throw err;
+  });
+};
+
 /**
  * @param {{ portfolioId: string|number|null, enabled?: boolean }} options
  * @returns {{
  *   loading: boolean,
  *   error: string|null,
+ *   errorCode: string|null,
  *   holdings: object[],
  *   summary: object|null,
  *   analytics: object|null,
  *   technicals: object[],
+ *   technicalsStatus: { status: string, errorCode: string|null },
  *   trackedSymbols: object[],
  *   watchlistGroups: object[],
  *   watchlists: object[],
+ *   hasHydrated: boolean,
  *   refresh: () => void,
  * }}
  */
@@ -39,15 +84,18 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
   const [state, setState] = useState({
     loading: false,
     error: null,
+    errorCode: null,
     holdings: EMPTY_ARRAY,
     summary: null,
     analytics: null,
     technicals: EMPTY_ARRAY,
+    technicalsStatus: { status: 'idle', errorCode: null },
     trackedSymbols: EMPTY_ARRAY,
     watchlistGroups: EMPTY_ARRAY,
     watchlists: EMPTY_ARRAY,
   });
 
+  const [hasHydrated, setHasHydrated] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const abortRef = useRef(null);
 
@@ -55,7 +103,7 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
 
   useEffect(() => {
     if (!enabled || !portfolioId) {
-      setState((s) => ({ ...s, loading: false, error: null }));
+      setState((s) => ({ ...s, loading: false, error: null, errorCode: null }));
       return;
     }
 
@@ -69,10 +117,10 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
     let cancelled = false;
 
     async function load() {
-      setState((s) => ({ ...s, loading: true, error: null }));
+      setState((s) => ({ ...s, loading: true, error: null, errorCode: null }));
 
       try {
-        // Phase 1 — parallel fetches
+        // Phase 1 — parallel fetches wrapped with standard error codes
         const [
           holdingsRes,
           summaryRes,
@@ -81,8 +129,8 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
           trackedRes,
           groupsRes,
         ] = await Promise.all([
-          coreApiAdapter.getPortfolioHoldings(portfolioId),
-          coreApiAdapter.getPortfolioSummary(portfolioId),
+          wrapWithErrorCode(coreApiAdapter.getPortfolioHoldings(portfolioId), '[ERR_CORE_PORTFOLIO_HOLDINGS_02]'),
+          wrapWithErrorCode(coreApiAdapter.getPortfolioSummary(portfolioId), '[ERR_CORE_PORTFOLIO_SUMMARY_01]'),
           coreApiAdapter.getPortfolioAnalytics(portfolioId, 30),
           coreApiAdapter.getWatchlists(),
           coreApiAdapter.getTrackedSymbols(),
@@ -92,17 +140,36 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
         if (cancelled) return;
 
         const holdings = safeResults(holdingsRes);
+        const watchlists = safeResults(watchlistsRes);
+        const trackedSymbols = safeResults(trackedRes);
+        const watchlistGroups = safeResults(groupsRes);
 
-        // Phase 2 — bulk technicals once holdings are known
-        const symbols = holdings
-          .map((h) => String(h?.symbol || "").toUpperCase())
-          .filter(Boolean);
+        // Phase 2 — bulk technicals once the monitored symbol universe is known
+        const symbols = collectDashboardSymbols({
+          holdings,
+          trackedSymbols,
+          watchlists,
+          watchlistGroups,
+        });
 
         let technicals = EMPTY_ARRAY;
+        let technicalsStatus = { status: 'idle', errorCode: null };
+
         if (symbols.length > 0) {
-          const techRes = await coreApiAdapter.getBulkTechnicalsBySymbols(symbols);
-          if (!cancelled) {
-            technicals = Array.isArray(techRes) ? techRes : safeResults(techRes);
+          try {
+            const techRes = await coreApiAdapter.getBulkTechnicalsBySymbols(symbols);
+            if (!cancelled) {
+              technicals = extractTechnicalsResponse(techRes);
+              technicalsStatus = { status: 'success', errorCode: null };
+            }
+          } catch (techErr) {
+            if (!cancelled) {
+              technicals = EMPTY_ARRAY;
+              technicalsStatus = {
+                status: 'failed',
+                errorCode: '[ERR_CORE_BULK_TECHNICAL_03]',
+              };
+            }
           }
         }
 
@@ -111,21 +178,26 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
         setState({
           loading: false,
           error: null,
+          errorCode: null,
           holdings,
           summary: summaryRes ?? null,
           analytics: analyticsRes ?? null,
           technicals,
-          watchlists: safeResults(watchlistsRes),
-          trackedSymbols: safeResults(trackedRes),
-          watchlistGroups: safeResults(groupsRes),
+          technicalsStatus,
+          watchlists,
+          trackedSymbols,
+          watchlistGroups,
         });
+        setHasHydrated(true);
       } catch (err) {
         if (cancelled) return;
         if (err?.name === "AbortError") return;
+        setHasHydrated(true);
         setState((s) => ({
           ...s,
           loading: false,
           error: err?.message || "Không thể tải dữ liệu tổng quan.",
+          errorCode: err?.errorCode || null,
         }));
       }
     }
@@ -139,5 +211,5 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portfolioId, enabled, refreshToken]);
 
-  return { ...state, refresh };
+  return { ...state, hasHydrated, refresh };
 }

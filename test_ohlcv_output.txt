@@ -1,0 +1,337 @@
+C:\Mujoco Projects\vninvest\backend\config\settings.py:72: UserWarning: DJANGO_SECRET_KEY chua duoc set. Dang dung ephemeral key (session se mat sau restart). Chay scripts/dev-setup.ps1 de tao backend/.env.
+  _warnings.warn(
+Using existing test database for alias 'default' ('test_vninvest_core')...
+
+Found 28 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: channels, corsheaders, daphne, messages, rest_framework, staticfiles
+  Apply all migrations: admin, advisory, auth, commercial, contenttypes, data_ingest, django_celery_beat, identity_access, market_data, market_serving, ops_audit, portfolio, service_ops, sessions, signal_intelligence, support, tenant_lifecycle, user_workspace
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying advisory.0001_initial... OK
+  Applying advisory.0002_add_advisory_session_component... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying identity_access.0001_initial... OK
+  Applying commercial.0001_initial... OK
+  Applying commercial.0002_invoice_status_past_due... OK
+  Applying data_ingest.0001_initial... OK
+  Applying django_celery_beat.0001_initial... OK
+  Applying django_celery_beat.0002_auto_20161118_0346... OK
+  Applying django_celery_beat.0003_auto_20161209_0049... OK
+  Applying django_celery_beat.0004_auto_20170221_0000... OK
+  Applying django_celery_beat.0005_add_solarschedule_events_choices... OK
+  Applying django_celery_beat.0006_auto_20180322_0932... OK
+  Applying django_celery_beat.0007_auto_20180521_0826... OK
+  Applying django_celery_beat.0008_auto_20180914_1922... OK
+  Applying django_celery_beat.0006_auto_20180210_1226... OK
+  Applying django_celery_beat.0006_periodictask_priority... OK
+  Applying django_celery_beat.0009_periodictask_headers... OK
+  Applying django_celery_beat.0010_auto_20190429_0326... OK
+  Applying django_celery_beat.0011_auto_20190508_0153... OK
+  Applying django_celery_beat.0012_periodictask_expire_seconds... OK
+  Applying django_celery_beat.0013_auto_20200609_0727... OK
+  Applying django_celery_beat.0014_remove_clockedschedule_enabled... OK
+  Applying django_celery_beat.0015_edit_solarschedule_events_choices... OK
+  Applying django_celery_beat.0016_alter_crontabschedule_timezone... OK
+  Applying django_celery_beat.0017_alter_crontabschedule_month_of_year... OK
+  Applying django_celery_beat.0018_improve_crontab_helptext... OK
+  Applying django_celery_beat.0019_alter_periodictasks_options... OK
+  Applying identity_access.0002_userprofile... OK
+  Applying identity_access.0003_alter_coretenant_plan... OK
+  Applying identity_access.0004_tenantmember_tenantinvite... OK
+  Applying identity_access.0005_dnse_credential... OK
+  Applying identity_access.0006_corepatcredential_is_human_session... OK
+  Applying identity_access.0007_canonicalize_service_account_scope_codes... OK
+  Applying market_data.0001_initial... OK
+  Applying market_data.0002_intradaybar_intradaytick_and_more... OK
+  Applying market_data.0003_globalsymbolregistry_globalsymbolcoverage_and_more... OK
+  Applying market_data.0004_add_gap_score_fields... OK
+  Applying signal_intelligence.0001_initial... OK
+  Applying signal_intelligence.0002_orderflow_event... OK
+  Applying signal_intelligence.0003_unifiedalert_source_ref_nonempty_unique... OK
+  Applying market_serving.0001_initial... OK
+  Applying market_serving.0002_add_high_low_open_to_symbol_snapshot... OK
+  Applying market_serving.0003_add_snapshot_quote_columns_and_backfill... OK
+  Applying market_serving.0004_add_session_facts_series_by_window... OK
+  Applying market_serving.0005_session_facts_bucket_table... OK
+  Applying market_serving.0006_rename_sessionfactsbucket_indexes... OK
+  Applying market_serving.0007_sessionfactsbucket_strength_fields... OK
+  Applying ops_audit.0001_initial... OK
+  Applying ops_audit.0002_phase3_parity_models... OK
+  Applying portfolio.0001_initial... OK
+  Applying portfolio.0002_pricealertrule... OK
+  Applying portfolio.0003_marketgroupsynclog... OK
+  Applying portfolio.0004_stockprofilesynclog... OK
+  Applying portfolio.0005_alter_securitiesgroup_options_and_more... OK
+  Applying portfolio.0006_add_intraday_tick... OK
+  Applying portfolio.0007_add_plan_to_userconfig_and_whale_advisory... OK
+  Applying portfolio.0008_systememailaccount... OK
+  Applying portfolio.0009_userconfig_email_verification_fields... OK
+  Applying portfolio.0010_whaleconfigdraft_whaleconfigapproval_and_more... OK
+  Applying portfolio.0011_userconfig_ai_provider_model_key... OK
+  Applying portfolio.0012_add_order_flow_signal... OK
+  Applying portfolio.0013_ai_advisory_components_and_summary... OK
+  Applying portfolio.0014_systememailaccount_google_oauth2... OK
+  Applying portfolio.0015_rename_portfolio_a_user_id_58b38f_idx_portfolio_a_user_id_782577_idx_and_more... OK
+  Applying portfolio.0016_userconfig_language... OK
+  Applying portfolio.0017_trackedsymbol_whale_alert_threshold_million... OK
+  Applying portfolio.0018_trackedsymbol_updated_at... OK
+  Applying portfolio.0019_userplanlifecycle... OK
+  Applying portfolio.0020_dpiinvoice_dpilicense_dpiplan_dpirevenueplan_and_more... OK
+  Applying portfolio.0021_onboarding_trial_policy... OK
+  Applying portfolio.0022_alter_onboardingplanpolicy_options_and_more... OK
+  Applying portfolio.0023_legalpage... OK
+  Applying portfolio.0024_userconfig_starter_portfolios... OK
+  Applying portfolio.0025_whaleadvisory_user_and_ai_model... OK
+  Applying portfolio.0026_rename_portfolio_w_user_id_4cfc3c_idx_portfolio_w_user_id_410a3f_idx... OK
+  Applying portfolio.0027_systemaisettings... OK
+  Applying portfolio.0028_systemaisettingsauditlog... OK
+  Applying portfolio.0029_systemaisettingsauditlog_indexes... OK
+  Applying portfolio.0030_phase1_advisory_autogen_and_refresh... OK
+  Applying portfolio.0031_userconfig_advisory_max_auto_refreshes_per_day... OK
+  Applying portfolio.0032_whaleadvisory_severity... OK
+  Applying portfolio.0033_whaleadvisory_advisory_type... OK
+  Applying portfolio.0034_whaleadvisory_merge_metadata... OK
+  Applying portfolio.0035_sprint34_orderflowsignal_event_id_severity... OK
+  Applying portfolio.0036_h0_04_aggregate_models... OK
+  Applying portfolio.0037_h2_whaleadvisory_aggregate_snapshot_fk... OK
+  Applying portfolio.0038_runtimevnbrokerconfig... OK
+  Applying portfolio.0039_sprint35_portfolio_news_digest... OK
+  Applying portfolio.0040_add_system_setting... OK
+  Applying portfolio.0041_tickersessionclose... OK
+  Applying portfolio.0042_remove_advisoryaggregatesnapshot_unique_snap_user_symbol_seq_and_more... OK
+  Applying portfolio.0043_intradaytick_symbol_trade_date_side_idx... OK
+  Applying portfolio.0044_add_market_cap_bn_to_stockprofile... OK
+  Applying portfolio.0045_add_signal_verification_telegram_sentiment... OK
+  Applying portfolio.0046_seedexecutionlog... OK
+  Applying portfolio.0047_add_market_discovery_fields_to_signals... OK
+  Applying portfolio.0048_whaleadvisory_discovery_bucket_and_intensity... OK
+  Applying portfolio.0049_crawl_models... OK
+  Applying portfolio.0050_seed_crawl_jobs... OK
+  Applying portfolio.0051_trackedsymbol_is_active_alter_crawlauditlog_id_and_more... OK
+  Applying portfolio.0052_orderflowsignal_trade_date... OK
+  Applying portfolio.0053_add_is_stale_and_whale_service_job... OK
+  Applying portfolio.0054_fill_tracked_symbol_thresholds... OK
+  Applying portfolio.0055_enforce_null_false_on_threshold... OK
+  Applying portfolio.0056_alter_whaleadvisory_created_at... OK
+  Applying portfolio.0057_remove_whale_job_lock_unique... OK
+  Applying portfolio.0058_add_intraday_tick_trade_date_index... OK
+  Applying portfolio.0059_aicommandcenterconfig_aicommandcenterauditlog... OK
+  Applying portfolio.0060_backfill_aicommandcenterconfig_from_legacy_userconfig... OK
+  Applying portfolio.0061_globalscreenerrule_screenerscheduleconfig_and_more... OK
+  Applying portfolio.0062_whalealertevent... OK
+  Applying portfolio.0063_signalservicerun... OK
+  Applying portfolio.0064_delete_whaleservicejob... OK
+  Applying portfolio.0065_moneyflowforensicwindow... OK
+  Applying portfolio.0066_userconfig_ai_prompt_config_and_more... OK
+  Applying portfolio.0067_coretenant... OK
+  Applying portfolio.0068_rename_portfolio_c_status_4cc731_idx_portfolio_c_status_3f2e9e_idx... OK
+  Applying portfolio.0069_partition_intradaytick... OK
+  Applying portfolio.0070_allow_null_whale_alert_threshold_million... OK
+  Applying portfolio.0071_rename_vnbroker_to_vnbroker_config... OK
+  Applying portfolio.0072_add_dnse_credential_fixed... OK
+  Applying portfolio.0073_subaccount_external_sync_fields... OK
+  Applying portfolio.0074_account_snapshot_sync_fields... OK
+  Applying portfolio.0075_account_snapshot_defaults... OK
+  Applying portfolio.0076_transaction_reconciliation_fields... OK
+  Applying portfolio.0077_runtimevnbrokerconfig_source_config... OK
+  Applying portfolio.0078_add_tenant_fk_portfolio_watchlistgroup_pricealertrule... OK
+  Applying service_ops.0001_initial... OK
+  Applying service_ops.0002_add_scrape_matrix_models... OK
+  Applying service_ops.0003_add_custom_symbol_group... OK
+  Applying service_ops.0004_add_market_data_parity_snapshot... OK
+  Applying service_ops.0005_add_dataops_domain_choice... OK
+  Applying service_ops.0006_add_backfill_execution_models... OK
+  Applying sessions.0001_initial... OK
+  Applying signal_intelligence.0004_unifiedalert_read_model_fields... OK
+  Applying signal_intelligence.0005_advisorysignalevent_marketanomalyevent_and_more... OK
+  Applying support.0001_initial... OK
+  Applying support.0002_alter_supportticketcounter_options_and_more... OK
+  Applying tenant_lifecycle.0001_initial... OK
+  Applying user_workspace.0001_initial... OK
+  Applying user_workspace.0002_add_subaccount... OK
+  Applying user_workspace.0003_dnse_lightspeed_credential_v2... OK
+  Applying user_workspace.0004_add_tenant_fk_and_pricealert... OK
+  Applying user_workspace.0005_backfill_portfolio_tenant...Portfolio tenant backfill complete: 0 updated, 0 orphaned
+ OK
+  Applying user_workspace.0006_backfill_watchlist_tenant...Watchlist tenant backfill complete: 0 updated, 0 orphaned
+ OK
+  Applying user_workspace.0007_add_tenant_fk_transaction_subaccount... OK
+  Applying user_workspace.0008_backfill_transaction_subaccount_tenant...backfill_transaction_tenant: No transactions to update
+backfill_subaccount_tenant: No subaccounts to update
+ OK
+  Applying user_workspace.0009_trackedsymbol_and_price_alert_cooldown... OK
+System check identified no issues (0 silenced).
+test_bars_sorted_ascending_by_timestamp (portfolio.tests.test_ohlcv_bars_endpoint.TestGetOHLCVBarsService.test_bars_sorted_ascending_by_timestamp)
+Bars ph\u1ea3i \u0111\u01b0\u1ee3c sort t\u0103ng d\u1ea7n theo timestamp. ... ok
+test_before_mode_returns_correct_structure (portfolio.tests.test_ohlcv_bars_endpoint.TestGetOHLCVBarsService.test_before_mode_returns_correct_structure) ... ERROR
+test_cached_result_returned_immediately (portfolio.tests.test_ohlcv_bars_endpoint.TestGetOHLCVBarsService.test_cached_result_returned_immediately) ... ok
+test_no_duplicate_timestamps (portfolio.tests.test_ohlcv_bars_endpoint.TestGetOHLCVBarsService.test_no_duplicate_timestamps)
+Kh⌠ng \u0111\u01b0\u1ee3c c≤ duplicate timestamp trong k\u1ebft qu\u1ea3. ... ok
+test_snapshot_id_passed_through (portfolio.tests.test_ohlcv_bars_endpoint.TestGetOHLCVBarsService.test_snapshot_id_passed_through) ... ERROR
+test_symbol_not_found_raises (portfolio.tests.test_ohlcv_bars_endpoint.TestGetOHLCVBarsService.test_symbol_not_found_raises) ... ok
+test_after_mode_valid (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_after_mode_valid) ... ok
+test_before_mode_valid_iso8601 (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_before_mode_valid_iso8601) ... ok
+test_before_mode_valid_unix_ms (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_before_mode_valid_unix_ms) ... ok
+test_cannot_mix_modes (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_cannot_mix_modes) ... FAIL
+test_invalid_timeframe_rejected (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_invalid_timeframe_rejected) ... ok
+test_limit_max_enforced (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_limit_max_enforced) ... ok
+test_no_mode_defaults_to_before_now (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_no_mode_defaults_to_before_now) ... ok
+test_snapshot_id_optional (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_snapshot_id_optional) ... ok
+test_timeframe_required (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_timeframe_required) ... ok
+test_valid_timeframe_choices (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_valid_timeframe_choices) ... ok
+test_window_mode_from_and_to_required_together (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_window_mode_from_and_to_required_together) ... FAIL
+test_window_mode_from_must_be_less_than_to (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_window_mode_from_must_be_less_than_to) ... FAIL
+test_window_mode_valid (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_window_mode_valid) ... FAIL
+test_before_mode_returns_200 (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_before_mode_returns_200) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+ok
+test_invalid_timeframe_returns_400_with_machine_readable_code (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_invalid_timeframe_returns_400_with_machine_readable_code) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+FAIL
+test_limit_exceeds_max_returns_400 (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_limit_exceeds_max_returns_400) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+ok
+test_missing_timeframe_returns_400_with_code (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_missing_timeframe_returns_400_with_code) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+ok
+test_mixed_mode_returns_400 (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_mixed_mode_returns_400) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+FAIL
+test_response_bars_have_required_fields (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_response_bars_have_required_fields) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+ok
+test_snapshot_id_present_in_response (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_snapshot_id_present_in_response) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+ok
+test_unauthenticated_returns_401 (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_unauthenticated_returns_401) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+ok
+test_window_mode_returns_200 (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_window_mode_returns_200) ... opencore.free_plan.autocreated user=testbars reason=missing_seed_data
+ok
+
+======================================================================
+ERROR: test_before_mode_returns_correct_structure (portfolio.tests.test_ohlcv_bars_endpoint.TestGetOHLCVBarsService.test_before_mode_returns_correct_structure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py", line 1432, in patched
+    return func(*newargs, **newkeywargs)
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\tests\test_ohlcv_bars_endpoint.py", line 324, in test_before_mode_returns_correct_structure
+    result = market_data_service.get_ohlcv_bars('TCB', params)
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\market_data_service.py", line 2661, in get_ohlcv_bars
+    all_bars = self._fetch_bars_for_range(normalized_symbol, timeframe, start_date, end_date)
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\market_data_service.py", line 2509, in _fetch_bars_for_range
+    df = fetch_history_dataframe(
+        symbol,
+    ...<2 lines>...
+        interval=interval,
+    )
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py", line 1169, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py", line 1173, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py", line 1234, in _execute_mock_call
+    raise effect
+Exception: vnbroker down
+
+======================================================================
+ERROR: test_snapshot_id_passed_through (portfolio.tests.test_ohlcv_bars_endpoint.TestGetOHLCVBarsService.test_snapshot_id_passed_through)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py", line 1432, in patched
+    return func(*newargs, **newkeywargs)
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\tests\test_ohlcv_bars_endpoint.py", line 394, in test_snapshot_id_passed_through
+    result = market_data_service.get_ohlcv_bars('TCB', s.validated_data)
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\market_data_service.py", line 2661, in get_ohlcv_bars
+    all_bars = self._fetch_bars_for_range(normalized_symbol, timeframe, start_date, end_date)
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\market_data_service.py", line 2509, in _fetch_bars_for_range
+    df = fetch_history_dataframe(
+        symbol,
+    ...<2 lines>...
+        interval=interval,
+    )
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py", line 1169, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py", line 1173, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py", line 1234, in _execute_mock_call
+    raise effect
+Exception: down
+
+======================================================================
+FAIL: test_cannot_mix_modes (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_cannot_mix_modes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\tests\test_ohlcv_bars_endpoint.py", line 106, in test_cannot_mix_modes
+    self.assertFalse(s.is_valid())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_window_mode_from_and_to_required_together (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_window_mode_from_and_to_required_together)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\tests\test_ohlcv_bars_endpoint.py", line 45, in test_window_mode_from_and_to_required_together
+    self.assertFalse(s.is_valid())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_window_mode_from_must_be_less_than_to (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_window_mode_from_must_be_less_than_to)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\tests\test_ohlcv_bars_endpoint.py", line 55, in test_window_mode_from_must_be_less_than_to
+    self.assertFalse(s.is_valid())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_window_mode_valid (portfolio.tests.test_ohlcv_bars_endpoint.TestOHLCVBarsQuerySerializer.test_window_mode_valid)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\tests\test_ohlcv_bars_endpoint.py", line 66, in test_window_mode_valid
+    self.assertIn('from', s.validated_data)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'from' not found in {'timeframe': 'D', 'limit': 500, 'from_ts': datetime.datetime(2024, 5, 20, 0, 0, tzinfo=datetime.timezone.utc), 'to_ts': datetime.datetime(2024, 5, 21, 0, 0, tzinfo=datetime.timezone.utc), 'before': datetime.datetime(2026, 5, 21, 9, 4, 30, 130436, tzinfo=datetime.timezone.utc)}
+
+======================================================================
+FAIL: test_invalid_timeframe_returns_400_with_machine_readable_code (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_invalid_timeframe_returns_400_with_machine_readable_code)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\tests\test_ohlcv_bars_endpoint.py", line 203, in test_invalid_timeframe_returns_400_with_machine_readable_code
+    self.assertEqual(data.get('code'), 'INVALID_TIMEFRAME')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'VALIDATION_ERROR' != 'INVALID_TIMEFRAME'
+- VALIDATION_ERROR
++ INVALID_TIMEFRAME
+
+
+======================================================================
+FAIL: test_mixed_mode_returns_400 (portfolio.tests.test_ohlcv_bars_endpoint.TestStockOHLCVBarsView.test_mixed_mode_returns_400)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Mujoco Projects\vninvest\backend\portfolio\tests\test_ohlcv_bars_endpoint.py", line 224, in test_mixed_mode_returns_400
+    self.assertEqual(resp.status_code, 400)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 404 != 400
+
+----------------------------------------------------------------------
+Ran 28 tests in 266.742s
+
+FAILED (failures=6, errors=2)
+Preserving test database for alias 'default' ('test_vninvest_core')...
+

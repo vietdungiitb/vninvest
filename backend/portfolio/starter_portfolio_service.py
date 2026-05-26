@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import os
-import sys
 from dataclasses import dataclass
 from decimal import Decimal
+import os
+import sys
 
 from django.conf import settings
 from django.contrib.auth.models import User

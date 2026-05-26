@@ -4,6 +4,15 @@
 
 VNInvest là workspace đầu tư chứng khoán Việt Nam với frontend React, backend Django, realtime feed, whale analytics, AI advisory và nhiều surface dashboard/workspace khác nhau.
 
+> [!IMPORTANT]
+> **QUY ĐỊNH BẮT BUỘC: PHÂN TÁCH LEGACY VÀ SAAS NATIVE**
+> - **Thư mục Legacy chỉ dùng để tham khảo:** Thư mục `backend/` và `frontend/` cũ ở thư mục gốc chính thức chuyển sang trạng thái **deprecated** (không còn phát triển). Chúng chỉ được giữ lại để tham khảo nghiệp vụ và tính năng cũ.
+> - **Phạm vi phát triển mới:** Mọi chức năng mới, nâng cấp, sửa đổi hoặc sửa lỗi (bug fixes) của dự án **bắt buộc** phải tuân theo kiến trúc **SaaS native** và nằm hoàn toàn trong:
+>   1. Backend/API Service: `packages/core` (core-api)
+>   2. Web Frontend: `packages/web`
+> - **Lộ trình dọn dẹp:** Thư mục `frontend/` cũ sẽ bị xóa bỏ hoàn toàn ngay khi toàn bộ các thành phần đã được chuyển đổi hết sang SaaS.
+> - **Chế tài:** Tuyệt đối cấm phát triển tính năng mới vào các thư mục `backend` và `frontend` cũ. Mọi thay đổi vi phạm sẽ bị đánh giá là Quality Gate Failure.
+
 Feature pack hiện tại cần mọi AI session đọc trước khi làm việc là gói:
 
 1. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_MASTER_20260428.md`
@@ -133,6 +142,23 @@ Với task liên quan `Dashboard SaaS Native Migration`, `DashboardPage`, `Packa
 12. `docs/RUN_INTEGRATION_TESTS_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
 13. `docs/RUN_SPEC_AUDIT_DASHBOARD_SAAS_NATIVE_MIGRATION_20260518.md`
 
+Với task liên quan `Dashboard Information Architecture Redesign`, `/dashboard` IA redesign, `heatmap center`, `UnifiedAlertCenter`, `AIAdvisorAlertPanel`, `FactsFirstModularPositionDeck`, `triad + full-width deck`, đọc gói:
+
+1. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_HANDOFF_MASTER_20260519.md`
+2. `docs/IMPLEMENTATION_PLAN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+3. `docs/TECH_SPEC_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+4. `docs/TASKBOARD_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+5. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_TRACEABILITY_MATRIX_20260519.md`
+6. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md`
+7. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_EXECUTION_EVIDENCE_TEMPLATE_20260519.md`
+8. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_CONFIG_OWNERSHIP_MATRIX_20260519.md`
+9. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_CODE_QUALITY_CONSTITUTION_20260519.md`
+10. `docs/FRONTEND_DESIGN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+11. `docs/BACKEND_DESIGN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+12. `docs/RUN_CODE_REVIEW_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+13. `docs/RUN_INTEGRATION_TESTS_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+14. `docs/RUN_SPEC_AUDIT_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+
 ## 2. Read-first quality docs
 
 Trước mọi thay đổi có liên quan feature này, đọc theo thứ tự:
@@ -259,6 +285,21 @@ Trước mọi thay đổi liên quan `SOC Config UI`, `Global Screener quản t
 10. `docs/RUN_INTEGRATION_TESTS_SOC_CONFIG_UI_ADMIN_OPS_DECOMMISSION_20260516.md`
 11. `docs/RUN_SPEC_AUDIT_SOC_CONFIG_UI_ADMIN_OPS_DECOMMISSION_20260516.md`
 
+Trước mọi thay đổi liên quan `/dashboard`, `Dashboard Information Architecture Redesign`, `heatmap center`, `alert lane`, `AI lane`, `FactsFirstModularPositionDeck` full-width, hoặc route swap giữa `ModernDashboard` và `PackageDashboardHost`, đọc theo thứ tự:
+
+1. `quality/QUALITY.md`
+2. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_HANDOFF_MASTER_20260519.md`
+3. `docs/TECH_SPEC_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+4. `docs/IMPLEMENTATION_PLAN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+5. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_TRACEABILITY_MATRIX_20260519.md`
+6. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_CODE_QUALITY_CONSTITUTION_20260519.md`
+7. `docs/DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_SELF_AUDIT_AND_TEST_PROTOCOL_20260519.md`
+8. `docs/FRONTEND_DESIGN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+9. `docs/BACKEND_DESIGN_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+10. `docs/RUN_CODE_REVIEW_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+11. `docs/RUN_INTEGRATION_TESTS_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+12. `docs/RUN_SPEC_AUDIT_DASHBOARD_INFORMATION_ARCHITECTURE_REDESIGN_20260519.md`
+
 ## 3. Hard constraints for this feature pack
 
 1. `whale-alerts/:symbol` phải dùng KLineChart làm surface trung tâm.
@@ -330,6 +371,8 @@ Pop-Location
 5. Không dùng workaround làm sai ngữ cảnh selected session, tooltip bucket, heatmap semantics hoặc whale marker viewport rule.
 6. Sau mỗi lần sửa code, bắt buộc refresh dev runtime qua entrypoint chuẩn `./start_dev.ps1` để đảm bảo env bootstrap, token bootstrap, build, healthcheck và smoke checks đều chạy đúng chuẩn; không được mặc định gọi thẳng `docker compose ... up/build` thay cho script này.
 7. `docker compose` trực tiếp cho dev stack chỉ được dùng khi đang debug chính `start_dev.ps1` hoặc cần forensic đặc biệt; mọi trường hợp lệch khỏi `./start_dev.ps1` phải được ghi rõ lý do trong evidence/audit.
+8. **QUY ĐỊNH CỨNG**: Kết thúc mọi thay đổi mã nguồn, bắt buộc phải thực hiện rebuild lại và khởi động lại Docker stack bằng script `./start_dev.ps1` để đảm bảo code mới được biên dịch đầy đủ và có hiệu lực thực tế cho người sử dụng. Không được kết thúc phiên làm việc mà không chạy kiểm tra thực tế trên container dev.
+9. **QUY ĐỊNH CỨNG**: Khi tạo bộ tài liệu bàn giao cho đội code (handoff doc pack), bắt buộc dùng skill `.copilot/skills/handoff-doc-pack-generator/SKILL.md`; nếu cần khởi tạo khung nhanh thì chạy `.copilot/skills/handoff-doc-pack-scaffold/SKILL.md` trước rồi mới dùng generator để điền đầy đủ nội dung. Không được tạo doc pack thủ công ngoài workflow skill này.
 
 ## 7. Evidence obligations
 
@@ -359,6 +402,7 @@ Template chuẩn nằm tại:
 8. **Tất cả API calls từ packages/web** phải qua `coreApiAdapter.js` — không direct fetch.
 9. **Text mới trong packages/web** phải qua i18n tiếng Việt đầy đủ dấu.
 10. **Immutable production builds** — không source mount, không runtime pip install.
+11. **Legacy deprecation**: Thư mục `backend/` và `frontend/` cũ ở gốc hoàn toàn chỉ là thư mục để tham khảo tính năng. Mọi chức năng mới bắt buộc phải theo kiến trúc SaaS native và nằm trong `packages/core` (core-api) và `packages/web`.
 
 ## 9. Hard constraints for SaaS Full Independence (Option B)
 

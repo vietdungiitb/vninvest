@@ -19,7 +19,7 @@ from rest_framework.views import APIView
 from tenant_lifecycle.models import TenantLifecycleEvent
 from .models import CoreTenant, TenantMember, TenantInvite
 from .serializers import TenantMemberSerializer, TenantInviteSerializer, TenantInviteCreateSerializer
-from .permissions import IsTenantActive
+from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
 
 
 class IsTenantOwnerOrAdmin(permissions.BasePermission):
@@ -61,6 +61,7 @@ class TenantMemberListView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
     def get(self, request):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
         user = request.user
         # Find user's primary tenant
         tenant = CoreTenant.objects.filter(owner_user=user).first()
@@ -98,6 +99,7 @@ class TenantInvitesCombinedView(APIView):
 
     def post(self, request):
         """Create invite for new member."""
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
         user = request.user
         tenant = self._get_tenant_for_user(user)
         if not tenant:
@@ -170,6 +172,7 @@ class TenantInvitesCombinedView(APIView):
 
     def get(self, request):
         """List pending invites for tenant."""
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
         user = request.user
         tenant = self._get_tenant_for_user(user)
         if not tenant:
@@ -200,6 +203,7 @@ class TenantInviteAcceptView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
     def post(self, request, token):
+        require_human_session(request)
         user = request.user
 
         # Find invite
@@ -278,6 +282,7 @@ class TenantMemberRemoveView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsTenantActive, IsTenantOwnerOrAdmin]
 
     def delete(self, request, member_id):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
         user = request.user
 
         # Find member

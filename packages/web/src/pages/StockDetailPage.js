@@ -1,128 +1,253 @@
 /**
- * SM-P4.5 — StockDetailPage
- * Trang chi tiet co phieu: thong tin, lich su gia, order-flow events, advisory.
- * Khong dung JSX — tuan theo convention packages/web (createElement).
+ * SM-P4.5 — StockDetailPage (SaaS Native Rebuild)
+ * ===================================================
+ * Trang chi tiết cổ phiếu cao cấp:
+ *   - VNStockChartPanel: biểu đồ D3 hybrid (giá + CVD + Sức mạnh)
+ *   - OrderFlowRadarPanel: radar dòng tiền đặt bên dưới biểu đồ
+ *   - Advisory Card: đồng bộ theo session được chọn trên biểu đồ
+ *
+ * Quy định: KHÔNG dùng JSX trong file này — tuân theo convention
+ * packages/web (createElement). Mọi component con có thể dùng JSX.
+ *
+ * Kiến trúc: SaaS Native OpenAPI — packages/core + packages/web ONLY.
  */
-import { createElement, useEffect, useRef, useState } from "react";
+import "./StockDetailPage.css";
+import { createElement, useCallback, useState } from "react";
 
-import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useStockDetailPageModel } from "../features/stock-detail/hooks/useStockDetailPageModel.js";
+import { StockDetailHeader } from "../features/stock-detail/components/StockDetailHeader.js";
+import { StockSessionWitness } from "../features/stock-detail/components/StockSessionWitness.js";
+import VNStockChartPanel from "../components/VNStockChartPanel.js";
+import { OrderFlowRadarPanel } from "../components/OrderFlowRadarPanel.js";
+import { StockContextDeck } from "../features/stock-detail/components/StockContextDeck.js";
+import { StockInsightDeck } from "../features/stock-detail/components/StockInsightDeck.js";
 
 const DEFAULT_ENV = {};
 const e = createElement;
 
-function useStockDetail({ env = DEFAULT_ENV, symbol } = {}) {
-  const [state, setState] = useState({
-    loading: true, error: null, profile: null, prices: [], orderFlow: [], advisory: null,
-  });
-  const mountedRef = useRef(true);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!symbol) return;
-    mountedRef.current = true;
-    async function load() {
-      try {
-        const adapter = coreApiAdapter({ env });
-        const [profileRes, pricesRes, orderFlowRes, advisoryRes] = await Promise.allSettled([
-          adapter.getStockProfile(symbol),
-          adapter.getDailyPrices(symbol),
-          adapter.getOrderFlowEvents(symbol),
-          adapter.getAdvisoryLatest(symbol),
-        ]);
-        if (!mountedRef.current) return;
-        setState({
-          loading: false, error: null,
-          profile: profileRes.status === "fulfilled" ? profileRes.value : null,
-          prices: pricesRes.status === "fulfilled" ? (pricesRes.value?.results ?? []) : [],
-          orderFlow: orderFlowRes.status === "fulfilled" ? (orderFlowRes.value?.results ?? orderFlowRes.value ?? []) : [],
-          advisory: advisoryRes.status === "fulfilled" ? advisoryRes.value : null,
-        });
-      } catch (err) {
-        if (!mountedRef.current) return;
-        setState((s) => ({ ...s, loading: false, error: err?.message || "Khong the tai chi tiet co phieu." }));
-      }
-    }
-    load();
-    return () => { mountedRef.current = false; };
-  }, [env, symbol]);
-
-  return state;
+function fmtPrice(v, locale = "vi-VN") {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtCompact(v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  if (Math.abs(n) >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}N`;
+  if (Math.abs(n) >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}T`;
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Tr`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toLocaleString("vi-VN");
+}
+
+function signalColorClass(signal) {
+  const s = String(signal || "").toLowerCase();
+  if (s === "buy" || s === "strong_buy") return "sdp-signal-buy";
+  if (s === "sell" || s === "strong_sell") return "sdp-signal-sell";
+  return "sdp-signal-neutral";
+}
+
+function signalLabel(signal) {
+  const map = {
+    buy: "Mua",
+    strong_buy: "Mua Mạnh",
+    sell: "Bán",
+    strong_sell: "Bán Mạnh",
+    neutral: "Trung lập",
+    hold: "Giữ",
+    watch: "Theo dõi",
+  };
+  return map[String(signal || "").toLowerCase()] || signal || "—";
+}
+
+// ─── Sub-components (createElement) ──────────────────────────────────────────
+
+// ─── Helper definitions ───────────────────────────────────────────────────────
+
+// ─── Main Page Export ─────────────────────────────────────────────────────────
+
 export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
-  const { loading, error, profile, prices, orderFlow, advisory } = useStockDetail({ env, symbol });
+  const [isWatched, setIsWatched] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  if (!symbol) return e("div", { className: "core-stock-detail-page " + className },
-    e("p", { className: "core-empty" }, "Vui long chon ma co phieu.")
-  );
+  const showToast = useCallback((message) => {
+    setToast(message);
+    const timer = setTimeout(() => {
+      setToast((curr) => curr === message ? null : curr);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  if (loading) return e("div", { className: "core-stock-detail-page " + className },
-    e("p", { className: "core-loading" }, "Dang tai du lieu " + symbol + "...")
-  );
+  const {
+    activeTimeframe,
+    setActiveTimeframe,
+    activePeriod,
+    setActivePeriod,
+    selectedSession,
+    setSelectedSession,
+    visibleRange,
+    setVisibleRange,
+    loadingBlocking,
+    loadingDeferred,
+    error,
+    profile,
+    snapshot,
+    chartBars,
+    orderFlowData,
+    advisory,
+    whaleFeed,
+    news,
+    financials,
+    loadingNews,
+    loadingFinancials
+  } = useStockDetailPageModel({ env, initialSymbol: symbol });
 
-  if (error) return e("div", { className: "core-stock-detail-page " + className },
-    e("p", { className: "core-error" }, error)
-  );
+  const handleSessionChange = useCallback((session) => {
+    setSelectedSession(session);
+  }, [setSelectedSession]);
 
-  return e("div", { className: "core-stock-detail-page " + className },
-    e("header", { className: "core-page-header" },
-      e("h1", null, symbol),
-      profile ? e("span", { className: "core-stock-meta" },
-        [profile.company_name, profile.exchange, profile.industry].filter(Boolean).join(" — ")
-      ) : null
+  const handleVisibleRangeChange = useCallback((range) => {
+    setVisibleRange(range);
+  }, [setVisibleRange]);
+
+  const handleWatch = useCallback(() => {
+    setIsWatched((w) => !w);
+  }, []);
+
+  const handleAlertTrigger = useCallback(() => {
+    showToast(`Cảnh báo cho mã ${symbol} sẽ được tích hợp với Unified Alert Center.`);
+  }, [symbol, showToast]);
+
+  const handleTradeTrigger = useCallback(() => {
+    showToast(`Chức năng giao dịch cho mã ${symbol} đang kết nối qua cổng bảo mật.`);
+  }, [symbol, showToast]);
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (!symbol) {
+    return e(
+      "div",
+      { className: `sdp-page ${className}` },
+      e(
+        "div",
+        { className: "sdp-empty-state" },
+        e("div", { className: "sdp-empty-icon" }, "📊"),
+        e("p", { className: "sdp-empty-text" }, "Vui lòng chọn mã cổ phiếu để xem chi tiết.")
+      )
+    );
+  }
+
+  // ── Error state ────────────────────────────────────────────────────────────
+  if (!loadingBlocking && error) {
+    return e(
+      "div",
+      { className: `sdp-page ${className}` },
+      e(
+        "div",
+        { className: "sdp-error-state" },
+        e("div", { className: "sdp-error-icon" }, "⚠️"),
+        e("p", { className: "sdp-error-text" }, error),
+        e(
+          "button",
+          {
+            className: "sdp-retry-btn",
+            type: "button",
+            onClick: () => setSelectedSession(null),
+          },
+          "Thử lại"
+        )
+      )
+    );
+  }
+
+  // ── Main layout ────────────────────────────────────────────────────────────
+  return e(
+    "div",
+    { className: `sdp-page ${className}` },
+
+    // ── Ambient glow background decorations ──
+    e("div", { className: "sdp-bg-glow sdp-bg-glow-1", "aria-hidden": "true" }),
+    e("div", { className: "sdp-bg-glow sdp-bg-glow-2", "aria-hidden": "true" }),
+
+    // ── Header ────────────────────────────────
+    e(StockDetailHeader, {
+      symbol,
+      profile,
+      snapshot: loadingBlocking ? null : snapshot,
+      loading: loadingBlocking,
+      isWatched,
+      onWatch: handleWatch,
+      onAlertTrigger: handleAlertTrigger,
+      onTradeTrigger: handleTradeTrigger
+    }),
+
+    // ── Session Witness Strip ──────────────────
+    e(StockSessionWitness, {
+      selectedSession,
+      onClearSession: () => setSelectedSession(null),
+      loading: loadingDeferred
+    }),
+
+    // ── Hero Workstation Chart Wrapper ─────────
+    e(
+      "div",
+      { className: "sdp-chart-wrapper" },
+      e(VNStockChartPanel, {
+        data: chartBars,
+        loading: loadingBlocking,
+        activePeriod,
+        activeTimeframe,
+        onPeriodChange: setActivePeriod,
+        onTimeframeChange: setActiveTimeframe,
+        onVisibleRangeChange: handleVisibleRangeChange,
+        onSessionChange: handleSessionChange,
+        flowData: orderFlowData,
+        orderFlowData,
+        whaleSignals: whaleFeed,
+      })
     ),
-    advisory ? e("section", { className: "core-advisory-panel" },
-      e("h2", null, "Khuyen nghi AI"),
-      e("div", { className: "core-advisory-signal core-signal-" + (advisory.signal || "").toLowerCase() }, advisory.signal || ""),
-      advisory.summary ? e("p", { className: "core-advisory-summary" }, advisory.summary) : null,
-      advisory.generated_at
-        ? e("small", { className: "core-advisory-timestamp" },
-            "Cap nhat: " + new Date(advisory.generated_at).toLocaleString("vi-VN"))
-        : null
-    ) : null,
-    e("section", { className: "core-orderflow-section" },
-      e("h2", null, "Tin hieu dong tien (" + orderFlow.length + ")"),
-      orderFlow.length === 0
-        ? e("p", { className: "core-empty" }, "Khong co tin hieu dong tien nao.")
-        : e("table", { className: "core-orderflow-table" },
-            e("thead", null, e("tr", null,
-              e("th", null, "Loai tin hieu"), e("th", null, "Chieu"), e("th", null, "Suc manh"),
-              e("th", null, "Ca map"), e("th", null, "CVD"), e("th", null, "Gia"),
-              e("th", null, "KL"), e("th", null, "Thoi diem")
-            )),
-            e("tbody", null, orderFlow.map((ev) =>
-              e("tr", { key: ev.event_id, className: "core-event-row core-side-" + ev.side },
-                e("td", null, ev.signal_type),
-                e("td", null, ev.side),
-                e("td", null, ev.strength != null ? Number(ev.strength).toFixed(2) : "—"),
-                e("td", null, ev.whale_intensity != null ? Number(ev.whale_intensity).toFixed(2) : "—"),
-                e("td", null, ev.cvd_at_signal != null ? Number(ev.cvd_at_signal).toLocaleString("vi-VN") : "—"),
-                e("td", null, ev.price_at_signal != null ? Number(ev.price_at_signal).toLocaleString("vi-VN") : "—"),
-                e("td", null, ev.volume_at_signal != null ? Number(ev.volume_at_signal).toLocaleString("vi-VN") : "—"),
-                e("td", null, ev.triggered_at ? new Date(ev.triggered_at).toLocaleString("vi-VN") : "—")
-              )
-            ))
-          )
+
+    // ── OrderFlowRadarPanel (strictly full-width underneath) ──
+    e(
+      "div",
+      { className: "sdp-radar-wrapper" },
+      e(OrderFlowRadarPanel, {
+        symbol,
+        loading: loadingBlocking,
+        orderFlowData,
+        latestRealtimeAlert: null,
+      })
     ),
-    e("section", { className: "core-prices-section" },
-      e("h2", null, "Lich su gia (" + prices.length + " phien)"),
-      prices.length === 0
-        ? e("p", { className: "core-empty" }, "Chua co du lieu gia.")
-        : e("table", { className: "core-prices-table" },
-            e("thead", null, e("tr", null,
-              e("th", null, "Ngay"), e("th", null, "Mo cua"), e("th", null, "Cao nhat"),
-              e("th", null, "Thap nhat"), e("th", null, "Dong cua"), e("th", null, "Khoi luong")
-            )),
-            e("tbody", null, prices.slice(0, 30).map((p) =>
-              e("tr", { key: p.date },
-                e("td", null, p.date),
-                e("td", null, Number(p.open).toLocaleString("vi-VN")),
-                e("td", null, Number(p.high).toLocaleString("vi-VN")),
-                e("td", null, Number(p.low).toLocaleString("vi-VN")),
-                e("td", null, Number(p.close).toLocaleString("vi-VN")),
-                e("td", null, Number(p.volume).toLocaleString("vi-VN"))
-              )
-            ))
-          )
+
+    // ── StockContextDeck (CVD, depth, strength) ──
+    e(StockContextDeck, {
+      symbol,
+      selectedSession,
+      snapshot,
+      orderFlowData,
+      whaleFeed,
+      loading: loadingDeferred
+    }),
+
+    // ── StockInsightDeck (Advisory, news, financials) ──
+    e(StockInsightDeck, {
+      advisory,
+      selectedSession,
+      loadingDeferred,
+      news,
+      financials,
+      loadingNews,
+      loadingFinancials
+    }),
+
+    // ── Toast Notification (Truthful UX) ──
+    toast && e(
+      "div",
+      { className: "sdp-toast-container" },
+      e("div", { className: "sdp-toast" }, `✨ ${toast}`)
     )
   );
 }

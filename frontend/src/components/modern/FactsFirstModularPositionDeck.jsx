@@ -8,7 +8,21 @@ import { filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20];
 const FactsFirstWhaleAnalyticsTab = lazy(() => import('../FactsFirstWhaleAnalyticsTab'));
 
-export default function FactsFirstModularPositionDeck({ holdings, symbolUniverse = [], loading, quotesBySymbol, technicals, alerts, analytics, digest, onRequestDigest }) {
+export default function FactsFirstModularPositionDeck({
+  holdings,
+  symbolUniverse = [],
+  loading,
+  quotesBySymbol,
+  technicals,
+  alerts,
+  analytics,
+  digest,
+  onRequestDigest,
+  selectedSession,
+  onSelectSession,
+  selectedSymbol: selectedSymbolProp,
+  onSelectSymbol,
+}) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState('overview');
   const [pageSize, setPageSize] = useState(10);
@@ -16,6 +30,12 @@ export default function FactsFirstModularPositionDeck({ holdings, symbolUniverse
   const [symbolScope, setSymbolScope] = useState('holdings');
   const [selectedSymbol, setSelectedSymbol] = useState('all');
   const [showOptimization, setShowOptimization] = useState(false);
+
+  useEffect(() => {
+    if (selectedSymbolProp && selectedSymbolProp !== selectedSymbol) {
+      setSelectedSymbol(selectedSymbolProp);
+    }
+  }, [selectedSymbolProp, selectedSymbol]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -210,6 +230,12 @@ export default function FactsFirstModularPositionDeck({ holdings, symbolUniverse
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
+      {selectedSession && (
+        <div className="flex items-center justify-between bg-emerald-950/40 border-b border-emerald-800/30 px-4 py-2 text-[11px] text-emerald-300">
+          <span>Phiên đang chọn: <strong>{typeof selectedSession === 'object' ? (selectedSession.tradeDate || selectedSession.sessionDate || JSON.stringify(selectedSession)) : selectedSession}</strong></span>
+          <button onClick={() => onSelectSession(null)} className="text-[10px] text-slate-500 hover:text-slate-300 font-bold uppercase">Hủy</button>
+        </div>
+      )}
       <div className="flex items-center gap-1 bg-slate-900/80 p-1 border-b border-slate-800">
         {tabs.map((tab) => (
           <button
@@ -219,7 +245,7 @@ export default function FactsFirstModularPositionDeck({ holdings, symbolUniverse
               activeTab === tab.id
                 ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
                 : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border border-transparent'
-            }`}
+            } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950`}
           >
             <span>{tab.icon}</span>
             {tab.label}
@@ -251,7 +277,11 @@ export default function FactsFirstModularPositionDeck({ holdings, symbolUniverse
           </label>
           <select
             value={selectedSymbol}
-            onChange={(event) => setSelectedSymbol(event.target.value)}
+            onChange={(event) => {
+              const val = event.target.value;
+              setSelectedSymbol(val);
+              onSelectSymbol?.(val);
+            }}
             className="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 focus:border-emerald-500 focus:outline-none"
           >
             <option value="all">{t('modernDeck.symbolAll', { defaultValue: 'Tất cả mã' })}</option>
@@ -288,7 +318,7 @@ export default function FactsFirstModularPositionDeck({ holdings, symbolUniverse
                    </div>
                    <Link
                      to="/transactions"
-                     className="rounded-lg border border-emerald-500/30 bg-emerald-600/15 px-4 py-2 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-600/25"
+                     className="rounded-lg border border-emerald-500/30 bg-emerald-600/15 px-4 py-2 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-600/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                    >
                      Mở Transactions
                    </Link>

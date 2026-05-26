@@ -44,10 +44,16 @@ urlpatterns = [
     path('workspace/portfolios/', views.PortfolioListCreateView.as_view(), name='portfolio-list'),
     path('workspace/portfolios/<int:portfolio_id>/', views.PortfolioDetailView.as_view(), name='portfolio-detail'),
     path('workspace/portfolios/<int:portfolio_id>/transactions/', views.TransactionListCreateView.as_view(), name='transaction-list'),
+    path('workspace/portfolios/<int:portfolio_id>/holdings/', PortfolioHoldingsView.as_view(), name='portfolio-holdings'),
+    path('workspace/portfolios/<int:portfolio_id>/summary/', PortfolioSummaryView.as_view(), name='portfolio-summary'),
+    path('workspace/portfolios/<int:portfolio_id>/analytics/', PortfolioAnalyticsView.as_view(), name='portfolio-analytics'),
+    path('workspace/portfolios/<int:portfolio_id>/technicals/', PortfolioTechnicalsView.as_view(), name='portfolio-technicals'),
     path('workspace/transactions/<int:transaction_id>/', views.TransactionDetailView.as_view(), name='transaction-detail'),
     path('workspace/watchlists/', views.WatchlistListCreateView.as_view(), name='watchlist-list'),
     path('workspace/watchlists/<int:watchlist_id>/items/', views.WatchlistItemListCreateView.as_view(), name='watchlist-items'),
     path('workspace/watchlists/<int:watchlist_id>/items/<str:symbol>/', views.WatchlistItemDeleteView.as_view(), name='watchlist-item-delete'),
+    path('workspace/whale-analytics/<str:symbol>/', PortfolioWhaleAnalyticsView.as_view(), name='workspace-whale-analytics'),
+    path('workspace/ai-command-center/', PortfolioAICommandCenterView.as_view(), name='workspace-ai-cc-direct'),
 
     # =========================================================================
     # Legacy frontend path aliases (api/ namespace, mounted via urls.py:28)

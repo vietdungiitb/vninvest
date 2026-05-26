@@ -1,20 +1,35 @@
 FROM node:20-alpine AS builder
+
+# 1. Copy the sibling repository vnstockchars
+COPY vnstockchars /vnstockchars
+
+# 2. Build the @vnstockcharts engine core and react packages from source!
+WORKDIR /vnstockchars
+RUN npm ci --legacy-peer-deps
+RUN npm run build:engine-react
+
+# 3. Proceed with building vninvest-frontend
 WORKDIR /app/frontend
 
-COPY frontend/package*.json ./
-COPY frontend/patches/ ./patches/
-COPY packages/web/ ../packages/web/
-COPY packages/web/ ./packages/web/
-RUN npm ci
+COPY vninvest/frontend/package*.json ./
+COPY vninvest/frontend/patches/ ./patches/
+COPY vninvest/packages/web/ ../packages/web/
+COPY vninvest/packages/web/ ./packages/web/
+RUN npm ci --legacy-peer-deps
 
-COPY frontend/ ./
-COPY packages/web/ ../packages/web/
-COPY packages/web/ ./packages/web/
-RUN rm -rf node_modules/@vninvest/web \
+COPY vninvest/frontend/ ./
+COPY vninvest/packages/web/ ../packages/web/
+COPY vninvest/packages/web/ ./packages/web/
+RUN rm -rf node_modules/@vnstockcharts \
+	&& mkdir -p node_modules/@vnstockcharts \
+	&& cp -r /vnstockchars/packages/vn-kline-engine-core node_modules/@vnstockcharts/vn-kline-engine-core \
+	&& cp -r /vnstockchars/packages/vn-kline-engine-react node_modules/@vnstockcharts/vn-kline-engine-react \
+	&& rm -rf node_modules/@vninvest/web \
 	&& mkdir -p node_modules/@vninvest/web \
 	&& cp -R ../packages/web/. node_modules/@vninvest/web/ \
 	&& rm -rf node_modules/@vninvest/web/node_modules \
 	&& rm -f node_modules/@vninvest/web/package-lock.json
+
 ARG REACT_APP_API_BASE_URL=/api
 ARG REACT_APP_ENABLE_PACKAGE_SHELL_HOST=1
 ARG REACT_APP_PACKAGE_SHELL_CORE_BASE_URL=/core/v1
@@ -37,7 +52,7 @@ LABEL org.opencontainers.image.version=${APP_RELEASE} \
 
 ENV APP_RELEASE=${APP_RELEASE}
 
-COPY frontend/docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY vninvest/frontend/docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/frontend/build /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,71 @@
+/* ════════════════════════════════════════════════════════════════
+   React Stockcharts — ChartSplitter default styles
+   ────────────────────────────────────────────────────────────────
+   Import this file to get default styles for the ChartSplitter
+   component. Depends on --rsc-* properties from chart-theme.css.
+   Falls back gracefully when chart-theme.css is not imported.
+
+   The ChartSplitter renders as an absolute overlay inside a
+   position:relative chart container. Place it so its top edge
+   aligns with the boundary between two panes:
+
+     style={{ top: marginTop + heights[0] }}
+
+   Override colours via --rsc-* CSS custom properties or by
+   passing a custom className prop.
+════════════════════════════════════════════════════════════════ */
+
+.rsc-splitter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  margin-top: -5px; /* centres the hit area on the pane boundary */
+  cursor: row-resize;
+  z-index: 320;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Invisible full-width hover target */
+.rsc-splitter::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 2px;
+  background: var(--rsc-border-mid, #c8cedf);
+  transition: background 0.15s, opacity 0.15s, height 0.1s;
+  opacity: 0.7;
+}
+
+.rsc-splitter:hover::after,
+.rsc-splitter--dragging::after {
+  background: var(--rsc-accent, #2962ff);
+  opacity: 1;
+  height: 3px;
+}
+
+/* Visible handle pill */
+.rsc-splitter__handle {
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--rsc-text-muted, #6b7893);
+  opacity: 0.3;
+  transition: opacity 0.15s, background 0.15s;
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.rsc-splitter:hover .rsc-splitter__handle,
+.rsc-splitter--dragging .rsc-splitter__handle {
+  opacity: 1;
+  background: var(--rsc-accent, #2962ff);
+}

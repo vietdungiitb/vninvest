@@ -70,6 +70,8 @@ function makePageEntry(routeId, status, loadComponent) {
 export const pageRegistry = Object.freeze([
   makePageEntry("operations-center", "baseline", () =>
     import("./admin/ShellOperationsCenterPage.js").then((module) => module.ShellOperationsCenterPage)),
+  makePageEntry("operations-center-mail-config", "baseline", () =>
+    import("./admin/ShellMailConfigPage.js").then((module) => module.ShellMailConfigPage)),
   makePageEntry("ai-command-center", "baseline", () =>
     import("./system/ShellAiCommandCenterPage.js").then((module) => module.ShellAiCommandCenterPage)),
   makePageEntry("ai-advisory", "baseline", () =>
@@ -98,13 +100,21 @@ export const pageRegistry = Object.freeze([
   makePageEntry("core-whale-alerts", "core", () =>
     import("./WhaleAlertsPage.js").then((module) => module.WhaleAlertsPage)),
   makePageEntry("core-stock-detail", "core", () =>
-    import("./StockDetailPage.js").then((module) => module.StockDetailPage)),
+    import("./market/ShellStockDetailPage.js").then((module) => module.ShellStockDetailPage)),
   makePageEntry("core-portfolios", "core", () =>
     import("./PortfoliosPage.js").then((module) => module.PortfoliosPage)),
   makePageEntry("core-transactions", "core", () =>
     import("./TransactionsPage.js").then((module) => module.TransactionsPage)),
   makePageEntry("core-user-settings", "core", () =>
     import("./UserSettingsPage.js").then((module) => module.UserSettingsPage)),
+  makePageEntry("auth-login", "core", () =>
+    import("./auth/AuthLoginPage.js").then((module) => module.AuthLoginPage)),
+  makePageEntry("auth-register", "core", () =>
+    import("./auth/AuthRegisterPage.js").then((module) => module.AuthRegisterPage)),
+  makePageEntry("auth-verify-email", "core", () =>
+    import("./auth/AuthVerifyEmailPage.js").then((module) => module.AuthVerifyEmailPage)),
+  makePageEntry("auth-reset-password", "core", () =>
+    import("./auth/AuthResetPasswordPage.js").then((module) => module.AuthResetPasswordPage)),
 ]);
 
 export function getPageRegistryRouteIds() {

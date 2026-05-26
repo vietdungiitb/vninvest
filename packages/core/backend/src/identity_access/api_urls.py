@@ -6,6 +6,7 @@ from vninvest_core.utils.legacy_stubs import GenericEmptyListView, GenericEmptyS
 from . import views_auth
 from . import onboarding_views
 from . import tenant_member_views
+from . import views_operator
 from .dnse_credential_views import DNSECredentialView
 
 urlpatterns = [
@@ -21,6 +22,7 @@ urlpatterns = [
     # SFI-B2.5: Native auth endpoints (new functionality only)
     path('auth/register/', views_auth.register_view, name='api-auth-register'),
     path('auth/verify-email/', views_auth.verify_email_view, name='api-auth-verify-email'),
+    path('auth/resend-verification/', views_auth.resend_email_verification_view, name='api-auth-resend-verification'),
     path('auth/password-reset/', views_auth.password_reset_request_view, name='api-auth-password-reset'),
     path('auth/password-reset/confirm/', views_auth.password_reset_confirm_view, name='api-auth-password-reset-confirm'),
     path('portfolio/userconfig/', views_auth.user_config_view, name='api-portfolio-userconfig'),
@@ -39,6 +41,12 @@ urlpatterns = [
     path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner_api'), namespace='identity_access_partner_api')),
     # D02: DNSE credential management
     path('core/v1/dnse-credential/', DNSECredentialView.as_view(), name='api-dnse-credential'),
+    
+    # Operator Dynamic Mail Configurations (Slice 5)
+    path('core/v1/operator/mail-config/', views_operator.OperatorMailConfigListView.as_view(), name='api-operator-mail-config-list'),
+    path('core/v1/operator/mail-config/<int:pk>/', views_operator.OperatorMailConfigDetailView.as_view(), name='api-operator-mail-config-detail'),
+    path('core/v1/operator/mail-config/<int:pk>/activate/', views_operator.OperatorMailConfigActivateView.as_view(), name='api-operator-mail-config-activate'),
+    path('core/v1/operator/mail-config/test/', views_operator.OperatorMailConfigTestView.as_view(), name='api-operator-mail-config-test'),
 
     # =========================================================================
     # Misc legacy stubs (migrated from compat_urls.py)

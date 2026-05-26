@@ -8,7 +8,7 @@ All views require IsAuthenticated; symbol param is always uppercased.
 """
 from datetime import date
 
-from django.db.models import Avg
+from django.db.models import Avg, Max
 from django.utils import timezone
 from rest_framework import permissions
 from rest_framework.response import Response
@@ -35,6 +35,8 @@ class RealtimeTickerView(APIView):
         today = date.today()
         snap = SymbolSnapshot.objects.filter(symbol=symbol, session_date=today).first()
         if not snap:
+            snap = SymbolSnapshot.objects.filter(symbol=symbol).order_by('-session_date', '-fetched_at').first()
+        if not snap:
             return Response({
                 'symbol': symbol,
                 'price': None,
@@ -45,6 +47,7 @@ class RealtimeTickerView(APIView):
             'symbol': snap.symbol,
             'price': str(snap.price),
             'current_price': str(snap.price),
+            'prev_price': str(snap.reference_price) if snap.reference_price else None,
             'price_change': str(snap.price_change),
             'change_value': str(snap.price_change),
             'price_change_pct': str(snap.price_change_pct),
@@ -66,12 +69,15 @@ class RealtimeTickerListView(APIView):
 
     def get(self, request):
         today = date.today()
+        max_date = SymbolSnapshot.objects.aggregate(max_date=Max('session_date'))['max_date']
+        target_date = max_date or today
+
         symbols_raw = request.query_params.get('symbols', '')
         if symbols_raw:
             symbols = [s.strip().upper() for s in symbols_raw.split(',') if s.strip()][:self._MAX_SYMBOLS]
-            qs = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
+            qs = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=target_date)
         else:
-            qs = SymbolSnapshot.objects.filter(session_date=today).order_by('symbol')[:self._MAX_SYMBOLS]
+            qs = SymbolSnapshot.objects.filter(session_date=target_date).order_by('symbol')[:self._MAX_SYMBOLS]
         # Return as dict keyed by symbol so frontend can do Object.values(tickersMap)
         result = {}
         for s in qs:
@@ -79,6 +85,7 @@ class RealtimeTickerListView(APIView):
                 'symbol': s.symbol,
                 'price': str(s.price),
                 'current_price': str(s.price),
+                'prev_price': str(s.reference_price) if s.reference_price else None,
                 'price_change': str(s.price_change),
                 'change_value': str(s.price_change),
                 'price_change_pct': str(s.price_change_pct),
@@ -186,10 +193,14 @@ class RealtimePriceBoardView(APIView):
         today = date.today()
         snap = SymbolSnapshot.objects.filter(symbol=symbol, session_date=today).first()
         if not snap:
+            snap = SymbolSnapshot.objects.filter(symbol=symbol).order_by('-session_date', '-fetched_at').first()
+        if not snap:
             return Response({'symbol': symbol, 'data': None, 'stale': True})
         return Response({
             'symbol': snap.symbol,
             'price': str(snap.price),
+            'current_price': str(snap.price),
+            'prev_price': str(snap.reference_price) if snap.reference_price else None,
             'price_change': str(snap.price_change),
             'price_change_pct': str(snap.price_change_pct),
             'volume': snap.volume,
@@ -206,7 +217,9 @@ class RealtimeBreadthView(APIView):
     def get(self, request, symbol):
         # symbol param is accepted but breadth is market-wide aggregate
         today = date.today()
-        qs = SymbolSnapshot.objects.filter(session_date=today)
+        max_date = SymbolSnapshot.objects.aggregate(max_date=Max('session_date'))['max_date']
+        target_date = max_date or today
+        qs = SymbolSnapshot.objects.filter(session_date=target_date)
         total = qs.count()
         advancing = qs.filter(price_change__gt=0).count()
         declining = qs.filter(price_change__lt=0).count()

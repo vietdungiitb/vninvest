@@ -457,3 +457,4 @@ Branch naming: `sm/<slice-id>-<short-description>`
 8. **Deploy production mà test chưa PASS** — CI gate là hard blocker.
 9. **Mark task DONE mà không có evidence** — không có exception.
 10. **Decommission code mà chưa có Tech Lead sign-off** — không có exception.
+11. **Ghi hoặc phát triển code mới trong legacy directories** — Thư mục `backend/` và `frontend/` cũ ở gốc hoàn toàn chỉ là để tham khảo tính năng (deprecated). Mọi chức năng mới bắt buộc phải nằm tại `packages/core` (core-api) và `packages/web`.

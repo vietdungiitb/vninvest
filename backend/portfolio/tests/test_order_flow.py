@@ -833,13 +833,14 @@ class TestOrderFlowSignalTask(TestCase):
     @patch("portfolio.services_global_signal_distribution.async_to_sync")
     @patch("portfolio.services_global_signal_distribution.get_channel_layer")
     def test_distribution_task_fans_out_to_watchlist_only_user(self, mock_get_channel_layer, mock_async_to_sync):
-        from portfolio.models import OrderFlowSignal, UserAlertHistory, UserConfig, WatchlistGroup, WatchlistItem
+        from portfolio.models import OrderFlowSignal, UserAlertHistory, UserConfig
+        from user_workspace.models import Watchlist, WatchlistItem
         from portfolio.tasks import distribute_order_flow_signal
 
         user = get_user_model().objects.create_user(username="of_watch_only", password="Test@123456")
         UserConfig.objects.create(user=user, advisory_whale_signal_enabled=True, whale_alert_threshold=650)
-        watchlist = WatchlistGroup.objects.create(user=user, name="Theo dõi dark flow")
-        WatchlistItem.objects.create(group=watchlist, symbol="VNM")
+        watchlist = Watchlist.objects.create(user=user, name="Theo dõi dark flow")
+        WatchlistItem.objects.create(watchlist=watchlist, symbol="VNM")
 
         mock_sender = MagicMock()
         mock_async_to_sync.return_value = mock_sender

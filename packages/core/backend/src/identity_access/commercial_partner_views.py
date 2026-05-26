@@ -10,7 +10,7 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 
 from identity_access.models import CoreTenant
-from identity_access.permissions import IsTenantActive
+from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ class PartnerUsageMetersView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
         try:
             from commercial.models import UsageMeter
             from commercial.serializers import UsageMeterSerializer
@@ -46,6 +47,7 @@ class PartnerUsageQuotasView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
         try:
             from commercial.models import QuotaRecord
             from commercial.serializers import QuotaRecordSerializer
@@ -65,6 +67,7 @@ class PartnerBillingSubscriptionView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
         try:
             from commercial.models import Subscription
             from commercial.serializers import SubscriptionSerializer
@@ -105,6 +108,7 @@ class PartnerBillingInvoicesView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
         try:
             from commercial.models import Invoice
             from commercial.serializers import InvoiceSerializer

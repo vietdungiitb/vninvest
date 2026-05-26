@@ -130,7 +130,7 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
-      CELERY_QUEUES: celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand
+      CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,enrichment_offhours,manual_on_demand,analytics_heavy}
     command: ["worker"]
     depends_on:
       core-api:
@@ -139,6 +139,52 @@ services:
       - vninvest_network
     mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
     cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  queue-drain-monitor:
+    image: redis:7-alpine
+    container_name: vninvest-queue-drain-monitor
+    restart: on-failure:5
+    depends_on:
+      core-redis:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          TS=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          DEPTH=$$(redis-cli -h core-redis -n 3 LLEN realtime_prefetch 2>/dev/null || echo -1)
+          THRESHOLD=$${QUEUE_MONITOR_REALTIME_THRESHOLD:-500}
+          echo "[$$TS] realtime_prefetch_depth=$$DEPTH threshold=$$THRESHOLD"
+          if [ "$$DEPTH" -ge "$$THRESHOLD" ]; then
+            echo "[$$TS] ALERT realtime_prefetch backlog high depth=$$DEPTH threshold=$$THRESHOLD"
+          fi
+          sleep $${QUEUE_MONITOR_INTERVAL_SECONDS:-300}
+        done
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h core-redis -n 3 PING | grep -q PONG"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - vninvest_network
+    mem_limit: ${QUEUE_MONITOR_MEM_LIMIT:-64m}
+    cpus: ${QUEUE_MONITOR_CPUS:-0.10}
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: vninvest-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://core-redis:6379
+      REDIS_EXPORTER_CHECK_KEYS: realtime_prefetch,manual_on_demand,analytics_heavy,enrichment_offhours
+    depends_on:
+      core-redis:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${REDIS_EXPORTER_MEM_LIMIT:-64m}
+    cpus: ${REDIS_EXPORTER_CPUS:-0.10}
 
   core-worker-realtime-prefetch:
     build:

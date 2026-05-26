@@ -1,0 +1,77 @@
+/* ════════════════════════════════════════════════════════════════
+   React Stockcharts — Chart Theme CSS custom properties
+   ────────────────────────────────────────────────────────────────
+   Import this file in your app, then set data-chart-theme="light"
+   or data-chart-theme="dark" on any ancestor container element.
+
+   Usage:
+     import "react-stockcharts/styles/chart-theme.css";
+     // or with a bundler path alias:
+     // import "react-stockcharts/lib/styles/chart-theme.css";
+
+   The --rsc-* properties are consumed by chart-splitter.css and can
+   be used in your own CSS for consistent theming.
+════════════════════════════════════════════════════════════════ */
+
+/* ── Light theme (default) ───────────────────────────────────── */
+:root,
+[data-chart-theme="light"] {
+  /* Backgrounds */
+  --rsc-bg:           #f0f3fb;
+  --rsc-surface:      #ffffff;
+  --rsc-surface-sub:  #f8f9fd;
+
+  /* Borders */
+  --rsc-border:       #dde1ed;
+  --rsc-border-mid:   #c8cedf;
+
+  /* Text */
+  --rsc-text:         #1e2a3b;
+  --rsc-text-muted:   #6b7893;
+  --rsc-text-micro:   #9ba5bb;
+
+  /* Accent */
+  --rsc-accent:       #2962ff;
+  --rsc-accent-bg:    #e8efff;
+
+  /* Market colours */
+  --rsc-up:           #089981;
+  --rsc-dn:           #f23645;
+
+  /* Canvas layer */
+  --rsc-canvas-bg:    #ffffff;
+  --rsc-axis-stroke:  #1e2a3b;
+  --rsc-axis-fill:    #6b7893;
+  --rsc-grid-stroke:  rgba(200, 206, 223, 0.4);
+}
+
+/* ── Dark theme ──────────────────────────────────────────────── */
+[data-chart-theme="dark"] {
+  /* Backgrounds */
+  --rsc-bg:           #131722;
+  --rsc-surface:      #1e2130;
+  --rsc-surface-sub:  #181c27;
+
+  /* Borders */
+  --rsc-border:       #2a2e39;
+  --rsc-border-mid:   #363c4e;
+
+  /* Text */
+  --rsc-text:         #d1d4dc;
+  --rsc-text-muted:   #787b86;
+  --rsc-text-micro:   #4e5263;
+
+  /* Accent */
+  --rsc-accent:       #2962ff;
+  --rsc-accent-bg:    #1a2744;
+
+  /* Market colours (unchanged — red/green is universal) */
+  --rsc-up:           #089981;
+  --rsc-dn:           #f23645;
+
+  /* Canvas layer */
+  --rsc-canvas-bg:    #1e2130;
+  --rsc-axis-stroke:  #d1d4dc;
+  --rsc-axis-fill:    #787b86;
+  --rsc-grid-stroke:  rgba(54, 60, 78, 0.8);
+}

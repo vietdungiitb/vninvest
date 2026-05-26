@@ -26,11 +26,20 @@ class CorePATAuthentication(BaseAuthentication):
         if credential is None:
             raise AuthenticationFailed('Invalid or revoked PAT.')
 
-        if credential.effective_status != CorePATCredential.StatusChoices.ACTIVE:
+        if credential.effective_status not in {
+            CorePATCredential.StatusChoices.ACTIVE,
+            CorePATCredential.StatusChoices.ROTATING,
+        }:
             raise AuthenticationFailed(f'PAT is {credential.effective_status}.')
+
+        if credential.service_account.status != credential.service_account.StatusChoices.ACTIVE:
+            raise AuthenticationFailed('Service account is disabled.')
 
         # Return (user, auth) — user is the service account's tenant owner surrogate
         owner = credential.service_account.tenant.owner_user
+        if not credential.is_human_session:
+            owner.is_staff = False
+            owner.is_superuser = False
         return (owner, credential)
 
     def authenticate_header(self, request):

@@ -2,12 +2,26 @@ import React, { useState, useEffect, useMemo } from 'react';
 import useAIAdvisor from '../../hooks/useAIAdvisor';
 import { useI18n } from '../../context/LangContext';
 
-export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, alerts, newsDigest, criticalSoundEnabled, onRequestDigest }) {
+export default function AIAdvisorAlertPanel({
+  holdings,
+  watchlist,
+  technicals,
+  alerts,
+  newsDigest,
+  criticalSoundEnabled,
+  onRequestDigest,
+  expandedClassName = '',
+  selectedSession,
+  onSelectSession,
+  selectedSymbol,
+  onSelectSymbol,
+}) {
   const { t, formatDateTime } = useI18n();
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' | 'news'
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [lastRecCount, setLastRecCount] = useState(0);
   const recommendationsEnabled = !isCollapsed && activeTab === 'alerts';
+  const expandedSizingClass = isCollapsed ? 'h-[60px]' : `min-h-[420px] ${expandedClassName}`.trim();
   
   const { recommendations } = useAIAdvisor({ holdings, watchlist, technicals, alerts, enabled: recommendationsEnabled });
   const newsItems = useMemo(() => {
@@ -74,20 +88,20 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
   return (
     <div className={`relative flex flex-col rounded-2xl border transition-all duration-500 overflow-hidden ${
       hasStrongAlert ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)] animate-pulse-slow' : 'border-slate-800 bg-slate-900/50'
-    } ${isCollapsed ? 'h-[60px]' : 'min-h-[420px]'}`}>
+    } ${expandedSizingClass}`}>
       
       {/* Header with Tabs and Circular Toggle */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/40">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setActiveTab('alerts')}
-            className={`text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'alerts' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`rounded-md px-1 py-1 text-[11px] font-black uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${activeTab === 'alerts' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
           >
             AI Alerts {recommendations.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-emerald-500/20 rounded-full text-[9px]">{recommendations.length}</span>}
           </button>
           <button 
             onClick={() => setActiveTab('news')}
-            className={`text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'news' ? 'text-sky-400' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`rounded-md px-1 py-1 text-[11px] font-black uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${activeTab === 'news' ? 'text-sky-400' : 'text-slate-500 hover:text-slate-300'}`}
           >
             AI News
           </button>
@@ -95,7 +109,7 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
 
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="group flex items-center justify-center w-8 h-8 rounded-full border border-slate-700 bg-slate-900/50 hover:bg-slate-800 hover:border-slate-500 transition-all duration-300"
+          className="group flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900/50 transition-all duration-300 hover:border-slate-500 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           title={isCollapsed ? "Mở rộng" : "Thu gọn"}
         >
           <svg 
@@ -108,6 +122,13 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
           </svg>
         </button>
       </div>
+
+      {selectedSession && (
+        <div className="flex items-center justify-between bg-emerald-950/40 border-b border-emerald-800/30 px-4 py-2 text-[11px] text-emerald-300">
+          <span>Phiên đang chọn: <strong>{typeof selectedSession === 'object' ? (selectedSession.tradeDate || selectedSession.sessionDate || JSON.stringify(selectedSession)) : selectedSession}</strong></span>
+          <button onClick={() => onSelectSession(null)} className="text-[10px] text-slate-500 hover:text-slate-300 font-bold uppercase">Hủy</button>
+        </div>
+      )}
 
       {/* Content Area */}
       {!isCollapsed && (

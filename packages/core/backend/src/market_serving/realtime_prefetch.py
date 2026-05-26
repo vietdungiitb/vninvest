@@ -13,8 +13,10 @@ from datetime import datetime
 
 from celery import shared_task
 from django.core.cache import cache
-from django.db.models import Count
+from django.db.models import Case, IntegerField, Value, When
 from django.utils import timezone
+
+from market_data.models import GlobalSymbolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,14 @@ DEFAULT_HOT_SHARDS = 4
 DEFAULT_WARM_SHARDS = 6
 DEFAULT_COLD_SHARDS = 6
 DEFAULT_UNIVERSE_REFRESH_SECONDS = 60
+
+# Intraday DB-hydrate intervals: how often the scheduler enqueues warm_intraday_universe
+# for each tier so IntradayTick table is always fresh for the current session.
+# Separate from price-cache prefetch (which only warms Redis).
+DEFAULT_HOT_HYDRATE_INTERVAL_SECONDS = 300   # 5 minutes — hot symbols
+DEFAULT_WARM_HYDRATE_INTERVAL_SECONDS = 900  # 15 minutes — warm symbols
+
+REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX = 'realtime:hydrate:last_enqueue'
 
 
 def _read_int_env(name: str, default: int) -> int:
@@ -99,47 +109,58 @@ def _stable_shard_id(symbol: str, shard_count: int) -> int:
     return int(total % shard_count)
 
 
-def _collect_universe_symbols() -> list[str]:
+def _collect_universe_symbols() -> dict:
     """
-    Collect symbols from user watchlists and price alerts.
-    Returns: list of normalized symbols.
+    Collect active symbols from the global registry SSOT.
+
+    The realtime prefetch universe must follow the shared market-data matrix,
+    not user-local watchlists or alerts, so hot symbols like VHM are always
+    eligible for prefetch even when they are not present in a specific user scope.
     """
-    symbols = set()
-    
-    try:
-        from user_workspace.models import WatchlistItem
-        watchlist_symbols = WatchlistItem.objects.values_list('symbol', flat=True).distinct()
-        symbols.update(str(s).strip().upper() for s in watchlist_symbols if s)
-    except (ImportError, RuntimeError):
-        logger.debug("WatchlistItem not available")
-    
-    try:
-        from user_workspace.models import PriceAlert
-        alert_symbols = PriceAlert.objects.values_list('symbol', flat=True).distinct()
-        symbols.update(str(s).strip().upper() for s in alert_symbols if s)
-    except (ImportError, RuntimeError):
-        logger.debug("PriceAlert not available")
-    
-    # Always include VPB, VCB, ACB as system defaults
-    symbols.update(['VPB', 'VCB', 'ACB'])
-    
-    return sorted(list(symbols))
+    tier_order = Case(
+        When(current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT, then=Value(0)),
+        When(current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.WARM, then=Value(1)),
+        When(current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.COLD, then=Value(2)),
+        default=Value(3),
+        output_field=IntegerField(),
+    )
+    registries = GlobalSymbolRegistry.objects.filter(is_active=True).order_by(
+        tier_order,
+        '-priority_score',
+        '-demand_source_count',
+        'last_hydrated_at',
+        'symbol',
+    )
+
+    universe = {
+        'hot': [],
+        'warm': [],
+        'cold': [],
+    }
+    for registry in registries:
+        tier = str(registry.current_priority_tier or '').lower()
+        if tier == GlobalSymbolRegistry.PriorityTierChoices.WARM:
+            universe['warm'].append(registry.symbol)
+        elif tier == GlobalSymbolRegistry.PriorityTierChoices.COLD:
+            universe['cold'].append(registry.symbol)
+        else:
+            universe['hot'].append(registry.symbol)
+
+    universe['all'] = universe['hot'] + universe['warm'] + universe['cold']
+    return universe
 
 
-def _build_universe_snapshot(symbols: list[str], topology: dict) -> dict:
+def _build_universe_snapshot(universe: dict, topology: dict) -> dict:
     """Build and cache universe snapshot grouped by tier/shard."""
-    # Assign to tiers based on count heat
-    hot_limit = _read_int_env('TICKER_PREFETCH_HOT_LIMIT', 200)
-    warm_limit = _read_int_env('TICKER_PREFETCH_WARM_LIMIT', 600)
-    
-    hot = symbols[:hot_limit]
-    warm = symbols[hot_limit:hot_limit + warm_limit]
-    cold = symbols[hot_limit + warm_limit:]
+    hot = list(universe.get('hot', []))
+    warm = list(universe.get('warm', []))
+    cold = list(universe.get('cold', []))
+    all_symbols = list(universe.get('all', hot + warm + cold))
     
     snapshot = {
         'computed_at': timezone.now().isoformat(),
         'totals': {
-            'all': len(symbols),
+            'all': len(all_symbols),
             'hot': len(hot),
             'warm': len(warm),
             'cold': len(cold),
@@ -223,8 +244,8 @@ def schedule_realtime_prefetch_shards(self) -> dict:
         
         # Rebuild universe if stale
         if _snapshot_is_stale(refresh_seconds):
-            symbols = _collect_universe_symbols()
-            snapshot = _build_universe_snapshot(symbols, topology)
+            universe = _collect_universe_symbols()
+            snapshot = _build_universe_snapshot(universe, topology)
         else:
             snapshot = cache.get(REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY) or {}
         
@@ -272,15 +293,58 @@ def schedule_realtime_prefetch_shards(self) -> dict:
                 cache.set(last_key, now_epoch, timeout=max(interval_seconds * 5, 30))
                 enqueued.append({'tier': tier, 'shard_id': int(shard_id), 'symbols': len(shard_symbols)})
         
+        # ── SSOT Intraday Hydrate Leg ────────────────────────────────────────────
+        # Same SSOT universe snapshot that drives price-cache prefetch ALSO drives
+        # IntradayTick DB persistence.  This closes the gap where the realtime cache
+        # was refreshed every 3s but the tick table was only filled by the weekly
+        # DNSE backfill.  After hydration the existing detect-whale-alerts-5m and
+        # materialize-session-facts-5m tasks will pick up fresh rows automatically.
+        # Deferred import avoids circular dependency at module load time.
+        hydrate_enqueued: list[dict] = []
+        _hydrate_tier_map = {
+            'hot': _read_int_env('REALTIME_HOT_HYDRATE_INTERVAL_SECONDS', DEFAULT_HOT_HYDRATE_INTERVAL_SECONDS),
+            'warm': _read_int_env('REALTIME_WARM_HYDRATE_INTERVAL_SECONDS', DEFAULT_WARM_HYDRATE_INTERVAL_SECONDS),
+        }
+        for _htier, _hinterval in _hydrate_tier_map.items():
+            if _htier == 'warm' and not topology['enable_warm_tier']:
+                continue
+            _hydrate_key = f'{REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX}:{_htier}'
+            _last_hydrate = int(cache.get(_hydrate_key) or 0)
+            if now_epoch - _last_hydrate < _hinterval:
+                continue
+            _tier_symbols = cache.get(f'{REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY}:{_htier}') or []
+            if not _tier_symbols:
+                continue
+            try:
+                from data_ingest.tasks import warm_intraday_universe
+                _page_size = 120 if _htier == 'hot' else 60
+                _plan = [
+                    {'symbol': _s, 'page_size': _page_size, 'dataset': 'intraday_ticks'}
+                    for _s in _tier_symbols
+                ]
+                warm_intraday_universe.apply_async(
+                    kwargs={'plan_items': _plan},
+                    queue=REALTIME_PREFETCH_QUEUE,
+                )
+                cache.set(_hydrate_key, now_epoch, timeout=max(_hinterval * 5, 120))
+                hydrate_enqueued.append({'tier': _htier, 'symbols': len(_tier_symbols)})
+            except Exception as _hex:
+                logger.warning(
+                    'schedule_realtime_prefetch_shards: hydrate enqueue failed tier=%s: %s',
+                    _htier, _hex,
+                )
+        # ── end hydrate leg ──────────────────────────────────────────────────────
+
         _increment_prefetch_metric('scheduler_runs_total')
         _increment_prefetch_metric('scheduler_enqueued_total', amount=len(enqueued))
-        
+
         return {
             'status': 'ok',
             'enqueued_total': len(enqueued),
             'skipped_interval': skipped_interval,
             'skipped_disabled': skipped_disabled,
             'snapshot_totals': snapshot.get('totals'),
+            'hydrate_enqueued': hydrate_enqueued,
             'generated_at': timezone.now().isoformat(),
         }
     finally:

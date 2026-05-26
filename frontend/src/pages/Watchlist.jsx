@@ -1,4 +1,4 @@
-﻿/**
+/**
  * pages/Watchlist.jsx
  * Radar thá»‹ trÆ°á»ng â€” tÃ¡ch rÃµ 2 lá»›p dÃ¹ng dá»¯ liá»‡u:
  * 1) NhÃ³m thá»‹ trÆ°á»ng Ä‘á»ƒ quÃ©t rá»™ng theo ngÃ nh/vá»‘n hÃ³a/chá»§ Ä‘á».
@@ -429,9 +429,9 @@ export default function WatchlistPage() {
     const activeKey = splitIndex > 0 ? normalized.slice(0, splitIndex) : 'symbol';
     const activeDirection = splitIndex > 0 ? normalized.slice(splitIndex + 1) : 'asc';
     if (activeKey !== key) {
-      return 'â†•';
+      return '\u2195';
     }
-    return activeDirection === 'asc' ? 'â†‘' : 'â†“';
+    return activeDirection === 'asc' ? '\u2191' : '\u2193';
   }, [trackedSortBy]);
   const trackedSymbolMap = new Map(trackedSymbolsWithRealtime.map((item) => [item.symbol, item]));
   const trackedSymbolSet = new Set(trackedSymbolsWithRealtime.map((item) => item.symbol));
@@ -530,9 +530,9 @@ export default function WatchlistPage() {
 
   const getGroupSortIndicator = useCallback((key) => {
     if (groupSort.key !== key) {
-      return 'â†•';
+      return '\u2195';
     }
-    return groupSort.direction === 'asc' ? 'â†‘' : 'â†“';
+    return groupSort.direction === 'asc' ? '\u2191' : '\u2193';
   }, [groupSort]);
   const activeGroupUntrackedCount = activeGroupItems.filter((item) => !trackedSymbolSet.has(item.symbol)).length;
 
@@ -1032,22 +1032,7 @@ export default function WatchlistPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider text-blue-300 mb-2">{t('watchlist.layer1')}</p>
-          <h2 className="text-base font-semibold text-gray-100">{t('watchlist.layer1Title')}</h2>
-          <p className="text-sm text-gray-400 mt-2">
-            {t('watchlist.layer1Desc')}
-          </p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider text-brand-300 mb-2">{t('watchlist.layer2')}</p>
-          <h2 className="text-base font-semibold text-gray-100">{t('watchlist.layer2Title')}</h2>
-          <p className="text-sm text-gray-400 mt-2">
-            {t('watchlist.layer2Desc')}
-          </p>
-        </div>
-      </div>
+
 
       {latestWhaleAlert && (
         <div className="bg-amber-950/40 border border-amber-800 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 text-sm">
@@ -1060,11 +1045,11 @@ export default function WatchlistPage() {
             </span>
           )}
           <span className="text-gray-300 tabular-nums">
-            {formatNumber(latestWhaleAlert.matched_value || 0)} VNÄ
+            {formatNumber(latestWhaleAlert.matched_value || 0)} VNĐ 
           </span>
           {(latestWhaleAlert.display_score != null || latestWhaleAlert.event_score != null) && (
             <span className="text-xs text-gray-400">
-              Score {latestWhaleAlert.display_score ?? 'â€”'} / Event {latestWhaleAlert.event_score ?? 'â€”'}
+              Score {latestWhaleAlert.display_score ?? '\u2014'} / Event {latestWhaleAlert.event_score ?? '\u2014'}
             </span>
           )}
           {(() => {

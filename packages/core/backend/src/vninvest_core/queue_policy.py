@@ -35,12 +35,14 @@ QUEUE_DOMAIN_MATRIX = {
             'tenant_lifecycle.tasks.auto_suspend_quota_overflow',
             'tenant_lifecycle.tasks.send_trial_expiry_warning',
             'tenant_lifecycle.tasks.auto_deprovision_stale',
+            'data_ingest.tasks.process_outbox_events',
         ),
         'periodic_tasks': (
             'auto-expire-trials',
             'auto-suspend-quota-overflow',
             'send-trial-expiry-warning',
             'auto-deprovision-stale',
+            'process-outbox-events-30s',
         ),
     },
     'market_serving_realtime': {

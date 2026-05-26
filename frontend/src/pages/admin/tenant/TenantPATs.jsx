@@ -105,6 +105,7 @@ export default function TenantPATs() {
   const [copySuccess, setCopySuccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [hideRevoked, setHideRevoked] = useState(true);
   const [issueForm, setIssueForm] = useState({
     serviceAccountId: '',
     scopeCodes: 'market:read, signals:read',
@@ -175,6 +176,31 @@ export default function TenantPATs() {
       cancelled = true;
     };
   }, [t]);
+
+  const revokedCount = tokens.filter((item) => item.status === 'revoked').length;
+  const visibleTokens = hideRevoked
+    ? tokens.filter((item) => item.status !== 'revoked')
+    : tokens;
+  const paginatedTokens = visibleTokens.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  const currentPageSelectableTokens = paginatedTokens.filter((item) => item.status !== 'revoked');
+  const allCurrentPageSelectableSelected = currentPageSelectableTokens.length > 0
+    && currentPageSelectableTokens.every((item) => selectedTokenIds.has(item.id));
+
+  useEffect(() => {
+    setSelectedTokenIds(new Set());
+  }, [tokens]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleTokens.length / itemsPerPage));
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [itemsPerPage, visibleTokens.length]);
+
+  useEffect(() => {
+    setSelectedTokenIds(new Set());
+  }, [currentPage, itemsPerPage, hideRevoked]);
 
   async function handleIssue(event) {
     event.preventDefault();
@@ -302,11 +328,17 @@ export default function TenantPATs() {
   }
 
   function toggleSelectAll() {
-    if (selectedTokenIds.size === tokens.length) {
-      setSelectedTokenIds(new Set());
-    } else {
-      setSelectedTokenIds(new Set(tokens.map((t) => t.id)));
-    }
+    setSelectedTokenIds((current) => {
+      const nextSelected = new Set(current);
+
+      if (allCurrentPageSelectableSelected) {
+        currentPageSelectableTokens.forEach((item) => nextSelected.delete(item.id));
+      } else {
+        currentPageSelectableTokens.forEach((item) => nextSelected.add(item.id));
+      }
+
+      return nextSelected;
+    });
   }
 
   const serviceAccountMap = new Map(serviceAccounts.map((item) => [item.id, item]));
@@ -450,19 +482,37 @@ export default function TenantPATs() {
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">{t('tenantPats.listTitle')}</p>
-              {loading ? <span className="text-xs text-slate-500">{t('common.loading')}</span> : null}
+              <div className="flex flex-wrap items-center gap-2">
+                {revokedCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setHideRevoked((current) => !current)}
+                    className="rounded-full border border-slate-700/80 bg-slate-900/70 px-3 py-1.5 text-xs font-semibold text-slate-100 transition-colors hover:border-slate-500 hover:bg-slate-800"
+                  >
+                    {hideRevoked ? t('tenantPats.showRevokedAction') : t('tenantPats.hideRevokedAction')} ({revokedCount})
+                  </button>
+                ) : null}
+                {loading ? <span className="text-xs text-slate-500">{t('common.loading')}</span> : null}
+              </div>
             </div>
-            {tokens.length > 0 && canRevoke ? (
+            {hideRevoked && revokedCount > 0 ? (
+              <div className="mt-2 text-xs text-slate-500">
+                {t('tenantPats.revokedHiddenHint').replace('{{count}}', revokedCount.toString())}
+              </div>
+            ) : null}
+            {(currentPageSelectableTokens.length > 0 || selectedTokenIds.size > 0) && canRevoke ? (
               <div className="mt-4 flex flex-wrap items-center gap-3 border-b border-slate-800 pb-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedTokenIds.size === tokens.length && tokens.length > 0}
-                    onChange={toggleSelectAll}
-                    className="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-950 text-emerald-600 transition-colors focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <span className="text-xs font-semibold text-slate-300">{t('tenantPats.selectAllLabel')}</span>
-                </label>
+                {currentPageSelectableTokens.length > 0 ? (
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={allCurrentPageSelectableSelected}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-950 text-emerald-600 transition-colors focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs font-semibold text-slate-300">{t('tenantPats.selectAllLabel')}</span>
+                  </label>
+                ) : null}
                 {selectedTokenIds.size > 0 ? (
                   <button
                     type="button"
@@ -475,7 +525,7 @@ export default function TenantPATs() {
                 ) : null}
               </div>
             ) : null}
-            {tokens.length > 0 && !loading ? (
+            {visibleTokens.length > 0 && !loading ? (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
                 <label className="flex items-center gap-2 text-xs text-slate-300">
                   <span>{t('tenantPats.itemsPerPageLabel')}:</span>
@@ -494,18 +544,17 @@ export default function TenantPATs() {
                   </select>
                 </label>
                 <span className="text-xs text-slate-400">
-                  {t('tenantPats.showing')} {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, tokens.length)} {t('tenantPats.of')} {tokens.length}
+                  {t('tenantPats.showing')} {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, visibleTokens.length)} {t('tenantPats.of')} {visibleTokens.length}
                 </span>
               </div>
             ) : null}
             <div className="mt-4 space-y-3">
-              {!loading && tokens.length === 0 ? (
+              {!loading && visibleTokens.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/60 px-4 py-5 text-sm text-slate-500">
-                  {t('tenantPats.emptyState')}
+                  {hideRevoked && revokedCount > 0 ? t('tenantPats.onlyRevokedHiddenState') : t('tenantPats.emptyState')}
                 </div>
               ) : null}
-              {tokens
-                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+              {paginatedTokens
                 .map((item) => {
                 const serviceAccount = serviceAccountMap.get(item.service_account_id);
                 const rotating = activeTokenId === item.id;
@@ -577,7 +626,7 @@ export default function TenantPATs() {
                 );
               })}
             </div>
-            {tokens.length > itemsPerPage && !loading ? (
+            {visibleTokens.length > itemsPerPage && !loading ? (
               <div className="mt-4 flex items-center justify-between border-t border-slate-800 pt-4">
                 <button
                   type="button"
@@ -588,15 +637,15 @@ export default function TenantPATs() {
                   {t('tenantPats.previousPage')}
                 </button>
                 <span className="text-xs text-slate-400">
-                  {t('tenantPats.showing')} {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, tokens.length)} {t('tenantPats.of')} {tokens.length}
+                  {t('tenantPats.showing')} {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, visibleTokens.length)} {t('tenantPats.of')} {visibleTokens.length}
                 </span>
                 <button
                   type="button"
                   onClick={() => {
-                    const totalPages = Math.ceil(tokens.length / itemsPerPage);
+                    const totalPages = Math.ceil(visibleTokens.length / itemsPerPage);
                     setCurrentPage((p) => Math.min(totalPages, p + 1));
                   }}
-                  disabled={currentPage >= Math.ceil(tokens.length / itemsPerPage)}
+                  disabled={currentPage >= Math.ceil(visibleTokens.length / itemsPerPage)}
                   className="rounded-full border border-slate-700/50 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {t('tenantPats.nextPage')}

@@ -146,6 +146,16 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@vninvest.loca
 # C4 Fix: FRONTEND_URL — required in production, defaults to localhost:3000 in dev
 FRONTEND_URL = get_frontend_url(DEBUG)
 
+# SaaS Native User Registration & Chống Spam settings (Slice 2)
+BLOCKED_DISPOSABLE_DOMAINS = {
+    'mailinator.com', '10minutemail.com', 'yopmail.com', 'trashmail.com', 
+    'guerrillamail.com', 'tempmail.com', 'temp-mail.org', 'sharklasers.com', 
+    'getairmail.com', '10minutemail.co', 'tempmail.net'
+}
+TURNSTILE_SECRET_KEY = os.environ.get('TURNSTILE_SECRET_KEY', '').strip()
+STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', str(not DEBUG)).strip().lower() in ('true', '1', 'yes')
+
+
 # SFI-B5: AI Advisory configuration — all credentials from env; never hardcoded.
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_DEFAULT_MODEL = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
@@ -311,6 +321,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'tenant_lifecycle.tasks.auto_suspend_quota_overflow',
         'schedule': 3600.0,
         'options': {'queue': SCHEDULER_QUEUE_MAP['auto-suspend-quota-overflow']},
+    },
+    'process-outbox-events-30s': {
+        'task': 'data_ingest.tasks.process_outbox_events',
+        'schedule': 30.0,  # Runs every 30 seconds
+        'options': {'queue': SCHEDULER_QUEUE_MAP['process-outbox-events-30s']},
     },
     'send-trial-expiry-warning': {
         'task': 'tenant_lifecycle.tasks.send_trial_expiry_warning',
@@ -560,3 +575,29 @@ CHANNEL_LAYERS = {
     },
 }
 ASGI_APPLICATION = 'vninvest_core.asgi.application'
+
+# =========================================================================
+# SAAS NATIVE USER REGISTRATION ANTI-ABUSE CONFIGURATIONS (R3 & R7)
+# =========================================================================
+# Registration rate limit thresholds (per minute)
+REGISTER_IP_LIMIT_THRESHOLD = int(os.environ.get('REGISTER_IP_LIMIT_THRESHOLD', 3))
+REGISTER_SUBNET_LIMIT_THRESHOLD = int(os.environ.get('REGISTER_SUBNET_LIMIT_THRESHOLD', 10))
+REGISTER_EMAIL_LIMIT_THRESHOLD = int(os.environ.get('REGISTER_EMAIL_LIMIT_THRESHOLD', 2))
+
+# Email verification settings
+EMAIL_VERIFICATION_TOKEN_TTL_MINUTES = int(os.environ.get('EMAIL_VERIFICATION_TOKEN_TTL_MINUTES', 30))
+EMAIL_VERIFICATION_MAX_ATTEMPTS = int(os.environ.get('EMAIL_VERIFICATION_MAX_ATTEMPTS', 5))
+EMAIL_VERIFICATION_LOCKOUT_TIMEOUT = int(os.environ.get('EMAIL_VERIFICATION_LOCKOUT_TIMEOUT', 1800)) # 30 minutes in seconds
+EMAIL_VERIFICATION_RESEND_COOLDOWN = int(os.environ.get('EMAIL_VERIFICATION_RESEND_COOLDOWN', 60)) # seconds
+
+# Strict Cloudflare Turnstile enforcement settings
+STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', 'false').lower() == 'true'
+
+# =========================================================================
+# SAAS NATIVE USER LOGIN ANTI-ABUSE CONFIGURATIONS
+# =========================================================================
+# Login rate limit thresholds (per minute)
+LOGIN_IP_LIMIT_THRESHOLD = int(os.environ.get('LOGIN_IP_LIMIT_THRESHOLD', 5))
+LOGIN_SUBNET_LIMIT_THRESHOLD = int(os.environ.get('LOGIN_SUBNET_LIMIT_THRESHOLD', 15))
+LOGIN_USER_LIMIT_THRESHOLD = int(os.environ.get('LOGIN_USER_LIMIT_THRESHOLD', 3))
+

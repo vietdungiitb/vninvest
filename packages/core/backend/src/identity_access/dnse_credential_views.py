@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import UserDNSECredential, _encrypt_credential
+from .permissions import require_human_session
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class DNSECredentialView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        require_human_session(request)
         try:
             cred = UserDNSECredential.objects.get(user=request.user)
         except UserDNSECredential.DoesNotExist:
@@ -40,6 +42,7 @@ class DNSECredentialView(APIView):
         return Response(_safe_serialize(cred))
 
     def post(self, request):
+        require_human_session(request)
         api_key = str(request.data.get('api_key') or '').strip()
         api_secret = str(request.data.get('api_secret') or '').strip()
         is_system = bool(request.data.get('is_system_provider', False))
@@ -82,6 +85,7 @@ class DNSECredentialView(APIView):
         )
 
     def delete(self, request):
+        require_human_session(request)
         deleted, _ = UserDNSECredential.objects.filter(user=request.user).delete()
         if deleted:
             return Response({'detail': 'DNSE credential đã được xoá.'}, status=status.HTTP_204_NO_CONTENT)

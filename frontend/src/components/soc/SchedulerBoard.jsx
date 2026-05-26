@@ -115,7 +115,7 @@ function JobHistoryDrawer({ jobKey, onClose, t }) {
   useEffect(() => { load(page); }, [load, page]);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-end bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/50 p-4">
       <div className="flex h-full w-full max-w-xl flex-col rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-700 px-5 py-4">
           <div>
@@ -203,12 +203,29 @@ JobHistoryDrawer.propTypes = {
 
 // ─── Action row for a single job ─────────────────────────────────────────────
 function JobActionButtons({ job, onAction, t }) {
-  const caps = job.capabilities || [];
+  const normalizedCaps = (() => {
+    const rawCaps = Array.isArray(job.capabilities) ? job.capabilities : [];
+    const mapped = rawCaps.map((cap) => (cap === 'abort_active' ? 'abort' : cap));
+
+    if (mapped.length > 0) {
+      return mapped;
+    }
+
+    const mode = String(job.control_mode || '').toLowerCase();
+    if (mode === 'manual_only' || mode === 'beat_read_only') {
+      return ['run_now'];
+    }
+    if (mode === 'platform_managed') {
+      return [];
+    }
+    return ['enable', 'disable', 'run_now', 'abort'];
+  })();
+
   const isRunning = job.is_inflight;
   const isDisabled = !job.enabled;
 
   const btn = (action, label, tone) => {
-    const supported = caps.includes(action);
+    const supported = normalizedCaps.includes(action);
     const lockedByRunning = isRunning && action === 'run_now';
     return (
       <button
@@ -216,7 +233,7 @@ function JobActionButtons({ job, onAction, t }) {
         type="button"
         disabled={!supported || lockedByRunning}
         onClick={() => onAction(job, action)}
-        className={`rounded px-2 py-1 text-xs font-semibold transition ${tone} disabled:cursor-not-allowed disabled:opacity-40`}
+        className={`rounded px-2 py-1 text-xs font-semibold transition ${tone} disabled:cursor-not-allowed disabled:opacity-70`}
       >
         {label}
       </button>

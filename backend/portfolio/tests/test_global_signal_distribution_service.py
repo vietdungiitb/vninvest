@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from portfolio.models import TrackedSymbol, UserAlertHistory, UserConfig, WatchlistGroup, WatchlistItem, WhaleAlertEvent
+from portfolio.models import TrackedSymbol, UserAlertHistory, UserConfig, WhaleAlertEvent
+from user_workspace.models import Watchlist, WatchlistItem
 from portfolio.services_global_signal_distribution import deliver_dark_flow_signal, deliver_whale_alert_event, resolve_signal_audience
 
 
@@ -22,10 +23,10 @@ class GlobalSignalDistributionServiceTests(TestCase):
         TrackedSymbol.objects.create(user=tracked_user, symbol='VCB', whale_alert_threshold_million=900)
         TrackedSymbol.objects.create(user=both_user, symbol='VCB', whale_alert_threshold_million=750)
 
-        watchlist_a = WatchlistGroup.objects.create(user=watchlist_user, name='Theo dõi A')
-        watchlist_b = WatchlistGroup.objects.create(user=both_user, name='Theo dõi B')
-        WatchlistItem.objects.create(group=watchlist_a, symbol='VCB')
-        WatchlistItem.objects.create(group=watchlist_b, symbol='VCB')
+        watchlist_a = Watchlist.objects.create(user=watchlist_user, name='Theo dõi A')
+        watchlist_b = Watchlist.objects.create(user=both_user, name='Theo dõi B')
+        WatchlistItem.objects.create(watchlist=watchlist_a, symbol='VCB')
+        WatchlistItem.objects.create(watchlist=watchlist_b, symbol='VCB')
 
         audience = resolve_signal_audience('vcb')
 
@@ -39,8 +40,8 @@ class GlobalSignalDistributionServiceTests(TestCase):
     @patch('portfolio.services_global_signal_distribution.get_channel_layer')
     def test_deliver_dark_flow_signal_persists_history_and_broadcasts_symbol_and_user_groups(self, mock_get_channel_layer, mock_async_to_sync):
         user = self._create_user('dark-flow-user')
-        watchlist = WatchlistGroup.objects.create(user=user, name='Theo dõi dark flow')
-        WatchlistItem.objects.create(group=watchlist, symbol='VCB')
+        watchlist = Watchlist.objects.create(user=user, name='Theo dõi dark flow')
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='VCB')
 
         mock_sender = MagicMock()
         mock_async_to_sync.return_value = mock_sender
@@ -70,8 +71,8 @@ class GlobalSignalDistributionServiceTests(TestCase):
     @patch('portfolio.services_global_signal_distribution.get_channel_layer')
     def test_deliver_whale_alert_event_persists_history_and_broadcasts_symbol_and_user_groups(self, mock_get_channel_layer, mock_async_to_sync):
         user = self._create_user('whale-user')
-        watchlist = WatchlistGroup.objects.create(user=user, name='Theo dõi whale')
-        WatchlistItem.objects.create(group=watchlist, symbol='FPT')
+        watchlist = Watchlist.objects.create(user=user, name='Theo dõi whale')
+        WatchlistItem.objects.create(watchlist=watchlist, symbol='FPT')
 
         event = WhaleAlertEvent.objects.create(
             event_id='whale:FPT:2026-04-28T09:15:00+00:00:BUY:700000000:redis_stream',

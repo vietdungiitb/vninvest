@@ -13,6 +13,7 @@ import TopNav from './TopNav';
 export default function Layout() {
   const { t, locale } = useI18n();
   const { uiMode, modernLeftSidebarOpen } = useInterface();
+  const dashboardModeClassName = uiMode === 'modern' ? 'ui-mode--workstation' : 'ui-mode--classic';
 
   // Legal pages state
   const [legalPages, setLegalPages] = useState([]);
@@ -45,7 +46,7 @@ export default function Layout() {
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav />
-        <main className="panel-scrollbar flex-1 overflow-y-auto bg-slate-950">
+        <main className={`panel-scrollbar flex-1 overflow-y-auto bg-slate-950 ${dashboardModeClassName}`}>
           <Outlet />
         </main>
         {legalPages.length > 0 && (
