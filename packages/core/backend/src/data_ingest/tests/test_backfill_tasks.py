@@ -324,3 +324,76 @@ class SynthesizeBarsFromTicksTests(TestCase):
         from market_data.models import IntradayTick
         tick_count = IntradayTick.objects.filter(symbol='CHAINTEST').count()
         self.assertEqual(tick_count, 2)  # Ticks đã được ghi dù chain mock
+
+
+class RateLimitDetectionTests(TestCase):
+    """T-C8 / T-C9: DnseRateLimitError detection và retry logic."""
+
+    def test_c8_rate_limit_watcher_triggers_on_warning(self):
+        """T-C8: _RateLimitWatcher bắt warning chứa 'rate limit'."""
+        import logging
+        from market_data.vnbroker_adapter import _RateLimitWatcher
+
+        watcher = _RateLimitWatcher()
+        # Simulate warning từ vnbroker library
+        record = logging.LogRecord(
+            name='vnbroker.explorer.dnse.quote',
+            level=logging.WARNING,
+            pathname='',
+            lineno=0,
+            msg='DNSE get_trades lỗi: Rate Limit Exceeded',
+            args=(),
+            exc_info=None,
+        )
+        watcher.emit(record)
+        self.assertTrue(watcher.triggered)
+
+    def test_c8_rate_limit_watcher_ignores_other_warnings(self):
+        """T-C8b: _RateLimitWatcher không trigger với warning bình thường."""
+        import logging
+        from market_data.vnbroker_adapter import _RateLimitWatcher
+
+        watcher = _RateLimitWatcher()
+        record = logging.LogRecord(
+            name='vnbroker',
+            level=logging.WARNING,
+            pathname='',
+            lineno=0,
+            msg='Không có dữ liệu',
+            args=(),
+            exc_info=None,
+        )
+        watcher.emit(record)
+        self.assertFalse(watcher.triggered)
+
+    def test_c9_fetch_raises_dnse_rate_limit_error(self):
+        """T-C9: fetch_intraday_tape_history raise DnseRateLimitError khi vnbroker log rate limit."""
+        import logging
+        from market_data.vnbroker_adapter import fetch_intraday_tape_history, DnseRateLimitError
+
+        def fake_intraday(date, get_all, page_size):
+            # Simulate vnbroker logging rate limit warning internally
+            logging.getLogger('vnbroker').warning('DNSE get_trades lỗi: Rate Limit Exceeded')
+            import pandas as pd
+            return pd.DataFrame()  # returns empty like real vnbroker does
+
+        with patch('vnbroker.explorer.dnse.quote.DNSEQuote') as mock_cls:
+            mock_instance = MagicMock()
+            mock_instance.intraday.side_effect = fake_intraday
+            mock_cls.return_value = mock_instance
+
+            with self.assertRaises(DnseRateLimitError):
+                fetch_intraday_tape_history('HPG', '2026-04-07', api_key='k', api_secret='s')
+
+    def test_c9_fetch_no_rate_limit_returns_empty_list(self):
+        """T-C9b: không có rate limit warning → trả về [] khi API empty."""
+        import pandas as pd
+        from market_data.vnbroker_adapter import fetch_intraday_tape_history, DnseRateLimitError
+
+        with patch('vnbroker.explorer.dnse.quote.DNSEQuote') as mock_cls:
+            mock_instance = MagicMock()
+            mock_instance.intraday.return_value = pd.DataFrame()
+            mock_cls.return_value = mock_instance
+
+            result = fetch_intraday_tape_history('HPG', '2026-04-07', api_key='k', api_secret='s')
+        self.assertEqual(result, [])

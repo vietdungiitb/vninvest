@@ -29,6 +29,23 @@ class VnbrokerAdapterError(Exception):
     pass
 
 
+class DnseRateLimitError(VnbrokerAdapterError):
+    """DNSE API trả về Rate Limit Exceeded — caller nên retry sau delay."""
+    pass
+
+
+class _RateLimitWatcher(logging.Handler):
+    """Intercepts vnbroker WARNING logs chứa 'rate limit' — used inside fetch_intraday_tape_history."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self.triggered = False
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if 'rate limit' in record.getMessage().lower():
+            self.triggered = True
+
+
 _INTRADAY_FALLBACK_SOURCES = _SUPPORTED_PROVIDER_SOURCES
 _LISTING_GROUP_ALIASES = {
     'vn30': 'VN30',
@@ -735,7 +752,16 @@ def fetch_intraday_tape_history(
             api_secret=api_secret,
             show_log=False,
         )
-        df = q.intraday(date=trade_date_str, get_all=True, page_size=1000)
+        # Intercept vnbroker rate-limit WARNING log để phân biệt "no data" vs "rate limited"
+        _watcher = _RateLimitWatcher()
+        _vnbroker_log = logging.getLogger('vnbroker')
+        _vnbroker_log.addHandler(_watcher)
+        try:
+            df = q.intraday(date=trade_date_str, get_all=True, page_size=1000)
+        finally:
+            _vnbroker_log.removeHandler(_watcher)
+        if _watcher.triggered:
+            raise DnseRateLimitError(f'DNSE rate limit exceeded: symbol={symbol_upper} date={trade_date_str}')
 
         if df is None or df.empty:
             logger.info(
@@ -782,6 +808,8 @@ def fetch_intraday_tape_history(
         )
         return results
 
+    except DnseRateLimitError:
+        raise  # Propagate rate limit — caller (Celery task) sẽ retry
     except Exception:
         # Không log exception message nếu nó chứa credential info.
         # Chỉ log symbol và date.

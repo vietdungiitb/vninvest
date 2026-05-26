@@ -1912,7 +1912,7 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     - Không log api_key / api_secret.
     """
     from market_data.models import IntradayTick
-    from market_data.vnbroker_adapter import fetch_intraday_tape_history
+    from market_data.vnbroker_adapter import fetch_intraday_tape_history, DnseRateLimitError
     from identity_access.models import get_system_provider_credentials
 
     symbol_upper = str(symbol or '').strip().upper()
@@ -1939,11 +1939,21 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
         logger.info('backfill_intraday_tick_system: skip (data exists) symbol=%s date=%s', symbol_upper, trade_date)
         return {'status': 'skipped', 'reason': 'already_exists', 'symbol': symbol_upper, 'date': trade_date}
 
-    ticks = fetch_intraday_tape_history(
-        symbol_upper, trade_date,
-        api_key=api_key, api_secret=api_secret,
-        source='dnse_system',
-    )
+    try:
+        ticks = fetch_intraday_tape_history(
+            symbol_upper, trade_date,
+            api_key=api_key, api_secret=api_secret,
+            source='dnse_system',
+        )
+    except DnseRateLimitError:
+        # DNSE server-side rate limit — retry với exponential backoff
+        # Attempt 1: 5 phút, Attempt 2: 10 phút, Attempt 3: 20 phút
+        _countdown = 300 * (2 ** min(self.request.retries, 2))
+        logger.warning(
+            'backfill_intraday_tick_system: DNSE rate_limit — retry in %ds (attempt %d). symbol=%s date=%s',
+            _countdown, self.request.retries + 1, symbol_upper, trade_date,
+        )
+        raise self.retry(countdown=_countdown, max_retries=3)
     if not ticks:
         return {'status': 'empty', 'symbol': symbol_upper, 'date': trade_date, 'ticks': 0}
 
