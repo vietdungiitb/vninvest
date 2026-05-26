@@ -1,5 +1,39 @@
 # Code Change Audit Ledger
 
+# 2026-05-26 | Backfill Fix: D06 IntradayBar synthesis + datetime.date type bug ✅
+
+## Problem Solved
+
+Hai bug gốc khiến dữ liệu OHLCV lịch sử theo khung thời gian phút/giờ bị thiếu dù service cào chạy success:
+
+1. **Bug D05/D06** (`tasks.py`): `enqueue_dnse_quarterly_backfill` chain KHÔNG có bước tổng hợp IntradayBar từ ticks. Backfill lưu ticks nhưng không có IntradayBar nào được tạo.
+2. **Bug type** (`vnbroker_adapter.py`): `fetch_intraday_tape_history()` truyền `datetime.date` vào `DNSEQuote.intraday(date=...)` — API chỉ nhận string `'YYYY-MM-DD'`. Lỗi `TypeError: strptime() argument 1 must be str` bị catch silently → return `[]` → tất cả tasks thành công nhưng ticks = 0.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| D06 unit tests (T-D1..T-D5) | ✅ 14/14 PASS (`python -m pytest` in container) |
+| D06 synthesis trực tiếp | ✅ 218 (symbol, date) pairs → `inserted=14277 updated=27 skipped=0 errors=0` |
+| IntradayBar range mở rộng | ✅ `2026-03-25 → 2026-05-26` (trước: `2026-05-15 → 2026-05-26`) |
+| Fix datetime.date confirmed | ✅ `grep "trade_date_str"` có trong tất cả containers |
+| Commit `cf32f793` | ✅ D06 task + tests on `dev` |
+| Commit `1203d410` | ✅ vnbroker_adapter fix on `dev` |
+
+## Modified Files
+
+| File | Commit | Change |
+|------|--------|--------|
+| `packages/core/backend/src/data_ingest/tasks.py` | `cf32f793` | D06: `_synthesize_bars_from_db_ticks()` + `synthesize_intraday_bars_from_ticks` Celery task; chain D06 vào `backfill_intraday_tick_system` và `backfill_intraday_tick_user` |
+| `packages/core/backend/src/data_ingest/tests/test_backfill_tasks.py` | `cf32f793` | T-D1..T-D5 mới (D06); fix T-C5/T-C6 pre-existing |
+| `packages/core/backend/src/market_data/vnbroker_adapter.py` | `1203d410` | Convert `datetime.date` → string trước khi gọi `DNSEQuote.intraday()` |
+
+## Remaining Issue
+
+76,316 queued backfill tasks đang drain trong `manual_on_demand` queue — tất cả failing do DNSE rate limit (quá nhiều concurrent requests). Cần trigger lại focused backfill sau khi queue drain với throttle hoặc delay giữa các calls. Lịch `enqueue_dnse_quarterly_backfill` (Sat 18:00 UTC) sẽ tự retry khi conditions tốt hơn.
+
+---
+
 # 2026-05-25 | Slice 7: frontend register anti-spam integration (Turnstile + honeypot) ✅
 
 ## Problem Solved
@@ -8278,5 +8312,84 @@ Resolved by:
 
 - Fresh GHCR publish is still pending private registry credentials; production is currently running on the cached GHCR-tagged images already present on the host.
 - The running stack is healthy and serving HTTPS, but the registry auth gap remains if you want new images pushed upstream.
+
+---
+
+## [2026-05-26] DNSE Backfill Rate-Limit Detection + Retry — commit `389daebb`
+
+### Problem
+
+`fetch_intraday_tape_history` silently swallowed Rate Limit Exceeded from vnbroker library (which logs a WARNING and returns empty DataFrame instead of raising). Result: task returned `status: 'empty'` for both "no data" and "rate limited" cases — impossible to distinguish, no retry.
+
+### Fix
+
+**`packages/core/backend/src/market_data/vnbroker_adapter.py`**
+- Add `DnseRateLimitError(VnbrokerAdapterError)` exception class
+- Add `_RateLimitWatcher(logging.Handler)` that intercepts vnbroker WARNING logs containing 'rate limit' during `q.intraday()` call
+- Raise `DnseRateLimitError` when rate limit detected (propagate, not swallow)
+- Add `except DnseRateLimitError: raise` before general `except Exception:` catch
+
+**`packages/core/backend/src/data_ingest/tasks.py`**
+- Import `DnseRateLimitError` alongside `fetch_intraday_tape_history`
+- Wrap fetch call in `try/except DnseRateLimitError`
+- On rate limit: `self.retry(countdown=300×2^retries, max_retries=3)` → retries after 5min, 10min, 20min
+
+**`packages/core/backend/src/data_ingest/tests/test_backfill_tasks.py`**
+- T-C8: `_RateLimitWatcher` triggers on 'rate limit' warning
+- T-C8b: `_RateLimitWatcher` ignores other warnings
+- T-C9: `fetch_intraday_tape_history` raises `DnseRateLimitError` when vnbroker logs rate limit
+- T-C9b: No rate limit warning → returns `[]` normally
+
+### Validation
+
+| Check | Result |
+|---|---|
+| `manage.py test test_backfill_tasks` | ✅ 18/18 PASS |
+| `DnseRateLimitError` import in worker | ✅ OK |
+| `from market_data.vnbroker_adapter import DnseRateLimitError` | ✅ OK |
+
+### Status
+
+- DNSE server-side rate limit still active at time of commit (from 76K burst earlier today)
+- **Action required**: once DNSE rate limit resets, re-trigger focused backfill:
+  ```powershell
+  docker exec vninvest-dev-core-api python /app/src/manage.py shell -c "
+  from data_ingest.tasks import backfill_intraday_tick_system
+  from market_data.models import IntradayTick
+  import datetime
+
+  LARGE_CAP = ['HPG','VNM','VCB','BID','CTG','TCB','VIC','VHM','MSN','MWG',
+               'GAS','VJC','HDB','SSI','ACB','STB','VPB','MBB','FPT']
+  today = datetime.date.today()
+  dates = []
+  cur = today - datetime.timedelta(days=90)
+  while cur <= today:
+      if cur.weekday() < 5: dates.append(cur.isoformat())
+      cur += datetime.timedelta(days=1)
+
+  existing = set()
+  for sym, dt in IntradayTick.objects.filter(symbol__in=LARGE_CAP).values_list('symbol','timestamp__date').distinct():
+      existing.add((sym, str(dt)))
+
+  queued = 0
+  for sym in LARGE_CAP:
+      for dt in dates:
+          if (sym, dt) not in existing:
+              backfill_intraday_tick_system.apply_async(
+                  kwargs={'symbol': sym, 'trade_date': dt},
+                  queue='manual_on_demand', countdown=queued * 3)
+              queued += 1
+  print(f'Queued {queued} tasks, ETA ~{queued*3/60:.1f}min')
+  "
+  ```
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/market_data/vnbroker_adapter.py` | `DnseRateLimitError` + `_RateLimitWatcher` + propagate rate limit |
+| `packages/core/backend/src/data_ingest/tasks.py` | `DnseRateLimitError` import + retry with backoff |
+| `packages/core/backend/src/data_ingest/tests/test_backfill_tasks.py` | 4 new tests T-C8/C8b/C9/C9b |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | This entry |
 
 
