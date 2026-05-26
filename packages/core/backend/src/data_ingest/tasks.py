@@ -1890,7 +1890,18 @@ _BACKFILL_BATCH_SIZE = 500
 _MAX_BACKFILL_DAYS = 30  # system default; user-facing clamped tighter
 
 
-@shared_task(bind=True, name='data_ingest.tasks.backfill_intraday_tick_system', queue='manual_on_demand')
+# Giới hạn DNSE API calls: 20 tasks/phút = 1 call mỗi 3 giây, tránh Rate Limit Exceeded.
+_DNSE_TASK_RATE_LIMIT = '20/m'
+# Khoảng cách giữa các tasks khi orchestrator dispatch hàng loạt (giây).
+_DNSE_BACKFILL_COUNTDOWN_SECS = int(getattr(django_settings, 'DNSE_BACKFILL_COUNTDOWN_SECS', 3))
+
+
+@shared_task(
+    bind=True,
+    name='data_ingest.tasks.backfill_intraday_tick_system',
+    queue='manual_on_demand',
+    rate_limit=_DNSE_TASK_RATE_LIMIT,
+)
 def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict:
     """
     System backfill: fetch DNSE tape cho một symbol/date và upsert vào IntradayTick.
@@ -2193,9 +2204,12 @@ def enqueue_dnse_quarterly_backfill(
             if (sym, dt) in existing_pairs:
                 skipped += 1
                 continue
+            # countdown = queued * N giây để stagger execution, tránh rate limit DNSE.
+            # Kết hợp với rate_limit='20/m' trên task — belt-and-suspenders.
             backfill_intraday_tick_system.apply_async(
                 kwargs={'symbol': sym, 'trade_date': dt},
                 queue='manual_on_demand',
+                countdown=queued * _DNSE_BACKFILL_COUNTDOWN_SECS,
             )
             queued += 1
 
