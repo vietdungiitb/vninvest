@@ -1,5 +1,12 @@
 import { createElement, Fragment, useState, useEffect } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import {
+  renderShellPageChrome,
+  renderShellPanel,
+  renderShellMetric,
+  renderShellField,
+  renderShellSelectField,
+} from "../../components/ShellPageTemplate.js";
 
 const EMPTY_FORM = {
   provider: "smtp",
@@ -158,319 +165,410 @@ export function ShellMailConfigPage() {
     }
   };
 
-  if (loading) return createElement("div", null, "Đang tải cấu hình mail...");
-  if (error) return createElement("div", null, "Lỗi: " + error);
+  // ── derived state ──────────────────────────────────────────────────────────
+  const PROVIDER_LABELS = { smtp: "SMTP", gmail_api: "Gmail API" };
+  const activeConfig = configs.find((c) => c.is_active);
 
-  return createElement(
-    "div",
-    { className: "shell-page shell-mail-config-page" },
-    // Header
-    createElement(
-      "div",
-      { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" } },
-      createElement("h2", null, "Quản trị Mail Vận Hành (SOC)"),
-      createElement("button", { onClick: handleOpenCreate, style: { padding: "0.5rem 1rem" } }, "+ Tạo mới")
+  // ── metrics strip ──────────────────────────────────────────────────────────
+  const metrics = [
+    renderShellMetric("Tổng cấu hình", loading ? "…" : String(configs.length)),
+    renderShellMetric(
+      "Đang hoạt động",
+      activeConfig ? activeConfig.from_email || "ID " + activeConfig.id : "Chưa có"
     ),
-    // Config list
-    createElement(
+    renderShellMetric(
+      "Provider",
+      activeConfig ? PROVIDER_LABELS[activeConfig.provider] || activeConfig.provider : "—"
+    ),
+  ];
+
+  // ── config card helper ─────────────────────────────────────────────────────
+  const renderConfigCard = (config) => {
+    const hostPort =
+      config.provider === "smtp"
+        ? (config.smtp_host || "—") + ":" + (config.smtp_port || "587")
+        : config.google_delegated_user_email
+        ? "Gmail API · " + config.google_delegated_user_email
+        : "Gmail API";
+
+    return createElement(
       "div",
-      { className: "mail-config-list" },
-      configs.length === 0
-        ? createElement("p", null, "Chưa có cấu hình mail nào.")
-        : createElement(
-            "table",
-            { style: { width: "100%", borderCollapse: "collapse" } },
+      { key: String(config.id), className: "shellPage__listItem" },
+      createElement(
+        "div",
+        { className: "shellPage__listItemHeader" },
+        createElement(
+          "div",
+          null,
+          createElement(
+            "h3",
+            { className: "shellPage__itemTitle" },
+            (PROVIDER_LABELS[config.provider] || config.provider) + " — " + (config.from_email || "—")
+          ),
+          createElement("p", { className: "shellPage__itemMeta" }, hostPort)
+        ),
+        createElement(
+          "div",
+          { style: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" } },
+          config.is_active
+            ? createElement("span", { className: "shellPage__pill" }, "✓ Đang hoạt động")
+            : createElement(
+                "span",
+                {
+                  className: "shellPage__pill",
+                  style: { background: "rgba(16,42,67,0.08)", color: "var(--shell-muted)" },
+                },
+                "Không hoạt động"
+              ),
+          createElement(
+            "button",
+            {
+              className: "shellPage__button shellPage__button--secondary",
+              style: { padding: "6px 12px", fontSize: "13px" },
+              onClick: () => handleOpenEdit(config),
+            },
+            "Sửa"
+          ),
+          !config.is_active &&
             createElement(
-              "thead",
-              null,
-              createElement(
-                "tr",
-                null,
-                createElement("th", null, "ID"),
-                createElement("th", null, "Provider"),
-                createElement("th", null, "From Email"),
-                createElement("th", null, "Host/Port"),
-                createElement("th", null, "Trạng thái"),
-                createElement("th", null, "Thao tác")
-              )
+              "button",
+              {
+                className: "shellPage__button shellPage__button--primary",
+                style: { padding: "6px 12px", fontSize: "13px" },
+                onClick: () => handleActivate(config.id),
+              },
+              "Kích hoạt"
             ),
+          !config.is_active &&
             createElement(
-              "tbody",
-              null,
-              configs.map((config) =>
-                createElement(
-                  "tr",
-                  { key: config.id },
-                  createElement("td", null, config.id),
-                  createElement("td", null, config.provider),
-                  createElement("td", null, config.from_email),
-                  createElement(
-                    "td",
-                    null,
-                    config.provider === "smtp" ? config.smtp_host + ":" + config.smtp_port : "N/A"
-                  ),
-                  createElement(
-                    "td",
-                    null,
-                    config.is_active
-                      ? createElement("span", { style: { color: "green", fontWeight: "bold" } }, "ACTIVE")
-                      : createElement("span", { style: { color: "gray" } }, "INACTIVE")
-                  ),
-                  createElement(
-                    "td",
-                    { style: { whiteSpace: "nowrap" } },
-                    createElement(
-                      "button",
-                      { onClick: () => handleOpenEdit(config), style: { marginRight: "0.25rem" } },
-                      "Sửa"
-                    ),
-                    !config.is_active &&
-                      createElement(
-                        "button",
-                        { onClick: () => handleActivate(config.id), style: { marginRight: "0.25rem" } },
-                        "Kích hoạt"
-                      ),
-                    createElement(
-                      "button",
-                      { onClick: () => handleDelete(config.id), disabled: config.is_active },
-                      "Xóa"
-                    )
-                  )
-                )
-              )
+              "button",
+              {
+                className: "shellPage__button shellPage__button--signal",
+                style: { padding: "6px 12px", fontSize: "13px" },
+                onClick: () => handleDelete(config.id),
+              },
+              "Xóa"
             )
-          )
-    ),
-    // Test panel
-    createElement(
-      "div",
-      { className: "mail-config-test-panel", style: { marginTop: "2rem", padding: "1rem", border: "1px solid #ccc" } },
-      createElement("h3", null, "Bộ Thử Nghiệm Kết Nối (Live Testing)"),
+        )
+      )
+    );
+  };
+
+  // ── config list panel ──────────────────────────────────────────────────────
+  const configListContent = loading
+    ? createElement("p", { className: "shellPage__empty" }, "Đang tải cấu hình…")
+    : configs.length === 0
+    ? createElement("div", { className: "shellPage__empty" }, "Chưa có cấu hình mail nào.")
+    : createElement("div", { className: "shellPage__list" }, configs.map(renderConfigCard));
+
+  // ── test panel ─────────────────────────────────────────────────────────────
+  const testPanelContent = createElement(
+    "div",
+    { className: "shellPage__form" },
+    renderShellField({
+      label: "Email nhận test",
+      name: "testEmail",
+      type: "email",
+      value: testEmail,
+      onChange: (e) => setTestEmail(e.target.value),
+      placeholder: "admin@vninvest.vn",
+    }),
+    configs.length > 0 &&
       createElement(
         "div",
-        null,
-        createElement("label", null, "Email nhận test: "),
-        createElement("input", {
-          type: "email",
-          value: testEmail,
-          onChange: (e) => setTestEmail(e.target.value),
-          placeholder: "admin@vninvest.vn",
-        })
-      ),
-      createElement(
-        "div",
-        { style: { marginTop: "1rem" } },
+        { style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
         configs.map((config) =>
           createElement(
             "button",
             {
               key: "test-" + config.id,
+              className: "shellPage__button shellPage__button--signal",
+              style: { fontSize: "13px" },
               onClick: () => handleTestConnection(config),
-              disabled: testLoading,
-              style: { marginRight: "0.5rem" },
+              disabled: testLoading || !testEmail,
             },
-            testLoading ? "Đang thử..." : "Test " + config.provider + " (ID: " + config.id + ")"
+            testLoading
+              ? "Đang thử…"
+              : "Test " + (PROVIDER_LABELS[config.provider] || config.provider) + " #" + config.id
           )
         )
       ),
-      testMessage &&
-        createElement(
-          "div",
-          { style: { marginTop: "1rem", color: testMessage.type === "success" ? "green" : "red" } },
-          testMessage.text
-        )
-    ),
-    // Modal
-    showModal &&
+    testMessage &&
       createElement(
         "div",
         {
+          className:
+            "shellPage__banner " +
+            (testMessage.type === "success" ? "shellPage__banner--notice" : "shellPage__banner--error"),
+        },
+        testMessage.text
+      )
+  );
+
+  // ── modal overlay ──────────────────────────────────────────────────────────
+  const modalOverlay =
+    showModal &&
+    createElement(
+      "div",
+      {
+        style: {
+          position: "fixed",
+          inset: 0,
+          background: "rgba(10,20,40,0.6)",
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        onClick: (e) => {
+          if (e.target === e.currentTarget) handleCloseModal();
+        },
+      },
+      createElement(
+        "div",
+        {
+          className: "shellPage__panel",
           style: {
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            minWidth: "480px",
+            maxWidth: "640px",
+            width: "100%",
+            maxHeight: "90vh",
+            overflowY: "auto",
           },
         },
         createElement(
           "div",
-          {
-            style: {
-              background: "#fff",
-              borderRadius: "8px",
-              padding: "2rem",
-              minWidth: "480px",
-              maxWidth: "640px",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            },
-          },
+          { className: "shellPage__panelHeader" },
           createElement(
-            "h3",
+            "div",
             null,
-            editingConfig ? "Sửa cấu hình #" + editingConfig.id : "Tạo cấu hình mail mới"
+            createElement(
+              "h2",
+              { className: "shellPage__panelTitle" },
+              editingConfig ? "Sửa cấu hình #" + editingConfig.id : "Tạo cấu hình mail mới"
+            )
           ),
           createElement(
-            "form",
-            { onSubmit: handleSubmitForm },
-            // Provider
+            "button",
+            {
+              className: "shellPage__button shellPage__button--secondary",
+              style: { padding: "6px 12px", fontSize: "16px" },
+              onClick: handleCloseModal,
+              type: "button",
+            },
+            "✕"
+          )
+        ),
+        createElement(
+          "form",
+          { className: "shellPage__form", onSubmit: handleSubmitForm },
+          // Provider + From Email
+          createElement(
+            "div",
+            { className: "shellPage__formGrid" },
+            renderShellSelectField({
+              label: "Provider",
+              name: "provider",
+              value: formData.provider,
+              onChange: (e) => handleFormChange("provider", e.target.value),
+              options: [
+                { key: "smtp", label: "SMTP" },
+                { key: "gmail_api", label: "Gmail API" },
+              ],
+            }),
+            renderShellField({
+              label: "From Email *",
+              name: "from_email",
+              type: "email",
+              value: formData.from_email,
+              onChange: (e) => handleFormChange("from_email", e.target.value),
+              placeholder: "no-reply@example.com",
+            })
+          ),
+          // SMTP-specific fields
+          formData.provider === "smtp" &&
             createElement(
-              "div",
-              { style: { marginBottom: "1rem" } },
-              createElement("label", null, "Provider: "),
+              Fragment,
+              null,
               createElement(
-                "select",
-                { value: formData.provider, onChange: (e) => handleFormChange("provider", e.target.value) },
-                createElement("option", { value: "smtp" }, "SMTP"),
-                createElement("option", { value: "gmail_api" }, "Gmail API")
+                "div",
+                { className: "shellPage__formGrid" },
+                renderShellField({
+                  label: "SMTP Host",
+                  name: "smtp_host",
+                  value: formData.smtp_host,
+                  onChange: (e) => handleFormChange("smtp_host", e.target.value),
+                  placeholder: "smtp.gmail.com",
+                }),
+                renderShellField({
+                  label: "SMTP Port",
+                  name: "smtp_port",
+                  type: "number",
+                  value: formData.smtp_port,
+                  onChange: (e) => handleFormChange("smtp_port", e.target.value),
+                  placeholder: "587",
+                })
+              ),
+              createElement(
+                "div",
+                { className: "shellPage__formGrid" },
+                renderShellField({
+                  label: "SMTP Username",
+                  name: "smtp_username",
+                  value: formData.smtp_username,
+                  onChange: (e) => handleFormChange("smtp_username", e.target.value),
+                }),
+                renderShellField({
+                  label: editingConfig ? "SMTP Password (để trống = giữ nguyên)" : "SMTP Password",
+                  name: "smtp_password",
+                  type: "password",
+                  value: formData.smtp_password,
+                  onChange: (e) => handleFormChange("smtp_password", e.target.value),
+                  placeholder: editingConfig ? "(Để trống nếu không đổi)" : "",
+                })
+              ),
+              createElement(
+                "div",
+                { style: { display: "flex", gap: "24px" } },
+                createElement(
+                  "label",
+                  {
+                    style: {
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "700",
+                      color: "var(--shell-muted)",
+                    },
+                  },
+                  createElement("input", {
+                    type: "checkbox",
+                    checked: formData.smtp_use_tls,
+                    onChange: (e) => handleFormChange("smtp_use_tls", e.target.checked),
+                  }),
+                  "Dùng TLS"
+                ),
+                createElement(
+                  "label",
+                  {
+                    style: {
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "700",
+                      color: "var(--shell-muted)",
+                    },
+                  },
+                  createElement("input", {
+                    type: "checkbox",
+                    checked: formData.smtp_use_ssl,
+                    onChange: (e) => handleFormChange("smtp_use_ssl", e.target.checked),
+                  }),
+                  "Dùng SSL"
+                )
               )
             ),
-            // From Email
+          // Gmail API-specific fields
+          formData.provider === "gmail_api" &&
             createElement(
-              "div",
-              { style: { marginBottom: "1rem" } },
-              createElement("label", null, "From Email: "),
-              createElement("input", {
+              Fragment,
+              null,
+              createElement(
+                "label",
+                { className: "shellPage__field" },
+                createElement("span", { className: "shellPage__fieldLabel" }, "Service Account JSON"),
+                createElement("textarea", {
+                  className: "shellPage__input",
+                  value: formData.google_service_account_json,
+                  onChange: (e) => handleFormChange("google_service_account_json", e.target.value),
+                  placeholder: editingConfig ? "(Để trống nếu không đổi)" : "Dán JSON service account…",
+                  rows: 6,
+                  style: { resize: "vertical" },
+                })
+              ),
+              renderShellField({
+                label: "Delegated User Email",
+                name: "google_delegated_user_email",
                 type: "email",
-                value: formData.from_email,
-                onChange: (e) => handleFormChange("from_email", e.target.value),
-                required: true,
-                style: { width: "100%", boxSizing: "border-box" },
+                value: formData.google_delegated_user_email,
+                onChange: (e) => handleFormChange("google_delegated_user_email", e.target.value),
               })
             ),
-            // SMTP fields
-            formData.provider === "smtp" &&
-              createElement(
-                Fragment,
-                null,
-                createElement(
-                  "div",
-                  { style: { marginBottom: "0.75rem" } },
-                  createElement("label", null, "SMTP Host: "),
-                  createElement("input", {
-                    type: "text",
-                    value: formData.smtp_host,
-                    onChange: (e) => handleFormChange("smtp_host", e.target.value),
-                    placeholder: "smtp.gmail.com",
-                    style: { width: "100%", boxSizing: "border-box" },
-                  })
-                ),
-                createElement(
-                  "div",
-                  { style: { marginBottom: "0.75rem" } },
-                  createElement("label", null, "SMTP Port: "),
-                  createElement("input", {
-                    type: "number",
-                    value: formData.smtp_port,
-                    onChange: (e) => handleFormChange("smtp_port", e.target.value),
-                    placeholder: "587",
-                    style: { width: "100%", boxSizing: "border-box" },
-                  })
-                ),
-                createElement(
-                  "div",
-                  { style: { marginBottom: "0.75rem" } },
-                  createElement("label", null, "SMTP Username: "),
-                  createElement("input", {
-                    type: "text",
-                    value: formData.smtp_username,
-                    onChange: (e) => handleFormChange("smtp_username", e.target.value),
-                    style: { width: "100%", boxSizing: "border-box" },
-                  })
-                ),
-                createElement(
-                  "div",
-                  { style: { marginBottom: "0.75rem" } },
-                  createElement("label", null, "SMTP Password: "),
-                  createElement("input", {
-                    type: "password",
-                    value: formData.smtp_password,
-                    onChange: (e) => handleFormChange("smtp_password", e.target.value),
-                    placeholder: editingConfig ? "(Để trống nếu không đổi mật khẩu)" : "",
-                    style: { width: "100%", boxSizing: "border-box" },
-                  })
-                ),
-                createElement(
-                  "div",
-                  { style: { marginBottom: "0.75rem" } },
-                  createElement(
-                    "label",
-                    null,
-                    createElement("input", {
-                      type: "checkbox",
-                      checked: formData.smtp_use_tls,
-                      onChange: (e) => handleFormChange("smtp_use_tls", e.target.checked),
-                    }),
-                    " Dùng TLS"
-                  ),
-                  " ",
-                  createElement(
-                    "label",
-                    null,
-                    createElement("input", {
-                      type: "checkbox",
-                      checked: formData.smtp_use_ssl,
-                      onChange: (e) => handleFormChange("smtp_use_ssl", e.target.checked),
-                    }),
-                    " Dùng SSL"
-                  )
-                )
-              ),
-            // Gmail API fields
-            formData.provider === "gmail_api" &&
-              createElement(
-                Fragment,
-                null,
-                createElement(
-                  "div",
-                  { style: { marginBottom: "0.75rem" } },
-                  createElement("label", null, "Service Account JSON: "),
-                  createElement("textarea", {
-                    value: formData.google_service_account_json,
-                    onChange: (e) => handleFormChange("google_service_account_json", e.target.value),
-                    placeholder: editingConfig ? "(Để trống nếu không đổi)" : "Dán JSON service account...",
-                    rows: 6,
-                    style: { width: "100%", boxSizing: "border-box" },
-                  })
-                ),
-                createElement(
-                  "div",
-                  { style: { marginBottom: "0.75rem" } },
-                  createElement("label", null, "Delegated User Email: "),
-                  createElement("input", {
-                    type: "email",
-                    value: formData.google_delegated_user_email,
-                    onChange: (e) => handleFormChange("google_delegated_user_email", e.target.value),
-                    style: { width: "100%", boxSizing: "border-box" },
-                  })
-                )
-              ),
-            // Form error
-            formError &&
-              createElement("div", { style: { color: "red", marginBottom: "1rem" } }, formError),
-            // Action buttons
+          // Form error
+          formError &&
             createElement(
               "div",
-              { style: { display: "flex", justifyContent: "flex-end", gap: "1rem" } },
-              createElement(
-                "button",
-                { type: "button", onClick: handleCloseModal, disabled: formLoading },
-                "Hủy"
-              ),
-              createElement(
-                "button",
-                { type: "submit", disabled: formLoading },
-                formLoading ? "Đang lưu..." : editingConfig ? "Cập nhật" : "Tạo mới"
-              )
+              { className: "shellPage__banner shellPage__banner--error" },
+              formError
+            ),
+          // Action buttons
+          createElement(
+            "div",
+            { className: "shellPage__actions", style: { justifyContent: "flex-end" } },
+            createElement(
+              "button",
+              {
+                type: "button",
+                className: "shellPage__button shellPage__button--secondary",
+                onClick: handleCloseModal,
+                disabled: formLoading,
+              },
+              "Hủy"
+            ),
+            createElement(
+              "button",
+              {
+                type: "submit",
+                className: "shellPage__button shellPage__button--primary",
+                disabled: formLoading,
+              },
+              formLoading ? "Đang lưu…" : editingConfig ? "Cập nhật" : "Tạo mới"
             )
           )
         )
       )
-  );
+    );
+
+  // ── page chrome ────────────────────────────────────────────────────────────
+  return renderShellPageChrome({
+    eyebrow: "Hệ thống · SOC",
+    title: "Quản trị Mail Vận Hành",
+    description: "Cấu hình email hệ thống dùng để gửi thông báo, cảnh báo và liên lạc vận hành.",
+    badge: createElement(
+      "button",
+      {
+        className: "shellPage__button shellPage__button--primary",
+        onClick: handleOpenCreate,
+        type: "button",
+      },
+      "+ Tạo mới"
+    ),
+    metrics,
+    error: error || "",
+    children: createElement(
+      Fragment,
+      null,
+      createElement(
+        "div",
+        { className: "shellPage__bodyGrid" },
+        renderShellPanel({
+          key: "configs",
+          title: "Danh sách cấu hình",
+          subtitle: "Chọn Kích hoạt để đặt làm provider gửi mail mặc định của hệ thống.",
+          children: configListContent,
+        }),
+        renderShellPanel({
+          key: "test",
+          title: "Thử Nghiệm Kết Nối",
+          subtitle: "Gửi email thử để kiểm tra cấu hình đang hoạt động.",
+          children: testPanelContent,
+        })
+      ),
+      modalOverlay
+    ),
+  });
 }
