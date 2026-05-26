@@ -1715,6 +1715,131 @@ def send_email_verification_token(self, email: str, token: str, frontend_url: st
             return {'status': 'failed', 'email': email, 'error': str(retry_exc)}
 
 
+@shared_task(bind=True, max_retries=5)
+def trigger_email_verification_flow(self, user_id: int, outbox_event_id: str, email: str = None, token: str = None, frontend_url: str = None) -> dict:
+    """
+    SaaS Native Dynamic Mail Router with Google DWD Impersonation and Fallback.
+    """
+    from django.utils import timezone
+    from identity_access.models import SystemMailConfig, OutboxEvent
+    from vninvest_core.utils.crypto import decrypt_secret
+    import json
+    import base64
+
+    if not frontend_url:
+        frontend_url = django_settings.FRONTEND_URL
+
+    verify_url = f'{frontend_url}/verify-email?token={token}'
+    subject = '[VNInvest] Xác minh địa chỉ email VNInvest'
+    html_content = f'<p>Nhấp vào liên kết sau để kích hoạt tài khoản của bạn:</p><p><a href="{verify_url}">{verify_url}</a></p>'
+    text_content = f'Nhấp vào liên kết sau để kích hoạt tài khoản của bạn:\n{verify_url}'
+
+    try:
+        # Tìm cấu hình dynamic active
+        mail_config = SystemMailConfig.objects.filter(is_active=True).first()
+
+        if not mail_config:
+            # 1. Fallback về SMTP tĩnh trong settings.py
+            logger.info("[MAIL_ROUTER] Routing via default settings.py SMTP")
+            send_mail(
+                subject=subject,
+                message=text_content,
+                html_message=html_content,
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        else:
+            # 2. Dynamic Routing
+            try:
+                if mail_config.provider == SystemMailConfig.PROVIDER_SMTP:
+                    logger.info(f"[MAIL_ROUTER] Routing via dynamic SMTP: {mail_config.smtp_host}")
+                    from django.core.mail import get_connection
+                    connection = get_connection(
+                        host=mail_config.smtp_host,
+                        port=mail_config.smtp_port,
+                        username=mail_config.smtp_username,
+                        password=mail_config.get_smtp_password(),
+                        use_tls=mail_config.smtp_use_tls,
+                        use_ssl=mail_config.smtp_use_ssl,
+                        timeout=3.0  # connection timeout 3000ms
+                    )
+                    send_mail(
+                        subject=subject,
+                        message=text_content,
+                        html_message=html_content,
+                        from_email=mail_config.from_email,
+                        recipient_list=[email],
+                        connection=connection,
+                        fail_silently=False,
+                    )
+                elif mail_config.provider == SystemMailConfig.PROVIDER_GMAIL:
+                    logger.info(f"[MAIL_ROUTER] Routing via dynamic Google Gmail API DWD: {mail_config.google_delegated_user_email}")
+                    
+                    # Import động tránh lỗi import khi chạy test/dev nếu thiếu thư viện
+                    from google.oauth2 import service_account
+                    from googleapiclient.discovery import build
+                    from email.mime.text import MIMEText
+
+                    # A. Giải mã và load JSON
+                    sa_json = mail_config.get_google_service_account_json()
+                    sa_info = json.loads(sa_json)
+
+                    # B. Build credentials with DWD impersonation
+                    scopes = ['https://www.googleapis.com/auth/gmail.send']
+                    credentials = service_account.Credentials.from_service_account_info(
+                        sa_info,
+                        scopes=scopes
+                    ).with_subject(mail_config.google_delegated_user_email)
+
+                    # C. Build client
+                    service = build('gmail', 'v1', credentials=credentials, cache_discovery=False)
+
+                    # D. MIME message
+                    message = MIMEText(html_content, 'html', 'utf-8')
+                    message['to'] = email
+                    message['from'] = mail_config.from_email
+                    message['subject'] = subject
+
+                    # E. RFC safe Base64 URL safe
+                    raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+
+                    # F. Send
+                    service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
+            except Exception as dynamic_exc:
+                logger.error(f"[MAIL_ROUTER] Dynamic mail provider {mail_config.provider} failed: {dynamic_exc}. Falling back to default static SMTP.")
+                send_mail(
+                    subject=subject,
+                    message=text_content,
+                    html_message=html_content,
+                    from_email=django_settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+
+        # Cập nhật OutboxEvent
+        OutboxEvent.objects.filter(pk=outbox_event_id).update(
+            status=OutboxEvent.STATUS_PROCESSED,
+            processed_at=timezone.now()
+        )
+        return {'status': 'sent', 'email': email, 'event_id': outbox_event_id}
+
+    except Exception as exc:
+        logger.exception(f"[MAIL_ROUTER] Verification email sending failed: {exc}. Retrying.")
+        # Cập nhật OutboxEvent lỗi
+        OutboxEvent.objects.filter(pk=outbox_event_id).update(
+            status=OutboxEvent.STATUS_FAILED,
+            last_error=str(exc)
+        )
+        try:
+            # Thử lại với exponential backoff
+            raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+        except Exception as retry_exc:
+            logger.error(f"[MAIL_ROUTER] Retries exhausted for OutboxEvent {outbox_event_id}: {retry_exc}")
+            return {'status': 'failed', 'email': email, 'error': str(retry_exc)}
+
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_password_reset_email(self, email: str, token: str, frontend_url: str = None) -> dict:
     """
@@ -1835,6 +1960,8 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     # §12: IntradayTick là short-lived staging — chain enrichment pipeline để
     # materialize long-term canonical facts (whale canonical → session facts)
     # Dùng Celery chain để đảm bảo thứ tự: whale detection trước, session facts sau.
+    # D06: thêm synthesize_intraday_bars_from_ticks cuối chain để IntradayBar
+    # cũng được tổng hợp từ historical ticks sau khi backfill.
     try:
         from celery import chain as celery_chain
         from signal_intelligence.tasks import detect_and_store_global_whale_alerts
@@ -1842,6 +1969,7 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
         celery_chain(
             detect_and_store_global_whale_alerts.si(symbol=symbol_upper, session_date=trade_date),
             materialize_session_facts.si(symbol=symbol_upper, session_date=trade_date),
+            synthesize_intraday_bars_from_ticks.si(symbol=symbol_upper, trade_date=trade_date),
         ).apply_async()
         logger.info('backfill_intraday_tick_system: enrichment chain queued symbol=%s date=%s', symbol_upper, trade_date)
     except Exception as exc:
@@ -1924,6 +2052,7 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
 
     # §12: chain enrichment pipeline — dữ liệu user backfill cũng phải
     # materialize whale canonical + session facts để tái sử dụng shared facts.
+    # D06: thêm synthesize_intraday_bars_from_ticks để IntradayBar cũng được fill.
     try:
         from celery import chain as celery_chain
         from signal_intelligence.tasks import detect_and_store_global_whale_alerts
@@ -1931,6 +2060,7 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
         celery_chain(
             detect_and_store_global_whale_alerts.si(symbol=symbol_upper, session_date=trade_date),
             materialize_session_facts.si(symbol=symbol_upper, session_date=trade_date),
+            synthesize_intraday_bars_from_ticks.si(symbol=symbol_upper, trade_date=trade_date),
         ).apply_async()
         logger.info('backfill_intraday_tick_user: enrichment chain queued symbol=%s date=%s', symbol_upper, trade_date)
     except Exception as exc:
@@ -2091,3 +2221,299 @@ def enqueue_dnse_quarterly_backfill(
         except Exception as _fin_exc:
             logger.warning('enqueue_dnse_quarterly_backfill: run log finalize failed: %s', _fin_exc)
     return _result
+
+
+# ---------------------------------------------------------------------------
+# D06: Synthesize IntradayBar từ IntradayTick đã có trong DB
+# ---------------------------------------------------------------------------
+
+def _synthesize_bars_from_db_ticks(symbol: str, trade_date: str) -> dict:
+    """
+    Đọc IntradayTick từ DB cho (symbol, trade_date) và tổng hợp IntradayBar.
+
+    Không fetch từ vnbroker — chỉ đọc ticks đã được lưu, gọi
+    _build_intraday_bar_payloads, rồi upsert vào IntradayBar.
+
+    Returns dict với status, ticks_read, bars_computed, inserted, updated, skipped.
+    """
+    from market_data.models import IntradayBar, IntradayTick
+
+    symbol_upper = symbol.strip().upper()
+    tick_rows = list(
+        IntradayTick.objects.filter(
+            symbol=symbol_upper,
+            timestamp__date=trade_date,
+        ).values('timestamp', 'price', 'volume', 'side', 'match_type', 'source')
+        .order_by('timestamp')
+    )
+    if not tick_rows:
+        return {
+            'status': 'empty',
+            'symbol': symbol_upper,
+            'date': trade_date,
+            'ticks_read': 0,
+            'bars_computed': 0,
+        }
+
+    # Chuyển đổi sang normalized_trades format để dùng với _build_intraday_bar_payloads
+    normalized_trades: list[dict] = []
+    tick_sources: set[str] = set()
+    for row in tick_rows:
+        ts = row['timestamp']
+        if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
+            from datetime import timezone as _tz_utc
+            ts = ts.replace(tzinfo=_tz_utc.utc)
+        normalized_trades.append({
+            'symbol': symbol_upper,
+            'timestamp': ts,
+            'price': float(row['price']),
+            'volume': int(row['volume']),
+            'side': _normalize_intraday_side(row.get('side')),
+            'match_type': row.get('match_type') or 'NormalMatch',
+            'source': row.get('source') or 'backfill',
+        })
+        if row.get('source'):
+            tick_sources.add(row['source'])
+
+    # Xác định source label cho bars từ source của ticks
+    if any('dnse' in s for s in tick_sources):
+        bar_source = 'dnse_backfill'
+    elif tick_sources:
+        bar_source = next(iter(tick_sources))
+    else:
+        bar_source = 'backfill'
+
+    bar_payloads = _build_intraday_bar_payloads(symbol_upper, normalized_trades)
+    # Override source — _build_intraday_bar_payloads hardcodes 'vnbroker_intraday'
+    for payload in bar_payloads.values():
+        payload['source'] = bar_source
+
+    if not bar_payloads:
+        return {
+            'status': 'empty',
+            'symbol': symbol_upper,
+            'date': trade_date,
+            'ticks_read': len(tick_rows),
+            'bars_computed': 0,
+        }
+
+    # Presence check — chỉ upsert khi khác dữ liệu hiện có
+    existing_bars_by_key = {
+        (row['timeframe'], row['datetime']): row
+        for row in IntradayBar.objects.filter(
+            symbol=symbol_upper,
+            timeframe__in=list(_INTRADAY_BAR_TIMEFRAMES),
+            datetime__in=[payload['datetime'] for payload in bar_payloads.values()],
+        ).values('timeframe', 'datetime', 'open', 'high', 'low', 'close', 'volume', 'source')
+    }
+
+    bar_objects: list[IntradayBar] = []
+    inserted = 0
+    updated = 0
+    skipped = 0
+    for key, payload in bar_payloads.items():
+        existing_bar = existing_bars_by_key.get(key)
+        if existing_bar is None:
+            inserted += 1
+            bar_objects.append(IntradayBar(**payload))
+            continue
+        if all(existing_bar[f] == payload[f] for f in ('open', 'high', 'low', 'close', 'volume', 'source')):
+            skipped += 1
+            continue
+        updated += 1
+        bar_objects.append(IntradayBar(**payload))
+
+    if bar_objects:
+        IntradayBar.objects.bulk_create(
+            bar_objects,
+            update_conflicts=True,
+            update_fields=['open', 'high', 'low', 'close', 'volume', 'source'],
+            unique_fields=['symbol', 'datetime', 'timeframe'],
+        )
+
+    return {
+        'status': 'ok',
+        'symbol': symbol_upper,
+        'date': trade_date,
+        'ticks_read': len(tick_rows),
+        'bars_computed': len(bar_payloads),
+        'inserted': inserted,
+        'updated': updated,
+        'skipped': skipped,
+    }
+
+
+@shared_task(
+    bind=True,
+    name='data_ingest.tasks.synthesize_intraday_bars_from_ticks',
+    queue='manual_on_demand',
+    max_retries=3,
+    default_retry_delay=60,
+)
+def synthesize_intraday_bars_from_ticks(self, *, symbol: str, trade_date: str) -> dict:
+    """
+    D06: Tổng hợp IntradayBar từ IntradayTick đã có trong DB cho (symbol, trade_date).
+
+    Được chain tự động sau backfill_intraday_tick_system và backfill_intraday_tick_user
+    để đảm bảo chart OHLCV endpoints có đủ dữ liệu lịch sử sau mỗi lần backfill ticks.
+
+    Không fetch từ mạng — chỉ đọc DB ticks → tổng hợp bars → upsert IntradayBar.
+    Idempotent: chạy nhiều lần không gây duplicate (dùng upsert).
+    """
+    symbol_upper = str(symbol or '').strip().upper()
+    if not symbol_upper or not trade_date:
+        return {'status': 'error', 'reason': 'symbol và trade_date là bắt buộc'}
+
+    try:
+        result = _synthesize_bars_from_db_ticks(symbol_upper, trade_date)
+        logger.info(
+            'synthesize_intraday_bars_from_ticks: symbol=%s date=%s '
+            'ticks=%d bars=%d inserted=%d updated=%d skipped=%d',
+            symbol_upper, trade_date,
+            result.get('ticks_read', 0),
+            result.get('bars_computed', 0),
+            result.get('inserted', 0),
+            result.get('updated', 0),
+            result.get('skipped', 0),
+        )
+        return result
+    except Exception as exc:
+        logger.error(
+            'synthesize_intraday_bars_from_ticks failed: symbol=%s date=%s: %s',
+            symbol_upper, trade_date, exc,
+        )
+        raise self.retry(exc=exc)
+
+
+@shared_task(name='data_ingest.tasks.process_outbox_events')
+def process_outbox_events() -> dict:
+    """
+    R2: Periodic outbox processor task.
+    Queries pending OutboxEvents and dispatches them to their consumers.
+    Guarantees reliability and processed idempotency via ProcessedEvent.
+    """
+    from django.utils import timezone
+    from django.db import transaction
+    from identity_access.models import OutboxEvent, ProcessedEvent
+    
+    pending_events = OutboxEvent.objects.filter(status=OutboxEvent.STATUS_PENDING).order_by('created_at')[:50]
+    processed_count = 0
+    failed_count = 0
+    
+    for base_event in pending_events:
+        try:
+            with transaction.atomic():
+                # Lock row để bảo đảm an toàn trên môi trường đa worker (Fix 2)
+                event = OutboxEvent.objects.select_for_update(skip_locked=True).filter(pk=base_event.pk, status=OutboxEvent.STATUS_PENDING).first()
+                if not event:
+                    continue
+
+                # Step 1: Idempotency Check (R2)
+                if ProcessedEvent.objects.filter(event_id=event.event_id).exists():
+                    # Already processed, mark processed directly
+                    event.status = OutboxEvent.STATUS_PROCESSED
+                    event.processed_at = timezone.now()
+                    event.save(update_fields=['status', 'processed_at'])
+                    processed_count += 1
+                    continue
+                    
+                # Step 2: Route and execute based on event type
+                if event.event_type == 'UserRegisteredEvent':
+                    # Dynamically execute provisioning consumer with idempotency
+                    status_res, msg = execute_provisioning_consumer(event.event_id, event.payload)
+                    if status_res == 'failed':
+                        raise ValueError(msg)
+                
+                # Step 3: Mark as processed
+                if not ProcessedEvent.objects.filter(event_id=event.event_id).exists():
+                    ProcessedEvent.objects.create(event_id=event.event_id)
+                event.status = OutboxEvent.STATUS_PROCESSED
+                event.processed_at = timezone.now()
+                event.save(update_fields=['status', 'processed_at'])
+                
+            processed_count += 1
+            
+        except Exception as e:
+            logger.exception(f"Outbox processing failed for event {base_event.event_id}: {e}")
+            try:
+                # Update in a separate transaction since the processing one rolled back
+                with transaction.atomic():
+                    event_err = OutboxEvent.objects.get(pk=base_event.pk)
+                    event_err.retry_count += 1
+                    event_err.last_error = str(e)
+                    
+                    if event_err.retry_count >= 5:
+                        event_err.status = OutboxEvent.STATUS_FAILED
+                    else:
+                        event_err.status = OutboxEvent.STATUS_PENDING
+                        
+                    event_err.save(update_fields=['status', 'retry_count', 'last_error'])
+            except Exception:
+                pass
+            failed_count += 1
+            
+    return {
+        'processed': processed_count,
+        'failed': failed_count
+    }
+
+
+def execute_provisioning_consumer(event_id, payload) -> tuple[str, str]:
+    """
+    R2: Idempotent user registration provisioning consumer.
+    Checks and creates dynamic provisioning assets atomically.
+    """
+    from django.db import transaction
+    from django.contrib.auth import get_user_model
+    from identity_access.models import CoreTenant, UserProfile, CoreServiceAccount, ProcessedEvent
+    
+    User = get_user_model()
+    user_id = payload.get('user_id')
+    
+    if ProcessedEvent.objects.filter(event_id=event_id).exists():
+        return "dropped", "Already processed."
+        
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return "failed", f"User {user_id} does not exist."
+        
+    try:
+        with transaction.atomic():
+            # Check/Create tenant
+            tenant, created = CoreTenant.objects.get_or_create(
+                owner_user=user,
+                defaults={
+                    'tenant_code': f"tenant_{user.username}",
+                    'display_name': f"{user.first_name} {user.last_name}'s Workspace".strip() or f"{user.username}'s Workspace",
+                    'plan': CoreTenant.PlanChoices.FREE,
+                    'status': CoreTenant.StatusChoices.ACTIVE
+                }
+            )
+            
+            # Check/Create profile
+            UserProfile.objects.get_or_create(
+                user=user,
+                defaults={
+                    'tenant': tenant,
+                    'display_name': f"{user.first_name} {user.last_name}".strip() or user.username,
+                    'theme': 'dark',
+                    'language': 'vi'
+                }
+            )
+            
+            # Check/Create service account
+            CoreServiceAccount.objects.get_or_create(
+                tenant=tenant,
+                name="default",
+                defaults={
+                    'status': CoreServiceAccount.StatusChoices.ACTIVE,
+                    'scopes': ['market:read', 'signals:read']
+                }
+            )
+            
+        return "processed", "Success"
+    except Exception as e:
+        logger.exception(f"Provisioning consumer failed for user {user_id}: {e}")
+        return "failed", str(e)
+
