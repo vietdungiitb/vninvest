@@ -3,6 +3,7 @@ from django.urls import path
 from . import views
 from . import views_auth
 from . import onboarding_views
+from . import views_operator
 
 urlpatterns = [
     # Auth endpoints (Gate A2, A3)
@@ -26,4 +27,10 @@ urlpatterns = [
     path('pat', views.PATListView.as_view(), name='pat-list'),
     # User profile (SM-P4.1)
     path('identity/profile/', views.UserProfileView.as_view(), name='user-profile'),
+
+    # Operator Mail Configs
+    path('operator/mail-configs/', views_operator.OperatorMailConfigListView.as_view(), name='operator-mail-config-list'),
+    path('operator/mail-configs/test/', views_operator.OperatorMailConfigTestView.as_view(), name='operator-mail-config-test'),
+    path('operator/mail-configs/<int:pk>/', views_operator.OperatorMailConfigDetailView.as_view(), name='operator-mail-config-detail'),
+    path('operator/mail-configs/<int:pk>/activate/', views_operator.OperatorMailConfigActivateView.as_view(), name='operator-mail-config-activate'),
 ]

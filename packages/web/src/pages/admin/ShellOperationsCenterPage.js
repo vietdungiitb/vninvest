@@ -152,6 +152,23 @@ export function ShellOperationsCenterPage({
             ),
           ],
         }),
+        renderShellPanel({
+          title: "Công cụ quản trị SOC",
+          subtitle: "Lối nhanh đến các công cụ vận hành dành riêng cho operator có quyền staff.",
+          children: renderElement(
+            "ul",
+            { style: { listStyle: "none", padding: 0, margin: 0 } },
+            renderElement(
+              "li",
+              { key: "mail-config-link", style: { marginBottom: "0.5rem" } },
+              renderElement(
+                "a",
+                { href: "/operations-center/mail-config", style: { fontWeight: 600 } },
+                "Quản trị Mail Vận Hành — Cấu hình hộp thư gửi thông báo hệ thống (SMTP / Gmail API)",
+              ),
+            ),
+          ),
+        }),
       ),
       renderShellPanel({
         title: "Surface flags và operator abilities",
