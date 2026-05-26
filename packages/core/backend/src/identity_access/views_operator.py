@@ -360,18 +360,42 @@ class OperatorMailConfigTestView(APIView):
                     fail_silently=False
                 )
             elif provider == 'gmail_api':
-                # Import động thư viện Google
-                from google.oauth2 import service_account
                 from googleapiclient.discovery import build
                 from email.mime.text import MIMEText
                 import base64
 
                 sa_info = json.loads(google_service_account_json)
                 scopes = ['https://www.googleapis.com/auth/gmail.send']
-                credentials = service_account.Credentials.from_service_account_info(
-                    sa_info,
-                    scopes=scopes
-                ).with_subject(google_delegated_user_email)
+
+                credential_type = sa_info.get('type', '')
+                if credential_type == 'service_account':
+                    # Flow 1: Service Account với Domain-Wide Delegation
+                    from google.oauth2 import service_account as _sa
+                    credentials = _sa.Credentials.from_service_account_info(
+                        sa_info,
+                        scopes=scopes,
+                    ).with_subject(google_delegated_user_email)
+                else:
+                    # Flow 2: OAuth2 Web Client với refresh_token
+                    # Hỗ trợ cả format wrapped {"web": {...}} lẫn flat {"client_id": ...}
+                    from google.oauth2.credentials import Credentials as OAuthCredentials
+                    from google.auth.transport.requests import Request as GoogleAuthRequest
+                    web_info = sa_info.get('web') or sa_info.get('installed') or sa_info
+                    refresh_token = sa_info.get('refresh_token') or web_info.get('refresh_token')
+                    if not refresh_token:
+                        raise ValueError(
+                            "OAuth2 Web Client JSON thiếu 'refresh_token'. "
+                            "Hãy thêm trường 'refresh_token' vào JSON credentials."
+                        )
+                    credentials = OAuthCredentials(
+                        token=None,
+                        refresh_token=refresh_token,
+                        token_uri=web_info.get('token_uri', 'https://oauth2.googleapis.com/token'),
+                        client_id=web_info.get('client_id') or sa_info.get('client_id'),
+                        client_secret=web_info.get('client_secret') or sa_info.get('client_secret'),
+                        scopes=scopes,
+                    )
+                    credentials.refresh(GoogleAuthRequest())
 
                 service = build('gmail', 'v1', credentials=credentials, cache_discovery=False)
 

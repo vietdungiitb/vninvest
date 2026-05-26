@@ -19,6 +19,7 @@ const EMPTY_FORM = {
   smtp_use_ssl: false,
   google_service_account_json: "",
   google_delegated_user_email: "",
+  google_oauth2_refresh_token: "",
 };
 
 export function ShellMailConfigPage() {
@@ -114,6 +115,7 @@ export function ShellMailConfigPage() {
       smtp_use_ssl: config.smtp_use_ssl !== undefined ? config.smtp_use_ssl : false,
       google_service_account_json: "", // không pre-fill secret
       google_delegated_user_email: config.google_delegated_user_email || "",
+      google_oauth2_refresh_token: "",
     });
     setFormError(null);
     setShowModal(true);
@@ -147,8 +149,19 @@ export function ShellMailConfigPage() {
         payload.smtp_use_tls = formData.smtp_use_tls;
         payload.smtp_use_ssl = formData.smtp_use_ssl;
       } else if (formData.provider === "gmail_api") {
-        if (formData.google_service_account_json)
-          payload.google_service_account_json = formData.google_service_account_json;
+        const rt = formData.google_oauth2_refresh_token.trim();
+        let saJson = formData.google_service_account_json.trim();
+        // Nếu có refresh_token, nhúng vào JSON trước khi lưu
+        if (rt && saJson) {
+          try {
+            const parsed = JSON.parse(saJson);
+            parsed.refresh_token = rt;
+            saJson = JSON.stringify(parsed);
+          } catch (_) {
+            // JSON không hợp lệ → để backend báo lỗi
+          }
+        }
+        if (saJson) payload.google_service_account_json = saJson;
         payload.google_delegated_user_email = formData.google_delegated_user_email;
       }
       if (editingConfig) {
@@ -480,22 +493,49 @@ export function ShellMailConfigPage() {
               createElement(
                 "label",
                 { className: "shellPage__field" },
-                createElement("span", { className: "shellPage__fieldLabel" }, "Service Account JSON"),
+                createElement(
+                  "span",
+                  { className: "shellPage__fieldLabel" },
+                  "Credentials JSON (Service Account hoặc OAuth2 Web Client)"
+                ),
                 createElement("textarea", {
                   className: "shellPage__input",
                   value: formData.google_service_account_json,
                   onChange: (e) => handleFormChange("google_service_account_json", e.target.value),
-                  placeholder: editingConfig ? "(Để trống nếu không đổi)" : "Dán JSON service account…",
+                  placeholder: editingConfig
+                    ? "(Để trống nếu không đổi)"
+                    : 'Dán JSON từ Google Cloud Console\n(Service Account JSON hoặc OAuth2 Web Client JSON)',
                   rows: 6,
                   style: { resize: "vertical" },
-                })
+                }),
+                createElement(
+                  "span",
+                  {
+                    style: {
+                      fontSize: "12px",
+                      color: "var(--shell-muted)",
+                      marginTop: "4px",
+                      display: "block",
+                    },
+                  },
+                  "Service Account: type=\"service_account\". OAuth2 Web Client: type không có / wrapper \"web\"."
+                )
               ),
               renderShellField({
-                label: "Delegated User Email",
+                label: "OAuth2 Refresh Token",
+                name: "google_oauth2_refresh_token",
+                type: "password",
+                value: formData.google_oauth2_refresh_token,
+                onChange: (e) => handleFormChange("google_oauth2_refresh_token", e.target.value),
+                placeholder: "1//... (OAuth2 Web Client flow — để trống nếu dùng Service Account)",
+              }),
+              renderShellField({
+                label: "Delegated User Email (Service Account DWD)",
                 name: "google_delegated_user_email",
                 type: "email",
                 value: formData.google_delegated_user_email,
                 onChange: (e) => handleFormChange("google_delegated_user_email", e.target.value),
+                placeholder: "admin@yourdomain.com (chỉ cần với Service Account DWD)",
               })
             ),
           // Form error
