@@ -80,14 +80,6 @@ export class MockAdapter {
 		return this.fetchMoreBars(symbol, timeframe, before, limit);
 	}
 
-	async searchSymbols(query: string): Promise<readonly SymbolInfo[]> {
-		return this.symbols.filter(
-			(s) =>
-				s.symbol.toLowerCase().includes(query.toLowerCase()) ||
-				s.name.toLowerCase().includes(query.toLowerCase()),
-		);
-	}
-
 	subscribeToBar(symbol: string, timeframe: Timeframe, onBar: (bar: OHLCVBar) => void): Unsubscribe {
 		void symbol;
 		void timeframe;
