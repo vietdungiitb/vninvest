@@ -237,6 +237,8 @@ export default function VNStockChartPanel({
   const flowBucketLookup = useMemo(() => buildFlowBucketLookup(flowViewModel, flowTimeframe), [flowTimeframe, flowViewModel]);
 
   // Define 3 explicit panes for the high-end chart
+  // NOTE: BollingerBands, CVDApprox, BuyStrength, InstitutionalStrength series types
+  // are not yet registered in vnstockcharts library. Using supported types only.
   const customPanes = useMemo(() => [
     {
       id: "price",
@@ -249,33 +251,19 @@ export default function VNStockChartPanel({
       series: [
         { type: "Candlestick", yAxis: "right" },
         { type: "EMA", params: { period: 20 }, yAxis: "right", color: "#3b82f6" },
-        { type: "EMA", params: { period: 50 }, yAxis: "right", color: "#f59e0b" },
-        { type: "BollingerBands", params: { period: 20, multiplier: 2 }, yAxis: "right" }
+        { type: "EMA", params: { period: 50 }, yAxis: "right", color: "#f59e0b" }
       ]
     },
     {
-      id: "cvd",
-      label: t('whaleAlertsDashboard.flowCvdPaneTitle', { defaultValue: "CVD Chuẩn Hóa" }),
+      id: "volume",
+      label: t('stockDetail.chartVolume', { defaultValue: "Khối lượng" }),
       pinned: false,
       visible: true,
-      heightRatio: 0.22,
+      heightRatio: 0.25,
       splitScale: false,
       tooltip: "value",
       series: [
-        { type: "CVDApprox", yAxis: "right", color: "#22d3ee" }
-      ]
-    },
-    {
-      id: "strength",
-      label: t('whaleAlertsDashboard.flowStrengthPaneTitle', { defaultValue: "Sức Mạnh Dòng Tiền" }),
-      pinned: false,
-      visible: true,
-      heightRatio: 0.23,
-      splitScale: true,
-      tooltip: "value",
-      series: [
-        { type: "BuyStrength", yAxis: "left", color: "#34d399", scaleSlotId: "strength-left" },
-        { type: "InstitutionalStrength", yAxis: "right", color: "#38bdf8", scaleSlotId: "strength-right" }
+        { type: "Column", yAxis: "right", color: "#6366f1" }
       ]
     }
   ], [t]);
