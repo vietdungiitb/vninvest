@@ -6,7 +6,7 @@
 import type { DrawingObject, DrawingToolDefinition, Point } from "../types";
 import type { ChartScales } from "../coordinateUtils";
 import { chartPointToPixel } from "../coordinateUtils";
-import { createDrawingObject, replaceNextPoint } from "../shared";
+import { createDrawingObject, replaceLastPoint } from "../shared";
 
 export type FibExtendedToolType =
 	| "fibChannel"
@@ -62,7 +62,7 @@ function createTool(name: FibExtendedToolType, nPoints: number): DrawingToolDefi
 		createDraft: (startPoint: Point): DrawingObject =>
 			createDrawingObject(name, Array.from({ length: nPoints }, () => ({ ...startPoint }))),
 		updateDraft: (draft: DrawingObject, nextPoint: Point): DrawingObject =>
-			replaceNextPoint(draft, nextPoint),
+			replaceLastPoint(draft, nextPoint),
 	};
 }
 

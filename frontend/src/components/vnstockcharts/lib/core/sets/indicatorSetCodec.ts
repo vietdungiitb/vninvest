@@ -170,7 +170,7 @@ export function sanitizeIndicatorSetsStorage(candidate: unknown, options: Indica
 	for (const set of sanitized) {
 		byId.set(set.id, set);
 	}
-	return Array.from(byId.values());
+	return [...byId.values()];
 }
 
 export function loadIndicatorSets(storage?: IndicatorSetStorageLike, options: IndicatorSetValidationOptions = {}): IndicatorSet[] {

@@ -19,6 +19,7 @@ export { default as PureComponent } from "./PureComponent";
 
 export * from "./barWidth";
 export * from "./strokeDasharray";
+export * from "./timezoneFormatter";
 
 const isProduction = (globalThis as any).process?.env?.NODE_ENV === "production";
 

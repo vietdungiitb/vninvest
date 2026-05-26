@@ -69,7 +69,8 @@ function getCursorStyle() {
 	.react-stockcharts-move-cursor { cursor: move; }
 	.react-stockcharts-pointer-cursor { cursor: pointer; }
 	.react-stockcharts-ns-resize-cursor { cursor: ns-resize; }
-	.react-stockcharts-ew-resize-cursor { cursor: ew-resize; }`;
+	.react-stockcharts-ew-resize-cursor { cursor: ew-resize; }
+	.react-stockcharts-multiselect-cursor { pointer-events: all; cursor: cell; }`;
 	return (<style type="text/css">{tooltipStyle}</style>);
 }
 
@@ -180,7 +181,20 @@ function calculateState(props: AnyRecord) {
 	const extent = typeof xExtentsProp === "function" ? xExtentsProp(data) : d3Extent(xExtentsProp.map((d: any) => functor(d)).map((each: any) => each(data, inputXAccesor)));
 	const { xAccessor, displayXAccessor, xScale, fullData, filterData } = calculateFullData(props);
 	const updatedXScale = setXRange(xScale, dimensions, padding, direction);
-	const { plotData, domain } = filterData(fullData, extent, inputXAccesor, updatedXScale);
+	let { plotData, domain } = filterData(fullData, extent, inputXAccesor, updatedXScale);
+
+	// Fallback: if xExtents mapped to an empty range (stale extent, future dates, or
+	// data not yet covering the requested window), show all available data so the
+	// canvas is never blank after a timeframe switch.
+	if (plotData.length === 0 && fullData.length > 0) {
+		const dataStart = inputXAccesor(fullData[0]);
+		const dataEnd = inputXAccesor(fullData[fullData.length - 1]);
+		const fallback = filterData(fullData, [dataStart, dataEnd], inputXAccesor, updatedXScale);
+		if (fallback.plotData.length > 0) {
+			plotData = fallback.plotData;
+			domain = fallback.domain;
+		}
+	}
 
 	return {
 		plotData,
@@ -204,18 +218,18 @@ function setXRange(xScale: any, dimensions: { width: number }, padding: any, dir
 
 
 class ChartCanvas extends Component<ChartCanvasProps, ChartCanvasState> {
-	eventCaptureNode: { setCursorClass: (className: string | null | undefined) => void } | undefined;
-	canvasContainerNode: { getCanvasContexts: () => any } | undefined;
-	subscriptions!: any[];
-	interactiveState!: any[];
-	panInProgress!: boolean;
-	lastSubscriptionId!: number;
-	mutableState!: AnyRecord;
-	fullData!: any[];
-	pendingChartRedraw!: boolean;
-	prevMouseXY: MouseXY | undefined;
-	waitingForMouseMoveAnimationFrame: boolean | undefined;
-	waitingForPanAnimationFrame: boolean | undefined;
+	declare eventCaptureNode: { setCursorClass: (className: string | null | undefined) => void } | undefined;
+	declare canvasContainerNode: { getCanvasContexts: () => any } | undefined;
+	declare subscriptions: any[];
+	declare interactiveState: any[];
+	declare panInProgress: boolean;
+	declare lastSubscriptionId: number;
+	declare mutableState: AnyRecord;
+	declare fullData: any[];
+	declare pendingChartRedraw: boolean;
+	declare prevMouseXY: MouseXY | undefined;
+	declare waitingForMouseMoveAnimationFrame: boolean | undefined;
+	declare waitingForPanAnimationFrame: boolean | undefined;
 	static defaultProps: Partial<ChartCanvasProps>;
 	constructor(props: ChartCanvasProps) {
 		super(props);
@@ -270,11 +284,128 @@ class ChartCanvas extends Component<ChartCanvasProps, ChartCanvasState> {
 	componentDidUpdate(prevProps: Readonly<AnyRecord>, prevState: Readonly<ChartCanvasState>) {
 		const reset = shouldResetChart(prevProps, this.props);
 		const sizeChanged = prevProps.width !== this.props.width || prevProps.height !== this.props.height;
-		if (reset || prevProps.data !== this.props.data || sizeChanged) {
+		// A spurious reset occurs when xExtents changes only because new bars were APPENDED
+		// (live tick) while seriesName is unchanged. In that case the old xScale domain is
+		// still valid (indices still exist in the new dataset) so we can preserve the zoom
+		// via updateChart instead of snapping back to xExtents.
+		// IMPORTANT: only treat as spurious when the dataset GREW (nextLength > prevLength).
+		// When bars are TRIMMED (nextLength < prevLength) we handle it via date-based domain
+		// remapping below. When xExtents changes explicitly (same data, different extents) we
+		// fall through to resetChart as usual.
+		const prevLength = (prevProps.data as unknown[]).length;
+		const nextLength = (this.props.data as unknown[]).length;
+		const isSpuriousReset = reset
+			&& prevProps.seriesName === this.props.seriesName
+			&& prevProps.data !== this.props.data
+			&& nextLength > prevLength;
+		if ((reset && !isSpuriousReset) || sizeChanged) {
+			// Check if this is a TRIM event (data shrunk, same seriesName). If so, remap
+			// the current viewport to the new dataset via date-based lookup instead of
+			// snapping to the new xExtents via resetChart.
+			if (
+				reset
+				&& !isSpuriousReset
+				&& !sizeChanged
+				&& prevProps.seriesName === this.props.seriesName
+				&& prevProps.data !== this.props.data
+				&& nextLength < prevLength
+			) {
+				// Data was trimmed — preserve the current viewport via date-based remapping.
+				const lastOldItem = last(this.fullData);
+				const lastItemWasVisible = lastOldItem != null
+					&& this.state.xScale.domain()[1] > this.state.xAccessor(lastOldItem);
+				const newCalc = calculateFullData(this.props);
+				const { fullData: newFullData, xAccessor: newXAccessor } = newCalc;
+				let xScaleForUpdate = this.state.xScale;
+				const [domStart, domEnd] = this.state.xScale.domain();
+				const oldData = this.fullData as any[];
+				if (oldData.length > 0 && (newFullData as any[]).length > 0) {
+					const oldStartIdx = Math.max(0, Math.min(oldData.length - 1, Math.round(domStart)));
+					const oldEndIdx = Math.max(0, Math.min(oldData.length - 1, Math.round(domEnd)));
+					const oldStartDate = oldData[oldStartIdx]?.date?.getTime?.();
+					const oldEndDate = oldData[oldEndIdx]?.date?.getTime?.();
+					if (oldStartDate && oldEndDate) {
+						const newData = newFullData as any[];
+						const newStartBar = newData.find((d: any) => d.date?.getTime?.() === oldStartDate);
+						const newEndBar = newData.find((d: any) => d.date?.getTime?.() === oldEndDate);
+						const newDomStart = newStartBar ? newXAccessor(newStartBar) : newXAccessor(newData[0]);
+						const newDomEnd = newEndBar ? newXAccessor(newEndBar) : newXAccessor(last(newData));
+						if (newDomStart !== domStart || newDomEnd !== domEnd) {
+							xScaleForUpdate = this.state.xScale.copy().domain([newDomStart, newDomEnd]);
+						}
+					}
+				}
+				const { fullData, ...newState } = updateChart(
+					newCalc,
+					xScaleForUpdate,
+					this.props,
+					lastItemWasVisible,
+					this.state.chartConfig,
+				);
+				this.fullData = fullData;
+				this.pendingChartRedraw = true;
+				this.setState(newState);
+				return;
+			}
+			// xExtents/seriesName changed or window resized → full reset to new xExtents
 			const { fullData, ...state } = resetChart(this.props);
 			this.fullData = fullData;
 			this.pendingChartRedraw = true;
 			this.setState(state);
+			return;
+		}
+		if (isSpuriousReset || prevProps.data !== this.props.data) {
+			// Data-only update (e.g. live tick or bar append) — preserve current viewport
+			// instead of snapping back to xExtents. updateChart keeps the current xScale domain.
+			const lastOldItem = last(this.fullData);
+			const firstOldItem = head(this.fullData as any[]);
+			// Auto-scroll only when the domain extends PAST the last known bar
+			// (user has panned right beyond available data). If domain end equals
+			// the last bar's time (e.g. xExtents pinned to that bar), preserve
+			// the viewport so new bars outside the window don't trigger a shift.
+			const lastItemWasVisible = lastOldItem != null
+				&& this.state.xScale.domain()[1] > this.state.xAccessor(lastOldItem);
+
+			const newCalc = calculateFullData(this.props);
+			const { fullData: newFullData, xAccessor: newXAccessor } = newCalc;
+
+			// Detect data PREPEND: when historical bars are loaded before the current
+			// view, all discontinuous-scale indices shift upward. Offset the current
+			// domain by the same amount so the zoomed window stays on the same dates.
+			let xScaleForUpdate = this.state.xScale;
+			const firstNewItem = head(newFullData as any[]);
+			if (firstOldItem && firstNewItem) {
+				const oldFirstDate = (firstOldItem as any).date?.getTime?.();
+				const newFirstDate = (firstNewItem as any).date?.getTime?.();
+				if (oldFirstDate && newFirstDate && oldFirstDate !== newFirstDate) {
+					// First bar changed — data was prepended. Find the old first bar
+					// in the new dataset and compute the index offset.
+					const oldFirstInNew = (newFullData as any[]).find(
+						(d: any) => d.date?.getTime?.() === oldFirstDate,
+					);
+					if (oldFirstInNew) {
+						const indexOffset = newXAccessor(oldFirstInNew) - this.state.xAccessor(firstOldItem);
+						if (indexOffset !== 0) {
+							const [domStart, domEnd] = this.state.xScale.domain();
+							xScaleForUpdate = this.state.xScale.copy().domain([
+								domStart + indexOffset,
+								domEnd + indexOffset,
+							]);
+						}
+					}
+				}
+			}
+
+			const { fullData, ...newState } = updateChart(
+				newCalc,
+				xScaleForUpdate,
+				this.props,
+				lastItemWasVisible,
+				this.state.chartConfig,
+			);
+			this.fullData = fullData;
+			this.pendingChartRedraw = true;
+			this.setState(newState);
 			return;
 		}
 
@@ -422,12 +553,60 @@ class ChartCanvas extends Component<ChartCanvasProps, ChartCanvasState> {
 	handleZoom(zoomDirection: number, mouseXY: MouseXY, e: unknown) {
 		if (this.panInProgress) return;
 		const { xAccessor, xScale: initialXScale, plotData: initialPlotData } = this.state;
-		const { zoomMultiplier, zoomAnchor, fullData } = this.props;
+		const { zoomMultiplier, zoomAnchor } = this.props;
+
+		// Guard 1: no data loaded yet — bail to prevent NaN yScale state
+		if (!this.fullData || this.fullData.length === 0) return;
+
+		// Recovery: chart is in blank state (empty plotData after timeframe switch or stale state).
+		// Reset to full data domain so the next scroll zooms from a valid baseline.
+		if (!initialPlotData || initialPlotData.length === 0) {
+			const dataStart = xAccessor(this.fullData[0]);
+			const dataEnd = xAccessor(this.fullData[this.fullData.length - 1]);
+			const recovered = this.calculateStateForDomain([dataStart, dataEnd]);
+			if (recovered.plotData.length > 0) {
+				this.pendingChartRedraw = true;
+				this.setState({ xScale: recovered.xScale, plotData: recovered.plotData, chartConfig: recovered.chartConfig });
+			}
+			return;
+		}
+
 		const item = zoomAnchor({ xScale: initialXScale, xAccessor, mouseXY, plotData: initialPlotData, fullData: this.fullData });
 		const cx = initialXScale(item);
+
+		// Guard 2: invalid anchor pixel (degenerate xScale domain)
+		if (!Number.isFinite(cx)) return;
+
 		const c = zoomDirection > 0 ? 1 * zoomMultiplier : 1 / zoomMultiplier;
 		const newDomain = initialXScale.range().map((x: number) => cx + (x - cx) * c).map(initialXScale.invert);
-		const { xScale, plotData, chartConfig } = this.calculateStateForDomain(newDomain);
+
+		// Guard 3: NaN or Infinity in computed domain.
+		// scaleTime().invert() returns Date objects; discontinuous scale returns numbers.
+		const isValidDomainValue = (v: unknown) =>
+			v instanceof Date ? Number.isFinite(v.getTime()) : Number.isFinite(v as number);
+		if (!isValidDomainValue(newDomain[0]) || !isValidDomainValue(newDomain[1])) return;
+
+		let { xScale, plotData, chartConfig } = this.calculateStateForDomain(newDomain);
+
+		// Guard 4: evaluator returned empty plotData (e.g. domain completely outside data range
+		// AND evaluator fell back to an empty currentPlotData). Recover to full data domain.
+		if (plotData.length === 0) {
+			const dataStart = xAccessor(this.fullData[0]);
+			const dataEnd = xAccessor(this.fullData[this.fullData.length - 1]);
+			const recovered = this.calculateStateForDomain([dataStart, dataEnd]);
+			if (recovered.plotData.length > 0) {
+				this.pendingChartRedraw = true;
+				this.setState({ xScale: recovered.xScale, plotData: recovered.plotData, chartConfig: recovered.chartConfig });
+			}
+			return;
+		}
+
+		// Guard 5: enforce minimum visible bars when zooming in (zoomDirection < 0 = scroll up)
+		const MIN_VISIBLE_BARS = 6;
+		if (zoomDirection < 0 && plotData.length < MIN_VISIBLE_BARS) {
+			return;
+		}
+
 		this.pendingChartRedraw = true;
 		this.setState({ xScale, plotData, chartConfig });
 	}
@@ -523,8 +702,15 @@ class ChartCanvas extends Component<ChartCanvasProps, ChartCanvasState> {
 	}
 
 	handleClick(mousePosition: MouseXY, e: unknown) {
-		this.triggerEvent("click", this.mutableState, e);
-		this.props.onClick?.(this.mutableState, e);
+		// DT-22: Recompute currentItem/currentCharts from the actual click position instead of
+		// reusing mutableState from the last mousemove event, which may lag by 1+ bars when the
+		// user moves the mouse quickly before clicking.
+		const { chartConfig, plotData, xScale, xAccessor } = this.state;
+		const currentCharts = getCurrentCharts(chartConfig, mousePosition);
+		const currentItem = getCurrentItem(xScale, xAccessor, mousePosition, plotData);
+		const clickState = { ...this.mutableState, mouseXY: mousePosition, currentItem, currentCharts };
+		this.triggerEvent("click", clickState, e);
+		this.props.onClick?.(clickState, e);
 		requestAnimationFrame(() => { this.clearMouseCanvas(); this.draw({ trigger: "click" }); });
 	}
 	handleDoubleClick(mousePosition: MouseXY, e: unknown) { this.triggerEvent("dblclick", {}, e); }
@@ -687,13 +873,13 @@ ChartCanvas.defaultProps = {
 	mouseMoveEvent: true,
 	panEvent: true,
 	zoomEvent: true,
-	zoomMultiplier: 1.6,
+	zoomMultiplier: 1.2,
 	clamp: false,
 	zoomAnchor: mouseBasedZoomAnchor,
 	maintainPointsPerPixelOnResize: true,
 	disableInteraction: false,
 	pointsPerPxThreshold: 2,
-	minPointsPerPxThreshold: 0.02,
+	minPointsPerPxThreshold: 0,
 };
 
 export default ChartCanvas;

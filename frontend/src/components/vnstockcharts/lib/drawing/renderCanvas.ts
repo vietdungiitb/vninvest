@@ -2,8 +2,9 @@ import { chartPointToPixel, type ChartScales, type PlotDatum } from "./coordinat
 import {
 	renderOverlayPrimitiveToCanvas,
 	type OverlayCanvasPrimitive,
-} from "./engineCompat";
+} from "@vnstockcharts/vn-kline-engine-core";
 import { resolveDrawingStyle } from "./drawingStyleRegistry";
+import { SEGMENT_KEYS_BY_TYPE, resolveSegmentStyle, isSegmentVisible } from "./segmentRegistry";
 import type { DrawingObject, DrawingStyle } from "./types";
 import { calculateParallelChannelGeometry } from "./builtin/parallelChannel";
 import { calculatePitchforkGeometry } from "./builtin/pitchfork";
@@ -12,16 +13,19 @@ import { calculateFibArcGeometry } from "./builtin/fibArc";
 import { calculateFibTimeZoneGeometry } from "./builtin/fibTimeZone";
 import { calculateRegressionChannelMetrics } from "./builtin/regressionChannel";
 import { calculateGannFanGeometry } from "./builtin/gannFan";
-import { calculateElliottWaveGeometry } from "./builtin/elliottWaves";
+import { calculateElliottWaveGeometry, ELLIOTT_LABELS } from "./builtin/elliottWaves";
 import { calculateHarmonicPatternGeometry } from "./builtin/harmonicPatterns";
+import { PATTERN_POINT_LABELS } from "./builtin/harmonicPatterns";
 import { calculateFibExtendedGeometry, FIB_EXTENDED_LEVELS, FIB_FAN_RATIOS } from "./builtin/fibExtended";
 import { calculateGannAdvancedGeometry, GANN_FRACTIONS } from "./builtin/gannAdvanced";
+import { computeHarmonicRatioLabels, formatHarmonicRatioLabel } from "./harmonicRatioValidation";
 import { calculateCycleGeometry } from "./builtin/cycles";
 
 export interface RenderCanvasOptions {
 	chartWidth: number;
 	chartHeight: number;
 	isSelected: boolean;
+	focusedPointIndex?: number | null;
 	plotData?: PlotDatum[];
 }
 
@@ -96,6 +100,74 @@ function drawSelectionHandles(
 		ctx.stroke();
 	});
 	ctx.restore();
+}
+
+function drawSemanticPointAffordance(
+	ctx: CanvasRenderingContext2D,
+	label: string,
+	position: { x: number; y: number },
+	style: DrawingStyle,
+	isSelected: boolean,
+	isFocused: boolean,
+) {
+	const fontSize = Math.max(10, Math.min(12, style.fontSize ?? 11));
+	ctx.save();
+	ctx.globalAlpha = 1;
+	ctx.font = `700 ${fontSize}px ${style.fontFamily ?? "sans-serif"}`;
+	const textWidth = ctx.measureText(label).width;
+	const badgeWidth = Math.max(20, textWidth + 10);
+	const badgeHeight = fontSize + 6;
+	const badgeX = position.x + 10;
+	const badgeY = position.y - badgeHeight - 10;
+	const ringRadius = isFocused ? 10 : isSelected ? 8 : 6;
+	ctx.fillStyle = isFocused ? "rgba(15, 23, 42, 0.98)" : isSelected ? "rgba(15, 23, 42, 0.94)" : "rgba(15, 23, 42, 0.88)";
+	ctx.strokeStyle = style.stroke;
+	ctx.lineWidth = isFocused ? 1.5 : 1;
+	ctx.beginPath();
+	ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 999);
+	ctx.fill();
+	ctx.stroke();
+	ctx.fillStyle = "#f8fafc";
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	ctx.fillText(label, badgeX + (badgeWidth / 2), badgeY + (badgeHeight / 2) + 0.5);
+	ctx.beginPath();
+	ctx.arc(position.x, position.y, ringRadius, 0, Math.PI * 2);
+	ctx.fillStyle = style.stroke;
+	ctx.globalAlpha = isFocused ? 0.38 : isSelected ? 0.28 : 0.18;
+	ctx.fill();
+	ctx.globalAlpha = 1;
+	ctx.strokeStyle = "#ffffff";
+	ctx.lineWidth = isFocused ? 2.5 : isSelected ? 2 : 1.5;
+	ctx.stroke();
+	ctx.restore();
+}
+
+export function resolveSemanticPointLabels(drawing: DrawingObject): readonly string[] | null {
+	switch (drawing.type) {
+		case "elliottImpulse":
+			return drawing.waveLabels ?? ELLIOTT_LABELS.elliottImpulse;
+		case "elliottCorrection":
+			return drawing.waveLabels ?? ELLIOTT_LABELS.elliottCorrection;
+		case "elliottTriangle":
+			return drawing.waveLabels ?? ELLIOTT_LABELS.elliottTriangle;
+		case "elliottDoubleCombo":
+			return drawing.waveLabels ?? ELLIOTT_LABELS.elliottDoubleCombo;
+		case "elliottTripleCombo":
+			return drawing.waveLabels ?? ELLIOTT_LABELS.elliottTripleCombo;
+		case "xabcdPattern":
+			return PATTERN_POINT_LABELS.xabcdPattern;
+		case "cypherPattern":
+			return PATTERN_POINT_LABELS.cypherPattern;
+		case "headAndShoulders":
+			return PATTERN_POINT_LABELS.headAndShoulders;
+		case "trianglePattern":
+			return PATTERN_POINT_LABELS.trianglePattern;
+		case "threeDrivesPattern":
+			return PATTERN_POINT_LABELS.threeDrivesPattern;
+		default:
+			return null;
+	}
 }
 
 export function clipSegmentToBox(
@@ -266,6 +338,32 @@ function drawPolygonFill(
 	ctx.restore();
 }
 
+/** GAP-16: Renders a small filled price tag on the right Y-axis edge */
+function drawYAxisPriceTag(ctx: CanvasRenderingContext2D, price: number, y: number, chartWidth: number, color: string) {
+	const label = numberFormatter(price);
+	const fontSize = 11;
+	ctx.save();
+	ctx.font = `700 ${fontSize}px sans-serif`;
+	const textWidth = ctx.measureText(label).width;
+	const padX = 5;
+	const padY = 3;
+	const tagW = textWidth + padX * 2;
+	const tagH = fontSize + padY * 2;
+	const tagX = chartWidth - tagW - 1;
+	const tagY = y - tagH / 2;
+	ctx.fillStyle = color;
+	ctx.globalAlpha = 0.9;
+	ctx.beginPath();
+	ctx.roundRect(tagX, tagY, tagW, tagH, 3);
+	ctx.fill();
+	ctx.globalAlpha = 1;
+	ctx.fillStyle = "#ffffff";
+	ctx.textAlign = "left";
+	ctx.textBaseline = "top";
+	ctx.fillText(label, tagX + padX, tagY + padY);
+	ctx.restore();
+}
+
 function drawTrendLine(drawing: DrawingObject, scales: ChartScales, ctx: CanvasRenderingContext2D, isSelected: boolean) {
 	const [startPoint, endPoint] = drawing.points;
 	if (!startPoint || !endPoint) {
@@ -275,6 +373,22 @@ function drawTrendLine(drawing: DrawingObject, scales: ChartScales, ctx: CanvasR
 	const start = toPixel(startPoint, scales);
 	const end = toPixel(endPoint, scales);
 	drawLine(ctx, start, end, drawing.style);
+
+	// GAP-15: persistent measurement overlay
+	if (drawing.showMeasurement) {
+		const percent = startPoint.y === 0 ? 0 : ((endPoint.y - startPoint.y) / Math.abs(startPoint.y)) * 100;
+		const priceDiff = endPoint.y - startPoint.y;
+		const bars = Math.max(1, Math.round(Math.abs(end.x - start.x) / 6));
+		const badge = `Δ ${priceDiff >= 0 ? "+" : ""}${priceDiff.toFixed(2)} (${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%) · ${bars} bars`;
+		const midX = (start.x + end.x) / 2;
+		const midY = (start.y + end.y) / 2;
+		drawTextLabel(ctx, badge, { x: midX, y: midY - 10 }, drawing.style, {
+			align: "center",
+			weight: 700,
+			fontSize: drawing.style.fontSize ?? 11,
+		});
+	}
+
 	if (isSelected) {
 		drawSelectionHandles(ctx, [start, end], drawing.style.stroke);
 	}
@@ -290,6 +404,10 @@ function drawHLine(drawing: DrawingObject, scales: ChartScales, chartWidth: numb
 	const left = { x: 0, y };
 	const right = { x: chartWidth, y };
 	drawLine(ctx, left, right, drawing.style);
+
+	// GAP-16: Y-axis price tag for hLine (always extends full width)
+	drawYAxisPriceTag(ctx, point.y, y, chartWidth, drawing.style.stroke);
+
 	if (isSelected) {
 		drawSelectionHandles(ctx, [left, right], drawing.style.stroke);
 	}
@@ -376,8 +494,26 @@ function drawChannel(drawing: DrawingObject, scales: ChartScales, ctx: CanvasRen
 		})();
 	const offsetStart = { x: start.x + offsetVector.x, y: start.y + offsetVector.y };
 	const offsetEnd = { x: end.x + offsetVector.x, y: end.y + offsetVector.y };
-	drawLine(ctx, start, end, drawing.style);
-	drawLine(ctx, offsetStart, offsetEnd, drawing.style);
+	if (isSegmentVisible(drawing, "primary")) {
+		drawLine(ctx, start, end, resolveSegmentStyle(drawing, "primary"));
+	}
+	if (isSegmentVisible(drawing, "secondary")) {
+		drawLine(ctx, offsetStart, offsetEnd, resolveSegmentStyle(drawing, "secondary"));
+	}
+
+	// GAP-15: persistent measurement overlay for channel
+	if (drawing.showMeasurement && startPoint && endPoint) {
+		const percent = startPoint.y === 0 ? 0 : ((endPoint.y - startPoint.y) / Math.abs(startPoint.y)) * 100;
+		const priceDiff = endPoint.y - startPoint.y;
+		const bars = Math.max(1, Math.round(Math.abs(end.x - start.x) / 6));
+		const badge = `Δ ${priceDiff >= 0 ? "+" : ""}${priceDiff.toFixed(2)} (${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%) · ${bars} bars`;
+		drawTextLabel(ctx, badge, { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 10 }, drawing.style, {
+			align: "center",
+			weight: 700,
+			fontSize: drawing.style.fontSize ?? 11,
+		});
+	}
+
 	if (isSelected) {
 		drawSelectionHandles(ctx, [start, end, offsetAnchor], drawing.style.stroke);
 	}
@@ -403,14 +539,14 @@ function drawParallelChannel(drawing: DrawingObject, scales: ChartScales, chartW
 		chartHeight,
 	);
 
-	if (upper) {
-		drawLine(ctx, upper[0], upper[1], drawing.style);
+	if (upper && isSegmentVisible(drawing, "upper")) {
+		drawLine(ctx, upper[0], upper[1], resolveSegmentStyle(drawing, "upper"));
 	}
-	if (middle) {
-		drawLine(ctx, middle[0], middle[1], drawing.style);
+	if (middle && isSegmentVisible(drawing, "middle")) {
+		drawLine(ctx, middle[0], middle[1], resolveSegmentStyle(drawing, "middle"));
 	}
-	if (lower) {
-		drawLine(ctx, lower[0], lower[1], drawing.style);
+	if (lower && isSegmentVisible(drawing, "lower")) {
+		drawLine(ctx, lower[0], lower[1], resolveSegmentStyle(drawing, "lower"));
 	}
 
 	if (isSelected) {
@@ -431,9 +567,15 @@ function drawPitchfork(drawing: DrawingObject, scales: ChartScales, chartWidth: 
 		return;
 	}
 
-	drawLine(ctx, median[0], median[1], drawing.style);
-	drawLine(ctx, leftFork[0], leftFork[1], drawing.style);
-	drawLine(ctx, rightFork[0], rightFork[1], drawing.style);
+	if (isSegmentVisible(drawing, "median")) {
+		drawLine(ctx, median[0], median[1], resolveSegmentStyle(drawing, "median"));
+	}
+	if (isSegmentVisible(drawing, "leftFork")) {
+		drawLine(ctx, leftFork[0], leftFork[1], resolveSegmentStyle(drawing, "leftFork"));
+	}
+	if (isSegmentVisible(drawing, "rightFork")) {
+		drawLine(ctx, rightFork[0], rightFork[1], resolveSegmentStyle(drawing, "rightFork"));
+	}
 	drawTextLabel(ctx, "A", { x: geometry.pivot.x + 6, y: geometry.pivot.y - 6 }, drawing.style, { weight: 700, fontSize: drawing.style.fontSize ?? 11 });
 	drawTextLabel(ctx, "B", { x: geometry.leftSwing.x + 6, y: geometry.leftSwing.y - 6 }, drawing.style, { weight: 700, fontSize: drawing.style.fontSize ?? 11 });
 	drawTextLabel(ctx, "C", { x: geometry.rightSwing.x + 6, y: geometry.rightSwing.y - 6 }, drawing.style, { weight: 700, fontSize: drawing.style.fontSize ?? 11 });
@@ -450,30 +592,38 @@ function drawAbcdPattern(drawing: DrawingObject, scales: ChartScales, ctx: Canva
 	}
 
 	const [a, b, c, d] = metrics.points;
-	drawLine(ctx, a, b, drawing.style);
-	drawLine(ctx, b, c, drawing.style);
-	drawLine(ctx, c, d, drawing.style);
+	const abcdSegKeys = SEGMENT_KEYS_BY_TYPE[drawing.type] ?? [];
+	const abcdPts = [a, b, c, d];
+	for (let i = 0; i < abcdSegKeys.length && i + 1 < abcdPts.length; i++) {
+		const key = abcdSegKeys[i]!;
+		if (!isSegmentVisible(drawing, key)) continue;
+		drawLine(ctx, abcdPts[i]!, abcdPts[i + 1]!, resolveSegmentStyle(drawing, key));
+	}
 
 	const badgeStyle = { weight: 700, fontSize: drawing.style.fontSize ?? 11 };
-	drawTextLabel(ctx, "A", { x: a.x + 6, y: a.y - 6 }, drawing.style, badgeStyle);
-	drawTextLabel(ctx, "B", { x: b.x + 6, y: b.y - 6 }, drawing.style, badgeStyle);
-	drawTextLabel(ctx, "C", { x: c.x + 6, y: c.y - 6 }, drawing.style, badgeStyle);
-	drawTextLabel(ctx, "D", { x: d.x + 6, y: d.y - 6 }, drawing.style, badgeStyle);
+	const labels = drawing.waveLabels ?? ["A", "B", "C", "D"];
+	drawTextLabel(ctx, labels[0] || "A", { x: a.x + 6, y: a.y - 6 }, drawing.style, badgeStyle);
+	drawTextLabel(ctx, labels[1] || "B", { x: b.x + 6, y: b.y - 6 }, drawing.style, badgeStyle);
+	drawTextLabel(ctx, labels[2] || "C", { x: c.x + 6, y: c.y - 6 }, drawing.style, badgeStyle);
+	drawTextLabel(ctx, labels[3] || "D", { x: d.x + 6, y: d.y - 6 }, drawing.style, badgeStyle);
 
-	const ratioAB = metrics.bcToAb == null ? "BC/AB n/a" : `BC/AB ${metrics.bcToAb.toFixed(2)}`;
-	const ratioBC = metrics.cdToBc == null ? "CD/BC n/a" : `CD/BC ${metrics.cdToBc.toFixed(2)}`;
-	drawTextLabel(ctx, ratioAB, { x: metrics.segmentMidpoints[1].x, y: metrics.segmentMidpoints[1].y - 10 }, drawing.style, {
-		align: "center",
-		baseline: "alphabetic",
-		weight: 700,
-		fontSize: drawing.style.fontSize ?? 11,
-	});
-	drawTextLabel(ctx, ratioBC, { x: metrics.segmentMidpoints[2].x, y: metrics.segmentMidpoints[2].y - 10 }, drawing.style, {
-		align: "center",
-		baseline: "alphabetic",
-		weight: 700,
-		fontSize: drawing.style.fontSize ?? 11,
-	});
+	const ratioLabelStyle = { align: "center" as const, baseline: "alphabetic" as const, weight: 700, fontSize: drawing.style.fontSize ?? 11 };
+
+	// GAP-11: colored ratio validation labels when targetRatios is configured
+	const harmonicLabels = computeHarmonicRatioLabels(drawing);
+	if (harmonicLabels.length >= 2) {
+		// Ratio 0 = BC/AB, displayed at segment midpoint 1 (B→C)
+		// Ratio 1 = CD/BC, displayed at segment midpoint 2 (C→D)
+		const posBC = metrics.segmentMidpoints[1];
+		const posCD = metrics.segmentMidpoints[2];
+		drawTextLabel(ctx, formatHarmonicRatioLabel(harmonicLabels[0]!), { x: posBC.x, y: posBC.y - 10 }, { ...drawing.style, stroke: harmonicLabels[0]!.color }, ratioLabelStyle);
+		drawTextLabel(ctx, formatHarmonicRatioLabel(harmonicLabels[1]!), { x: posCD.x, y: posCD.y - 10 }, { ...drawing.style, stroke: harmonicLabels[1]!.color }, ratioLabelStyle);
+	} else {
+		const ratioAB = metrics.bcToAb == null ? "BC/AB n/a" : `BC/AB ${metrics.bcToAb.toFixed(2)}`;
+		const ratioBC = metrics.cdToBc == null ? "CD/BC n/a" : `CD/BC ${metrics.cdToBc.toFixed(2)}`;
+		drawTextLabel(ctx, ratioAB, { x: metrics.segmentMidpoints[1].x, y: metrics.segmentMidpoints[1].y - 10 }, drawing.style, ratioLabelStyle);
+		drawTextLabel(ctx, ratioBC, { x: metrics.segmentMidpoints[2].x, y: metrics.segmentMidpoints[2].y - 10 }, drawing.style, ratioLabelStyle);
+	}
 
 	if (isSelected) {
 		drawSelectionHandles(ctx, metrics.points, drawing.style.stroke);
@@ -542,10 +692,27 @@ function drawRegressionChannel(drawing: DrawingObject, scales: ChartScales, opti
 		{ x: metrics.startX, y: metrics.lowerStartY },
 	], fill, fillAlpha);
 
-	const dashedStyle: DrawingStyle = { ...drawing.style, strokeDasharray: "dashed" };
-	drawLine(ctx, { x: metrics.startX, y: metrics.upperStartY }, { x: metrics.endX, y: metrics.upperEndY }, dashedStyle);
-	drawLine(ctx, { x: metrics.startX, y: metrics.lowerStartY }, { x: metrics.endX, y: metrics.lowerEndY }, dashedStyle);
-	drawLine(ctx, { x: metrics.startX, y: metrics.startY }, { x: metrics.endX, y: metrics.endY }, drawing.style);
+	if (isSegmentVisible(drawing, "upper")) {
+		drawLine(ctx,
+			{ x: metrics.startX, y: metrics.upperStartY },
+			{ x: metrics.endX, y: metrics.upperEndY },
+			{ ...resolveSegmentStyle(drawing, "upper"), strokeDasharray: "dashed" },
+		);
+	}
+	if (isSegmentVisible(drawing, "lower")) {
+		drawLine(ctx,
+			{ x: metrics.startX, y: metrics.lowerStartY },
+			{ x: metrics.endX, y: metrics.lowerEndY },
+			{ ...resolveSegmentStyle(drawing, "lower"), strokeDasharray: "dashed" },
+		);
+	}
+	if (isSegmentVisible(drawing, "center")) {
+		drawLine(ctx,
+			{ x: metrics.startX, y: metrics.startY },
+			{ x: metrics.endX, y: metrics.endY },
+			resolveSegmentStyle(drawing, "center"),
+		);
+	}
 
 	drawTextLabel(ctx, `R² ${metrics.rSquared.toFixed(2)}`, { x: metrics.endX - 4, y: Math.min(metrics.upperEndY, metrics.lowerEndY, metrics.endY) - 6 }, drawing.style, {
 		align: "right",
@@ -600,6 +767,13 @@ function drawRay(drawing: DrawingObject, scales: ChartScales, chartWidth: number
 	}
 
 	drawLine(ctx, clipped[0], clipped[1], drawing.style);
+
+	// GAP-16: Y-axis price tag at right edge when extendRight
+	if (drawing.extendRight !== false) {
+		const price = endPoint.y + ((clipped[1].x - end.x) / (end.x - start.x || 1)) * (endPoint.y - startPoint.y);
+		drawYAxisPriceTag(ctx, price, clipped[1].y, chartWidth, drawing.style.stroke);
+	}
+
 	if (isSelected) {
 		drawSelectionHandles(ctx, [clipped[0], clipped[1]], drawing.style.stroke);
 	}
@@ -626,6 +800,16 @@ function drawExtendedLine(drawing: DrawingObject, scales: ChartScales, chartWidt
 	}
 
 	drawLine(ctx, clipped[0], clipped[1], drawing.style);
+
+	// GAP-16: Y-axis price tag at right edge
+	if (drawing.extendRight !== false && clipped[1].x >= chartWidth - 2) {
+		// Interpolate price at clipped right edge
+		const t = vector.x === 0 ? 0 : (clipped[1].x - start.x) / vector.x;
+		const yAtRight = start.y + t * vector.y;
+		const priceAtRight = startPoint.y + t * (endPoint.y - startPoint.y);
+		drawYAxisPriceTag(ctx, priceAtRight, yAtRight, chartWidth, drawing.style.stroke);
+	}
+
 	if (isSelected) {
 		drawSelectionHandles(ctx, [clipped[0], clipped[1]], drawing.style.stroke);
 	}
@@ -826,13 +1010,17 @@ function drawGannFan(
 	const end = toPixel(endPoint, scales);
 	const geometry = calculateGannFanGeometry(origin.x, origin.y, end.x, end.y, chartWidth, chartHeight);
 
-	for (const line of geometry.lines) {
+	const gannSegKeys = SEGMENT_KEYS_BY_TYPE[drawing.type] ?? [];
+	geometry.lines.forEach((line, lineIdx) => {
+		const segKey = gannSegKeys[lineIdx];
+		const segStyle = segKey ? resolveSegmentStyle(drawing, segKey) : drawing.style;
+		if (segKey && !isSegmentVisible(drawing, segKey)) return;
 		ctx.save();
-		ctx.strokeStyle = drawing.style.stroke;
-		ctx.lineWidth = line.isPrincipal ? (drawing.style.strokeWidth + 1) : drawing.style.strokeWidth;
+		ctx.strokeStyle = segStyle.stroke;
+		ctx.lineWidth = line.isPrincipal ? (segStyle.strokeWidth + 1) : segStyle.strokeWidth;
 		ctx.lineCap = "round";
 		ctx.setLineDash([]);
-		ctx.globalAlpha = drawing.style.opacity ?? 1;
+		ctx.globalAlpha = segStyle.opacity ?? 1;
 		ctx.beginPath();
 		ctx.moveTo(line.x1, line.y1);
 		ctx.lineTo(line.x2, line.y2);
@@ -842,13 +1030,13 @@ function drawGannFan(
 		// Label at end of line (clamped within chart)
 		const labelX = Math.max(4, Math.min(chartWidth - 30, line.x2 + 4));
 		const labelY = Math.max(12, Math.min(chartHeight - 4, line.y2 - 4));
-		drawTextLabel(ctx, line.label, { x: labelX, y: labelY }, drawing.style, {
+		drawTextLabel(ctx, line.label, { x: labelX, y: labelY }, segStyle, {
 			align: "left",
 			baseline: "alphabetic",
 			weight: line.isPrincipal ? 700 : 400,
-			fontSize: drawing.style.fontSize ?? 10,
+			fontSize: segStyle.fontSize ?? 10,
 		});
-	}
+	});
 
 	if (isSelected) {
 		drawSelectionHandles(ctx, [origin, end], drawing.style.stroke);
@@ -860,31 +1048,29 @@ function drawElliottWave(
 	scales: ChartScales,
 	ctx: CanvasRenderingContext2D,
 	isSelected: boolean,
+	focusedPointIndex: number | null | undefined,
 ): void {
 	const geometry = calculateElliottWaveGeometry(drawing, scales);
 	if (!geometry || geometry.pixels.length < 2) {
 		return;
 	}
 	const { pixels, labels } = geometry;
-	drawPolyline(ctx, pixels, drawing.style);
-	const radius = 9;
+	const elliottSegKeys = SEGMENT_KEYS_BY_TYPE[drawing.type] ?? [];
+	if (elliottSegKeys.length > 0) {
+		for (let i = 0; i < elliottSegKeys.length && i + 1 < pixels.length; i++) {
+			const key = elliottSegKeys[i]!;
+			if (!isSegmentVisible(drawing, key)) continue;
+			drawLine(ctx, pixels[i]!, pixels[i + 1]!, resolveSegmentStyle(drawing, key));
+		}
+	} else {
+		drawPolyline(ctx, pixels, drawing.style);
+	}
 	pixels.forEach((pixel, index) => {
 		const label = labels[index] ?? "";
 		if (!label) {
 			return;
 		}
-		ctx.save();
-		ctx.globalAlpha = drawing.style.opacity ?? 1;
-		ctx.beginPath();
-		ctx.arc(pixel.x, pixel.y, radius, 0, Math.PI * 2);
-		ctx.fillStyle = drawing.style.stroke;
-		ctx.fill();
-		ctx.font = `bold ${String(drawing.style.fontSize ?? 9)}px ${drawing.style.fontFamily ?? "sans-serif"}`;
-		ctx.fillStyle = "#ffffff";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText(label, pixel.x, pixel.y);
-		ctx.restore();
+		drawSemanticPointAffordance(ctx, label, pixel, drawing.style, isSelected, focusedPointIndex === index);
 	});
 	if (isSelected) {
 		drawSelectionHandles(ctx, pixels, drawing.style.stroke);
@@ -896,6 +1082,7 @@ function drawHarmonicPattern(
 	scales: ChartScales,
 	ctx: CanvasRenderingContext2D,
 	isSelected: boolean,
+	focusedPointIndex: number | null | undefined,
 ): void {
 	const geometry = calculateHarmonicPatternGeometry(drawing, scales);
 	if (!geometry || geometry.pixels.length < 2) {
@@ -921,25 +1108,41 @@ function drawHarmonicPattern(
 		ctx.restore();
 	}
 
-	// Zigzag polyline (body)
-	drawPolyline(ctx, pixels, drawing.style);
+	// Zigzag polyline (body) — per-segment styles when registered
+	const segKeys = SEGMENT_KEYS_BY_TYPE[drawing.type] ?? [];
+	if (segKeys.length > 0) {
+		// Sequential keys: all keys except last when a closing line exists
+		const seqKeys = hasClosingLine ? segKeys.slice(0, segKeys.length - 1) : segKeys;
+		for (let i = 0; i < seqKeys.length && i + 1 < pixels.length; i++) {
+			const key = seqKeys[i]!;
+			if (!isSegmentVisible(drawing, key)) continue;
+			const segStyle = resolveSegmentStyle(drawing, key);
+			drawLine(ctx, pixels[i]!, pixels[i + 1]!, segStyle);
+		}
+	} else {
+		drawPolyline(ctx, pixels, drawing.style);
+	}
 
 	// Closing line (dashed) from first → last point
 	if (hasClosingLine && pixels.length >= 2) {
 		const first = pixels[0];
 		const last = pixels[pixels.length - 1];
 		if (first && last) {
-			ctx.save();
-			ctx.globalAlpha = drawing.style.opacity ?? 1;
-			ctx.strokeStyle = drawing.style.stroke;
-			ctx.lineWidth = drawing.style.strokeWidth;
-			ctx.setLineDash([5, 3]);
-			ctx.beginPath();
-			ctx.moveTo(first.x, first.y);
-			ctx.lineTo(last.x, last.y);
-			ctx.stroke();
-			ctx.setLineDash([]);
-			ctx.restore();
+			const closingKey = segKeys.length > 0 ? segKeys[segKeys.length - 1]! : undefined;
+			const closingStyle = closingKey ? resolveSegmentStyle(drawing, closingKey) : drawing.style;
+			if (!closingKey || isSegmentVisible(drawing, closingKey)) {
+				ctx.save();
+				ctx.globalAlpha = closingStyle.opacity ?? 1;
+				ctx.strokeStyle = closingStyle.stroke;
+				ctx.lineWidth = closingStyle.strokeWidth;
+				ctx.setLineDash([5, 3]);
+				ctx.beginPath();
+				ctx.moveTo(first.x, first.y);
+				ctx.lineTo(last.x, last.y);
+				ctx.stroke();
+				ctx.setLineDash([]);
+				ctx.restore();
+			}
 		}
 	}
 
@@ -966,25 +1169,27 @@ function drawHarmonicPattern(
 	}
 
 	// Point labels
-	const radius = 7;
 	pixels.forEach((pixel, index) => {
 		const label = labels[index] ?? "";
 		if (!label) {
 			return;
 		}
-		ctx.save();
-		ctx.globalAlpha = drawing.style.opacity ?? 1;
-		ctx.beginPath();
-		ctx.arc(pixel.x, pixel.y, radius, 0, Math.PI * 2);
-		ctx.fillStyle = drawing.style.stroke;
-		ctx.fill();
-		ctx.font = `bold ${String(drawing.style.fontSize ?? 8)}px ${drawing.style.fontFamily ?? "sans-serif"}`;
-		ctx.fillStyle = "#ffffff";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText(label, pixel.x, pixel.y);
-		ctx.restore();
+		drawSemanticPointAffordance(ctx, label, pixel, drawing.style, isSelected, focusedPointIndex === index);
 	});
+
+	// GAP-11: colored harmonic ratio validation labels at leg midpoints
+	const hrLabels = computeHarmonicRatioLabels(drawing);
+	if (hrLabels.length > 0) {
+		const ratioStyle = { align: "center" as const, baseline: "alphabetic" as const, weight: 700, fontSize: drawing.style.fontSize ?? 11 };
+		hrLabels.forEach((hrLabel, i) => {
+			const p0 = pixels[i];
+			const p1 = pixels[i + 1];
+			if (!p0 || !p1) return;
+			const midX = (p0.x + p1.x) / 2;
+			const midY = (p0.y + p1.y) / 2;
+			drawTextLabel(ctx, formatHarmonicRatioLabel(hrLabel), { x: midX, y: midY - 10 }, { ...drawing.style, stroke: hrLabel.color }, ratioStyle);
+		});
+	}
 
 	if (isSelected) {
 		drawSelectionHandles(ctx, pixels, drawing.style.stroke);
@@ -1484,14 +1689,14 @@ function renderDrawingShape(
 		case "elliottTriangle":
 		case "elliottDoubleCombo":
 		case "elliottTripleCombo":
-			drawElliottWave(effectiveDrawing, scales, ctx, options.isSelected);
+			drawElliottWave(effectiveDrawing, scales, ctx, options.isSelected, options.focusedPointIndex);
 			return;
 		case "xabcdPattern":
 		case "cypherPattern":
 		case "headAndShoulders":
 		case "trianglePattern":
 		case "threeDrivesPattern":
-			drawHarmonicPattern(effectiveDrawing, scales, ctx, options.isSelected);
+			drawHarmonicPattern(effectiveDrawing, scales, ctx, options.isSelected, options.focusedPointIndex);
 			return;
 		case "fibChannel":
 		case "fibSpeedResistanceFan":
@@ -1548,6 +1753,20 @@ function computeBoundingBox(
 	if (drawing.type === "vLine" && drawing.points[0]) {
 		const p = toPixel(drawing.points[0], scales);
 		return { minX: p.x, maxX: p.x, minY: 0, maxY: chartHeight };
+	}
+
+	// For gannSquare/gannBox/gannSquareFixed use actual rendered corners clamped to the
+	// visible chart area so action handles are always reachable within the viewport.
+	if (drawing.type === "gannSquare" || drawing.type === "gannBox" || drawing.type === "gannSquareFixed") {
+		const geo = calculateGannAdvancedGeometry(drawing, scales);
+		if (geo) {
+			return {
+				minX: Math.max(0, Math.min(geo.x1, geo.x2)),
+				maxX: Math.min(chartWidth, Math.max(geo.x1, geo.x2)),
+				minY: Math.max(0, Math.min(geo.y1, geo.y2)),
+				maxY: Math.min(chartHeight, Math.max(geo.y1, geo.y2)),
+			};
+		}
 	}
 
 	const pixels = drawing.points.map((pt) => toPixel(pt, scales));
@@ -1659,15 +1878,13 @@ export function renderRubberBand(
 		return;
 	}
 	ctx.save();
-	ctx.globalAlpha = 0.12;
+	ctx.globalAlpha = 0.08;
 	ctx.fillStyle = "#1677ff";
 	ctx.fillRect(x, y, w, h);
 	ctx.globalAlpha = 1;
 	ctx.strokeStyle = "#1677ff";
 	ctx.lineWidth = 1;
-	ctx.setLineDash([4, 3]);
 	ctx.strokeRect(x, y, w, h);
-	ctx.setLineDash([]);
 	ctx.restore();
 }
 

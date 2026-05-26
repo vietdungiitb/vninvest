@@ -1,8 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { overrideDrawingStyle, resolveDrawingStyle, saveDrawingTemplate, subscribeDrawingStyle } from "./drawingStyleRegistry";
+import { listTemplates, saveTemplate, deleteTemplate, loadTemplate } from "./drawingTemplateStorage";
 import { isLineFamilyType, lineTypeFlagsFor, LINE_FAMILY_TYPES } from "./stateMachine";
 import type { LineFamilyType } from "./stateMachine";
-import type { DrawingObject, DrawingStyle, FibLevelConfig, DrawingAlertCondition } from "./types";
+import type { DrawingObject, DrawingStyle, FibLevelConfig, DrawingAlertCondition, DrawingToolType } from "./types";
+import { getSegmentKeys, hasSubSegments } from "./segmentRegistry";
+import type { PlotDatum } from "./coordinateUtils";
+
+const FIB_TOOLS_WITH_LEVEL_CONFIGS = new Set<DrawingToolType>([
+	"fibonacci",
+	"fibExtension",
+	"fibArc",
+	"fibTimeZone",
+	"fibChannel",
+	"fibSpeedResistanceFan",
+	"fibCircles",
+	"trendBasedFibTime",
+	"fibWedge",
+]);
 
 export interface DrawingInspectorTextEditorLabels {
 	title: string;
@@ -48,10 +63,22 @@ export interface DrawingInspectorLabels {
 	lineTypeRay?: string;
 	lineTypeExtendedLine?: string;
 	saveStyle?: string;
+	templatesTitle?: string;
+	templatesSave?: string;
+	templatesDelete?: string;
+	templatesLoad?: string;
+	templatesNamePlaceholder?: string;
 	/** DT-7: Fibonacci level manager labels */
 	fibLevelsTitle?: string;
 	fibAddLevel?: string;
 	fibRemoveLevel?: string;
+	/** DT-16: Risk/Reward position labels */
+	rrTitle?: string;
+	rrEntry?: string;
+	rrStop?: string;
+	rrTarget?: string;
+	/** DT-17: Segment style editor labels */
+	segmentsTitle?: string;
 	/** DT-10: Drawing alert labels */
 	alertTitle?: string;
 	alertEnabled?: string;
@@ -61,13 +88,18 @@ export interface DrawingInspectorLabels {
 	alertCrossBelow?: string;
 	alertEither?: string;
 	alertCooldownSeconds?: string;
+	coordinatesTitle?: string;
+	priceLabel?: string;
+	timeLabel?: string;
 }
 
 export interface DrawingInspectorProps {
 	drawing: DrawingObject | null;
 	labels: DrawingInspectorLabels;
 	textEditor?: DrawingInspectorTextEditorProps;
+	embedded?: boolean;
 	position?: { x: number; y: number };
+	plotData?: any[];
 	onUpdate: (patch: Partial<DrawingObject>) => void;
 	onDelete: () => void;
 	onClone: () => void;
@@ -188,7 +220,9 @@ export default function DrawingInspector({
 	drawing,
 	labels,
 	textEditor,
+	embedded = false,
 	position,
+	plotData = [],
 	onUpdate,
 	onDelete,
 	onClone,
@@ -199,8 +233,47 @@ export default function DrawingInspector({
 	onClose,
 }: DrawingInspectorProps) {
 	const [, setStyleRevision] = useState(0);
+	const [activeTab, setActiveTab] = useState<"style" | "coordinates" | "templates">("style");
+	const [templatesList, setTemplatesList] = useState<string[]>([]);
+	const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+	const [newTemplateName, setNewTemplateName] = useState<string>("");
 	const [newLevelRatio, setNewLevelRatio] = useState("");
 	const newLevelInputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (drawing) {
+			setTemplatesList(listTemplates(drawing.type));
+			setSelectedTemplate("");
+			setNewTemplateName("");
+		}
+	}, [drawing?.type]);
+
+	const handleSaveTemplate = () => {
+		if (!drawing) return;
+		const name = newTemplateName.trim();
+		if (!name) return;
+		saveTemplate(drawing.type, name, resolveDrawingStyle(drawing));
+		const updatedList = listTemplates(drawing.type);
+		setTemplatesList(updatedList);
+		setSelectedTemplate(name);
+		setNewTemplateName("");
+	};
+
+	const handleDeleteTemplate = () => {
+		if (!drawing || !selectedTemplate) return;
+		deleteTemplate(drawing.type, selectedTemplate);
+		const updatedList = listTemplates(drawing.type);
+		setTemplatesList(updatedList);
+		setSelectedTemplate("");
+	};
+
+	const handleLoadTemplate = () => {
+		if (!drawing || !selectedTemplate) return;
+		const tempStyle = loadTemplate(drawing.type, selectedTemplate);
+		if (tempStyle) {
+			onUpdate({ style: { ...drawing.style, ...tempStyle } });
+		}
+	};
 	useEffect(() => {
 		if (!drawing) {
 			return undefined;
@@ -239,8 +312,8 @@ export default function DrawingInspector({
 
 	return (
 		<div
-			className="rsc-drawing-inspector"
-			style={{ left, top }}
+			className={`rsc-drawing-inspector${embedded ? " rsc-drawing-inspector--embedded" : ""}`}
+			style={embedded ? undefined : { left, top }}
 			role="toolbar"
 			aria-label={labels.title}
 		>
@@ -253,6 +326,66 @@ export default function DrawingInspector({
 					x
 				</button>
 			</div>
+
+			<div className="rsc-drawing-inspector__tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", marginBottom: "12px", background: "rgba(0,0,0,0.15)" }}>
+				<button 
+					type="button" 
+					style={{
+						flex: 1, 
+						padding: "8px 12px", 
+						fontSize: "11px", 
+						fontWeight: "bold", 
+						background: activeTab === "style" ? "rgba(255,255,255,0.05)" : "transparent",
+						border: "none",
+						borderBottom: activeTab === "style" ? "2px solid #0891b2" : "none",
+						color: activeTab === "style" ? "#fff" : "#888",
+						cursor: "pointer",
+						outline: "none"
+					}}
+					onClick={() => setActiveTab("style")}
+				>
+					{labels.title}
+				</button>
+				<button 
+					type="button" 
+					style={{
+						flex: 1, 
+						padding: "8px 12px", 
+						fontSize: "11px", 
+						fontWeight: "bold", 
+						background: activeTab === "coordinates" ? "rgba(255,255,255,0.05)" : "transparent",
+						border: "none",
+						borderBottom: activeTab === "coordinates" ? "2px solid #0891b2" : "none",
+						color: activeTab === "coordinates" ? "#fff" : "#888",
+						cursor: "pointer",
+						outline: "none"
+					}}
+					onClick={() => setActiveTab("coordinates")}
+				>
+					{labels.coordinatesTitle ?? "Tọa độ"}
+				</button>
+				<button 
+					type="button" 
+					style={{
+						flex: 1, 
+						padding: "8px 12px", 
+						fontSize: "11px", 
+						fontWeight: "bold", 
+						background: activeTab === "templates" ? "rgba(255,255,255,0.05)" : "transparent",
+						border: "none",
+						borderBottom: activeTab === "templates" ? "2px solid #0891b2" : "none",
+						color: activeTab === "templates" ? "#fff" : "#888",
+						cursor: "pointer",
+						outline: "none"
+					}}
+					onClick={() => setActiveTab("templates")}
+				>
+					{labels.templatesTitle ?? "Mẫu"}
+				</button>
+			</div>
+
+			{activeTab === "style" && (
+				<>
 
 			<div className="rsc-drawing-inspector__swatches">
 				<label className="rsc-drawing-inspector__field">
@@ -347,8 +480,21 @@ export default function DrawingInspector({
 				</div>
 			)}
 
+			{/* GAP-15: Persistent measurement toggle for trendLine and channel */}
+			{(drawing.type === "trendLine" || drawing.type === "channel") && (
+				<label className="rsc-drawing-inspector__field" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+					<input
+						type="checkbox"
+						checked={drawing.showMeasurement === true}
+						disabled={locked}
+						onChange={() => onUpdate({ showMeasurement: !drawing.showMeasurement })}
+					/>
+					<span>Hiện số đo thường trực</span>
+				</label>
+			)}
+
 			{/* DT-7: Fibonacci Level Manager */}
-			{(drawing.type === "fibonacci" || drawing.type === "fibExtension") && drawing.fibLevelConfigs && drawing.fibLevelConfigs.length > 0 && (
+			{FIB_TOOLS_WITH_LEVEL_CONFIGS.has(drawing.type) && drawing.fibLevelConfigs && drawing.fibLevelConfigs.length > 0 && (
 				<div className="rsc-drawing-inspector__field">
 					<strong>{labels.fibLevelsTitle ?? "Các mức Fibonacci"}</strong>
 					<div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
@@ -431,9 +577,83 @@ export default function DrawingInspector({
 				</div>
 			)}
 
-			<div className="rsc-drawing-inspector__actions">
-				<button type="button" onClick={onToggleLock} className="rsc-drawing-inspector__button">					{locked ? labels.unlock : labels.lock}
-				</button>				<button type="button" onClick={onClone} className="rsc-drawing-inspector__button">
+			{/* DT-16-T03: LongPosition / ShortPosition direct price input */}
+			{(drawing.type === "longPosition" || drawing.type === "shortPosition") && (
+				<div className="rsc-drawing-inspector__field">
+					<strong style={{ fontSize: 12 }}>{labels.rrTitle ?? "Vào lệnh"}</strong>
+					{(["entry", "stop", "target"] as const).map((field) => {
+						const fieldLabel =
+							field === "entry" ? (labels.rrEntry ?? "Entry") :
+							field === "stop" ? (labels.rrStop ?? "Stop") :
+							(labels.rrTarget ?? "Target");
+						const currentValue = drawing.riskReward?.[field] ?? "";
+						return (
+							<label key={field} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, marginTop: 4 }}>
+								<span style={{ width: 44, flexShrink: 0 }}>{fieldLabel}</span>
+								<input
+									type="number"
+									step="any"
+									min="0.001"
+									value={currentValue}
+									disabled={locked}
+									style={{ flex: 1, minWidth: 0, fontSize: 12, padding: "2px 6px", borderRadius: 4, border: "1px solid rgba(148,163,184,0.4)", background: "transparent", color: "inherit" }}
+									onChange={(e) => {
+										const val = parseFloat(e.target.value);
+										if (!Number.isFinite(val) || val <= 0) return;
+										const rr = { ...(drawing.riskReward ?? { entry: 0, stop: 0, target: 0 }) };
+										rr[field] = val;
+										onUpdate({ riskReward: rr });
+									}}
+								/>
+							</label>
+						);
+					})}
+					{(() => {
+						const rr = drawing.riskReward;
+						if (!rr || !rr.entry || !rr.stop || !rr.target) return null;
+						const risk = Math.abs(rr.entry - rr.stop);
+						const reward = Math.abs(rr.target - rr.entry);
+						const ratio = risk > 0 ? (reward / risk).toFixed(1) : "n/a";
+						return <span style={{ fontSize: 11, marginTop: 4, opacity: 0.7, display: "block" }}>R/R 1:{ratio}</span>;
+					})()}
+				</div>
+			)}
+
+			{/* DT-17-T04: Per-segment style editor */}
+			{hasSubSegments(drawing.type) && (
+				<div className="rsc-drawing-inspector__field">
+					<strong style={{ fontSize: 12 }}>{labels.segmentsTitle ?? "Thành phần"}</strong>
+					{getSegmentKeys(drawing.type).map((key) => {
+						const segStyle = drawing.segmentStyles?.[key];
+						const segVisible = drawing.segmentVisible?.[key] !== false;
+						const currentColor = segStyle?.stroke ?? drawing.style.stroke;
+						return (
+							<label key={key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, marginTop: 4 }}>
+								<input
+									type="checkbox"
+									checked={segVisible}
+									disabled={locked}
+									onChange={(e) => {
+										onUpdate({ segmentVisible: { ...(drawing.segmentVisible ?? {}), [key]: e.target.checked } });
+									}}
+								/>
+								<span style={{ flex: 1 }}>{key}</span>
+								<input
+									type="color"
+									value={currentColor}
+									disabled={locked}
+									style={{ width: 28, height: 24, padding: 1, border: "none", background: "none", cursor: locked ? "default" : "pointer" }}
+									onChange={(e) => {
+										onUpdate({ segmentStyles: { ...(drawing.segmentStyles ?? {}), [key]: { ...(drawing.segmentStyles?.[key] ?? {}), stroke: e.target.value } } });
+									}}
+								/>
+							</label>
+						);
+					})}
+				</div>
+			)}
+
+			<div className="rsc-drawing-inspector__actions">				<button type="button" onClick={onClone} className="rsc-drawing-inspector__button">
 					{labels.clone}
 				</button>
 				<button type="button" onClick={onToggleVisible} className="rsc-drawing-inspector__button">
@@ -452,7 +672,14 @@ export default function DrawingInspector({
 					<button
 						type="button"
 						className="rsc-drawing-inspector__button"
-						onClick={() => saveDrawingTemplate(drawing.type, style)}
+						onClick={() => {
+							saveDrawingTemplate(drawing.type, style);
+							if (hasSubSegments(drawing.type) && drawing.segmentStyles) {
+								try {
+									localStorage.setItem(`rsc-drawing-template-segs-${drawing.type}`, JSON.stringify(drawing.segmentStyles));
+								} catch { /* ignore */ }
+							}
+						}}
 					>
 						{labels.saveStyle}
 					</button>
@@ -518,6 +745,207 @@ export default function DrawingInspector({
 					)}
 				</div>
 			)}
+			</>
+			)}
+
+			{activeTab === "coordinates" && (
+				<div className="rsc-drawing-inspector__coordinates" style={{ display: "flex", flexDirection: "column", padding: "0 12px 12px 12px", maxHeight: "320px", overflowY: "auto" }}>
+					{drawing.points.map((point, index) => {
+						const pointLabel = drawing.waveLabels?.[index] || `Điểm ${index + 1}`;
+						const dateVal = new Date(point.x);
+						const timeString = Number.isFinite(dateVal.getTime()) 
+							? new Date(dateVal.getTime() - dateVal.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+							: "";
+						
+						return (
+							<div key={index} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+								<span style={{ fontSize: "11px", fontWeight: "bold", color: "#0891b2", display: "block", marginBottom: 6 }}>{pointLabel}</span>
+								<div style={{ display: "flex", gap: 8 }}>
+									<label style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, fontSize: "10px", color: "#a3a3a3" }}>
+										{labels.priceLabel ?? "Giá"}
+										<input
+											type="number"
+											step="any"
+											value={point.y}
+											disabled={locked}
+											style={{
+												width: "100%",
+												padding: "4px 6px",
+												fontSize: "11px",
+												background: "rgba(0,0,0,0.3)",
+												border: "1px solid rgba(255,255,255,0.08)",
+												borderRadius: "4px",
+												color: "#fff",
+												outline: "none"
+											}}
+											onChange={(e) => {
+												const val = parseFloat(e.target.value);
+												if (!Number.isFinite(val)) return;
+												const nextPoints = [...drawing.points];
+												nextPoints[index] = { ...point, y: val };
+												onUpdate({ points: nextPoints });
+											}}
+										/>
+									</label>
+									<label style={{ flex: 1.2, display: "flex", flexDirection: "column", gap: 4, fontSize: "10px", color: "#a3a3a3" }}>
+										{labels.timeLabel ?? "Thời gian"}
+										<input
+											type="datetime-local"
+											value={timeString}
+											disabled={locked}
+											style={{
+												width: "100%",
+												padding: "3px 4px",
+												fontSize: "11px",
+												background: "rgba(0,0,0,0.3)",
+												border: "1px solid rgba(255,255,255,0.08)",
+												borderRadius: "4px",
+												color: "#fff",
+												outline: "none"
+											}}
+											onChange={(e) => {
+												const mappedX = validateAndMapXCoordinate(e.target.value, plotData);
+												if (mappedX !== null) {
+													const nextPoints = [...drawing.points];
+													nextPoints[index] = { ...point, x: mappedX };
+													onUpdate({ points: nextPoints });
+												}
+											}}
+										/>
+									</label>
+								</div>
+							</div>
+						);
+					})}
+				</div>
+			)}
+
+			{activeTab === "templates" && (
+				<div className="rsc-drawing-inspector__templates-tab" style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "0 12px 12px 12px" }}>
+					<div className="rsc-drawing-inspector__field" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+						<label htmlFor="inspector-template-select" style={{ fontSize: "11px", fontWeight: "bold", color: "#888" }}>
+							{labels.templatesLoad ?? "Tải Mẫu"}
+						</label>
+						<div style={{ display: "flex", gap: "6px" }}>
+							<select
+								id="inspector-template-select"
+								value={selectedTemplate}
+								onChange={(e) => setSelectedTemplate(e.target.value)}
+								style={{
+									flex: 1,
+									background: "rgba(30, 41, 59, 0.9)",
+									border: "1px solid rgba(255, 255, 255, 0.1)",
+									borderRadius: "4px",
+									padding: "6px 8px",
+									color: "#fff",
+									fontSize: "12px",
+								}}
+							>
+								<option value="">-- Chọn mẫu --</option>
+								{templatesList.map((name) => (
+									<option key={name} value={name}>
+										{name}
+									</option>
+								))}
+							</select>
+							<button
+								type="button"
+								onClick={handleLoadTemplate}
+								disabled={!selectedTemplate || locked}
+								style={{
+									background: selectedTemplate ? "#0891b2" : "rgba(255,255,255,0.05)",
+									border: "none",
+									borderRadius: "4px",
+									padding: "6px 12px",
+									color: selectedTemplate ? "#fff" : "#666",
+									fontSize: "12px",
+									cursor: selectedTemplate ? "pointer" : "default",
+								}}
+							>
+								{labels.templatesLoad ?? "Tải"}
+							</button>
+							<button
+								type="button"
+								onClick={handleDeleteTemplate}
+								disabled={!selectedTemplate || locked}
+								style={{
+									background: selectedTemplate ? "#ef5350" : "rgba(255,255,255,0.05)",
+									border: "none",
+									borderRadius: "4px",
+									padding: "6px 12px",
+									color: selectedTemplate ? "#fff" : "#666",
+									fontSize: "12px",
+									cursor: selectedTemplate ? "pointer" : "default",
+								}}
+							>
+								{labels.templatesDelete ?? "Xóa"}
+							</button>
+						</div>
+					</div>
+
+					<div style={{ height: "1px", background: "rgba(255, 255, 255, 0.08)", margin: "4px 0" }} />
+
+					<div className="rsc-drawing-inspector__field" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+						<label htmlFor="inspector-template-new-name" style={{ fontSize: "11px", fontWeight: "bold", color: "#888" }}>
+							{labels.templatesSave ?? "Lưu dưới tên"}
+						</label>
+						<div style={{ display: "flex", gap: "6px" }}>
+							<input
+								id="inspector-template-new-name"
+								type="text"
+								placeholder={labels.templatesNamePlaceholder ?? "Tên mẫu mới..."}
+								value={newTemplateName}
+								disabled={locked}
+								onChange={(e) => setNewTemplateName(e.target.value)}
+								style={{
+									flex: 1,
+									background: "rgba(30, 41, 59, 0.9)",
+									border: "1px solid rgba(255, 255, 255, 0.1)",
+									borderRadius: "4px",
+									padding: "6px 8px",
+									color: "#fff",
+									fontSize: "12px",
+								}}
+							/>
+							<button
+								type="button"
+								onClick={handleSaveTemplate}
+								disabled={!newTemplateName.trim() || locked}
+								style={{
+									background: newTemplateName.trim() ? "#0891b2" : "rgba(255,255,255,0.05)",
+									border: "none",
+									borderRadius: "4px",
+									padding: "6px 12px",
+									color: newTemplateName.trim() ? "#fff" : "#666",
+									fontSize: "12px",
+									cursor: newTemplateName.trim() ? "pointer" : "default",
+								}}
+							>
+								{labels.templatesSave ?? "Lưu"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
+}
+
+function validateAndMapXCoordinate(inputTimeString: string, plotData: any[]): number | null {
+	if (!inputTimeString) return null;
+	const T = new Date(inputTimeString).getTime();
+	if (!Number.isFinite(T) || plotData.length === 0) return null;
+	
+	let nearestBar = plotData[0]!;
+	let minDiff = Math.abs(new Date(plotData[0]!.date).getTime() - T);
+	
+	for (const bar of plotData) {
+		const barTime = new Date(bar.date).getTime();
+		const diff = Math.abs(barTime - T);
+		if (diff < minDiff) {
+			minDiff = diff;
+			nearestBar = bar;
+		}
+	}
+	return new Date(nearestBar.date).getTime();
 }

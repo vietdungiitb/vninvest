@@ -1,7 +1,7 @@
 import type { ChartScales } from "../coordinateUtils";
 import { chartPointToPixel } from "../coordinateUtils";
 import type { DrawingObject, DrawingToolDefinition } from "../types";
-import { createDrawingObject, replaceNextPoint } from "../shared";
+import { createDrawingObject, replaceLastPoint } from "../shared";
 
 export interface AbcdPatternMetrics {
 	points: Array<{ x: number; y: number }>;
@@ -25,6 +25,12 @@ export function calculateAbcdPatternMetrics(drawing: DrawingObject, scales: Char
 	const bc = Math.abs(c.y - b.y);
 	const cd = Math.abs(d.y - c.y);
 
+	// DT-16-T01: Use price-coordinate distances for ratio calculation so ratios
+	// remain valid even when two points map to the same pixel Y (e.g. heavy zoom-out).
+	const priceAB = Math.abs(bPoint.y - aPoint.y);
+	const priceBC = Math.abs(cPoint.y - bPoint.y);
+	const priceCD = Math.abs(dPoint.y - cPoint.y);
+
 	return {
 		points,
 		segmentMidpoints: [
@@ -35,15 +41,15 @@ export function calculateAbcdPatternMetrics(drawing: DrawingObject, scales: Char
 		ab,
 		bc,
 		cd,
-		bcToAb: ab > 0 ? bc / ab : null,
-		cdToBc: bc > 0 ? cd / bc : null,
+		bcToAb: priceAB > 1e-10 ? priceBC / priceAB : null,
+		cdToBc: priceBC > 1e-10 ? priceCD / priceBC : null,
 	};
 }
 
 const AbcdPattern: DrawingToolDefinition = {
 	name: "abcdPattern",
 	createDraft: (startPoint) => createDrawingObject("abcdPattern", [startPoint, startPoint, startPoint, startPoint]),
-	updateDraft: (draft, nextPoint) => replaceNextPoint(draft, nextPoint),
+	updateDraft: (draft, nextPoint) => replaceLastPoint(draft, nextPoint),
 	render: () => undefined,
 };
 

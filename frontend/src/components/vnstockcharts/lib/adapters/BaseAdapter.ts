@@ -70,8 +70,8 @@ export abstract class BaseAdapter implements StockDataAdapter {
 		return rawBars.map((rawBar, index) => this.normalizeBar(rawBar, index));
 	}
 
-	abstract fetchBars(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<readonly OHLCVBar[]>;
-	abstract fetchMoreBars(symbol: string, timeframe: Timeframe, before: Date, limit?: number): Promise<readonly OHLCVBar[]>;
+	abstract fetchBarsInRange(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<readonly OHLCVBar[]>;
+	abstract fetchBarsBefore(symbol: string, timeframe: Timeframe, before: Date, limit?: number): Promise<readonly OHLCVBar[]>;
 	abstract subscribeToBar(symbol: string, timeframe: Timeframe, onBar: (bar: OHLCVBar) => void): Unsubscribe;
 	abstract subscribeToTrades(symbol: string, onTrade: (trade: Trade) => void): Unsubscribe;
 	abstract subscribeToOrderbook(symbol: string, onUpdate: (snapshot: OrderbookSnapshot) => void): Unsubscribe;

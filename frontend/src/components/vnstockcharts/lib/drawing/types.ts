@@ -102,8 +102,11 @@ export interface DrawingObject {
 	extendRight?: boolean;
 	locked?: boolean;
 	visible?: boolean;
+	/** GAP-15: When true, renders persistent measurement overlay (Δprice, %, bars) on trendLine/channel */
+	showMeasurement?: boolean;
 	/** DT-10-T02: Alert condition — fires onDrawingAlert when price crosses drawing reference level */
 	alertCondition?: DrawingAlertCondition;
+	alertConditions?: DrawingAlertCondition[];
 	/** DT-11: Custom wave-point labels; overrides ELLIOTT_LABELS defaults when set */
 	waveLabels?: string[];
 	/** DT-12: Harmonic pattern ratio validation config */
@@ -112,6 +115,18 @@ export interface DrawingObject {
 	gannSquareSize?: number;
 	/** DT-15: Cycle tool parameters (count, amplitude) */
 	cycleParams?: CycleParams;
+	/**
+	 * DT-17: Per-segment style overrides.
+	 * Key = segment identifier per SEGMENT_KEYS_BY_TYPE in segmentRegistry.ts.
+	 * Merge rule: { ...drawing.style, ...segmentStyles[key] }
+	 * Fallback: drawing.style when key is absent.
+	 */
+	segmentStyles?: Record<string, Partial<DrawingStyle>>;
+	/**
+	 * DT-17: Per-segment visibility toggle.
+	 * undefined | true = visible. false = hidden.
+	 */
+	segmentVisible?: Record<string, boolean>;
 	createdAt: number;
 	updatedAt: number;
 }

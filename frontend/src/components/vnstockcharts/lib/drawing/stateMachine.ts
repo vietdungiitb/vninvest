@@ -49,7 +49,7 @@ export type DrawingAction =
 	| { type: "START_MOVING_GROUP"; objectIds: string[] };
 
 function normalizeSelectedObjectIds(objectIds: readonly string[]) {
-	return Array.from(new Set(objectIds.filter((objectId) => typeof objectId === "string" && objectId.length > 0)));
+	return [...new Set(objectIds.filter((objectId) => typeof objectId === "string" && objectId.length > 0))];
 }
 
 function selectionStateFor(objectIds: readonly string[]): DrawingState {

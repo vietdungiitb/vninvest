@@ -1,7 +1,7 @@
 import type { ChartScales } from "../coordinateUtils";
 import { chartPointToPixel } from "../coordinateUtils";
 import type { DrawingObject, DrawingToolDefinition } from "../types";
-import { createDrawingObject, replaceNextPoint } from "../shared";
+import { createDrawingObject, replaceLastPoint } from "../shared";
 
 export interface PitchforkGeometry {
 	pivot: { x: number; y: number };
@@ -40,7 +40,7 @@ export function calculatePitchforkGeometry(drawing: DrawingObject, scales: Chart
 const Pitchfork: DrawingToolDefinition = {
 	name: "pitchfork",
 	createDraft: (startPoint) => createDrawingObject("pitchfork", [startPoint, startPoint, startPoint]),
-	updateDraft: (draft, nextPoint) => replaceNextPoint(draft, nextPoint),
+	updateDraft: (draft, nextPoint) => replaceLastPoint(draft, nextPoint),
 	render: () => undefined,
 };
 

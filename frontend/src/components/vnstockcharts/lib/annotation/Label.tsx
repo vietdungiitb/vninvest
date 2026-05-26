@@ -9,7 +9,6 @@ import LabelAnnotation, { defaultProps, helper } from "./LabelAnnotation";
 
 class Label extends Component<any, any> {
 	static defaultProps: any;
-	context: any;
 
 	constructor(props: any) {
 		super(props);

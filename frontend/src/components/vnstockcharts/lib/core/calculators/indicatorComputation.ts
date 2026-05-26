@@ -402,22 +402,22 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 	const closes = raw.map((bar) => bar.close);
 
 	const emaByPeriod = new Map<number, Array<number | undefined>>();
-	plan.emaPeriods.forEach((period) => {
+	for (const period of plan.emaPeriods) {
 		emaByPeriod.set(period, blankUntil(emaSeries(closes, period), Math.max(period - 1, 0)));
-	});
+	}
 
 	const smaByPeriod = new Map<number, Array<number | undefined>>();
-	plan.smaPeriods.forEach((period) => {
+	for (const period of plan.smaPeriods) {
 		smaByPeriod.set(period, blankUntil(smaSeries(closes, period), Math.max(period - 1, 0)));
-	});
+	}
 
 	const rsiByPeriod = new Map<number, Array<number | undefined>>();
-	plan.rsiPeriods.forEach((period) => {
+	for (const period of plan.rsiPeriods) {
 		rsiByPeriod.set(period, blankUntil(rsiSeries(closes, period), Math.max(period, 1)));
-	});
+	}
 
 	const macdByKey = new Map<string, Array<IndicatorMacdValue | undefined>>();
-	plan.macdConfigs.forEach((config, key) => {
+	for (const [key, config] of plan.macdConfigs) {
 		const macd = macdSeries(closes, config.fast, config.slow, config.signal);
 		const macdLine = blankUntil(macd.macd, Math.max(config.slow - 1, 0));
 		const signalLine = blankUntil(macd.signal, Math.max(config.slow - 1, 0));
@@ -435,13 +435,13 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 				divergence: histogramValue,
 			};
 		}));
-	});
+	}
 
 	const bollingerByKey = new Map<string, Array<IndicatorBandValue | undefined>>();
-	plan.bollingerConfigs.forEach((config, key) => {
+	for (const [key, config] of plan.bollingerConfigs) {
 		const series = bollingerSeries(closes, config.period, config.stdDev);
 		bollingerByKey.set(key, mergeBand(series.upper, series.middle, series.lower, Math.max(config.period - 1, 0)));
-	});
+	}
 
 	const cvd = calcCVDApprox(raw);
 	const strength = calcStrengthElder(raw);
@@ -452,26 +452,26 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 		: new Array(raw.length).fill(undefined) as Array<undefined>;
 
 	const sarByKey = new Map<string, Array<number | undefined>>();
-	plan.sarByKey.forEach((config, key) => {
+	for (const [key, config] of plan.sarByKey) {
 		sarByKey.set(key, blankUntil(sarSeries(raw, config.afStep, config.afMax), 1));
-	});
+	}
 
 	const obv: Array<number | undefined> = plan.obvEnabled
 		? (obvSeries(raw) as Array<number | undefined>)
 		: new Array(raw.length).fill(undefined) as Array<undefined>;
 
 	const wrByPeriod = new Map<number, Array<number | undefined>>();
-	plan.wrPeriods.forEach((period) => {
+	for (const period of plan.wrPeriods) {
 		wrByPeriod.set(period, blankUntil(wrSeries(raw, period), Math.max(period - 1, 0)));
-	});
+	}
 
 	const vrByPeriod = new Map<number, Array<number | undefined>>();
-	plan.vrPeriods.forEach((period) => {
+	for (const period of plan.vrPeriods) {
 		vrByPeriod.set(period, blankUntil(vrSeries(raw, period), Math.max(period, 1)));
-	});
+	}
 
 	const kdjByKey = new Map<string, Array<IndicatorKdjValue | undefined>>();
-	plan.kdjConfigs.forEach((config, key) => {
+	for (const [key, config] of plan.kdjConfigs) {
 		const series = kdjSeries(raw, config.period, config.m1, config.m2);
 		kdjByKey.set(key, raw.map((_, index) => {
 			const k = series.k[index];
@@ -482,15 +482,15 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { k, d, j };
 		}));
-	});
+	}
 
 	const cciByPeriod = new Map<number, Array<number | undefined>>();
-	plan.cciPeriods.forEach((period) => {
+	for (const period of plan.cciPeriods) {
 		cciByPeriod.set(period, blankUntil(cciSeries(raw, period), Math.max(period - 1, 0)));
-	});
+	}
 
 	const dmiByPeriod = new Map<number, Array<IndicatorDmiValue | undefined>>();
-	plan.dmiPeriods.forEach((period) => {
+	for (const period of plan.dmiPeriods) {
 		const series = dmiSeries(raw, period);
 		dmiByPeriod.set(period, raw.map((_, index) => {
 			const plusDI = series.plusDI[index];
@@ -501,15 +501,15 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { plusDI, minusDI, adx };
 		}));
-	});
+	}
 
 	const biasByPeriod = new Map<number, Array<number | undefined>>();
-	plan.biasPeriods.forEach((period) => {
+	for (const period of plan.biasPeriods) {
 		biasByPeriod.set(period, blankUntil(biasSeries(raw, period), Math.max(period - 1, 0)));
-	});
+	}
 
 	const brarByPeriod = new Map<number, Array<IndicatorBrarValue | undefined>>();
-	plan.brarPeriods.forEach((period) => {
+	for (const period of plan.brarPeriods) {
 		const series = brarSeries(raw, period);
 		brarByPeriod.set(period, raw.map((_, index) => {
 			const ar = series.ar[index];
@@ -519,10 +519,10 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { ar, br };
 		}));
-	});
+	}
 
 	const mtmByKey = new Map<string, Array<IndicatorMtmValue | undefined>>();
-	plan.mtmConfigs.forEach((config, key) => {
+	for (const [key, config] of plan.mtmConfigs) {
 		const series = mtmSeries(raw, config.period, config.signalPeriod);
 		mtmByKey.set(key, raw.map((_, index) => {
 			const mtm = series.mtm[index];
@@ -532,10 +532,10 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { mtm, signal };
 		}));
-	});
+	}
 
 	const emvByPeriod = new Map<number, Array<IndicatorEmvValue | undefined>>();
-	plan.emvPeriods.forEach((period) => {
+	for (const period of plan.emvPeriods) {
 		const series = emvSeries(raw, period);
 		emvByPeriod.set(period, raw.map((_, index) => {
 			const emv = series.emv[index];
@@ -545,19 +545,19 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { emv, signal };
 		}));
-	});
+	}
 
 	const ao = plan.aoEnabled
 		? blankUntil(aoSeries(raw), 33)
 		: new Array(raw.length).fill(undefined) as Array<undefined>;
 
 	const rocByPeriod = new Map<number, Array<number | undefined>>();
-	plan.rocPeriods.forEach((period) => {
+	for (const period of plan.rocPeriods) {
 		rocByPeriod.set(period, blankUntil(rocSeries(raw, period), Math.max(period, 0)));
-	});
+	}
 
 	const trixByKey = new Map<string, Array<IndicatorTrixValue | undefined>>();
-	plan.trixConfigs.forEach((config, key) => {
+	for (const [key, config] of plan.trixConfigs) {
 		const series = trixSeries(raw, config.period, config.signalPeriod);
 		const warmup = Math.max(config.period * 3 - 3, config.signalPeriod - 1, 0);
 		const trixValues = blankUntil(series.trix, warmup);
@@ -570,10 +570,10 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { trix: trix!, signal: signal! };
 		}));
-	});
+	}
 
 	const dmaByKey = new Map<string, Array<IndicatorDmaValue | undefined>>();
-	plan.dmaConfigs.forEach((config, key) => {
+	for (const [key, config] of plan.dmaConfigs) {
 		const series = dmaSeries(raw, config.fastPeriod, config.slowPeriod, config.signalPeriod);
 		const warmup = Math.max(config.slowPeriod - 1, 0);
 		const dddValues = blankUntil(series.ddd, warmup);
@@ -586,14 +586,14 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { ddd: ddd!, ama: ama! };
 		}));
-	});
+	}
 
 	const pvt = plan.pvtEnabled
 		? (pvtSeries(raw) as Array<number | undefined>)
 		: new Array(raw.length).fill(undefined) as Array<undefined>;
 
 	const psyByKey = new Map<string, Array<IndicatorPsyValue | undefined>>();
-	plan.psyConfigs.forEach((config, key) => {
+	for (const [key, config] of plan.psyConfigs) {
 		const series = psySeries(raw, config.period, config.signalPeriod);
 		psyByKey.set(key, raw.map((_, index) => {
 			const psy = series.psy[index];
@@ -603,10 +603,10 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { psy, signal };
 		}));
-	});
+	}
 
 	const crByKey = new Map<string, Array<IndicatorCrValue | undefined>>();
-	plan.crConfigs.forEach((config, key) => {
+	for (const [key, config] of plan.crConfigs) {
 		const series = crSeries(raw, config.period, config.m1, config.m2, config.m3, config.m4);
 		crByKey.set(key, raw.map((_, index) => {
 			const cr = series.cr[index];
@@ -619,13 +619,13 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 			}
 			return { cr, ma1, ma2, ma3, ma4 };
 		}));
-	});
+	}
 
 	const whaleByKey = new Map<string, Array<IndicatorWhaleValue | undefined>>();
-	plan.whaleThresholds.forEach((threshold) => {
+	for (const threshold of plan.whaleThresholds) {
 		const key = indicatorKey(defaultSeries("Whale", { threshold }));
 		if (!key) {
-			return;
+			continue;
 		}
 		whaleByKey.set(
 			key,
@@ -635,7 +635,7 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 					: { whaleBuyVol: point.whaleBuyVol, whaleSellVol: point.whaleSellVol }
 			)),
 		);
-	});
+	}
 
 	return {
 		emaByPeriod,
@@ -671,174 +671,174 @@ export function computeIndicatorComputationResult(raw: readonly RawOHLCV[], plan
 export function materializeIndicatorValues(index: number, plan: IndicatorComputationPlan, result: IndicatorComputationResult): Record<string, IndicatorDatumValue | undefined> {
 	const indicatorValues: Record<string, IndicatorDatumValue | undefined> = {};
 
-	result.emaByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.emaByPeriod) {
 		const key = indicatorKey(defaultSeries("EMA", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.smaByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.smaByPeriod) {
 		const key = indicatorKey(defaultSeries("MA", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.rsiByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.rsiByPeriod) {
 		const key = indicatorKey(defaultSeries("RSI", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.macdByKey.forEach((values, key) => {
+	for (const [key, values] of result.macdByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.bollingerByKey.forEach((values, key) => {
+	for (const [key, values] of result.bollingerByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.whaleByKey.forEach((values, key) => {
+	for (const [key, values] of result.whaleByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
 	// CE15 — SAR, WR, VR go into indicatorValues map
-	result.sarByKey.forEach((values, key) => {
+	for (const [key, values] of result.sarByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.wrByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.wrByPeriod) {
 		const key = indicatorKey(defaultSeries("WR", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.vrByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.vrByPeriod) {
 		const key = indicatorKey(defaultSeries("VR", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.kdjByKey.forEach((values, key) => {
+	for (const [key, values] of result.kdjByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.cciByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.cciByPeriod) {
 		const key = indicatorKey(defaultSeries("CCI", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.dmiByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.dmiByPeriod) {
 		const key = indicatorKey(defaultSeries("DMI", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.biasByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.biasByPeriod) {
 		const key = indicatorKey(defaultSeries("BIAS", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.brarByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.brarByPeriod) {
 		const key = indicatorKey(defaultSeries("BRAR", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.mtmByKey.forEach((values, key) => {
+	for (const [key, values] of result.mtmByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.emvByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.emvByPeriod) {
 		const key = indicatorKey(defaultSeries("EMV", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
 	const aoKey = indicatorKey(defaultSeries("AO"));
 	if (aoKey && result.ao[index] !== undefined) {
 		indicatorValues[aoKey] = result.ao[index];
 	}
 
-	result.rocByPeriod.forEach((values, period) => {
+	for (const [period, values] of result.rocByPeriod) {
 		const key = indicatorKey(defaultSeries("ROC", { period }));
 		const value = values[index];
 		if (key && value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.trixByKey.forEach((values, key) => {
+	for (const [key, values] of result.trixByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.dmaByKey.forEach((values, key) => {
+	for (const [key, values] of result.dmaByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
 	const pvtKey = indicatorKey(defaultSeries("PVT"));
 	if (pvtKey && result.pvt[index] !== undefined) {
 		indicatorValues[pvtKey] = result.pvt[index];
 	}
 
-	result.psyByKey.forEach((values, key) => {
+	for (const [key, values] of result.psyByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
-	result.crByKey.forEach((values, key) => {
+	for (const [key, values] of result.crByKey) {
 		const value = values[index];
 		if (value !== undefined) {
 			indicatorValues[key] = value;
 		}
-	});
+	}
 
 	return indicatorValues;
 }

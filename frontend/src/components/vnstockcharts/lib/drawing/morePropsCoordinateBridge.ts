@@ -132,7 +132,14 @@ function resolveChartPointDirect(
 	const xValue = currentItem
 		? xAccessor(currentItem)
 		: getXValue(xScale, xAccessor, adjustedMousePosition, Array.isArray(plotData) ? [...plotData] : []);
-	const dateValue = xValue instanceof Date ? xValue : new Date(xValue ?? Number.NaN);
+	// DT-22 Fix 3A: for discontinuous scales xAccessor returns a bar-index (integer), not a
+	// real timestamp.  Always prefer currentItem.date (the real candle Date) so that stored
+	// drawing coordinates survive bar-index shifts caused by historical-data prepend.
+	const rawDate: Date | undefined =
+		currentItem != null && (currentItem as any).date instanceof Date
+			? (currentItem as any).date as Date
+			: undefined;
+	const dateValue = rawDate ?? (xValue instanceof Date ? xValue : new Date(xValue ?? Number.NaN));
 	const yValue = targetChartConfig.yScale.invert(adjustedMousePosition[1]);
 
 	if (!Number.isFinite(dateValue.getTime()) || !Number.isFinite(yValue)) {
@@ -193,6 +200,27 @@ export function createDrawingCoordinateBridgeFromMoreProps(
 				return undefined;
 			}
 
+			// DT-22 Fix 3B: stored point.x is a real unix timestamp (after Fix 3A) but
+			// financeDiscontinuousScale expects the *current* bar-index.  Translate via
+			// plotData lookup so drawings stay pinned to the correct candle even when
+			// historical data is prepended and all bar-indices shift.
+			let effectivePoint = point;
+			const xAcc = moreProps.xAccessor;
+			const pData = moreProps.plotData;
+			if (typeof xAcc === "function" && Array.isArray(pData) && pData.length > 0) {
+				const sampleX = xAcc((pData as any[])[0]);
+				if (typeof sampleX === "number") {
+					// Discontinuous scale: search for the datum whose real date matches
+					const datum = (pData as any[]).find(
+						(d) => d.date instanceof Date && d.date.getTime() === point.x,
+					);
+					if (datum) {
+						const barIndex = xAcc(datum) as number;
+						effectivePoint = { ...point, x: barIndex };
+					}
+				}
+			}
+
 			const renderScales = {
 				xScale: moreProps.xScale,
 				xScaleInvert: moreProps.xScale.invert,
@@ -202,7 +230,7 @@ export function createDrawingCoordinateBridgeFromMoreProps(
 				plotData: moreProps.plotData as ChartScales["plotData"],
 			};
 
-			const pixel = chartPointToPixelFromScales(point, renderScales);
+			const pixel = chartPointToPixelFromScales(effectivePoint, renderScales);
 			const offset = resolveBridgePixelOffset(moreProps, targetChartConfig);
 			return {
 				x: pixel.x + offset.x,

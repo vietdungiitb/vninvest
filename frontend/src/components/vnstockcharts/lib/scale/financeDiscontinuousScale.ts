@@ -64,7 +64,8 @@ export default function financeDiscontinuousScale(
 				: ticksAtLevel.slice();
 
 			for (let j = start; j <= end; j++) {
-				if (index[j].level === i) {
+				const levelPoint = index[j];
+				if (isDefined(levelPoint) && levelPoint.level === i) {
 					temp.push(index[j]);
 				}
 			}
@@ -93,7 +94,12 @@ export default function financeDiscontinuousScale(
 			for (let i = 0; i < ticks.length - 1; i++) {
 				for (let j = i + 1; j < ticks.length; j++) {
 					if (ticks[j] - ticks[i] <= distance) {
-						ticksSet.delete(index[ticks[i] + d].level >= index[ticks[j] + d].level ? ticks[j] : ticks[i]);
+						const leftPoint = index[ticks[i] + d];
+						const rightPoint = index[ticks[j] + d];
+						if (!isDefined(leftPoint) || !isDefined(rightPoint)) {
+							continue;
+						}
+						ticksSet.delete(leftPoint.level >= rightPoint.level ? ticks[j] : ticks[i]);
 					}
 				}
 			}
@@ -108,14 +114,18 @@ export default function financeDiscontinuousScale(
 	scale.tickFormat = function() {
 		return function(x: any) {
 			const d = Math.abs(head(index).index);
-			const { format, date } = index[Math.floor(x + d)];
-			return format(date);
+			const point = index[Math.floor(x + d)];
+			if (!isDefined(point) || typeof point.format !== "function") {
+				return "";
+			}
+			return point.format(point.date);
 		};
 	};
 	scale.value = function(x: any) {
 		const d = Math.abs(head(index).index);
-		if (isDefined(index[Math.floor(x + d)])) {
-			const { date } = index[Math.floor(x + d)];
+		const point = index[Math.floor(x + d)];
+		if (isDefined(point)) {
+			const { date } = point;
 			return date;
 		}
 	};

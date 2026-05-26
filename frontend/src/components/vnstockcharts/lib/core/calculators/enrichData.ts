@@ -25,18 +25,18 @@ export function enrichData(raw: readonly RawOHLCV[], optionsOrWhaleThreshold?: E
 	const plan = buildIndicatorComputationPlan(options.series, options.whaleThreshold);
 	const result = computeIndicatorComputationResult(raw, plan);
 	const aoColors = plan.aoEnabled ? aoColorSeries(result.ao.map((value) => value ?? Number.NaN)) : [];
-	const firstKdj = result.kdjByKey.size > 0 ? Array.from(result.kdjByKey.values())[0] : undefined;
-	const firstCci = result.cciByPeriod.size > 0 ? Array.from(result.cciByPeriod.values())[0] : undefined;
-	const firstDmi = result.dmiByPeriod.size > 0 ? Array.from(result.dmiByPeriod.values())[0] : undefined;
-	const firstBias = result.biasByPeriod.size > 0 ? Array.from(result.biasByPeriod.values())[0] : undefined;
-	const firstBrar = result.brarByPeriod.size > 0 ? Array.from(result.brarByPeriod.values())[0] : undefined;
-	const firstMtm = result.mtmByKey.size > 0 ? Array.from(result.mtmByKey.values())[0] : undefined;
-	const firstEmv = result.emvByPeriod.size > 0 ? Array.from(result.emvByPeriod.values())[0] : undefined;
-	const firstRoc = result.rocByPeriod.size > 0 ? Array.from(result.rocByPeriod.values())[0] : undefined;
-	const firstTrix = result.trixByKey.size > 0 ? Array.from(result.trixByKey.values())[0] : undefined;
-	const firstDma = result.dmaByKey.size > 0 ? Array.from(result.dmaByKey.values())[0] : undefined;
-	const firstPsy = result.psyByKey.size > 0 ? Array.from(result.psyByKey.values())[0] : undefined;
-	const firstCr = result.crByKey.size > 0 ? Array.from(result.crByKey.values())[0] : undefined;
+	const firstKdj = result.kdjByKey.size > 0 ? [...result.kdjByKey.values()][0] : undefined;
+	const firstCci = result.cciByPeriod.size > 0 ? [...result.cciByPeriod.values()][0] : undefined;
+	const firstDmi = result.dmiByPeriod.size > 0 ? [...result.dmiByPeriod.values()][0] : undefined;
+	const firstBias = result.biasByPeriod.size > 0 ? [...result.biasByPeriod.values()][0] : undefined;
+	const firstBrar = result.brarByPeriod.size > 0 ? [...result.brarByPeriod.values()][0] : undefined;
+	const firstMtm = result.mtmByKey.size > 0 ? [...result.mtmByKey.values()][0] : undefined;
+	const firstEmv = result.emvByPeriod.size > 0 ? [...result.emvByPeriod.values()][0] : undefined;
+	const firstRoc = result.rocByPeriod.size > 0 ? [...result.rocByPeriod.values()][0] : undefined;
+	const firstTrix = result.trixByKey.size > 0 ? [...result.trixByKey.values()][0] : undefined;
+	const firstDma = result.dmaByKey.size > 0 ? [...result.dmaByKey.values()][0] : undefined;
+	const firstPsy = result.psyByKey.size > 0 ? [...result.psyByKey.values()][0] : undefined;
+	const firstCr = result.crByKey.size > 0 ? [...result.crByKey.values()][0] : undefined;
 
 	return raw.map((bar, index) => {
 		const indicatorValues = materializeIndicatorValues(index, plan, result);
@@ -56,10 +56,10 @@ export function enrichData(raw: readonly RawOHLCV[], optionsOrWhaleThreshold?: E
 			whaleSellVol: result.whaleByKey.get(plan.defaultWhaleKey)?.[index]?.whaleSellVol,
 			// CE15
 			bbi: plan.bbiEnabled ? result.bbi[index] : undefined,
-			sar: result.sarByKey.size > 0 ? Array.from(result.sarByKey.values())[0]?.[index] : undefined,
+			sar: result.sarByKey.size > 0 ? [...result.sarByKey.values()][0]?.[index] : undefined,
 			obv: plan.obvEnabled ? result.obv[index] : undefined,
-			wr: result.wrByPeriod.size > 0 ? Array.from(result.wrByPeriod.values())[0]?.[index] : undefined,
-			vr: result.vrByPeriod.size > 0 ? Array.from(result.vrByPeriod.values())[0]?.[index] : undefined,
+			wr: result.wrByPeriod.size > 0 ? [...result.wrByPeriod.values()][0]?.[index] : undefined,
+			vr: result.vrByPeriod.size > 0 ? [...result.vrByPeriod.values()][0]?.[index] : undefined,
 			// CE16
 			kdj: firstKdj?.[index],
 			cci: firstCci?.[index],

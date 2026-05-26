@@ -27,7 +27,7 @@ export class DjangoVnstockAdapter extends BaseAdapter {
 		super(baseUrl, cacheTtlMs);
 	}
 
-	async fetchBars(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<readonly OHLCVBar[]> {
+	async fetchBarsInRange(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<readonly OHLCVBar[]> {
 		const cacheKey = `bars:${symbol}:${timeframe}:${from.toISOString()}:${to.toISOString()}`;
 		return this.memoize(cacheKey, async () => {
 			const params = new URLSearchParams({
@@ -40,7 +40,7 @@ export class DjangoVnstockAdapter extends BaseAdapter {
 		});
 	}
 
-	async fetchMoreBars(symbol: string, timeframe: Timeframe, before: Date, limit = 300): Promise<readonly OHLCVBar[]> {
+	async fetchBarsBefore(symbol: string, timeframe: Timeframe, before: Date, limit = 300): Promise<readonly OHLCVBar[]> {
 		const cacheKey = `more-bars:${symbol}:${timeframe}:${before.toISOString()}:${limit}`;
 		return this.memoize(cacheKey, async () => {
 			const params = new URLSearchParams({
