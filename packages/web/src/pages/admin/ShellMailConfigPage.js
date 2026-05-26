@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { createElement, Fragment, useState, useEffect } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 const EMPTY_FORM = {
@@ -158,121 +158,134 @@ export function ShellMailConfigPage() {
     }
   };
 
-  if (loading) return <div>Đang tải cấu hình mail...</div>;
-  if (error) return <div>Lỗi: {error}</div>;
+  if (loading) return createElement("div", null, "Đang tải cấu hình mail...");
+  if (error) return createElement("div", null, "Lỗi: " + error);
 
-  return (
-    <div className="shell-page shell-mail-config-page">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h2>Quản trị Mail Vận Hành (SOC)</h2>
-        <button onClick={handleOpenCreate} style={{ padding: "0.5rem 1rem" }}>
-          + Tạo mới
-        </button>
-      </div>
-
-      <div className="mail-config-list">
-        {configs.length === 0 ? (
-          <p>Chưa có cấu hình mail nào.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Provider</th>
-                <th>From Email</th>
-                <th>Host/Port</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {configs.map((config) => (
-                <tr key={config.id}>
-                  <td>{config.id}</td>
-                  <td>{config.provider}</td>
-                  <td>{config.from_email}</td>
-                  <td>
-                    {config.provider === "smtp"
-                      ? `${config.smtp_host}:${config.smtp_port}`
-                      : "N/A"}
-                  </td>
-                  <td>
-                    {config.is_active ? (
-                      <span style={{ color: "green", fontWeight: "bold" }}>ACTIVE</span>
-                    ) : (
-                      <span style={{ color: "gray" }}>INACTIVE</span>
-                    )}
-                  </td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    <button
-                      onClick={() => handleOpenEdit(config)}
-                      style={{ marginRight: "0.25rem" }}
-                    >
-                      Sửa
-                    </button>
-                    {!config.is_active && (
-                      <button
-                        onClick={() => handleActivate(config.id)}
-                        style={{ marginRight: "0.25rem" }}
-                      >
-                        Kích hoạt
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(config.id)}
-                      disabled={config.is_active}
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div
-        className="mail-config-test-panel"
-        style={{ marginTop: "2rem", padding: "1rem", border: "1px solid #ccc" }}
-      >
-        <h3>Bộ Thử Nghiệm Kết Nối (Live Testing)</h3>
-        <div>
-          <label>Email nhận test: </label>
-          <input
-            type="email"
-            value={testEmail}
-            onChange={(e) => setTestEmail(e.target.value)}
-            placeholder="admin@vninvest.vn"
-          />
-        </div>
-        <div style={{ marginTop: "1rem" }}>
-          {configs.map((config) => (
-            <button
-              key={`test-${config.id}`}
-              onClick={() => handleTestConnection(config)}
-              disabled={testLoading}
-              style={{ marginRight: "0.5rem" }}
-            >
-              {testLoading ? "Đang thử..." : `Test ${config.provider} (ID: ${config.id})`}
-            </button>
-          ))}
-        </div>
-        {testMessage && (
-          <div
-            style={{
-              marginTop: "1rem",
-              color: testMessage.type === "success" ? "green" : "red",
-            }}
-          >
-            {testMessage.text}
-          </div>
-        )}
-      </div>
-
-      {showModal && (
-        <div
-          style={{
+  return createElement(
+    "div",
+    { className: "shell-page shell-mail-config-page" },
+    // Header
+    createElement(
+      "div",
+      { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" } },
+      createElement("h2", null, "Quản trị Mail Vận Hành (SOC)"),
+      createElement("button", { onClick: handleOpenCreate, style: { padding: "0.5rem 1rem" } }, "+ Tạo mới")
+    ),
+    // Config list
+    createElement(
+      "div",
+      { className: "mail-config-list" },
+      configs.length === 0
+        ? createElement("p", null, "Chưa có cấu hình mail nào.")
+        : createElement(
+            "table",
+            { style: { width: "100%", borderCollapse: "collapse" } },
+            createElement(
+              "thead",
+              null,
+              createElement(
+                "tr",
+                null,
+                createElement("th", null, "ID"),
+                createElement("th", null, "Provider"),
+                createElement("th", null, "From Email"),
+                createElement("th", null, "Host/Port"),
+                createElement("th", null, "Trạng thái"),
+                createElement("th", null, "Thao tác")
+              )
+            ),
+            createElement(
+              "tbody",
+              null,
+              configs.map((config) =>
+                createElement(
+                  "tr",
+                  { key: config.id },
+                  createElement("td", null, config.id),
+                  createElement("td", null, config.provider),
+                  createElement("td", null, config.from_email),
+                  createElement(
+                    "td",
+                    null,
+                    config.provider === "smtp" ? config.smtp_host + ":" + config.smtp_port : "N/A"
+                  ),
+                  createElement(
+                    "td",
+                    null,
+                    config.is_active
+                      ? createElement("span", { style: { color: "green", fontWeight: "bold" } }, "ACTIVE")
+                      : createElement("span", { style: { color: "gray" } }, "INACTIVE")
+                  ),
+                  createElement(
+                    "td",
+                    { style: { whiteSpace: "nowrap" } },
+                    createElement(
+                      "button",
+                      { onClick: () => handleOpenEdit(config), style: { marginRight: "0.25rem" } },
+                      "Sửa"
+                    ),
+                    !config.is_active &&
+                      createElement(
+                        "button",
+                        { onClick: () => handleActivate(config.id), style: { marginRight: "0.25rem" } },
+                        "Kích hoạt"
+                      ),
+                    createElement(
+                      "button",
+                      { onClick: () => handleDelete(config.id), disabled: config.is_active },
+                      "Xóa"
+                    )
+                  )
+                )
+              )
+            )
+          )
+    ),
+    // Test panel
+    createElement(
+      "div",
+      { className: "mail-config-test-panel", style: { marginTop: "2rem", padding: "1rem", border: "1px solid #ccc" } },
+      createElement("h3", null, "Bộ Thử Nghiệm Kết Nối (Live Testing)"),
+      createElement(
+        "div",
+        null,
+        createElement("label", null, "Email nhận test: "),
+        createElement("input", {
+          type: "email",
+          value: testEmail,
+          onChange: (e) => setTestEmail(e.target.value),
+          placeholder: "admin@vninvest.vn",
+        })
+      ),
+      createElement(
+        "div",
+        { style: { marginTop: "1rem" } },
+        configs.map((config) =>
+          createElement(
+            "button",
+            {
+              key: "test-" + config.id,
+              onClick: () => handleTestConnection(config),
+              disabled: testLoading,
+              style: { marginRight: "0.5rem" },
+            },
+            testLoading ? "Đang thử..." : "Test " + config.provider + " (ID: " + config.id + ")"
+          )
+        )
+      ),
+      testMessage &&
+        createElement(
+          "div",
+          { style: { marginTop: "1rem", color: testMessage.type === "success" ? "green" : "red" } },
+          testMessage.text
+        )
+    ),
+    // Modal
+    showModal &&
+      createElement(
+        "div",
+        {
+          style: {
             position: "fixed",
             top: 0,
             left: 0,
@@ -283,10 +296,12 @@ export function ShellMailConfigPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
+          },
+        },
+        createElement(
+          "div",
+          {
+            style: {
               background: "#fff",
               borderRadius: "8px",
               padding: "2rem",
@@ -294,143 +309,168 @@ export function ShellMailConfigPage() {
               maxWidth: "640px",
               maxHeight: "90vh",
               overflowY: "auto",
-            }}
-          >
-            <h3>
-              {editingConfig
-                ? `Sửa cấu hình #${editingConfig.id}`
-                : "Tạo cấu hình mail mới"}
-            </h3>
-            <form onSubmit={handleSubmitForm}>
-              <div style={{ marginBottom: "1rem" }}>
-                <label>Provider: </label>
-                <select
-                  value={formData.provider}
-                  onChange={(e) => handleFormChange("provider", e.target.value)}
-                >
-                  <option value="smtp">SMTP</option>
-                  <option value="gmail_api">Gmail API</option>
-                </select>
-              </div>
-              <div style={{ marginBottom: "1rem" }}>
-                <label>From Email: </label>
-                <input
-                  type="email"
-                  value={formData.from_email}
-                  onChange={(e) => handleFormChange("from_email", e.target.value)}
-                  required
-                  style={{ width: "100%", boxSizing: "border-box" }}
-                />
-              </div>
-              {formData.provider === "smtp" && (
-                <>
-                  <div style={{ marginBottom: "0.75rem" }}>
-                    <label>SMTP Host: </label>
-                    <input
-                      type="text"
-                      value={formData.smtp_host}
-                      onChange={(e) => handleFormChange("smtp_host", e.target.value)}
-                      placeholder="smtp.gmail.com"
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: "0.75rem" }}>
-                    <label>SMTP Port: </label>
-                    <input
-                      type="number"
-                      value={formData.smtp_port}
-                      onChange={(e) => handleFormChange("smtp_port", e.target.value)}
-                      placeholder="587"
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: "0.75rem" }}>
-                    <label>SMTP Username: </label>
-                    <input
-                      type="text"
-                      value={formData.smtp_username}
-                      onChange={(e) => handleFormChange("smtp_username", e.target.value)}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: "0.75rem" }}>
-                    <label>SMTP Password: </label>
-                    <input
-                      type="password"
-                      value={formData.smtp_password}
-                      onChange={(e) => handleFormChange("smtp_password", e.target.value)}
-                      placeholder={editingConfig ? "(Để trống nếu không đổi mật khẩu)" : ""}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: "0.75rem" }}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={formData.smtp_use_tls}
-                        onChange={(e) => handleFormChange("smtp_use_tls", e.target.checked)}
-                      />{" "}
-                      Dùng TLS
-                    </label>{" "}
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={formData.smtp_use_ssl}
-                        onChange={(e) => handleFormChange("smtp_use_ssl", e.target.checked)}
-                      />{" "}
-                      Dùng SSL
-                    </label>
-                  </div>
-                </>
-              )}
-              {formData.provider === "gmail_api" && (
-                <>
-                  <div style={{ marginBottom: "0.75rem" }}>
-                    <label>Service Account JSON: </label>
-                    <textarea
-                      value={formData.google_service_account_json}
-                      onChange={(e) =>
-                        handleFormChange("google_service_account_json", e.target.value)
-                      }
-                      placeholder={
-                        editingConfig ? "(Để trống nếu không đổi)" : "Dán JSON service account..."
-                      }
-                      rows={6}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: "0.75rem" }}>
-                    <label>Delegated User Email: </label>
-                    <input
-                      type="email"
-                      value={formData.google_delegated_user_email}
-                      onChange={(e) =>
-                        handleFormChange("google_delegated_user_email", e.target.value)
-                      }
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                </>
-              )}
-              {formError && (
-                <div style={{ color: "red", marginBottom: "1rem" }}>{formError}</div>
-              )}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem" }}>
-                <button type="button" onClick={handleCloseModal} disabled={formLoading}>
-                  Hủy
-                </button>
-                <button type="submit" disabled={formLoading}>
-                  {formLoading
-                    ? "Đang lưu..."
-                    : editingConfig
-                    ? "Cập nhật"
-                    : "Tạo mới"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+            },
+          },
+          createElement(
+            "h3",
+            null,
+            editingConfig ? "Sửa cấu hình #" + editingConfig.id : "Tạo cấu hình mail mới"
+          ),
+          createElement(
+            "form",
+            { onSubmit: handleSubmitForm },
+            // Provider
+            createElement(
+              "div",
+              { style: { marginBottom: "1rem" } },
+              createElement("label", null, "Provider: "),
+              createElement(
+                "select",
+                { value: formData.provider, onChange: (e) => handleFormChange("provider", e.target.value) },
+                createElement("option", { value: "smtp" }, "SMTP"),
+                createElement("option", { value: "gmail_api" }, "Gmail API")
+              )
+            ),
+            // From Email
+            createElement(
+              "div",
+              { style: { marginBottom: "1rem" } },
+              createElement("label", null, "From Email: "),
+              createElement("input", {
+                type: "email",
+                value: formData.from_email,
+                onChange: (e) => handleFormChange("from_email", e.target.value),
+                required: true,
+                style: { width: "100%", boxSizing: "border-box" },
+              })
+            ),
+            // SMTP fields
+            formData.provider === "smtp" &&
+              createElement(
+                Fragment,
+                null,
+                createElement(
+                  "div",
+                  { style: { marginBottom: "0.75rem" } },
+                  createElement("label", null, "SMTP Host: "),
+                  createElement("input", {
+                    type: "text",
+                    value: formData.smtp_host,
+                    onChange: (e) => handleFormChange("smtp_host", e.target.value),
+                    placeholder: "smtp.gmail.com",
+                    style: { width: "100%", boxSizing: "border-box" },
+                  })
+                ),
+                createElement(
+                  "div",
+                  { style: { marginBottom: "0.75rem" } },
+                  createElement("label", null, "SMTP Port: "),
+                  createElement("input", {
+                    type: "number",
+                    value: formData.smtp_port,
+                    onChange: (e) => handleFormChange("smtp_port", e.target.value),
+                    placeholder: "587",
+                    style: { width: "100%", boxSizing: "border-box" },
+                  })
+                ),
+                createElement(
+                  "div",
+                  { style: { marginBottom: "0.75rem" } },
+                  createElement("label", null, "SMTP Username: "),
+                  createElement("input", {
+                    type: "text",
+                    value: formData.smtp_username,
+                    onChange: (e) => handleFormChange("smtp_username", e.target.value),
+                    style: { width: "100%", boxSizing: "border-box" },
+                  })
+                ),
+                createElement(
+                  "div",
+                  { style: { marginBottom: "0.75rem" } },
+                  createElement("label", null, "SMTP Password: "),
+                  createElement("input", {
+                    type: "password",
+                    value: formData.smtp_password,
+                    onChange: (e) => handleFormChange("smtp_password", e.target.value),
+                    placeholder: editingConfig ? "(Để trống nếu không đổi mật khẩu)" : "",
+                    style: { width: "100%", boxSizing: "border-box" },
+                  })
+                ),
+                createElement(
+                  "div",
+                  { style: { marginBottom: "0.75rem" } },
+                  createElement(
+                    "label",
+                    null,
+                    createElement("input", {
+                      type: "checkbox",
+                      checked: formData.smtp_use_tls,
+                      onChange: (e) => handleFormChange("smtp_use_tls", e.target.checked),
+                    }),
+                    " Dùng TLS"
+                  ),
+                  " ",
+                  createElement(
+                    "label",
+                    null,
+                    createElement("input", {
+                      type: "checkbox",
+                      checked: formData.smtp_use_ssl,
+                      onChange: (e) => handleFormChange("smtp_use_ssl", e.target.checked),
+                    }),
+                    " Dùng SSL"
+                  )
+                )
+              ),
+            // Gmail API fields
+            formData.provider === "gmail_api" &&
+              createElement(
+                Fragment,
+                null,
+                createElement(
+                  "div",
+                  { style: { marginBottom: "0.75rem" } },
+                  createElement("label", null, "Service Account JSON: "),
+                  createElement("textarea", {
+                    value: formData.google_service_account_json,
+                    onChange: (e) => handleFormChange("google_service_account_json", e.target.value),
+                    placeholder: editingConfig ? "(Để trống nếu không đổi)" : "Dán JSON service account...",
+                    rows: 6,
+                    style: { width: "100%", boxSizing: "border-box" },
+                  })
+                ),
+                createElement(
+                  "div",
+                  { style: { marginBottom: "0.75rem" } },
+                  createElement("label", null, "Delegated User Email: "),
+                  createElement("input", {
+                    type: "email",
+                    value: formData.google_delegated_user_email,
+                    onChange: (e) => handleFormChange("google_delegated_user_email", e.target.value),
+                    style: { width: "100%", boxSizing: "border-box" },
+                  })
+                )
+              ),
+            // Form error
+            formError &&
+              createElement("div", { style: { color: "red", marginBottom: "1rem" } }, formError),
+            // Action buttons
+            createElement(
+              "div",
+              { style: { display: "flex", justifyContent: "flex-end", gap: "1rem" } },
+              createElement(
+                "button",
+                { type: "button", onClick: handleCloseModal, disabled: formLoading },
+                "Hủy"
+              ),
+              createElement(
+                "button",
+                { type: "submit", disabled: formLoading },
+                formLoading ? "Đang lưu..." : editingConfig ? "Cập nhật" : "Tạo mới"
+              )
+            )
+          )
+        )
+      )
   );
 }
