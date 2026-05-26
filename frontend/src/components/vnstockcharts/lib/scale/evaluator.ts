@@ -122,8 +122,13 @@ function extentsWrapper(useWholeData: any, clamp: any, pointsPerPxThreshold: any
 
 				log(`and ouch, that is too much, so instead showing ${plotData.length} in ${newWidth}px`);
 			} else {
-				plotData = currentPlotData || filteredData.slice(filteredData.length - showMax(width, pointsPerPxThreshold));
-				domain = currentDomain || [xAccessor(head(plotData)), xAccessor(last(plotData))];
+				// Note: currentPlotData can be [] (empty array is truthy) — must check length explicitly
+				plotData = (currentPlotData && currentPlotData.length > 0)
+					? currentPlotData
+					: filteredData.slice(filteredData.length - showMax(width, pointsPerPxThreshold));
+				domain = (currentDomain && currentDomain.length > 0)
+					? currentDomain
+					: [xAccessor(head(plotData)), xAccessor(last(plotData))];
 
 				const newXScale = xScale.copy().domain(domain);
 				const newWidth = Math.floor(newXScale(xAccessor(last(plotData)))

@@ -260,8 +260,8 @@ export class BarReplayController<T extends ReplayBarLike> {
 
 	private emit() {
 		const state = this.getState();
-		this.listeners.forEach((listener) => {
+		for (const listener of this.listeners) {
 			listener(state);
-		});
+		}
 	}
 }

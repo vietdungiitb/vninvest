@@ -1,5 +1,5 @@
 import type { DrawingObject, DrawingToolDefinition } from "../types";
-import { createDrawingObject, replaceNextPoint } from "../shared";
+import { createDrawingObject, replaceLastPoint } from "../shared";
 import type { ChartScales } from "../coordinateUtils";
 import { chartPointToPixel } from "../coordinateUtils";
 
@@ -53,7 +53,7 @@ function makeElliottTool(type: ElliottWaveToolType): DrawingToolDefinition {
 		name: type,
 		createDraft: (startPoint) =>
 			createDrawingObject(type, Array.from({ length: pointCount }, () => startPoint)),
-		updateDraft: (draft, nextPoint) => replaceNextPoint(draft, nextPoint),
+		updateDraft: (draft, nextPoint) => replaceLastPoint(draft, nextPoint),
 		render: () => undefined,
 	};
 }

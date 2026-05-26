@@ -132,6 +132,7 @@ export function findSnapPointWithContext(
 		context.plotData,
 		sortVisibleDrawings(drawings),
 		MAGNET_TOLERANCE[magnetSensitivity],
+		magnetSensitivity,
 	);
 }
 

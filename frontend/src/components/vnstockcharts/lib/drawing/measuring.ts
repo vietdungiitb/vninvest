@@ -6,7 +6,7 @@ import {
 	type MeasurementPoint,
 	type MeasurementSelection,
 	type MeasurementSummary,
-} from "./engineCompat";
+} from "@vnstockcharts/vn-kline-engine-core";
 
 type ChartConfigLike = {
 	id?: number | string;
@@ -120,7 +120,10 @@ export function computeLiveMeasurement(
 	// Bar count: number of bars in the plot data between the two timestamps
 	let barCount = 0;
 	if (scales.plotData && scales.xAccessor && scales.plotData.length > 1) {
-		const dates = scales.plotData.map((d) => scales.xAccessor!(d).getTime());
+		const dates = scales.plotData.map((d) => {
+			const v = scales.xAccessor!(d);
+			return v instanceof Date ? v.getTime() : (d as any).date instanceof Date ? (d as any).date.getTime() : Number(v);
+		});
 		const t0 = p0.x;
 		const t1 = p1.x;
 		const tMin = Math.min(t0, t1);

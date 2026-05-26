@@ -1,6 +1,5 @@
 import type { DrawingObject } from "./types";
 import { clonePoint } from "./shared";
-import { resolveDrawingStyle } from "./drawingStyleRegistry";
 
 export interface DrawingPlacement {
 	paneId?: string;
@@ -11,7 +10,7 @@ export function cloneDrawingSnapshot(drawing: DrawingObject, placement?: Drawing
 	return {
 		...drawing,
 		points: drawing.points.map(clonePoint),
-		style: { ...resolveDrawingStyle(drawing) },
+		style: { ...drawing.style },
 		fibLevels: drawing.fibLevels ? [...drawing.fibLevels] : undefined,
 		riskReward: drawing.riskReward ? { ...drawing.riskReward } : undefined,
 		paneId: placement?.paneId ?? drawing.paneId,

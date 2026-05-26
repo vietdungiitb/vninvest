@@ -114,13 +114,13 @@ class GenericComponent extends Component<GenericComponentProps, GenericComponent
 		onMouseMove: noop,
 		onMouseDown: noop,
 	} satisfies Partial<GenericComponentProps>;
-	context!: StockChartContextValue;
-	moreProps!: AnyRecord;
-	suscriberId!: number;
-	dragInProgress: boolean | undefined;
-	someDragInProgress: boolean | undefined;
-	iSetTheCursorClass: boolean | undefined;
-	evaluationInProgress: boolean | undefined;
+	declare context: StockChartContextValue;
+	declare moreProps: AnyRecord;
+	declare suscriberId: number;
+	declare dragInProgress: boolean | undefined;
+	declare someDragInProgress: boolean | undefined;
+	declare iSetTheCursorClass: boolean | undefined;
+	declare evaluationInProgress: boolean | undefined;
 
 	constructor(props: GenericComponentProps) {
 		super(props);
@@ -182,7 +182,14 @@ class GenericComponent extends Component<GenericComponentProps, GenericComponent
 
 		if (isDefined(canvasDraw) && !this.evaluationInProgress && chartCanvasType !== "svg") {
 			this.updateMoreProps(this.moreProps);
-			this.drawOnCanvas();
+			// DT-22: Skip the immediate draw when moreProps.xScale is stale (e.g. after a zoom
+			// setState in ChartCanvas). ChartCanvas.componentDidUpdate fires *after* all children
+			// and will issue __sync__ (updating moreProps.xScale) then clearThreeCanvas + draw,
+			// so we must not paint with the old scale here or drawings will flash at the wrong pos.
+			const contextXScale = this.context.xScale;
+			if (!contextXScale || this.moreProps.xScale === contextXScale) {
+				this.drawOnCanvas();
+			}
 		}
 	}
 

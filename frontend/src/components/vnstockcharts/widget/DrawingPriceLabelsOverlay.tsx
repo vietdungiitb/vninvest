@@ -17,30 +17,28 @@ export interface DrawingPriceLabelsOverlayProps {
 	height: number;
 }
 
-type ScaleSlotState = NonNullable<PaneRuntimeSnapshot["scaleSlotStates"]>[string];
-
-function resolveScaleSlotStates(snapshot: PaneRuntimeSnapshot): Record<string, ScaleSlotState> {
-	return snapshot.scaleSlotStates ?? {};
-}
-
 function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
 }
 
 function resolvePreferredScaleSlotId(snapshot: PaneRuntimeSnapshot, requestedScaleSlotId?: string) {
-	const scaleSlotStates = resolveScaleSlotStates(snapshot);
-	if (requestedScaleSlotId && (scaleSlotStates[requestedScaleSlotId] || snapshot.scaleSlotBounds[requestedScaleSlotId])) {
+	// Only fast-return the exact match when it is on the RIGHT side.
+	// If the stored yScaleId points to a left-side slot, continue searching for a
+	// right-side alternative — price labels should always prefer the right Y-axis.
+	if (requestedScaleSlotId && snapshot.scaleSlotStates[requestedScaleSlotId]?.side === "right") {
 		return requestedScaleSlotId;
 	}
 
-	const visibleScaleSlotIds = Object.entries(scaleSlotStates)
-		.filter(([, state]) => state?.visible !== false)
+	const visibleScaleSlotIds = Object.entries(snapshot.scaleSlotStates)
+		.filter(([, state]) => state.visible)
 		.map(([scaleSlotId]) => scaleSlotId);
 	if (visibleScaleSlotIds.length === 0) {
-		return Object.keys(snapshot.scaleSlotBounds)[0];
+		return undefined;
 	}
 
-	return visibleScaleSlotIds.find((scaleSlotId) => scaleSlotStates[scaleSlotId]?.side === "right")
+	// Prefer right side regardless of what yScaleId was stored at draw time.
+	return visibleScaleSlotIds.find((scaleSlotId) => snapshot.scaleSlotStates[scaleSlotId]?.side === "right")
+		?? (requestedScaleSlotId && snapshot.scaleSlotStates[requestedScaleSlotId] ? requestedScaleSlotId : undefined)
 		?? visibleScaleSlotIds[0];
 }
 
@@ -93,7 +91,6 @@ export default function DrawingPriceLabelsOverlay({
 	if (!scaleSlotId) {
 		return null;
 	}
-	const scaleSlotStates = resolveScaleSlotStates(snapshot);
 
 	const labelFill = effectiveDrawing.style.fill && effectiveDrawing.style.fill !== "transparent"
 		? effectiveDrawing.style.fill
@@ -130,7 +127,7 @@ export default function DrawingPriceLabelsOverlay({
 				}
 
 				const top = height > 0 ? clamp(pixel.y - 10, 0, Math.max(0, height - 22)) : pixel.y - 10;
-				const side = scaleSlotStates[scaleSlotId]?.side ?? "right";
+				const side = snapshot.scaleSlotStates[scaleSlotId]?.side ?? "right";
 
 				return (
 					<div

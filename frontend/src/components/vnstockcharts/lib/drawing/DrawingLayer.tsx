@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GenericChartComponent, { getMouseCanvas } from "../GenericChartComponent";
 import { createDraftFromTool, createTool, isDrawingToolName } from "./registry";
-import { appendPoint, replaceNextPoint, replacePoint } from "./shared";
+import { appendPoint, replacePoint } from "./shared";
 import type { DrawingObject, DrawingToolType, Point } from "./types";
 import { renderDrawingToCanvas, renderDrawingActionHandles, renderRubberBand, renderMeasurementLabel, type RenderCanvasOptions } from "./renderCanvas";
 import { computeLiveMeasurement } from "./measuring";
@@ -25,6 +25,7 @@ import type { UseDrawingInteractionReturn } from "./useDrawingInteraction";
 import { getSelectedObjectIds } from "./stateMachine";
 import type { ChartConfig } from "../StockChartContext";
 import { subscribeDrawingStyleChanges } from "./drawingStyleRegistry";
+import { resolveSemanticPointLabels } from "./renderCanvas";
 
 
 export interface DrawingLayerLiveMeasurementLabels {
@@ -37,10 +38,22 @@ export interface DrawingLayerProps {
 	activeTool: string;
 	interaction: UseDrawingInteractionReturn;
 	magnetSensitivity?: MagnetSensitivity;
+	focusedPointIndex?: number | null;
 	onToolUsed?: () => void;
 	onContextMenu?: (moreProps: any, event: unknown) => void;
 	/** Optional labels for the live measurement overlay shown while drawing */
 	liveMeasurementLabels?: DrawingLayerLiveMeasurementLabels;
+	/** Fires when the user clicks directly on a semantic pattern point handle (A/B/C/D etc.) */
+	onSemanticPointClick?: (pointIndex: number) => void;
+	// ── GAP-4: Multi-select batch handlers ────────────────────────────────
+	/** Called when a multi-select delete-all action is triggered (keyboard or toolbar) */
+	onMultiSelectDeleteAll?: () => void;
+	/** Called when a multi-select lock-all action is triggered */
+	onMultiSelectLockAll?: (locked: boolean) => void;
+	/** Called when a multi-select set-visible-all action is triggered */
+	onMultiSelectSetVisibleAll?: (visible: boolean) => void;
+	/** Called when a multi-select batch-color action is triggered */
+	onMultiSelectBatchColor?: (color: string) => void;
 }
 
 type ChartConfigLike = ChartConfig;
@@ -317,16 +330,9 @@ function isMultiStepTool(toolName: DrawingToolType) {
 	);
 }
 
-function hasRemainingPlaceholder(drawing: DrawingObject) {
-	const startPoint = drawing.points[0];
-	if (!startPoint) {
-		return false;
-	}
 
-	return drawing.points.slice(1).some((point) => point.x === startPoint.x && point.y === startPoint.y);
-}
 
-export default function DrawingLayer({ activeTool, interaction, magnetSensitivity = "normal", onToolUsed, onContextMenu, liveMeasurementLabels }: DrawingLayerProps) {
+export default function DrawingLayer({ activeTool, interaction, magnetSensitivity = "normal", focusedPointIndex = null, onToolUsed, onContextMenu, liveMeasurementLabels, onSemanticPointClick, onMultiSelectDeleteAll, onMultiSelectLockAll, onMultiSelectSetVisibleAll, onMultiSelectBatchColor }: DrawingLayerProps) {
 	const [, setStyleRevision] = useState(0);
 	useEffect(() => subscribeDrawingStyleChanges(() => {
 		setStyleRevision((value) => value + 1);
@@ -344,6 +350,9 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 	const canGroupDrag = activeTool === "cursor" && interaction.drawingState.type === "selectedMultiple";
 	const snapRef = useRef<SnapResult | null>(null);
 	const pendingResizeHandleRef = useRef<number | null>(null);
+	// Track which semantic point handle the mouse is hovering over (for cursor feedback)
+	const hoveredSemanticHandleIdxRef = useRef<number | null>(null);
+	const [hoveredSemanticHandleIdx, setHoveredSemanticHandleIdx] = useState<number | null>(null);
 	const rubberBandRef = useRef<{ startPixel: [number, number]; currentPixel: [number, number] } | null>(null);
 	const rubberBandJustCommittedRef = useRef(false);
 	const interactionRef = useRef(interaction);
@@ -382,11 +391,24 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 				continue;
 			}
 
+			// Filter out drawings with invalid/NaN mapped pixel coordinates.
+			// Handled dynamically by D3 xScale/yScale, preventing rendering errors or NaN positions
+			// while keeping all drawings visible when zooming in or drawing in the margins.
+			const hasInvalidPoints = drawing.points.some((pt) => {
+				const px = renderScales.xScale(new Date(pt.x));
+				const py = renderScales.yScale(pt.y);
+				return !Number.isFinite(px) || !Number.isFinite(py);
+			});
+			if (hasInvalidPoints) {
+				continue;
+			}
+
 			const canvasOptions: RenderCanvasOptions = {
 				chartWidth: chartConfig.width,
 				chartHeight: chartConfig.height,
 				plotData: renderScales.plotData,
 				isSelected: selectedObjectIdSet.has(drawing.id),
+				focusedPointIndex: selectedDrawingId === drawing.id ? focusedPointIndex : null,
 			};
 
 			withChartTranslation(ctx, baseChartConfig, chartConfig, () => {
@@ -460,11 +482,53 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 			return false;
 		}
 
+		if (selectionModifierPressed) {
+			return true;
+		}
+
+		// Show pointer cursor when hovering over a resize handle of the selected drawing
+		// (gives visual feedback that semantic/resize points are clickable)
+		if (selectedDrawing && selectedDrawingId) {
+			const context = resolveDrawingInteractionContextForDrawing(moreProps, selectedDrawing, undefined, true);
+			if (context) {
+				const handleIndex = getResizeHandleIndex(
+					selectedDrawing,
+					context.mousePosition[0],
+					context.mousePosition[1],
+					context.renderScales,
+				);
+				if (handleIndex !== null) {
+					return true;
+				}
+			}
+		}
+
 		const hit = findHitDrawing(interaction, moreProps);
 		return hit != null;
-	}, [activeTool, interaction.history.present]);
+	}, [activeTool, selectedDrawing, selectedDrawingId, interaction.history.present, selectionModifierPressed]);
 
-	const handleDragStart = useCallback((moreProps: any) => {
+	const handleDragStart = useCallback((moreProps: any, e?: any) => {
+		// Ctrl/Meta held = rubber-band selection mode; never start a drag-move session.
+		// This prevents drawing movement from racing with rubber-band commit on mouse-up.
+		if (rubberBandRef.current) {
+			pendingResizeHandleRef.current = null;
+			return;
+		}
+
+		// Fix D: Shift/Ctrl/Meta+click = multi-select; bail early so no drag session is
+		// created and no interaction.startMoving/startResizing call puts the state machine
+		// in "moving" state. handleClick will fire (dragHappened=false) and own the
+		// selection logic cleanly.
+		// NOTE: Ctrl+click on empty space sets rubberBandRef (caught above); Ctrl+click ON
+		// a drawing keeps rubberBandRef=null so we must catch it here too.
+		// Root-cause fix: moreProps.event is NEVER populated by ChartCanvas→triggerEvent;
+		// the raw DOM event arrives as the 2nd callback argument (e) instead.
+		const nativeEvent = (e ?? moreProps.event) as MouseEvent | undefined;
+		if (nativeEvent?.shiftKey || nativeEvent?.ctrlKey || nativeEvent?.metaKey) {
+			pendingResizeHandleRef.current = null;
+			return;
+		}
+
 		if (!canDragSelectedDrawing || !selectedDrawingId || !selectedDrawing) {
 			// Check for group drag when multiple drawings are selected
 			if (canGroupDrag) {
@@ -512,7 +576,9 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 			return;
 		}
 
-		const resizeHandleIndex = pendingResizeHandleRef.current;
+		// Use the explicitly focused point (toolbar "Điểm: X A B C D" selection) as fallback
+		// so that dragging while a specific point is focused edits only that point.
+		const resizeHandleIndex = pendingResizeHandleRef.current ?? focusedPointIndex;
 		if (resizeHandleIndex != null) {
 			dragSessionRef.current = {
 				mode: "resize",
@@ -536,9 +602,24 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		}
 		dragPreviewRef.current = null;
 		pendingResizeHandleRef.current = null;
-	}, [canDragSelectedDrawing, canGroupDrag, interaction, selectedDrawing, selectedDrawingId, selectedObjectIdSet, selectedObjectIds]);
+	}, [canDragSelectedDrawing, canGroupDrag, focusedPointIndex, interaction, selectedDrawing, selectedDrawingId, selectedObjectIdSet, selectedObjectIds]);
 
 	const handleDrag = useCallback((moreProps: any) => {
+		// Fix C: rubber-band active → update currentPixel from drag events.
+		// EventCapture routes MOUSEMOVE to handleDrag (not handleMouseMove) when
+		// somethingSelected=true, so handleMouseMove never fires during this drag.
+		if (rubberBandRef.current) {
+			const xy = moreProps.mouseXY;
+			if (xy) {
+				rubberBandRef.current = {
+					...rubberBandRef.current,
+					currentPixel: [xy[0] as number, xy[1] as number],
+				};
+				setRubberBandTick((v) => v + 1);
+			}
+			return;
+		}
+
 		const session = dragSessionRef.current;
 		if (!session) {
 			return;
@@ -550,7 +631,19 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		}
 
 		if (session.mode === "resize" && session.handleIndex != null) {
-			dragPreviewRef.current = resizeDrawingsByIds(session.baseDrawings, session.selectedObjectIds, session.handleIndex, currentChartPoint);
+			// Clamp the dragged point to the visible time range so a single-point
+			// drag (e.g. resizing point D of ABCD) cannot exit the chart time frame.
+			const resizeCtx = resolveDrawingInteractionContextFromMoreProps(moreProps, session.chartConfig);
+			let clampedPoint = currentChartPoint;
+			if (resizeCtx && session.chartConfig) {
+				const xMinR = resizeCtx.renderScales.xScaleInvert(0).getTime();
+				const xMaxR = resizeCtx.renderScales.xScaleInvert(session.chartConfig.width).getTime();
+				clampedPoint = {
+					x: Math.max(xMinR, Math.min(xMaxR, currentChartPoint.x)),
+					y: currentChartPoint.y,
+				};
+			}
+			dragPreviewRef.current = resizeDrawingsByIds(session.baseDrawings, session.selectedObjectIds, session.handleIndex, clampedPoint);
 			return;
 		}
 
@@ -558,8 +651,43 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 			return;
 		}
 
-		const deltaX = currentChartPoint.x - session.startChartPoint.x;
+		let deltaX = currentChartPoint.x - session.startChartPoint.x;
 		const deltaY = currentChartPoint.y - session.startChartPoint.y;
+
+		// Clamp deltaX so that no point of any moving drawing exits the visible x-range.
+		// This prevents the drawing from being dragged beyond the chart time boundaries.
+		const clampChartConfig = session.chartConfig;
+		const ctx2 = clampChartConfig
+			? resolveDrawingInteractionContextFromMoreProps(moreProps, clampChartConfig)
+			: undefined;
+		if (ctx2 && clampChartConfig) {
+			const chartWidth = clampChartConfig.width;
+			const xMin = ctx2.renderScales.xScaleInvert(0).getTime();
+			const xMax = ctx2.renderScales.xScaleInvert(chartWidth).getTime();
+			for (const drawing of session.baseDrawings) {
+				if (!session.selectedObjectIds.includes(drawing.id)) {
+					continue;
+				}
+				for (const pt of drawing.points) {
+					// How far can we move before this point exits each edge?
+					// positive = pt is currently inside that edge; negative = already past it.
+					const leftHeadroom = pt.x - xMin;
+					const rightHeadroom = xMax - pt.x;
+
+					if (deltaX > 0) {
+						// Moving right: cap at remaining room; if point is already at/past right
+						// edge (rightHeadroom <= 0) block rightward movement entirely.
+						deltaX = Math.min(deltaX, Math.max(0, rightHeadroom));
+					}
+					if (deltaX < 0) {
+						// Moving left: cap at remaining room; if point is already at/past left
+						// edge (leftHeadroom <= 0) block leftward movement entirely.
+						deltaX = Math.max(deltaX, -Math.max(0, leftHeadroom));
+					}
+				}
+			}
+		}
+
 		dragPreviewRef.current = translateDrawingsByIds(session.baseDrawings, session.selectedObjectIds, deltaX, deltaY);
 	}, []);
 
@@ -575,7 +703,13 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		pendingResizeHandleRef.current = null;
 		dragPreviewRef.current = null;
 
-		if (previewDrawings && (previewDrawings.length !== session.baseDrawings.length || previewDrawings.some((drawing, index) => drawing !== session.baseDrawings[index]))) {
+		// No actual drag movement happened (previewDrawings is null when handleDrag never fired).
+		// Let handleClick own the selection logic for plain clicks, Shift+click, and Ctrl+click.
+		if (!previewDrawings) {
+			return;
+		}
+
+		if (previewDrawings.length !== session.baseDrawings.length || previewDrawings.some((drawing, index) => drawing !== session.baseDrawings[index])) {
 			interaction.replaceDrawings(previewDrawings);
 		}
 
@@ -586,9 +720,10 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		}
 	}, [interaction]);
 
-	const handleMouseDown = useCallback((moreProps: any) => {
+	const handleMouseDown = useCallback((moreProps: any, e?: any) => {
 		// DT-9-T02: detect pointer device type from native event
-		const nativeDown = moreProps.event as (PointerEvent & { touches?: TouchList }) | undefined;
+		// Root-cause fix: raw DOM event arrives as 2nd arg (e), not via moreProps.event.
+		const nativeDown = (e ?? moreProps.event) as (PointerEvent & { touches?: TouchList }) | undefined;
 		if (nativeDown) {
 			const pt = (nativeDown as PointerEvent).pointerType;
 			if (pt === "touch" || pt === "pen") {
@@ -634,7 +769,7 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		}
 
 		// Plain cursor drags pan the chart again; reserve rubber-band selection for Ctrl/Cmd+drag.
-		if (activeTool === "cursor" && (moreProps.event?.ctrlKey || moreProps.event?.metaKey)) {
+		if (activeTool === "cursor" && (nativeDown?.ctrlKey || nativeDown?.metaKey)) {
 			const hit = findHitDrawing(interaction, moreProps);
 			if (!hit) {
 				const xy = moreProps.mouseXY ?? [0, 0];
@@ -642,6 +777,7 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 					startPixel: [xy[0] as number, xy[1] as number],
 					currentPixel: [xy[0] as number, xy[1] as number],
 				};
+				setRubberBandTick((v) => v + 1);
 			}
 		}
 
@@ -682,6 +818,24 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 				startPixel: rubberBandRef.current.startPixel,
 				currentPixel: [xy[0] as number, xy[1] as number],
 			};
+			setRubberBandTick((v) => v + 1);
+		}
+
+		// Detect if mouse is over a resize handle of the selected drawing to update the
+		// cursor class (pointer cursor signals the point is draggable/clickable).
+		// Applies to ALL drawing types, not just semantic ones (XABCD / Elliott).
+		if (activeTool === "cursor" && selectedDrawing && selectedDrawingId) {
+			const ctx = resolveDrawingInteractionContextForDrawing(moreProps, selectedDrawing, undefined, true);
+			const newIdx = ctx
+				? (getResizeHandleIndex(selectedDrawing, ctx.mousePosition[0], ctx.mousePosition[1], ctx.renderScales) ?? null)
+				: null;
+			if (newIdx !== hoveredSemanticHandleIdxRef.current) {
+				hoveredSemanticHandleIdxRef.current = newIdx;
+				setHoveredSemanticHandleIdx(newIdx);
+			}
+		} else if (hoveredSemanticHandleIdxRef.current !== null) {
+			hoveredSemanticHandleIdxRef.current = null;
+			setHoveredSemanticHandleIdx(null);
 		}
 
 		if (interaction.drawingState.type !== "drawing") {
@@ -699,9 +853,11 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		const tool = createTool(interaction.drawingState.toolName);
 		const updated = tool.updateDraft(interaction.drawingState.object, resolved.point);
 		interaction.dispatch({ type: "UPDATE_DRAWING", object: updated });
-	}, [interaction, magnetSensitivity]);
+	}, [activeTool, interaction, magnetSensitivity, selectedDrawing, selectedDrawingId]);
 
-	const handleClick = useCallback((moreProps: any) => {
+	const handleClick = useCallback((moreProps: any, e?: any) => {
+		// Root-cause fix: raw DOM event arrives as 2nd arg (e), not via moreProps.event.
+		const nativeClick = (e ?? moreProps.event) as MouseEvent | undefined;
 		if (activeTool === "cursor" && interaction.drawingState.type !== "drawing") {
 			// DT-2: skip deselect if rubber-band just committed a selection
 			if (rubberBandJustCommittedRef.current) {
@@ -738,6 +894,22 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 						interaction.updateDrawing(selectedDrawingId, { locked: !selectedDrawing.locked });
 						return;
 					}
+
+					// Semantic point click: if this drawing has labelled points (Elliott, harmonic
+					// patterns, etc.) and the pointer is on a resize handle, focus that point.
+					if (onSemanticPointClick && resolveSemanticPointLabels(selectedDrawing) !== null) {
+						const handleIndex = getResizeHandleIndex(
+							selectedDrawing,
+							context.mousePosition[0],
+							context.mousePosition[1],
+							context.renderScales,
+						);
+						if (handleIndex !== null) {
+							onSemanticPointClick(handleIndex);
+							pendingResizeHandleRef.current = null;
+							return;
+						}
+					}
 				}
 			}
 
@@ -752,7 +924,7 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 				interaction.selectObject(hit.id);
 			};
 
-			if (moreProps.event?.shiftKey) {
+			if (nativeClick?.shiftKey || nativeClick?.ctrlKey || nativeClick?.metaKey) {
 				const nextSelectedIds = selectedObjectIdSet.has(hit.id)
 					? selectedObjectIds.filter((id) => id !== hit.id)
 					: [...selectedObjectIds, hit.id];
@@ -784,15 +956,28 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		}
 
 		if (isMultiStepTool(toolName)) {
-			const updated = replaceNextPoint(draft, resolved.point);
-			if (hasRemainingPlaceholder(updated)) {
+			const startPoint = draft.points[0];
+			const lastIndex = draft.points.length - 1;
+			// Find the next interior placeholder (i > 0, i < lastIndex).
+			// The last point (lastIndex) is always the cursor preview via replaceLastPoint in updateDraft,
+			// so it is never a real placeholder and must be excluded from this search.
+			const nextInteriorIdx = startPoint
+				? draft.points.findIndex((p, i) => i > 0 && i < lastIndex && p.x === startPoint.x && p.y === startPoint.y)
+				: -1;
+
+			if (nextInteriorIdx >= 0) {
+				// Confirm this interior placeholder; last point keeps tracking cursor via replaceLastPoint
+				const updated = replacePoint(draft, nextInteriorIdx, resolved.point);
 				interaction.dispatch({ type: "UPDATE_DRAWING", object: updated });
 				return;
 			}
 
-			interaction.dispatch({ type: "COMPLETE_DRAWING", object: updated });
-			interaction.dispatch({ type: "PUSH", drawing: updated });
-			interaction.selectObject(updated.id);
+			// No interior placeholders remain — this is the final click (e.g. D in ABCD).
+			// Confirm the last point with the explicit click position.
+			const finalUpdated = replacePoint(draft, lastIndex, resolved.point);
+			interaction.dispatch({ type: "COMPLETE_DRAWING", object: finalUpdated });
+			interaction.dispatch({ type: "PUSH", drawing: finalUpdated });
+			interaction.selectObject(finalUpdated.id);
 			onToolUsed?.();
 			return;
 		}
@@ -805,8 +990,8 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		onToolUsed?.();
 	}, [activeTool, interaction, magnetSensitivity, onToolUsed, selectedObjectIds, selectedObjectIdSet]);
 
-	const handleContextMenu = useCallback((moreProps: any) => {
-		const nativeEvent = moreProps.event as MouseEvent | undefined;
+	const handleContextMenu = useCallback((moreProps: any, e?: any) => {
+		const nativeEvent = (e ?? moreProps.event) as MouseEvent | undefined;
 		nativeEvent?.preventDefault?.();
 		nativeEvent?.stopPropagation?.();
 
@@ -822,7 +1007,7 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		onContextMenu?.({
 			...moreProps,
 			hitDrawing: hit ?? null,
-		}, moreProps.event);
+		}, nativeEvent);
 	}, [interaction, onContextMenu, selectedDrawingId]);
 
 	const handleDoubleClick = useCallback((moreProps: any) => {
@@ -874,7 +1059,14 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 	const handleHover = useCallback(() => undefined, []);
 	const handleUnHover = useCallback(() => undefined, []);
 
-	const selectedCursorClass = canDragSelectedDrawing ? "react-stockcharts-move-cursor" : chartCursorClass;
+	// When hovering a semantic point handle, show pointer (hand) to signal it's a clickable/draggable point
+	const selectedCursorClass = hoveredSemanticHandleIdx !== null
+		? "react-stockcharts-pointer-cursor"
+		: selectionModifierPressed
+			? "react-stockcharts-multiselect-cursor"
+			: canDragSelectedDrawing
+				? "react-stockcharts-move-cursor"
+				: chartCursorClass;
 	const shouldDisablePan = isDrawingToolName(activeTool) || (activeTool === "cursor" && selectionModifierPressed);
 	const shouldDisablePanOnMouseDown = useCallback((event: unknown) => {
 		const modifierEvent = (typeof event === "object" && event !== null)
@@ -973,6 +1165,12 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 				interactionRef.current.setSelectedObjects(allIds);
 				return;
 			}
+			// GAP-4: Delete/Backspace triggers batch delete when multiple drawings are selected
+			if ((e.key === "Delete" || e.key === "Backspace") && interactionRef.current.drawingState.type === "selectedMultiple") {
+				e.preventDefault();
+				onMultiSelectDeleteAll?.();
+				return;
+			}
 			if (e.key === "Escape") {
 				rubberBandRef.current = null;
 				setSelectionModifierPressed(false);
@@ -988,7 +1186,7 @@ export default function DrawingLayer({ activeTool, interaction, magnetSensitivit
 		<GenericChartComponent
 			clip={false}
 			allowAnyChart
-			selected={canDragSelectedDrawing || canGroupDrag}
+			selected={canDragSelectedDrawing || canGroupDrag || selectionModifierPressed}
 			interactiveCursorClass={selectedCursorClass}
 			disablePan={shouldDisablePan}
 			shouldDisablePanOnMouseDown={shouldDisablePanOnMouseDown}

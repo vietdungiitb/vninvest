@@ -41,7 +41,7 @@ export type DynamicPaneAction =
 
 export interface UseDynamicPanesResult {
 	panes: readonly PaneDescriptor[];
-	visiblePanes: readonly PaneDescriptor[];
+	visiblePanes: PaneDescriptor[];
 	heights: number[];
 	available: number;
 	toggleVisible: (id: string) => void;

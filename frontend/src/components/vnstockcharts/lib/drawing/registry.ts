@@ -17,7 +17,7 @@ export function createTool(name: DrawingToolType) {
 }
 
 export function listDrawingTools() {
-	return Array.from(drawingToolRegistry.values());
+	return [...drawingToolRegistry.values()];
 }
 
 export function isDrawingToolName(name: string): name is DrawingToolType {
@@ -45,5 +45,5 @@ export function getDrawingPlugin(type: string): DrawingPluginDefinition | undefi
 }
 
 export function listDrawingPlugins(): readonly DrawingPluginDefinition[] {
-	return Array.from(_pluginTools.values());
+	return [..._pluginTools.values()];
 }

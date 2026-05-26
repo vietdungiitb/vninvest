@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from "react";
 import { format as d3Format } from "d3-format";
 import { timeFormat } from "d3-time-format";
+import { formatWithTimezone, getCachedFormatter, getGlobalTimezone } from "../utils/timezoneFormatter";
 import Chart from "../Chart";
 import ChartCanvas from "../ChartCanvas";
 import { XAxis, YAxis } from "../axes";
@@ -303,7 +304,11 @@ function candleBodyWidth(
 	const stepPx = Math.abs(moreProps.xScale(second) - moreProps.xScale(first));
 
 	if (!Number.isFinite(stepPx) || stepPx <= 0) return 6;
-	return Math.max(3, stepPx * ratio);
+
+	// Keep candle body within the current screen-space step to avoid overlap when zooming out.
+	const targetWidth = stepPx * ratio;
+	const maxSafeWidth = Math.max(1, Math.floor(stepPx));
+	return Math.max(1, Math.min(maxSafeWidth, Math.floor(targetWidth)));
 }
 
 function renderSeries(series: SeriesConfig) {
@@ -419,7 +424,7 @@ function renderSeries(series: SeriesConfig) {
 					yAccessor={(datum: EnrichedDatum) => resolveSeriesStructuredValue(datum, series) as IndicatorBandValue | undefined}
 					stroke={{ top: withAlpha(bbTopRaw), middle: bbMidColor, bottom: withAlpha(bbBotRaw) }}
 					fill={fillColor}
-					opacity={styleOverride?.opacity ?? 0.12}
+					opacity={styleOverride?.opacity ?? 0.15}
 				/>
 			);
 		}
@@ -609,7 +614,7 @@ function inferMinimumPositiveDateDiffMs(data: readonly EnrichedDatum[]): number 
 	return Number.isFinite(minDiff) ? minDiff : null;
 }
 
-function createSmartDateFormatter(
+export function createSmartDateFormatter(
 	data: readonly EnrichedDatum[],
 	fallbackDateFormat: (date: Date) => string,
 ): (date: Date) => string {
@@ -617,21 +622,30 @@ function createSmartDateFormatter(
 	const minimumDateDiffMs = inferMinimumPositiveDateDiffMs(data);
 	const isIntraday = minimumDateDiffMs !== null && minimumDateDiffMs < ONE_DAY_MS;
 
-	if (!isIntraday) {
-		return timeFormat("%d/%m/%Y");
-	}
+	return (date: Date) => {
+		if (!isIntraday) {
+			return formatWithTimezone(date, { day: "2-digit", month: "2-digit", year: "numeric" });
+		}
 
-	if (visibleBarCount <= 50) return timeFormat("%H:%M:%S");
-	if (visibleBarCount <= 120) return timeFormat("%H:%M");
-	if (visibleBarCount <= 300) return timeFormat("%m-%d %H:%M");
-	return fallbackDateFormat;
+		if (visibleBarCount <= 50) {
+			return formatWithTimezone(date, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+		}
+		if (visibleBarCount <= 120) {
+			return formatWithTimezone(date, { hour: "2-digit", minute: "2-digit", hour12: false });
+		}
+		if (visibleBarCount <= 300) {
+			return formatWithTimezone(date, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+		}
+		
+		return fallbackDateFormat(date);
+	};
 }
 
 /**
  * KlineChart-style X-axis tick formatter.
  * Auto-detects intraday vs. daily and shows month/day/time boundaries.
  */
-function createKlineXAxisFormatter(
+export function createKlineXAxisFormatter(
 	data: readonly EnrichedDatum[],
 ): (value: Date | number) => string {
 	if (data.length < 2) return () => "";
@@ -639,24 +653,47 @@ function createKlineXAxisFormatter(
 	const minimumDateDiffMs = inferMinimumPositiveDateDiffMs(data);
 	const isIntraday = minimumDateDiffMs !== null && minimumDateDiffMs < ONE_DAY_MS;
 
-	const monthYearFmt = timeFormat("%m-%Y");
-	const dayMonthFmt = timeFormat("%d-%m");
-	const hourMinFmt = timeFormat("%H:%M");
+	const formatParts = (tz: string, d: Date) => {
+		const formatter = getCachedFormatter("en-US", {
+			timeZone: tz,
+			day: "numeric",
+			month: "numeric",
+			year: "numeric",
+			hour: "numeric",
+			minute: "numeric",
+			hour12: false,
+		});
+		return formatter.formatToParts(d);
+	};
 
 	return (value: Date | number) => {
 		const d = value instanceof Date ? value : new Date(value as number);
-		const date = d.getDate();
-		const hour = d.getHours();
-		const min = d.getMinutes();
+		const tz = getGlobalTimezone();
+
+		let parts: Intl.DateTimeFormatPart[];
+		try {
+			parts = formatParts(tz, d);
+		} catch {
+			// Invalid timezone string — fall back to UTC to avoid render crash
+			parts = formatParts("UTC", d);
+		}
+
+		const dateMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+		const date = parseInt(dateMap.day);
+		const hour = parseInt(dateMap.hour);
+		const min = parseInt(dateMap.minute);
+
+		const pad = (num: number) => String(num).padStart(2, "0");
 
 		if (isIntraday) {
-			if (date === 1 && hour === 0 && min === 0) return monthYearFmt(d);
-			if (hour === 0 && min === 0) return dayMonthFmt(d);
-			return hourMinFmt(d);
+			if (date === 1 && hour === 0 && min === 0) return `${pad(parseInt(dateMap.month))}-${dateMap.year}`;
+			if (hour === 0 && min === 0) return `${pad(date)}-${pad(parseInt(dateMap.month))}`;
+			return `${pad(hour)}:${pad(min)}`;
 		}
+
 		// Daily+
-		if (date === 1) return monthYearFmt(d);
-		return dayMonthFmt(d);
+		if (date === 1) return `${pad(parseInt(dateMap.month))}-${dateMap.year}`;
+		return `${pad(date)}-${pad(parseInt(dateMap.month))}`;
 	};
 }
 

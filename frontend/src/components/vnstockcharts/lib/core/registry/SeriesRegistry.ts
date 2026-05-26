@@ -91,9 +91,9 @@ function notifySeriesStyleChange(instanceId: string) {
 }
 
 function notifyAllSeriesStyleChanges() {
-	seriesStyleListeners.forEach((listeners) => {
+	for (const [instanceId, listeners] of seriesStyleListeners) {
 		listeners.forEach((callback) => callback());
-	});
+	}
 	seriesStyleChangeListeners.forEach((callback) => callback());
 }
 
@@ -135,7 +135,7 @@ export function clearSeriesStyleOverrides() {
 }
 
 export function listSeriesStyleOverrides(): Record<string, Partial<SeriesStyleOverride>> {
-	return Object.fromEntries(Array.from(seriesStyleOverrides.entries()).map(([instanceId, style]) => [instanceId, cloneSeriesStyleOverride(style) ?? {}]));
+	return Object.fromEntries([...seriesStyleOverrides.entries()].map(([instanceId, style]) => [instanceId, cloneSeriesStyleOverride(style) ?? {}]));
 }
 
 export function overrideSeriesStyle(instanceId: string, partialStyle: Partial<SeriesStyleOverride>): void {
@@ -192,7 +192,7 @@ export function getSeries(type: SeriesTypeId): RegistryEntry {
 }
 
 export function listRegistered(): SeriesTypeId[] {
-	return Array.from(registry.keys());
+	return [...registry.keys()];
 }
 
 export function registerPhaseOneSeries() {

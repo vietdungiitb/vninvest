@@ -9,7 +9,6 @@ import { first, last, isNotDefined, isDefined, hexToRGBA } from "../utils";
 
 class HoverTooltip extends Component<any, any> {
 	static defaultProps: any;
-	context: any;
 
 	constructor(props: any) {
 		super(props);

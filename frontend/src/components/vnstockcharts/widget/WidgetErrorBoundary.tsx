@@ -14,7 +14,7 @@ interface WidgetErrorBoundaryState {
 
 export class WidgetErrorBoundary extends Component<WidgetErrorBoundaryProps, WidgetErrorBoundaryState> {
 	static contextType = WidgetI18nContext;
-	context!: ContextType<typeof WidgetI18nContext>;
+	declare context: ContextType<typeof WidgetI18nContext>;
 
 	state: WidgetErrorBoundaryState = {
 		hasError: false,

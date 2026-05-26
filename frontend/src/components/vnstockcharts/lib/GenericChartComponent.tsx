@@ -9,7 +9,6 @@ import { useStockChart } from "./StockChartContext";
 const ALWAYS_TRUE_TYPES = ["drag", "dragend"];
 
 class GenericChartComponent extends GenericComponent {
-	context: any;
 	preCanvasDraw(ctx: CanvasRenderingContext2D, moreProps: AnyRecord) {
 		super.preCanvasDraw(ctx, moreProps);
 		ctx.save();

@@ -1,17 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { forwardRef, useImperativeHandle, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { format } from "d3-format";
 import { scaleTime } from "d3-scale";
 import { timeFormat } from "d3-time-format";
+import { discontinuousTimeScaleProviderBuilder } from "../lib/scale";
 import { resolveSeriesStructuredValue, resolveSeriesValue } from "../lib/core/seriesValueResolver";
 import {
 	createPaneSpecsFromDescriptors,
+	resolvePaneDataIndexAtPixel,
+	resolvePanePixelAtDataIndex,
+	resolvePanePixelAtValue,
+	resolvePaneValueAtPixel,
+	createCanonicalSeriesStore,
+	type CanonicalSeriesStore,
 	type EngineInstance,
+	type EngineHistorySnapshot,
 	type PaneRuntimeSnapshot,
 	type VisibleRange as EngineVisibleRange,
 } from "@vnstockcharts/vn-kline-engine-core";
 import { EngineHost } from "@vnstockcharts/vn-kline-engine-react";
 import { DynamicChart, DEFAULT_PANES, type PaneDescriptor, type ChartTheme, type SeriesTypeId, type VisibleRange, useChartTheme } from "../lib/core";
-import { createCanonicalSeriesStore, type CanonicalSeriesStore } from "../lib/core/canonicalSeriesStore";
 import type { EnrichedDatum, IndicatorMacdValue, IndicatorWhaleValue } from "../lib/core/calculators/types";
 import { enrichData } from "../lib/core/calculators/enrichData";
 import { enrichDataWithCanonicalStore } from "../lib/core/calculators/enrichDataWithCanonicalStore";
@@ -23,32 +30,24 @@ import { CVDIndicator } from "../lib/indicators/overlays/CVDIndicator";
 import { ExternalCVDOverlay } from "../lib/indicators/overlays/ExternalCVDOverlay";
 import { DarkFlowBadge } from "../lib/indicators/overlays/DarkFlowBadge";
 import type { WhaleOrder, CVDPoint, DarkFlowSignalType } from "../demo/vninvest/types";
+import { useDrawingWorkspaceController, type DrawingDockTab, type DrawingWorkspaceController } from "../lib/drawing";
 import type { MeasurementCoordinateBridge, MeasurementCoordinateInput, MeasurementCoordinatePixelInput } from "../lib/drawing/coordinateBridge";
 import type { MeasurementPoint } from "../lib/drawing/measuring";
 import type { DrawingObject, DrawingAlertCondition } from "../lib/drawing/types";
 import type { Point } from "../lib/drawing/types";
 import type { StockDataAdapter, Timeframe } from "../lib/types/adapter";
 import type { OHLCVBar } from "../lib/types/ohlcv";
-import {
-	resolvePaneDataIndexAtPixel,
-	resolvePanePixelAtDataIndex,
-	resolvePanePixelAtValue,
-	resolvePaneValueAtPixel,
-} from "./forkRuntimeCompat";
+import { createHistoryChunkStore } from "./history/chunkStore";
+import { computeResidentTarget, computeMissingSegments, computeTrimWindow } from "./history/historyWindowPlanner";
 import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 import { WidgetEmptyState } from "./WidgetEmptyState";
 import DrawingPriceLabelsOverlay from "./DrawingPriceLabelsOverlay";
 import MeasurementOverlay from "./MeasurementOverlay";
 import { WidgetI18nProvider } from "./context/WidgetI18nContext";
 import type { WidgetLocale, WidgetMessages } from "./i18n/types";
+import { setGlobalTimezone, type WidgetTimezone } from "../lib/utils/timezoneFormatter";
 
 export type WidgetPaneRuntimeSnapshot = PaneRuntimeSnapshot;
-
-type ScaleSlotState = NonNullable<PaneRuntimeSnapshot["scaleSlotStates"]>[string];
-
-function resolveScaleSlotStates(snapshot: PaneRuntimeSnapshot): Record<string, ScaleSlotState> {
-	return snapshot.scaleSlotStates ?? {};
-}
 
 export interface WidgetRuntimeCapabilities {
 	engineRuntime: "legacy" | "fork";
@@ -81,10 +80,25 @@ export interface WidgetPaneSplitterRenderContext {
 	top: number;
 }
 
+export interface WidgetDrawingChromeRenderContext {
+	activeTool: string;
+	drawingWorkspace: DrawingWorkspaceController | null;
+	isDark: boolean;
+	paneSnapshots: readonly WidgetPaneRuntimeSnapshot[];
+	selectedDrawing: DrawingObject | null;
+	visibleRange: VisibleRange | EngineVisibleRange | null;
+	size: { width: number; height: number };
+}
+
 export interface WidgetCoordinateBridge extends MeasurementCoordinateBridge {
 	engineRuntime: "fork";
 	paneSnapshots: readonly WidgetPaneRuntimeSnapshot[];
 	visibleRange: EngineVisibleRange;
+}
+
+export interface VNStockChartRef {
+	exportDrawings(): DrawingObject[];
+	importDrawings(drawings: DrawingObject[]): void;
 }
 
 export interface VNStockChartProps {
@@ -92,11 +106,19 @@ export interface VNStockChartProps {
 	data?: readonly OHLCVBar[];
 	symbol?: string;
 	timeframe?: Timeframe;
+	drawingUiEnabled?: boolean;
+	drawings?: readonly DrawingObject[];
+	defaultDrawings?: readonly DrawingObject[];
+	drawingStorageKey?: string;
+	defaultDrawingDockTab?: DrawingDockTab;
 	engineRuntime?: "legacy" | "fork";
 	useWebGL?: boolean;
 	locale?: WidgetLocale;
 	messages?: Partial<WidgetMessages>;
 	theme?: ChartTheme;
+	timezone?: WidgetTimezone;
+	defaultTimezone?: WidgetTimezone;
+	onTimezoneChange?: (timezone: WidgetTimezone) => void;
 	panes?: readonly PaneDescriptor[];
 	xExtents?: readonly [Date | number, Date | number];
 	children?: ReactNode;
@@ -105,6 +127,7 @@ export interface VNStockChartProps {
 	measurementEnabled?: boolean;
 	selectedDrawing?: DrawingObject | null;
 	showDrawingPriceMarkers?: boolean;
+	showNonTradingDays?: boolean;
 	enableWhale?: boolean;
 	whaleThreshold?: number;
 	/** H-02: External whale orders from VNInvest API (overrides internal detectWhaleEvents when provided). */
@@ -119,8 +142,18 @@ export interface VNStockChartProps {
 	darkFlowSignalType?: DarkFlowSignalType;
 	onClick?: (moreProps: { currentItem?: EnrichedDatum; currentCharts?: number[]; mouseXY?: [number, number] }, event: unknown) => void;
 	onContextMenu?: (moreProps: { currentItem?: EnrichedDatum; currentCharts?: number[]; mouseXY?: [number, number] }, event: unknown) => void;
+	onDrawingsChange?: (drawings: readonly DrawingObject[]) => void;
+	onSelectedDrawingChange?: (drawing: DrawingObject | null) => void;
+	onDrawingWorkspaceChange?: (workspace: DrawingWorkspaceController | null) => void;
 	onVisibleDomainChange?: (domain: [Date | number, Date | number]) => void;
 	onVisibleRangeChange?: (range: VisibleRange) => void;
+	onBarsChange?: (bars: readonly OHLCVBar[]) => void;
+	/**
+	 * Increment this counter each time the user selects a new chart range to force
+	 * the chart to reset its viewport, bypassing the spurious-reset guard that would
+	 * otherwise keep the old zoomed view when data also grows in the same render.
+	 */
+	resetKey?: number;
 	onPaneSnapshotsChange?: (snapshots: readonly WidgetPaneRuntimeSnapshot[]) => void;
 	onPaneHover?: (paneId: string | null) => void;
 	onPaneToggleVisibleRequest?: (paneId: string) => void;
@@ -132,6 +165,7 @@ export interface VNStockChartProps {
 	onCoordinateBridgeChange?: (bridge: WidgetCoordinateBridge | null) => void;
 	renderPaneToolbar?: (context: WidgetPaneToolbarRenderContext) => ReactNode;
 	renderPaneSplitter?: (context: WidgetPaneSplitterRenderContext) => ReactNode;
+	renderDrawingChrome?: (context: WidgetDrawingChromeRenderContext) => ReactNode;
 	onError?: (error: Error) => void;
 	/** DT-10-T08: Callback fired when a drawing's alert condition triggers (price crosses reference level) */
 	onDrawingAlert?: (drawing: DrawingObject, condition: DrawingAlertCondition, currentPrice: number) => void;
@@ -145,6 +179,21 @@ const priceFormat = format(",.2f");
 const volumeFormat = format(".3s");
 const dateFormat = timeFormat("%d/%m/%Y %H:%M");
 const CHART_MARGIN = { left: 60, right: 68, top: 8, bottom: 28 } as const;
+const HISTORY_BACKFILL_PAGE_LIMIT = 1000;
+const HISTORY_RECONCILE_MAX_PAGES = 12;
+
+interface HistoryWindow {
+	startMs: number;
+	endMs: number;
+}
+
+type WidgetHistorySessionMode = "controlled" | "uncontrolled";
+
+interface WidgetHistorySessionState {
+	requestKey: string;
+	mode: WidgetHistorySessionMode;
+	revision: number;
+}
 
 function clampIndex(index: number, length: number) {
 	if (length <= 0) {
@@ -152,6 +201,83 @@ function clampIndex(index: number, length: number) {
 	}
 	const lastIndex = length - 1;
 	return Math.min(lastIndex, Math.max(0, Math.floor(index)));
+}
+
+function asTimeValue(value: Date | number): number {
+	return value instanceof Date ? value.getTime() : value;
+}
+
+function findNearestDateIndex(data: readonly EnrichedDatum[], targetTime: number): number {
+	if (data.length === 0) {
+		return 0;
+	}
+
+	let low = 0;
+	let high = data.length - 1;
+
+	while (low <= high) {
+		const mid = Math.floor((low + high) / 2);
+		const midTime = data[mid].date.getTime();
+		if (midTime === targetTime) {
+			return mid;
+		}
+		if (midTime < targetTime) {
+			low = mid + 1;
+		} else {
+			high = mid - 1;
+		}
+	}
+
+	const right = Math.min(data.length - 1, Math.max(0, low));
+	const left = Math.min(data.length - 1, Math.max(0, high));
+	return Math.abs(data[left].date.getTime() - targetTime) <= Math.abs(data[right].date.getTime() - targetTime)
+		? left
+		: right;
+}
+
+function resolveDiscontinuousXExtents(
+	extents: readonly [Date | number, Date | number] | undefined,
+	data: readonly EnrichedDatum[],
+	xAccessor: (datum: EnrichedDatum) => number,
+) {
+	if (data.length === 0) {
+		return undefined;
+	}
+
+	const lastIndex = data.length - 1;
+	const defaultStart = xAccessor(data[0]);
+	const defaultEnd = xAccessor(data[lastIndex]);
+	if (!extents) {
+		return [defaultStart, defaultEnd] as [number, number];
+	}
+
+	const startIndex = findNearestDateIndex(data, asTimeValue(extents[0]));
+	const endIndex = findNearestDateIndex(data, asTimeValue(extents[1]));
+	return [xAccessor(data[startIndex]), xAccessor(data[endIndex])] as [number, number];
+}
+
+function resolveDateDomainFromDiscontinuous(
+	domain: [Date | number, Date | number],
+	data: readonly EnrichedDatum[],
+	xAccessor: (datum: EnrichedDatum) => number,
+): [Date, Date] {
+	if (data.length === 0) {
+		const epoch = new Date(0);
+		return [epoch, epoch];
+	}
+
+	const firstIndexValue = xAccessor(data[0]);
+	const lastDataIndex = data.length - 1;
+	const resolveDate = (value: Date | number, fallbackIndex: number) => {
+		if (typeof value !== "number" || !Number.isFinite(value)) {
+			return data[fallbackIndex].date;
+		}
+
+		const dataIndex = clampIndex(Math.round(value - firstIndexValue), data.length);
+		return data[dataIndex]?.date ?? data[fallbackIndex].date;
+	};
+
+	return [resolveDate(domain[0], 0), resolveDate(domain[1], lastDataIndex)];
 }
 
 function normalizeForkVisibleRange(range: EngineVisibleRange, data: readonly EnrichedDatum[]): VisibleRange | null {
@@ -209,7 +335,9 @@ function buildLegacyPaneSnapshots(
 	return panes.map((pane, index) => {
 		const height = heights[index] ?? 0;
 		const hasLeftAxis = pane.series.some((series) => series.visible !== false && series.yAxis === "left");
-		const hasRightAxis = pane.series.some((series) => series.visible !== false && series.yAxis === "right");
+		// Treat yAxis == null/undefined as "right" (default axis side) so panes where
+		// series have no explicit yAxis assignment still produce a right-side slot.
+		const hasRightAxis = pane.series.some((series) => series.visible !== false && (series.yAxis === "right" || series.yAxis == null));
 		const snapshotTop = top;
 		top += height;
 		const leftBounds = hasLeftAxis
@@ -324,13 +452,12 @@ function mergePaneSnapshotDomains(
 	return snapshots.map((snapshot) => {
 		const scaleSlotIds = new Set([
 			...Object.keys(snapshot.scaleSlotBounds),
-			...Object.keys(resolveScaleSlotStates(snapshot)),
+			...Object.keys(snapshot.scaleSlotStates ?? {}),
 		]);
-		const currentScaleSlotStates = resolveScaleSlotStates(snapshot);
 
 		const scaleSlotStates = Object.fromEntries(
 			[...scaleSlotIds].map((scaleSlotId) => {
-				const currentState = currentScaleSlotStates[scaleSlotId];
+				const currentState = snapshot.scaleSlotStates[scaleSlotId];
 				return [scaleSlotId, {
 					side: currentState?.side ?? inferAxisSideFromScaleSlotId(scaleSlotId),
 					mode: currentState?.mode ?? "auto",
@@ -348,19 +475,18 @@ function mergePaneSnapshotDomains(
 }
 
 function resolvePreferredScaleSlotId(snapshot: WidgetPaneRuntimeSnapshot, requestedScaleSlotId?: string) {
-	const scaleSlotStates = resolveScaleSlotStates(snapshot);
-	if (requestedScaleSlotId && (scaleSlotStates[requestedScaleSlotId] || snapshot.scaleSlotBounds[requestedScaleSlotId])) {
+	if (requestedScaleSlotId && snapshot.scaleSlotStates[requestedScaleSlotId]) {
 		return requestedScaleSlotId;
 	}
 
-	const visibleScaleSlotIds = Object.entries(scaleSlotStates)
-		.filter(([, state]) => state?.visible !== false)
+	const visibleScaleSlotIds = Object.entries(snapshot.scaleSlotStates)
+		.filter(([, state]) => state.visible)
 		.map(([scaleSlotId]) => scaleSlotId);
 	if (visibleScaleSlotIds.length === 0) {
-		return Object.keys(snapshot.scaleSlotBounds)[0];
+		return undefined;
 	}
 
-	return visibleScaleSlotIds.find((scaleSlotId) => scaleSlotStates[scaleSlotId]?.side === "right")
+	return visibleScaleSlotIds.find((scaleSlotId) => snapshot.scaleSlotStates[scaleSlotId]?.side === "right")
 		?? visibleScaleSlotIds[0];
 }
 
@@ -535,6 +661,26 @@ function arePaneSnapshotsEqual(
 	return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function areRuntimeCapabilitiesEqual(
+	left: WidgetRuntimeCapabilities | null | undefined,
+	right: WidgetRuntimeCapabilities | null | undefined,
+) {
+	if (left === right) {
+		return true;
+	}
+
+	if (!left || !right) {
+		return false;
+	}
+
+	return left.engineRuntime === right.engineRuntime
+		&& left.paneToolbar === right.paneToolbar
+		&& left.paneSplitters === right.paneSplitters
+		&& left.chartCanvasOverlays === right.chartCanvasOverlays
+		&& left.measurementOverlay === right.measurementOverlay
+		&& left.drawingOverlays === right.drawingOverlays;
+}
+
 const PANE_HEADER_HEIGHT = 28;
 
 function resolveHoveredPaneId(
@@ -592,6 +738,83 @@ function resolveFetchWindow(timeframe: Timeframe): { from: Date; to: Date } {
 	return { from: new Date(to.getTime() - lookbackDays * oneDay), to };
 }
 
+function resolveTimeframeMs(timeframe: Timeframe): number {
+	switch (timeframe) {
+		case "1m":
+			return 60_000;
+		case "3m":
+			return 3 * 60_000;
+		case "5m":
+			return 5 * 60_000;
+		case "15m":
+			return 15 * 60_000;
+		case "30m":
+			return 30 * 60_000;
+		case "1h":
+			return 60 * 60_000;
+		case "2h":
+			return 2 * 60 * 60_000;
+		case "4h":
+			return 4 * 60 * 60_000;
+		case "1d":
+			return 24 * 60 * 60_000;
+		case "1w":
+			return 7 * 24 * 60 * 60_000;
+		case "1M":
+			return 30 * 24 * 60 * 60_000;
+		default:
+			return 24 * 60 * 60_000;
+	}
+}
+
+function computeLoadedHistoryWindow(bars: readonly OHLCVBar[]): HistoryWindow | null {
+	if (bars.length === 0) {
+		return null;
+	}
+
+	return {
+		startMs: bars[0].date.getTime(),
+		endMs: bars[bars.length - 1].date.getTime(),
+	};
+}
+
+function resolveRetentionWindow(visibleDomain: readonly [Date, Date], timeframe: Timeframe): HistoryWindow {
+	const visibleStartMs = visibleDomain[0].getTime();
+	const visibleEndMs = visibleDomain[1].getTime();
+	const spanMs = Math.max(resolveTimeframeMs(timeframe), visibleEndMs - visibleStartMs);
+
+	return {
+		startMs: visibleStartMs - spanMs,
+		endMs: visibleEndMs + spanMs,
+	};
+}
+
+function trimBarsToRetentionWindow(
+	bars: readonly OHLCVBar[],
+	visibleDomain: readonly [Date, Date] | null,
+	timeframe: Timeframe,
+): readonly OHLCVBar[] {
+	if (!visibleDomain || bars.length === 0) {
+		return bars;
+	}
+
+	const retentionWindow = resolveRetentionWindow(visibleDomain, timeframe);
+	const trimmedBars = bars.filter((bar) => {
+		const timestamp = bar.date.getTime();
+		return timestamp >= retentionWindow.startMs && timestamp <= retentionWindow.endMs;
+	});
+
+	if (trimmedBars.length === 0 || trimmedBars.length === bars.length) {
+		return bars;
+	}
+
+	return trimmedBars;
+}
+
+function mergeBarPagesByDate(previousBars: readonly OHLCVBar[], nextBars: readonly OHLCVBar[]): readonly OHLCVBar[] {
+	return nextBars.reduce((mergedBars, nextBar) => mergeBarsByDate(mergedBars, nextBar), previousBars);
+}
+
 function mergeBarsByDate(previousBars: readonly OHLCVBar[], nextBar: OHLCVBar): readonly OHLCVBar[] {
 	if (previousBars.length === 0) {
 		return [nextBar];
@@ -610,11 +833,16 @@ function mergeBarsByDate(previousBars: readonly OHLCVBar[], nextBar: OHLCVBar): 
 	return [...previousBars, nextBar].sort((left, right) => left.date.getTime() - right.date.getTime());
 }
 
-function VNStockChartContent({
+const VNStockChartContent = forwardRef<VNStockChartRef, VNStockChartContentProps>(({
 	adapter,
 	data,
 	symbol,
 	timeframe,
+	drawingUiEnabled = false,
+	drawings,
+	defaultDrawings,
+	drawingStorageKey,
+	defaultDrawingDockTab,
 	engineRuntime = "fork",
 	useWebGL = false,
 	locale,
@@ -627,6 +855,7 @@ function VNStockChartContent({
 	measurementEnabled,
 	selectedDrawing,
 	showDrawingPriceMarkers,
+	showNonTradingDays = false,
 	enableWhale,
 	whaleThreshold = 1_000_000,
 	whaleOrders,
@@ -637,8 +866,12 @@ function VNStockChartContent({
 	darkFlowSignalType,
 	onClick,
 	onContextMenu,
+	onDrawingsChange,
+	onSelectedDrawingChange,
+	onDrawingWorkspaceChange,
 	onVisibleDomainChange,
 	onVisibleRangeChange,
+	onBarsChange,
 	onPaneSnapshotsChange,
 	onPaneHover,
 	onPaneToggleVisibleRequest,
@@ -650,14 +883,23 @@ function VNStockChartContent({
 	onCoordinateBridgeChange,
 	renderPaneToolbar,
 	renderPaneSplitter,
+	renderDrawingChrome,
 	onError,
 	onRuntimeDegraded,
-}: VNStockChartContentProps) {
+	resetKey = 0,
+}, forwardedRef) => {
 	const { ref, size } = useCanvasResize<HTMLDivElement>();
 	const hoveredPaneIdRef = useRef<string | null>(null);
 	const forkDegradeNotifiedRef = useRef(false);
 	const forkPaneSnapshotsRef = useRef<readonly WidgetPaneRuntimeSnapshot[]>([]);
 	const forkVisibleRangeRef = useRef<EngineVisibleRange | null>(null);
+	const lastEmittedDrawingWorkspaceRef = useRef<DrawingWorkspaceController | null>(null);
+	const lastDrawingWorkspaceSubscriberRef = useRef<typeof onDrawingWorkspaceChange>(undefined);
+	const latestDrawingWorkspaceSubscriberRef = useRef<typeof onDrawingWorkspaceChange>(onDrawingWorkspaceChange);
+	const lastEmittedPaneSnapshotsRef = useRef<readonly WidgetPaneRuntimeSnapshot[]>([]);
+	const lastPaneSnapshotsSubscriberRef = useRef<typeof onPaneSnapshotsChange>(undefined);
+	const lastRuntimeCapabilitiesRef = useRef<WidgetRuntimeCapabilities | null>(null);
+	const lastRuntimeCapabilitiesSubscriberRef = useRef<typeof onRuntimeCapabilitiesChange>(undefined);
 	/** Ref to the fork engine instance — used to call setEnrichedData on data change */
 	const engineInstanceRef = useRef<EngineInstance | null>(null);
 	const [paneSnapshots, setPaneSnapshots] = useState<readonly WidgetPaneRuntimeSnapshot[]>([]);
@@ -692,23 +934,113 @@ function VNStockChartContent({
 	}, [resolvedTheme]);
 
 	const hasExternalData = Array.isArray(data);
+	const historySessionMode: WidgetHistorySessionMode = hasExternalData ? "controlled" : "uncontrolled";
 	const [bars, setBars] = useState<readonly OHLCVBar[]>(data ?? []);
 	const [loading, setLoading] = useState(() => !hasExternalData);
 	const [error, setError] = useState<Error | null>(null);
+	const barsRef = useRef<readonly OHLCVBar[]>(bars);
+	const visibleDomainRef = useRef<[Date, Date] | null>(null);
+	const historyWindowSyncInFlightRef = useRef(false);
+	const pendingVisibleDomainRef = useRef<[Date, Date] | null>(null);
+	const historyBackfillBeforeRef = useRef<number | null>(null);
+	const historyForwardAfterRef = useRef<number | null>(null);
+	const activeHistoryRequestKeyRef = useRef("");
+	const activeHistorySessionRevisionRef = useRef(0);
+	const historySessionRef = useRef<WidgetHistorySessionState>({
+		requestKey: "",
+		mode: historySessionMode,
+		revision: 0,
+	});
+	barsRef.current = bars;
+	const historyChunkStoreRef = useRef(createHistoryChunkStore());
+
+	const resetHistorySessionControllerRefs = () => {
+		visibleDomainRef.current = null;
+		historyWindowSyncInFlightRef.current = false;
+		pendingVisibleDomainRef.current = null;
+		historyBackfillBeforeRef.current = null;
+		historyForwardAfterRef.current = null;
+	};
 
 	useEffect(() => {
-		if (!hasExternalData) {
+		if (historySessionMode !== "controlled") {
 			return;
 		}
 		setBars(data ?? []);
 		setLoading(false);
 		setError(null);
-	}, [data, hasExternalData]);
+	}, [data, historySessionMode]);
+
+	useEffect(() => {
+		onBarsChange?.(bars);
+	}, [bars, onBarsChange]);
 
 	const activeSymbol = symbol ?? "BTCUSDT";
 	const activeTimeframe = timeframe ?? "1h";
+	const drawingWorkspace = useDrawingWorkspaceController({
+		defaultDockTab: defaultDrawingDockTab,
+		defaultDrawings,
+		drawings,
+		drawingStorageKey,
+		enabled: drawingUiEnabled,
+		onDrawingsChange,
+		symbol: activeSymbol,
+		timeframe: activeTimeframe,
+	});
+
+	useImperativeHandle(forwardedRef, () => ({
+		exportDrawings: () => {
+			return [...drawingWorkspace.state.drawings];
+		},
+		importDrawings: (drawingsToImport) => {
+			drawingWorkspace.interaction.replaceDrawings(drawingsToImport);
+		},
+	}), [drawingWorkspace]);
+
+	const resolvedSelectedDrawing = selectedDrawing ?? (drawingUiEnabled ? drawingWorkspace.state.selectedDrawing : null);
 	const activeLocale = locale ?? "vi";
 	const useForkRuntime = engineRuntime === "fork";
+	const activeHistoryRequestKey = `${activeSymbol}:${activeTimeframe}`;
+	let historySession = historySessionRef.current;
+	if (historySession.requestKey !== activeHistoryRequestKey || historySession.mode !== historySessionMode) {
+		historySession = {
+			requestKey: activeHistoryRequestKey,
+			mode: historySessionMode,
+			revision: historySession.revision + 1,
+		};
+		historySessionRef.current = historySession;
+		resetHistorySessionControllerRefs();
+	}
+	const currentHistorySessionRequestKey = historySession.requestKey;
+	const currentHistorySessionRevision = historySession.revision;
+	const isControlledHistorySession = historySession.mode === "controlled";
+	activeHistoryRequestKeyRef.current = currentHistorySessionRequestKey;
+	activeHistorySessionRevisionRef.current = currentHistorySessionRevision;
+	latestDrawingWorkspaceSubscriberRef.current = onDrawingWorkspaceChange;
+
+	useEffect(() => {
+		const nextWorkspace = drawingUiEnabled ? drawingWorkspace : null;
+		const callbackChanged = lastDrawingWorkspaceSubscriberRef.current !== onDrawingWorkspaceChange;
+		if (!callbackChanged && lastEmittedDrawingWorkspaceRef.current === nextWorkspace) {
+			return;
+		}
+
+		lastEmittedDrawingWorkspaceRef.current = nextWorkspace;
+		lastDrawingWorkspaceSubscriberRef.current = onDrawingWorkspaceChange;
+		onDrawingWorkspaceChange?.(nextWorkspace);
+	}, [drawingUiEnabled, drawingWorkspace, onDrawingWorkspaceChange]);
+
+	useEffect(() => {
+		return () => {
+			lastEmittedDrawingWorkspaceRef.current = null;
+			lastDrawingWorkspaceSubscriberRef.current = undefined;
+			latestDrawingWorkspaceSubscriberRef.current?.(null);
+		};
+	}, []);
+
+	useEffect(() => {
+		onSelectedDrawingChange?.(resolvedSelectedDrawing);
+	}, [onSelectedDrawingChange, resolvedSelectedDrawing]);
 	const adapterLabel = useMemo(() => {
 		const candidate = (adapter as unknown as Record<string, unknown>).label;
 		return typeof candidate === "string" && candidate.length > 0 ? candidate : "widget-adapter";
@@ -827,17 +1159,175 @@ function VNStockChartContent({
 		return [firstBar.date, lastBar.date] as [Date, Date];
 	}, [enrichedData]);
 	const resolvedXExtents = controlledXExtents ?? computedXExtents;
+	const safeXAccessor = useCallback((datum?: EnrichedDatum) => datum?.date ?? new Date(0), []);
+	const legacyChartScale = useMemo(() => {
+		if (showNonTradingDays || plotData.length === 0) {
+			return {
+				data: plotData,
+				xScale: scaleTime(),
+				xAccessor: safeXAccessor,
+				displayXAccessor: safeXAccessor,
+				xExtents: resolvedXExtents,
+				usesDiscontinuousScale: false,
+			};
+		}
+
+		const scaleProvider = discontinuousTimeScaleProviderBuilder().inputDateAccessor((datum: EnrichedDatum) => datum.date);
+		const scaled = scaleProvider(plotData as EnrichedDatum[]);
+		const scaledData = scaled.data as EnrichedDatum[];
+		const scaledXAccessor = scaled.xAccessor as (datum: EnrichedDatum) => number;
+
+		return {
+			data: scaledData,
+			xScale: scaled.xScale,
+			xAccessor: scaledXAccessor,
+			displayXAccessor: scaled.displayXAccessor as (datum: EnrichedDatum) => Date,
+			xExtents: resolveDiscontinuousXExtents(resolvedXExtents, scaledData, scaledXAccessor),
+			usesDiscontinuousScale: true,
+		};
+	}, [plotData, resolvedXExtents, safeXAccessor, showNonTradingDays]);
 	const chartSurfaceReady = size.width > 0 && size.height > 0 && (!(loading && !hasExternalData)) && plotData.length > 0;
 
+	const reconcileVisibleHistoryWindow = useCallback(async (visibleDomain: [Date, Date]) => {
+		if (isControlledHistorySession || loading) {
+			return;
+		}
+
+		const requestKey = currentHistorySessionRequestKey;
+		const sessionRevision = currentHistorySessionRevision;
+		const visibleSpanMs = Math.max(resolveTimeframeMs(activeTimeframe), visibleDomain[1].getTime() - visibleDomain[0].getTime());
+		const targetWindow = computeResidentTarget(
+			{ startMs: visibleDomain[0].getTime(), endMs: visibleDomain[1].getTime() },
+			visibleSpanMs,
+		);
+		let workingBars = historyChunkStoreRef.current.toSnapshot().bars;
+		if (workingBars.length === 0) {
+			return;
+		}
+
+		let pagesLoaded = 0;
+		while (workingBars.length > 0 && pagesLoaded < HISTORY_RECONCILE_MAX_PAGES) {
+			if (activeHistoryRequestKeyRef.current !== requestKey || activeHistorySessionRevisionRef.current !== sessionRevision) {
+				return;
+			}
+
+			const loadedWindow = computeLoadedHistoryWindow(workingBars);
+			if (!loadedWindow) {
+				return;
+			}
+
+			const missingSegments = computeMissingSegments(targetWindow, loadedWindow);
+			const needsLeftFill = missingSegments.some((s) => s.side === "left");
+			const needsRightFill = missingSegments.some((s) => s.side === "right");
+			if (!needsLeftFill && !needsRightFill) {
+				break;
+			}
+
+			let progressed = false;
+
+			if (needsLeftFill) {
+				const earliestBar = workingBars[0];
+				const beforeTimestamp = earliestBar?.date.getTime();
+				if (beforeTimestamp && historyBackfillBeforeRef.current !== beforeTimestamp) {
+					const olderBars = await adapter.fetchBarsBefore(activeSymbol, activeTimeframe, earliestBar.date, HISTORY_BACKFILL_PAGE_LIMIT) ?? [];
+					if (activeHistoryRequestKeyRef.current !== requestKey || activeHistorySessionRevisionRef.current !== sessionRevision) {
+						return;
+					}
+
+					const hasOlderBars = olderBars.some((bar) => bar.date.getTime() < beforeTimestamp);
+					if (!hasOlderBars) {
+						historyBackfillBeforeRef.current = beforeTimestamp;
+					} else {
+						historyBackfillBeforeRef.current = null;
+						historyChunkStoreRef.current.prepend(olderBars);
+						workingBars = historyChunkStoreRef.current.toSnapshot().bars;
+						progressed = true;
+						pagesLoaded += 1;
+					}
+				}
+			}
+
+			const refreshedWindow = computeLoadedHistoryWindow(workingBars);
+			if (!refreshedWindow) {
+				return;
+			}
+
+			if (refreshedWindow.endMs < targetWindow.endMs) {
+				const latestBar = workingBars[workingBars.length - 1];
+				const afterTimestamp = latestBar?.date.getTime();
+				if (afterTimestamp && historyForwardAfterRef.current !== afterTimestamp) {
+					const newerBars = await adapter.fetchBarsInRange(activeSymbol, activeTimeframe, latestBar.date, new Date(targetWindow.endMs)) ?? [];
+					if (activeHistoryRequestKeyRef.current !== requestKey || activeHistorySessionRevisionRef.current !== sessionRevision) {
+						return;
+					}
+
+					const hasNewerBars = newerBars.some((bar) => bar.date.getTime() > afterTimestamp);
+					if (!hasNewerBars) {
+						historyForwardAfterRef.current = afterTimestamp;
+					} else {
+						historyForwardAfterRef.current = null;
+						historyChunkStoreRef.current.append(newerBars);
+						workingBars = historyChunkStoreRef.current.toSnapshot().bars;
+						progressed = true;
+						pagesLoaded += 1;
+					}
+				}
+			}
+
+			if (!progressed) {
+				break;
+			}
+		}
+
+		if (activeHistoryRequestKeyRef.current !== requestKey || activeHistorySessionRevisionRef.current !== sessionRevision) {
+			return;
+		}
+
+		const resolvedVisibleDomain = visibleDomainRef.current ?? visibleDomain;
+		const resolvedVisibleSpanMs = Math.max(resolveTimeframeMs(activeTimeframe), resolvedVisibleDomain[1].getTime() - resolvedVisibleDomain[0].getTime());
+		const resolvedResidentTarget = computeResidentTarget(
+			{ startMs: resolvedVisibleDomain[0].getTime(), endMs: resolvedVisibleDomain[1].getTime() },
+			resolvedVisibleSpanMs,
+		);
+		historyChunkStoreRef.current.trimToWindow(computeTrimWindow(resolvedResidentTarget));
+		setBars(historyChunkStoreRef.current.toSnapshot().bars);
+	}, [activeSymbol, activeTimeframe, adapter, currentHistorySessionRequestKey, currentHistorySessionRevision, isControlledHistorySession, loading]);
+
+	const queueVisibleHistoryWindowSync = useCallback((visibleDomain: [Date, Date]) => {
+		pendingVisibleDomainRef.current = visibleDomain;
+		if (historyWindowSyncInFlightRef.current) {
+			return;
+		}
+
+		historyWindowSyncInFlightRef.current = true;
+		void (async () => {
+			try {
+				while (pendingVisibleDomainRef.current) {
+					const nextVisibleDomain = pendingVisibleDomainRef.current;
+					pendingVisibleDomainRef.current = null;
+					await reconcileVisibleHistoryWindow(nextVisibleDomain);
+				}
+			} finally {
+				historyWindowSyncInFlightRef.current = false;
+				if (pendingVisibleDomainRef.current) {
+					queueVisibleHistoryWindowSync(pendingVisibleDomainRef.current);
+				}
+			}
+		})();
+	}, [reconcileVisibleHistoryWindow]);
+
 	useEffect(() => {
-		if (hasExternalData) {
+		if (isControlledHistorySession) {
 			return undefined;
 		}
 
 		const controller = new AbortController();
 		let unsubscribe: (() => void) | null = null;
 		let disposed = false;
+		const sessionRevision = currentHistorySessionRevision;
+		const requestKey = currentHistorySessionRequestKey;
 
+		historyChunkStoreRef.current.replaceAll([]);
 		setBars([]);
 		setLoading(true);
 		setError(null);
@@ -845,28 +1335,57 @@ function VNStockChartContent({
 		const { from, to } = resolveFetchWindow(activeTimeframe);
 
 		void adapter
-			.fetchBars(activeSymbol, activeTimeframe, from, to)
+			.fetchBarsInRange(activeSymbol, activeTimeframe, from, to)
 			.then((nextBars) => {
-				if (disposed || controller.signal.aborted) {
+				if (
+					disposed
+					|| controller.signal.aborted
+					|| activeHistoryRequestKeyRef.current !== requestKey
+					|| activeHistorySessionRevisionRef.current !== sessionRevision
+				) {
 					return;
 				}
-				setBars(nextBars);
+				setBars(historyChunkStoreRef.current.replaceAll(nextBars).bars);
 				setLoading(false);
 				try {
 					unsubscribe = adapter.subscribeToBar(activeSymbol, activeTimeframe, (nextBar) => {
-						if (disposed || controller.signal.aborted) {
+						if (
+							disposed
+							|| controller.signal.aborted
+							|| activeHistoryRequestKeyRef.current !== requestKey
+							|| activeHistorySessionRevisionRef.current !== sessionRevision
+						) {
 							return;
 						}
-						setBars((previousBars) => mergeBarsByDate(previousBars, nextBar));
+						historyChunkStoreRef.current.append([nextBar]);
+						if (visibleDomainRef.current) {
+							const liveVisibleSpanMs = Math.max(resolveTimeframeMs(activeTimeframe), visibleDomainRef.current[1].getTime() - visibleDomainRef.current[0].getTime());
+							const liveResidentTarget = computeResidentTarget(
+								{ startMs: visibleDomainRef.current[0].getTime(), endMs: visibleDomainRef.current[1].getTime() },
+								liveVisibleSpanMs,
+							);
+							historyChunkStoreRef.current.trimToWindow(computeTrimWindow(liveResidentTarget));
+						}
+						setBars(historyChunkStoreRef.current.toSnapshot().bars);
 					});
 				} catch (subscribeError) {
-					if (!disposed && !controller.signal.aborted) {
+					if (
+						!disposed
+						&& !controller.signal.aborted
+						&& activeHistoryRequestKeyRef.current === requestKey
+						&& activeHistorySessionRevisionRef.current === sessionRevision
+					) {
 						setError(subscribeError instanceof Error ? subscribeError : new Error(String(subscribeError)));
 					}
 				}
 			})
 			.catch((fetchError) => {
-				if (disposed || controller.signal.aborted) {
+				if (
+					disposed
+					|| controller.signal.aborted
+					|| activeHistoryRequestKeyRef.current !== requestKey
+					|| activeHistorySessionRevisionRef.current !== sessionRevision
+				) {
 					return;
 				}
 				setLoading(false);
@@ -878,9 +1397,16 @@ function VNStockChartContent({
 			controller.abort();
 			unsubscribe?.();
 		};
-	}, [adapter, activeSymbol, activeTimeframe, hasExternalData]);
+	}, [adapter, activeSymbol, activeTimeframe, currentHistorySessionRequestKey, currentHistorySessionRevision, isControlledHistorySession]);
 
 	useEffect(() => {
+		const subscriberChanged = lastRuntimeCapabilitiesSubscriberRef.current !== onRuntimeCapabilitiesChange;
+		if (!subscriberChanged && areRuntimeCapabilitiesEqual(lastRuntimeCapabilitiesRef.current, runtimeCapabilities)) {
+			return;
+		}
+
+		lastRuntimeCapabilitiesRef.current = runtimeCapabilities;
+		lastRuntimeCapabilitiesSubscriberRef.current = onRuntimeCapabilitiesChange;
 		onRuntimeCapabilitiesChange?.(runtimeCapabilities);
 	}, [onRuntimeCapabilitiesChange, runtimeCapabilities]);
 
@@ -897,6 +1423,8 @@ function VNStockChartContent({
 
 	const emitPaneSnapshots = useCallback((nextSnapshots: readonly WidgetPaneRuntimeSnapshot[]) => {
 		const mergedSnapshots = mergePaneSnapshotDomains(nextSnapshots, scaleSlotDomains);
+		const subscriberChanged = lastPaneSnapshotsSubscriberRef.current !== onPaneSnapshotsChange;
+		const snapshotsChanged = !arePaneSnapshotsEqual(lastEmittedPaneSnapshotsRef.current, mergedSnapshots);
 		if (useForkRuntime) {
 			forkPaneSnapshotsRef.current = mergedSnapshots;
 		}
@@ -907,7 +1435,11 @@ function VNStockChartContent({
 
 			return mergedSnapshots;
 		});
-		onPaneSnapshotsChange?.(mergedSnapshots);
+		if (snapshotsChanged || subscriberChanged) {
+			lastEmittedPaneSnapshotsRef.current = mergedSnapshots;
+			lastPaneSnapshotsSubscriberRef.current = onPaneSnapshotsChange;
+			onPaneSnapshotsChange?.(mergedSnapshots);
+		}
 		if (useForkRuntime) {
 			emitCoordinateBridge(mergedSnapshots, forkVisibleRangeRef.current);
 		}
@@ -946,8 +1478,18 @@ function VNStockChartContent({
 			return;
 		}
 		// Cast: EnrichedDatum[] → readonly Record<string, unknown>[] (intentional type erasure for layer isolation)
-		engine.setEnrichedData?.(enrichedData as unknown as readonly Record<string, unknown>[]);
+		engine.setEnrichedData(enrichedData as unknown as readonly Record<string, unknown>[]);
 	}, [enrichedData, useForkRuntime]);
+
+	// ── KF-12-T04: Push immutable history snapshot to fork engine ────────────
+	useEffect(() => {
+		const engine = engineInstanceRef.current;
+		if (!engine || !useForkRuntime || !("setHistorySnapshot" in engine)) {
+			return;
+		}
+		const snapshot = historyChunkStoreRef.current.toSnapshot() as unknown as EngineHistorySnapshot;
+		(engine as EngineInstance & { setHistorySnapshot: (s: EngineHistorySnapshot) => void }).setHistorySnapshot(snapshot);
+	}, [bars, useForkRuntime]);
 	// ─────────────────────────────────────────────────────────────────────────
 
 	const handleForkVisibleRangeChange = useCallback((range: EngineVisibleRange) => {
@@ -959,9 +1501,15 @@ function VNStockChartContent({
 			return;
 		}
 
+		const visibleDomain = [normalizedRange.startDate, normalizedRange.endDate] as [Date, Date];
+		visibleDomainRef.current = visibleDomain;
+
 		onVisibleRangeChange?.(normalizedRange);
-		onVisibleDomainChange?.([normalizedRange.startDate, normalizedRange.endDate]);
-	}, [emitCoordinateBridge, onVisibleDomainChange, onVisibleRangeChange, plotData]);
+		onVisibleDomainChange?.(visibleDomain);
+		if (!isControlledHistorySession) {
+			queueVisibleHistoryWindowSync(visibleDomain);
+		}
+	}, [emitCoordinateBridge, isControlledHistorySession, onVisibleDomainChange, onVisibleRangeChange, plotData, queueVisibleHistoryWindowSync]);
 
 	const handleLegacyVisibleRangeChange = useCallback(
 		(range: VisibleRange) => {
@@ -970,6 +1518,18 @@ function VNStockChartContent({
 		},
 		[onVisibleRangeChange],
 	);
+
+	const handleLegacyVisibleDomainChange = useCallback((domain: [Date | number, Date | number]) => {
+		const resolvedDomain = !legacyChartScale.usesDiscontinuousScale
+			? [domain[0] instanceof Date ? domain[0] : new Date(domain[0]), domain[1] instanceof Date ? domain[1] : new Date(domain[1])] as [Date, Date]
+			: resolveDateDomainFromDiscontinuous(domain, legacyChartScale.data, legacyChartScale.xAccessor as (datum: EnrichedDatum) => number);
+		visibleDomainRef.current = resolvedDomain;
+
+		onVisibleDomainChange?.(resolvedDomain);
+		if (!isControlledHistorySession) {
+			queueVisibleHistoryWindowSync(resolvedDomain);
+		}
+	}, [isControlledHistorySession, legacyChartScale, onVisibleDomainChange, queueVisibleHistoryWindowSync]);
 
 	const emitHoveredPaneId = useCallback((paneId: string | null) => {
 		if (hoveredPaneIdRef.current === paneId) {
@@ -1140,7 +1700,6 @@ function VNStockChartContent({
 
 	const axisStroke = isDark ? "#64748b" : "#475569";
 	const axisTickFill = isDark ? "#e2e8f0" : "#0f172a";
-	const safeXAccessor = (datum?: EnrichedDatum) => datum?.date ?? new Date(0);
 	const paneToolbarNodes = renderPaneToolbar
 		? visiblePanes.map((pane) => {
 			const snapshot = paneSnapshotMap.get(pane.id);
@@ -1192,6 +1751,17 @@ function VNStockChartContent({
 			});
 		})
 		: null;
+	const drawingChromeNode = renderDrawingChrome
+		? renderDrawingChrome({
+			activeTool: drawingWorkspace.state.activeTool,
+			drawingWorkspace,
+			isDark,
+			paneSnapshots,
+			selectedDrawing: resolvedSelectedDrawing,
+			visibleRange: useForkRuntime ? forkVisibleRange : resolvedLegacyVisibleRange,
+			size: { width: size.width, height: size.height },
+		})
+		: null;
 
 	return (
 		<div
@@ -1234,13 +1804,13 @@ function VNStockChartContent({
 						onPaneHover={emitHoveredPaneId}
 						style={{ flex: 1, minHeight: 0 }}
 					/>
-					{selectedDrawing && showDrawingPriceMarkers && forkCoordinateBridge ? (
+					{resolvedSelectedDrawing && showDrawingPriceMarkers && forkCoordinateBridge ? (
 						<DrawingPriceLabelsOverlay
 							enabled
 							highlighted
 							runtime="fork"
 							priceFormat={(value: number) => priceFormat(value)}
-							drawing={selectedDrawing}
+							drawing={resolvedSelectedDrawing}
 							coordinateBridge={forkCoordinateBridge}
 							paneSnapshots={paneSnapshots}
 							height={size.height}
@@ -1266,18 +1836,19 @@ function VNStockChartContent({
 					}}
 				>
 					<DynamicChart
+						key={legacyChartScale.usesDiscontinuousScale ? "disc" : "cont"}
 						panes={visiblePanes}
 						heights={paneHeights}
-						data={plotData}
+						data={legacyChartScale.data}
 						width={size.width}
 						height={size.height}
 						margin={CHART_MARGIN}
 						type="hybrid"
-						seriesName={`vnstock-${activeSymbol}-${activeTimeframe}`}
-						xScale={scaleTime()}
-						xAccessor={safeXAccessor}
-						displayXAccessor={safeXAccessor}
-						xExtents={resolvedXExtents}
+						seriesName={`vnstock-${activeSymbol}-${activeTimeframe}-r${resetKey}`}
+						xScale={legacyChartScale.xScale}
+						xAccessor={legacyChartScale.xAccessor}
+						displayXAccessor={legacyChartScale.displayXAccessor}
+						xExtents={legacyChartScale.xExtents}
 						ratio={typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1}
 						mouseMoveEvent
 						zoomEvent
@@ -1285,7 +1856,7 @@ function VNStockChartContent({
 						useCrossHairStyleCursor
 						onClick={onClick}
 						onContextMenu={onContextMenu}
-						onVisibleDomainChange={onVisibleDomainChange}
+						onVisibleDomainChange={handleLegacyVisibleDomainChange}
 						onVisibleRangeChange={handleLegacyVisibleRangeChange}
 						axisStroke={axisStroke}
 						axisTickFill={axisTickFill}
@@ -1315,13 +1886,13 @@ function VNStockChartContent({
 						)}
 						{children}
 					</DynamicChart>
-					{selectedDrawing && showDrawingPriceMarkers && legacyCoordinateBridge ? (
+					{resolvedSelectedDrawing && showDrawingPriceMarkers && legacyCoordinateBridge ? (
 						<DrawingPriceLabelsOverlay
 							enabled
 							highlighted
 							runtime="legacy"
 							priceFormat={(value: number) => priceFormat(value)}
-							drawing={selectedDrawing}
+							drawing={resolvedSelectedDrawing}
 							coordinateBridge={legacyCoordinateBridge}
 							paneSnapshots={legacyPaneSnapshots}
 							height={size.height}
@@ -1345,17 +1916,24 @@ function VNStockChartContent({
 			) : null}
 			{paneToolbarNodes}
 			{paneSplitterNodes}
+			{drawingChromeNode}
 		</div>
 	);
-}
+});
+VNStockChartContent.displayName = "VNStockChartContent";
 
-export function VNStockChart(props: VNStockChartProps) {
+export const VNStockChart = forwardRef<VNStockChartRef, VNStockChartProps>((props, ref) => {
 	const requestedRuntime = props.engineRuntime ?? "fork";
 	const [fallbackRuntime, setFallbackRuntime] = useState<"legacy" | null>(null);
 
 	useEffect(() => {
 		setFallbackRuntime(null);
 	}, [requestedRuntime]);
+
+	useEffect(() => {
+		const targetTz = props.timezone || props.defaultTimezone || "Asia/Ho_Chi_Minh";
+		setGlobalTimezone(targetTz);
+	}, [props.timezone, props.defaultTimezone]);
 
 	const effectiveRuntime = fallbackRuntime ?? requestedRuntime;
 
@@ -1371,12 +1949,14 @@ export function VNStockChart(props: VNStockChartProps) {
 			setFallbackRuntime("legacy");
 		}
 	}, [fallbackRuntime, requestedRuntime]);
+	const contentRuntimeKey = `${effectiveRuntime}-${props.showNonTradingDays ? "calendar" : "trading"}`;
 
 	return (
 		<WidgetI18nProvider locale={props.locale} messages={props.messages}>
 			<WidgetErrorBoundary key={effectiveRuntime} onError={handleBoundaryError}>
-				<VNStockChartContent {...props} engineRuntime={effectiveRuntime} onRuntimeDegraded={handleRuntimeDegraded} />
+				<VNStockChartContent ref={ref} key={contentRuntimeKey} {...props} engineRuntime={effectiveRuntime} onRuntimeDegraded={handleRuntimeDegraded} />
 			</WidgetErrorBoundary>
 		</WidgetI18nProvider>
 	);
-}
+});
+VNStockChart.displayName = "VNStockChart";

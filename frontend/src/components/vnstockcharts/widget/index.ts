@@ -9,6 +9,7 @@ export { widgetMessagesVi } from "./i18n/messages.vi";
 export type { WidgetLocale, WidgetMessages } from "./i18n/types";
 export type {
 	VNStockChartProps,
+	VNStockChartRef,
 	WidgetCoordinateBridge,
 	WidgetPaneRuntimeSnapshot,
 	WidgetPaneSplitterRenderContext,
@@ -16,4 +17,5 @@ export type {
 	WidgetPaneToolbarRenderContext,
 	WidgetRuntimeCapabilities,
 } from "./VNStockChart";
+export type { DrawingWorkspaceController } from "../lib/drawing";
 export type { StockDataAdapter, Timeframe } from "../lib/types/adapter";

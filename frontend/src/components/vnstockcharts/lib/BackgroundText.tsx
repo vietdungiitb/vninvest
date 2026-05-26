@@ -7,7 +7,7 @@ import { hexToRGBA, isDefined } from "./utils";
 
 class BackgroundText extends PureComponent {
 	[key: string]: any;
-	context: any;
+	declare context: any;
 	static defaultProps: any;
 	static drawOnCanvas: any;
 	static contextType = StockChartContext;

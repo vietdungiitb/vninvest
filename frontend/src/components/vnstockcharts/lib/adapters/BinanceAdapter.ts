@@ -1,6 +1,10 @@
 import type { DataAdapter, GetBarsParams, GetBarsResult, KLineBar } from "./DataAdapter";
 
-const BINANCE_BASE = "https://api.binance.com/api/v3/klines";
+// In dev the webpack DefinePlugin injects VN_BINANCE_BASE = "/binance-proxy" so the
+// browser never hits api.binance.com directly (avoids CORS / regional blocks).
+// In production the value is "" and we fall back to the public Binance URL.
+const _BINANCE_ORIGIN = process.env["VN_BINANCE_BASE"] || "https://api.binance.com";
+const BINANCE_BASE = `${_BINANCE_ORIGIN}/api/v3/klines`;
 const MAX_LIMIT = 1000;
 
 /** Allowlist of valid Binance interval strings */

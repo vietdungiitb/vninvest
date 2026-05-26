@@ -74,3 +74,13 @@ export function replaceNextPoint(object: DrawingObject, nextPoint: Point) {
 
 	return replacePoint(object, targetIndex, nextPoint);
 }
+
+/**
+ * DT-20: Always replace only the LAST point.
+ * Use this for multi-step tool `updateDraft` (mouse-move preview) so that moving
+ * the mouse quickly does NOT consume intermediate placeholder points.
+ * `replaceNextPoint` remains correct for `handleClick` (to advance to next step).
+ */
+export function replaceLastPoint(object: DrawingObject, nextPoint: Point) {
+	return replacePoint(object, Math.max(0, object.points.length - 1), nextPoint);
+}

@@ -1,7 +1,7 @@
 import type { DrawingObject, DrawingToolDefinition, Point } from "../types";
 import type { ChartScales } from "../coordinateUtils";
 import { chartPointToPixel } from "../coordinateUtils";
-import { createDrawingObject, replaceNextPoint } from "../shared";
+import { createDrawingObject, replaceLastPoint } from "../shared";
 
 export type CycleToolType = "cyclicLines" | "timeCycles" | "sineLine";
 
@@ -38,7 +38,7 @@ export const CyclicLines: DrawingToolDefinition = {
 		cycleParams: { count: 8 },
 	}),
 	updateDraft: (draft: DrawingObject, nextPoint: Point): DrawingObject =>
-		replaceNextPoint(draft, nextPoint),
+		replaceLastPoint(draft, nextPoint),
 };
 
 export const TimeCycles: DrawingToolDefinition = {
@@ -48,7 +48,7 @@ export const TimeCycles: DrawingToolDefinition = {
 		cycleParams: { count: 8 },
 	}),
 	updateDraft: (draft: DrawingObject, nextPoint: Point): DrawingObject =>
-		replaceNextPoint(draft, nextPoint),
+		replaceLastPoint(draft, nextPoint),
 };
 
 export const SineLine: DrawingToolDefinition = {
@@ -58,5 +58,5 @@ export const SineLine: DrawingToolDefinition = {
 		cycleParams: { count: 3, amplitude: 40 },
 	}),
 	updateDraft: (draft: DrawingObject, nextPoint: Point): DrawingObject =>
-		replaceNextPoint(draft, nextPoint),
+		replaceLastPoint(draft, nextPoint),
 };

@@ -47,9 +47,9 @@ function notifyDrawingStyleChange(instanceId: string) {
 }
 
 function notifyAllDrawingStyleChanges() {
-	drawingStyleListeners.forEach((listeners) => {
+	for (const [instanceId, listeners] of drawingStyleListeners) {
 		listeners.forEach((callback) => callback());
-	});
+	}
 	drawingStyleChangeListeners.forEach((callback) => callback());
 }
 
@@ -85,7 +85,7 @@ export function clearDrawingStyleOverrides(): void {
 }
 
 export function listDrawingStyleOverrides(): Record<string, Partial<DrawingStyleOverride>> {
-	return Object.fromEntries(Array.from(drawingStyleOverrides.entries()).map(([drawingId, style]) => [drawingId, cloneDrawingStyleOverride(style) ?? {}]));
+	return Object.fromEntries([...drawingStyleOverrides.entries()].map(([drawingId, style]) => [drawingId, cloneDrawingStyleOverride(style) ?? {}]));
 }
 
 export function subscribeDrawingStyle(drawingId: string, callback: () => void): () => void {

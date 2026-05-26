@@ -85,7 +85,7 @@ export const DEFAULT_PANES: PaneDescriptor[] = [
 			{ type: "Candlestick", yAxis: "right" },
 			{ type: "EMA", params: { period: 20, color: "#2d9cdb" }, yAxis: "right", overlay: true },
 			{ type: "EMA", params: { period: 50, color: "#f2994a" }, yAxis: "right", overlay: true },
-			{ type: "BollingerBand", params: { period: 20, stdDev: 2 }, yAxis: "right", overlay: true },
+			{ type: "BollingerBand", params: { period: 20, stdDev: 2 }, color: "#38bdf8", yAxis: "right", overlay: true },
 		],
 	},
 	// ── 2: VOLUME — visible by default ───────────────────────────────────────

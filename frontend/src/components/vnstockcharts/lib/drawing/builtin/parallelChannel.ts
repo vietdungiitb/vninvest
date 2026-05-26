@@ -1,7 +1,7 @@
 import type { ChartScales } from "../coordinateUtils";
 import { chartPointToPixel } from "../coordinateUtils";
 import type { DrawingObject, DrawingToolDefinition } from "../types";
-import { createDrawingObject, replaceNextPoint } from "../shared";
+import { createDrawingObject, replaceLastPoint } from "../shared";
 
 export interface ParallelChannelGeometry {
 	start: { x: number; y: number };
@@ -52,7 +52,7 @@ export function calculateParallelChannelGeometry(drawing: DrawingObject, scales:
 const ParallelChannel: DrawingToolDefinition = {
 	name: "parallelChannel",
 	createDraft: (startPoint) => createDrawingObject("parallelChannel", [startPoint, startPoint, startPoint]),
-	updateDraft: (draft, nextPoint) => replaceNextPoint(draft, nextPoint),
+	updateDraft: (draft, nextPoint) => replaceLastPoint(draft, nextPoint),
 	render: () => undefined,
 };
 

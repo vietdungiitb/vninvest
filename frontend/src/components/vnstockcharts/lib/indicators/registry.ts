@@ -18,5 +18,5 @@ export function getIndicator(name: string) {
 }
 
 export function listIndicators() {
-	return Array.from(indicatorRegistry.values());
+	return [...indicatorRegistry.values()];
 }
