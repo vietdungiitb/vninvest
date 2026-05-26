@@ -15,6 +15,7 @@ export {
 } from "./components/ShellPageTemplate.js";
 export { getPageComponent, getPageLoader, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
 export { ShellOperationsCenterPage } from "./pages/admin/ShellOperationsCenterPage.js";
+export { ShellMailConfigPage } from "./pages/admin/ShellMailConfigPage.js";
 export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.js";
 export { ShellWhaleAlertsPage } from "./pages/signals/ShellWhaleAlertsPage.js";
 export { ShellStockDetailPage } from "./pages/market/ShellStockDetailPage.js";

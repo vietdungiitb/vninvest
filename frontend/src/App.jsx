@@ -25,6 +25,7 @@ import AdminCoreJobs from './pages/AdminCoreJobs';
 import AdminCoreAuditTrace from './pages/AdminCoreAuditTrace';
 import AdminCrawlControl from './pages/AdminCrawlControl';
 import SOCPage from './pages/SOCPage';
+import MailConfigShellHost from './pages/MailConfigShellHost';
 import Screener from './pages/Screener';
 import UserConfig from './pages/UserConfig';
 import TenantAdminHome from './pages/admin/tenant/TenantAdminHome';
@@ -316,6 +317,7 @@ export default function App() {
                   <Route path="screener" element={<Screener />} />
                   <Route path="admin-ops" element={<Navigate to="/operations-center" replace />} />
                   <Route path="operations-center" element={<SOCPage />} />
+                  <Route path="operations-center/mail-config" element={<MailConfigShellHost />} />
                   <Route path="portfolios" element={<PortfoliosShellHost />} />
                   <Route
                     path="settings"

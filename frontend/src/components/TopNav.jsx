@@ -105,8 +105,10 @@ export default function TopNav() {
     { to: '/screener', label: t('layout.nav.screener') },
     { to: '/settings/ai', label: t('layout.nav.aiCommandCenter') },
     { to: '/operations-center', label: t('layout.nav.soc') },
+    { to: '/operations-center/mail-config', label: t('layout.nav.mailConfig', 'Cấu hình Mail') },
   ].filter((item) => {
     if (item.to === '/operations-center') return canReadSOC;
+    if (item.to === '/operations-center/mail-config') return canReadSOC;
     return true;
   });
 

@@ -29,7 +29,7 @@ export const navigationCatalog = Object.freeze([
     labelKey: "layout.nav.soc",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["admin.operator.read"],
-    items: ["operations-center"],
+    items: ["operations-center", "operations-center-mail-config"],
   },
   {
     id: "vip-local",

@@ -54,6 +54,7 @@ const en = {
       portfolioManagement: 'Manage Portfolios',
       settings: 'UserConfig',
       aiCommandCenter: 'AI Command Center',
+      mailConfig: 'Mail Config',
       tenantHome: 'Tenant Home',
       tenantMembers: 'Tenant Members',
       tenantCapabilities: 'Tenant Capabilities',

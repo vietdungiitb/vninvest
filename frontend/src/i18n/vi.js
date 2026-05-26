@@ -55,6 +55,7 @@ const vi = {
       portfolioManagement: 'Quản lý Danh mục',
       settings: 'UserConfig',
       aiCommandCenter: 'Trung tâm AI',
+      mailConfig: 'Cấu hình Mail Vận Hành',
       tenantHome: 'Trang chủ thành viên',
       tenantMembers: 'Thành viên tenant',
       tenantCapabilities: 'Năng lực thành viên',

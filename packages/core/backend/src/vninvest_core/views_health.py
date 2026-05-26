@@ -26,7 +26,7 @@ def capability_bootstrap(request):
         'navigation': {
             'visible_routes': [
                 'dashboard', 'portfolio', 'watchlist',
-                'whale-alerts', 'ai-advisory', 'operations-center',
+                'whale-alerts', 'ai-advisory', 'operations-center', 'operations-center-mail-config',
             ],
         },
         'surfaces': {
