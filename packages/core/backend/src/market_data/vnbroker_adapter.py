@@ -724,6 +724,8 @@ def fetch_intraday_tape_history(
         Chỉ log symbol, trade_date, result count.
     """
     symbol_upper = symbol.strip().upper()
+    # DNSEQuote.intraday() chỉ nhận string 'YYYY-MM-DD', không nhận datetime.date
+    trade_date_str = trade_date.strftime('%Y-%m-%d') if hasattr(trade_date, 'strftime') else str(trade_date)
     try:
         from vnbroker.explorer.dnse.quote import DNSEQuote
 
@@ -733,12 +735,12 @@ def fetch_intraday_tape_history(
             api_secret=api_secret,
             show_log=False,
         )
-        df = q.intraday(date=trade_date, get_all=True, page_size=1000)
+        df = q.intraday(date=trade_date_str, get_all=True, page_size=1000)
 
         if df is None or df.empty:
             logger.info(
                 'fetch_intraday_tape_history: no data — symbol=%s date=%s',
-                symbol_upper, trade_date,
+                symbol_upper, trade_date_str,
             )
             return []
 
@@ -776,7 +778,7 @@ def fetch_intraday_tape_history(
 
         logger.info(
             'fetch_intraday_tape_history: symbol=%s date=%s ticks=%d source=%s',
-            symbol_upper, trade_date, len(results), source,
+            symbol_upper, trade_date_str, len(results), source,
         )
         return results
 
@@ -785,7 +787,7 @@ def fetch_intraday_tape_history(
         # Chỉ log symbol và date.
         logger.warning(
             'fetch_intraday_tape_history failed: symbol=%s date=%s',
-            symbol_upper, trade_date,
+            symbol_upper, trade_date_str,
         )
         return []
 
