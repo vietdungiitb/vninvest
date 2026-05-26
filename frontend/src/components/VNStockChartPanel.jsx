@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useI18n } from '../context/LangContext';
 import { toCanonicalMinute } from '../utils/whaleTimeAdapter';
 import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInvestSignalAdapter';
-import { VNStockChart, MockAdapter, OverlayCanvas } from './vnstockcharts';
+import { VNStockChart, OverlayCanvas } from './vnstockcharts';
 
 function clamp(value, lower, upper) {
   return Math.max(lower, Math.min(upper, Number(value)));
@@ -204,6 +204,20 @@ export default function VNStockChartPanel({
   // Enriched bars mapped from input data
   const enrichedBars = useMemo(() => mapToOHLCVBars(data), [data]);
 
+  // Inline adapter backed by enrichedBars — satisfies new StockDataAdapter interface
+  const chartAdapter = useMemo(() => ({
+    async fetchBarsInRange(_symbol, _timeframe, from, to) {
+      return enrichedBars.filter((b) => b.date >= from && b.date <= to);
+    },
+    async fetchBarsBefore(_symbol, _timeframe, before, limit = 300) {
+      return enrichedBars.filter((b) => b.date < before).slice(-limit);
+    },
+    subscribeToBar: () => () => undefined,
+    subscribeToTrades: () => () => undefined,
+    subscribeToOrderbook: () => () => undefined,
+    async searchSymbols() { return []; },
+  }), [enrichedBars]);
+
   // Enriched whale orders and CVD mapped from inputs
   const mappedWhaleOrders = useMemo(() => {
     const signalsOrders = whaleSignals.map(s => ({
@@ -360,7 +374,7 @@ export default function VNStockChartPanel({
           </div>
         ) : (
           <VNStockChart
-            adapter={new MockAdapter({ bars: [] })}
+            adapter={chartAdapter}
             data={enrichedBars}
             panes={customPanes}
             engineRuntime="legacy"

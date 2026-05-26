@@ -63,6 +63,10 @@ export class MockAdapter {
 			.map((bar, index) => cloneBar(bar, index));
 	}
 
+	async fetchBarsInRange(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<readonly OHLCVBar[]> {
+		return this.fetchBars(symbol, timeframe, from, to);
+	}
+
 	async fetchMoreBars(symbol: string, timeframe: Timeframe, before: Date, limit = 300): Promise<readonly OHLCVBar[]> {
 		void symbol;
 		void timeframe;
@@ -70,6 +74,18 @@ export class MockAdapter {
 			.filter((bar) => bar.date < before)
 			.slice(-limit)
 			.map((bar, index) => cloneBar(bar, index));
+	}
+
+	async fetchBarsBefore(symbol: string, timeframe: Timeframe, before: Date, limit = 300): Promise<readonly OHLCVBar[]> {
+		return this.fetchMoreBars(symbol, timeframe, before, limit);
+	}
+
+	async searchSymbols(query: string): Promise<readonly SymbolInfo[]> {
+		return this.symbols.filter(
+			(s) =>
+				s.symbol.toLowerCase().includes(query.toLowerCase()) ||
+				s.name.toLowerCase().includes(query.toLowerCase()),
+		);
 	}
 
 	subscribeToBar(symbol: string, timeframe: Timeframe, onBar: (bar: OHLCVBar) => void): Unsubscribe {
