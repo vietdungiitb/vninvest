@@ -87,6 +87,9 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
     command: ["api"]
     depends_on:
       core-db:
@@ -100,7 +103,7 @@ services:
           "curl",
           "--fail",
           "--silent",
-          "http://127.0.0.1:8100/health/",
+          "http://127.0.0.1:8100/core/v1/health",
         ]
       interval: 10s
       timeout: 5s
@@ -130,7 +133,11 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,enrichment_offhours,manual_on_demand,analytics_heavy}
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
     command: ["worker"]
     depends_on:
       core-api:
@@ -203,7 +210,11 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       CELERY_QUEUES: realtime_prefetch
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CELERY_CONCURRENCY: "4"
     command: ["worker"]
     depends_on:
@@ -231,7 +242,11 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       CELERY_QUEUES: realtime_stream
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CELERY_CONCURRENCY: "4"
     command: ["worker"]
     depends_on:
@@ -259,7 +274,11 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       CELERY_QUEUES: enrichment_offhours
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CELERY_CONCURRENCY: "6"
     command: ["worker"]
     depends_on:
@@ -287,7 +306,11 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       CELERY_QUEUES: analytics_heavy
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CELERY_CONCURRENCY: "4"
     command: ["worker"]
     depends_on:
@@ -315,7 +338,11 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       CELERY_QUEUES: manual_on_demand
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
       CELERY_CONCURRENCY: "3"
     command: ["worker"]
     depends_on:
@@ -343,6 +370,10 @@ services:
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
     command: ["beat"]
     depends_on:
       core-api:
@@ -380,6 +411,8 @@ services:
       APP_RELEASE: ${APP_RELEASE:-main-local}
       # PAT-only: pepper must match core-api for LegacyCorePATAuthentication to validate tokens.
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set in production}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
     labels:
       com.vninvest.release: ${APP_RELEASE:-main-local}
     depends_on:
