@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-27 | Dashboard data-sync hotfix (heatmap fallback + whale CVD fallback)
+
+### Files changed in this session
+- `frontend/src/pages/PackageDashboardHost.jsx`
+- `packages/core/backend/src/user_workspace/portfolio_analytics_views.py`
+- `packages/core/backend/src/user_workspace/test_portfolio_whale_analytics_native.py`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sua 2 trieu chung production dashboard: heatmap 0.00% do mat feed realtime tam thoi, va whale chart degraded sai khi thieu SessionFactsBucket nhung van co canonical whale events.
+
+### Validation snapshot
+- `cd packages/core/backend && DJANGO_DEBUG=true DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 python manage.py test user_workspace.test_portfolio_whale_analytics_native` ✅ (`2 passed`).
+- `./start_dev.ps1` ⚠️ da chay dung entrypoint nhung host thieu Docker daemon (`dockerDesktopLinuxEngine`), nen stack smoke checks chua hoan tat trong session nay.
+
+---
+
 ## 2026-05-25 | Slice 7 frontend anti-spam integration (Turnstile + honeypot)
 
 ### Files changed in this session

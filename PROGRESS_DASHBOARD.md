@@ -1,3 +1,31 @@
+# 2026-05-27 — Dashboard data-sync hotfix (heatmap + whale fallback) ✅
+
+Status: **✅ CODE + FOCUSED TEST DONE (runtime docker refresh blocked by host daemon)**
+
+## Summary
+
+- Fixed heatmap fallback so `% change` no longer collapses to `0.00%` when realtime feed is temporarily empty.
+- Added backend fallback to reconstruct CVD from canonical whale events when SessionFacts buckets are missing.
+- Added regression test for fallback path and made test cache in-memory to remove external Redis dependency.
+
+## Files Updated
+
+- `frontend/src/pages/PackageDashboardHost.jsx`
+- `packages/core/backend/src/user_workspace/portfolio_analytics_views.py`
+- `packages/core/backend/src/user_workspace/test_portfolio_whale_analytics_native.py`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `cd packages/core/backend && DJANGO_DEBUG=true DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 python manage.py test user_workspace.test_portfolio_whale_analytics_native` ✅ (`2 passed`).
+- `./start_dev.ps1` ⚠️ executed but Docker daemon missing on host (`dockerDesktopLinuxEngine` not found), so stack smoke checks could not be completed in this session.
+
+## Residual Risk
+
+- Need one runtime smoke pass after Docker daemon is up to verify containerized health endpoints and UI parity in dev stack.
+
 # 2026-05-25 — Slice 7 registration frontend anti-spam DONE ✅
 
 Status: **✅ DONE (Turnstile + honeypot + field error parsing + runtime smoke green)**

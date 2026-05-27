@@ -1,5 +1,37 @@
 # Code Change Audit Ledger
 
+# 2026-05-27 | Dashboard data-sync hotfix: heatmap fallback + whale CVD fallback ✅
+
+## Problem Solved
+
+- Fix dashboard heatmap showing 0.00% for all symbols when realtime quotes are temporarily empty.
+- Fix whale bubble chart degraded banner when SessionFacts buckets are missing but canonical whale events still exist.
+- Stabilize focused whale analytics tests to run without external Redis daemon by using in-memory cache in test scope.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Focused whale analytics tests | ✅ `manage.py test user_workspace.test_portfolio_whale_analytics_native` (`2 passed`) |
+| Runtime refresh entrypoint | ⚠️ `./start_dev.ps1` executed but Docker daemon unavailable on host (`dockerDesktopLinuxEngine` not found) |
+| Static diagnostics (changed files) | ✅ no editor diagnostics on touched files |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/src/pages/PackageDashboardHost.jsx` | Heatmap now uses `technicals.price_change_pct` fallback when realtime/tracked change data is missing; default fallback changed from forced `0` to nullable value |
+| `packages/core/backend/src/user_workspace/portfolio_analytics_views.py` | Reconstruct minimal CVD series from canonical whale events when SessionFacts buckets are empty |
+| `packages/core/backend/src/user_workspace/test_portfolio_whale_analytics_native.py` | Added regression test for fallback CVD path; switched test cache backend to LocMem via `@override_settings` |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list |
+
+## Residual Risk
+
+- End-to-end runtime validation on Docker stack is currently blocked on this machine until Docker Desktop daemon is running.
+
+
 # 2026-05-26 | Backfill Fix: D06 IntradayBar synthesis + datetime.date type bug ✅
 
 ## Problem Solved
