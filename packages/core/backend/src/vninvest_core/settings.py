@@ -70,6 +70,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'ops_audit.middleware.RequestTraceMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -168,6 +169,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -600,4 +605,4 @@ STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', 'f
 LOGIN_IP_LIMIT_THRESHOLD = int(os.environ.get('LOGIN_IP_LIMIT_THRESHOLD', 5))
 LOGIN_SUBNET_LIMIT_THRESHOLD = int(os.environ.get('LOGIN_SUBNET_LIMIT_THRESHOLD', 15))
 LOGIN_USER_LIMIT_THRESHOLD = int(os.environ.get('LOGIN_USER_LIMIT_THRESHOLD', 3))
-
+
