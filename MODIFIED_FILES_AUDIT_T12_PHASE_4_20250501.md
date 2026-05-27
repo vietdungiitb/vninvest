@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-05-27 | Frontend chart-engine source rename (`vnstockchars` -> `stockchart`)
+
+### Files changed in this session
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/Dockerfile.dev-package-shell`
+- `docker-compose.yml`
+- `docker-compose.dev.yml`
+- `docker-compose.prod.yml`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chuyen toan bo build-critical source path cua frontend tu sibling repo `vnstockchars` sang repo moi `stockchart`, nhung giu nguyen internal package scope `@vnstockcharts/*` vi upstream moi van dung ten package cu.
+
+### Validation snapshot
+- GitHub manifest audit ✅ repo `vietdungiitb/stockchart` ton tai, default branch `dev`, package names van la `vnstockcharts` / `@vnstockcharts/*`.
+- `get_errors` tren cac file touched ✅ no errors found.
+- `cd frontend && npm install --ignore-scripts --no-package-lock --legacy-peer-deps` ✅ resolve thanh cong voi path `../../stockchart/...`.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml config` ✅ merge config thanh cong sau khi noi frontend build vao `vnbroker_github_token`.
+- `docker build` voi PAT dang luu trong `compose.dev.env` ⚠️ fail xac dinh la do credential bi GitHub tu choi cho repo `stockchart`, khong phai do path/config.
+- `docker build` voi `gh auth token` ✅ clone duoc `stockchart`, build duoc engine packages, chay qua frontend install, va vao toi buoc `react-scripts build`.
+- `./start_dev.ps1 -FrontendOnly` ✅ dung lane GitHub CLI auth va `vninvest-dev-frontend` dang tro toi image digest `sha256:3c182d89be72e285735a59f5b46bd6b03b298a3218874f058dcf36640d9f7ce7`.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` thanh cong.
+- `npm ci` ⚠️ bi chan boi frontend lock drift co san, khong phai do doi ten repo nguon.
+
+---
+
 ## 2026-05-27 | Stock detail live runtime fix (`/stocks/TPB` chart + CVD recovery)
 
 ### Files changed in this session

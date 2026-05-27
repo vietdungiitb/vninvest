@@ -1,3 +1,46 @@
+# 2026-05-27 — Frontend chart-engine source renamed to `stockchart` ✅
+
+Status: **✅ CODE DONE, SECRET-AUTH BUILD GREEN VIA `gh auth`, DEV FRONTEND IMAGE LOADED**
+
+## Summary
+
+- Frontend build-critical paths no longer assume the sibling repo is named `vnstockchars`; they now point to the renamed upstream source `stockchart`.
+- Internal package names remain unchanged because the upstream repo still exposes `vnstockcharts` and `@vnstockcharts/*`.
+- Host-side dependency resolution succeeded after cloning `c:\Mujoco Projects\stockchart`, so the rename is not blocked on code-level path errors.
+- Frontend Docker builds now use the shared `vnbroker_github_token` BuildKit secret instead of anonymous GitHub clone attempts.
+- `./start_dev.ps1 -FrontendOnly` refreshed the dev frontend through the GitHub CLI auth lane and the running container references the current `vninvest-dev-frontend:latest` image digest.
+- `module_tree_full.md` da duoc regenerate lai theo rule workspace.
+
+## Files Updated
+
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/Dockerfile.dev-package-shell`
+- `docker-compose.yml`
+- `docker-compose.dev.yml`
+- `docker-compose.prod.yml`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- GitHub repo audit ✅ `vietdungiitb/stockchart` exists, default branch is `dev`, and package manifests still declare `vnstockcharts` / `@vnstockcharts/*`.
+- `get_errors` on touched files ✅ no diagnostics.
+- `cd frontend && npm install --ignore-scripts --no-package-lock --legacy-peer-deps` ✅ completed successfully against the new `../../stockchart/...` paths.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml config` ✅ merged successfully after the frontend build-secret wiring.
+- Raw `docker build` with the PAT from `compose.dev.env` ⚠️ now fails specifically on GitHub auth for `stockchart`, proving the remaining issue is credential scope rather than path/config.
+- Raw `docker build` with `gh auth token` ✅ cloned `stockchart`, built the engine packages, completed frontend install, and progressed into `react-scripts build`.
+- `./start_dev.ps1 -FrontendOnly` ✅ used GitHub CLI auth precedence and the live `vninvest-dev-frontend` container now references image digest `sha256:3c182d89be72e285735a59f5b46bd6b03b298a3218874f058dcf36640d9f7ce7`.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md`.
+- `npm ci` ⚠️ blocked by pre-existing frontend lock drift unrelated to this rename.
+
+## Residual Risk
+
+- `packages/core/backend/requirements.txt` currently pins `stockchart.git@v1.0.0`, but upstream has no published tags yet.
+- The PAT currently persisted in `compose.dev.env` does not authenticate against `stockchart`; direct raw Docker builds that read only that env-file token will still fail until the token is rotated or refreshed.
+
 # 2026-05-27 — Stock detail live runtime fix on `/stocks/TPB` ✅
 
 Status: **✅ DONE (live bundle rebuilt + browser proof green + package-web regressions green)**

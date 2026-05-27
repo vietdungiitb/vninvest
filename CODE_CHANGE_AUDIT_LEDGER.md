@@ -1,5 +1,48 @@
 # Code Change Audit Ledger
 
+# 2026-05-27 | Frontend chart-engine source renamed from `vnstockchars` sibling to `stockchart` ✅
+
+## Problem Solved
+
+- Switched the frontend build/input source from the old sibling repository name `vnstockchars` to the renamed upstream repository `stockchart` without changing chart runtime behavior.
+- Kept the existing package scope `@vnstockcharts/*` intact because the renamed upstream repository still publishes the same internal package names.
+- Removed the last build-critical repo-path assumptions that still pointed to `vnstockchars` in the frontend package graph, Dockerfile, and compose frontend build overrides.
+- Wired the frontend Docker build to the existing `vnbroker_github_token` BuildKit secret so private `stockchart` fetches work through the same authenticated dev lane as `./start_dev.ps1`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Upstream repo manifest audit | ✅ `gh repo view vietdungiitb/stockchart` shows default branch `dev`; GitHub blob inspection confirms repo name changed but package names remain `vnstockcharts` and `@vnstockcharts/*` |
+| Static diagnostics on touched files | ✅ no editor diagnostics in `frontend/package.json`, `frontend/package-lock.json`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml` |
+| Host-side dependency resolution | ✅ `cd frontend && npm install --ignore-scripts --no-package-lock --legacy-peer-deps` completed successfully after cloning sibling `c:\Mujoco Projects\stockchart` |
+| `npm ci` lockfile probe | ⚠️ blocked by pre-existing frontend lock drift (`@testing-library/dom`, `aria-query`, `dom-accessibility-api`, `lz-string`, `dequal` missing from current lockfile); this is not caused by the `stockchart` path rename |
+| Compose merge validation | ✅ `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml config` passed after the frontend build-secret wiring |
+| Raw Docker build with env-file token | ⚠️ secret wiring works, but the persisted PAT currently stored in `compose.dev.env` is rejected by GitHub for `stockchart`; this is a credential issue, not a path or Dockerfile issue |
+| Raw Docker build with `gh auth` token | ✅ secret-authenticated build cloned `stockchart`, built both engine packages, completed frontend `npm ci`, and advanced into `react-scripts build` |
+| Mandatory dev runtime refresh | ✅ `./start_dev.ps1 -FrontendOnly` used GitHub CLI auth precedence, built against the new `stockchart` path, and the live `vninvest-dev-frontend` container references the current `vninvest-dev-frontend:latest` image digest `sha256:3c182d89be72e285735a59f5b46bd6b03b298a3218874f058dcf36640d9f7ce7` |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/package.json` | Repointed local engine dependencies from `../../vnstockchars/...` to `../../stockchart/...` while keeping `@vnstockcharts/*` package names |
+| `frontend/package-lock.json` | Updated file dependency and resolved link paths to `../../stockchart/...` |
+| `frontend/Dockerfile.dev-package-shell` | Switched to the renamed `stockchart` source and added BuildKit-secret GitHub auth for private repo cloning |
+| `docker-compose.yml` | Wired the frontend build to the shared `vnbroker_github_token` secret in the base compose file |
+| `docker-compose.dev.yml` | Kept the repo-root frontend build context and added the shared frontend build secret for dev refreshes |
+| `docker-compose.prod.yml` | Wired the production/frontend compose build to the same shared GitHub token secret |
+| `module_tree_full.md` | Regenerated after the rename slice |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list |
+
+## Residual Risk
+
+- `packages/core/backend/requirements.txt` references `stockchart.git@v1.0.0`, but the upstream `vietdungiitb/stockchart` repository currently exposes no tags; if that ref is used later for Python-side installation, it should be corrected to an existing branch or commit.
+- The persisted PAT currently stored in `compose.dev.env` does not authenticate against `stockchart`; raw `docker build` flows that rely on that env-file token will still fail until the token is refreshed. The normal dev lane works because `start_dev.ps1` prefers the GitHub CLI token first.
+
 # 2026-05-27 | Stock detail live runtime fix: TPB chart alias + CVD hydration + frontend-only rebuild proof ✅
 
 ## Problem Solved

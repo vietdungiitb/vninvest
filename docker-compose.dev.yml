@@ -436,13 +436,16 @@ services:
     container_name: vninvest-dev-frontend
     image: vninvest-dev-frontend:latest
     build:
-      context: ..
-      dockerfile: vninvest/frontend/Dockerfile.dev-package-shell
+      context: .
+      dockerfile: frontend/Dockerfile.dev-package-shell
+      secrets:
+        - vnbroker_github_token
       args:
         REACT_APP_API_BASE_URL: /api
         REACT_APP_AI_ADVISORY_PATH: /ai-advisory
         REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "0"
         REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+        STOCKCHART_REF: ${STOCKCHART_REF:-dev}
     depends_on: !override
       # SFI-B1.6: frontend depends only on core-api (single entry point); backend is internal.
       core-api:
