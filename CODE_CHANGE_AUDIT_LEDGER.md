@@ -1,5 +1,46 @@
 # Code Change Audit Ledger
 
+# 2026-05-27 | Stock detail live runtime fix: TPB chart alias + CVD hydration + frontend-only rebuild proof ✅
+
+## Problem Solved
+
+- Fix the real live `/stocks/:symbol` route in `packages/web` so `orderFlowData` can hydrate `cvd_series` through the effective order-flow fallback path instead of staying empty on sparse SessionFacts payloads.
+- Canonicalize the remaining legacy chart series ids on the live widget/runtime path: `BollingerBands`, `BuyStrength`, and `InstitutionalStrength` no longer break `SeriesRegistry` on `/stocks/TPB`.
+- Harden `./start_dev.ps1` with fail-fast compose handling and a `-FrontendOnly` lane so frontend rebuild proof no longer silently relaunches stale images after unrelated build failures.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Focused package-web regressions | ✅ `cd packages/web && npm test -- --runInBand src/features/stock-detail/__tests__/orderFlowFallback.test.js src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js` (`2 suites, 5 passed`) |
+| Mandatory dev runtime refresh | ✅ `./start_dev.ps1 -FrontendOnly` rebuilt and relaunched frontend; live bundle `/usr/share/nginx/html/static/js/main.52c19547.js`, SHA `c6d9d17de8035f0f1ad0b3a41c2fa1e6f644360529e56312b3a6460a10ee3e70` |
+| Live browser proof on `/stocks/TPB` | ✅ chart rendered; no `Đã xảy ra lỗi trong biểu đồ`, no `0 buckets`, no `Không có dữ liệu CVD trong phiên`; radar now shows `1 buckets` |
+| Live React props proof | ✅ `orderFlowData.cvd_series.length = 1`, `_cvd_source = whale-ssot`, `dark_flow` present |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` (`2627 modules`) |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js` | Route-level stock-detail model now composes effective order-flow data from order-flow, SessionFacts CVD, and whale snapshot sources |
+| `packages/web/src/features/stock-detail/orderFlowFallback.js` | Added pure fallback/materialization helper for `cvd_series` hydration on sparse live payloads |
+| `packages/web/src/features/stock-detail/__tests__/orderFlowFallback.test.js` | Added regression coverage for fallback CVD composition and precedence |
+| `packages/web/src/components/VNStockChartPanel.js` | Switched live stock-detail pane config to canonical chart series ids used by the runtime registry |
+| `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.js` | Added legacy alias normalization for live JS runtime pane descriptors |
+| `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.ts` | Kept TS descriptor layer in sync with the JS alias normalization |
+| `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js` | Added alias regression coverage for `BollingerBands`, `BuyStrength`, and `InstitutionalStrength` |
+| `packages/web/src/components/vnstockcharts/widget/VNStockChart.js` | Canonicalizes legacy pane series ids at the live widget boundary before render |
+| `packages/web/src/components/vnstockcharts/widget/VNStockChart.tsx` | TS parity update for widget-side pane normalization |
+| `start_dev.ps1` | Added fail-fast compose flow and `-FrontendOnly` rebuild lane to make runtime proof reliable |
+| `module_tree_full.md` | Regenerated after the code updates |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list |
+
+## Residual Risk
+
+- Non-blocking 404 resource noise still appears in the browser console on page load; this slice did not trace those requests because they do not affect chart render or the order-flow/CVD recovery path.
+
 # 2026-05-27 | Dashboard data-sync hotfix: heatmap fallback + whale CVD fallback ✅
 
 ## Problem Solved

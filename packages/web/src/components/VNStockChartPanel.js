@@ -253,7 +253,7 @@ export default function VNStockChartPanel({
         { type: "Candlestick", yAxis: "right" },
         { type: "EMA", params: { period: 20 }, yAxis: "right", color: "#3b82f6" },
         { type: "EMA", params: { period: 50 }, yAxis: "right", color: "#f59e0b" },
-        { type: "BollingerBands", params: { period: 20, multiplier: 2 }, yAxis: "right" }
+        { type: "BollingerBand", params: { period: 20, stdDev: 2 }, yAxis: "right" }
       ]
     },
     {
@@ -277,8 +277,8 @@ export default function VNStockChartPanel({
       splitScale: true,
       tooltip: "value",
       series: [
-        { type: "BuyStrength", yAxis: "left", color: "#34d399", scaleSlotId: "strength-left" },
-        { type: "InstitutionalStrength", yAxis: "right", color: "#38bdf8", scaleSlotId: "strength-right" }
+        { type: "StrengthElder", yAxis: "left", color: "#34d399", scaleSlotId: "strength-left" },
+        { type: "StrengthRelative", yAxis: "right", color: "#38bdf8", scaleSlotId: "strength-right" }
       ]
     }
   ], [t]);

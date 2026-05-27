@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-05-27 | Stock detail live runtime fix (`/stocks/TPB` chart + CVD recovery)
+
+### Files changed in this session
+- `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js`
+- `packages/web/src/features/stock-detail/orderFlowFallback.js`
+- `packages/web/src/features/stock-detail/__tests__/orderFlowFallback.test.js`
+- `packages/web/src/components/VNStockChartPanel.js`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.js`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.ts`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js`
+- `packages/web/src/components/vnstockcharts/widget/VNStockChart.js`
+- `packages/web/src/components/vnstockcharts/widget/VNStockChart.tsx`
+- `start_dev.ps1`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Sửa đúng live runtime `/stocks/:symbol` để chart không còn lỗi `SeriesRegistry`, CVD không còn rỗng giả trên TPB, và quy trình rebuild frontend qua `./start_dev.ps1` trở nên đáng tin cậy cho runtime proof.
+
+### Validation snapshot
+- `cd packages/web && npm test -- --runInBand src/features/stock-detail/__tests__/orderFlowFallback.test.js src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js` ✅ (`2 suites, 5 passed`).
+- `./start_dev.ps1 -FrontendOnly` ✅ rebuilt frontend and served `main.52c19547.js` (`sha256 c6d9d17de8035f0f1ad0b3a41c2fa1e6f644360529e56312b3a6460a10ee3e70`).
+- Browser proof on `/stocks/TPB` ✅ chart rendered, no chart error, no `0 buckets`, no `Không có dữ liệu CVD trong phiên`, radar shows `1 buckets`.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` (`2627` modules).
+
+---
+
 ## 2026-05-27 | Dashboard data-sync hotfix (heatmap fallback + whale CVD fallback)
 
 ### Files changed in this session

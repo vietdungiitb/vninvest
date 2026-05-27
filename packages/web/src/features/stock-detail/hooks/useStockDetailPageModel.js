@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
+import { buildEffectiveOrderFlowData } from "../orderFlowFallback.js";
 
 const DEFAULT_ENV = {};
+const DEFAULT_ORDER_FLOW_WINDOW = "1h";
 
 function normalizeChartBarsPayload(payload) {
   if (!payload) return [];
@@ -91,11 +93,17 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
 
     async function loadBlocking() {
       try {
-        const [profileRes, snapshotRes, chartRes, orderFlowRes] = await Promise.allSettled([
+        const [profileRes, snapshotRes, chartRes, orderFlowRes, sessionFactsCvdRes, whaleSnapshotRes] = await Promise.allSettled([
           adapter.getStockProfile(symbol),
           adapter.getSymbolSnapshot(symbol),
           adapter.getStockChartHistory(symbol, { timeframe: activeTimeframe, days: 180 }),
-          adapter.getStockOrderFlow(symbol),
+          adapter.getStockOrderFlow(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
+          adapter.getSessionFactsCvd(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
+          adapter.getWhaleAnalyticsSnapshot(symbol, {
+            timeframe: DEFAULT_ORDER_FLOW_WINDOW,
+            compact: 0,
+            includeBaseline: false,
+          }),
         ]);
 
         if (!mountedRef.current) return;
@@ -109,7 +117,13 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
             chartRes.status === "fulfilled"
               ? normalizeChartBarsPayload(chartRes.value)
               : [],
-          orderFlowData: orderFlowRes.status === "fulfilled" ? orderFlowRes.value : null,
+          orderFlowData: buildEffectiveOrderFlowData({
+            orderFlowPayload: orderFlowRes.status === "fulfilled" ? orderFlowRes.value : null,
+            sessionFactsCvdPayload: sessionFactsCvdRes.status === "fulfilled" ? sessionFactsCvdRes.value : null,
+            whaleSnapshotPayload: whaleSnapshotRes.status === "fulfilled" ? whaleSnapshotRes.value : null,
+            symbol,
+            fallbackWindow: DEFAULT_ORDER_FLOW_WINDOW,
+          }),
         }));
       } catch (err) {
         if (!mountedRef.current) return;

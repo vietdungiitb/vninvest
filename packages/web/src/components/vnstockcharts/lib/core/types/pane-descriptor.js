@@ -1,5 +1,16 @@
 export const PANE_LAYOUT_STORAGE_KEY = "rsc-pane-layout-v1";
 export const PANE_MAX_VISIBLE = 5;
+const LEGACY_SERIES_TYPE_ALIASES = {
+    BollingerBands: "BollingerBand",
+    BuyStrength: "StrengthElder",
+    InstitutionalStrength: "StrengthRelative",
+};
+export function normalizeSeriesTypeId(type) {
+    if (typeof type !== "string" || type.length === 0) {
+        return null;
+    }
+    return LEGACY_SERIES_TYPE_ALIASES[type] ?? type;
+}
 export const DEFAULT_PANES = [
     // ── 1: PRICE — pinned, always visible ────────────────────────────────────
     {

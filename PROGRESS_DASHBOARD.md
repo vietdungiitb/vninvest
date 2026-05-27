@@ -1,3 +1,42 @@
+# 2026-05-27 — Stock detail live runtime fix on `/stocks/TPB` ✅
+
+Status: **✅ DONE (live bundle rebuilt + browser proof green + package-web regressions green)**
+
+## Summary
+
+- Re-anchored the stock-detail fix into `packages/web`, the real runtime owner of `/stocks/:symbol`, instead of relying on the shell-only `frontend` path.
+- Hydrated `orderFlowData.cvd_series` through the effective fallback path and normalized the remaining legacy chart series ids so the live widget no longer trips `SeriesRegistry`.
+- Repaired `./start_dev.ps1` so `-FrontendOnly` can rebuild the actual live frontend image without silently relaunching stale bundles.
+
+## Files Updated
+
+- `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js`
+- `packages/web/src/features/stock-detail/orderFlowFallback.js`
+- `packages/web/src/features/stock-detail/__tests__/orderFlowFallback.test.js`
+- `packages/web/src/components/VNStockChartPanel.js`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.js`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.ts`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js`
+- `packages/web/src/components/vnstockcharts/widget/VNStockChart.js`
+- `packages/web/src/components/vnstockcharts/widget/VNStockChart.tsx`
+- `start_dev.ps1`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `cd packages/web && npm test -- --runInBand src/features/stock-detail/__tests__/orderFlowFallback.test.js src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js` ✅ (`2 suites, 5 passed`).
+- `./start_dev.ps1 -FrontendOnly` ✅ rebuilt frontend and switched live runtime to `main.52c19547.js` (`sha256 c6d9d17de8035f0f1ad0b3a41c2fa1e6f644360529e56312b3a6460a10ee3e70`).
+- Browser proof on `/stocks/TPB` ✅ no chart error, no `0 buckets`, no `Không có dữ liệu CVD trong phiên`, chart rendered, radar shows `1 buckets`.
+- React prop proof ✅ live `orderFlowData` now contains `cvd_series` and `_cvd_source`.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2627` modules).
+
+## Residual Risk
+
+- Có console 404 advisory chưa được xử lý trong slice này; không ảnh hưởng tới chart runtime proof hoặc CVD hydration.
+
 # 2026-05-27 — Dashboard data-sync hotfix (heatmap + whale fallback) ✅
 
 Status: **✅ CODE + FOCUSED TEST DONE (runtime docker refresh blocked by host daemon)**

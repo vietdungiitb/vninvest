@@ -39,6 +39,7 @@ import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 import { WidgetEmptyState } from "./WidgetEmptyState";
 import DrawingPriceLabelsOverlay from "./DrawingPriceLabelsOverlay";
 import MeasurementOverlay from "./MeasurementOverlay";
+import { normalizeSeriesTypeId } from "../lib/core/types/pane-descriptor";
 import { WidgetI18nProvider } from "./context/WidgetI18nContext";
 import type { WidgetLocale, WidgetMessages } from "./i18n/types";
 
@@ -275,12 +276,20 @@ function buildLegacyPaneSnapshots(
 
 export function normalizePaneDescriptorsForExplicitScaleSlots(panes: readonly PaneDescriptor[]): PaneDescriptor[] {
 	return panes.map((pane) => {
-		const normalizedSeries = pane.series.map((series) => ({
-			...series,
-			params: series.params ? { ...series.params } : undefined,
-			scaleSlotId: series.scaleSlotId ?? `${pane.id}-${series.yAxis}`,
-			subColors: series.subColors ? { ...series.subColors } : undefined,
-		}));
+		const normalizedSeries = pane.series.flatMap((series) => {
+			const normalizedType = normalizeSeriesTypeId(series.type);
+			if (!normalizedType) {
+				return [];
+			}
+
+			return [{
+				...series,
+				type: normalizedType,
+				params: series.params ? { ...series.params } : undefined,
+				scaleSlotId: series.scaleSlotId ?? `${pane.id}-${series.yAxis}`,
+				subColors: series.subColors ? { ...series.subColors } : undefined,
+			}];
+		});
 		const activeSeries = normalizedSeries.filter((series) => series.visible !== false);
 		const hasLeftAxis = activeSeries.some((series) => series.yAxis === "left");
 		const hasRightAxis = activeSeries.some((series) => series.yAxis === "right");
