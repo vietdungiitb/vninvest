@@ -761,6 +761,13 @@ class SystemMailConfig(models.Model):
         (PROVIDER_GMAIL, 'Google Gmail API (Service Account DWD)'),
     ]
 
+    class TestStatusChoices(models.TextChoices):
+        NEVER = 'never', 'Chưa kiểm tra'
+        SUCCESS = 'success', 'Thành công'
+        FAILED = 'failed', 'Thất bại'
+
+    name = models.CharField(max_length=120, blank=True, default='', verbose_name='Tên cấu hình')
+
     provider = models.CharField(
         max_length=24,
         choices=PROVIDER_CHOICES,
@@ -769,6 +776,9 @@ class SystemMailConfig(models.Model):
     )
     is_active = models.BooleanField(default=False, db_index=True, verbose_name="Active Configuration")
     from_email = models.EmailField(max_length=255, verbose_name="Sender Email (From)")
+    from_name = models.CharField(max_length=255, blank=True, default='', verbose_name='Sender Name')
+    reply_to_email = models.EmailField(max_length=255, blank=True, default='', verbose_name='Reply-To Email')
+    timeout_seconds = models.IntegerField(default=20, verbose_name='Timeout (seconds)')
     
     # SMTP Parameters
     smtp_host = models.CharField(max_length=255, blank=True, null=True, verbose_name="SMTP Host")
@@ -781,6 +791,24 @@ class SystemMailConfig(models.Model):
     # Google API Service Account Parameters
     google_service_account_json_encrypted = models.BinaryField(blank=True, null=True, verbose_name="Service Account JSON (Encrypted)")
     google_delegated_user_email = models.EmailField(max_length=255, blank=True, null=True, verbose_name="Delegated Admin Email")
+    google_client_id = models.CharField(max_length=255, blank=True, default='', verbose_name='Google Client ID')
+    google_client_secret_encrypted = models.BinaryField(blank=True, null=True, verbose_name='Google Client Secret (Encrypted)')
+    google_refresh_token_encrypted = models.BinaryField(blank=True, null=True, verbose_name='Google Refresh Token (Encrypted)')
+    google_account_email = models.EmailField(max_length=255, blank=True, default='', verbose_name='Google Account Email')
+    google_token_scope = models.TextField(blank=True, default='', verbose_name='Google OAuth Scope')
+    oauth_connected_at = models.DateTimeField(null=True, blank=True, verbose_name='OAuth Connected At')
+    token_last_refreshed_at = models.DateTimeField(null=True, blank=True, verbose_name='Token Last Refreshed At')
+    token_last_error = models.TextField(blank=True, default='', verbose_name='Token Last Error')
+
+    # Test Result Fields
+    last_tested_at = models.DateTimeField(null=True, blank=True, verbose_name='Last tested at')
+    last_test_status = models.CharField(
+        max_length=20,
+        choices=TestStatusChoices.choices,
+        default=TestStatusChoices.NEVER,
+        verbose_name='Last test status',
+    )
+    last_test_message = models.TextField(blank=True, default='', verbose_name='Last test message')
 
     # Audit Trail Fields
     last_modified_by = models.ForeignKey(
@@ -808,7 +836,8 @@ class SystemMailConfig(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f'{self.provider} Config ({self.from_email}) - Active={self.is_active}'
+        label = self.name.strip() or self.from_name.strip() or self.from_email
+        return f'{self.provider} Config ({label}) - Active={self.is_active}'
 
     def set_smtp_password(self, password: str):
         self.smtp_password_encrypted = encrypt_secret(password) if password else None
@@ -816,11 +845,38 @@ class SystemMailConfig(models.Model):
     def get_smtp_password(self) -> str:
         return decrypt_secret(self.smtp_password_encrypted) if self.smtp_password_encrypted else ""
 
+    def set_google_client_secret(self, secret: str):
+        self.google_client_secret_encrypted = encrypt_secret(secret) if secret else None
+
+    def get_google_client_secret(self) -> str:
+        return decrypt_secret(self.google_client_secret_encrypted) if self.google_client_secret_encrypted else ''
+
+    def set_google_refresh_token(self, token: str):
+        self.google_refresh_token_encrypted = encrypt_secret(token) if token else None
+
+    def get_google_refresh_token(self) -> str:
+        return decrypt_secret(self.google_refresh_token_encrypted) if self.google_refresh_token_encrypted else ''
+
+    def clear_google_refresh_token(self):
+        self.google_refresh_token_encrypted = None
+
     def set_google_service_account_json(self, json_str: str):
         self.google_service_account_json_encrypted = encrypt_secret(json_str) if json_str else None
 
     def get_google_service_account_json(self) -> str:
         return decrypt_secret(self.google_service_account_json_encrypted) if self.google_service_account_json_encrypted else ""
+
+    @property
+    def has_google_oauth_credentials(self) -> bool:
+        return bool(self.google_client_id and self.get_google_client_secret())
+
+    @property
+    def has_google_refresh_token(self) -> bool:
+        return bool(self.get_google_refresh_token())
+
+    @property
+    def has_google_service_account(self) -> bool:
+        return bool(self.get_google_service_account_json())
 
     def clean(self):
         super().clean()
@@ -828,9 +884,19 @@ class SystemMailConfig(models.Model):
             if not all([self.smtp_host, self.smtp_port, self.smtp_username]):
                 raise ValidationError("Cấu hình SMTP yêu cầu điền đầy đủ host, port và username.")
         elif self.provider == self.PROVIDER_GMAIL:
-            # google_service_account_json_encrypted được set bằng property, có thể rỗng lúc clean nếu chưa gán
-            if not self.google_delegated_user_email:
-                raise ValidationError("Cấu hình Google Gmail API yêu cầu đầy đủ Email ủy quyền (DWD).")
+            has_oauth_fields = bool(self.google_client_id or self.google_client_secret_encrypted or self.google_refresh_token_encrypted)
+            has_dwd_fields = bool(self.google_service_account_json_encrypted or self.google_delegated_user_email)
+
+            if has_oauth_fields:
+                if not self.google_client_id:
+                    raise ValidationError("Cấu hình Google OAuth2 yêu cầu Google Client ID.")
+                if not self.google_client_secret_encrypted:
+                    raise ValidationError("Cấu hình Google OAuth2 yêu cầu Google Client Secret.")
+            elif has_dwd_fields:
+                if not self.google_delegated_user_email:
+                    raise ValidationError("Cấu hình Google Gmail API yêu cầu đầy đủ Email ủy quyền (DWD).")
+            else:
+                raise ValidationError("Cấu hình Google Gmail API yêu cầu bộ thông tin OAuth2 hoặc Service Account DWD.")
 
 
 class OutboxEvent(models.Model):
