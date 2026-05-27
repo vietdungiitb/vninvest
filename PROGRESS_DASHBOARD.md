@@ -15519,3 +15519,27 @@ Delta highlights:
 ### Residual Risk
 
 - The production stack is healthy, but a fresh GHCR push still requires registry credentials if you want to publish new images upstream.
+
+---
+
+## 2026-05-27 | Redis Hostname Drift Guardrail (Dev + Production)
+
+### Status
+
+**Completed**: Environment templates now align to single Redis service name `core-redis` to prevent worker broker DNS failures.
+
+### What Changed
+
+- `compose.prod.env.example`: switched `REALTIME_REDIS_URL`, `STREAM_REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` to `redis://core-redis:6379/...`.
+- `backend/.env.production.example`: switched `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CACHE_REDIS_URL`, `REALTIME_REDIS_URL` to `redis://core-redis:6379/...`.
+- `.env.ghcr.example`: switched `REALTIME_REDIS_URL`, `STREAM_REDIS_URL` to `redis://core-redis:6379/...`.
+- `module_tree_full.md` regenerated with `python scripts/ops/generate_module_tree.py`.
+
+### Validation
+
+- `python scripts/ops/generate_module_tree.py` -> PASS.
+- Manual content verification confirms updated template endpoints no longer point to `redis://redis:6379/...`.
+
+### Next Runtime Step (Required)
+
+- Apply the same hostname correction in active remote env files (`.env.production`, `backend/.env.production`) on both dev and production servers, then restart the affected worker/api services.

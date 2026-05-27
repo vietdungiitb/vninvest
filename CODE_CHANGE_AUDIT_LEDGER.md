@@ -8392,4 +8392,41 @@ Resolved by:
 | `packages/core/backend/src/data_ingest/tests/test_backfill_tasks.py` | 4 new tests T-C8/C8b/C9/C9b |
 | `CODE_CHANGE_AUDIT_LEDGER.md` | This entry |
 
+---
+
+## 2026-05-27 | Redis Hostname Drift Guardrail (Dev + Production)
+
+### Context
+
+- Incident symptom: heatmap all `0.00%`, portfolio metrics `--`, whale chart stale data and missing reference warning.
+- Root cause from runtime audit: workers/environment still using `redis://redis:6379/...` while active stacks resolve Redis service as `core-redis`.
+
+### Fix Applied (Repo Templates)
+
+- Updated `compose.prod.env.example` Redis/Celery endpoints from `redis://redis:6379/...` to `redis://core-redis:6379/...`.
+- Updated `backend/.env.production.example` Redis/Celery endpoints from `redis://redis:6379/...` to `redis://core-redis:6379/...`.
+- Updated `.env.ghcr.example` realtime/stream Redis endpoints from `redis://redis:6379/...` to `redis://core-redis:6379/...`.
+- Regenerated `module_tree_full.md` using `python scripts/ops/generate_module_tree.py` per workspace rule.
+
+### Validation
+
+| Check | Result |
+|---|---|
+| `python scripts/ops/generate_module_tree.py` | ✅ PASS |
+| Template grep in workspace for updated Redis hostnames | ✅ PASS for updated files |
+
+### Residual Risk
+
+- Runtime env files on remote servers (`.env.production`, `backend/.env.production`) remain external to git and must be patched in-place, then services restarted.
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `compose.prod.env.example` | Redis/Celery URLs switched to `core-redis` |
+| `backend/.env.production.example` | Redis/Celery URLs switched to `core-redis` |
+| `.env.ghcr.example` | Realtime/stream Redis URLs switched to `core-redis` |
+| `module_tree_full.md` | Regenerated |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this entry |
+
 
