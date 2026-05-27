@@ -1718,13 +1718,14 @@ def send_email_verification_token(self, email: str, token: str, frontend_url: st
 @shared_task(bind=True, max_retries=5)
 def trigger_email_verification_flow(self, user_id: int, outbox_event_id: str, email: str = None, token: str = None, frontend_url: str = None) -> dict:
     """
-    SaaS Native Dynamic Mail Router with Google DWD Impersonation and Fallback.
+    SaaS Native Dynamic Mail Router — delegates to identity_access.mail_service.
+
+    Routes: OAuth2 web-client → Google DWD → SMTP → settings SMTP fallback.
+    Fallback to static settings SMTP is preserved when no active config or dynamic provider fails.
     """
     from django.utils import timezone
-    from identity_access.models import SystemMailConfig, OutboxEvent
-    from vninvest_core.utils.crypto import decrypt_secret
-    import json
-    import base64
+    from identity_access.models import OutboxEvent
+    from identity_access.mail_service import send_system_email
 
     if not frontend_url:
         frontend_url = django_settings.FRONTEND_URL
@@ -1735,12 +1736,20 @@ def trigger_email_verification_flow(self, user_id: int, outbox_event_id: str, em
     text_content = f'Nhấp vào liên kết sau để kích hoạt tài khoản của bạn:\n{verify_url}'
 
     try:
-        # Tìm cấu hình dynamic active
-        mail_config = SystemMailConfig.objects.filter(is_active=True).first()
-
-        if not mail_config:
-            # 1. Fallback về SMTP tĩnh trong settings.py
-            logger.info("[MAIL_ROUTER] Routing via default settings.py SMTP")
+        try:
+            logger.info('[MAIL_ROUTER] Routing verification email via mail_service.send_system_email')
+            send_system_email(
+                subject=subject,
+                message=text_content,
+                recipient_list=[email],
+                html_message=html_content,
+                fail_silently=False,
+            )
+        except Exception as dynamic_exc:
+            logger.error(
+                '[MAIL_ROUTER] mail_service failed (%s). Falling back to static settings SMTP.',
+                dynamic_exc,
+            )
             send_mail(
                 subject=subject,
                 message=text_content,
@@ -1749,93 +1758,23 @@ def trigger_email_verification_flow(self, user_id: int, outbox_event_id: str, em
                 recipient_list=[email],
                 fail_silently=False,
             )
-        else:
-            # 2. Dynamic Routing
-            try:
-                if mail_config.provider == SystemMailConfig.PROVIDER_SMTP:
-                    logger.info(f"[MAIL_ROUTER] Routing via dynamic SMTP: {mail_config.smtp_host}")
-                    from django.core.mail import get_connection
-                    connection = get_connection(
-                        host=mail_config.smtp_host,
-                        port=mail_config.smtp_port,
-                        username=mail_config.smtp_username,
-                        password=mail_config.get_smtp_password(),
-                        use_tls=mail_config.smtp_use_tls,
-                        use_ssl=mail_config.smtp_use_ssl,
-                        timeout=3.0  # connection timeout 3000ms
-                    )
-                    send_mail(
-                        subject=subject,
-                        message=text_content,
-                        html_message=html_content,
-                        from_email=mail_config.from_email,
-                        recipient_list=[email],
-                        connection=connection,
-                        fail_silently=False,
-                    )
-                elif mail_config.provider == SystemMailConfig.PROVIDER_GMAIL:
-                    logger.info(f"[MAIL_ROUTER] Routing via dynamic Google Gmail API DWD: {mail_config.google_delegated_user_email}")
-                    
-                    # Import động tránh lỗi import khi chạy test/dev nếu thiếu thư viện
-                    from google.oauth2 import service_account
-                    from googleapiclient.discovery import build
-                    from email.mime.text import MIMEText
 
-                    # A. Giải mã và load JSON
-                    sa_json = mail_config.get_google_service_account_json()
-                    sa_info = json.loads(sa_json)
-
-                    # B. Build credentials with DWD impersonation
-                    scopes = ['https://www.googleapis.com/auth/gmail.send']
-                    credentials = service_account.Credentials.from_service_account_info(
-                        sa_info,
-                        scopes=scopes
-                    ).with_subject(mail_config.google_delegated_user_email)
-
-                    # C. Build client
-                    service = build('gmail', 'v1', credentials=credentials, cache_discovery=False)
-
-                    # D. MIME message
-                    message = MIMEText(html_content, 'html', 'utf-8')
-                    message['to'] = email
-                    message['from'] = mail_config.from_email
-                    message['subject'] = subject
-
-                    # E. RFC safe Base64 URL safe
-                    raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
-
-                    # F. Send
-                    service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
-            except Exception as dynamic_exc:
-                logger.error(f"[MAIL_ROUTER] Dynamic mail provider {mail_config.provider} failed: {dynamic_exc}. Falling back to default static SMTP.")
-                send_mail(
-                    subject=subject,
-                    message=text_content,
-                    html_message=html_content,
-                    from_email=django_settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=False,
-                )
-
-        # Cập nhật OutboxEvent
         OutboxEvent.objects.filter(pk=outbox_event_id).update(
             status=OutboxEvent.STATUS_PROCESSED,
-            processed_at=timezone.now()
+            processed_at=timezone.now(),
         )
         return {'status': 'sent', 'email': email, 'event_id': outbox_event_id}
 
     except Exception as exc:
-        logger.exception(f"[MAIL_ROUTER] Verification email sending failed: {exc}. Retrying.")
-        # Cập nhật OutboxEvent lỗi
+        logger.exception('[MAIL_ROUTER] Verification email sending failed: %s. Retrying.', exc)
         OutboxEvent.objects.filter(pk=outbox_event_id).update(
             status=OutboxEvent.STATUS_FAILED,
-            last_error=str(exc)
+            last_error=str(exc),
         )
         try:
-            # Thử lại với exponential backoff
             raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
         except Exception as retry_exc:
-            logger.error(f"[MAIL_ROUTER] Retries exhausted for OutboxEvent {outbox_event_id}: {retry_exc}")
+            logger.error('[MAIL_ROUTER] Retries exhausted for OutboxEvent %s: %s', outbox_event_id, retry_exc)
             return {'status': 'failed', 'email': email, 'error': str(retry_exc)}
 
 
@@ -1844,41 +1783,48 @@ def trigger_email_verification_flow(self, user_id: int, outbox_event_id: str, em
 def send_password_reset_email(self, email: str, token: str, frontend_url: str = None) -> dict:
     """
     Async email send for password reset flow.
-    
+
     Called by: identity_access.views_auth.password_reset_request_view
-    
-    Args:
-        email: recipient email address
-        token: reset token (raw, not hashed)
-        frontend_url: optional frontend base URL (defaults to settings.FRONTEND_URL which is required in production)
-    
-    Returns:
-        dict with 'status' and 'error' keys
+    Routes via mail_service.send_system_email; falls back to static settings SMTP.
     """
+    from identity_access.mail_service import send_system_email
+
     if not frontend_url:
-        # C4 Fix: FRONTEND_URL is always available in settings (required in production)
         frontend_url = django_settings.FRONTEND_URL
-    
+
     reset_url = f'{frontend_url}/reset-password?token={token}'
-    
+    subject = 'Đặt lại mật khẩu VNInvest'
+    text_body = f'Nhấp vào liên kết sau để đặt lại mật khẩu:\n{reset_url}\n\nLinh kết hết hạn sau 1 giờ.'
+    html_body = f'<p>Nhấp vào liên kết sau để đặt lại mật khẩu của bạn:</p><p><a href="{reset_url}">{reset_url}</a></p><p>Liên kết hết hạn sau 1 giờ.</p>'
+
     try:
-        send_mail(
-            subject='Đặt lại mật khẩu VNInvest',
-            message=f'Nhấp vào liên kết sau để đặt lại mật khẩu:\n{reset_url}\n\nLinh kết hết hạn sau 1 giờ.',
-            from_email=django_settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-        logger.info(f'Password reset email sent to {email}')
+        try:
+            send_system_email(
+                subject=subject,
+                message=text_body,
+                recipient_list=[email],
+                html_message=html_body,
+                fail_silently=False,
+            )
+        except Exception as dynamic_exc:
+            logger.error('send_password_reset_email: mail_service failed (%s). Falling back to static SMTP.', dynamic_exc)
+            send_mail(
+                subject=subject,
+                message=text_body,
+                html_message=html_body,
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        logger.info('Password reset email sent to %s', email)
         return {'status': 'sent', 'email': email}
-    
+
     except Exception as exc:
-        logger.warning(f'Password reset email send failed for {email}: {exc}. Retrying...')
-        # Retry with exponential backoff
+        logger.warning('Password reset email send failed for %s: %s. Retrying...', email, exc)
         try:
             raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
         except Exception as retry_exc:
-            logger.error(f'Password reset email retry exhausted for {email}: {retry_exc}')
+            logger.error('Password reset email retry exhausted for %s: %s', email, retry_exc)
             return {'status': 'failed', 'email': email, 'error': str(retry_exc)}
 
 
