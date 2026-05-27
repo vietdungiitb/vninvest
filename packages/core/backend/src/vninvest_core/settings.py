@@ -227,6 +227,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 # In dev (DEBUG=True) with no env var, allow localhost origins for convenience.
 _cors_origins_default = (
     'http://localhost:3000,http://127.0.0.1:3000,'
+    'http://localhost:5173,http://127.0.0.1:5173,'
     'http://localhost:80,http://127.0.0.1:80,'
     'http://localhost,http://127.0.0.1'
 ) if DEBUG else ''
@@ -246,6 +247,7 @@ _csrf_trusted_origins_default = (
     'http://localhost:80,http://127.0.0.1:80,'
     'http://localhost:3000,http://127.0.0.1:3000,'
     'http://localhost:3001,http://127.0.0.1:3001,'
+    'http://localhost:5173,http://127.0.0.1:5173,'
     'http://localhost:8080,http://127.0.0.1:8080'
 ) if DEBUG else ''
 _csrf_trusted_origins_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', _csrf_trusted_origins_default)
