@@ -2,12 +2,12 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-27 11:23:35`
+Generated at: `2026-05-27 11:36:45`
 
 ## Summary
 
-- Total modules: 2619
-- Python modules: 745
+- Total modules: 2620
+- Python modules: 746
 - JS/TS modules: 1874
 - Total classes: 1847
 - Total functions: 7099
@@ -5387,7 +5387,7 @@ Generated at: `2026-05-27 11:23:35`
 
 - Classes:
   - `CoreRuntimeBaselineTests` -> methods: `test_capability_bootstrap_exposes_saas_routes_and_snapshot_version`, `test_healthcheck_accepts_fresh_written_file`, `test_manifest_exposes_core_topology`
-  - `DjangoHealthViewTests` -> methods: `setUp`, `test_capability_bootstrap_returns_navigation`, `test_health_view_returns_ok`, `test_x_request_id_generated_when_absent`, `test_x_request_id_propagated`
+  - `DjangoHealthViewTests` -> methods: `setUp`, `test_api_health_compat_route_returns_ok`, `test_capability_bootstrap_returns_navigation`, `test_health_view_returns_ok`, `test_x_request_id_generated_when_absent`, `test_x_request_id_propagated`
 - Top-level variables:
   - `_src_dir`
 
@@ -5489,6 +5489,10 @@ Generated at: `2026-05-27 11:23:35`
   - `_coerce_bool`, `_hash_password`, `_identity_flags`, `_normalize_role_keys`, `_now_isoformat`, `_strip_secret_fields`
 - Top-level variables:
   - `ROLE_KEYS`
+
+### `scripts/check_core_api_route.py`
+
+- No parseable top-level symbols found
 
 ### `scripts/diagnose_auth_issue.py`
 

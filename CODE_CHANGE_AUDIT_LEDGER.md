@@ -8429,4 +8429,59 @@ Resolved by:
 | `module_tree_full.md` | Regenerated |
 | `CODE_CHANGE_AUDIT_LEDGER.md` | Added this entry |
 
+---
+
+## 2026-05-27 | API Health Compat Route + Runtime Hotfix
+
+### Context
+
+- Public endpoint `https://vninvest.edusuccess.vn/api/health/` returned `404` while canonical core endpoint `/core/v1/health` was healthy.
+- This broke legacy probes expecting `/api/health/` compatibility.
+
+### Root Cause
+
+- Frontend nginx routed `/api/*` correctly to `core-api`, but `core-api` URLConf did not expose `/api/health/`.
+
+### Fix Applied (Source)
+
+- Added compatibility routes in core backend URLConf:
+   - `path('api/health', views_health.health, ...)`
+   - `path('api/health/', views_health.health, ...)`
+- Added explicit frontend nginx compatibility locations:
+   - `location = /api/health` -> proxy to `/core/v1/health`
+   - `location = /api/health/` -> proxy to `/core/v1/health`
+- Added regression test `test_api_health_compat_route_returns_ok` in runtime baseline tests.
+- Regenerated `module_tree_full.md`.
+
+### Runtime Hotfix Applied (Production)
+
+- Uploaded updated nginx config to server and hot-reloaded frontend container:
+   - `docker cp /home/pham/nginx.conf.hotfix vninvest-frontend:/etc/nginx/conf.d/default.conf`
+   - `docker exec vninvest-frontend nginx -t && docker exec vninvest-frontend nginx -s reload`
+- Result: both compat endpoints now return `200` with health JSON payload.
+
+### Validation
+
+| Check | Result |
+|---|---|
+| `curl -k https://vninvest.edusuccess.vn/api/health/` | ✅ 200 |
+| `curl -k https://vninvest.edusuccess.vn/api/health` | ✅ 200 |
+| `curl -k https://vninvest.edusuccess.vn/core/v1/health` | ✅ 200 |
+| `python scripts/ops/generate_module_tree.py` | ✅ PASS |
+| `python -m pytest packages/core/backend/tests/test_runtime_baseline.py -q` | ⚠️ blocked locally (`ModuleNotFoundError: dj_database_url`) |
+
+### Residual Risk
+
+- Runtime hotfix in running frontend container is effective immediately but should be considered non-durable until normal image redeploy picks up committed nginx source changes.
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/vninvest_core/urls.py` | Added `/api/health` and `/api/health/` compatibility routes |
+| `packages/core/backend/tests/test_runtime_baseline.py` | Added compat route regression test |
+| `frontend/docker/nginx.conf` | Added explicit compat locations for API health paths |
+| `module_tree_full.md` | Regenerated |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this entry |
+
 

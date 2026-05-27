@@ -15543,3 +15543,34 @@ Delta highlights:
 ### Next Runtime Step (Required)
 
 - Apply the same hostname correction in active remote env files (`.env.production`, `backend/.env.production`) on both dev and production servers, then restart the affected worker/api services.
+
+---
+
+## 2026-05-27 | `/api/health` Compatibility Completion
+
+### Status
+
+**Completed**: Public compatibility endpoints `/api/health` and `/api/health/` now return 200 on production domain.
+
+### What Changed
+
+- `packages/core/backend/src/vninvest_core/urls.py`:
+  - Added `path('api/health', views_health.health, ...)`
+  - Added `path('api/health/', views_health.health, ...)`
+- `frontend/docker/nginx.conf`:
+  - Added exact-match compatibility locations for `/api/health` and `/api/health/` proxied to `/core/v1/health`.
+- `packages/core/backend/tests/test_runtime_baseline.py`:
+  - Added `test_api_health_compat_route_returns_ok` regression test.
+- `module_tree_full.md` regenerated.
+
+### Runtime Actions Executed
+
+- Hot-applied nginx compat config in `vninvest-frontend` container and reloaded nginx.
+- Re-verified canonical endpoint remains healthy.
+
+### Validation
+
+- `curl -k https://vninvest.edusuccess.vn/api/health/` -> `200` + `{status: "ok"}`.
+- `curl -k https://vninvest.edusuccess.vn/api/health` -> `200` + `{status: "ok"}`.
+- `curl -k https://vninvest.edusuccess.vn/core/v1/health` -> `200` + `{status: "ok"}`.
+- `python -m pytest packages/core/backend/tests/test_runtime_baseline.py -q` locally blocked due missing dependency `dj_database_url` in local interpreter context.
