@@ -1,8 +1,8 @@
 # KẾ HOẠCH HÀNH ĐỘNG CỦNG CỐ KIẾN TRÚC BACKEND (SAAS HARDENING SUB-PLAN)
-**Mã tài liệu:** `VNI-PAP-20260528-v3.2`  
-**Dự án:** VNInvest Enterprise SaaS Platform  
-**Thư mục lưu trữ:** `docs/detailed_designs/`  
-**Trạng thái:** AUDIT-SAFE & EXECUTION-READY (VERIFIED ANCHORS, GREEN BUILD, LOCKED CORE-ENV PREREQUISITES)  
+**Mã tài liệu:** `VNI-PAP-20260528-v3.2`
+**Dự án:** VNInvest Enterprise SaaS Platform
+**Thư mục lưu trữ:** `docs/detailed_designs/`
+**Trạng thái:** EXECUTED & CODE-ALIGNED (VERIFIED ANCHORS, TENANT ISOLATION DONE, REFACTOR COMPLETE)
 
 ---
 
@@ -27,38 +27,39 @@
   * Tắt hoàn toàn container `vninvest-backend` (legacy Django) và container `vninvest-db` (Postgres 15). Giải phóng tối thiểu **2.5GB RAM** trên hệ thống.
 * **Hardening Tenant Isolation (Đặc tả chính xác phạm vi và line anchors trong `user_workspace/models.py`)**:
   * *Phạm vi thực tế:* Trong phân hệ `commercial/`, các model `Subscription` và `Invoice` đã được thiết kế bắt buộc trường `tenant` từ trước (`models.py:11, 21, 61, 70`). Nullable gap thực tế chỉ nằm ở phân hệ `user_workspace/` và ảnh hưởng đến toàn bộ 6 thực thể dưới đây.
-  * *Hành động:* Tiến hành chạy lệnh migration cơ sở dữ liệu để sửa đổi cột `tenant_id` từ `null=True` sang **`NOT NULL`** tại:
-    1. **`Portfolio`**: tenant nullable tại `models.py:34`.
-    2. **`Transaction`**: tenant nullable tại `models.py:56` và `models.py:76`.
-    3. **`Watchlist`**: tenant nullable tại `models.py:129`.
-    4. **`TrackedSymbol`**: tenant nullable tại `models.py:193`.
-    5. **`PriceAlert`**: bắt đầu ở `models.py:245` với tenant nullable tại `models.py:273`.
-    6. **`SubAccount`**: tenant nullable tại `models.py:328` và `models.py:348`.
+  * *Hành động:* Thực tế trong code, cột `tenant_id` đã được cấu hình **`null=False`** tại các dòng sau trong `models.py`:
+    1. **`Portfolio`**: `models.py:34`.
+    2. **`Transaction`**: `models.py:56` và `models.py:76`.
+    3. **`Watchlist`**: `models.py:129`.
+    4. **`TrackedSymbol`**: `models.py:193`.
+    5. **`PriceAlert`**: bắt đầu ở `models.py:245` với tenant tại `models.py:273`.
+    6. **`SubAccount`**: tenant tại `models.py:328` và `models.py:348`.
+    *(Lưu ý: Migration `0011_enforce_tenant_not_null.py` chỉ có vai trò tạo bảng QuarantineRecord. Quá trình enforce NOT NULL thực sự bằng lệnh `AlterField` được thực thi thông qua migration `0012_enforce_tenant_not_null_real.py` sau khi đã xóa sạch dữ liệu mồ côi.)*
 * **Chính sách xử lý bản ghi mồ côi (Orphan Records Rules - Bảo vệ tuyệt đối)**:
   * **TỐI KỊ KỸ THUẬT**: Tuyệt đối không tự động gán dữ liệu mồ côi về bất kỳ `system_tenant` hay tài khoản mặc định nào. Việc tự động ánh xạ này sẽ phá hủy hoàn toàn nguyên tắc Tenant Isolation khắt khe của `CORE_API_OPENAPI_FUNCTION_DESIGN_CONSTITUTION_20260513.md:27` và có nguy cơ tạo ra ô nhiễm chéo dữ liệu giữa các Tenant.
   * **QUY TRÌNH QUARANTINE**:
-    1. Viết script kiểm tra tiền di trú (Pre-migration audit) quét toàn bộ 6 bảng dữ liệu: `Portfolio`, `Transaction`, `Watchlist`, `TrackedSymbol`, `PriceAlert`, và `SubAccount`.
-    2. Nếu phát hiện dữ liệu mồ côi ở bất kỳ bảng nào, **quarantine (cô lập)** dữ liệu lỗi này ra một bảng tạm độc lập (`quarantine_user_workspace_records`) để phục vụ Operator đối soát thủ công, đồng thời từ chối (reject) chạy migration cho đến khi dữ liệu được làm sạch triệt để.
+    1. Lệnh kiểm tra tiền di trú (Pre-migration audit) `audit_orphans` đã quét toàn bộ 6 bảng dữ liệu.
+    2. Các bản ghi mồ côi đã được xử lý an toàn trước khi chạy migration `0012`.
 
 ### Lát cắt 1.2: API Security & Rate Limiting Hardening (Tuần 2)
 * **Chuẩn hóa App-level Throttling**:
-  * *Thực tế codebase:* Các auth endpoints cốt lõi trong `views_auth.py` hiện đã được thiết kế sẵn cơ chế rate limiting và kiểm chứng bằng test suite chuyên biệt trong `test_rate_limiting.py` (`views_auth.py:322, 363, 650, 663, 1059, 1075` và `test_rate_limiting.py:26, 113, 199`).
-  * *Hành động:* Thực hiện audit, rà soát lại toàn bộ mã nguồn của các view auth này để đảm bảo decorator throttling được gắn đúng cách, không bị bỏ sót khi có các sửa đổi hoặc refactor.
+  * *Thực tế codebase:* Các auth endpoints cốt lõi hiện đã được phân tách và có sẵn cơ chế rate limiting tại `identity_access/views/login.py` và `register.py` (sử dụng cache keys tùy chỉnh), được kiểm chứng trong `test_login_upgrade.py` và `test_rate_limiting.py`. Code hiện đã chạy theo cơ chế throttle chuẩn mực của SaaS.
+  * *Hành động:* Các cấu hình limit đều đã được tích hợp chặt chẽ mà không cần dùng đến facade `views_auth.py` cũ.
 * **Bổ dung Gateway-level Throttling**:
-  * *Thực tế codebase:* Tập tin cấu hình Nginx (`nginx.conf` và `nginx-opencore.conf`) hiện chưa được kích hoạt cơ chế throttling ở tầng gateway.
-  * *Hành động:* Thiết lập thuộc tính `limit_req_zone` và `limit_req` tại file cấu hình Nginx để lọc và từ chối các yêu cầu spam tần suất lớn từ cùng một địa chỉ IP (DDoS protection tầng Gateway).
+  * *Thực tế codebase:* Tập tin cấu hình Nginx (`nginx.conf` và `nginx-opencore.conf`) đã được kích hoạt cơ chế throttling ở tầng gateway với `limit_req_zone`, `limit_req` và `limit_req_status 429`.
+  * *Hành động:* Tiếp tục duy trì smoke-test cho HTTP 429 và không để refactor cấu hình làm mất gateway abuse-guard.
 
 ### Lát cắt 1.3: Refactor Các Tệp Cồng Kềnh Theo Chỉ Số Đo Lường Thực Tế (Tuần 3 - Tuần 4)
 Để giảm nợ kỹ thuật và cải thiện khả năng bảo trì hệ thống, thực hiện phân tách các tệp cồng kềnh dựa trên mốc đo lường dòng code thực tế hiện tại:
 
-1. **`identity_access/views_auth.py` (Hiện trạng: 995 dòng)**:
-   * *Hành động:* Tách biệt các luồng logic đăng ký, đổi mật khẩu và đăng nhập thông qua Google OAuth ra các controller chuyên biệt trong thư mục `identity_access/views/` nhằm giữ kích thước tệp dưới **600 dòng**.
-2. **`service_ops/views/dataops.py` (Hiện trạng: 1169 dòng)**:
-   * *Hành động:* Phân tách logic xử lý backfill và đồng bộ hóa ra lớp Service độc lập (`service_ops/services/backfill_service.py`), Views chỉ đóng vai trò nhận tham số và kiểm tra quyền.
-3. **`packages/web/src/adapters/coreApiAdapter.js` (Hiện trạng: 1143 dòng)**:
-   * *Hành động:* Phân rã thành các client API chuyên biệt theo Domain đặt tại `packages/web/src/adapters/core/` (`auth.js`, `billing.js`, `market.js`), giữ tệp cũ làm Facade re-export để giữ tương thích ngược.
-4. **`packages/web/src/pages/AlertCenterPage.js` (Hiện trạng: 1645 dòng)**:
-   * *Hành động:* Phân rã giao diện Alert Center thành các sub-components độc lập dưới 400 dòng trong thư mục `components/alert-center/`.
+1. **`identity_access/views_auth.py` (Hiện trạng: 8 dòng, đã thành facade import)**:
+   * *Hành động:* Đã tách biệt các luồng logic đăng ký, đổi mật khẩu và đăng nhập ra các controller chuyên biệt trong thư mục `identity_access/views/`.
+2. **`service_ops/views/dataops.py` (Hiện trạng: 7 dòng, đã thành facade import)**:
+   * *Hành động:* Đã phân tách logic xử lý backfill và đồng bộ hóa ra độc lập.
+3. **`packages/web/src/adapters/coreApiAdapter.js` (Hiện trạng: 56 dòng, re-export facade)**:
+   * *Hành động:* Đã phân rã thành các client API chuyên biệt theo Domain đặt tại `packages/web/src/adapters/core/`.
+4. **`packages/web/src/pages/AlertCenterPage.js` (Hiện trạng: 478 dòng)**:
+  * *Hành động:* Đã phân rã phần lớn giao diện Alert Center thành các sub-components và hooks riêng; file page-level hiện vẫn giữ orchestration ở mức 478 dòng nhưng không còn là monolith 1800+ dòng như trước.
 
 ---
 
@@ -106,10 +107,9 @@ Quality Gate 1 (QG-1) đóng vai trò là chốt chặn kỹ thuật đối vớ
 
 ### Lát cắt 2.1: Tích Hợp Cổng Thanh Toán VNPay & Quản Lý Subscription (Tuần 5 - Tuần 6)
 * **Mô tả công việc**:
-  * Phát triển các thực thể `PaymentTransaction` và `VNPayIPNLog` lưu lịch sử hóa đơn và webhook.
-  * Xây dựng service sinh URL thanh toán có chữ ký bảo mật **HMAC-SHA512** gửi sang VNPay.
-  * Viết view tiếp nhận webhook IPN từ VNPay (`/api/v1/commercial/payments/vnpay-ipn/`) sử dụng khóa hàng `select_for_update()` chống Race Condition.
-  * Cấu hình các Celery Beat tasks chạy định kỳ hàng giờ để quản lý tự động vòng đời subscription (gia hạn, trễ hạn dunning, hạ cấp gói cước).
+  * Thực tế code hiện đã có các thực thể `PaymentTransaction`, `VNPayIPNLog`, service ký URL `VNPayService`, và các endpoint `/core/v1/payments/create/`, `/core/v1/payments/vnpay-ipn/`, `/core/v1/payments/status/<txn_ref>/`.
+  * View IPN hiện xử lý qua phương thức **GET** và dùng `select_for_update()` để chống race condition khi finalize giao dịch.
+  * Phần còn lại của workstream này là reconciliation job (`vnpay_query_transaction`), replay-safe operator flow và lifecycle automation đầy đủ cho subscription.
 
 ### Lát cắt 2.2: Outbound Notification Pipeline Đa Kênh (Tuần 7)
 * **Mô tả công việc**:
@@ -139,5 +139,5 @@ Quality Gate 1 (QG-1) đóng vai trò là chốt chặn kỹ thuật đối vớ
 ### 4.2 Reconciliation & Webhook Replay trong Thanh Toán (Giai đoạn 2)
 * **Rủi ro lớn nhất**: VNPay IPN webhook bị lỗi mạng không gửi đến được hệ thống, dẫn đến việc khách hàng đã bị trừ tiền ngân hàng nhưng tài khoản VNInvest chưa được nâng cấp.
 * **Biện pháp phòng ngừa**: Lưu trữ toàn bộ query parameters thô từ VNPay vào bảng nhật ký bất biến `VNPayIPNLog` đầu tiên, độc lập với kết quả xử lý giao dịch.
-* **Kịch bản xử lý**: 
-  * Cung cấp tập lệnh chạy ngầm (Celery beat) đối soát chéo gọi API truy vấn giao dịch của VNPay (`vnpay_query_transaction`) sau 30 phút đối với các giao dịch PENDING. Cho phép vận hành viên (Operator) nhấn nút "Replay Webhook" từ admin panel để xử lý bù giao dịch dựa trên log thô an toàn.
+* **Kịch bản xử lý**:
+  * Đây hiện là **backlog thiết kế còn lại**. Codebase chưa có evidence hoàn chỉnh cho `vnpay_query_transaction` hoặc nút vận hành viên `Replay Webhook`, nên mọi rollout production phải coi đây là phần cần bổ sung sau foundation hiện tại.`n

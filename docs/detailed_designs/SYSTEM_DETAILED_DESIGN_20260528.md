@@ -1,9 +1,9 @@
 # BÁO CÁO THIẾT KẾ KIẾN TRÚC CHI TIẾT & LỘ TRÌNH PHÁT TRIỂN
 ## PHÂN HỆ BILLING, NOTIFICATIONS, CLEAN CODE REFACTOR & DOMAIN ERD
-**Mã tài liệu:** `VNI-ADD-20260528-v1.0`  
-**Dự án:** VNInvest Enterprise SaaS Platform  
-**Thư mục lưu trữ:** `docs/detailed_designs/`  
-**Trạng thái:** DRAFT FOR DISCUSSION  
+**Mã tài liệu:** `VNI-ADD-20260528-v1.0`
+**Dự án:** VNInvest Enterprise SaaS Platform
+**Thư mục lưu trữ:** `docs/detailed_designs/`
+**Trạng thái:** CODE-ALIGNED WORKING DESIGN (SYNCED WITH CURRENT IMPLEMENTATION ANCHORS)
 
 ---
 
@@ -28,20 +28,23 @@ sequenceDiagram
     participant FE as Frontend (packages/web)
     participant BE as core-api (commercial)
     participant VNPay as Cổng thanh toán VNPay
-    
+
     User->>FE: Chọn gói nâng cấp & nhấn "Thanh toán"
-    FE->>BE: POST /api/v1/commercial/payments/create-url/ (invoice_id)
-    Note over BE: Kiểm tra Invoice hợp lệ,<br/>tạo bản ghi PaymentTransaction (PENDING)<br/>tạo query params & HMAC-SHA512 checksum
-    BE-->>FE: Trả về vnpay_payment_url
+    FE->>BE: POST /core/v1/payments/create/ (amount, plan)
+    Note over BE: Tạo/Fetch Invoice OPEN,<br/>tạo PaymentTransaction (PENDING)<br/>tạo pay_url & txn_ref bằng HMAC-SHA512
+    BE-->>FE: Trả về pay_url + txn_ref
     FE->>User: Redirect sang trang thanh toán VNPay
     User->>VNPay: Thực hiện thanh toán (OTP, Thẻ, QR)
     VNPay->>User: Hiển thị kết quả thanh toán trên giao diện
     VNPay-->>FE: Redirect về Return URL (vnp_ReturnUrl) kèm hash
-    FE->>BE: GET /api/v1/commercial/payments/verify-redirect/ (query params)
-    BE->>BE: Verify checksum & cập nhật UI tạm thời
+    FE->>BE: GET /core/v1/payments/status/{txn_ref}/
+    BE->>BE: Đọc trạng thái giao dịch hiện tại theo tenant
     BE-->>FE: Trả về trạng thái thanh toán (Thành công / Thất bại)
     FE->>User: Hiển thị màn hình kết quả giao dịch
 ```
+
+> [!NOTE]
+> Trong code hiện tại chưa có endpoint `verify-redirect` riêng. Frontend cần bám `txn_ref` và đọc `PaymentStatusCheckView` để phản ánh trạng thái giao dịch sau redirect.
 
 ### 2.2 Luồng IPN Webhook (Instant Payment Notification)
 IPN là webhook bất đồng bộ từ VNPay gửi đến `core-api` để cập nhật trạng thái thanh toán cuối cùng một cách tin cậy. Nhằm loại bỏ rủi ro mất mát dữ liệu khi mạng lỗi, luồng này sử dụng cơ chế bảo vệ kép.
@@ -53,8 +56,8 @@ sequenceDiagram
     participant BE as core-api (commercial)
     participant DB as PostgreSQL
     participant Celery as Celery Workers (commercial/tasks.py)
-    
-    VNPay->>BE: POST /api/v1/commercial/payments/vnpay-ipn/ (query params)
+
+    VNPay->>BE: GET /core/v1/payments/vnpay-ipn/ (query params)
     Note over BE: Ghi nhận log thô vào VNPayIPNLog<br/>Xác thực IP của VNPay<br/>Xác thực chữ ký HMAC-SHA512
     BE->>DB: Truy vấn PaymentTransaction theo vnp_TxnRef
     alt Giao dịch không tồn tại
@@ -80,30 +83,30 @@ import urllib.parse
 def generate_vnpay_checksum(hash_secret: str, params: dict) -> str:
     # 1. Sắp xếp các tham số theo bảng chữ cái A-Z
     sorted_params = sorted(params.items())
-    
+
     # 2. Xây dựng chuỗi query string gốc
     query_parts = []
     for key, value in sorted_params:
         if key.startswith('vnp_'):
             # Urlencode các giá trị tham số
             query_parts.append(f"{key}={urllib.parse.quote_plus(str(value))}")
-            
+
     query_string = "&".join(query_parts)
-    
+
     # 3. Ký số bằng HMAC-SHA512
     signature = hmac.new(
         hash_secret.encode('utf-8'),
         query_string.encode('utf-8'),
         hashlib.sha512
     ).hexdigest()
-    
+
     return signature
 ```
 
 ### 2.4 Xử Lý Các Edge Cases
 - **Thanh toán lặp (Race Conditions)**: Nếu VNPay gọi IPN đồng thời với việc người dùng chuyển hướng về Return URL, hệ thống sử dụng khóa hàng `select_for_update()` trong database đối với `PaymentTransaction`. Luồng nào lấy được khóa trước sẽ thực hiện việc cập nhật trạng thái, luồng thứ hai sẽ nhận thấy giao dịch đã xử lý (`Order already confirmed`) và bỏ qua.
 - **Sai lệch số tiền (Amount Mismatch)**: Phải đối chiếu giá trị `vnp_Amount` (quy đổi về giá gốc) với thuộc tính `amount_due` của bản ghi `Invoice`. Nếu không khớp, cập nhật trạng thái giao dịch thành `AMOUNT_MISMATCH` và đánh dấu cảnh báo để quản trị viên kiểm soát thủ công.
-- **VNPay Timeout/Không có IPN**: Thiết lập một Celery beat chạy định kỳ 15 phút một lần để quét các giao dịch PENDING có tuổi đời lớn hơn 30 phút. Task này sẽ chủ động gọi API truy vấn giao dịch của VNPay (`vnpay_query_transaction`) để đối soát chéo và cập nhật trạng thái tự động.
+- **VNPay Timeout/Không có IPN**: Thiết kế mục tiêu là có Celery beat quét các giao dịch PENDING lớn hơn 30 phút và gọi `vnpay_query_transaction`. Phần reconciliation này hiện chưa có evidence hoàn chỉnh trong codebase và phải được coi là backlog tiếp theo của payment workstream.
 
 ---
 
@@ -122,7 +125,7 @@ graph TD
     D -->|Kênh Email| E[Celery Email Worker]
     D -->|Kênh FCM Mobile| F[Celery FCM Worker]
     D -->|Kênh WebPush Web| G[Celery WebPush Worker]
-    
+
     E -->|Gửi API| H[SystemMailConfig: SMTP/Gmail]
     F -->|SDK Gửi PUSH| I[Firebase Cloud Messaging]
     G -->|Gửi Push| J[WebPush Gateway VAPID]
@@ -142,7 +145,7 @@ def send_fcm_push(device_token: str, title: str, body: str, data: dict = None):
     if not firebase_admin._apps:
         cred = credentials.Certificate("/app/secrets/firebase_service_account.json")
         firebase_admin.initialize_app(cred)
-        
+
     message = messaging.Message(
         notification=messaging.Notification(
             title=title,
@@ -166,7 +169,7 @@ def send_fcm_push(device_token: str, title: str, body: str, data: dict = None):
             )
         )
     )
-    
+
     try:
         response = messaging.send(message)
         return {"status": "success", "msg_id": response}
@@ -184,14 +187,14 @@ import json
 def send_web_push(subscription_info: dict, title: str, body: str, icon_url: str = None, target_url: str = None):
     # subscription_info: {endpoint, keys: {p256dh, auth}} nhận được từ JS Navigator
     private_key_pem = "/app/secrets/vapid_private_key.pem"
-    
+
     payload = {
         "title": title,
         "body": body,
         "icon": icon_url or "https://vninvest.vn/logo.png",
         "url": target_url or "https://vninvest.vn/dashboard"
     }
-    
+
     try:
         webpush(
             subscription_info=subscription_info,
@@ -234,11 +237,11 @@ Dựa trên kết quả quét mã thực tế của dự án, chúng tôi đã p
 | Cấu phần | Đường dẫn tệp | Số dòng | Vấn đề kỹ thuật | Giải pháp Refactor |
 | :--- | :--- | :--- | :--- | :--- |
 | **Backend Core** | `staticfiles/rest_framework/css/...` | 1338 | Tệp CSS tĩnh mặc định. | Không cần refactor nghiệp vụ, bỏ qua khỏi kiểm tra linting. |
-| **Backend Core** | `service_ops/views/dataops.py` | 1327 | Monolithic views xử lý tất cả các API DataOps (Materialize, backfill, logs, check). | Tách thành các lớp xử lý nghiệp vụ riêng biệt (`services/backfill_service.py`, `services/materializer.py`). Tách views thành các file nhỏ theo tài nguyên API. |
-| **Backend Core** | `identity_access/views_auth.py` | 1141 | Gộp chung luồng đăng nhập, đăng ký, đổi mật khẩu, xác thực OTP, và quản lý OAuth2. | Chia thành các Controller chuyên biệt: `views/login.py`, `views/register.py`, `views/password_reset.py`, `views/oauth.py`. |
+| **Backend Core** | `service_ops/views/dataops.py` | 7 | Đã refactor thành facade import. Các xử lý DataOps được tách thành `services/backfill_service.py` và `services/materializer.py`. | Tách thành các lớp xử lý nghiệp vụ riêng biệt. |
+| **Backend Core** | `identity_access/views_auth.py` | 8 | Đã refactor thành facade. Các luồng đăng nhập, đăng ký, đổi mật khẩu được chia ra controller riêng. | Chia thành các Controller chuyên biệt: `views/login.py`, `views/register.py`, `views/password_reset.py`, vv. |
 | **Backend Core** | `service_ops/tasks.py` | 1080 | Chứa logic của hàng chục task Celery xử lý bất đồng bộ. | Đưa logic thực tế ra `services/` layer, file `tasks.py` chỉ làm nhiệm vụ nhận tham số đầu vào và gọi Service tương ứng (Wrapper). |
-| **Frontend Web** | `pages/AlertCenterPage.js` | 1825 | Gộp chung hiển thị dashboard, bảng dữ liệu, bộ lọc nâng cao, biểu đồ heatmap và form cài đặt cảnh báo. | Phân rã thành các component con độc lập trong thư mục `components/alert-center/`: `AlertFeedTable.js`, `AlertFilterBar.js`, `AlertPreferenceModal.js`. Quản lý state thông qua custom hook `useAlertCenterData.js`. |
-| **Frontend Web** | `adapters/coreApiAdapter.js` | 1270 | Chứa tất cả các hàm gọi API REST/WebSocket của toàn bộ hệ thống SaaS. | Phân rã thành các client API chuyên biệt theo Domain: `adapters/marketDataApi.js`, `adapters/billingApi.js`, `adapters/identityApi.js`, `adapters/advisoryApi.js`. Tệp `coreApiAdapter.js` cũ chỉ là điểm xuất trung tâm. |
+| **Frontend Web** | `pages/AlertCenterPage.js` | 478 | Đã phân rã thành các component con độc lập trong thư mục `components/alert-center/`. | Phân rã thành các component con độc lập, quản lý state qua custom hook. |
+| **Frontend Web** | `adapters/coreApiAdapter.js` | 56 | Đã phân rã thành các client API chuyên biệt theo Domain. | Phân rã thành các client API chuyên biệt, giữ tệp gốc làm Facade tương thích ngược. |
 
 ### 4.2 Hướng Dẫn Refactor Cho Một Tệp Cụ Thể (Ví dụ `coreApiAdapter.js`)
 
@@ -265,20 +268,20 @@ Tạo cấu trúc thư mục con tại `packages/web/src/adapters/core/`:
 - `packages/web/src/adapters/core/billing.js` (Payments, Invoices, Subscriptions)
 - `packages/web/src/adapters/core/market.js` (KLine, Market Data, Symbols)
 
-**Mã nguồn tệp `coreApiAdapter.js` sau khi refactor (Chỉ còn < 50 dòng):**
+**Mã nguồn tệp `coreApiAdapter.js` sau khi refactor (hiện còn 56 dòng, giữ vai trò facade):**
 ```javascript
-import { authApi } from './core/auth';
-import { billingApi } from './core/billing';
-import { marketApi } from './core/market';
+import { createCoreTransport } from './core/transport.js';
+import { createAuthClient } from './core/auth.js';
+import { createMarketClient } from './core/market.js';
+import { createWorkspaceClient } from './core/workspace.js';
 
-export const coreApiAdapter = {
-    auth: authApi,
-    billing: billingApi,
-    market: marketApi,
-    // Cung cấp facade layer tương thích ngược nếu các component cũ vẫn gọi trực tiếp
-    getKLineData: marketApi.getKLineData.bind(marketApi),
-    getSubscription: billingApi.getSubscription.bind(billingApi),
-};
+export function createCoreApiAdapter(options = {}) {
+    const transport = createCoreTransport(options.env || {}, options);
+    const authClient = createAuthClient(transport);
+    const marketClient = createMarketClient(transport);
+    const workspaceClient = createWorkspaceClient(transport);
+    return { ...authClient, ...marketClient, ...workspaceClient };
+}
 ```
 
 ---
@@ -296,7 +299,7 @@ erDiagram
     CoreTenant ||--o{ QuotaRecord : "allocates (1:N)"
     Invoice ||--o{ PaymentTransaction : "settles_via (1:N)"
     PaymentTransaction ||--o{ VNPayIPNLog : "logs_webhook (1:N)"
-    
+
     CoreTenant {
         uuid public_id PK "UUIDv4 định danh tenant"
         int owner_user_id FK "Liên kết Django User"
@@ -416,4 +419,4 @@ Báo cáo chi tiết này đã được lưu trữ an toàn trong dự án tại
 2. **Kênh thông báo mặc định cho Người dùng mới**:
    - Khi tạo mới tài khoản, những loại thông báo nào sẽ mặc định được kích hoạt gửi Email? *(Khuyến nghị: Chỉ kích hoạt mặc định Email cho Billing/Security, còn các cảnh báo Whale Alert/Price Shock bắt buộc người dùng tự opt-in để tránh spam)*.
 3. **Mức độ khắt khe của Guardrails chống "Fat Files"**:
-   - Hiện tại file `check_large_files.ps1` đang đặt giới hạn cứng là 1200 dòng. Chúng ta có muốn siết chặt xuống 1000 dòng đối với mã nguồn viết mới hoàn toàn trong `packages/core` và `packages/web` hay không? *(Khuyến nghị: Enforce 1000 dòng cho code mới, giữ 1200 dòng cho code kế thừa)*.
+   - Hiện tại file `check_large_files.ps1` đang đặt giới hạn cứng là 1200 dòng. Chúng ta có muốn siết chặt xuống 1000 dòng đối với mã nguồn viết mới hoàn toàn trong `packages/core` và `packages/web` hay không? *(Khuyến nghị: Enforce 1000 dòng cho code mới, giữ 1200 dòng cho code kế thừa)*.`n

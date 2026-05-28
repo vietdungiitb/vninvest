@@ -86,6 +86,7 @@ class Command(BaseCommand):
                                 data=data_dict,
                                 reason="tenant_id is null in pre-migration audit"
                             )
+                        orphans.delete()
                         self.stdout.write(self.style.SUCCESS(f"Cô lập thành công các bản ghi của {model_name}."))
 
         self.stdout.write("\n--- BÁO CÁO TOÀN DIỆN DẠNG JSON ---")
@@ -111,4 +112,4 @@ class Command(BaseCommand):
                     "\n[SUCCESS] Kiểm toán sạch. Không phát hiện bản ghi mồ côi nào."
                 )
             )
-            sys.exit(0)
+            sys.exit(0)`n

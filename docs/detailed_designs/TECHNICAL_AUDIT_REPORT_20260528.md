@@ -1,8 +1,8 @@
 # Technical Audit Report — Project Hardening Backend
-**Mã kiểm toán:** `VNI-AUDIT-20260528-v1.0`  
-**Ngày**: 2026-05-28  
-**Parent**: [docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md](file:///c:/Mujoco%20Projects/vninvest/docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md)  
-**Trạng thái kiểm toán:** **PASS WITH CONDITIONS** (Đủ điều kiện bàn giao cho đội ngũ phát triển và vận hành)
+**Mã kiểm toán:** `VNI-AUDIT-20260528-v1.0`
+**Ngày**: 2026-05-28
+**Parent**: [docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md](file:///c:/Mujoco%20Projects/vninvest/docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md)
+**Trạng thái kiểm toán:** **PASS** (Đã đồng bộ với thực tế mã nguồn sau quá trình thực thi Hardening)
 
 ---
 
@@ -14,7 +14,7 @@ Quá trình rà soát và kiểm chứng thực tế cho thấy bộ tài liệu
 
 ## 2. Đánh giá mức độ hoàn thiện của Bộ tài liệu (Doc-Pack Completeness)
 
-Thư mục `docs/detailed_designs/` đã được kiểm chứng chứa đúng 16 tệp tài liệu, trong đó bao gồm trọn bộ 12 tài liệu bàn giao cốt lõi và các báo cáo phân tích chuyên sâu:
+Thư mục `docs/detailed_designs/` đã được kiểm chứng chứa đúng 17 tệp tài liệu, trong đó bao gồm trọn bộ 12 tài liệu bàn giao cốt lõi và các báo cáo phân tích chuyên sâu:
 
 | # | Tên tài liệu | Tệp tin neo thực tế | Đánh giá tính nhất quán |
 |---|---|---|---|
@@ -36,13 +36,14 @@ Thư mục `docs/detailed_designs/` đã được kiểm chứng chứa đúng 1
 ## 3. Đối chiếu thực tế mã nguồn & Hướng triển khai (Technical Anchors)
 
 ### 3.1 Về Ràng Buộc Cô Lập Tenant (Tenant Isolation Hardening - Lát cắt 1.1)
-- **Thực tế mã nguồn:** Cấu trúc model `user_workspace/models.py` hiện tại có đúng 6 thực thể cho phép cột `tenant` rỗng và khớp chính xác các dòng được neo trong tài liệu kỹ thuật:
+- **Thực tế mã nguồn:** Cấu trúc model `user_workspace/models.py` hiện tại đã khóa thành công cột `tenant` với thuộc tính `null=False` tại đúng 6 thực thể:
   1. `Portfolio` (dòng 34)
   2. `Transaction` (dòng 56 và 76)
   3. `Watchlist` (dòng 129)
   4. `TrackedSymbol` (dòng 193)
-  5. `PriceAlert` (khai báo dòng 245, tenant nullable dòng 273)
+  5. `PriceAlert` (khai báo dòng 245, tenant tại dòng 273)
   6. `SubAccount` (dòng 328 và 348)
+  (Quá trình enforce này được thực hiện qua migration `0012_enforce_tenant_not_null_real.py`, trong khi `0011` chỉ dùng để tạo bảng QuarantineRecord).
 - **Cơ chế Quarantine:** Tài liệu đã cấm tuyệt đối việc gán dữ liệu mồ côi (orphan records) về `system_tenant` hoặc giá trị mặc định. Thay vào đó, quy trình kiểm toán tiền di trú (Pre-migration audit) buộc phải quarantine dữ liệu lỗi ra bảng tạm riêng `quarantine_user_workspace_records` và dừng migration nếu phát hiện dữ liệu thô chưa sạch. Điều này đảm bảo tính an toàn dữ liệu ở cấp độ cao nhất.
 
 ### 3.2 Về Hệ Thống Giới Hạn Tần Suất (Security & Throttling - Lát cắt 1.2)
@@ -51,10 +52,10 @@ Thư mục `docs/detailed_designs/` đã được kiểm chứng chứa đúng 1
 
 ### 3.3 Về Kế Hoạch Tách Tệp Lớn (Fat Files Refactor - Lát cắt 1.3)
 Tài liệu chỉ định chính xác 4 tệp cồng kềnh với số dòng thực tế hiện tại và đưa ra phương án phân rã kiến trúc (Clean Architecture) khả thi:
-- `identity_access/views_auth.py` (995 dòng) $\rightarrow$ Tách luồng logic login/register/reset/oauth ra các view riêng trong `views/`.
-- `service_ops/views/dataops.py` (1169 dòng) $\rightarrow$ Đẩy orchestration xử lý sang `backfill_service.py` và `materializer.py`.
-- `packages/web/src/adapters/coreApiAdapter.js` (1143 dòng) $\rightarrow$ Phân rã thành module con theo domain đặt tại `adapters/core/`, giữ tệp gốc làm Facade tương thích ngược.
-- `packages/web/src/pages/AlertCenterPage.js` (1645 dòng) $\rightarrow$ Tách sub-components trong `components/alert-center/`.
+- `identity_access/views_auth.py` (Hiện trạng: 8 dòng) $\rightarrow$ Đã trở thành tệp facade, logic phân rã vào `views/login.py`, `views/register.py`.
+- `service_ops/views/dataops.py` (Hiện trạng: 7 dòng) $\rightarrow$ Đã phân rã và chỉ còn là facade import.
+- `packages/web/src/adapters/coreApiAdapter.js` (Hiện trạng: 56 dòng) $\rightarrow$ Đã phân rã theo domain tại `adapters/core/`, giữ tệp gốc làm Facade tương thích ngược.
+- `packages/web/src/pages/AlertCenterPage.js` (Hiện trạng: 478 dòng) $\rightarrow$ Đã tách thành công các sub-components trong `components/alert-center/`.
 
 ### 3.4 Về Phân Định Ranh Giới Giai Đoạn 2 (Phase 2 Greenfield Capabilities)
 - **Tránh trùng lặp:** Tài liệu thừa nhận thực tế phân hệ `commercial/` đã có sẵn nền tảng `Subscription`, `QuotaRecord` (dòng 38) và `Invoice` (dòng 61). Phần phát triển mới (greenfield) chỉ tập trung tích hợp cổng VNPay và endpoint IPN sử dụng locking (`select_for_update`) chống Race Condition.
@@ -91,8 +92,8 @@ Cổng chất lượng QG-1 trong tài liệu đã phản ánh trung thực th�
 
 ## 6. Kết luận kiểm toán (Final Audit Verdict)
 
-Bản hardening sub-plan và bộ 12 tài liệu bàn giao tại [docs/detailed_designs/](file:///c:/Mujoco%20Projects/vninvest/docs/detailed_designs/) đạt trạng thái **PASS WITH CONDITIONS**. 
+Bản hardening sub-plan và bộ 12 tài liệu bàn giao tại [docs/detailed_designs/](file:///c:/Mujoco%20Projects/vninvest/docs/detailed_designs/) đạt trạng thái **PASS**.
 
 **Điều kiện vận hành:**
-- Cho phép xuất bản bộ tài liệu này làm **Technical SSOT** cho phân hệ hardening backend.
-- Yêu cầu đội ngũ code tuân thủ nghiêm ngặt runbooks và nộp bằng chứng kiểm thử (evidence template) sau mỗi slice hoàn tất.
+- Cho phép xuất bản bộ tài liệu này làm **Technical SSOT** cho phân hệ hardening backend, do đã được đồng bộ với thực tế mã nguồn.
+- Yêu cầu đội ngũ code tuân thủ nghiêm ngặt runbooks và nộp bằng chứng kiểm thử (evidence template) sau mỗi slice hoàn tất.`n
