@@ -112,4 +112,4 @@ class Command(BaseCommand):
                     "\n[SUCCESS] Kiểm toán sạch. Không phát hiện bản ghi mồ côi nào."
                 )
             )
-            sys.exit(0)`n
+            sys.exit(0)

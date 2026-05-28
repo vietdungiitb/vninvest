@@ -372,4 +372,4 @@ export function createWorkspaceClient({ coreGet, corePost, corePatch, coreDelete
       return corePost("/operator/mail-configs/test/", data);
     },
   };
-}`n
+}

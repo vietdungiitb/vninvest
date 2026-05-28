@@ -210,6 +210,7 @@ REST_FRAMEWORK = {
         # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never
         # be blocked by operational polling exhausting the global 'user' bucket
         'auth_bootstrap': '60/min',
+        'notification': '3/second',
     },
 }
 

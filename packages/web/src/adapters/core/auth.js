@@ -133,4 +133,4 @@ export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens
       return corePatch("/identity/profile/", data);
     },
   };
-}`n
+}

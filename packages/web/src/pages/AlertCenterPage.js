@@ -1,1 +1,515 @@
-/**`n * AlertCenterPage`n * SaaS Native Hub hợp nhất cho alert-center trong packages/web.`n * Không dùng JSX — tuân theo convention packages/web (createElement).`n */`nimport React from "react";`nimport { coreApiAdapter } from "../adapters/coreApiAdapter.js";`nimport { SummaryMetrics } from "../components/alert-center/SummaryMetrics.js";`nimport { AlertCard } from "../components/alert-center/AlertCard.js";`nimport { SymbolStatsTable } from "../components/alert-center/SymbolStatsTable.js";`nimport { DetailDrawer } from "../components/alert-center/DetailDrawer.js";`nimport { CORE_STYLES } from "./AlertCenterPage.styles.js";`nimport { useAlertCenterData } from "../hooks/useAlertCenterData.js";`n`nconst { createElement, useEffect, useRef, useState, useCallback } = React;`nconst e = createElement;`nconst DEFAULT_ENV = {};`n`nconst LANE_OPTIONS = Object.freeze([`n  { value: "main", label: "Luồng chính" },`n  { value: "ai", label: "AI Alerts / AI Suggests" },`n]);`n`nconst WINDOW_OPTIONS = Object.freeze([`n  { value: "5m", label: "5m" },`n  { value: "15m", label: "15m" },`n  { value: "1h", label: "1h" },`n  { value: "session", label: "Phiên" },`n  { value: "5d", label: "5d" },`n]);`n`nconst SORT_OPTIONS = Object.freeze([`n  { value: "latest", label: "Mới nhất" },`n  { value: "largestValue", label: "Giá trị lớn nhất" },`n]);`n`nfunction formatAlertValue(value) {`n  if (value == null || value === "") {`n    return "—";`n  }`n  const numericValue = Number(value);`n  return Number.isFinite(numericValue) ? numericValue.toLocaleString("vi-VN") : String(value);`n}`n`nfunction formatAlertTimestamp(value) {`n  if (!value) {`n    return "—";`n  }`n  const timestamp = new Date(value);`n  if (Number.isNaN(timestamp.getTime())) {`n    return String(value);`n  }`n  return timestamp.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " " + timestamp.toLocaleDateString("vi-VN");`n}`n`nfunction normalizeSymbol(value) {`n  return String(value || "").trim().toUpperCase();`n}`n`n`nexport function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {`n  const [lane, setLane] = useState("main");`n  const [symbolDraft, setSymbolDraft] = useState("");`n  const [appliedSymbol, setAppliedSymbol] = useState("");`n  const [sessionDate, setSessionDate] = useState("");`n  const [timeframe, setTimeframe] = useState("session");`n  const [sorting, setSorting] = useState("latest");`n  const [autoRefresh, setAutoRefresh] = useState(true);`n  const [refreshToken, setRefreshToken] = useState(0);`n  const [isRefreshing, setIsRefreshing] = useState(false);`n  const [activeAlertId, setActiveAlertId] = useState("");`n  const [activeDetail, setActiveDetail] = useState(null);`n  const [activeContext, setActiveContext] = useState(null);`n  const [actionError, setActionError] = useState("");`n  const [busyAlertId, setBusyAlertId] = useState("");`n  const [expandedEvidence, setExpandedEvidence] = useState({});`n  const [searchTermModule2, setSearchTermModule2] = useState("");`n  const [pageFeed, setPageFeed] = useState(1);`n  const [pageStats, setPageStats] = useState(1);`n`n  // Inject style block on mount and clean up on unmount to prevent browser style-reflow flashes`n  useEffect(() => {`n    const styleId = "core-alert-center-page-styles";`n    let styleEl = document.getElementById(styleId);`n    if (!styleEl) {`n      styleEl = document.createElement("style");`n      styleEl.id = styleId;`n      styleEl.textContent = CORE_STYLES;`n      document.head.appendChild(styleEl);`n    }`n    return () => {`n      const el = document.getElementById(styleId);`n      if (el) {`n        el.remove();`n      }`n    };`n  }, []);`n`n  const { loading, error, payload, summary, symbolStats } = useAlertCenterData({`n    env,`n    lane,`n    symbol: appliedSymbol,`n    sessionDate,`n    timeframe,`n    refreshToken`n  });`n`n  const rawAlerts = payload?.results ?? [];`n  const alerts = Array.isArray(rawAlerts) ? rawAlerts : [];`n`n  // Reset pagination on filter or search updates`n  useEffect(() => {`n    setPageFeed(1);`n  }, [lane, appliedSymbol, sessionDate, timeframe, sorting]);`n`n  useEffect(() => {`n    setPageStats(1);`n  }, [searchTermModule2, symbolStats?.pagination?.total_symbols, lane, appliedSymbol, sessionDate, timeframe]);`n`n  // Polling mechanism`n  useEffect(() => {`n    if (!autoRefresh) return;`n    const interval = setInterval(() => {`n      setRefreshToken((r) => r + 1);`n    }, 5000);`n    return () => clearInterval(interval);`n  }, [autoRefresh]);`n`n  // Handle spin anim on manual refresh`n  const triggerManualRefresh = useCallback(() => {`n    setIsRefreshing(true);`n    setRefreshToken((r) => r + 1);`n    setTimeout(() => setIsRefreshing(false), 800);`n  }, []);`n`n  // Sort alerts dynamically`n  const sortedAlerts = [...alerts].sort((a, b) => {`n    if (sorting === "largestValue") {`n      const valA = Number(a?.value || 0);`n      const valB = Number(b?.value || 0);`n      return valB - valA;`n    }`n    // Default: triggered_at descending`n    const timeA = a?.triggered_at ? new Date(a.triggered_at).getTime() : 0;`n    const timeB = b?.triggered_at ? new Date(b.triggered_at).getTime() : 0;`n    return timeB - timeA;`n  });`n`n  // Module 2: Symbol statistics from backend truth endpoint`n  const aggregatedSymbols = (Array.isArray(symbolStats?.symbols) ? symbolStats.symbols : []).map((item) => {`n    const mapped = {`n      symbol: normalizeSymbol(item?.symbol || "UNKNOWN"),`n      count: Number(item?.count || 0),`n      buyCount: Number(item?.buy_count || 0),`n      sellCount: Number(item?.sell_count || 0),`n      neutralCount: Number(item?.neutral_count || 0),`n      totalValue: Number(item?.total_value || 0),`n      severities: {`n        critical: Number(item?.by_severity?.critical || 0),`n        high: Number(item?.by_severity?.high || 0),`n        medium: Number(item?.by_severity?.medium || 0),`n        low: Number(item?.by_severity?.low || 0),`n      },`n      latestTime: item?.latest_triggered_at ? new Date(item.latest_triggered_at).getTime() : 0,`n      familiesList: "",`n    };`n`n    let freq = "Thấp";`n    if (mapped.count >= 8) freq = "Bùng nổ";`n    else if (mapped.count >= 4) freq = "Cao";`n    else if (mapped.count >= 2) freq = "Trung bình";`n`n    return {`n      ...mapped,`n      freq,`n    };`n  }).filter((item) => {`n    if (!searchTermModule2) return true;`n    return item.symbol.includes(searchTermModule2.trim().toUpperCase());`n  });`n`n  function handleApply(event) {`n    event.preventDefault();`n    setAppliedSymbol(normalizeSymbol(symbolDraft));`n  }`n`n  async function handleLoadDetail(alert) {`n    if (!alert?.alert_id || !alert?.symbol) return;`n    setActionError("");`n    setBusyAlertId(alert.alert_id);`n    try {`n      const adapter = coreApiAdapter;`n      const [detail, context] = await Promise.all([`n        adapter.getAlertCenterEventDetail(alert.alert_id),`n        adapter.getAlertCenterSymbolContext(alert.symbol),`n      ]);`n      setActiveAlertId(alert.alert_id);`n      setActiveDetail(detail || null);`n      setActiveContext(context || null);`n    } catch (actionErr) {`n      setActionError(actionErr?.message || "Không thể tải chi tiết alert.");`n    } finally {`n      setBusyAlertId("");`n    }`n  }`n`n  async function handleAcknowledge(alert) {`n    if (!alert?.alert_id) return;`n    setActionError("");`n    setBusyAlertId(alert.alert_id);`n    try {`n      const adapter = coreApiAdapter;`n      await adapter.acknowledgeAlertCenterEvent(alert.alert_id);`n      setRefreshToken((value) => value + 1);`n    } catch (actionErr) {`n      setActionError(actionErr?.message || "Không thể xác nhận alert.");`n    } finally {`n      setBusyAlertId("");`n    }`n  }`n`n  async function handleMuteSymbol(alert) {`n    if (!alert?.symbol) return;`n    setActionError("");`n    setBusyAlertId(alert.alert_id || alert.symbol);`n    try {`n      const adapter = coreApiAdapter;`n      await adapter.muteAlertCenterPreference({`n        symbol: alert.symbol,`n        alert_family: alert.alert_family || alert.alert_type || "",`n        mute_minutes: 30,`n      });`n      setRefreshToken((value) => value + 1);`n    } catch (actionErr) {`n      setActionError(actionErr?.message || "Không thể tắt tiếng cảnh báo mã.");`n    } finally {`n      setBusyAlertId("");`n    }`n  }`n`n  const toggleEvidence = (alertId) => {`n    setExpandedEvidence((prev) => ({`n      ...prev,`n      [alertId]: !prev[alertId],`n    }));`n  };`n`n  const highSeverityCount = Number(summary?.by_severity?.high || 0) + Number(summary?.by_severity?.critical || 0);`n  const aiSuggestCount = alerts.filter((alert) => alert?.alert_family === "ai_suggest" || alert?.alert_type === "ai_suggest").length;`n`n  const ITEMS_PER_PAGE_FEED = 5;`n  const ITEMS_PER_PAGE_STATS = 8;`n`n  const totalPagesFeed = Math.ceil(sortedAlerts.length / ITEMS_PER_PAGE_FEED) || 1;`n  const activePageFeed = Math.min(pageFeed, totalPagesFeed);`n  const startIndexFeed = (activePageFeed - 1) * ITEMS_PER_PAGE_FEED;`n  const paginatedAlerts = sortedAlerts.slice(startIndexFeed, startIndexFeed + ITEMS_PER_PAGE_FEED);`n`n  const totalPagesStats = Math.ceil(aggregatedSymbols.length / ITEMS_PER_PAGE_STATS) || 1;`n  const activePageStats = Math.min(pageStats, totalPagesStats);`n  const startIndexStats = (activePageStats - 1) * ITEMS_PER_PAGE_STATS;`n  const paginatedSymbols = aggregatedSymbols.slice(startIndexStats, startIndexStats + ITEMS_PER_PAGE_STATS);`n`n  function renderPagination(currentPage, totalPages, setCurrentPage) {`n    if (totalPages <= 1) return null;`n    return e("div", { className: "core-pagination-controls" }, [`n      e("button", {`n        key: "first",`n        type: "button",`n        className: "core-pagination-btn",`n        disabled: currentPage === 1,`n        onClick: () => setCurrentPage(1),`n        title: "Đầu"`n      }, "«"),`n      e("button", {`n        key: "prev",`n        type: "button",`n        className: "core-pagination-btn",`n        disabled: currentPage === 1,`n        onClick: () => setCurrentPage(Math.max(1, currentPage - 1)),`n        title: "Trước"`n      }, "‹"),`n      e("span", {`n        key: "info",`n        className: "core-pagination-info"`n      }, `Trang ${currentPage} / ${totalPages}`),`n      e("button", {`n        key: "next",`n        type: "button",`n        className: "core-pagination-btn",`n        disabled: currentPage === totalPages,`n        onClick: () => setCurrentPage(Math.min(totalPages, currentPage + 1)),`n        title: "Sau"`n      }, "›"),`n      e("button", {`n        key: "last",`n        type: "button",`n        className: "core-pagination-btn",`n        disabled: currentPage === totalPages,`n        onClick: () => setCurrentPage(totalPages),`n        title: "Cuối"`n      }, "»")`n    ]);`n  }`n`n  return e("div", { className: `core-alert-center-page ${className}`.trim() }, [`n    // ── Header Section ────────────────────────────────────────────────────────`n    e("header", { key: "header", className: "core-alert-center-header" }, [`n      e("div", { key: "title-container" }, [`n        e("h1", { key: "title" }, "Whale Alerts Workspace"),`n        e(`n          "p",`n          { key: "subtitle", className: "core-alert-center-subtitle" },`n          "Đại bản doanh whale, dark-flow & Price Shock theo chuẩn OpenAPI."`n        ),`n      ]),`n      e("div", { key: "live-indicator-container", style: { display: "flex", alignItems: "center", gap: "15px" } }, [`n        // Blinking LIVE badge with status trigger`n        e(`n          "div",`n          {`n            key: "live-badge",`n            className: `core-alert-live-badge ${!autoRefresh ? "is-paused" : ""}`.trim(),`n            style: { cursor: "pointer" },`n            onClick: () => setAutoRefresh(!autoRefresh),`n            title: autoRefresh ? "Bấm để dừng tự động cập nhật" : "Bấm để bật tự động cập nhật"`n          },`n          [`n            e("div", { key: "dot", className: "core-alert-live-dot" }),`n            autoRefresh ? "LIVE (5s)" : "PAUSED",`n          ]`n        ),`n        // Filter Form`n        e("form", { key: "filters", className: "core-alert-center-filter-bar", onSubmit: handleApply }, [`n          e("label", { key: "symbol-label", className: "core-alert-center-filter-field" }, [`n            e("span", { key: "symbol-text" }, "Lọc Mã"),`n            e("input", {`n              key: "symbol-input",`n              type: "text",`n              value: symbolDraft,`n              maxLength: 10,`n              placeholder: "Ví dụ: HPG",`n              onChange: (event) => setSymbolDraft(normalizeSymbol(event.target.value)),`n            }),`n          ]),`n          e("button", { key: "apply", type: "submit" }, "Lọc feed"),`n        ]),`n      ]),`n    ]),`n`n    // ── Combined Control Bar (Lane Switcher & Timeframe Strip) ────────────────`n    e("section", { key: "combined-controls", className: "core-alert-combined-controls" }, [`n      e("div", { key: "lane-block", className: "core-alert-lane-block" }, [`n        ...LANE_OPTIONS.map((option) =>`n          e(`n            "button",`n            {`n              key: option.value,`n              type: "button",`n              className: `core-alert-center-lane-button ${lane === option.value ? "is-active" : ""}`.trim(),`n              onClick: () => {`n                setLane(option.value);`n                setActiveDetail(null);`n              },`n            },`n            option.label`n          )`n        ),`n      ]),`n      e("div", { key: "time-strip", className: "core-alert-time-strip" }, [`n        e("span", { key: "lbl", className: "core-alert-time-label" }, "Phạm Vi Thời Gian:"),`n        ...WINDOW_OPTIONS.map((w) =>`n          e(`n            "button",`n            {`n              key: w.value,`n              type: "button",`n              className: `core-alert-time-btn ${timeframe === w.value ? "is-active" : ""}`.trim(),`n              onClick: () => setTimeframe(w.value),`n            },`n            w.label`n          )`n        ),`n      ]),`n    ]),`n`n    // ── Summary Metrics Strip ────────────────────────────────────────────────`n    e(SummaryMetrics, {`n      key: "summary-metrics",`n      summary,`n      alertsCount: alerts.length,`n      highSeverityCount,`n      aiSuggestCount,`n      lane,`n      appliedSymbol,`n    }),`n`n    loading && !isRefreshing ? e("p", { key: "loading", className: "core-loading" }, "Đang tải dữ liệu cảnh báo từ Core API...") : null,`n    error ? e("p", { key: "error", className: "core-error" }, error) : null,`n    actionError ? e("p", { key: "action-error", className: "core-error" }, actionError) : null,`n`n    // ── MAIN DUAL-COLUMN CONTAINER ──────────────────────────────────────────`n    !loading || isRefreshing ? e("div", { key: "dashboard-container", className: "core-alert-dashboard-container" }, [`n`n      // ════ COLUMN 1: LIVE ALERTS FEED (Module 1) ════`n      e("div", { key: "feed-column", className: "core-alert-feed-column" }, [`n        e("div", { className: "core-dashboard-panel" }, [`n          e("h2", { className: "core-section-title" }, [`n            "BẢNG TIN THỜI GIAN THỰC",`n            e("span", { key: "sub", style: { fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: "normal" } }, `Hiện thị ${alerts.length} sự kiện gần nhất`)`n          ]),`n`n          // Control Bar inside feed`n          e("div", { className: "core-feed-control-bar" }, [`n            e("div", { className: "core-feed-control-left" }, [`n              ...SORT_OPTIONS.map((s) =>`n                e(`n                  "button",`n                  {`n                    key: s.value,`n                    type: "button",`n                    className: `core-feed-sort-btn ${sorting === s.value ? "is-active" : ""}`.trim(),`n                    onClick: () => setSorting(s.value),`n                  },`n                  s.label`n                )`n              ),`n            ]),`n            e("div", { className: "core-feed-refresh-group" }, [`n              e("label", { className: "core-feed-auto-toggle" }, [`n                e("input", {`n                  type: "checkbox",`n                  checked: autoRefresh,`n                  onChange: (event) => setAutoRefresh(event.target.checked),`n                }),`n                "Tự động làm mới",`n              ]),`n              e(`n                "button",`n                {`n                  type: "button",`n                  className: "core-feed-refresh-btn",`n                  onClick: triggerManualRefresh,`n                },`n                [`n                  e("svg", {`n                    key: "refresh-svg",`n                    className: isRefreshing ? "is-spinning" : "",`n                    width: "12",`n                    height: "12",`n                    viewBox: "0 0 24 24",`n                    fill: "none",`n                    stroke: "currentColor",`n                    strokeWidth: "3",`n                    strokeLinecap: "round",`n                    strokeLinejoin: "round",`n                    style: { marginRight: "2px" }`n                  }, [`n                    e("path", { key: "p1", d: "M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" })`n                  ]),`n                  " Làm mới",`n                ]`n              ),`n            ]),`n          ]),`n`n          // Alerts Scrollable List Wrapper`n          e("div", { className: "core-scrollable-container" }, [`n            paginatedAlerts.length === 0`n              ? e("p", { className: "core-empty" }, "Chưa có sự kiện cảnh báo nào phù hợp với bộ lọc hiện tại.")`n              : e("div", { className: "core-alert-center-list" },`n                  paginatedAlerts.map((alert) =>`n                    e(AlertCard, {`n                      key: alert.alert_id,`n                      alert,`n                      lane,`n                      busyAlertId,`n                      isEvidenceExpanded: !!expandedEvidence[alert.alert_id],`n                      toggleEvidence,`n                      handleLoadDetail,`n                      handleAcknowledge,`n                      handleMuteSymbol,`n                      formatAlertValue,`n                      formatAlertTimestamp,`n                    })`n                  )`n                )`n          ]),`n          renderPagination(activePageFeed, totalPagesFeed, setPageFeed)`n        ])`n      ]),`n`n      // ════ COLUMN 2: STATISTICS BY SYMBOL (Module 2) ════`n      e("div", { key: "stats-column", className: "core-alert-stats-column" }, [`n        e(SymbolStatsTable, {`n          paginatedSymbols,`n          searchTermModule2,`n          setSearchTermModule2,`n          formatAlertValue,`n        }),`n        renderPagination(activePageStats, totalPagesStats, setPageStats)`n      ])`n    ]) : null,`n`n    // ── Bottom forensic drawer inspector panel ────────────────────────────────`n    e(DetailDrawer, {`n      key: "detail-drawer",`n      activeAlertId,`n      activeDetail,`n      activeContext,`n      appliedSymbol,`n      onClose: () => setActiveDetail(null),`n    })`n  ]);`n}`n
+/**
+ * AlertCenterPage
+ * SaaS Native Hub hợp nhất cho alert-center trong packages/web.
+ * Không dùng JSX — tuân theo convention packages/web (createElement).
+ */
+import React from "react";
+import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { SummaryMetrics } from "../components/alert-center/SummaryMetrics.js";
+import { AlertCard } from "../components/alert-center/AlertCard.js";
+import { SymbolStatsTable } from "../components/alert-center/SymbolStatsTable.js";
+import { DetailDrawer } from "../components/alert-center/DetailDrawer.js";
+import { CORE_STYLES } from "./AlertCenterPage.styles.js";
+import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
+
+const { createElement, useEffect, useRef, useState, useCallback } = React;
+const e = createElement;
+const DEFAULT_ENV = {};
+
+const LANE_OPTIONS = Object.freeze([
+  { value: "main", label: "Luồng chính" },
+  { value: "ai", label: "AI Alerts / AI Suggests" },
+]);
+
+const WINDOW_OPTIONS = Object.freeze([
+  { value: "5m", label: "5m" },
+  { value: "15m", label: "15m" },
+  { value: "1h", label: "1h" },
+  { value: "session", label: "Phiên" },
+  { value: "5d", label: "5d" },
+]);
+
+const SORT_OPTIONS = Object.freeze([
+  { value: "latest", label: "Mới nhất" },
+  { value: "largestValue", label: "Giá trị lớn nhất" },
+]);
+
+function formatAlertValue(value) {
+  if (value == null || value === "") {
+    return "—";
+  }
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue.toLocaleString("vi-VN") : String(value);
+}
+
+function formatAlertTimestamp(value) {
+  if (!value) {
+    return "—";
+  }
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) {
+    return String(value);
+  }
+  return timestamp.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " " + timestamp.toLocaleDateString("vi-VN");
+}
+
+function normalizeSymbol(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+
+export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
+  const [lane, setLane] = useState("main");
+  const [symbolDraft, setSymbolDraft] = useState("");
+  const [appliedSymbol, setAppliedSymbol] = useState("");
+  const [sessionDate, setSessionDate] = useState("");
+  const [timeframe, setTimeframe] = useState("session");
+  const [sorting, setSorting] = useState("latest");
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeAlertId, setActiveAlertId] = useState("");
+  const [activeDetail, setActiveDetail] = useState(null);
+  const [activeContext, setActiveContext] = useState(null);
+  const [actionError, setActionError] = useState("");
+  const [busyAlertId, setBusyAlertId] = useState("");
+  const [expandedEvidence, setExpandedEvidence] = useState({});
+  const [searchTermModule2, setSearchTermModule2] = useState("");
+  const [pageFeed, setPageFeed] = useState(1);
+  const [pageStats, setPageStats] = useState(1);
+
+  // Inject style block on mount and clean up on unmount to prevent browser style-reflow flashes
+  useEffect(() => {
+    const styleId = "core-alert-center-page-styles";
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      styleEl.textContent = CORE_STYLES;
+      document.head.appendChild(styleEl);
+    }
+    return () => {
+      const el = document.getElementById(styleId);
+      if (el) {
+        el.remove();
+      }
+    };
+  }, []);
+
+  const { loading, error, payload, summary, symbolStats } = useAlertCenterData({
+    env,
+    lane,
+    symbol: appliedSymbol,
+    sessionDate,
+    timeframe,
+    refreshToken
+  });
+
+  const rawAlerts = payload?.results ?? [];
+  const alerts = Array.isArray(rawAlerts) ? rawAlerts : [];
+
+  // Reset pagination on filter or search updates
+  useEffect(() => {
+    setPageFeed(1);
+  }, [lane, appliedSymbol, sessionDate, timeframe, sorting]);
+
+  useEffect(() => {
+    setPageStats(1);
+  }, [searchTermModule2, symbolStats?.pagination?.total_symbols, lane, appliedSymbol, sessionDate, timeframe]);
+
+  // Polling mechanism
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      setRefreshToken((r) => r + 1);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
+
+  // Handle spin anim on manual refresh
+  const triggerManualRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    setRefreshToken((r) => r + 1);
+    setTimeout(() => setIsRefreshing(false), 800);
+  }, []);
+
+  // Sort alerts dynamically
+  const sortedAlerts = [...alerts].sort((a, b) => {
+    if (sorting === "largestValue") {
+      const valA = Number(a?.value || 0);
+      const valB = Number(b?.value || 0);
+      return valB - valA;
+    }
+    // Default: triggered_at descending
+    const timeA = a?.triggered_at ? new Date(a.triggered_at).getTime() : 0;
+    const timeB = b?.triggered_at ? new Date(b.triggered_at).getTime() : 0;
+    return timeB - timeA;
+  });
+
+  // Module 2: Symbol statistics from backend truth endpoint
+  const aggregatedSymbols = (Array.isArray(symbolStats?.symbols) ? symbolStats.symbols : []).map((item) => {
+    const mapped = {
+      symbol: normalizeSymbol(item?.symbol || "UNKNOWN"),
+      count: Number(item?.count || 0),
+      buyCount: Number(item?.buy_count || 0),
+      sellCount: Number(item?.sell_count || 0),
+      neutralCount: Number(item?.neutral_count || 0),
+      totalValue: Number(item?.total_value || 0),
+      severities: {
+        critical: Number(item?.by_severity?.critical || 0),
+        high: Number(item?.by_severity?.high || 0),
+        medium: Number(item?.by_severity?.medium || 0),
+        low: Number(item?.by_severity?.low || 0),
+      },
+      latestTime: item?.latest_triggered_at ? new Date(item.latest_triggered_at).getTime() : 0,
+      familiesList: "",
+    };
+
+    let freq = "Thấp";
+    if (mapped.count >= 8) freq = "Bùng nổ";
+    else if (mapped.count >= 4) freq = "Cao";
+    else if (mapped.count >= 2) freq = "Trung bình";
+
+    return {
+      ...mapped,
+      freq,
+    };
+  }).filter((item) => {
+    if (!searchTermModule2) return true;
+    return item.symbol.includes(searchTermModule2.trim().toUpperCase());
+  });
+
+  function handleApply(event) {
+    event.preventDefault();
+    setAppliedSymbol(normalizeSymbol(symbolDraft));
+  }
+
+  async function handleLoadDetail(alert) {
+    if (!alert?.alert_id || !alert?.symbol) return;
+    setActionError("");
+    setBusyAlertId(alert.alert_id);
+    try {
+      const adapter = coreApiAdapter;
+      const [detail, context] = await Promise.all([
+        adapter.getAlertCenterEventDetail(alert.alert_id),
+        adapter.getAlertCenterSymbolContext(alert.symbol),
+      ]);
+      setActiveAlertId(alert.alert_id);
+      setActiveDetail(detail || null);
+      setActiveContext(context || null);
+    } catch (actionErr) {
+      setActionError(actionErr?.message || "Không thể tải chi tiết alert.");
+    } finally {
+      setBusyAlertId("");
+    }
+  }
+
+  async function handleAcknowledge(alert) {
+    if (!alert?.alert_id) return;
+    setActionError("");
+    setBusyAlertId(alert.alert_id);
+    try {
+      const adapter = coreApiAdapter;
+      await adapter.acknowledgeAlertCenterEvent(alert.alert_id);
+      setRefreshToken((value) => value + 1);
+    } catch (actionErr) {
+      setActionError(actionErr?.message || "Không thể xác nhận alert.");
+    } finally {
+      setBusyAlertId("");
+    }
+  }
+
+  async function handleMuteSymbol(alert) {
+    if (!alert?.symbol) return;
+    setActionError("");
+    setBusyAlertId(alert.alert_id || alert.symbol);
+    try {
+      const adapter = coreApiAdapter;
+      await adapter.muteAlertCenterPreference({
+        symbol: alert.symbol,
+        alert_family: alert.alert_family || alert.alert_type || "",
+        mute_minutes: 30,
+      });
+      setRefreshToken((value) => value + 1);
+    } catch (actionErr) {
+      setActionError(actionErr?.message || "Không thể tắt tiếng cảnh báo mã.");
+    } finally {
+      setBusyAlertId("");
+    }
+  }
+
+  const toggleEvidence = (alertId) => {
+    setExpandedEvidence((prev) => ({
+      ...prev,
+      [alertId]: !prev[alertId],
+    }));
+  };
+
+  const highSeverityCount = Number(summary?.by_severity?.high || 0) + Number(summary?.by_severity?.critical || 0);
+  const aiSuggestCount = alerts.filter((alert) => alert?.alert_family === "ai_suggest" || alert?.alert_type === "ai_suggest").length;
+
+  const ITEMS_PER_PAGE_FEED = 5;
+  const ITEMS_PER_PAGE_STATS = 8;
+
+  const totalPagesFeed = Math.ceil(sortedAlerts.length / ITEMS_PER_PAGE_FEED) || 1;
+  const activePageFeed = Math.min(pageFeed, totalPagesFeed);
+  const startIndexFeed = (activePageFeed - 1) * ITEMS_PER_PAGE_FEED;
+  const paginatedAlerts = sortedAlerts.slice(startIndexFeed, startIndexFeed + ITEMS_PER_PAGE_FEED);
+
+  const totalPagesStats = Math.ceil(aggregatedSymbols.length / ITEMS_PER_PAGE_STATS) || 1;
+  const activePageStats = Math.min(pageStats, totalPagesStats);
+  const startIndexStats = (activePageStats - 1) * ITEMS_PER_PAGE_STATS;
+  const paginatedSymbols = aggregatedSymbols.slice(startIndexStats, startIndexStats + ITEMS_PER_PAGE_STATS);
+
+  function renderPagination(currentPage, totalPages, setCurrentPage) {
+    if (totalPages <= 1) return null;
+    return e("div", { className: "core-pagination-controls" }, [
+      e("button", {
+        key: "first",
+        type: "button",
+        className: "core-pagination-btn",
+        disabled: currentPage === 1,
+        onClick: () => setCurrentPage(1),
+        title: "Đầu"
+      }, "«"),
+      e("button", {
+        key: "prev",
+        type: "button",
+        className: "core-pagination-btn",
+        disabled: currentPage === 1,
+        onClick: () => setCurrentPage(Math.max(1, currentPage - 1)),
+        title: "Trước"
+      }, "‹"),
+      e("span", {
+        key: "info",
+        className: "core-pagination-info"
+      }, `Trang ${currentPage} / ${totalPages}`),
+      e("button", {
+        key: "next",
+        type: "button",
+        className: "core-pagination-btn",
+        disabled: currentPage === totalPages,
+        onClick: () => setCurrentPage(Math.min(totalPages, currentPage + 1)),
+        title: "Sau"
+      }, "›"),
+      e("button", {
+        key: "last",
+        type: "button",
+        className: "core-pagination-btn",
+        disabled: currentPage === totalPages,
+        onClick: () => setCurrentPage(totalPages),
+        title: "Cuối"
+      }, "»")
+    ]);
+  }
+
+  return e("div", { className: `core-alert-center-page ${className}`.trim() }, [
+    // ── Header Section ────────────────────────────────────────────────────────
+    e("header", { key: "header", className: "core-alert-center-header" }, [
+      e("div", { key: "title-container" }, [
+        e("h1", { key: "title" }, "Whale Alerts Workspace"),
+        e(
+          "p",
+          { key: "subtitle", className: "core-alert-center-subtitle" },
+          "Đại bản doanh whale, dark-flow & Price Shock theo chuẩn OpenAPI."
+        ),
+      ]),
+      e("div", { key: "live-indicator-container", style: { display: "flex", alignItems: "center", gap: "15px" } }, [
+        // Blinking LIVE badge with status trigger
+        e(
+          "div",
+          {
+            key: "live-badge",
+            className: `core-alert-live-badge ${!autoRefresh ? "is-paused" : ""}`.trim(),
+            style: { cursor: "pointer" },
+            onClick: () => setAutoRefresh(!autoRefresh),
+            title: autoRefresh ? "Bấm để dừng tự động cập nhật" : "Bấm để bật tự động cập nhật"
+          },
+          [
+            e("div", { key: "dot", className: "core-alert-live-dot" }),
+            autoRefresh ? "LIVE (5s)" : "PAUSED",
+          ]
+        ),
+        // Filter Form
+        e("form", { key: "filters", className: "core-alert-center-filter-bar", onSubmit: handleApply }, [
+          e("label", { key: "symbol-label", className: "core-alert-center-filter-field" }, [
+            e("span", { key: "symbol-text" }, "Lọc Mã"),
+            e("input", {
+              key: "symbol-input",
+              type: "text",
+              value: symbolDraft,
+              maxLength: 10,
+              placeholder: "Ví dụ: HPG",
+              onChange: (event) => setSymbolDraft(normalizeSymbol(event.target.value)),
+            }),
+          ]),
+          e("button", { key: "apply", type: "submit" }, "Lọc feed"),
+        ]),
+      ]),
+    ]),
+
+    // ── Combined Control Bar (Lane Switcher & Timeframe Strip) ────────────────
+    e("section", { key: "combined-controls", className: "core-alert-combined-controls" }, [
+      e("div", { key: "lane-block", className: "core-alert-lane-block" }, [
+        ...LANE_OPTIONS.map((option) =>
+          e(
+            "button",
+            {
+              key: option.value,
+              type: "button",
+              className: `core-alert-center-lane-button ${lane === option.value ? "is-active" : ""}`.trim(),
+              onClick: () => {
+                setLane(option.value);
+                setActiveDetail(null);
+              },
+            },
+            option.label
+          )
+        ),
+      ]),
+      e("div", { key: "time-strip", className: "core-alert-time-strip" }, [
+        e("span", { key: "lbl", className: "core-alert-time-label" }, "Phạm Vi Thời Gian:"),
+        ...WINDOW_OPTIONS.map((w) =>
+          e(
+            "button",
+            {
+              key: w.value,
+              type: "button",
+              className: `core-alert-time-btn ${timeframe === w.value ? "is-active" : ""}`.trim(),
+              onClick: () => setTimeframe(w.value),
+            },
+            w.label
+          )
+        ),
+      ]),
+    ]),
+
+    // ── Summary Metrics Strip ────────────────────────────────────────────────
+    e(SummaryMetrics, {
+      key: "summary-metrics",
+      summary,
+      alertsCount: alerts.length,
+      highSeverityCount,
+      aiSuggestCount,
+      lane,
+      appliedSymbol,
+    }),
+
+    loading && !isRefreshing ? e("p", { key: "loading", className: "core-loading" }, "Đang tải dữ liệu cảnh báo từ Core API...") : null,
+    error ? e("p", { key: "error", className: "core-error" }, error) : null,
+    actionError ? e("p", { key: "action-error", className: "core-error" }, actionError) : null,
+
+    // ── MAIN DUAL-COLUMN CONTAINER ──────────────────────────────────────────
+    !loading || isRefreshing ? e("div", { key: "dashboard-container", className: "core-alert-dashboard-container" }, [
+
+      // ════ COLUMN 1: LIVE ALERTS FEED (Module 1) ════
+      e("div", { key: "feed-column", className: "core-alert-feed-column" }, [
+        e("div", { className: "core-dashboard-panel" }, [
+          e("h2", { className: "core-section-title" }, [
+            "BẢNG TIN THỜI GIAN THỰC",
+            e("span", { key: "sub", style: { fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: "normal" } }, `Hiện thị ${alerts.length} sự kiện gần nhất`)
+          ]),
+
+          // Control Bar inside feed
+          e("div", { className: "core-feed-control-bar" }, [
+            e("div", { className: "core-feed-control-left" }, [
+              ...SORT_OPTIONS.map((s) =>
+                e(
+                  "button",
+                  {
+                    key: s.value,
+                    type: "button",
+                    className: `core-feed-sort-btn ${sorting === s.value ? "is-active" : ""}`.trim(),
+                    onClick: () => setSorting(s.value),
+                  },
+                  s.label
+                )
+              ),
+            ]),
+            e("div", { className: "core-feed-refresh-group" }, [
+              e("label", { className: "core-feed-auto-toggle" }, [
+                e("input", {
+                  type: "checkbox",
+                  checked: autoRefresh,
+                  onChange: (event) => setAutoRefresh(event.target.checked),
+                }),
+                "Tự động làm mới",
+              ]),
+              e(
+                "button",
+                {
+                  type: "button",
+                  className: "core-feed-refresh-btn",
+                  onClick: triggerManualRefresh,
+                },
+                [
+                  e("svg", {
+                    key: "refresh-svg",
+                    className: isRefreshing ? "is-spinning" : "",
+                    width: "12",
+                    height: "12",
+                    viewBox: "0 0 24 24",
+                    fill: "none",
+                    stroke: "currentColor",
+                    strokeWidth: "3",
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round",
+                    style: { marginRight: "2px" }
+                  }, [
+                    e("path", { key: "p1", d: "M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" })
+                  ]),
+                  " Làm mới",
+                ]
+              ),
+            ]),
+          ]),
+
+          // Alerts Scrollable List Wrapper
+          e("div", { className: "core-scrollable-container" }, [
+            paginatedAlerts.length === 0
+              ? e("p", { className: "core-empty" }, "Chưa có sự kiện cảnh báo nào phù hợp với bộ lọc hiện tại.")
+              : e("div", { className: "core-alert-center-list" },
+                  paginatedAlerts.map((alert) =>
+                    e(AlertCard, {
+                      key: alert.alert_id,
+                      alert,
+                      lane,
+                      busyAlertId,
+                      isEvidenceExpanded: !!expandedEvidence[alert.alert_id],
+                      toggleEvidence,
+                      handleLoadDetail,
+                      handleAcknowledge,
+                      handleMuteSymbol,
+                      formatAlertValue,
+                      formatAlertTimestamp,
+                    })
+                  )
+                )
+          ]),
+          renderPagination(activePageFeed, totalPagesFeed, setPageFeed)
+        ])
+      ]),
+
+      // ════ COLUMN 2: STATISTICS BY SYMBOL (Module 2) ════
+      e("div", { key: "stats-column", className: "core-alert-stats-column" }, [
+        e(SymbolStatsTable, {
+          paginatedSymbols,
+          searchTermModule2,
+          setSearchTermModule2,
+          formatAlertValue,
+        }),
+        renderPagination(activePageStats, totalPagesStats, setPageStats)
+      ])
+    ]) : null,
+
+    // ── Bottom forensic drawer inspector panel ────────────────────────────────
+    e(DetailDrawer, {
+      key: "detail-drawer",
+      activeAlertId,
+      activeDetail,
+      activeContext,
+      appliedSymbol,
+      onClose: () => setActiveDetail(null),
+    })
+  ]);
+}

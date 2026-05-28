@@ -1,1 +1,134 @@
-from .dataops_base import *`n`nclass DataOpsQueueTiersResponseSerializer(serializers.Serializer):`n    tiers = serializers.ListField(child=serializers.JSONField())`n    updated_at = serializers.DateTimeField()`n`nclass DataOpsCoverageResponseSerializer(serializers.Serializer):`n    datasets = serializers.ListField(child=serializers.JSONField())`n    top_gaps = serializers.ListField(child=serializers.JSONField())`n    updated_at = serializers.DateTimeField()`n`nclass DataOpsObservabilityResponseSerializer(serializers.Serializer):`n    backlog = serializers.JSONField()`n    fail_rates = serializers.JSONField()`n    parity_gates = serializers.JSONField()`n    parity_history = serializers.JSONField()`n    retention_health = serializers.JSONField()`n    starvation = serializers.ListField(child=serializers.JSONField())`n    updated_at = serializers.DateTimeField()`n`n@extend_schema(`n    summary='Lấy snapshot queue tiers DataOps market-data',`n    description=(`n        'Trả về snapshot hiện tại của queue tiers trong DataOps market-data, '`n        'bao gồm cadence runtime hiệu lực, batch size, số symbol và ví dụ symbol cho từng tier. '`n        'Đây là canonical operator read path cho runtime queue monitoring.'`n    ),`n    responses={`n        200: DataOpsQueueTiersResponseSerializer,`n        401: OpenApiTypes.OBJECT,`n    },`n    examples=[`n        OpenApiExample(`n            'Queue tiers snapshot',`n            value={`n                'tiers': [`n                    {`n                        'tier': 'hot_user_demand',`n                        'symbol_count': 12,`n                        'poll_interval_seconds': 30,`n                        'max_batch_size': 50,`n                        'examples': ['FPT', 'HPG', 'SSI'],`n                    }`n                ],`n                'updated_at': '2026-05-15T11:00:00Z',`n            },`n        )`n    ],`n)`nclass DataOpsQueueTiersView(SOCBaseView):`n    """GET canonical DataOps queue tiers snapshot."""`n`n    def get(self, request):`n        tiers, updated_at = build_market_data_queue_tier_snapshot(example_limit=5)`n        return Response({`n            'tiers': tiers,`n            'updated_at': updated_at.isoformat(),`n        })`n`n@extend_schema(`n    summary='Lấy observability summary DataOps market-data',`n    description=(`n        'Trả về observability summary cho DataOps market-data gồm backlog theo dataset/tier, '`n        'fail-rate cửa sổ 1h/24h và starvation indicators theo queue tier. '`n        'Dùng cho operator monitor dashboard trong SOC Config UI.'`n    ),`n    responses={`n        200: DataOpsObservabilityResponseSerializer,`n        401: OpenApiTypes.OBJECT,`n    },`n)`nclass DataOpsObservabilityView(SOCBaseView):`n    """GET canonical DataOps observability summary."""`n`n    def get(self, request):`n        return Response(build_market_data_observability_summary())`n`n`n@extend_schema(`n    summary='Lấy coverage summary DataOps market-data',`n    description=(`n        'Trả về summary coverage theo dataset cùng top gaps ưu tiên cho global market-data matrix. '`n        'Dùng cho operator coverage monitoring và action planning.'`n    ),`n    parameters=[`n        OpenApiParameter(`n            name='top_gap_limit',`n            type=OpenApiTypes.INT,`n            location=OpenApiParameter.QUERY,`n            description='Số gap ưu tiên cao nhất cần trả về. Mặc định 10.',`n            required=False,`n        ),`n    ],`n    responses={`n        200: DataOpsCoverageResponseSerializer,`n        401: OpenApiTypes.OBJECT,`n    },`n    examples=[`n        OpenApiExample(`n            'Coverage summary',`n            value={`n                'datasets': [`n                    {`n                        'dataset': 'daily_prices',`n                        'fresh': 120,`n                        'warm': 10,`n                        'stale': 4,`n                        'missing': 8,`n                        'error': 0,`n                        'unknown': 0,`n                    }`n                ],`n                'top_gaps': [`n                    {`n                        'symbol': 'AAA',`n                        'dataset': 'daily_prices',`n                        'freshness_state': 'missing',`n                        'next_recommended_action': 'hydrate_daily_prices',`n                    }`n                ],`n                'updated_at': '2026-05-15T11:02:00Z',`n            },`n        )`n    ],`n)`nclass DataOpsCoverageView(SOCBaseView):`n    """GET canonical DataOps coverage summary."""`n`n    def get(self, request):`n        try:`n            top_gap_limit = max(int(request.query_params.get('top_gap_limit', 10)), 0)`n        except (TypeError, ValueError):`n            top_gap_limit = 10`n        return Response(build_global_coverage_summary(top_gap_limit=top_gap_limit))`n
+from .dataops_base import *
+
+class DataOpsQueueTiersResponseSerializer(serializers.Serializer):
+    tiers = serializers.ListField(child=serializers.JSONField())
+    updated_at = serializers.DateTimeField()
+
+class DataOpsCoverageResponseSerializer(serializers.Serializer):
+    datasets = serializers.ListField(child=serializers.JSONField())
+    top_gaps = serializers.ListField(child=serializers.JSONField())
+    updated_at = serializers.DateTimeField()
+
+class DataOpsObservabilityResponseSerializer(serializers.Serializer):
+    backlog = serializers.JSONField()
+    fail_rates = serializers.JSONField()
+    parity_gates = serializers.JSONField()
+    parity_history = serializers.JSONField()
+    retention_health = serializers.JSONField()
+    starvation = serializers.ListField(child=serializers.JSONField())
+    updated_at = serializers.DateTimeField()
+
+@extend_schema(
+    summary='Lấy snapshot queue tiers DataOps market-data',
+    description=(
+        'Trả về snapshot hiện tại của queue tiers trong DataOps market-data, '
+        'bao gồm cadence runtime hiệu lực, batch size, số symbol và ví dụ symbol cho từng tier. '
+        'Đây là canonical operator read path cho runtime queue monitoring.'
+    ),
+    responses={
+        200: DataOpsQueueTiersResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Queue tiers snapshot',
+            value={
+                'tiers': [
+                    {
+                        'tier': 'hot_user_demand',
+                        'symbol_count': 12,
+                        'poll_interval_seconds': 30,
+                        'max_batch_size': 50,
+                        'examples': ['FPT', 'HPG', 'SSI'],
+                    }
+                ],
+                'updated_at': '2026-05-15T11:00:00Z',
+            },
+        )
+    ],
+)
+class DataOpsQueueTiersView(SOCBaseView):
+    """GET canonical DataOps queue tiers snapshot."""
+
+    def get(self, request):
+        tiers, updated_at = build_market_data_queue_tier_snapshot(example_limit=5)
+        return Response({
+            'tiers': tiers,
+            'updated_at': updated_at.isoformat(),
+        })
+
+@extend_schema(
+    summary='Lấy observability summary DataOps market-data',
+    description=(
+        'Trả về observability summary cho DataOps market-data gồm backlog theo dataset/tier, '
+        'fail-rate cửa sổ 1h/24h và starvation indicators theo queue tier. '
+        'Dùng cho operator monitor dashboard trong SOC Config UI.'
+    ),
+    responses={
+        200: DataOpsObservabilityResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+    },
+)
+class DataOpsObservabilityView(SOCBaseView):
+    """GET canonical DataOps observability summary."""
+
+    def get(self, request):
+        return Response(build_market_data_observability_summary())
+
+
+@extend_schema(
+    summary='Lấy coverage summary DataOps market-data',
+    description=(
+        'Trả về summary coverage theo dataset cùng top gaps ưu tiên cho global market-data matrix. '
+        'Dùng cho operator coverage monitoring và action planning.'
+    ),
+    parameters=[
+        OpenApiParameter(
+            name='top_gap_limit',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Số gap ưu tiên cao nhất cần trả về. Mặc định 10.',
+            required=False,
+        ),
+    ],
+    responses={
+        200: DataOpsCoverageResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Coverage summary',
+            value={
+                'datasets': [
+                    {
+                        'dataset': 'daily_prices',
+                        'fresh': 120,
+                        'warm': 10,
+                        'stale': 4,
+                        'missing': 8,
+                        'error': 0,
+                        'unknown': 0,
+                    }
+                ],
+                'top_gaps': [
+                    {
+                        'symbol': 'AAA',
+                        'dataset': 'daily_prices',
+                        'freshness_state': 'missing',
+                        'next_recommended_action': 'hydrate_daily_prices',
+                    }
+                ],
+                'updated_at': '2026-05-15T11:02:00Z',
+            },
+        )
+    ],
+)
+class DataOpsCoverageView(SOCBaseView):
+    """GET canonical DataOps coverage summary."""
+
+    def get(self, request):
+        try:
+            top_gap_limit = max(int(request.query_params.get('top_gap_limit', 10)), 0)
+        except (TypeError, ValueError):
+            top_gap_limit = 10
+        return Response(build_global_coverage_summary(top_gap_limit=top_gap_limit))

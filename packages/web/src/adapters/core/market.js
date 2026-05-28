@@ -159,7 +159,8 @@ export function createMarketClient({ coreGet, corePost }) {
 
     /**
      * Get WhaleAlertCanonical feed for a symbol.
-     * Response includes cursor-pagination `next`/`previous` links.
+     * Response includes cursor-pagination 
+ext`/`previous` links.
      * @param {string} symbol
      * @param {object} [params] - Additional filters: session_date, cursor
      * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
@@ -405,4 +406,4 @@ export function createMarketClient({ coreGet, corePost }) {
       return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/financials/`);
     },
   };
-}`n
+}

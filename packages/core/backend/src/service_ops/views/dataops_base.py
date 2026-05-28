@@ -1,1 +1,143 @@
-"""SOC Data Ops views for the global market-data SSOT."""`n`nfrom datetime import date`n`nfrom celery import current_app`nfrom drf_spectacular.openapi import OpenApiParameter, OpenApiTypes`nfrom drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view`nfrom rest_framework import serializers, status`nfrom rest_framework.response import Response`nfrom django.utils import timezone`n`nfrom market_data.global_symbol_coverage import build_global_coverage_summary, build_global_planner_preview`nfrom market_data.global_symbol_registry import (`n    build_global_symbol_registry_detail,`n    build_global_symbol_registry_reconcile_preview,`n    build_global_symbol_registry_summary,`n    normalize_symbol,`n)`nfrom market_data.global_symbol_planner import create_global_planner_run`nfrom market_data.models import GlobalSymbolRegistry`n`nfrom ..domain_configs import MarketDataRuntimeConfig`nfrom ..dataops_market_data import (`n    DATAOPS_MARKET_DATA_DOMAIN,`n    build_market_data_observability_summary,`n    build_market_data_queue_tier_snapshot,`n    get_market_data_runtime_config,`n    resolve_market_data_queue_tier,`n)`nfrom ..ownership import build_ownership_matrix_from_db`nfrom ..models import ConfigChangeAudit, ServiceRunLog`nfrom ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS`nfrom .base import SOCBaseView`nfrom .mixins import ConfigApplyMixin`n`n`nRUN_SUMMARY_KEYS = (`n    'planned_items',`n    'skipped_items',`n    'inserted',`n    'updated',`n    'skipped_existing',`n    'failed',`n    'repaired_conflicts',`n)`n`nclass DataOpsOwnershipSerializer(serializers.Serializer):`n    domain = serializers.CharField()`n    owner_team = serializers.CharField(required=False, allow_blank=True, allow_null=True)`n    write_mode = serializers.CharField(required=False, allow_blank=True, allow_null=True)`n    write_surface = serializers.CharField(required=False, allow_blank=True, allow_null=True)`n    can_apply = serializers.BooleanField()`n    locked_fields = serializers.ListField(child=serializers.CharField(), required=False)`n    compatibility_domains = serializers.ListField(child=serializers.CharField(), required=False)`n    deprecation_notes = serializers.ListField(child=serializers.CharField(), required=False)`n    write_block_reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)`n`ndef _build_market_data_ownership_payload() -> dict:`n    matrix = build_ownership_matrix_from_db()`n    payload = matrix.to_response_dict(DATAOPS_MARKET_DATA_DOMAIN)`n    payload['write_block_reason'] = matrix.get_write_block_reason(DATAOPS_MARKET_DATA_DOMAIN)`n    return payload`n`n`ndef _build_market_data_write_denied_response(view: SOCBaseView, request) -> Response:`n    ownership = _build_market_data_ownership_payload()`n    reason = ownership.get('write_block_reason') or (`n        'DataOps market-data domain currently does not allow write actions from SOC.'`n    )`n    return Response({`n        'detail': reason,`n        'code': 'OWNERSHIP_WRITE_DENIED',`n        'timestamp': date.today().isoformat(),`n        'request_id': view.get_request_id(request),`n        'write_block_reason': reason,`n        'ownership': ownership,`n    }, status=status.HTTP_403_FORBIDDEN)`n`n`ndef _get_request_symbols(request) -> list[str] | None:`n    symbols = request.data.get('symbols')`n    return list(symbols) if isinstance(symbols, list) else None`n`n`ndef _get_request_datasets(request) -> list[str] | None:`n    datasets = request.data.get('datasets')`n    return list(datasets) if isinstance(datasets, list) else None`n`n`ndef _get_request_force_refresh(request) -> bool:`n    return bool(request.data.get('force_refresh', False))`n`n`ndef _get_reference_trade_date(request) -> date | None:`n    raw_value = request.data.get('reference_trade_date')`n    if not raw_value:`n        return None`n    return date.fromisoformat(str(raw_value))`n`n`ndef _format_market_data_run_id(run_log_id: int) -> str:`n    return f'md-run-{run_log_id}'`n`n`ndef _parse_market_data_run_id(run_id: str) -> int:`n    normalized = str(run_id or '').strip().lower()`n    if not normalized.startswith('md-run-'):`n        raise ValueError(f'Run ID khong hop le: {run_id}')`n    raw_id = normalized.replace('md-run-', '', 1)`n    try:`n        return int(raw_id)`n    except (TypeError, ValueError) as exc:`n        raise ValueError(f'Run ID khong hop le: {run_id}') from exc`n`n`ndef _build_market_data_run_summary(run_log: ServiceRunLog) -> dict:`n    summary = {key: 0 for key in RUN_SUMMARY_KEYS}`n    input_summary = dict(run_log.input_summary or {})`n    output_summary = dict(run_log.output_summary or {})`n    for source in (input_summary.get('plan_summary') or {}, output_summary.get('summary') or {}):`n        if not isinstance(source, dict):`n            continue`n        for key in RUN_SUMMARY_KEYS:`n            value = source.get(key)`n            if value is None:`n                continue`n            summary[key] = value`n    return summary`n`n`ndef _serialize_market_data_run_log(run_log: ServiceRunLog) -> dict:`n    input_summary = dict(run_log.input_summary or {})`n    return {`n        'run_id': _format_market_data_run_id(run_log.id),`n        'service_run_log_id': run_log.id,`n        'status': run_log.status,`n        'mode': input_summary.get('mode') or 'missing_only',`n        'reason': input_summary.get('reason') or 'operator_manual_run',`n        'execution_mode': input_summary.get('execution_mode') or 'async',`n        'started_at': run_log.started_at.isoformat() if run_log.started_at else None,`n        'finished_at': run_log.finished_at.isoformat() if run_log.finished_at else None,`n        'summary': _build_market_data_run_summary(run_log),`n    }`n
+"""SOC Data Ops views for the global market-data SSOT."""
+
+from datetime import date
+
+from celery import current_app
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
+from rest_framework import serializers, status
+from rest_framework.response import Response
+from django.utils import timezone
+
+from market_data.global_symbol_coverage import build_global_coverage_summary, build_global_planner_preview
+from market_data.global_symbol_registry import (
+    build_global_symbol_registry_detail,
+    build_global_symbol_registry_reconcile_preview,
+    build_global_symbol_registry_summary,
+    normalize_symbol,
+)
+from market_data.global_symbol_planner import create_global_planner_run
+from market_data.models import GlobalSymbolRegistry
+
+from ..domain_configs import MarketDataRuntimeConfig
+from ..dataops_market_data import (
+    DATAOPS_MARKET_DATA_DOMAIN,
+    build_market_data_observability_summary,
+    build_market_data_queue_tier_snapshot,
+    get_market_data_runtime_config,
+    resolve_market_data_queue_tier,
+)
+from ..ownership import build_ownership_matrix_from_db
+from ..models import ConfigChangeAudit, ServiceRunLog
+from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS
+from .base import SOCBaseView
+from .mixins import ConfigApplyMixin
+
+
+RUN_SUMMARY_KEYS = (
+    'planned_items',
+    'skipped_items',
+    'inserted',
+    'updated',
+    'skipped_existing',
+    'failed',
+    'repaired_conflicts',
+)
+
+class DataOpsOwnershipSerializer(serializers.Serializer):
+    domain = serializers.CharField()
+    owner_team = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    write_mode = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    write_surface = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    can_apply = serializers.BooleanField()
+    locked_fields = serializers.ListField(child=serializers.CharField(), required=False)
+    compatibility_domains = serializers.ListField(child=serializers.CharField(), required=False)
+    deprecation_notes = serializers.ListField(child=serializers.CharField(), required=False)
+    write_block_reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+def _build_market_data_ownership_payload() -> dict:
+    matrix = build_ownership_matrix_from_db()
+    payload = matrix.to_response_dict(DATAOPS_MARKET_DATA_DOMAIN)
+    payload['write_block_reason'] = matrix.get_write_block_reason(DATAOPS_MARKET_DATA_DOMAIN)
+    return payload
+
+
+def _build_market_data_write_denied_response(view: SOCBaseView, request) -> Response:
+    ownership = _build_market_data_ownership_payload()
+    reason = ownership.get('write_block_reason') or (
+        'DataOps market-data domain currently does not allow write actions from SOC.'
+    )
+    return Response({
+        'detail': reason,
+        'code': 'OWNERSHIP_WRITE_DENIED',
+        'timestamp': date.today().isoformat(),
+        'request_id': view.get_request_id(request),
+        'write_block_reason': reason,
+        'ownership': ownership,
+    }, status=status.HTTP_403_FORBIDDEN)
+
+
+def _get_request_symbols(request) -> list[str] | None:
+    symbols = request.data.get('symbols')
+    return list(symbols) if isinstance(symbols, list) else None
+
+
+def _get_request_datasets(request) -> list[str] | None:
+    datasets = request.data.get('datasets')
+    return list(datasets) if isinstance(datasets, list) else None
+
+
+def _get_request_force_refresh(request) -> bool:
+    return bool(request.data.get('force_refresh', False))
+
+
+def _get_reference_trade_date(request) -> date | None:
+    raw_value = request.data.get('reference_trade_date')
+    if not raw_value:
+        return None
+    return date.fromisoformat(str(raw_value))
+
+
+def _format_market_data_run_id(run_log_id: int) -> str:
+    return f'md-run-{run_log_id}'
+
+
+def _parse_market_data_run_id(run_id: str) -> int:
+    normalized = str(run_id or '').strip().lower()
+    if not normalized.startswith('md-run-'):
+        raise ValueError(f'Run ID khong hop le: {run_id}')
+    raw_id = normalized.replace('md-run-', '', 1)
+    try:
+        return int(raw_id)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f'Run ID khong hop le: {run_id}') from exc
+
+
+def _build_market_data_run_summary(run_log: ServiceRunLog) -> dict:
+    summary = {key: 0 for key in RUN_SUMMARY_KEYS}
+    input_summary = dict(run_log.input_summary or {})
+    output_summary = dict(run_log.output_summary or {})
+    for source in (input_summary.get('plan_summary') or {}, output_summary.get('summary') or {}):
+        if not isinstance(source, dict):
+            continue
+        for key in RUN_SUMMARY_KEYS:
+            value = source.get(key)
+            if value is None:
+                continue
+            summary[key] = value
+    return summary
+
+
+def _serialize_market_data_run_log(run_log: ServiceRunLog) -> dict:
+    input_summary = dict(run_log.input_summary or {})
+    return {
+        'run_id': _format_market_data_run_id(run_log.id),
+        'service_run_log_id': run_log.id,
+        'status': run_log.status,
+        'mode': input_summary.get('mode') or 'missing_only',
+        'reason': input_summary.get('reason') or 'operator_manual_run',
+        'execution_mode': input_summary.get('execution_mode') or 'async',
+        'started_at': run_log.started_at.isoformat() if run_log.started_at else None,
+        'finished_at': run_log.finished_at.isoformat() if run_log.finished_at else None,
+        'summary': _build_market_data_run_summary(run_log),
+    }

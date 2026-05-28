@@ -115,6 +115,10 @@ export const pageRegistry = Object.freeze([
     import("./auth/AuthVerifyEmailPage.js").then((module) => module.AuthVerifyEmailPage)),
   makePageEntry("auth-reset-password", "core", () =>
     import("./auth/AuthResetPasswordPage.js").then((module) => module.AuthResetPasswordPage)),
+  makePageEntry("commercial-billing-center", "core", () =>
+    import("./commercial/BillingCenterPage.js").then((module) => module.BillingCenterPage)),
+  makePageEntry("commercial-payment-return", "core", () =>
+    import("./commercial/PaymentReturnPage.js").then((module) => module.PaymentReturnPage)),
 ]);
 
 export function getPageRegistryRouteIds() {

@@ -170,4 +170,4 @@ class OutboundNotificationService:
                 url=f"/stocks/{alert.symbol}"
             )
 
-        return results`n
+        return results

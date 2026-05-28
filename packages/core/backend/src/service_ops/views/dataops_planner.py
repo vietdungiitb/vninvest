@@ -1,1 +1,401 @@
-from .dataops_base import *`n`nclass DataOpsPlannerPreviewRequestSerializer(serializers.Serializer):`n    symbols = serializers.ListField(child=serializers.CharField(), required=False)`n    datasets = serializers.ListField(child=serializers.CharField(), required=False)`n    mode = serializers.ChoiceField(choices=['missing_only', 'strict_fresh'], default='missing_only', required=False)`n    force_refresh = serializers.BooleanField(default=False, required=False)`n    reason = serializers.CharField(required=False, allow_blank=True)`n    reference_trade_date = serializers.DateField(required=False)`n`nclass DataOpsPlannerRunRequestSerializer(DataOpsPlannerPreviewRequestSerializer):`n    execution_mode = serializers.ChoiceField(choices=['async', 'sync'], default='async', required=False)`n`nclass DataOpsRunLogsResponseSerializer(serializers.Serializer):`n    count = serializers.IntegerField()`n    next = serializers.CharField(required=False, allow_null=True)`n    previous = serializers.CharField(required=False, allow_null=True)`n    results = serializers.ListField(child=serializers.JSONField())`n`nclass DataOpsPlannerPreviewResponseSerializer(serializers.Serializer):`n    summary = serializers.JSONField()`n    items = serializers.ListField(child=serializers.JSONField())`n    skipped = serializers.ListField(child=serializers.JSONField())`n    ownership = DataOpsOwnershipSerializer()`n`nclass DataOpsPlannerRunResponseSerializer(serializers.Serializer):`n    queued = serializers.BooleanField()`n    status = serializers.CharField()`n    run_id = serializers.CharField()`n    service_run_log_id = serializers.IntegerField()`n    celery_task_id = serializers.CharField(required=False, allow_blank=True)`n    ownership = DataOpsOwnershipSerializer()`n`nclass DataOpsPlannerAbortResponseSerializer(serializers.Serializer):`n    cancelled = serializers.BooleanField()`n    status = serializers.CharField()`n    run_id = serializers.CharField()`n    service_run_log_id = serializers.IntegerField()`n    celery_task_id = serializers.CharField(required=False, allow_blank=True)`n    ownership = DataOpsOwnershipSerializer()`n`n@extend_schema(`n    summary='Lấy lịch sử planner runs DataOps market-data',`n    description=(`n        'Trả về danh sách paginated các parent planner runs của DataOps market-data. '`n        'Đây là operator history read path cho manual runs và scheduler-triggered runs.'`n    ),`n    parameters=[`n        OpenApiParameter(`n            name='page',`n            type=OpenApiTypes.INT,`n            location=OpenApiParameter.QUERY,`n            description='Trang paginated cần đọc. Mặc định dùng pagination chuẩn của SOCBaseView.',`n            required=False,`n        ),`n    ],`n    responses={`n        200: DataOpsRunLogsResponseSerializer,`n        401: OpenApiTypes.OBJECT,`n    },`n    examples=[`n        OpenApiExample(`n            'Run logs page',`n            value={`n                'count': 1,`n                'next': None,`n                'previous': None,`n                'results': [`n                    {`n                        'run_id': 'md-run-111',`n                        'status': 'success',`n                        'mode': 'missing_only',`n                        'reason': 'scheduler_hot_tier',`n                        'execution_mode': 'async',`n                        'started_at': '2026-05-15T10:55:00Z',`n                        'finished_at': '2026-05-15T10:56:00Z',`n                        'summary': {'planned_items': 3, 'inserted': 2, 'updated': 1},`n                    }`n                ],`n            },`n        )`n    ],`n)`nclass DataOpsRunLogsView(SOCBaseView):`n    """GET canonical DataOps run-log history."""`n`n    def get(self, request):`n        queryset = ServiceRunLog.objects.filter(`n            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],`n        ).order_by('-started_at', '-pk')`n        page = self.paginate_queryset(queryset, request)`n        if page is not None:`n            return self.get_paginated_response([`n                _serialize_market_data_run_log(run_log)`n                for run_log in page`n            ])`n        return Response([`n            _serialize_market_data_run_log(run_log)`n            for run_log in queryset`n        ])`n`n`n@extend_schema(`n    summary='Xóa lịch sử run-log DataOps',`n    description=(`n        'Xóa các ServiceRunLog cũ của DataOps market-data planner. '`n        'Giữ lại N bản ghi mới nhất (mặc định 50), xóa toàn bộ bản ghi còn lại. '`n        'Chỉ dành cho operator/admin.'`n    ),`n    request=None,`n    responses={`n        200: OpenApiTypes.OBJECT,`n        401: OpenApiTypes.OBJECT,`n    },`n    parameters=[`n        OpenApiParameter(`n            name='keep',`n            type=OpenApiTypes.INT,`n            location=OpenApiParameter.QUERY,`n            description='Số bản ghi mới nhất cần giữ lại. Mặc định 50.',`n            required=False,`n        ),`n    ],`n    examples=[`n        OpenApiExample(`n            'Purge result',`n            value={'deleted': 2654, 'kept': 50},`n        )`n    ],`n)`nclass DataOpsRunLogsPurgeView(SOCBaseView):`n    """POST xóa lịch sử run-log cũ của DataOps planner, giữ lại N bản mới nhất."""`n`n    def post(self, request):`n        try:`n            keep = int(request.query_params.get('keep', 50))`n            if keep < 0:`n                keep = 0`n        except (TypeError, ValueError):`n            keep = 50`n`n        base_qs = ServiceRunLog.objects.filter(`n            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],`n        )`n        total = base_qs.count()`n`n        if total <= keep:`n            return Response({'deleted': 0, 'kept': total})`n`n        # Lấy PK của N bản mới nhất cần giữ lại`n        keep_ids = list(`n            base_qs.order_by('-started_at', '-pk').values_list('pk', flat=True)[:keep]`n        )`n        deleted_count, _ = base_qs.exclude(pk__in=keep_ids).delete()`n`n        return Response({'deleted': deleted_count, 'kept': keep})`n`n`n@extend_schema(`n    summary='Preview planner DataOps market-data',`n    description=(`n        'Preview kế hoạch planner cho market-data global matrix mà không queue execution. '`n        'Dùng để xem trước danh sách item sẽ chạy, item bị skip và ownership write status.'`n    ),`n    request=DataOpsPlannerPreviewRequestSerializer,`n    responses={`n        200: DataOpsPlannerPreviewResponseSerializer,`n        400: OpenApiTypes.OBJECT,`n        401: OpenApiTypes.OBJECT,`n    },`n    examples=[`n        OpenApiExample(`n            'Planner preview',`n            value={`n                'summary': {'planned_items': 1, 'skipped_items': 1},`n                'items': [`n                    {`n                        'symbol': 'FPT',`n                        'dataset': 'daily_prices',`n                        'reason': 'hydrate_daily_prices',`n                    }`n                ],`n                'skipped': [`n                    {`n                        'symbol': 'FPT',`n                        'dataset': 'price_board_snapshot',`n                        'reason': 'coverage_ok',`n                    }`n                ],`n                'ownership': {`n                    'domain': 'dataops_market_data',`n                    'can_apply': True,`n                    'write_surface': 'soc_dataops',`n                },`n            },`n        )`n    ],`n)`nclass DataOpsPlannerPreviewView(SOCBaseView):`n    """POST canonical DataOps planner preview."""`n`n    def post(self, request):`n        try:`n            preview = build_global_planner_preview(`n                symbols=_get_request_symbols(request),`n                datasets=_get_request_datasets(request),`n                mode=request.data.get('mode', 'missing_only'),`n                force_refresh=_get_request_force_refresh(request),`n                reason=request.data.get('reason', 'manual_preview'),`n                reference_trade_date=_get_reference_trade_date(request),`n            )`n        except ValueError as exc:`n            return self.error_response(`n                request,`n                code='PLANNER_PREVIEW_INVALID',`n                detail=str(exc),`n                http_status=status.HTTP_400_BAD_REQUEST,`n            )`n`n        return Response({`n            **preview,`n            'ownership': _build_market_data_ownership_payload(),`n        })`n`n`n@extend_schema(`n    summary='Queue planner run DataOps market-data',`n    description=(`n        'Queue một planner run cho market-data global matrix. '`n        'Endpoint này chỉ được phép apply khi ownership cho phép write từ DataOps operator surface.'`n    ),`n    request=DataOpsPlannerRunRequestSerializer,`n    responses={`n        201: DataOpsPlannerRunResponseSerializer,`n        400: OpenApiTypes.OBJECT,`n        401: OpenApiTypes.OBJECT,`n        403: OpenApiTypes.OBJECT,`n    },`n    examples=[`n        OpenApiExample(`n            'Planner run queued',`n            value={`n                'queued': True,`n                'status': 'queued',`n                'run_id': 'md-run-112',`n                'service_run_log_id': 112,`n                'ownership': {`n                    'domain': 'dataops_market_data',`n                    'can_apply': True,`n                    'write_surface': 'soc_dataops',`n                },`n            },`n            response_only=True,`n        )`n    ],`n)`nclass DataOpsPlannerRunView(SOCBaseView):`n    """POST canonical DataOps planner run."""`n`n    def post(self, request):`n        ownership = _build_market_data_ownership_payload()`n        if not ownership.get('can_apply', False):`n            return _build_market_data_write_denied_response(self, request)`n`n        try:`n            result = create_global_planner_run(`n                symbols=_get_request_symbols(request),`n                datasets=_get_request_datasets(request),`n                mode=request.data.get('mode', 'missing_only'),`n                force_refresh=_get_request_force_refresh(request),`n                reason=request.data.get('reason', 'operator_manual_run'),`n                execution_mode=request.data.get('execution_mode', 'async'),`n                reference_trade_date=_get_reference_trade_date(request),`n                trigger='soc.dataops.planner.run',`n                planner_queue='manual_on_demand',`n                extra_input_summary={`n                    'write_surface': 'soc_dataops',`n                    'requested_by': getattr(request.user, 'username', 'api'),`n                },`n            )`n        except ValueError as exc:`n            return self.error_response(`n                request,`n                code='PLANNER_RUN_INVALID',`n                detail=str(exc),`n                http_status=status.HTTP_400_BAD_REQUEST,`n            )`n`n        return Response({`n            **result,`n            'ownership': ownership,`n        }, status=status.HTTP_201_CREATED)`n`n`n@extend_schema(`n    summary='Abort planner run DataOps market-data',`n    description=(`n        'Hủy một planner run theo run_id. '`n        'Nếu run đang queued/running, endpoint sẽ revoke Celery task (nếu có) '`n        'và đóng run về trạng thái terminal.'`n    ),`n    responses={`n        200: DataOpsPlannerAbortResponseSerializer,`n        400: OpenApiTypes.OBJECT,`n        401: OpenApiTypes.OBJECT,`n        403: OpenApiTypes.OBJECT,`n        404: OpenApiTypes.OBJECT,`n        409: OpenApiTypes.OBJECT,`n    },`n    examples=[`n        OpenApiExample(`n            'Planner run aborted',`n            value={`n                'cancelled': True,`n                'status': 'skipped',`n                'run_id': 'md-run-112',`n                'service_run_log_id': 112,`n                'celery_task_id': '1b2f6f6f-9d31-42ce-b39b-4c2fceec2eee',`n                'ownership': {`n                    'domain': 'dataops_market_data',`n                    'can_apply': True,`n                    'write_surface': 'soc_dataops',`n                },`n            },`n            response_only=True,`n        )`n    ],`n)`nclass DataOpsPlannerRunAbortView(SOCBaseView):`n    """POST abort for a queued/running DataOps planner run."""`n`n    def post(self, request, run_id: str):`n        ownership = _build_market_data_ownership_payload()`n        if not ownership.get('can_apply', False):`n            return _build_market_data_write_denied_response(self, request)`n`n        try:`n            run_log_id = _parse_market_data_run_id(run_id)`n        except ValueError as exc:`n            return self.error_response(`n                request,`n                code='PLANNER_RUN_ABORT_INVALID',`n                detail=str(exc),`n                http_status=status.HTTP_400_BAD_REQUEST,`n            )`n`n        run_log = ServiceRunLog.objects.filter(`n            pk=run_log_id,`n            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],`n        ).first()`n        if run_log is None:`n            return self.error_response(`n                request,`n                code='PLANNER_RUN_ABORT_NOT_FOUND',`n                detail=f'Khong tim thay run {run_id}',`n                http_status=status.HTTP_404_NOT_FOUND,`n            )`n`n        normalized_status = str(run_log.status or '').lower()`n        if normalized_status not in {'queued', 'running'}:`n            return self.error_response(`n                request,`n                code='PLANNER_RUN_ABORT_CONFLICT',`n                detail=f'Run {run_id} da o trang thai terminal: {run_log.status}',`n                http_status=status.HTTP_409_CONFLICT,`n            )`n`n        if run_log.celery_task_id:`n            try:`n                if normalized_status == 'running':`n                    current_app.control.revoke(run_log.celery_task_id, terminate=True, signal='SIGTERM')`n                else:`n                    current_app.control.revoke(run_log.celery_task_id)`n            except Exception as exc:`n                return self.error_response(`n                    request,`n                    code='PLANNER_RUN_ABORT_REVOKE_FAILED',`n                    detail=f'Khong the revoke task: {exc}',`n                    http_status=status.HTTP_400_BAD_REQUEST,`n                )`n`n        finished_at = timezone.now()`n        run_log.status = 'skipped'`n        run_log.finished_at = finished_at`n        if run_log.started_at is not None:`n            run_log.duration_seconds = max((finished_at - run_log.started_at).total_seconds(), 0.0)`n        existing_output = dict(run_log.output_summary or {})`n        existing_output['cancelled_by_operator'] = True`n        existing_output['cancelled_at'] = finished_at.isoformat()`n        run_log.output_summary = existing_output`n        run_log.error_detail = 'Cancelled by operator via SOC DataOps.'`n        run_log.save(update_fields=['status', 'finished_at', 'duration_seconds', 'output_summary', 'error_detail'])`n`n        return Response({`n            'cancelled': True,`n            'status': run_log.status,`n            'run_id': _format_market_data_run_id(run_log.id),`n            'service_run_log_id': run_log.id,`n            'celery_task_id': run_log.celery_task_id,`n            'ownership': ownership,`n        })`n
+from .dataops_base import *
+
+class DataOpsPlannerPreviewRequestSerializer(serializers.Serializer):
+    symbols = serializers.ListField(child=serializers.CharField(), required=False)
+    datasets = serializers.ListField(child=serializers.CharField(), required=False)
+    mode = serializers.ChoiceField(choices=['missing_only', 'strict_fresh'], default='missing_only', required=False)
+    force_refresh = serializers.BooleanField(default=False, required=False)
+    reason = serializers.CharField(required=False, allow_blank=True)
+    reference_trade_date = serializers.DateField(required=False)
+
+class DataOpsPlannerRunRequestSerializer(DataOpsPlannerPreviewRequestSerializer):
+    execution_mode = serializers.ChoiceField(choices=['async', 'sync'], default='async', required=False)
+
+class DataOpsRunLogsResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(required=False, allow_null=True)
+    previous = serializers.CharField(required=False, allow_null=True)
+    results = serializers.ListField(child=serializers.JSONField())
+
+class DataOpsPlannerPreviewResponseSerializer(serializers.Serializer):
+    summary = serializers.JSONField()
+    items = serializers.ListField(child=serializers.JSONField())
+    skipped = serializers.ListField(child=serializers.JSONField())
+    ownership = DataOpsOwnershipSerializer()
+
+class DataOpsPlannerRunResponseSerializer(serializers.Serializer):
+    queued = serializers.BooleanField()
+    status = serializers.CharField()
+    run_id = serializers.CharField()
+    service_run_log_id = serializers.IntegerField()
+    celery_task_id = serializers.CharField(required=False, allow_blank=True)
+    ownership = DataOpsOwnershipSerializer()
+
+class DataOpsPlannerAbortResponseSerializer(serializers.Serializer):
+    cancelled = serializers.BooleanField()
+    status = serializers.CharField()
+    run_id = serializers.CharField()
+    service_run_log_id = serializers.IntegerField()
+    celery_task_id = serializers.CharField(required=False, allow_blank=True)
+    ownership = DataOpsOwnershipSerializer()
+
+@extend_schema(
+    summary='Lấy lịch sử planner runs DataOps market-data',
+    description=(
+        'Trả về danh sách paginated các parent planner runs của DataOps market-data. '
+        'Đây là operator history read path cho manual runs và scheduler-triggered runs.'
+    ),
+    parameters=[
+        OpenApiParameter(
+            name='page',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Trang paginated cần đọc. Mặc định dùng pagination chuẩn của SOCBaseView.',
+            required=False,
+        ),
+    ],
+    responses={
+        200: DataOpsRunLogsResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Run logs page',
+            value={
+                'count': 1,
+                'next': None,
+                'previous': None,
+                'results': [
+                    {
+                        'run_id': 'md-run-111',
+                        'status': 'success',
+                        'mode': 'missing_only',
+                        'reason': 'scheduler_hot_tier',
+                        'execution_mode': 'async',
+                        'started_at': '2026-05-15T10:55:00Z',
+                        'finished_at': '2026-05-15T10:56:00Z',
+                        'summary': {'planned_items': 3, 'inserted': 2, 'updated': 1},
+                    }
+                ],
+            },
+        )
+    ],
+)
+class DataOpsRunLogsView(SOCBaseView):
+    """GET canonical DataOps run-log history."""
+
+    def get(self, request):
+        queryset = ServiceRunLog.objects.filter(
+            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+        ).order_by('-started_at', '-pk')
+        page = self.paginate_queryset(queryset, request)
+        if page is not None:
+            return self.get_paginated_response([
+                _serialize_market_data_run_log(run_log)
+                for run_log in page
+            ])
+        return Response([
+            _serialize_market_data_run_log(run_log)
+            for run_log in queryset
+        ])
+
+
+@extend_schema(
+    summary='Xóa lịch sử run-log DataOps',
+    description=(
+        'Xóa các ServiceRunLog cũ của DataOps market-data planner. '
+        'Giữ lại N bản ghi mới nhất (mặc định 50), xóa toàn bộ bản ghi còn lại. '
+        'Chỉ dành cho operator/admin.'
+    ),
+    request=None,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+    },
+    parameters=[
+        OpenApiParameter(
+            name='keep',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Số bản ghi mới nhất cần giữ lại. Mặc định 50.',
+            required=False,
+        ),
+    ],
+    examples=[
+        OpenApiExample(
+            'Purge result',
+            value={'deleted': 2654, 'kept': 50},
+        )
+    ],
+)
+class DataOpsRunLogsPurgeView(SOCBaseView):
+    """POST xóa lịch sử run-log cũ của DataOps planner, giữ lại N bản mới nhất."""
+
+    def post(self, request):
+        try:
+            keep = int(request.query_params.get('keep', 50))
+            if keep < 0:
+                keep = 0
+        except (TypeError, ValueError):
+            keep = 50
+
+        base_qs = ServiceRunLog.objects.filter(
+            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+        )
+        total = base_qs.count()
+
+        if total <= keep:
+            return Response({'deleted': 0, 'kept': total})
+
+        # Lấy PK của N bản mới nhất cần giữ lại
+        keep_ids = list(
+            base_qs.order_by('-started_at', '-pk').values_list('pk', flat=True)[:keep]
+        )
+        deleted_count, _ = base_qs.exclude(pk__in=keep_ids).delete()
+
+        return Response({'deleted': deleted_count, 'kept': keep})
+
+
+@extend_schema(
+    summary='Preview planner DataOps market-data',
+    description=(
+        'Preview kế hoạch planner cho market-data global matrix mà không queue execution. '
+        'Dùng để xem trước danh sách item sẽ chạy, item bị skip và ownership write status.'
+    ),
+    request=DataOpsPlannerPreviewRequestSerializer,
+    responses={
+        200: DataOpsPlannerPreviewResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Planner preview',
+            value={
+                'summary': {'planned_items': 1, 'skipped_items': 1},
+                'items': [
+                    {
+                        'symbol': 'FPT',
+                        'dataset': 'daily_prices',
+                        'reason': 'hydrate_daily_prices',
+                    }
+                ],
+                'skipped': [
+                    {
+                        'symbol': 'FPT',
+                        'dataset': 'price_board_snapshot',
+                        'reason': 'coverage_ok',
+                    }
+                ],
+                'ownership': {
+                    'domain': 'dataops_market_data',
+                    'can_apply': True,
+                    'write_surface': 'soc_dataops',
+                },
+            },
+        )
+    ],
+)
+class DataOpsPlannerPreviewView(SOCBaseView):
+    """POST canonical DataOps planner preview."""
+
+    def post(self, request):
+        try:
+            preview = build_global_planner_preview(
+                symbols=_get_request_symbols(request),
+                datasets=_get_request_datasets(request),
+                mode=request.data.get('mode', 'missing_only'),
+                force_refresh=_get_request_force_refresh(request),
+                reason=request.data.get('reason', 'manual_preview'),
+                reference_trade_date=_get_reference_trade_date(request),
+            )
+        except ValueError as exc:
+            return self.error_response(
+                request,
+                code='PLANNER_PREVIEW_INVALID',
+                detail=str(exc),
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({
+            **preview,
+            'ownership': _build_market_data_ownership_payload(),
+        })
+
+
+@extend_schema(
+    summary='Queue planner run DataOps market-data',
+    description=(
+        'Queue một planner run cho market-data global matrix. '
+        'Endpoint này chỉ được phép apply khi ownership cho phép write từ DataOps operator surface.'
+    ),
+    request=DataOpsPlannerRunRequestSerializer,
+    responses={
+        201: DataOpsPlannerRunResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Planner run queued',
+            value={
+                'queued': True,
+                'status': 'queued',
+                'run_id': 'md-run-112',
+                'service_run_log_id': 112,
+                'ownership': {
+                    'domain': 'dataops_market_data',
+                    'can_apply': True,
+                    'write_surface': 'soc_dataops',
+                },
+            },
+            response_only=True,
+        )
+    ],
+)
+class DataOpsPlannerRunView(SOCBaseView):
+    """POST canonical DataOps planner run."""
+
+    def post(self, request):
+        ownership = _build_market_data_ownership_payload()
+        if not ownership.get('can_apply', False):
+            return _build_market_data_write_denied_response(self, request)
+
+        try:
+            result = create_global_planner_run(
+                symbols=_get_request_symbols(request),
+                datasets=_get_request_datasets(request),
+                mode=request.data.get('mode', 'missing_only'),
+                force_refresh=_get_request_force_refresh(request),
+                reason=request.data.get('reason', 'operator_manual_run'),
+                execution_mode=request.data.get('execution_mode', 'async'),
+                reference_trade_date=_get_reference_trade_date(request),
+                trigger='soc.dataops.planner.run',
+                planner_queue='manual_on_demand',
+                extra_input_summary={
+                    'write_surface': 'soc_dataops',
+                    'requested_by': getattr(request.user, 'username', 'api'),
+                },
+            )
+        except ValueError as exc:
+            return self.error_response(
+                request,
+                code='PLANNER_RUN_INVALID',
+                detail=str(exc),
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({
+            **result,
+            'ownership': ownership,
+        }, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(
+    summary='Abort planner run DataOps market-data',
+    description=(
+        'Hủy một planner run theo run_id. '
+        'Nếu run đang queued/running, endpoint sẽ revoke Celery task (nếu có) '
+        'và đóng run về trạng thái terminal.'
+    ),
+    responses={
+        200: DataOpsPlannerAbortResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+        409: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Planner run aborted',
+            value={
+                'cancelled': True,
+                'status': 'skipped',
+                'run_id': 'md-run-112',
+                'service_run_log_id': 112,
+                'celery_task_id': '1b2f6f6f-9d31-42ce-b39b-4c2fceec2eee',
+                'ownership': {
+                    'domain': 'dataops_market_data',
+                    'can_apply': True,
+                    'write_surface': 'soc_dataops',
+                },
+            },
+            response_only=True,
+        )
+    ],
+)
+class DataOpsPlannerRunAbortView(SOCBaseView):
+    """POST abort for a queued/running DataOps planner run."""
+
+    def post(self, request, run_id: str):
+        ownership = _build_market_data_ownership_payload()
+        if not ownership.get('can_apply', False):
+            return _build_market_data_write_denied_response(self, request)
+
+        try:
+            run_log_id = _parse_market_data_run_id(run_id)
+        except ValueError as exc:
+            return self.error_response(
+                request,
+                code='PLANNER_RUN_ABORT_INVALID',
+                detail=str(exc),
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        run_log = ServiceRunLog.objects.filter(
+            pk=run_log_id,
+            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+        ).first()
+        if run_log is None:
+            return self.error_response(
+                request,
+                code='PLANNER_RUN_ABORT_NOT_FOUND',
+                detail=f'Khong tim thay run {run_id}',
+                http_status=status.HTTP_404_NOT_FOUND,
+            )
+
+        normalized_status = str(run_log.status or '').lower()
+        if normalized_status not in {'queued', 'running'}:
+            return self.error_response(
+                request,
+                code='PLANNER_RUN_ABORT_CONFLICT',
+                detail=f'Run {run_id} da o trang thai terminal: {run_log.status}',
+                http_status=status.HTTP_409_CONFLICT,
+            )
+
+        if run_log.celery_task_id:
+            try:
+                if normalized_status == 'running':
+                    current_app.control.revoke(run_log.celery_task_id, terminate=True, signal='SIGTERM')
+                else:
+                    current_app.control.revoke(run_log.celery_task_id)
+            except Exception as exc:
+                return self.error_response(
+                    request,
+                    code='PLANNER_RUN_ABORT_REVOKE_FAILED',
+                    detail=f'Khong the revoke task: {exc}',
+                    http_status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        finished_at = timezone.now()
+        run_log.status = 'skipped'
+        run_log.finished_at = finished_at
+        if run_log.started_at is not None:
+            run_log.duration_seconds = max((finished_at - run_log.started_at).total_seconds(), 0.0)
+        existing_output = dict(run_log.output_summary or {})
+        existing_output['cancelled_by_operator'] = True
+        existing_output['cancelled_at'] = finished_at.isoformat()
+        run_log.output_summary = existing_output
+        run_log.error_detail = 'Cancelled by operator via SOC DataOps.'
+        run_log.save(update_fields=['status', 'finished_at', 'duration_seconds', 'output_summary', 'error_detail'])
+
+        return Response({
+            'cancelled': True,
+            'status': run_log.status,
+            'run_id': _format_market_data_run_id(run_log.id),
+            'service_run_log_id': run_log.id,
+            'celery_task_id': run_log.celery_task_id,
+            'ownership': ownership,
+        })

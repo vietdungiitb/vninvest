@@ -14,6 +14,7 @@ import {
 import { createAuthClient } from "./core/auth.js";
 import { createMarketClient } from "./core/market.js";
 import { createWorkspaceClient } from "./core/workspace.js";
+import { createCommercialClient } from "./core/commercial.js";
 
 export { authTokenStorage, CoreApiRequestError };
 
@@ -48,11 +49,17 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     coreDelete: transport.coreDelete,
   });
 
+  const commercialClient = createCommercialClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+  });
+
   // Combine into a single unified API client object (Facade)
   return {
     ...authClient,
     ...marketClient,
     ...workspaceClient,
+    ...commercialClient,
   };
 }
 
@@ -64,4 +71,4 @@ export const defaultCoreApiAdapter = createCoreApiAdapter({
   clearTokens: () => authTokenStorage.clearTokens(),
 });
 
-export const coreApiAdapter = defaultCoreApiAdapter;`n
+export const coreApiAdapter = defaultCoreApiAdapter;

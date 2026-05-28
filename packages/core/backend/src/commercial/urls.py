@@ -10,4 +10,4 @@ urlpatterns = [
     path('payments/create/', views.CreateVNPayPaymentView.as_view(), name='payment-create'),
     path('payments/vnpay-ipn/', views.VNPayIPNWebhookView.as_view(), name='payment-vnpay-ipn'),
     path('payments/status/<str:txn_ref>/', views.PaymentStatusCheckView.as_view(), name='payment-status-check'),
-]`n
+]

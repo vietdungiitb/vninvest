@@ -94,4 +94,4 @@ class VNPayService:
         is_valid = calculated_hash.lower() == secure_hash.lower()
         if not is_valid:
             logger.warning(f"Signature mismatch. Expected {calculated_hash}, got {secure_hash}")
-        return is_valid`n
+        return is_valid

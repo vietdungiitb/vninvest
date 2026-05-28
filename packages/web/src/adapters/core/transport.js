@@ -327,4 +327,4 @@ export function createCoreTransport(env = {}, options = {}) {
   }
 
   return { coreGet, corePost, corePatch, coreDelete, publicPost };
-}`n
+}

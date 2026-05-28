@@ -297,4 +297,4 @@ class PaymentStatusCheckView(APIView):
             'status': txn.status,
             'vnp_transaction_no': txn.vnp_transaction_no,
             'updated_at': txn.updated_at.isoformat()
-        }, status=status.HTTP_200_OK)`n
+        }, status=status.HTTP_200_OK)
