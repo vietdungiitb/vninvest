@@ -79,6 +79,28 @@ describe("useDynamicPanes helpers", () => {
 		]);
 	});
 
+	it("maps legacy BollingerBands series types when loading stored layouts", () => {
+		const storage = createMockStorage(JSON.stringify({
+			version: 1,
+			panes: [
+				{
+					...DEFAULT_PANES[0],
+					series: DEFAULT_PANES[0].series.map((series) => (
+						series.type === "BollingerBand"
+							? { ...series, type: "BollingerBands" }
+							: { ...series }
+					)),
+				},
+			],
+		}));
+
+		const panes = loadPaneLayout(storage);
+		const pricePane = panes.find((pane) => pane.id === "price");
+
+		expect(pricePane?.series.some((series) => series.type === "BollingerBand")).toBe(true);
+		expect(pricePane?.series.some((series) => series.type === "BollingerBands")).toBe(false);
+	});
+
 	it("falls back to default panes when storage is corrupt", () => {
 		const storage = createMockStorage("{{invalid json}}");
 		const panes = loadPaneLayout(storage);

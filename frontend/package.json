@@ -11,6 +11,7 @@
     "@vninvest/web": "file:../packages/web",
     "@vnstockcharts/vn-kline-engine-core": "file:../../stockchart/packages/vn-kline-engine-core",
     "@vnstockcharts/vn-kline-engine-react": "file:../../stockchart/packages/vn-kline-engine-react",
+    "ajv": "^8.20.0",
     "axios": "^1.7.2",
     "d3-array": "^3.2.0",
     "d3-force": "^3.0.0",

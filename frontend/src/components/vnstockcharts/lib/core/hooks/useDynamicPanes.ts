@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer } from "react";
 import type { PaneDescriptor, SeriesConfig, SeriesTypeId, YAxisSide } from "../types/pane-descriptor";
-import { DEFAULT_PANES, PANE_LAYOUT_STORAGE_KEY, PANE_MAX_VISIBLE, isDefaultPaneId } from "../types/pane-descriptor";
+import { DEFAULT_PANES, PANE_LAYOUT_STORAGE_KEY, PANE_MAX_VISIBLE, isDefaultPaneId, normalizeSeriesTypeId } from "../types/pane-descriptor";
 
 const FRAME_VERTICAL_MARGIN = 36;
 const MIN_PANE_HEIGHT = 80;
@@ -99,6 +99,32 @@ function clonePaneList(panes: readonly PaneDescriptor[]): PaneDescriptor[] {
 	return panes.map(clonePane);
 }
 
+function normalizeStoredSeriesType(type: unknown): SeriesTypeId | null {
+	return normalizeSeriesTypeId(type);
+}
+
+function normalizeStoredSeries(series: readonly SeriesConfig[]): SeriesConfig[] {
+	return series.flatMap((item) => {
+		const type = normalizeStoredSeriesType(item?.type);
+		if (!type) {
+			return [];
+		}
+
+		return [{
+			...item,
+			type,
+		}];
+	});
+}
+
+function normalizeStoredPane(pane: PaneDescriptor): PaneDescriptor {
+	const cloned = clonePane(pane);
+	return {
+		...cloned,
+		series: normalizeStoredSeries(cloned.series),
+	};
+}
+
 function normalizeDefaultPane(pane: PaneDescriptor, template: PaneDescriptor): PaneDescriptor {
 	return {
 		...pane,
@@ -109,11 +135,11 @@ function normalizeDefaultPane(pane: PaneDescriptor, template: PaneDescriptor): P
 }
 
 function normalizeLoadedPaneLayout(panes: readonly PaneDescriptor[]): PaneDescriptor[] {
-	const cloned = clonePaneList(panes);
+	const cloned = panes.map(normalizeStoredPane);
 	const byId = new Map(cloned.map((pane) => [pane.id, pane] as const));
 	const defaultPanes = DEFAULT_PANES.map((template) => {
 		const stored = byId.get(template.id);
-		const pane = stored ? normalizeDefaultPane(stored, template) : clonePane(template);
+		const pane = stored && stored.series.length > 0 ? normalizeDefaultPane(stored, template) : clonePane(template);
 		syncSplitScale(pane);
 		return pane;
 	});

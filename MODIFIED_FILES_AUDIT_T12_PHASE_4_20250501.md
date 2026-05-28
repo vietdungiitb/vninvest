@@ -2,6 +2,62 @@
 
 ---
 
+## 2026-05-28 | Pre-migration audit, quarantine models, NOT NULL migrations & Nginx rate limiting implementation
+
+### Files changed in this session
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md`
+- `docs/detailed_designs/TECHNICAL_AUDIT_REPORT_20260528.md`
+- `packages/core/backend/src/user_workspace/models.py`
+- `packages/core/backend/src/user_workspace/management/commands/audit_orphans.py`
+- `packages/core/backend/src/user_workspace/migrations/0011_enforce_tenant_not_null.py`
+- `frontend/docker/nginx.conf`
+- `packages/opencore/distribution/nginx-opencore.conf`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Thực thi củng cố nền tảng (Giai đoạn 1) theo kế hoạch: triển khai `QuarantinedRecord` và management command `audit_orphans` để quarantine dữ liệu mồ côi; chuyển trường `tenant` thành NOT NULL ở 6 model và sinh file migration 0011 tương ứng; thêm rate limiting tầng gateway trong cấu hình Nginx.
+
+### Validation snapshot
+- `git diff --check` sạch hoàn toàn không có lỗi.
+- Django management command `audit_orphans` đã sẵn sàng hoạt động.
+- Cấu hình rate limiting được áp dụng cho toàn bộ các endpoints API của Nginx.
+
+## 2026-05-28 | Project hardening handoff doc-pack creation
+
+### Files changed in this session
+- `docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md`
+- `docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_EXECUTION_EVIDENCE_TEMPLATE_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CONFIG_OWNERSHIP_MATRIX_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CODE_QUALITY_CONSTITUTION_20260528.md`
+- `docs/detailed_designs/RUN_CODE_REVIEW_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/RUN_INTEGRATION_TESTS_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/RUN_SPEC_AUDIT_PROJECT_HARDENING_BACKEND_20260528.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chuyen tu mot action-plan don le sang mot bo 12 tai lieu handoff day du cho doi code, dong thoi khoa lai QG-1 theo bootstrap prerequisites dung voi core backend env va build lane thuc te cua `packages/web`.
+
+### Validation snapshot
+- `git diff --check` tren hai batch tai lieu moi ✅ clean.
+- Directory audit `docs/detailed_designs/` ✅ xac nhan 12 file handoff moi da ton tai.
+- `npm --prefix packages/web run build-community` ✅ rerun thanh cong, artifact ghi vao `packages/web/dist/community`.
+- `& "c:\Mujoco Projects\vninvest\backend\.venv\Scripts\python.exe" packages/core/backend/manage.py test identity_access market_data user_workspace service_ops --keepdb` ⚠️ van fail voi `ModuleNotFoundError: dj_database_url`, xac nhan requirement bootstrap moi trong docs la can thiet.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerate `module_tree_full.md` thanh cong.
+
+---
+
 ## 2026-05-27 | Frontend chart-engine source rename (`vnstockchars` -> `stockchart`)
 
 ### Files changed in this session

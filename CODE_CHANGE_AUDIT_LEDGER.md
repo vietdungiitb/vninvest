@@ -1,5 +1,82 @@
 # Code Change Audit Ledger
 
+# 2026-05-28 | Pre-migration audit, quarantine models, NOT NULL migrations & Nginx rate limiting implemented ✅
+
+## Problem Solved
+
+- Đã triển khai hoàn tất củng cố nền tảng (Giai đoạn 1) theo kế hoạch hành động: cô lập dữ liệu multi-tenancy thông qua migration NOT NULL cho 6 thực thể trong `user_workspace`, thiết lập script quarantine dữ liệu lỗi để ngăn ngừa auto-fill `system_tenant` bất hợp lý, và triển khai gateway-level rate limiting trong Nginx để chống spam API.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Models update | ✅ 6 model trong `models.py` đổi `tenant` thành `null=False` |
+| QuarantinedRecord | ✅ Đã thêm model `QuarantinedRecord` và migration 0011 |
+| Audit command | ✅ Django management command `audit_orphans` sẵn sàng hoạt động |
+| Nginx rate limiting | ✅ Đã thêm `limit_req_zone` và `limit_req` cho `/api/` và `/core/v1/` trong 2 file config |
+| Technical Audit | ✅ Đã tạo tệp tin `TECHNICAL_AUDIT_REPORT_20260528.md` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md` | Bổ sung Technical Audit Report vào deliverables |
+| `docs/detailed_designs/TECHNICAL_AUDIT_REPORT_20260528.md` | Tạo báo cáo kiểm toán kỹ thuật chính thức |
+| `packages/core/backend/src/user_workspace/models.py` | Thêm model `QuarantinedRecord` và sửa `null=True` thành `null=False` cho trường `tenant` ở 6 model |
+| `packages/core/backend/src/user_workspace/management/commands/audit_orphans.py` | Tạo command kiểm toán tiền di trú và cô lập dữ liệu |
+| `packages/core/backend/src/user_workspace/migrations/0011_enforce_tenant_not_null.py` | Tạo migration 0011 để cập nhật database |
+| `frontend/docker/nginx.conf` | Định nghĩa zone và áp dụng rate limiting gateway |
+| `packages/opencore/distribution/nginx-opencore.conf` | Định nghĩa zone và áp dụng rate limiting gateway |
+
+## Residual Risk
+
+- Cài đặt dependencies `vnbroker` và `stockchart` qua pip vẫn yêu cầu token bảo mật `VNBROKER_GITHUB_TOKEN` trên local environment.
+
+# 2026-05-28 | Project hardening handoff doc-pack completed in `docs/detailed_designs` ✅
+
+## Problem Solved
+
+- Finalized `PROJECT_HARDENING_ACTION_PLAN_20260528.md` so QG-1 no longer overclaims readiness without the missing core-backend bootstrap prerequisites.
+- Generated a full 12-document handoff pack in `docs/detailed_designs/` so the code team can execute from a taskboard/spec/runbook set instead of a single action-plan document.
+- Locked the two previously ambiguous execution anchors in writing: the core-backend test lane must bootstrap from `packages/core/backend/requirements.txt`, and the package-web packaging gate is `npm --prefix packages/web run build-community`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| First doc batch diff hygiene | ✅ `git diff --check` clean for updated action plan, handoff master, implementation plan, tech spec, taskboard, traceability |
+| Second doc batch diff hygiene | ✅ `git diff --check` clean for self-audit, evidence template, ownership matrix, quality constitution, and runbooks |
+| Handoff directory completeness | ✅ `docs/detailed_designs/` now contains the 12 new `PROJECT_HARDENING_BACKEND*` / `RUN_*PROJECT_HARDENING_BACKEND*` documents |
+| Package-web packaging gate | ✅ `npm --prefix packages/web run build-community` reran successfully and wrote artifact to `packages/web/dist/community` |
+| Shared core-backend test lane | ⚠️ `backend/.venv` still fails the QG-1 command with `ModuleNotFoundError: dj_database_url`, validating the need for the explicit bootstrap prerequisite added to the docs |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md` | Added explicit core-backend bootstrap prerequisites and corrected QG-1 readiness framing |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md` | Added execution handoff master for the project hardening pack |
+| `docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md` | Added phased implementation plan and task dependencies |
+| `docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md` | Added technical specification for migration, security, refactor, and phase-2 capability boundaries |
+| `docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md` | Added execution taskboard with phase gates |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md` | Added requirement-to-task-to-validation matrix |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md` | Added slice-level self-audit and validation protocol |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_EXECUTION_EVIDENCE_TEMPLATE_20260528.md` | Added execution evidence template |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CONFIG_OWNERSHIP_MATRIX_20260528.md` | Added config and ownership control matrix |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CODE_QUALITY_CONSTITUTION_20260528.md` | Added quality constitution specific to this workstream |
+| `docs/detailed_designs/RUN_CODE_REVIEW_PROJECT_HARDENING_BACKEND_20260528.md` | Added code-review runbook |
+| `docs/detailed_designs/RUN_INTEGRATION_TESTS_PROJECT_HARDENING_BACKEND_20260528.md` | Added integration-test runbook with env bootstrap prerequisites |
+| `docs/detailed_designs/RUN_SPEC_AUDIT_PROJECT_HARDENING_BACKEND_20260528.md` | Added spec-audit runbook |
+| `module_tree_full.md` | Regenerated after the doc-pack slice |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list |
+
+## Residual Risk
+
+- No runtime code changed in this slice, so there is no fresh `./start_dev.ps1` evidence attached to the doc-pack itself. The package-web packaging gate is green, but the shared local `backend/.venv` still needs the documented `packages/core/backend/requirements.txt` bootstrap before the backend QG-1 command is reproducible.
+
 # 2026-05-27 | Frontend chart-engine source renamed from `vnstockchars` sibling to `stockchart` ✅
 
 ## Problem Solved

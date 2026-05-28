@@ -1,3 +1,84 @@
+# 2026-05-28 — Pre-migration audit, quarantine models, NOT NULL migrations & Nginx rate limiting ✅
+
+Status: **✅ CODE DONE (migration 0011, audit command, QuarantinedRecord model, and Nginx limits applied)**
+
+## Summary
+
+- Đã thêm model `QuarantinedRecord` vào `user_workspace/models.py` phục vụ việc cô lập dữ liệu mồ côi.
+- Đã tạo Django management command `audit_orphans` để quét 6 bảng mồ côi, quarantine chúng dạng JSON và reject migration (exit 1) nếu dữ liệu chưa sạch đúng theo đặc tả.
+- Đã cập nhật 6 model trong `models.py` thành `null=False` (NOT NULL) cho trường `tenant` FK.
+- Đã tạo tệp tin migration `0011_enforce_tenant_not_null.py` để đồng bộ cấu trúc PostgreSQL NOT NULL.
+- Đã thiết lập `limit_req_zone` và `limit_req` tại các tệp cấu hình Nginx (`nginx.conf` và `nginx-opencore.conf`) bảo vệ endpoints API.
+- Đã thêm tài liệu `TECHNICAL_AUDIT_REPORT_20260528.md` ghi nhận kết quả kiểm toán kỹ thuật chính thức.
+
+## Files Updated
+
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md`
+- `docs/detailed_designs/TECHNICAL_AUDIT_REPORT_20260528.md`
+- `packages/core/backend/src/user_workspace/models.py`
+- `packages/core/backend/src/user_workspace/management/commands/audit_orphans.py`
+- `packages/core/backend/src/user_workspace/migrations/0011_enforce_tenant_not_null.py`
+- `frontend/docker/nginx.conf`
+- `packages/opencore/distribution/nginx-opencore.conf`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `git diff --check` sạch hoàn toàn không lỗi.
+- Django management command `audit_orphans` sẵn sàng chạy tiền di trú.
+- File migration 0011 được viết thủ công đúng chuẩn, liên kết chính xác dependencies 0010.
+- Cấu hình Nginx rate limiting biên dịch và parse thành công.
+
+## Residual Risk
+
+- Phân giải dependencies `vnbroker` và `stockchart` qua pip vẫn yêu cầu `VNBROKER_GITHUB_TOKEN` hợp lệ trên môi trường chạy local.
+
+# 2026-05-28 — Project hardening doc-pack lock for code-team handoff ✅
+
+Status: **✅ DOC PACK DONE (execution handoff complete; no runtime code changed in this slice)**
+
+## Summary
+
+- Chốt lại `PROJECT_HARDENING_ACTION_PLAN_20260528.md` theo hướng trung thực hơn với execution reality: QG-1 backend gate chỉ được coi là sẵn sàng khi core env đã bootstrap đúng dependency set và env vars tối thiểu.
+- Tạo đầy đủ bộ 12 tài liệu handoff trong `docs/detailed_designs/` cho đội code thực thi, gồm handoff master, implementation plan, tech spec, taskboard, traceability, self-audit, evidence template, ownership matrix, quality constitution và 3 runbooks.
+- Khóa rõ hai điểm từng gây audit ambiguity: backend test lane của `packages/core/backend` và packaging gate thực tế của `packages/web` là `build-community`.
+
+## Files Updated
+
+- `docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md`
+- `docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_EXECUTION_EVIDENCE_TEMPLATE_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CONFIG_OWNERSHIP_MATRIX_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CODE_QUALITY_CONSTITUTION_20260528.md`
+- `docs/detailed_designs/RUN_CODE_REVIEW_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/RUN_INTEGRATION_TESTS_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/RUN_SPEC_AUDIT_PROJECT_HARDENING_BACKEND_20260528.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `git diff --check -- docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md` ✅ clean.
+- `git diff --check -- docs/detailed_designs/PROJECT_HARDENING_BACKEND_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_EXECUTION_EVIDENCE_TEMPLATE_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_CONFIG_OWNERSHIP_MATRIX_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_CODE_QUALITY_CONSTITUTION_20260528.md docs/detailed_designs/RUN_CODE_REVIEW_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/RUN_INTEGRATION_TESTS_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/RUN_SPEC_AUDIT_PROJECT_HARDENING_BACKEND_20260528.md` ✅ clean.
+- Directory audit `docs/detailed_designs/` ✅ confirmed 12 new handoff docs present.
+- `npm --prefix packages/web run build-community` ✅ rerun completed successfully and wrote artifact to `packages/web/dist/community`.
+- `& "c:\Mujoco Projects\vninvest\backend\.venv\Scripts\python.exe" packages/core/backend/manage.py test identity_access market_data user_workspace service_ops --keepdb` ⚠️ still fails in shared `backend/.venv` with `ModuleNotFoundError: dj_database_url`, confirming the newly added bootstrap prerequisite remains mandatory.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ module tree regenerated after documentation slice.
+
+## Residual Risk
+
+- Đây là slice tài liệu/governance; không có thay đổi runtime code nên không chạy `./start_dev.ps1`. Backend QG-1 trên shared `backend/.venv` vẫn chưa tự tái lập được nếu chưa bootstrap dependency set của `packages/core/backend`.
+
 # 2026-05-27 — Frontend chart-engine source renamed to `stockchart` ✅
 
 Status: **✅ CODE DONE, SECRET-AUTH BUILD GREEN VIA `gh auth`, DEV FRONTEND IMAGE LOADED**
