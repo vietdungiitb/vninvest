@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+# 2026-05-29 | AI SSOT advisory session persistence slice (1.x + 4.x) ✅
+
+## Problem Solved
+
+- Đóng bốn mục còn treo trong taskboard AI SSOT: 1.1, 1.2, 4.1, 4.2.
+- Materialize `AdvisorySession` và `AdvisoryComponent` ngay sau advisory generation để có vết multi-turn thật sự, đồng thời lưu `context_snapshot` đã redact trên surface mới.
+- Khẳng định lại `UserAlertDelivery`/`UserAlertPreference` và threshold delivery đã có migration + runtime wiring đầy đủ.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Migration evidence | ✅ `signal_intelligence/migrations/0005_advisorysignalevent_marketanomalyevent_and_more.py` và `advisory/migrations/0002_add_advisory_session_component.py` đã có schema mapping cho các thực thể checklist |
+| Backend focused test | ✅ `manage.py test tests.test_advisory_ssot.AdvisorySsotContextMergeTests.test_advisory_refresh_materializes_session_and_components --keepdb` -> pass |
+| Syntax/diagnostics | ✅ `py_compile` + `get_errors` sạch cho `advisory/tasks.py` và `tests/test_advisory_ssot.py` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/advisory/tasks.py` | Materialize `AdvisorySession`/`AdvisoryComponent` after advisory generation; redact sensitive fields in new session snapshot |
+| `packages/core/backend/tests/test_advisory_ssot.py` | Add regression for session/component persistence and redacted snapshot behavior |
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off 1.1, 1.2, 4.1, 4.2 based on verified implementation and test evidence |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Add this audit entry |
+
+## Residual Risk
+
+- `AdvisoryRecord.context_snapshot` vẫn giữ hành vi cũ với effective AI context; slice này chỉ tránh nhân bản plaintext key sang surface session/component mới.
+
 # 2026-05-29 | AI SSOT backend checklist alignment (2.x + 3.x) ✅
 
 ## Problem Solved

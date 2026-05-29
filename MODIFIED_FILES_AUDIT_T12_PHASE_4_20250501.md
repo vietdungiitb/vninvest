@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-05-29 | AI SSOT advisory session persistence closure
+
+### Files changed in this session
+- `packages/core/backend/src/advisory/tasks.py`
+- `packages/core/backend/tests/test_advisory_ssot.py`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Đóng các mục AI SSOT còn treo: 1.1, 1.2, 4.1, 4.2 bằng implementation + regression test và cập nhật governance artifacts.
+
+### Validation snapshot
+- `manage.py test tests.test_advisory_ssot.AdvisorySsotContextMergeTests.test_advisory_refresh_materializes_session_and_components --keepdb` ✅ pass.
+- `py_compile` + `get_errors` ✅ sạch cho `advisory/tasks.py` và `tests/test_advisory_ssot.py`.
+
+### Residual risk
+- Surface cũ `AdvisoryRecord.context_snapshot` vẫn giữ behavior hiện hữu; slice này chỉ sanitize surface session/component mới.
+
+---
+
 ## 2026-05-29 | AI SSOT evidence slice: backend checklist alignment (2.x + 3.x)
 
 ### Files changed in this session

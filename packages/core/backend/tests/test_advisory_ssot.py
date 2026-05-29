@@ -17,6 +17,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import SystemAISettings, AdvisoryRecord
+from advisory.models import AdvisoryComponent, AdvisorySession
 from identity_access.models import CoreTenant, UserProfile
 from identity_access.security import encrypt_user_api_key
 from commercial.models import QuotaRecord
@@ -147,3 +148,32 @@ class AdvisorySsotContextMergeTests(TestCase):
             # Assertions for fallback key matching system-level-fallback-key
             self.assertEqual(effective_context['ai_model'], 'gpt-4o-mini')
             self.assertEqual(effective_context['api_key'], 'system-level-fallback-key')
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_advisory_refresh_materializes_session_and_components(self):
+        self._create_quota_record(used=0, limit=5)
+
+        with patch('advisory.orchestrator.AdvisoryOrchestrator.run') as mock_run:
+            mock_run.return_value = {
+                'advisory_text': 'Multi-turn advisory summary',
+                'ai_model': 'gpt-4o-mini',
+                'tokens_used': 120,
+            }
+
+            response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')
+
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        record = AdvisoryRecord.objects.get(advisory_id=response.data['advisory_id'])
+        session = AdvisorySession.objects.get(user=self.user, symbol='FPT', session_date=record.session_date)
+        self.assertEqual(session.status, AdvisorySession.StatusChoices.COMPLETED)
+        self.assertEqual(session.tokens_used, 120)
+        self.assertEqual(session.context_snapshot['advisory_record_id'], str(record.advisory_id))
+        self.assertEqual(session.context_snapshot['effective_ai_context']['api_key'], '[redacted]')
+
+        components = AdvisoryComponent.objects.filter(session=session).order_by('order')
+        self.assertEqual(components.count(), 2)
+        self.assertEqual(components[0].component_type, AdvisoryComponent.ComponentType.RAW_CONTEXT)
+        self.assertIn('[redacted]', components[0].content)
+        self.assertEqual(components[1].component_type, AdvisoryComponent.ComponentType.SUMMARY)
+        self.assertIn('Multi-turn advisory summary', components[1].content)

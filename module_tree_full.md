@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-28 20:20:59`
+Generated at: `2026-05-29 20:48:10`
 
 ## Summary
 
-- Total modules: 2659
-- Python modules: 768
-- JS/TS modules: 1891
-- Total classes: 1798
-- Total functions: 7077
-- Total top-level variables: 18746
+- Total modules: 2674
+- Python modules: 775
+- JS/TS modules: 1899
+- Total classes: 1864
+- Total functions: 7155
+- Total top-level variables: 18890
 
 ## Python Modules
 
@@ -2609,11 +2609,25 @@ Generated at: `2026-05-28 20:20:59`
   - `AdvisorySession` -> methods: `__str__`, `budget_exceeded`
   - `SystemAISettings` -> methods: `__str__`
 
+### `packages/core/backend/src/advisory/orchestrator.py`
+
+- Classes:
+  - `AdvisoryOrchestrator` -> methods: `run`
+- Top-level variables:
+  - `logger`
+
 ### `packages/core/backend/src/advisory/serializers.py`
 
 - Classes:
   - `AdvisoryRecordSerializer`
   - `SystemAISettingsSerializer`
+
+### `packages/core/backend/src/advisory/tasks.py`
+
+- Functions:
+  - `_sanitize_effective_context_for_session`, `generate_advisory_task`, `reset_daily_token_budgets`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/advisory/urls.py`
 
@@ -2627,7 +2641,7 @@ Generated at: `2026-05-28 20:20:59`
   - `AdvisoryLatestView` -> methods: `get`
   - `AdvisoryRefreshView` -> methods: `post`
 - Functions:
-  - `_get_tenant`, `_manual_trigger_period`, `_manual_trigger_priority`, `_manual_trigger_quota_limit`, `_record_manual_trigger_audit`, `_validate_symbol`
+  - `_get_or_create_active_ai_settings`, `_get_tenant`, `_manual_trigger_period`, `_manual_trigger_priority`, `_manual_trigger_quota_limit`, `_record_manual_trigger_audit`, `_validate_symbol`
 - Top-level variables:
   - `_MANUAL_TRIGGER_BLOCKED_STATUSES`, `_MANUAL_TRIGGER_PLAN_LIMITS`, `_MANUAL_TRIGGER_PRIORITY`, `_SYMBOL_RE`, `logger`
 
@@ -2669,7 +2683,12 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/commercial/models.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `Invoice` -> methods: `__str__`
+  - `PaymentTransaction` -> methods: `__str__`
+  - `QuotaRecord` -> methods: `__str__`
+  - `Subscription` -> methods: `__str__`
+  - `VNPayIPNLog` -> methods: `__str__`
 
 ### `packages/core/backend/src/commercial/public_urls.py`
 
@@ -2685,19 +2704,36 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/commercial/tasks.py`
 
-- No parseable top-level symbols found
+- Functions:
+  - `_cache_get_int`, `_current_billing_period`, `_extract_tenant_id_from_key`, `_invoice_number_for`, `_iter_quota_counter_keys`, `_normalize_cache_key`, `_subscription_amount_due`, `check_overdue_invoices`, `flush_quota_counters`, `generate_monthly_invoices`, `manage_subscriptions_lifecycle`, `send_quota_warning`
+- Top-level variables:
+  - `FLUSH_QUOTA_LOCK_KEY`, `FLUSH_QUOTA_LOCK_SECONDS`, `FLUSH_QUOTA_MIN_INTERVAL_SECONDS`, `FLUSH_QUOTA_THROTTLE_KEY`, `logger`
 
 ### `packages/core/backend/src/commercial/urls.py`
 
-- No parseable top-level symbols found
+- Top-level variables:
+  - `urlpatterns`
 
 ### `packages/core/backend/src/commercial/views.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `CreateVNPayPaymentView` -> methods: `post`
+  - `InvoiceListView` -> methods: `get_queryset`
+  - `PaymentStatusCheckView` -> methods: `get`
+  - `PublicLegalPagesView` -> methods: `get`
+  - `QuotaCursorPagination`
+  - `QuotaListView` -> methods: `get_queryset`
+  - `SubscriptionDetailView` -> methods: `get_object`
+  - `VNPayIPNWebhookView` -> methods: `get`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/commercial/vnpay_service.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `VNPayService` -> methods: `generate_payment_url`, `get_hash_secret`, `get_payment_url`, `get_return_url`, `get_tmn_code`, `verify_ipn_signature`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/data_ingest/__init__.py`
 
@@ -2974,7 +3010,8 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/identity_access/migrations/0011_enforce_tenant_not_null_real.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `Migration`
 
 ### `packages/core/backend/src/identity_access/migrations/__init__.py`
 
@@ -3008,7 +3045,8 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/identity_access/partner_urls.py`
 
-- No parseable top-level symbols found
+- Top-level variables:
+  - `urlpatterns`
 
 ### `packages/core/backend/src/identity_access/permissions.py`
 
@@ -3017,6 +3055,13 @@ Generated at: `2026-05-28 20:20:59`
   - `IsTenantActive` -> methods: `has_permission`
 - Functions:
   - `_normalize_scope_codes`, `is_machine_pat_request`, `require_human_session`, `require_pat_scopes_or_human_session`
+
+### `packages/core/backend/src/identity_access/security.py`
+
+- Functions:
+  - `_get_fernet_key`, `decrypt_user_api_key`, `encrypt_user_api_key`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/identity_access/serializers.py`
 
@@ -3116,7 +3161,8 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/identity_access/urls.py`
 
-- No parseable top-level symbols found
+- Top-level variables:
+  - `urlpatterns`
 
 ### `packages/core/backend/src/identity_access/views/__init__.py`
 
@@ -3178,7 +3224,17 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/identity_access/views_tenant.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `PartnerUsageMetersView` -> methods: `list`
+  - `PATListView` -> methods: `get_queryset`
+  - `ServiceAccountDetailView` -> methods: `_ensure_not_last_active_service_account`, `get_object`, `get_queryset`, `perform_destroy`, `perform_update`
+  - `ServiceAccountListView` -> methods: `get_queryset`, `perform_create`
+  - `TenantDetailView` -> methods: `get_object`
+  - `UserProfileView` -> methods: `get`, `patch`
+- Functions:
+  - `_is_human_session_pat`, `_normalize_scope_codes`, `_reject_human_session_markers`, `_require_partner_scope`, `_resolve_issue_target_service_account`, `_resolve_request_tenant_or_none`, `_serialize_partner_pat`, `_validate_requested_pat_scopes`, `issue_pat`, `partner_issue_pat`, `partner_revoke_pat`, `partner_rotate_pat`
+- Top-level variables:
+  - `HUMAN_SESSION_PAT_AUDIT_REASON`, `HUMAN_SESSION_PAT_LABEL_PREFIX`, `PARTNER_SCOPE_MANAGE_PATS`, `PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS`, `PARTNER_SCOPE_MANAGE_TENANT`, `TENANT_PERMISSION_CLASSES`
 
 ### `packages/core/backend/src/market_data/__init__.py`
 
@@ -4131,31 +4187,75 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/service_ops/views/dataops_backfill.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `BackfillRunDetailView` -> methods: `get`
+  - `BackfillRunListView` -> methods: `get`
+  - `BackfillRunNowView` -> methods: `post`
+- Top-level variables:
+  - `_B07_ALLOWED_MODES`
 
 ### `packages/core/backend/src/service_ops/views/dataops_base.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `DataOpsOwnershipSerializer`
+- Functions:
+  - `_build_market_data_ownership_payload`, `_build_market_data_run_summary`, `_build_market_data_write_denied_response`, `_format_market_data_run_id`, `_get_reference_trade_date`, `_get_request_datasets`, `_get_request_force_refresh`, `_get_request_symbols`, `_parse_market_data_run_id`, `_serialize_market_data_run_log`
+- Top-level variables:
+  - `RUN_SUMMARY_KEYS`
 
 ### `packages/core/backend/src/service_ops/views/dataops_config.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `DataOpsRuntimeConfigApplyRequestSerializer`
+  - `DataOpsRuntimeConfigAuditResponseSerializer`
+  - `DataOpsRuntimeConfigAuditSerializer`
+  - `DataOpsRuntimeConfigAuditView` -> methods: `get`
+  - `DataOpsRuntimeConfigPreviewRequestSerializer`
+  - `DataOpsRuntimeConfigPreviewResponseSerializer`
+  - `DataOpsRuntimeConfigPreviewView` -> methods: `post`
+  - `DataOpsRuntimeConfigResponseSerializer`
+  - `DataOpsRuntimeConfigView` -> methods: `get`, `post`
 
 ### `packages/core/backend/src/service_ops/views/dataops_inventory.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `DataOpsInventoryView` -> methods: `get`
 
 ### `packages/core/backend/src/service_ops/views/dataops_observability.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `DataOpsCoverageResponseSerializer`
+  - `DataOpsCoverageView` -> methods: `get`
+  - `DataOpsObservabilityResponseSerializer`
+  - `DataOpsObservabilityView` -> methods: `get`
+  - `DataOpsQueueTiersResponseSerializer`
+  - `DataOpsQueueTiersView` -> methods: `get`
 
 ### `packages/core/backend/src/service_ops/views/dataops_planner.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `DataOpsPlannerAbortResponseSerializer`
+  - `DataOpsPlannerPreviewRequestSerializer`
+  - `DataOpsPlannerPreviewResponseSerializer`
+  - `DataOpsPlannerPreviewView` -> methods: `post`
+  - `DataOpsPlannerRunAbortView` -> methods: `post`
+  - `DataOpsPlannerRunRequestSerializer`
+  - `DataOpsPlannerRunResponseSerializer`
+  - `DataOpsPlannerRunView` -> methods: `post`
+  - `DataOpsRunLogsPurgeView` -> methods: `post`
+  - `DataOpsRunLogsResponseSerializer`
+  - `DataOpsRunLogsView` -> methods: `get`
 
 ### `packages/core/backend/src/service_ops/views/dataops_registry.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `DataOpsRegistryDetailResponseSerializer`
+  - `DataOpsRegistryDetailView` -> methods: `get`
+  - `DataOpsRegistryReconcilePreviewRequestSerializer`
+  - `DataOpsRegistryReconcilePreviewResponseSerializer`
+  - `DataOpsRegistryReconcilePreviewView` -> methods: `post`
+  - `DataOpsRegistrySummaryResponseSerializer`
+  - `DataOpsRegistrySummaryView` -> methods: `get`
 
 ### `packages/core/backend/src/service_ops/views/matrix.py`
 
@@ -4729,7 +4829,8 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/user_workspace/management/commands/audit_orphans.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `Command` -> methods: `add_arguments`, `handle`
 
 ### `packages/core/backend/src/user_workspace/migrations/0001_initial.py`
 
@@ -4791,11 +4892,13 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/core/backend/src/user_workspace/migrations/0011_enforce_tenant_not_null.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `Migration`
 
 ### `packages/core/backend/src/user_workspace/migrations/0012_enforce_tenant_not_null_real.py`
 
-- No parseable top-level symbols found
+- Classes:
+  - `Migration`
 
 ### `packages/core/backend/src/user_workspace/migrations/__init__.py`
 
@@ -4832,7 +4935,7 @@ Generated at: `2026-05-28 20:20:59`
   - `PortfolioAIAdvisoryCurrentView` -> methods: `get`
   - `PortfolioAIAdvisoryRefreshView` -> methods: `post`
   - `PortfolioAICommandCenterTestView` -> methods: `post`
-  - `PortfolioAICommandCenterView` -> methods: `get`
+  - `PortfolioAICommandCenterView` -> methods: `get`, `put`
   - `PortfolioAllocationView` -> methods: `get`
   - `PortfolioAnalyticsView` -> methods: `get`
   - `PortfolioChartView` -> methods: `get`
@@ -5291,6 +5394,27 @@ Generated at: `2026-05-28 20:20:59`
 - Top-level variables:
   - `_src_dir`
 
+### `packages/core/backend/tests/test_advisory_ssot.py`
+
+- Classes:
+  - `AdvisorySsotContextMergeTests` -> methods: `_create_quota_record`, `_current_period`, `setUp`, `test_advisory_refresh_falls_back_to_system_api_key`, `test_advisory_refresh_materializes_session_and_components`, `test_advisory_refresh_merges_context_correctly`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_advisory_tasks.py`
+
+- Classes:
+  - `AdvisoryTasksTests` -> methods: `setUp`, `test_reset_daily_token_budgets_resets_counters`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_byok_security.py`
+
+- Classes:
+  - `BYOKSecurityTests` -> methods: `test_decrypt_empty_returns_empty_string`, `test_decrypt_invalid_token_raises_runtime_error`, `test_decrypt_with_different_key_raises_runtime_error`, `test_encrypt_and_decrypt_returns_original_plaintext`, `test_encrypt_empty_raises_value_error`
+- Top-level variables:
+  - `_src_dir`
+
 ### `packages/core/backend/tests/test_commercial_tasks.py`
 
 - Classes:
@@ -5464,7 +5588,7 @@ Generated at: `2026-05-28 20:20:59`
 ### `packages/core/backend/tests/test_signal_intelligence_api_routes.py`
 
 - Classes:
-  - `SignalIntelligenceApiRouteTests` -> methods: `setUp`, `test_order_flow_route_is_native_and_returns_list`, `test_unified_alert_route_is_native_and_cursor_paginated`, `test_whale_feed_route_is_native_and_returns_list`
+  - `SignalIntelligenceApiRouteTests` -> methods: `setUp`, `test_alert_center_feed_tenant_isolation`, `test_order_flow_route_is_native_and_returns_list`, `test_unified_alert_route_is_native_and_cursor_paginated`, `test_whale_feed_route_is_native_and_returns_list`
 - Top-level variables:
   - `_src_dir`
 
@@ -5528,6 +5652,10 @@ Generated at: `2026-05-28 20:20:59`
   - `_coerce_bool`, `_hash_password`, `_identity_flags`, `_normalize_role_keys`, `_now_isoformat`, `_strip_secret_fields`
 - Top-level variables:
   - `ROLE_KEYS`
+
+### `packages/web/fix_newlines.py`
+
+- No parseable top-level symbols found
 
 ### `scripts/check_core_api_route.py`
 
@@ -9774,9 +9902,9 @@ Generated at: `2026-05-28 20:20:59`
 ### `frontend/src/pages/AICommandCenter.jsx`
 
 - Functions:
-  - `AICommandCenter`, `PromptSourceTabs`, `applyAuditFilters`, `applyPromptPreset`, `applyTechnicalPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `fetchUserRuntimeConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `resetAuditFilters`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
+  - `AICommandCenter`, `PromptSourceTabs`, `applyAuditFilters`, `applyPromptPreset`, `applyTechnicalPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `fetchUserRuntimeConfig`, `getSourceDefinition`, `handleModelSelectChange`, `handleProviderChange`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `resetAuditFilters`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
 - Top-level variables:
-  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `effectiveRuntimeMessage`, `effectiveRuntimeModel`, `effectiveRuntimeProvider`, `effectiveRuntimeSource`, `enabled`, `eventBasedAdvisoryDisabled`, `eventBasedAdvisoryEnabled`, `eventBasedAdvisoryLabel`, `indicatorCount`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `runtimePolicySummary`, `runtimeSummaryCards`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
+  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `PROVIDER_MODELS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentProvider`, `currentSource`, `definition`, `displayModelValue`, `effectiveRuntimeMessage`, `effectiveRuntimeModel`, `effectiveRuntimeProvider`, `effectiveRuntimeSource`, `enabled`, `eventBasedAdvisoryDisabled`, `eventBasedAdvisoryEnabled`, `eventBasedAdvisoryLabel`, `indicatorCount`, `indicators`, `isCustomModel`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `models`, `modelsForSelectedProvider`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextModel`, `nextModelVal`, `nextPromptConfig`, `nextProvider`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `runtimePolicySummary`, `runtimeSummaryCards`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
 
 ### `frontend/src/pages/AICommandCenterShellHost.jsx`
 
@@ -11411,12 +11539,24 @@ Generated at: `2026-05-28 20:20:59`
 - Top-level variables:
   - `config`
 
+### `packages/web/src/adapters/core/__tests__/commercial.test.js`
+
+- Top-level variables:
+  - `client`, `coreGet`, `corePost`
+
 ### `packages/web/src/adapters/core/auth.js`
 
 - Functions:
   - `createAuthClient`
 - Top-level variables:
   - `refreshValue`, `responsePayload`, `tokenPayload`
+
+### `packages/web/src/adapters/core/commercial.js`
+
+- Functions:
+  - `createCommercialClient`
+- Top-level variables:
+  - `query`, `searchParams`, `url`
 
 ### `packages/web/src/adapters/core/coreAdapter.js`
 
@@ -11459,7 +11599,7 @@ Generated at: `2026-05-28 20:20:59`
 - Functions:
   - `createCoreApiAdapter`
 - Top-level variables:
-  - `authClient`, `coreApiAdapter`, `defaultCoreApiAdapter`, `marketClient`, `persistTokens`, `transport`, `workspaceClient`
+  - `authClient`, `commercialClient`, `coreApiAdapter`, `defaultCoreApiAdapter`, `marketClient`, `persistTokens`, `transport`, `workspaceClient`
 
 ### `packages/web/src/adapters/coreApiAdapter.test.js`
 
@@ -11554,7 +11694,7 @@ Generated at: `2026-05-28 20:20:59`
 - Functions:
   - `HeatmapBandOverlay`, `ViewportSharkMarkersOverlay`, `buildFlowBucketLookup`, `buildHeatmapBandColor`, `clamp`, `pad`, `resolveHeatmapMetric`, `useI18n`
 - Top-level variables:
-  - `TIMEFRAMES`, `alpha`, `barWidth`, `bucket`, `buyHeat`, `chartBody`, `color`, `customPanes`, `dateStr`, `draw`, `drawY`, `dx`, `e`, `emoji`, `endIndex`, `enrichedBars`, `flowBucketLookup`, `flowTimeframe`, `flowViewModel`, `handleClick`, `handleVisibleRangeChange`, `heatmapButtons`, `idx`, `intensity`, `isBuy`, `item`, `lookup`, `magnitude`, `map`, `mappedCvdSeries`, `mappedWhaleOrders`, `metric`, `minuteKey`, `netHeat`, `normalizedMode`, `offset`, `parsedDate`, `price`, `sellHeat`, `signalsOrders`, `startIndex`, `threshold`, `timeframeButtons`, `timestamp`, `topCount`, `val`, `values`, `visibleBars`, `whaleScore`, `x`, `y`
+  - `TIMEFRAMES`, `alpha`, `barTime`, `barWidth`, `bucket`, `buyHeat`, `candlesForHook`, `chartBody`, `color`, `customPanes`, `dateStr`, `draw`, `drawY`, `dx`, `e`, `emoji`, `endIndex`, `enrichedBars`, `flowBucketLookup`, `flowTimeframe`, `flowViewModel`, `handleClick`, `handleVisibleRangeChange`, `heatmapButtons`, `idx`, `intensity`, `isBuy`, `item`, `lookup`, `magnitude`, `map`, `mappedCvdSeries`, `mappedWhaleOrders`, `metric`, `minuteKey`, `netHeat`, `normalizedMode`, `offset`, `parsedDate`, `price`, `sellHeat`, `signalsOrders`, `startIndex`, `timeframeButtons`, `timestamp`, `visibleBars`, `whaleScore`, `whaleTimes`, `x`, `y`
 
 ### `packages/web/src/components/vnstockcharts/csv.d.ts`
 
@@ -17054,12 +17194,23 @@ Generated at: `2026-05-28 20:20:59`
 - Top-level variables:
   - `communityFeaturePages`
 
+### `packages/web/src/features/dashboard/__tests__/AIAdvisorAlertPanel.i18n.test.js`
+
+- No parseable top-level symbols found
+
 ### `packages/web/src/features/dashboard/__tests__/dashboard_lifecycle.test.js`
 
 - Functions:
   - `setter`
 - Top-level variables:
   - `cleanup`, `effectObj`, `holdings`, `hookResult`, `listA`, `listB`, `mockEffects`, `mockRefCurrent`, `mockStateSetters`, `mockStateVal`, `refKey`, `stateKey`, `stateKeys`, `stateUpdate`, `token`, `trackedSymbols`, `watchlistGroups`, `watchlists`
+
+### `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js`
+
+- Functions:
+  - `AIAdvisorAlertPanel`, `createAiAdvisorTranslator`, `fetchFeed`, `formatValue`, `getPulseGlowClass`, `resolveAiAdvisorLocale`, `resolveSeverityLabel`, `resolveTrendLabel`
+- Top-level variables:
+  - `I18N`, `browserLang`, `dict`, `e`, `glowClass`, `language`, `num`, `res`, `rsi`, `rsiNum`
 
 ### `packages/web/src/features/dashboard/useCoreDashboardData.js`
 
@@ -17091,6 +17242,11 @@ Generated at: `2026-05-28 20:20:59`
 
 - Top-level variables:
   - `result`
+
+### `packages/web/src/features/stock-detail/__tests__/viewportWhaleMarkers.test.js`
+
+- Top-level variables:
+  - `doubleCandles`, `markers`, `panMarkers`, `regularCandles`, `resultClamp`, `resultEmpty`, `resultNull`, `sampleCandles`, `zoomMarkers`
 
 ### `packages/web/src/features/stock-detail/components/StockContextDeck.js`
 
@@ -17126,6 +17282,13 @@ Generated at: `2026-05-28 20:20:59`
   - `loadBlocking`, `loadDeferred`, `loadInsights`, `normalizeChartBarsPayload`, `useStockDetailPageModel`
 - Top-level variables:
   - `DEFAULT_ENV`, `DEFAULT_ORDER_FLOW_WINDOW`, `adapter`, `candidates`, `handleRealtimeSnapshot`, `mountedRef`, `pendingSnapshotRef`, `realtimeTimeoutRef`, `sessionDate`
+
+### `packages/web/src/features/stock-detail/hooks/useViewportWhaleMarkers.js`
+
+- Functions:
+  - `useViewportWhaleMarkers`
+- Top-level variables:
+  - `candle`, `safeEnd`, `safeStart`, `sorted`, `targetCount`, `visibleCandles`, `volA`, `volB`, `whaleTimes`
 
 ### `packages/web/src/features/stock-detail/orderFlowFallback.js`
 
@@ -17181,7 +17344,10 @@ Generated at: `2026-05-28 20:20:59`
 
 ### `packages/web/src/pages/AlertCenterPage.js`
 
-- No parseable top-level symbols found
+- Functions:
+  - `AlertCenterPage`, `aggregatedSymbols`, `formatAlertTimestamp`, `formatAlertValue`, `handleAcknowledge`, `handleApply`, `handleLoadDetail`, `handleMuteSymbol`, `normalizeSymbol`, `renderPagination`, `toggleEvidence`
+- Top-level variables:
+  - `DEFAULT_ENV`, `ITEMS_PER_PAGE_FEED`, `ITEMS_PER_PAGE_STATS`, `LANE_OPTIONS`, `SORT_OPTIONS`, `WINDOW_OPTIONS`, `activePageFeed`, `activePageStats`, `adapter`, `aiSuggestCount`, `alerts`, `e`, `el`, `freq`, `highSeverityCount`, `interval`, `mapped`, `numericValue`, `paginatedAlerts`, `paginatedSymbols`, `rawAlerts`, `sortedAlerts`, `startIndexFeed`, `startIndexStats`, `styleEl`, `styleId`, `timeA`, `timeB`, `timestamp`, `totalPagesFeed`, `totalPagesStats`, `triggerManualRefresh`, `valA`, `valB`
 
 ### `packages/web/src/pages/AlertCenterPage.styles.js`
 
@@ -17226,6 +17392,20 @@ Generated at: `2026-05-28 20:20:59`
 ### `packages/web/src/pages/auth/index.js`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/pages/commercial/BillingCenterPage.js`
+
+- Functions:
+  - `BillingCenterPage`, `PaymentCreateForm`, `handlePlanSelect`, `handleSubmit`, `loadBillingData`, `useI18n`
+- Top-level variables:
+  - `BILLING_CUSTOM_STYLES`, `barColor`, `e`, `hasInvoices`, `hasQuota`, `hasSubscription`, `isActive`, `isCompleted`, `isPending`, `isUnlimited`, `limit`, `map`, `payload`, `percent`, `plans`, `response`, `statusClass`, `statusLabel`, `used`
+
+### `packages/web/src/pages/commercial/PaymentReturnPage.js`
+
+- Functions:
+  - `PaymentReturnPage`, `checkPaymentStatus`, `useI18n`
+- Top-level variables:
+  - `RETURN_CUSTOM_STYLES`, `e`, `isSuccess`, `map`, `params`, `response`, `txnRef`
 
 ### `packages/web/src/pages/coreShellPageHelpers.js`
 
@@ -17286,9 +17466,9 @@ Generated at: `2026-05-28 20:20:59`
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 
 - Functions:
-  - `ShellAiCommandCenterPage`
+  - `ShellAiCommandCenterPage`, `handleModelChange`, `handleProviderChange`, `handleSaveSettings`, `loadSettings`, `testConnection`
 - Top-level variables:
-  - `aiAbilities`, `aiFlags`, `aiRoutes`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`
+  - `PROVIDER_MODELS`, `aiAbilities`, `aiFlags`, `aiRoutes`, `currentModel`, `data`, `defaultModel`, `errorData`, `fetchSettingsRef`, `finalModel`, `groupFlags`, `isKnownModel`, `metrics`, `models`, `modelsForProvider`, `modelsForSelectedProvider`, `nextData`, `payload`, `provider`, `providerOptions`, `res`, `routeFlags`, `summaryCards`, `val`
 
 ### `packages/web/src/pages/system/ShellSettingsPage.js`
 

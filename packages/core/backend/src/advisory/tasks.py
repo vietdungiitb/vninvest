@@ -1,10 +1,19 @@
+import logging
 from celery import shared_task
 from django.utils import timezone
-import logging
-from advisory.models import AdvisorySession
+
+from advisory.models import AdvisoryComponent, AdvisorySession
 from identity_access.models import UserProfile
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_effective_context_for_session(effective_context: dict) -> dict:
+    sanitized_context = dict(effective_context or {})
+    for sensitive_key in ('api_key', 'encrypted_api_key', 'secret_key'):
+        if sensitive_key in sanitized_context:
+            sanitized_context[sensitive_key] = '[redacted]'
+    return sanitized_context
 
 @shared_task(name="advisory.reset_daily_token_budgets")
 def reset_daily_token_budgets():
@@ -51,6 +60,50 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
         record.tokens_used = orch_res.get('tokens_used', 0)
         record.generated_at = timezone.now()
         record.save()
+
+        if record.user_id is None:
+            logger.warning("Skipping advisory session materialization for %s because record.user is null", record_id)
+            return
+
+        sanitized_context = _sanitize_effective_context_for_session(effective_context)
+        session, _ = AdvisorySession.objects.update_or_create(
+            user=record.user,
+            symbol=record.symbol,
+            session_date=record.session_date,
+            defaults={
+                'status': AdvisorySession.StatusChoices.COMPLETED,
+                'ai_model': orch_res.get('ai_model') or record.ai_model or effective_context.get('ai_model') or 'gpt-4o-mini',
+                'tokens_used': record.tokens_used,
+                'token_budget': int(effective_context.get('max_tokens') or 2000),
+                'context_snapshot': {
+                    **(record.context_snapshot or {}),
+                    'advisory_record_id': str(record.advisory_id),
+                    'effective_ai_context': sanitized_context,
+                    'advisory_text': record.advisory_text,
+                    'tokens_used': record.tokens_used,
+                    'generated_at': record.generated_at.isoformat() if record.generated_at else timezone.now().isoformat(),
+                },
+            },
+        )
+
+        AdvisoryComponent.objects.update_or_create(
+            session=session,
+            component_type=AdvisoryComponent.ComponentType.RAW_CONTEXT,
+            order=0,
+            defaults={
+                'content': str(sanitized_context),
+                'metadata': {'source': 'generate_advisory_task', 'kind': 'effective_ai_context'},
+            },
+        )
+        AdvisoryComponent.objects.update_or_create(
+            session=session,
+            component_type=AdvisoryComponent.ComponentType.SUMMARY,
+            order=1,
+            defaults={
+                'content': record.advisory_text,
+                'metadata': {'source': 'generate_advisory_task', 'kind': 'advisory_summary'},
+            },
+        )
     except Exception as e:
         logger.error(f"Advisory generation failed for record {record_id}: {e}")
         try:

@@ -22,6 +22,34 @@ Status: **✅ DONE (taskboard đã đồng bộ với implementation backend th�
 
 - Full backend regression trên host venv vẫn bị chặn bởi thiếu dependency `dj_database_url`.
 
+# 2026-05-29 — AI SSOT slice: advisory session persistence closure ✅
+
+Status: **✅ DONE (1.1, 1.2, 4.1, 4.2 đã được đóng bằng implementation + regression test)**
+
+## Summary
+
+- Materialize `AdvisorySession` và `AdvisoryComponent` ngay sau advisory generation để có vết multi-turn thật sự cho lane AI.
+- Redact sensitive context trên surface session/component mới, tránh nhân bản plaintext key sang vết lưu bổ sung.
+- Xác nhận lại `UserAlertDelivery`/`UserAlertPreference` và threshold delivery đã có migration + runtime wiring đầy đủ nên taskboard 1.1/1.2 có thể đóng.
+
+## Files Updated
+
+- `packages/core/backend/src/advisory/tasks.py`
+- `packages/core/backend/tests/test_advisory_ssot.py`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `manage.py test tests.test_advisory_ssot.AdvisorySsotContextMergeTests.test_advisory_refresh_materializes_session_and_components --keepdb` ✅ pass.
+- `py_compile` + `get_errors` ✅ sạch cho hai file Python đã chỉnh.
+
+## Residual Risk
+
+- `AdvisoryRecord.context_snapshot` vẫn giữ dữ liệu effective context cũ theo behavior hiện hữu; slice này chỉ siết surface mới.
+
 # 2026-05-29 — AI SSOT slice: close taskboard item 5.1 ✅
 
 Status: **✅ DONE (đã xác nhận loại bỏ hook `useAIAdvisor.js` khỏi SaaS-native runtime)**

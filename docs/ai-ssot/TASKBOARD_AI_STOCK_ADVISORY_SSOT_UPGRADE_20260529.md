@@ -30,8 +30,8 @@ Tài liệu này đóng vai trò là bảng điều khiển tiến độ và dan
 ## 2. Danh Mục Kiểm Tra Chi Tiết (Dev Checklist)
 
 ### Giai Đoạn 1: Đồng Bộ Hóa Mô Hình Thực Thể & Stateful Delivery
-- [ ] **1.1** Đảm bảo các bảng cơ sở dữ liệu `MarketAnomalyEvent`, `AdvisorySignalEvent`, `UserAlertDelivery`, `UserAlertPreference` được ánh xạ đầy đủ trong các migration database của core (`packages/core/backend/src/signal_intelligence/models.py`).
-- [ ] **1.2** Viết hàm lọc phân phát tín hiệu: Khi có sự kiện thị trường, đối chiếu với ngưỡng `UserProfile.whale_alert_threshold` của từng cá nhân để ghi nhận bản ghi vào `UserAlertDelivery`.
+- [x] **1.1** Đảm bảo các bảng cơ sở dữ liệu `MarketAnomalyEvent`, `AdvisorySignalEvent`, `UserAlertDelivery`, `UserAlertPreference` được ánh xạ đầy đủ trong các migration database của core (`packages/core/backend/src/signal_intelligence/models.py`).
+- [x] **1.2** Viết hàm lọc phân phát tín hiệu: Khi có sự kiện thị trường, đối chiếu với ngưỡng `UserProfile.whale_alert_threshold` của từng cá nhân để ghi nhận bản ghi vào `UserAlertDelivery`.
 - [x] **1.3** Thực hiện cách ly hoàn toàn đa thuê bao: Tất cả các truy vấn lấy tín hiệu của người dùng phải áp dụng bộ lọc Tenant (`UserProfile.tenant_id`), không truy vấn chéo giữa các Tenant.
 
 ### Giai Đoạn 2: Tích Hợp Multi-Agent Core Vào Trung Tâm Quản Lý AI (SSOT)
@@ -52,8 +52,8 @@ Tài liệu này đóng vai trò là bảng điều khiển tiến độ và dan
 - [x] **3.3** Tích hợp Token Budget Control: Kiểm tra lượng token đã dùng trong ngày của `AdvisorySession` trước khi cho phép gọi LLM, nếu vượt hạn mức hệ thống lập tức chặn và trả về lỗi `429 Too Many Requests`.
 
 ### Giai Đoạn 4: Trò Chuyện Trực Tiếp Bám Sát Bối Cảnh
-- [ ] **4.1** Tích hợp hai thực thể `AdvisorySession` và `AdvisoryComponent` phục vụ chat trợ lý thông minh đa lượt.
-- [ ] **4.2** Lưu vết bối cảnh snapshot thị trường (`context_snapshot`) trong phiên chat để làm mỏ neo thông tin cho Prompt, ngăn chặn AI suy diễn sai lệch.
+- [x] **4.1** Tích hợp hai thực thể `AdvisorySession` và `AdvisoryComponent` phục vụ chat trợ lý thông minh đa lượt.
+- [x] **4.2** Lưu vết bối cảnh snapshot thị trường (`context_snapshot`) trong phiên chat để làm mỏ neo thông tin cho Prompt, ngăn chặn AI suy diễn sai lệch.
 
 ### Giai Đoạn 5: Nâng Cấp Trực Quan Dashboard (UI Triad Alignment)
 - [x] **5.1** Xóa bỏ hook gán cứng `useAIAdvisor.js` ở frontend.
