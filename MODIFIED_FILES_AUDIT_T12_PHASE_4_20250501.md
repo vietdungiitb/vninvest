@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-05-29 | AI SSOT frontend i18n closure (AIAdvisorAlertPanel)
+
+### Files changed in this session
+- `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js`
+- `packages/web/src/features/dashboard/__tests__/AIAdvisorAlertPanel.i18n.test.js`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Đóng mục 5.5 của AI SSOT taskboard: bản địa hóa đầy đủ nhãn UI của AIAdvisorAlertPanel theo locale runtime và thêm test chống regression.
+
+### Validation snapshot
+- Frontend focused test ✅ `npm --prefix packages/web test -- AIAdvisorAlertPanel.i18n.test.js` (1 suite, 3 tests pass).
+- Diagnostics ✅ không có lỗi ở panel/test file mới.
+
+### Residual risk
+- Chưa chạy full regression cho toàn bộ dashboard package trong slice này (chỉ chạy focused test cho i18n lane).
+
 ## 2026-05-29 | AI SSOT closure sync (code verified -> docs verified)
 
 ### Files changed in this session

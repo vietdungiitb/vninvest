@@ -1,3 +1,31 @@
+# 2026-05-29 — AI SSOT slice: AIAdvisorAlertPanel i18n closure ✅
+
+Status: **✅ DONE (Giai đoạn 5.5 đã đóng với test tự động + taskboard gate cập nhật)**
+
+## Summary
+
+- Hoàn tất i18n cho `AIAdvisorAlertPanel` bằng translator key-based theo locale runtime (`vi` mặc định, `en` fallback theo browser language).
+- Loại bỏ nhãn hardcoded trực tiếp trong panel; toàn bộ title/button/state/severity/metric/trend labels đều đi qua hàm `t()`.
+- Thêm test focused để bảo vệ behavior i18n và fallback key.
+
+## Files Updated
+
+- `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js`
+- `packages/web/src/features/dashboard/__tests__/AIAdvisorAlertPanel.i18n.test.js`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `npm --prefix packages/web test -- AIAdvisorAlertPanel.i18n.test.js` ✅ `1 suite passed`, `3 tests passed`.
+- `get_errors` ✅ không lỗi ở panel và file test mới.
+
+## Residual Risk
+
+- Slice này là frontend-focused; backend advisory lanes chưa được re-run full regression trong bước này.
+
 # 2026-05-29 — AI SSOT verification closure (runtime + docs) ✅
 
 Status: **✅ VERIFIED + DOCS CLOSED (REQ-TEN/RATE/UI/KL đã align code-test-runtime-docs)**

@@ -4,7 +4,70 @@ import "./AIAdvisorAlertPanel.css";
 
 const e = createElement;
 
+const I18N = {
+  vi: {
+    "aiAdvisor.panel.title": "Trung Tâm Tín Hiệu AI Advisor",
+    "aiAdvisor.panel.refresh": "Làm mới",
+    "aiAdvisor.panel.loading": "Đang tải...",
+    "aiAdvisor.panel.loadError": "Không thể tải danh sách cảnh báo AI.",
+    "aiAdvisor.panel.initialLoading": "Đang phân tích dữ liệu dòng tiền và RSI...",
+    "aiAdvisor.panel.empty": "Chưa ghi nhận tín hiệu cảnh báo AI nào trong phiên hiện tại.",
+    "aiAdvisor.severity.critical": "Cực kỳ khẩn cấp",
+    "aiAdvisor.severity.high": "Khẩn cấp",
+    "aiAdvisor.severity.medium": "Trung bình",
+    "aiAdvisor.severity.low": "Thấp",
+    "aiAdvisor.metric.moneyFlow": "Dòng tiền:",
+    "aiAdvisor.metric.trend": "Xu hướng:",
+    "aiAdvisor.metric.rsi": "RSI Hiện Tại:",
+    "aiAdvisor.trend.buy": "MUA",
+    "aiAdvisor.trend.sell": "BÁN",
+    "aiAdvisor.trend.neutral": "TRUNG LẬP",
+    "aiAdvisor.unit.vnd": "VND",
+    "aiAdvisor.unit.billion": "tỷ",
+    "aiAdvisor.unit.million": "triệu",
+  },
+  en: {
+    "aiAdvisor.panel.title": "AI Advisor Signal Center",
+    "aiAdvisor.panel.refresh": "Refresh",
+    "aiAdvisor.panel.loading": "Loading...",
+    "aiAdvisor.panel.loadError": "Unable to load AI alerts.",
+    "aiAdvisor.panel.initialLoading": "Analyzing money flow and RSI signals...",
+    "aiAdvisor.panel.empty": "No AI alerts were detected in this trading session.",
+    "aiAdvisor.severity.critical": "Critical",
+    "aiAdvisor.severity.high": "High",
+    "aiAdvisor.severity.medium": "Medium",
+    "aiAdvisor.severity.low": "Low",
+    "aiAdvisor.metric.moneyFlow": "Money flow:",
+    "aiAdvisor.metric.trend": "Direction:",
+    "aiAdvisor.metric.rsi": "Current RSI:",
+    "aiAdvisor.trend.buy": "BUY",
+    "aiAdvisor.trend.sell": "SELL",
+    "aiAdvisor.trend.neutral": "NEUTRAL",
+    "aiAdvisor.unit.vnd": "VND",
+    "aiAdvisor.unit.billion": "billion",
+    "aiAdvisor.unit.million": "million",
+  },
+};
+
+export function resolveAiAdvisorLocale() {
+  const browserLang =
+    (typeof document !== "undefined" && document.documentElement?.lang) ||
+    (typeof navigator !== "undefined" ? navigator.language : "") ||
+    "vi";
+  return String(browserLang).toLowerCase().startsWith("en") ? "en" : "vi";
+}
+
+export function createAiAdvisorTranslator(locale = "vi") {
+  const language = locale === "en" ? "en" : "vi";
+  const dict = I18N[language];
+  return {
+    language,
+    t: (key) => dict[key] || I18N.vi[key] || key,
+  };
+}
+
 export function AIAdvisorAlertPanel({ className = "" }) {
+  const { t, language } = createAiAdvisorTranslator(resolveAiAdvisorLocale());
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -22,7 +85,7 @@ export function AIAdvisorAlertPanel({ className = "" }) {
         setAlerts([]);
       }
     } catch (err) {
-      setError(err?.message || "Không thể tải danh sách cảnh báo AI.");
+      setError(err?.message || t("aiAdvisor.panel.loadError"));
     } finally {
       setLoading(false);
     }
@@ -46,12 +109,25 @@ export function AIAdvisorAlertPanel({ className = "" }) {
     if (val == null) return "—";
     const num = parseFloat(val);
     if (num >= 1_000_000_000) {
-      return `${(num / 1_000_000_000).toFixed(2)} tỷ`;
+      return `${(num / 1_000_000_000).toFixed(2)} ${t("aiAdvisor.unit.billion")}`;
     }
     if (num >= 1_000_000) {
-      return `${(num / 1_000_000).toFixed(0)} triệu`;
+      return `${(num / 1_000_000).toFixed(0)} ${t("aiAdvisor.unit.million")}`;
     }
-    return num.toLocaleString("vi-VN");
+    return num.toLocaleString(language === "en" ? "en-US" : "vi-VN");
+  };
+
+  const resolveSeverityLabel = (severity) => {
+    if (severity === "critical") return t("aiAdvisor.severity.critical");
+    if (severity === "high") return t("aiAdvisor.severity.high");
+    if (severity === "medium") return t("aiAdvisor.severity.medium");
+    return t("aiAdvisor.severity.low");
+  };
+
+  const resolveTrendLabel = (direction) => {
+    if (direction === "buy") return t("aiAdvisor.trend.buy");
+    if (direction === "sell") return t("aiAdvisor.trend.sell");
+    return t("aiAdvisor.trend.neutral");
   };
 
   return e(
@@ -60,7 +136,7 @@ export function AIAdvisorAlertPanel({ className = "" }) {
     e(
       "div",
       { className: "ai-advisor-panel-header" },
-      e("h3", { className: "ai-advisor-panel-title" }, "Trung Tâm Tín Hiệu AI Advisor"),
+      e("h3", { className: "ai-advisor-panel-title" }, t("aiAdvisor.panel.title")),
       e(
         "button",
         {
@@ -68,19 +144,19 @@ export function AIAdvisorAlertPanel({ className = "" }) {
           onClick: fetchFeed,
           disabled: loading,
         },
-        loading ? "Đang tải..." : "Làm mới"
+        loading ? t("aiAdvisor.panel.loading") : t("aiAdvisor.panel.refresh")
       )
     ),
     error && e("div", { className: "ai-advisor-panel-error" }, error),
     loading && alerts.length === 0 && e(
       "div",
       { className: "ai-advisor-panel-loading" },
-      "Đang phân tích dữ liệu dòng tiền và RSI..."
+      t("aiAdvisor.panel.initialLoading")
     ),
     !loading && alerts.length === 0 && !error && e(
       "div",
       { className: "ai-advisor-panel-empty" },
-      "Chưa ghi nhận tín hiệu cảnh báo AI nào trong phiên hiện tại."
+      t("aiAdvisor.panel.empty")
     ),
     e(
       "div",
@@ -105,9 +181,7 @@ export function AIAdvisorAlertPanel({ className = "" }) {
                   className: "ai-advisor-card-severity-badge",
                   "data-severity": alert.severity,
                 },
-                alert.severity === "critical" ? "Cực kỳ khẩn cấp" :
-                alert.severity === "high" ? "Khẩn cấp" :
-                alert.severity === "medium" ? "Trung bình" : "Thấp"
+                resolveSeverityLabel(alert.severity)
               )
             ),
             e("span", { className: "ai-advisor-card-date" }, alert.session_date)
@@ -120,23 +194,23 @@ export function AIAdvisorAlertPanel({ className = "" }) {
             e(
               "div",
               { className: "ai-advisor-metric-item" },
-              e("span", { className: "ai-advisor-metric-label" }, "Dòng tiền:"),
-              e("span", { className: "ai-advisor-metric-value" }, `${formatValue(alert.value)} VND`)
+              e("span", { className: "ai-advisor-metric-label" }, t("aiAdvisor.metric.moneyFlow")),
+              e("span", { className: "ai-advisor-metric-value" }, `${formatValue(alert.value)} ${t("aiAdvisor.unit.vnd")}`)
             ),
             e(
               "div",
               { className: "ai-advisor-metric-item" },
-              e("span", { className: "ai-advisor-metric-label" }, "Xu hướng:"),
+              e("span", { className: "ai-advisor-metric-label" }, t("aiAdvisor.metric.trend")),
               e(
                 "span",
                 { className: `ai-advisor-metric-value trend-${alert.direction}` },
-                alert.direction === "buy" ? "MUA" : alert.direction === "sell" ? "BÁN" : "TRUNG LẬP"
+                resolveTrendLabel(alert.direction)
               )
             ),
             rsi != null && e(
               "div",
               { className: "ai-advisor-metric-item" },
-              e("span", { className: "ai-advisor-metric-label" }, "RSI Hiện Tại:"),
+              e("span", { className: "ai-advisor-metric-label" }, t("aiAdvisor.metric.rsi")),
               e("span", { className: "ai-advisor-metric-value font-bold" }, parseFloat(rsi).toFixed(1))
             )
           )

@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+# 2026-05-29 | AI SSOT frontend i18n closure for AIAdvisorAlertPanel ✅
+
+## Problem Solved
+
+- Đóng slice còn mở ở Giai đoạn 5.5 bằng cách bản địa hóa toàn bộ label của `AIAdvisorAlertPanel` theo locale runtime (`vi`/`en`) thay cho hardcoded strings.
+- Chuẩn hóa fallback i18n để tránh mất nhãn khi key chưa tồn tại và giữ tiếng Việt có đầy đủ dấu theo baseline.
+- Bổ sung unit test focused cho translator layer để khóa regression i18n cho lane AI dashboard.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Frontend focused test | ✅ `npm --prefix packages/web test -- AIAdvisorAlertPanel.i18n.test.js` -> `1 suite passed, 3 tests passed` |
+| Diagnostics | ✅ `get_errors` không phát hiện lỗi tại file panel và test mới |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js` | Thêm i18n dictionary `vi/en`, translator helpers, locale resolver và thay thế toàn bộ nhãn hardcoded sang key-based translation |
+| `packages/web/src/features/dashboard/__tests__/AIAdvisorAlertPanel.i18n.test.js` | Thêm test đơn vị cho translator (vi default, en locale, key fallback) |
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off mục 5.3, 5.5, 5.6 và cập nhật quality gate i18n `ĐẠT` |
+
+## Residual Risk
+
+- Backend integration tests cho advisory lane vẫn phụ thuộc bootstrap env của `packages/core/backend`; slice này chỉ chạm frontend i18n nên chưa mở rộng backend verification.
+
 # 2026-05-29 | AI SSOT gap-closure docs synced to verified runtime status ✅
 
 ## Problem Solved

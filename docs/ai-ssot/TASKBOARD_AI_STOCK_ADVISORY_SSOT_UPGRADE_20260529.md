@@ -58,11 +58,11 @@ Tài liệu này đóng vai trò là bảng điều khiển tiến độ và dan
 ### Giai Đoạn 5: Nâng Cấp Trực Quan Dashboard (UI Triad Alignment)
 - [ ] **5.1** Xóa bỏ hook gán cứng `useAIAdvisor.js` ở frontend.
 - [x] **5.2** Tạo mới `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js` + `.css`, kết nối trực tiếp vào API `/core/v1/signals/ai-alerts/feed` và mount vào runtime dashboard.
-- [ ] **5.3** Triển khai hiệu ứng **Neon Glassmorphism** nhấp nháy phát sáng dựa trên chỉ số RSI cực đoan từ server (emerald pulse khi RSI thấp, rose pulse khi RSI cao).
+- [x] **5.3** Triển khai hiệu ứng **Neon Glassmorphism** nhấp nháy phát sáng dựa trên chỉ số RSI cực đoan từ server (emerald pulse khi RSI thấp, rose pulse khi RSI cao).
 - [x] **5.4** Tạo mới hook `packages/web/src/features/stock-detail/hooks/useViewportWhaleMarkers.js` và test `packages/web/src/features/stock-detail/__tests__/viewportWhaleMarkers.test.js`, đã nhúng vào KLine runtime tại `packages/web/src/components/VNStockChartPanel.js` để đảm bảo **chỉ hiển thị icon Cá mập cho top 10% nến có volume lớn nhất nằm trong viewport hiện hành**.
 - [x] **5.7** Baseline dashboard đã được nâng cấp: `AIAdvisorAlertPanel.js` đang chạy trong lane AI của `packages/web/src/pages/DashboardPage.js`.
-- [ ] **5.5** Bản địa hóa i18n toàn bộ các nhãn chữ tiếng Việt có đầy đủ dấu.
-- [ ] **5.6** Tuyệt đối cấm phát triển tệp tin mới vào thư mục `/frontend` cũ đã deprecated. Mọi tệp code frontend mới bắt buộc phải nằm trong cấu trúc SaaS-native `packages/web/src/`.
+- [x] **5.5** Bản địa hóa i18n toàn bộ các nhãn chữ tiếng Việt có đầy đủ dấu.
+- [x] **5.6** Tuyệt đối cấm phát triển tệp tin mới vào thư mục `/frontend` cũ đã deprecated. Mọi tệp code frontend mới bắt buộc phải nằm trong cấu trúc SaaS-native `packages/web/src/`.
 
 ---
 
@@ -77,4 +77,4 @@ Trước khi tạo Pull Request (PR) bàn giao mã nguồn lên nhánh chính, l
 | **3. BYOK Secure Fernet Encryption** | API Key của người dùng được mã hóa bằng chuẩn Fernet trước khi lưu vào DB. Không có khóa nào lộ bản rõ trong log. | `[ ] ĐẠT` |
 | **4. Viewport 10% Rule** | Biểu tượng Cá mập trên KLineChart tuân thủ nghiêm ngặt nguyên tắc 10% nến lớn nhất trong visible viewport. | `[ ] ĐẠT` |
 | **5. Test Coverage >= 80%** | Toàn bộ các bộ test tự động kiểm thử luồng hợp nhất SSOT, kiểm soát token budget và bộ lọc cảnh báo đều chạy thành công. | `[ ] ĐẠT` |
-| **6. i18n Localization** | Mọi nhãn hiển thị mới hỗ trợ tiếng Việt có dấu đầy đủ và chuẩn xác. | `[ ] ĐẠT` |
+| **6. i18n Localization** | Mọi nhãn hiển thị mới hỗ trợ tiếng Việt có dấu đầy đủ và chuẩn xác. | `[x] ĐẠT` |
