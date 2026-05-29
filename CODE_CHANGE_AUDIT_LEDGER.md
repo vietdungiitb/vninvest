@@ -1,5 +1,30 @@
 # Code Change Audit Ledger
 
+# 2026-05-29 | AI SSOT taskboard slice 5.1 closure (remove legacy useAIAdvisor hook) ✅
+
+## Problem Solved
+
+- Đóng mục checklist **5.1** trong AI SSOT taskboard bằng evidence codebase: không còn tham chiếu `useAIAdvisor` trong runtime `packages/web/src/**`.
+- Chuẩn hóa tiến độ thực thi theo tình trạng thực tế sau các commit runtime trước đó thay vì để hạng mục mở.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Code search | ✅ `grep_search` trong `packages/web/src/**` không còn match `useAIAdvisor` |
+| Runtime refresh | ✅ `start_dev.ps1` hoàn tất; smoke checks `Core API health: OK`, `Frontend health: OK` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off mục 5.1 dựa trên evidence search/runtime |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Thêm entry audit cho slice 5.1 |
+
+## Residual Risk
+
+- Slice này là governance/evidence update; không tạo thay đổi runtime code mới.
+
 # 2026-05-29 | AI SSOT frontend i18n closure for AIAdvisorAlertPanel ✅
 
 ## Problem Solved

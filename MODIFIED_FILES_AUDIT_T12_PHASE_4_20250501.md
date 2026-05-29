@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-05-29 | AI SSOT evidence slice: close checklist 5.1
+
+### Files changed in this session
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Đóng mục 5.1 (xóa hook `useAIAdvisor.js`) bằng evidence search + runtime smoke, đồng bộ governance docs.
+
+### Validation snapshot
+- `grep_search` trong `packages/web/src/**` ✅ không còn match `useAIAdvisor`.
+- `start_dev.ps1` ✅ build/up thành công, smoke checks core API + frontend đều OK.
+
+### Residual risk
+- Slice không có thay đổi runtime code mới, chỉ cập nhật taskboard/governance theo trạng thái thực tế.
+
 ## 2026-05-29 | AI SSOT frontend i18n closure (AIAdvisorAlertPanel)
 
 ### Files changed in this session

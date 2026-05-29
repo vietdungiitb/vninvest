@@ -56,7 +56,7 @@ Tài liệu này đóng vai trò là bảng điều khiển tiến độ và dan
 - [ ] **4.2** Lưu vết bối cảnh snapshot thị trường (`context_snapshot`) trong phiên chat để làm mỏ neo thông tin cho Prompt, ngăn chặn AI suy diễn sai lệch.
 
 ### Giai Đoạn 5: Nâng Cấp Trực Quan Dashboard (UI Triad Alignment)
-- [ ] **5.1** Xóa bỏ hook gán cứng `useAIAdvisor.js` ở frontend.
+- [x] **5.1** Xóa bỏ hook gán cứng `useAIAdvisor.js` ở frontend.
 - [x] **5.2** Tạo mới `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js` + `.css`, kết nối trực tiếp vào API `/core/v1/signals/ai-alerts/feed` và mount vào runtime dashboard.
 - [x] **5.3** Triển khai hiệu ứng **Neon Glassmorphism** nhấp nháy phát sáng dựa trên chỉ số RSI cực đoan từ server (emerald pulse khi RSI thấp, rose pulse khi RSI cao).
 - [x] **5.4** Tạo mới hook `packages/web/src/features/stock-detail/hooks/useViewportWhaleMarkers.js` và test `packages/web/src/features/stock-detail/__tests__/viewportWhaleMarkers.test.js`, đã nhúng vào KLine runtime tại `packages/web/src/components/VNStockChartPanel.js` để đảm bảo **chỉ hiển thị icon Cá mập cho top 10% nến có volume lớn nhất nằm trong viewport hiện hành**.

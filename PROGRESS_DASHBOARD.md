@@ -1,3 +1,29 @@
+# 2026-05-29 — AI SSOT slice: close taskboard item 5.1 ✅
+
+Status: **✅ DONE (đã xác nhận loại bỏ hook `useAIAdvisor.js` khỏi SaaS-native runtime)**
+
+## Summary
+
+- Hoàn tất đối chiếu codebase và đóng mục 5.1 trong taskboard AI SSOT.
+- Không còn tham chiếu `useAIAdvisor` trong `packages/web/src/**`.
+- Runtime đã được refresh lại thành công bằng `start_dev.ps1`; smoke checks đều xanh.
+
+## Files Updated
+
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- Code search ✅ không còn `useAIAdvisor` trong `packages/web/src/**`.
+- Runtime smoke ✅ `Core API health: OK`, `Frontend health: OK`.
+
+## Residual Risk
+
+- Đây là slice tài liệu/evidence, không có thay đổi code runtime mới.
+
 # 2026-05-29 — AI SSOT slice: AIAdvisorAlertPanel i18n closure ✅
 
 Status: **✅ DONE (Giai đoạn 5.5 đã đóng với test tự động + taskboard gate cập nhật)**
