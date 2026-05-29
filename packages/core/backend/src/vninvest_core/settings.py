@@ -540,6 +540,12 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 120.0,  # every 2 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-2m', 'analytics_heavy')},
     },
+    # === Advisory: reset daily token budgets — daily at 00:00 (UTC+7 / Asia/Ho_Chi_Minh) ===
+    'reset-daily-token-budgets-0000': {
+        'task': 'advisory.reset_daily_token_budgets',
+        'schedule': crontab(hour=0, minute=0),
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('reset-daily-token-budgets-0000', 'manual_on_demand')},
+    },
 }
 
 LOGGING = {

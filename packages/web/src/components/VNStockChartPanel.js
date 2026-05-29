@@ -2,6 +2,7 @@ import React, { createElement, useState, useCallback, useMemo } from 'react';
 import { toCanonicalMinute } from '../utils/whaleTimeAdapter.js';
 import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInvestSignalAdapter.js';
 import { VNStockChart, MockAdapter, OverlayCanvas } from './vnstockcharts/index.js';
+import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 
 const e = createElement;
 
@@ -88,29 +89,15 @@ function buildFlowBucketLookup(viewModel, flowTimeframe) {
 }
 
 // Custom canvas overlay to draw top 10% shark viewport markers (🟢🦈/🔴🦈)
-function ViewportSharkMarkersOverlay({ visibleRange }) {
+function ViewportSharkMarkersOverlay({ visibleRange, whaleTimes }) {
   const draw = useCallback((context) => {
     const { ctx, xScale, yScale, plotData, devicePixelRatio: dpr } = context;
-    if (!visibleRange || plotData.length === 0) return;
+    if (!visibleRange || plotData.length === 0 || !whaleTimes || whaleTimes.size === 0) return;
 
     const startIndex = Math.max(0, visibleRange.startIndex);
     const endIndex = Math.min(plotData.length - 1, visibleRange.endIndex);
     const visibleBars = plotData.slice(startIndex, endIndex + 1);
     if (visibleBars.length === 0) return;
-
-    // Calculate trade values
-    const values = visibleBars
-      .map((bar) => ({
-        index: bar.dataIndex ?? bar.index,
-        val: Number(bar.volume || 0) * Number(bar.close || 0),
-      }))
-      .sort((a, b) => b.val - a.val);
-
-    // Limit to top 10% of visible count
-    const topCount = Math.max(1, Math.ceil(visibleBars.length * 0.1));
-    const threshold = values[topCount - 1]?.val ?? 0;
-
-    if (threshold <= 0) return;
 
     ctx.save();
     ctx.font = `${Math.round(12 * dpr)}px sans-serif`;
@@ -118,8 +105,8 @@ function ViewportSharkMarkersOverlay({ visibleRange }) {
     ctx.textBaseline = "middle";
 
     visibleBars.forEach((bar) => {
-      const val = Number(bar.volume || 0) * Number(bar.close || 0);
-      if (val < threshold || val <= 0) return;
+      const barTime = bar.time ?? bar.timestamp ?? (bar.date instanceof Date ? bar.date.getTime() : new Date(bar.date).getTime()) ?? (bar.dataIndex ?? bar.index);
+      if (!whaleTimes.has(barTime)) return;
 
       const idx = bar.dataIndex ?? bar.index;
       let x = xScale(idx);
@@ -141,7 +128,7 @@ function ViewportSharkMarkersOverlay({ visibleRange }) {
     });
 
     ctx.restore();
-  }, [visibleRange]);
+  }, [visibleRange, whaleTimes]);
 
   return e(OverlayCanvas, { draw, zIndex: 10 });
 }
@@ -220,6 +207,18 @@ export default function VNStockChartPanel({
 
   // Enriched bars mapped from input data
   const enrichedBars = useMemo(() => mapToOHLCVBars(data), [data]);
+
+  // Enforce explicit time/timestamp for useViewportWhaleMarkers compliance
+  const candlesForHook = useMemo(() => {
+    return enrichedBars.map((bar) => ({
+      ...bar,
+      time: bar.time ?? bar.timestamp ?? (bar.date instanceof Date ? bar.date.getTime() : new Date(bar.date).getTime()) ?? bar.index,
+    }));
+  }, [enrichedBars]);
+
+  const startIndex = visibleRange ? visibleRange.startIndex : 0;
+  const endIndex = visibleRange ? visibleRange.endIndex : 0;
+  const whaleTimes = useViewportWhaleMarkers(candlesForHook, startIndex, endIndex);
 
   // Enriched whale orders and CVD mapped from inputs
   const mappedWhaleOrders = useMemo(() => {
@@ -382,7 +381,7 @@ export default function VNStockChartPanel({
           onVisibleRangeChange: handleVisibleRangeChange,
           className: 'w-full h-full',
         },
-        e(ViewportSharkMarkersOverlay, { visibleRange }),
+        e(ViewportSharkMarkersOverlay, { visibleRange, whaleTimes }),
         e(HeatmapBandOverlay, { flowBucketLookup, heatmapMode }),
       );
 
