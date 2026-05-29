@@ -2,6 +2,71 @@
 
 ---
 
+## 2026-05-29 | AI SSOT closure sync (code verified -> docs verified)
+
+### Files changed in this session
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md`
+- `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Chuyển toàn bộ AI SSOT handoff/docs sang trạng thái phản ánh đúng implementation đã verify bằng test + runtime; loại bỏ các mục pending/gap đã được đóng.
+
+### Validation snapshot
+- Backend focused suite ✅ 4/4 pass.
+- Frontend focused suites ✅ 6/6 pass (71 tests).
+- `start_dev.ps1` ✅ build/up/smoke pass, compose services healthy.
+
+### Residual risk
+- Không có residual blocker mới trong phạm vi AI SSOT closure slice.
+
+## 2026-05-29 | AI SSOT docs re-audit sync with implemented codebase
+
+### Files changed in this session
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Đồng bộ lại doc pack AI SSOT theo thực tế code đã triển khai, loại bỏ claim overstate và đánh dấu rõ các gap cần follow-up implementation.
+
+### Validation snapshot
+- `get_errors` trên 5 file docs mục tiêu ✅ no errors.
+- Kiểm tra chéo nội dung ✅ đã sửa mismatch “test_advisory_ssot.py là file mới”, và bổ sung trạng thái `implemented/partial/gap` trong traceability.
+
+### Residual risk
+- Đây là slice documentation-only; chưa đóng được các gap kỹ thuật vì chưa có code/test mới.
+
+## 2026-05-28 | Billing phase-2 runtime fix (quota pagination + frontend partial fallback)
+
+### Files changed in this session
+- `packages/core/backend/src/commercial/views.py`
+- `packages/web/src/pages/commercial/BillingCenterPage.js`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Xử lý tình trạng user thấy route billing nhưng rơi vào màn lỗi tổng: backend quota endpoint lỗi 500 do ordering field không tồn tại, frontend fail-fast toàn trang khi một API lỗi.
+
+### Validation snapshot
+- `./start_dev.ps1` chạy thành công sau khi dọn conflict container `vninvest-dev-mailpit`.
+- `GET /core/v1/billing/quota` trả `200` (`results: []`), không còn `FieldError created_at`.
+- Bundle frontend đang serve chứa `Promise.allSettled` cho Billing Center data loading.
+
+### Residual risk
+- `GET /core/v1/billing/subscription` có thể `404` khi tenant chưa có subscription; UI hiện đã xử lý an toàn nhưng dữ liệu demo cần seed bổ sung.
+
 ## 2026-05-28 | Frontend handoff pack cho VNPay/Billing/Notification Phase 2
 
 ### Files changed in this session

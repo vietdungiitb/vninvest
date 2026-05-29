@@ -1,5 +1,95 @@
 # Code Change Audit Ledger
 
+# 2026-05-29 | AI SSOT gap-closure docs synced to verified runtime status ✅
+
+## Problem Solved
+
+- Đóng các mismatch còn tồn tại trong bộ `docs/ai-ssot` sau khi team đã hoàn thành implementation thực tế cho REQ-TEN-03, REQ-RATE-05, REQ-UI-07, REQ-KL-08.
+- Loại bỏ trạng thái stale `gap/partial` không còn đúng cho tenant isolation core route, scheduler reset 00:00, dashboard AI panel mounting và viewport whale markers runtime wiring.
+- Chuẩn hóa lại đường dẫn frontend từ `.jsx` sang file thực tế `.js` ở lane dashboard.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Backend focused suite | ✅ `manage.py test tests.test_signal_intelligence_api_routes --keepdb` -> `4 passed` |
+| Frontend focused suites | ✅ `6 suites passed`, `71 tests passed` |
+| Runtime smoke | ✅ `start_dev.ps1` thành công; `Core API health: OK`, `Frontend health: OK` |
+| Compose health | ✅ `core-api/core-beat/frontend` và worker stack đều `Up (healthy)` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md` | Chuyển REQ-TEN-03/REQ-RATE-05/REQ-UI-07/REQ-KL-08 sang `implemented`, cập nhật mapping runtime thật |
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md` | Đổi note tenant isolation từ pending sang evidence đã hoàn thành |
+| `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Cập nhật trạng thái implementation thực tế và đường dẫn file `.js` |
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off các mục đã hoàn thành cho tenant isolation, scheduler evidence, dashboard panel, viewport markers |
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md` | Nâng trạng thái handoff sang `Production-Ready Verified` |
+
+## Residual Risk
+
+- Không phát hiện blocker mới trong phạm vi AI SSOT doc pack sau vòng xác minh này.
+
+# 2026-05-29 | AI SSOT documentation re-audit aligned to implemented codebase ✅
+
+## Problem Solved
+
+- Loại bỏ các claim không khớp thực tế trong bộ `docs/ai-ssot`, đặc biệt claim coverage tuyệt đối và ánh xạ test/file chưa tồn tại.
+- Chuẩn hóa traceability theo trạng thái `implemented | partial | gap` để QA không hiểu nhầm mức độ hoàn tất.
+- Đồng bộ protocol/taskboard/spec/handoff với hiện trạng đã implement (`test_advisory_ssot.py` đã có) và gap còn thiếu (tenant core-route test, viewport marker hook/test).
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Docs diagnostics (`get_errors`) | ✅ No errors trên 5 file `docs/ai-ssot` đã chỉnh |
+| Overclaim cleanup | ✅ Đã bỏ narrative coverage 100% và đổi sang trạng thái implemented/partial/gap |
+| Handoff condition consistency | ✅ Đã sửa điều kiện test: `test_advisory_ssot.py` là existing evidence, không còn đánh dấu file mới |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md` | Chuyển matrix sang implemented/partial/gap; cập nhật mapping REQ theo file/test hiện có; đánh dấu gap còn thiếu |
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md` | Đồng bộ test protocol với evidence thực tế và bổ sung note gap core-route tenant isolation |
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Bổ sung checklist explicit cho scheduler evidence, missing frontend artifacts, và baseline dashboard hiện hành |
+| `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Hạ claim cứng tenant isolation evidence; thêm trạng thái baseline/target cho frontend artifacts chưa tồn tại |
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md` | Sửa điều kiện handoff để phản ánh đúng test đã có và test/case còn thiếu |
+
+## Residual Risk
+
+- Chưa có code implementation mới trong slice này nên các gap được nêu chưa được đóng bằng test runtime mới.
+- Cần slice tiếp theo để bổ sung test `/core/v1/signals/alert-center/feed` cross-tenant và viewport marker integration/test frontend.
+
+# 2026-05-28 | Billing phase-2 visibility/runtime fix (quota 500 + partial-failure UI) ✅
+
+## Problem Solved
+
+- Sửa lỗi backend `500` tại endpoint `/core/v1/billing/quota` do cursor pagination mặc định dùng `-created_at` không tồn tại trên `QuotaRecord`.
+- Sửa hành vi frontend `BillingCenterPage` để không còn fail toàn trang khi một endpoint billing lỗi/404; trang vẫn hiển thị phần dữ liệu khả dụng.
+- Khắc phục lỗi rollout dev stack do container name conflict `vninvest-dev-mailpit`, đảm bảo stack khởi động lại sạch.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Core API runtime stack | ✅ `./start_dev.ps1` chạy xong, `Core API health: OK`, `Frontend health: OK` |
+| Quota endpoint | ✅ `GET /core/v1/billing/quota` trả `200` với payload `{"next":null,"previous":null,"results":[]}` |
+| Billing page fallback bundle | ✅ Bundle frontend có `Promise.allSettled` cho luồng load dữ liệu billing |
+| Billing subscription sparse state | ✅ `404` subscription không còn làm sập toàn trang (được degrade thành trạng thái `noPlan`) |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/commercial/views.py` | Thêm `QuotaCursorPagination` với `ordering='-period_start'`, gán cho `QuotaListView` để loại bỏ `FieldError` `created_at` |
+| `packages/web/src/pages/commercial/BillingCenterPage.js` | Đổi từ `Promise.all + fail-fast` sang `Promise.allSettled`, chỉ báo lỗi tổng khi cả 3 nguồn dữ liệu đều thất bại |
+
+## Residual Risk
+
+- `GET /core/v1/billing/subscription` vẫn có thể trả `404` khi tenant chưa có subscription seed; hiện đã được UI xử lý an toàn nhưng dữ liệu nghiệp vụ vẫn cần seed nếu muốn hiển thị plan thực.
+
 # 2026-05-28 | SaaS-native OpenAPI frontend handoff pack for VNPay/Billing/Notification Phase 2 ✅
 
 ## Problem Solved

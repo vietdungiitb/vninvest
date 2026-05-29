@@ -1,3 +1,95 @@
+# 2026-05-29 — AI SSOT verification closure (runtime + docs) ✅
+
+Status: **✅ VERIFIED + DOCS CLOSED (REQ-TEN/RATE/UI/KL đã align code-test-runtime-docs)**
+
+## Summary
+
+- Xác nhận implementation thực tế đã hoàn tất: tenant isolation test core route, scheduler reset token 00:00, AIAdvisorAlertPanel mount vào dashboard lane AI, và viewport whale markers đã wire vào KLine runtime.
+- Chạy lại focused suites để lấy evidence mới nhất và xác nhận stack runtime vẫn healthy.
+- Đồng bộ lại bộ `docs/ai-ssot` từ trạng thái pending/gap sang trạng thái production-verified.
+
+## Files Updated
+
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md`
+- `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- Backend: `manage.py test tests.test_signal_intelligence_api_routes --keepdb` ✅ `4 passed`.
+- Frontend: focused Jest suites ✅ `6 passed`, `71 tests`.
+- Runtime: `start_dev.ps1` ✅ smoke checks `Core API health: OK`, `Frontend health: OK`.
+- Compose status ✅ `core-api`, `core-beat`, `frontend` và worker stack đều healthy/up.
+
+## Residual Risk
+
+- Không có residual blocker mới trong phạm vi AI SSOT sau vòng xác minh và đồng bộ tài liệu này.
+
+# 2026-05-29 — AI SSOT doc pack re-audit synced với codebase thực tế ✅
+
+Status: **✅ DOCS UPDATED (traceability/protocol/taskboard/spec/handoff đã phản ánh đúng implemented-vs-gap)**
+
+## Summary
+
+- Đồng bộ lại toàn bộ bộ tài liệu `docs/ai-ssot` theo trạng thái code hiện tại để loại bỏ claim quá mức (đặc biệt coverage 100%).
+- Chuẩn hóa ma trận truy xuất sang trạng thái `implemented | partial | gap` để đội dev/QA đóng gate theo rủi ro thực tế.
+- Đánh dấu rõ các gap còn mở: test cross-tenant cho route `/core/v1/signals/alert-center/feed`, hook/test viewport whale markers, và evidence schedule reset token 00:00.
+
+## Files Updated
+
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `get_errors` trên 5 file docs `ai-ssot` ✅ không có diagnostics.
+- Cross-check sau chỉnh sửa ✅ không còn câu chữ bắt buộc `test_advisory_ssot.py` là file mới cần tạo.
+
+## Residual Risk
+
+- Slice hiện tại là doc-only, chưa bổ sung test/runtime code nên chưa có evidence từ `./start_dev.ps1` cho thay đổi này.
+- Các gap đã được ghi rõ trong docs, cần follow-up code slice để đóng gate chính thức.
+
+# 2026-05-28 — Billing phase-2 runtime fix: quota 500 removed, UI no longer fail-fast ✅
+
+Status: **✅ CODE + RUNTIME VERIFIED (billing page path visible and resilient under partial data failures)**
+
+## Summary
+
+- Backend: fix `QuotaListView` pagination ordering mismatch bằng paginator riêng `QuotaCursorPagination(ordering='-period_start')` để loại bỏ `FieldError` tại `/core/v1/billing/quota`.
+- Frontend: `BillingCenterPage` chuyển sang `Promise.allSettled`, cho phép render phần dữ liệu có sẵn thay vì crash cả trang khi một endpoint lỗi.
+- Runtime ops: xử lý lỗi compose conflict container `vninvest-dev-mailpit`, sau đó khởi động lại stack thành công.
+
+## Files Updated
+
+- `packages/core/backend/src/commercial/views.py`
+- `packages/web/src/pages/commercial/BillingCenterPage.js`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `./start_dev.ps1` ✅ stack healthy (`Core API health: OK`, `Frontend health: OK`).
+- `GET http://localhost:8001/core/v1/billing/quota` ✅ `200` với payload rỗng hợp lệ.
+- `GET http://localhost:8001/core/v1/billing/invoices?page=1&page_size=10` ✅ `200`.
+- Frontend bundle check ✅ chứa logic `Promise.allSettled` cho Billing Center.
+
+## Residual Risk
+
+- `billing/subscription` có thể `404` nếu tenant chưa có dữ liệu subscription; UI hiện degrade đúng (no-plan state), nhưng để demo đầy đủ cần seed dữ liệu commercial.
+
 # 2026-05-28 — Frontend handoff pack cho VNPay/Billing/Notification Phase 2 ✅
 
 Status: **✅ DOC PACK READY (SaaS-native OpenAPI handoff complete, implementation chưa bắt đầu)**
