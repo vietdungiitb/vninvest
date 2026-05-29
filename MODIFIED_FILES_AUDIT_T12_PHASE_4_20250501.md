@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-05-29 | AI SSOT evidence slice: backend checklist alignment (2.x + 3.x)
+
+### Files changed in this session
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+### Purpose
+- Đồng bộ taskboard backend với implementation thực tế: check off các mục 2.1–2.5 và 3.1–3.3.
+
+### Validation snapshot
+- `grep_search` ✅ xác nhận marker implementation cho `_get_or_create_active_ai_settings`, effective context merge, Fernet encryption/decryption, token budget `429`, `reset_daily_token_budgets`, và route canonicalization.
+
+### Residual risk
+- Regression backend host env còn phụ thuộc bootstrap package `dj_database_url`.
+
 ## 2026-05-29 | AI SSOT evidence slice: close checklist 5.1
 
 ### Files changed in this session

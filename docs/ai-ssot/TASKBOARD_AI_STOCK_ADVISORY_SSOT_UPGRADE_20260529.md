@@ -35,21 +35,21 @@ Tài liệu này đóng vai trò là bảng điều khiển tiến độ và dan
 - [x] **1.3** Thực hiện cách ly hoàn toàn đa thuê bao: Tất cả các truy vấn lấy tín hiệu của người dùng phải áp dụng bộ lọc Tenant (`UserProfile.tenant_id`), không truy vấn chéo giữa các Tenant.
 
 ### Giai Đoạn 2: Tích Hợp Multi-Agent Core Vào Trung Tâm Quản Lý AI (SSOT)
-- [ ] **2.1** Triển khai hàm `_get_or_create_active_ai_settings()` để truy xuất chính xác bối cảnh mặc định hệ thống.
-- [ ] **2.2** Đọc ghi đè từ `UserProfile.language` và `UserProfile.preferences` (cho cấu hình BYOK).
-- [ ] **2.3** Triển khai mã hóa đối xứng bằng **chuẩn Fernet** cho khóa API của người dùng trước khi lưu xuống trường `preferences` (sử dụng `AI_CREDENTIAL_FERNET_KEY` env var hoặc key derived từ `settings.SECRET_KEY`).
-- [ ] **2.4** Báo lỗi và ghi log bảo mật rõ ràng khi giải mã thất bại thay vì nuốt lỗi âm thầm.
-- [ ] **2.5** Đảm bảo `AdvisoryOrchestrator` nhận cấu hình hợp nhất và kích hoạt các tác nhân (Technical, Flow, Sentiment) theo đúng prompt template cấu hình trong `SystemAISettings`.
+- [x] **2.1** Triển khai hàm `_get_or_create_active_ai_settings()` để truy xuất chính xác bối cảnh mặc định hệ thống.
+- [x] **2.2** Đọc ghi đè từ `UserProfile.language` và `UserProfile.preferences` (cho cấu hình BYOK).
+- [x] **2.3** Triển khai mã hóa đối xứng bằng **chuẩn Fernet** cho khóa API của người dùng trước khi lưu xuống trường `preferences` (sử dụng `AI_CREDENTIAL_FERNET_KEY` env var hoặc key derived từ `settings.SECRET_KEY`).
+- [x] **2.4** Báo lỗi và ghi log bảo mật rõ ràng khi giải mã thất bại thay vì nuốt lỗi âm thầm.
+- [x] **2.5** Đảm bảo `AdvisoryOrchestrator` nhận cấu hình hợp nhất và kích hoạt các tác nhân (Technical, Flow, Sentiment) theo đúng prompt template cấu hình trong `SystemAISettings`.
 
 ### Giai Đoạn 3: Chuẩn Hóa API OpenAPI & Kiểm Soát Định Mức
-- [ ] **3.1** Quy hoạch lại toàn bộ API sang cấu trúc mới trong `packages/core/backend/src/signal_intelligence/urls.py` và `advisory/urls.py`:
+- [x] **3.1** Quy hoạch lại toàn bộ API sang cấu trúc mới trong `packages/core/backend/src/signal_intelligence/urls.py` và `advisory/urls.py`:
   - `GET /core/v1/signals/alert-center/feed` (Dùng lớp `AlertCenterFeedView` kế thừa `UserScopedAlertFeedBaseView` để thừa hưởng Cursor Pagination và Tenant Isolation).
   - `GET /core/v1/signals/alert-center/symbols/{symbol}/context` (Truy cập bối cảnh snapshot của mã chứng khoán tại `AlertCenterSymbolContextView`).
   - `GET /core/v1/signals/ai-alerts/feed` (Xem lane tư vấn AI chuyên biệt tại `AIAlertsFeedView`).
   - `POST /core/v1/advisory/refresh/{symbol}/` (Route kích hoạt refresh thủ công riêng biệt tại `AdvisoryRefreshView`).
-- [ ] **3.2** Viết Celery Task `reset_daily_token_budgets` để reset toàn bộ `AdvisorySession.tokens_used` và `daily_tokens_used` của người dùng về `0`.
+- [x] **3.2** Viết Celery Task `reset_daily_token_budgets` để reset toàn bộ `AdvisorySession.tokens_used` và `daily_tokens_used` của người dùng về `0`.
 - [x] **3.2a** Bổ sung bằng chứng scheduler cho task reset trong `CELERY_BEAT_SCHEDULE` (00:00 UTC+7) hoặc tài liệu quyết định vận hành tương đương nếu chưa bật schedule production.
-- [ ] **3.3** Tích hợp Token Budget Control: Kiểm tra lượng token đã dùng trong ngày của `AdvisorySession` trước khi cho phép gọi LLM, nếu vượt hạn mức hệ thống lập tức chặn và trả về lỗi `429 Too Many Requests`.
+- [x] **3.3** Tích hợp Token Budget Control: Kiểm tra lượng token đã dùng trong ngày của `AdvisorySession` trước khi cho phép gọi LLM, nếu vượt hạn mức hệ thống lập tức chặn và trả về lỗi `429 Too Many Requests`.
 
 ### Giai Đoạn 4: Trò Chuyện Trực Tiếp Bám Sát Bối Cảnh
 - [ ] **4.1** Tích hợp hai thực thể `AdvisorySession` và `AdvisoryComponent` phục vụ chat trợ lý thông minh đa lượt.

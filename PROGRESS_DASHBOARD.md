@@ -1,3 +1,27 @@
+# 2026-05-29 — AI SSOT slice: backend checklist alignment (2.x + 3.x) ✅
+
+Status: **✅ DONE (taskboard đã đồng bộ với implementation backend thực tế)**
+
+## Summary
+
+- Đóng các mục backend còn mở nhưng đã có code thực thi: 2.1–2.5 và 3.1–3.3.
+- Evidence lấy trực tiếp từ search trong `advisory/views.py`, `advisory/tasks.py`, `identity_access/security.py`, `advisory/urls.py`, `signal_intelligence/views.py`.
+
+## Files Updated
+
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- Code search ✅ xác nhận đủ marker cho context merge, Fernet, route canonicalization, reset task, và token budget 429 guard.
+
+## Residual Risk
+
+- Full backend regression trên host venv vẫn bị chặn bởi thiếu dependency `dj_database_url`.
+
 # 2026-05-29 — AI SSOT slice: close taskboard item 5.1 ✅
 
 Status: **✅ DONE (đã xác nhận loại bỏ hook `useAIAdvisor.js` khỏi SaaS-native runtime)**

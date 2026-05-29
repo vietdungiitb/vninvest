@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+# 2026-05-29 | AI SSOT backend checklist alignment (2.x + 3.x) ✅
+
+## Problem Solved
+
+- Đồng bộ taskboard AI SSOT với trạng thái implementation thực tế ở lane backend để loại bỏ các mục còn `unchecked` nhưng đã hoàn thành trong codebase.
+- Đóng các mục 2.1–2.5 và 3.1–3.3 dựa trên evidence trực tiếp từ `advisory/views.py`, `advisory/tasks.py`, `identity_access/security.py`, `advisory/urls.py`, `signal_intelligence/views.py`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| `_get_or_create_active_ai_settings()` | ✅ hiện diện tại `advisory/views.py` |
+| Effective context + BYOK decrypt + fallback | ✅ hiện diện trong luồng `AdvisoryRefreshView` |
+| Fernet encryption helpers | ✅ `encrypt_user_api_key` / `decrypt_user_api_key` tại `identity_access/security.py` |
+| Token budget 429 guard | ✅ `status.HTTP_429_TOO_MANY_REQUESTS` + `token_budget` checks trong `advisory/views.py` |
+| Reset task | ✅ `reset_daily_token_budgets` trong `advisory/tasks.py` |
+| Route canonicalization | ✅ lane routes `/core/v1/signals/alert-center/feed`, `/core/v1/signals/ai-alerts/feed`, `/core/v1/advisory/refresh/{symbol}/` được khai báo/tiêu thụ |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off mục 2.1–2.5 và 3.1–3.3 theo evidence implementation |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Thêm entry audit alignment checklist backend |
+
+## Residual Risk
+
+- Dù checklist đã align theo code hiện tại, full regression backend lane vẫn phụ thuộc local Python env đầy đủ (`dj_database_url` trên host venv).
+
 # 2026-05-29 | AI SSOT taskboard slice 5.1 closure (remove legacy useAIAdvisor hook) ✅
 
 ## Problem Solved
