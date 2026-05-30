@@ -27,52 +27,52 @@ class UserWorkspaceTenantIsolationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Create test fixtures: 2 tenants, 3 users with tenant memberships."""
-        # Create tenants
-        cls.tenant_a = CoreTenant.objects.create(
-            name='Tenant A',
-            slug='tenant-a',
-            tier='STARTER'
-        )
-        cls.tenant_b = CoreTenant.objects.create(
-            name='Tenant B',
-            slug='tenant-b',
-            tier='STARTER'
-        )
-
         # Create users
+        cls.owner_a = User.objects.create_user(username='owner_a', password='pass')
+        cls.owner_b = User.objects.create_user(username='owner_b', password='pass')
         cls.user1 = User.objects.create_user(username='user1', password='pass')
         cls.user2 = User.objects.create_user(username='user2', password='pass')
         cls.user3 = User.objects.create_user(username='user3', password='pass')
+
+        # Create tenants
+        cls.tenant_a = CoreTenant.objects.create(
+            owner_user=cls.owner_a,
+            tenant_code='tenant-a',
+            display_name='Tenant A',
+            plan='starter'
+        )
+        cls.tenant_b = CoreTenant.objects.create(
+            owner_user=cls.owner_b,
+            tenant_code='tenant-b',
+            display_name='Tenant B',
+            plan='starter'
+        )
 
         # Create tenant memberships
         # user1 → tenant_a only
         TenantMember.objects.create(
             user=cls.user1,
             tenant=cls.tenant_a,
-            is_active=True,
-            role='member'
+            role='viewer'
         )
 
         # user2 → tenant_b only
         TenantMember.objects.create(
             user=cls.user2,
             tenant=cls.tenant_b,
-            is_active=True,
-            role='member'
+            role='viewer'
         )
 
         # user3 → both tenant_a and tenant_b
         TenantMember.objects.create(
             user=cls.user3,
             tenant=cls.tenant_a,
-            is_active=True,
-            role='member'
+            role='viewer'
         )
         TenantMember.objects.create(
             user=cls.user3,
             tenant=cls.tenant_b,
-            is_active=True,
-            role='member'
+            role='viewer'
         )
 
     def setUp(self):
@@ -153,7 +153,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client.force_authenticate(user=self.user1)
 
         # user1 tries to fetch user2's portfolio (tenant_b)
-        response = client.get(f'/api/portfolio/{self.portfolio_b2.id}/')
+        response = client.get(f'/core/v1/workspace/portfolios/{self.portfolio_b2.id}/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND,
                         msg='user1 should not see tenant_b portfolio')
 
@@ -162,27 +162,31 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user1)
 
-        response = client.get('/api/portfolio/')
+        response = client.get('/core/v1/workspace/portfolios/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Mock: response should have pagination
-        # In real scenario: response.data['results'] would have 1 portfolio (portfolio_a1)
-        # For now, just verify structure
+        results = response.data.get('results', [])
+        portfolio_names = [p['name'] for p in results]
+        self.assertIn('Portfolio A1', portfolio_names)
+        self.assertNotIn('Portfolio B2', portfolio_names)
 
     def test_T03_portfolio_filter_by_tenant_b(self):
         """Portfolio list: user2 sees only portfolios in tenant_b."""
         client = APIClient()
         client.force_authenticate(user=self.user2)
 
-        response = client.get('/api/portfolio/')
+        response = client.get('/core/v1/workspace/portfolios/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get('results', [])
+        portfolio_names = [p['name'] for p in results]
+        self.assertIn('Portfolio B2', portfolio_names)
+        self.assertNotIn('Portfolio A1', portfolio_names)
 
     def test_T04_transaction_filtered_by_portfolio_tenant(self):
         """Transaction list: transactions inherit tenant from portfolio."""
         client = APIClient()
         client.force_authenticate(user=self.user1)
 
-        response = client.get(f'/api/portfolio/{self.portfolio_a1.id}/transactions/')
+        response = client.get(f'/core/v1/workspace/portfolios/{self.portfolio_a1.id}/transactions/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Verify transaction has tenant set
@@ -195,7 +199,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client.force_authenticate(user=self.user1)
 
         # user1 tries to access tenant_b transaction
-        response = client.patch(f'/api/transaction/{self.txn_b2.id}/', data={'note': 'hacked'})
+        response = client.patch(f'/core/v1/workspace/transactions/{self.txn_b2.id}/', data={'note': 'hacked'})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND,
                         msg='user1 should not access tenant_b transaction')
 
@@ -206,7 +210,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
 
         # user3 can access portfolio in both tenants (if no scope enforced)
         # With proper scope, request.tenant would be set to one tenant
-        response_a = client.get(f'/api/portfolio/{self.portfolio_a3.id}/')
+        response_a = client.get(f'/core/v1/workspace/portfolios/{self.portfolio_a3.id}/')
         self.assertEqual(response_a.status_code, status.HTTP_200_OK,
                         msg='user3 can access tenant_a portfolio')
 
@@ -215,8 +219,12 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user1)
 
-        response = client.get('/api/watchlist/')
+        response = client.get('/core/v1/workspace/watchlists/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get('results', [])
+        watchlist_names = [w['name'] for w in results]
+        self.assertIn('Watchlist A1', watchlist_names)
+        self.assertNotIn('Watchlist B2', watchlist_names)
 
         # user1 should only see watchlist_a1
         watchlist = Watchlist.objects.get(user=self.user1)
@@ -229,7 +237,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client.force_authenticate(user=self.user1)
 
         # user1 tries to delete item from tenant_b watchlist
-        response = client.delete(f'/api/watchlist/{self.watchlist_b2.id}/items/VIC/')
+        response = client.delete(f'/core/v1/workspace/watchlists/{self.watchlist_b2.id}/items/VIC/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND,
                         msg='user1 should not access tenant_b watchlist items')
 
@@ -273,7 +281,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user1)
 
-        response = client.get('/api/portfolio/?page=1&page_size=10')
+        response = client.get('/core/v1/workspace/portfolios/?page=1&page_size=10')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Check pagination structure
@@ -300,7 +308,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
                 quantity=10
             )
 
-        response = client.get(f'/api/portfolio/{self.portfolio_a1.id}/transactions/?page=1&page_size=10')
+        response = client.get(f'/core/v1/workspace/portfolios/{self.portfolio_a1.id}/transactions/?page=1&page_size=10')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         results = response.data.get('results', [])
@@ -312,7 +320,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client = APIClient()
         # No auth
 
-        response = client.get('/api/portfolio/')
+        response = client.get('/core/v1/workspace/portfolios/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
         # Should have error detail
@@ -324,7 +332,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user1)
 
-        response = client.get('/api/portfolio/99999/')
+        response = client.get('/core/v1/workspace/portfolios/99999/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         self.assertIn('detail', response.data,
@@ -336,19 +344,21 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client.force_authenticate(user=self.user1)
 
         # Invalid portfolio creation (empty name)
-        response = client.post('/api/portfolio/', data={'name': ''})
+        response = client.post('/core/v1/workspace/portfolios/', data={'name': ''})
 
-        # Should be 400
-        self.assertIn(response.status_code, 
-                     [status.HTTP_400_BAD_REQUEST, status.HTTP_201_CREATED],
-                     msg='Empty name should be rejected')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                 msg='Empty name should be rejected with 400')
+        self.assertIn('field_errors', response.data,
+                  msg='400 response should include field_errors')
+        self.assertIn('name', response.data.get('field_errors', {}),
+                  msg='400 response should include field error for name')
 
     def test_T16_create_portfolio_sets_tenant(self):
         """Write operations: new portfolio gets tenant set automatically."""
         client = APIClient()
         client.force_authenticate(user=self.user1)
 
-        response = client.post('/api/portfolio/', 
+        response = client.post('/core/v1/workspace/portfolios/', 
                               data={'name': 'New Portfolio'})
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -365,7 +375,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         client.force_authenticate(user=self.user1)
 
         response = client.post(
-            f'/api/portfolio/{self.portfolio_a1.id}/transactions/',
+            f'/core/v1/workspace/portfolios/{self.portfolio_a1.id}/transactions/',
             data={
                 'symbol': 'VCB',
                 'transaction_type': 'BUY',
@@ -399,3 +409,123 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         )
         self.assertNotIn(self.txn_a1.id, [t.id for t in user2_b_txns],
                         msg='user2 should not see tenant_a transactions')
+
+    def test_T19_legacy_watchlist_group_list_isolation(self):
+        """Legacy watchlist group list: user1 sees only watchlists in tenant_a."""
+        client = APIClient()
+        client.force_authenticate(user=self.user1)
+
+        response = client.get('/api/portfolio/watchlist/groups/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Legacy response is a list of groups
+        watchlist_names = [w['name'] for w in response.data]
+        self.assertIn('Watchlist A1', watchlist_names)
+        self.assertNotIn('Watchlist B2', watchlist_names)
+
+    def test_T20_legacy_watchlist_group_detail_isolation(self):
+        """Legacy watchlist group detail: user1 cannot fetch tenant_b watchlist."""
+        client = APIClient()
+        client.force_authenticate(user=self.user1)
+
+        response = client.get(f'/api/portfolio/watchlist/groups/{self.watchlist_b2.id}/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_T21_legacy_watchlist_item_create_isolation(self):
+        """Legacy watchlist item create: user1 cannot add item to tenant_b watchlist."""
+        client = APIClient()
+        client.force_authenticate(user=self.user1)
+
+        response = client.post(f'/api/portfolio/watchlist/groups/{self.watchlist_b2.id}/items/', data={'symbol': 'HPG'})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_T22_legacy_watchlist_item_delete_isolation(self):
+        """Legacy watchlist item delete: user1 cannot delete item from tenant_b watchlist."""
+        client = APIClient()
+        client.force_authenticate(user=self.user1)
+
+        # Add item to tenant_b watchlist
+        item_b = WatchlistItem.objects.create(watchlist=self.watchlist_b2, symbol='HPG')
+        
+        # user1 tries to delete it
+        response = client.delete(f'/api/portfolio/watchlist/items/{item_b.id}/')
+        # View returns 204 regardless of existence/permission, but item must NOT be deleted
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        
+        # Verify HPG still exists in watchlist_b2
+        self.assertTrue(WatchlistItem.objects.filter(watchlist=self.watchlist_b2, symbol='HPG').exists())
+
+    def test_T23_legacy_securities_group_list_isolation(self):
+        """Legacy stock management group list: user1 sees only watchlists in tenant_a."""
+        client = APIClient()
+        client.force_authenticate(user=self.user1)
+
+        # Create custom watchlists to test securities list views
+        watchlist_custom_a = Watchlist.objects.create(
+            user=self.user1,
+            tenant=self.tenant_a,
+            name='Custom Group A'
+        )
+        watchlist_custom_b = Watchlist.objects.create(
+            user=self.user2,
+            tenant=self.tenant_b,
+            name='Custom Group B'
+        )
+
+        response = client.get('/api/portfolio/watchlist/groups/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        watchlist_names = [w['name'] for w in response.data]
+        self.assertIn('Custom Group A', watchlist_names)
+        self.assertNotIn('Custom Group B', watchlist_names)
+
+    def test_T24_tenant_member_inactive_status_blocked(self):
+        """Tenant isolation: user with suspended tenant cannot resolve it, falling back to None and getting blocked at endpoint level."""
+        client = APIClient()
+        
+        # Create a user and a suspended tenant
+        user_suspended = User.objects.create_user(username='user_suspended', password='pass')
+        tenant_suspended = CoreTenant.objects.create(
+            owner_user=user_suspended,
+            tenant_code='tenant-suspended',
+            display_name='Suspended Tenant',
+            status='suspended'  # NOT active or trial
+        )
+        TenantMember.objects.create(
+            user=user_suspended,
+            tenant=tenant_suspended,
+            role='viewer'
+        )
+        
+        client.force_authenticate(user=user_suspended)
+        
+        # Since _resolve_tenant now filters out suspended tenants, this user's resolved tenant is None.
+        from user_workspace.permissions import _resolve_tenant
+        resolved = _resolve_tenant(user_suspended)
+        self.assertIsNone(resolved, msg='Suspended tenant should resolve to None')
+
+        # Attempt to access native workspace endpoint - should be blocked with 403
+        response = client.get('/core/v1/workspace/portfolios/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN,
+                         msg='User with suspended tenant should be blocked with 403')
+
+    def test_T25_multi_tenant_user_can_select_tenant_by_query_hint(self):
+        """Multi-tenant scope: tenant_code query hint must control request.tenant resolution."""
+        client = APIClient()
+        client.force_authenticate(user=self.user3)
+
+        response = client.get('/core/v1/workspace/portfolios/?tenant_code=tenant-b')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        results = response.data.get('results', [])
+        portfolio_names = [p['name'] for p in results]
+        self.assertIn('Portfolio B3', portfolio_names)
+        self.assertNotIn('Portfolio A3', portfolio_names)
+
+    def test_T26_invalid_tenant_hint_is_forbidden(self):
+        """Tenant hint must be authorized for current user, otherwise endpoint is forbidden."""
+        client = APIClient()
+        client.force_authenticate(user=self.user1)
+
+        response = client.get('/core/v1/workspace/portfolios/?tenant_code=tenant-b')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
