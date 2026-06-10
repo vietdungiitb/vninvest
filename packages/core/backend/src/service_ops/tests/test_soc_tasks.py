@@ -992,6 +992,34 @@ class ReconcileStaleRunningRunLogsTaskTestCase(TestCase):
         self.assertEqual(result['recovered_to_failed'], 1)
         is_live_mock.assert_called_once_with('stale-pending-task')
 
+    @patch('service_ops.tasks._is_celery_task_live', return_value=False)
+    @patch('service_ops.tasks.current_app.AsyncResult')
+    def test_reconcile_marks_failed_for_stale_queued_log(self, async_result_mock, is_live_mock):
+        from django.core.cache import cache
+
+        async_result_mock.return_value = SimpleNamespace(state='PENDING')
+        service = get_registered_service('backfill_daily_prices')
+        run_log = ServiceRunLog.objects.create(
+            service=service,
+            status='queued',
+            celery_task_id='stale-queued-task',
+            input_summary={'trigger': 'test'},
+            output_summary={},
+        )
+        ServiceRunLog.objects.filter(pk=run_log.id).update(started_at=timezone.now() - timedelta(hours=6))
+        cache.set('scheduler:inflight:daily-backfill-prices-1700', 'stale-queued-task', timeout=600)
+
+        result = reconcile_stale_running_service_run_logs.run(stale_grace_seconds=60)
+
+        run_log.refresh_from_db()
+        self.assertEqual(run_log.status, 'failed')
+        self.assertEqual(run_log.output_summary.get('task_state'), 'PENDING')
+        self.assertIn('Auto-recovered stale running log', run_log.error_detail)
+        self.assertIsNone(cache.get('scheduler:inflight:daily-backfill-prices-1700'))
+        self.assertEqual(result['recovered_to_failed'], 1)
+        is_live_mock.assert_called_once_with('stale-queued-task')
+
+
 
 class VnbrokerAdapterTaskBridgeTestCase(TestCase):
     @patch('market_data.vnbroker_adapter.import_module')

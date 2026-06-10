@@ -154,7 +154,7 @@ def reconcile_stale_running_service_run_logs(self, stale_grace_seconds: int = 90
     recovered_to_failed = 0
     skipped_live = 0
 
-    running_logs = ServiceRunLog.objects.select_related('service').filter(status='running')
+    running_logs = ServiceRunLog.objects.select_related('service').filter(status__in=['queued', 'running'])
     for run_log in running_logs.iterator():
         examined += 1
 
