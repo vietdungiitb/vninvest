@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 FROM node:20-alpine AS builder
 
-ARG STOCKCHART_REPO=https://github.com/vietdungiitb/stockchart.git
+ARG STOCKCHART_REPO=https://github.com/vietdungiitb/VNStockCharts.git
 ARG STOCKCHART_REF=dev
 
 # 1. Fetch the renamed upstream repository directly so the build no longer
@@ -16,7 +16,8 @@ RUN --mount=type=secret,id=vnbroker_github_token \
 	export GIT_CONFIG_COUNT=1; \
 	export GIT_CONFIG_KEY_0=url."https://x-access-token:${token}@github.com/".insteadOf; \
 	export GIT_CONFIG_VALUE_0=https://github.com/; \
-	git clone --depth 1 --branch "${STOCKCHART_REF}" "${STOCKCHART_REPO}" /stockchart
+	git clone --depth 1 --branch "${STOCKCHART_REF}" "${STOCKCHART_REPO}" /stockchart; \
+	echo "Cache bust: 2026-06-08T0358"
 
 # 2. Build the @vnstockcharts engine core and react packages from source!
 WORKDIR /stockchart
@@ -35,10 +36,12 @@ RUN npm ci --legacy-peer-deps
 COPY frontend/ ./
 COPY packages/web/ ../packages/web/
 COPY packages/web/ ./packages/web/
-RUN rm -rf node_modules/@vnstockcharts \
-	&& mkdir -p node_modules/@vnstockcharts \
+RUN rm -rf node_modules/@vnstockcharts node_modules/@vninvestcharts \
+	&& mkdir -p node_modules/@vnstockcharts node_modules/@vninvestcharts \
 	&& cp -r /stockchart/packages/vn-kline-engine-core node_modules/@vnstockcharts/vn-kline-engine-core \
 	&& cp -r /stockchart/packages/vn-kline-engine-react node_modules/@vnstockcharts/vn-kline-engine-react \
+	&& cp -r /stockchart/packages/vn-kline-engine-core node_modules/@vninvestcharts/vn-kline-engine-core \
+	&& cp -r /stockchart/packages/vn-kline-engine-react node_modules/@vninvestcharts/vn-kline-engine-react \
 	&& rm -rf node_modules/@vninvest/web \
 	&& mkdir -p node_modules/@vninvest/web \
 	&& cp -R ../packages/web/. node_modules/@vninvest/web/ \

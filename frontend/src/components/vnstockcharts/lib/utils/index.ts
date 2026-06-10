@@ -26,7 +26,7 @@ const isProduction = (globalThis as any).process?.env?.NODE_ENV === "production"
 export function getLogger(prefix: string) {
 	let logger: any = noop;
 	if (!isProduction) {
-		logger = require("debug")("react-stockcharts:" + prefix);
+		logger = (...args: any[]) => console.log(`[react-stockcharts:${prefix}]`, ...args);
 	}
 	return logger;
 }

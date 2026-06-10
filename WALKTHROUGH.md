@@ -1,44 +1,74 @@
-# Final Audit Remediation Walkthrough
+# Walkthrough: Hoàn thành Nâng cấp Watchlist Page sang SaaS-Native Core
 
-This walkthrough outlines the exact fixes implemented to resolve the CRITICAL, HIGH, and MEDIUM blockers identified during the final go-live audit for the **VNPAY Billing Notification Frontend SaaS OpenAPI Phase 2** rollout.
-
-## 1. Syntax Error (Literal `` `n ``) Fixes
-**Finding:** CRITICAL syntax error in `packages/core/backend/src/identity_access/views_tenant.py` due to a literal `` `n `` character replacing newlines, causing `py_compile` to fail.
-
-**Fix Applied:**
-- Ran a codebase-wide Python script (`fix_newlines.py`) to safely replace all literal `` `n `` sequences back into standard `\n` line breaks across all `packages/core/**/*.py` files.
-- Successfully verified by running `python -m py_compile "packages/core/backend/src/identity_access/views_tenant.py"`.
-
-## 2. Test Runner Boundary (Jest vs Vitest) Fixes
-**Finding:** HIGH failure on `npm --prefix packages/web test -- --runInBand`. Jest was incorrectly attempting to parse files meant for Vitest (specifically `vnstockcharts` demo files), throwing `Cannot use import statement outside a module`.
-
-**Fix Applied:**
-- Updated `packages/web/jest.config.js` to explicitly exclude the `src/components/vnstockcharts/` directory from Jest via `testPathIgnorePatterns`.
-- **Validation:** Reran the full test suite (`npm --prefix packages/web test -- --runInBand`), which now **passes 100%**. All 66 tests across 5 suites succeed without syntax errors.
-
-## 3. Notification Throttle Claim (3 req/s)
-**Finding:** HIGH claim of a 3 req/s throttle for Notification not found in `packages/core/backend/src/vninvest_core/settings.py`.
-
-**Fix Applied:**
-- Explicitly added `'notification': '3/second'` to the `DEFAULT_THROTTLE_RATES` dictionary in `settings.py` (line 213) to ensure the SaaS native lane is formally throttled according to the spec.
-
-## 4. Hardcoded Text to i18n
-**Finding:** MEDIUM non-compliance with the rule requiring i18n key-based strings for new text in Commercial pages (`BillingCenterPage.js`, `PaymentReturnPage.js`).
-
-**Fix Applied:**
-- Replaced all hardcoded Vietnamese text with `t()` calls using a localized `useI18n()` hook, maintaining parity with existing patterns in the project (e.g., `OrderFlowRadarPanel.js`).
-- Extracted all strings into translation maps with keys like `commercial.billingCenter.title` and `commercial.paymentReturn.successTitle`.
-
-## 5. Taskboard Synchronization
-**Finding:** MEDIUM mismatch between the document state and implementation state for FP02-FP06 and FP08.
-
-**Fix Applied:**
-- Automatically synced `docs/detailed_designs/TASKBOARD_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md`.
-- Status updated from `PLANNED` to `DONE` for all corresponding feature slices.
-- Checked off all corresponding checklists (Slice 2).
+Tôi đã hoàn thành 100% việc lập trình, tối ưu hóa, vá lỗ hổng bảo mật và kiểm thử cô lập Multi-Tenant cho phân hệ Watchlist SaaS-Native Core theo đúng thiết kế và yêu cầu kỹ thuật.
 
 ---
 
-> [!NOTE]
-> For convenience, this Walkthrough report is simultaneously synced to `WALKTHROUGH.md` at the project root for easy validation.
-> The codebase is fully prepared for the final rollout.
+## 1. Các Thay đổi & Cải tiến Mã nguồn (Implemented Changes)
+
+### Lớp Backend (`packages/core`)
+1. **Vá lỗ hổng bảo mật Multi-Tenant trong Legacy Shim (HIGH):**
+   * Bảo vệ thành công legacy shims `SecuritiesGroupListCreateView` và `SecuritiesGroupDetailView` bằng cách tích hợp `TenantScopePermission` vào `permission_classes`.
+   * Thay thế các truy vấn user-only bằng double-filtering (`user=request.user, tenant=request.tenant`) trong [legacy_views.py](file:///packages/core/backend/src/user_workspace/legacy_views.py) để chặn đứng nguy cơ rò rỉ dữ liệu chéo giữa các tenants.
+2. **Nâng cấp Logic Giải quyết Tenant với Trạng thái Hoạt động (MEDIUM):**
+   * Cập nhật hàm `_resolve_tenant` trong [permissions.py](file:///packages/core/backend/src/user_workspace/permissions.py) để lọc và chỉ chấp nhận các tenants có trạng thái hoạt động (`active` hoặc `trial`). Các tenant bị tạm ngưng (`suspended`) hoặc hủy kích hoạt sẽ không thể giải quyết thành công, cô lập triệt để quyền truy cập dữ liệu của họ.
+3. **Nâng cấp Phân tích Kỹ thuật Gộp (Technicals Bulk API):**
+   * Đảm bảo endpoint `GET /core/v1/market-data/technicals/bulk/` trả về đầy đủ các chỉ số: `rsi_14`, `ma20_distance_pct`, `rvol`, và `updated_at`.
+
+### Lớp Giao diện (`packages/web`)
+1. **Bloomberg-Style Table & Styles (S2.1 & S2.2):**
+   * Xây dựng giao diện radar có mật độ hiển thị cao (Density Toggle: Compact / Comfortable), bảng giá neon dark sang trọng, và hiệu ứng nháy sáng (glow) xanh/đỏ khi nhận giá thay đổi thời gian thực.
+2. **Logic Gating & Route Swap (S2.3):**
+   * Đăng ký route `"core-watchlist"` vào [pageRegistry.js](file:///packages/web/src/pages/pageRegistry.js).
+   * Triển khai logic gating tại [ShellWatchlistPage.js](file:///packages/web/src/pages/workspace/ShellWatchlistPage.js): Nếu tenant có capability `watchlist_saas_native`, hệ thống tự động điều hướng và kết xuất component `WatchlistPage` mới một cách mượt mà.
+3. **Realtime WebSocket & Poll Fallback (S3.1 & S3.2):**
+   * Tích hợp hook WebSocket tự động bắt tay qua JWT.
+   * Xây dựng cơ chế Circuit Breaker: Tự động hạ cấp xuống short-polling HTTP (30 giây) khi kết nối mạng đứt liên tục quá 3 lần, đảm bảo ứng dụng vận hành không gián đoạn.
+
+---
+
+## 2. Bằng chứng Kiểm thử & Xác minh (Verification Evidence)
+
+### A. Kiểm thử Bảo mật Multi-Tenant & Legacy Shim Isolation (24/24 Tests PASS)
+Tôi đã tăng cường mạnh mẽ bộ test suite `test_user_workspace_tenant_isolation.py` bằng cách:
+* Thêm xác minh thực tế dữ liệu tenant-bound cho các test case `test_T02`, `test_T03`, và `test_T07` thay vì chỉ check mã HTTP 200.
+* Viết thêm 6 test cases mới (`test_T19` tới `test_T24`) để bao phủ toàn bộ các legacy watchlist endpoints và kiểm chứng logic chặn truy cập đối với các thành viên thuộc tenant đang bị đình chỉ (`suspended`).
+
+* **Câu lệnh thực hiện:**
+  ```powershell
+  $env:DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1"; $env:DJANGO_DEBUG="true"; .venv\Scripts\python packages/core/backend/manage.py test vninvest_core.tests.test_user_workspace_tenant_isolation
+  ```
+* **Kết quả kiểm thử:**
+  ```
+  Ran 24 tests in 10.897s
+
+  OK
+  Destroying test database for alias 'default'...
+  Found 24 test(s).
+  Portfolio tenant backfill complete: 0 updated, 0 orphaned
+  Watchlist tenant backfill complete: 0 updated, 0 orphaned
+  backfill_transaction_tenant: No transactions to update
+  backfill_subaccount_tenant: No subaccounts to update
+  System check identified no issues (0 silenced).
+  ```
+
+### B. Kiểm thử Giao diện Frontend
+Tôi đã chạy bộ test suites của gói `@vninvest/web` để xác định không có hồi quy mã nguồn:
+
+* **Câu lệnh thực hiện:**
+  ```bash
+  npm run test --prefix packages/web
+  ```
+* **Kết quả:**
+  ```
+  Test Suites: 7 passed, 7 total
+  Tests:       74 passed, 74 total
+  Time:        1.606 s
+  ```
+
+---
+
+## 3. Đồng bộ Tiến độ & Kế hoạch Tiếp theo (Road ahead)
+
+* **Taskboard:** Đã cập nhật trạng thái Slice 1 và Slice 2 thành `[x]` (Hoàn thành) trong [TASKBOARD.md](file:///docs/watchlist_audit/TASKBOARD.md).
+* **Shadow Run:** Hệ thống đã sẵn sàng cho giai đoạn Shadow Run trên môi trường staging. Sau khi xác nhận sự ổn định của luồng dữ liệu, chúng ta có thể tiến hành Canary Rollout cho 10% tenants trước khi chuyển đổi hoàn toàn và dọn dẹp các shim layers legacy.
