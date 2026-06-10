@@ -79,7 +79,7 @@ def _get_transaction_or_404(user, transaction_id, tenant=None):
 
 
 class PortfolioListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = StandardPageNumberPagination
 
     def get(self, request):
@@ -110,7 +110,7 @@ class PortfolioListCreateView(APIView):
 
 
 class PortfolioDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def get(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
@@ -133,7 +133,7 @@ class PortfolioDetailView(APIView):
 
 
 class TransactionListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = StandardPageNumberPagination
 
     def get(self, request, portfolio_id):
@@ -168,7 +168,7 @@ class TransactionListCreateView(APIView):
 
 
 class TransactionDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def patch(self, request, transaction_id):
         tenant = getattr(request, 'tenant', None)
@@ -186,7 +186,7 @@ class TransactionDetailView(APIView):
 
 
 class WatchlistListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = StandardPageNumberPagination
 
     def get(self, request):
@@ -216,7 +216,7 @@ class WatchlistListCreateView(APIView):
 
 
 class WatchlistItemListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = StandardPageNumberPagination
 
     def get(self, request, watchlist_id):
@@ -249,7 +249,7 @@ class WatchlistItemListCreateView(APIView):
 
 
 class WatchlistItemDeleteView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def delete(self, request, watchlist_id, symbol):
         tenant = getattr(request, 'tenant', None)

@@ -24,7 +24,7 @@ from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
 from ops_audit.models import AuditEvent
 
-from .models import AdvisoryRecord, AdvisorySession
+from .models import AdvisoryRecord, AdvisorySession, SystemAISettings
 from .serializers import AdvisoryRecordSerializer
 
 
@@ -38,6 +38,26 @@ def _validate_symbol(symbol: str) -> str:
         from rest_framework.exceptions import ValidationError
         raise ValidationError({'symbol': ['Mã chứng khoán không hợp lệ. Chỉ chấp nhận 2–10 ký tự chữ và số.']})
     return symbol
+
+
+def _get_or_create_active_ai_settings() -> SystemAISettings:
+    active = SystemAISettings.objects.filter(is_active=True).order_by('-updated_at').first()
+    if active:
+        return active
+    existing = SystemAISettings.objects.order_by('-updated_at').first()
+    if existing:
+        existing.is_active = True
+        existing.save(update_fields=['is_active'])
+        return existing
+    return SystemAISettings.objects.create(
+        name='Default Production Config',
+        is_active=True,
+        ai_model=SystemAISettings.ModelChoices.GPT4O_MINI,
+        max_tokens=1500,
+        temperature=0.3,
+        prompt_template='Default template for {symbol}',
+    )
+
 
 
 _MANUAL_TRIGGER_PLAN_LIMITS = {
@@ -238,6 +258,36 @@ class AdvisoryRefreshView(APIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
+        # Fetch active SystemAISettings and UserProfile for Effective AI Context
+        ai_settings = _get_or_create_active_ai_settings()
+        from identity_access.models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+        from identity_access.security import decrypt_user_api_key
+        encrypted_key = ""
+        if profile.preferences and isinstance(profile.preferences, dict):
+            encrypted_key = profile.preferences.get('api_key') or ""
+
+        try:
+            decrypted_key = decrypt_user_api_key(encrypted_key) if encrypted_key else ""
+            if not decrypted_key and ai_settings.metadata:
+                sys_encrypted_key = ai_settings.metadata.get('encrypted_api_key') or ""
+                if sys_encrypted_key:
+                    decrypted_key = decrypt_user_api_key(sys_encrypted_key)
+        except Exception as e:
+            logger.error(f"BYOK key decryption failed: {e}")
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'preferences': [f"Giải mã khóa API thất bại: {str(e)}"]})
+
+        effective_context = {
+            'ai_model': ai_settings.ai_model,
+            'max_tokens': ai_settings.max_tokens,
+            'temperature': ai_settings.temperature,
+            'prompt_template': ai_settings.prompt_template,
+            'language': profile.language,
+            'api_key': decrypted_key,
+        }
+
         quota_start, quota_end = _manual_trigger_period(tenant, session_date_obj)
         quota_defaults = {
             'api_calls_used': 0,
@@ -293,21 +343,24 @@ class AdvisoryRefreshView(APIView):
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
 
+            context_snapshot = {
+                'manual_trigger': {
+                    'job_key': 'advisory_refresh',
+                    'tenant_plan': tenant.plan,
+                    'tenant_status': tenant.status,
+                    'priority_tier': priority_tier,
+                },
+                'effective_ai_context': effective_context,
+            }
+
             record = AdvisoryRecord.objects.create(
                 symbol=symbol,
                 session_date=session_date,
                 user=request.user,
                 status='pending',
-                ai_model='',
+                ai_model=effective_context['ai_model'],
                 advisory_text='',
-                context_snapshot={
-                    'manual_trigger': {
-                        'job_key': 'advisory_refresh',
-                        'tenant_plan': tenant.plan,
-                        'tenant_status': tenant.status,
-                        'priority_tier': priority_tier,
-                    }
-                },
+                context_snapshot=context_snapshot,
                 tokens_used=0,
             )
 
@@ -335,6 +388,10 @@ class AdvisoryRefreshView(APIView):
             action='create',
             metadata=audit_metadata,
         )
+
+        # Trigger Celery task outside atomic transaction block to avoid race conditions
+        from advisory.tasks import generate_advisory_task
+        generate_advisory_task.delay(str(record.advisory_id), effective_context, symbol)
 
         response_data = AdvisoryRecordSerializer(record).data
         response_data['task_id'] = str(record.advisory_id)
