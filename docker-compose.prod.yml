@@ -638,8 +638,6 @@ services:
       LETSENCRYPT_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@edusuccess.vn}
     depends_on:
-      backend:
-        condition: service_healthy
       core-api:
         condition: service_healthy
     labels:
