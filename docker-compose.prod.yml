@@ -1,1 +1,670 @@
-# Production override for docker-compose.yml`n# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d`n# Hoặc trên Portainer: thêm cả 2 file hoặc dùng file này thay vì docker-compose.yml`n# services:`n#   db:`n#     image: postgres:15-alpine`n#     container_name: vninvest-db`n#     restart: unless-stopped`n#     environment:`n#       POSTGRES_DB: ${POSTGRES_DB:-vninvest}`n#       POSTGRES_USER: ${POSTGRES_USER:-postgres}`n#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}`n#     volumes:`n#       - postgres_data:/var/lib/postgresql/data`n#     healthcheck:`n#       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vninvest}"]`n#       interval: 10s`n#       timeout: 5s`n#       retries: 5`n#     networks:`n#       - vninvest_network`n#     mem_limit: ${DB_MEM_LIMIT:-2g}`n#     cpus: ${DB_CPUS:-1.5}`n#`n#   mailpit:`n#     image: axllent/mailpit:latest`n#     container_name: vninvest-mailpit`n#     restart: unless-stopped`n#     # Khong expose Mailpit tren production.`n#     ports: []`n#     networks:`n#       - vninvest_network`n`nservices:`n`n  core-db:`n    image: postgres:16-alpine`n    container_name: vninvest-core-db`n    restart: unless-stopped`n    environment:`n      POSTGRES_DB: vninvest_core`n      POSTGRES_USER: vninvest`n      POSTGRES_PASSWORD: ${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set for core-db}`n    volumes:`n      - core_pgdata:/var/lib/postgresql/data`n    healthcheck:`n      test: ["CMD-SHELL", "pg_isready -U vninvest -d vninvest_core"]`n      interval: 10s`n      timeout: 5s`n      retries: 5`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_DB_MEM_LIMIT:-1g}`n    cpus: ${CORE_DB_CPUS:-1.0}`n`n  core-redis:`n    image: redis:7-alpine`n    container_name: vninvest-core-redis`n    restart: unless-stopped`n    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]`n    volumes:`n      - core_redis_data:/data`n    healthcheck:`n      test: ["CMD", "redis-cli", "ping"]`n      interval: 10s`n      timeout: 5s`n      retries: 5`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_REDIS_MEM_LIMIT:-512m}`n    cpus: ${CORE_REDIS_CPUS:-0.5}`n`n  core-api:`n    build:`n      context: ./packages/core/backend`n      dockerfile: Dockerfile`n      args:`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n      secrets:`n        - vnbroker_github_token`n    image: vninvest-core-api:${APP_RELEASE:-latest}`n    container_name: vninvest-core-api`n    restart: unless-stopped`n    environment:`n      CORE_ENV: production`n      CORE_API_PORT: "8100"`n      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}`n      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}`n      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}`n      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core`n      REDIS_URL: redis://core-redis:6379/3`n      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}`n      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}`n      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}`n    command: ["api"]`n    depends_on:`n      core-db:`n        condition: service_healthy`n      core-redis:`n        condition: service_healthy`n    healthcheck:`n      test:`n        [`n          "CMD",`n          "curl",`n          "--fail",`n          "--silent",`n          "http://127.0.0.1:8100/core/v1/health",`n        ]`n      interval: 10s`n      timeout: 5s`n      retries: 12`n      start_period: 30s`n    expose:`n      - "8100"`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_API_MEM_LIMIT:-256m}`n    cpus: ${CORE_API_CPUS:-0.5}`n`n  core-worker:`n    build:`n      context: ./packages/core/backend`n      dockerfile: Dockerfile`n      args:`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n      secrets:`n        - vnbroker_github_token`n    image: vninvest-core-api:${APP_RELEASE:-latest}`n    container_name: vninvest-core-worker`n    restart: unless-stopped`n    environment:`n      CORE_ENV: production`n      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}`n      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}`n      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core`n      REDIS_URL: redis://core-redis:6379/3`n      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}`n      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n      CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,enrichment_offhours,manual_on_demand,analytics_heavy}`n      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}`n      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}`n    command: ["worker"]`n    depends_on:`n      core-api:`n        condition: service_healthy`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}`n    cpus: ${CORE_WORKER_CPUS:-0.25}`n`n  queue-drain-monitor:`n    image: redis:7-alpine`n    container_name: vninvest-queue-drain-monitor`n    restart: on-failure:5`n    depends_on:`n      core-redis:`n        condition: service_healthy`n    entrypoint: ["/bin/sh", "-c"]`n    command:`n      - |`n        while true; do`n          TS=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")`n          DEPTH=$$(redis-cli -h core-redis -n 3 LLEN realtime_prefetch 2>/dev/null || echo -1)`n          THRESHOLD=$${QUEUE_MONITOR_REALTIME_THRESHOLD:-500}`n          echo "[$$TS] realtime_prefetch_depth=$$DEPTH threshold=$$THRESHOLD"`n          if [ "$$DEPTH" -ge "$$THRESHOLD" ]; then`n            echo "[$$TS] ALERT realtime_prefetch backlog high depth=$$DEPTH threshold=$$THRESHOLD"`n          fi`n          sleep $${QUEUE_MONITOR_INTERVAL_SECONDS:-300}`n        done`n    healthcheck:`n      test: ["CMD-SHELL", "redis-cli -h core-redis -n 3 PING | grep -q PONG"]`n      interval: 30s`n      timeout: 5s`n      retries: 3`n      start_period: 10s`n    networks:`n      - vninvest_network`n    mem_limit: ${QUEUE_MONITOR_MEM_LIMIT:-64m}`n    cpus: ${QUEUE_MONITOR_CPUS:-0.10}`n`n  redis-exporter:`n    image: oliver006/redis_exporter:v1.67.0`n    container_name: vninvest-redis-exporter`n    restart: unless-stopped`n    environment:`n      REDIS_ADDR: redis://core-redis:6379`n      REDIS_EXPORTER_CHECK_KEYS: realtime_prefetch,manual_on_demand,analytics_heavy,enrichment_offhours`n    depends_on:`n      core-redis:`n        condition: service_healthy`n    networks:`n      - vninvest_network`n    mem_limit: ${REDIS_EXPORTER_MEM_LIMIT:-64m}`n    cpus: ${REDIS_EXPORTER_CPUS:-0.10}`n`n  core-worker-realtime-prefetch:`n    build:`n      context: ./packages/core/backend`n      dockerfile: Dockerfile`n      args:`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n      secrets:`n        - vnbroker_github_token`n    image: vninvest-core-api:${APP_RELEASE:-latest}`n    container_name: vninvest-core-worker-realtime-prefetch`n    restart: unless-stopped`n    environment:`n      CORE_ENV: production`n      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}`n      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}`n      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core`n      REDIS_URL: redis://core-redis:6379/3`n      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}`n      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n      CELERY_QUEUES: realtime_prefetch`n      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}`n      CELERY_CONCURRENCY: "4"`n      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}`n    command: ["worker"]`n    depends_on:`n      core-api:`n        condition: service_healthy`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}`n    cpus: ${CORE_WORKER_CPUS:-0.25}`n`n  core-worker-realtime-stream:`n    build:`n      context: ./packages/core/backend`n      dockerfile: Dockerfile`n      args:`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n      secrets:`n        - vnbroker_github_token`n    image: vninvest-core-api:${APP_RELEASE:-latest}`n    container_name: vninvest-core-worker-realtime-stream`n    restart: unless-stopped`n    environment:`n      CORE_ENV: production`n      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}`n      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}`n      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core`n      REDIS_URL: redis://core-redis:6379/3`n      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}`n      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n      CELERY_QUEUES: realtime_stream`n      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}`n      CELERY_CONCURRENCY: "4"`n      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}`n    command: ["worker"]`n    depends_on:`n      core-api:`n        condition: service_healthy`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}`n    cpus: ${CORE_WORKER_CPUS:-0.25}`n`n  core-worker-enrichment:`n    build:`n      context: ./packages/core/backend`n      dockerfile: Dockerfile`n      args:`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n      secrets:`n        - vnbroker_github_token`n    image: vninvest-core-api:${APP_RELEASE:-latest}`n    container_name: vninvest-core-worker-enrichment`n    restart: unless-stopped`n    environment:`n      CORE_ENV: production`n      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}`n      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}`n      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core`n      REDIS_URL: redis://core-redis:6379/3`n      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}`n      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n      CELERY_QUEUES: enrichment_offhours`n      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}`n      CELERY_CONCURRENCY: "6"`n      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}`n    command: ["worker"]`n    depends_on:`n      core-api:`n        condition: service_healthy`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}`n    cpus: ${CORE_WORKER_CPUS:-0.25}`n`n  core-worker-analytics:`n    build:`n      context: ./packages/core/backend`n      dockerfile: Dockerfile`n      args:`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n      secrets:`n        - vnbroker_github_token`n    image: vninvest-core-api:${APP_RELEASE:-latest}`n    container_name: vninvest-core-worker-analytics`n    restart: unless-stopped`n    environment:`n      CORE_ENV: production`n      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}`n      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}`n      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core`n      REDIS_URL: redis://core-redis:6379/3`n      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}`n      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n      CELERY_QUEUES: analytics_heavy`n      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}`n      CELERY_CONCURRENCY: "4"`n      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}`n    command: ["worker"]`n    depends_on:`n      core-api:`n        condition: service_healthy`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}`n    cpus: ${CORE_WORKER_CPUS:-0.25}`n`n  core-worker-manual:`n    build:`n      context: ./packages/core/backend`n      dockerfile: Dockerfile`n      args:`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n      secrets:`n        - vnbroker_github_token`n    image: vninvest-core-api:${APP_RELEASE:-latest}`n    container_name: vninvest-core-worker-manual`n    restart: unless-stopped`n    environment:`n      CORE_ENV: production`n      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}`n      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}`n      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core`n      REDIS_URL: redis://core-redis:6379/3`n      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}`n      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n      CELERY_QUEUES: manual_on_demand`n      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}`n      CELERY_CONCURRENCY: "3"`n      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}`n    command: ["worker"]`n    depends_on:`n      core-api:`n        condition: service_healthy`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}`n    cpus: ${CORE_WORKER_CPUS:-0.25}`n`n  core-beat:`n    build:`n      context: ./packages/core/backend`n      dockerfile: Dockerfile`n      args:`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n      secrets:`n        - vnbroker_github_token`n    image: vninvest-core-api:${APP_RELEASE:-latest}`n    container_name: vninvest-core-beat`n    restart: unless-stopped`n    environment:`n      CORE_ENV: production`n      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}`n      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}`n      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core`n      REDIS_URL: redis://core-redis:6379/3`n      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}`n      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}`n    command: ["beat"]`n    depends_on:`n      core-api:`n        condition: service_healthy`n    networks:`n      - vninvest_network`n    mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}`n    cpus: ${CORE_BEAT_CPUS:-0.25}`n`n#   backend:`n#     build:`n#       context: ./backend`n#       dockerfile: Dockerfile`n#       args:`n#         APP_RELEASE: ${APP_RELEASE:-main-local}`n#         VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}`n#     container_name: vninvest-backend`n#     restart: unless-stopped`n#     env_file:`n#       - ./backend/.env.production`n#     volumes:`n#       - ./backend/.env.production:/app/.env.production:ro`n#       - ./backend/.env:/app/.env:ro`n#     environment:`n#       POSTGRES_DB: ${POSTGRES_DB:-vninvest}`n#       POSTGRES_USER: ${POSTGRES_USER:-postgres}`n#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}`n#       POSTGRES_HOST: ${POSTGRES_HOST:-db}`n#       POSTGRES_PORT: ${POSTGRES_PORT:-5432}`n#       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}`n#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}`n#       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}`n#       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}`n#       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}`n#       APP_RELEASE: ${APP_RELEASE:-main-local}`n#       # PAT-only: pepper must match core-api for LegacyCorePATAuthentication to validate tokens.`n#       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set in production}`n#       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}`n#       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}`n#     labels:`n#       com.vninvest.release: ${APP_RELEASE:-main-local}`n#     depends_on:`n#       db:`n#         condition: service_healthy`n#       core-redis:`n#         condition: service_healthy`n#       mailpit:`n#         condition: service_started`n#     command: ["/bin/sh", "/app/entrypoint.sh"]`n#     healthcheck:`n#       test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8000/api/health/ >/dev/null || exit 1"]`n#       interval: 30s`n#       timeout: 10s`n#       retries: 5`n#       start_period: 45s`n#     expose:`n#       - "8000"`n#     networks:`n#       - vninvest_network`n#     mem_limit: ${BACKEND_MEM_LIMIT:-1500m}`n#     cpus: ${BACKEND_CPUS:-1.5}`n#`n#   celery_worker:`n#     build:`n#       context: ./backend`n#       dockerfile: Dockerfile`n#       args:`n#         APP_RELEASE: ${APP_RELEASE:-main-local}`n#     container_name: vninvest-celery-worker`n#     restart: unless-stopped`n#     env_file:`n#       - ./backend/.env.production`n#     volumes:`n#       - ./backend/.env.production:/app/.env.production:ro`n#       - ./backend/.env:/app/.env:ro`n#     environment:`n#       POSTGRES_DB: ${POSTGRES_DB:-vninvest}`n#       POSTGRES_USER: ${POSTGRES_USER:-postgres}`n#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}`n#       POSTGRES_HOST: ${POSTGRES_HOST:-db}`n#       POSTGRES_PORT: ${POSTGRES_PORT:-5432}`n#       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}`n#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}`n#       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}`n#       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}`n#       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}`n#       APP_RELEASE: ${APP_RELEASE:-main-local}`n#     labels:`n#       com.vninvest.release: ${APP_RELEASE:-main-local}`n#     depends_on:`n#       db:`n#         condition: service_healthy`n#       core-redis:`n#         condition: service_healthy`n#       mailpit:`n#         condition: service_started`n#     command: ["celery", "-A", "config", "worker", "-l", "info"]`n#     healthcheck:`n#       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME | grep -q 'OK'"]`n#       interval: 30s`n#       timeout: 15s`n#       retries: 5`n#       start_period: 60s`n#     networks:`n#       - vninvest_network`n#     mem_limit: ${CELERY_WORKER_MEM_LIMIT:-2g}`n#     cpus: ${CELERY_WORKER_CPUS:-2.0}`n#`n#   celery_beat:`n#     build:`n#       context: ./backend`n#       dockerfile: Dockerfile`n#       args:`n#         APP_RELEASE: ${APP_RELEASE:-main-local}`n#     container_name: vninvest-celery-beat`n#     restart: unless-stopped`n#     env_file:`n#       - ./backend/.env.production`n#     volumes:`n#       - ./backend/.env.production:/app/.env.production:ro`n#       - ./backend/.env:/app/.env:ro`n#     environment:`n#       POSTGRES_DB: ${POSTGRES_DB:-vninvest}`n#       POSTGRES_USER: ${POSTGRES_USER:-postgres}`n#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}`n#       POSTGRES_HOST: ${POSTGRES_HOST:-db}`n#       POSTGRES_PORT: ${POSTGRES_PORT:-5432}`n#       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}`n#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}`n#       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}`n#       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}`n#       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}`n#       APP_RELEASE: ${APP_RELEASE:-main-local}`n#     labels:`n#       com.vninvest.release: ${APP_RELEASE:-main-local}`n#     depends_on:`n#       db:`n#         condition: service_healthy`n#       core-redis:`n#         condition: service_healthy`n#       mailpit:`n#         condition: service_started`n#     command: ["celery", "-A", "config", "beat", "-l", "info"]`n#     healthcheck:`n#       test: ["CMD-SHELL", "python -c \"import pathlib, sys; cmd = pathlib.Path('/proc/1/cmdline').read_text(); sys.exit(0 if 'celery' in cmd and 'beat' in cmd else 1)\""]`n#       interval: 30s`n#       timeout: 10s`n#       retries: 5`n#       start_period: 30s`n#     networks:`n#       - vninvest_network`n#     mem_limit: ${CELERY_BEAT_MEM_LIMIT:-750m}`n#     cpus: ${CELERY_BEAT_CPUS:-0.75}`n`n  # SM-P5.1: PgBouncer connection pooling`n  pgbouncer:`n    image: bitnami/pgbouncer:latest`n    container_name: vninvest-pgbouncer`n    restart: unless-stopped`n    environment:`n      POSTGRESQL_HOST: core-db`n      POSTGRESQL_PORT: "5432"`n      POSTGRESQL_DATABASE: vninvest_core`n      POSTGRESQL_USERNAME: vninvest`n      POSTGRESQL_PASSWORD: ${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set for core-db}`n      PGBOUNCER_POOL_MODE: transaction`n      PGBOUNCER_MAX_CLIENT_CONN: "500"`n      PGBOUNCER_DEFAULT_POOL_SIZE: "20"`n      PGBOUNCER_MIN_POOL_SIZE: "5"`n      PGBOUNCER_RESERVE_POOL_SIZE: "10"`n      PGBOUNCER_LISTEN_PORT: "6432"`n      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits`n    depends_on:`n      core-db:`n        condition: service_healthy`n    healthcheck:`n      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 || exit 1"]`n      interval: 10s`n      timeout: 5s`n      retries: 5`n    expose:`n      - "6432"`n    networks:`n      - vninvest_network`n    mem_limit: ${PGBOUNCER_MEM_LIMIT:-64m}`n    cpus: ${PGBOUNCER_CPUS:-0.25}`n`n  # SM-P5.2: Prometheus monitoring`n  prometheus:`n    image: prom/prometheus:latest`n    container_name: vninvest-prometheus`n    restart: unless-stopped`n    command:`n      - "--config.file=/etc/prometheus/prometheus.yml"`n      - "--storage.tsdb.path=/prometheus"`n      - "--storage.tsdb.retention.time=30d"`n      - "--web.enable-lifecycle"`n    volumes:`n      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro`n      - prometheus_data:/prometheus`n    expose:`n      - "9090"`n    networks:`n      - vninvest_network`n    mem_limit: ${PROMETHEUS_MEM_LIMIT:-512m}`n    cpus: ${PROMETHEUS_CPUS:-0.5}`n`n  # SM-P5.2: Grafana dashboards`n  grafana:`n    image: grafana/grafana:latest`n    container_name: vninvest-grafana`n    restart: unless-stopped`n    environment:`n      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}`n      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}`n      GF_INSTALL_PLUGINS: grafana-piechart-panel`n      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}`n      GF_ANALYTICS_REPORTING_ENABLED: "false"`n    volumes:`n      - grafana_data:/var/lib/grafana`n      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro`n      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro`n    depends_on:`n      - prometheus`n    expose:`n      - "3000"`n    networks:`n      - vninvest_network`n    mem_limit: ${GRAFANA_MEM_LIMIT:-256m}`n    cpus: ${GRAFANA_CPUS:-0.25}`n`n  frontend:`n    build:`n      context: .`n      dockerfile: frontend/Dockerfile.dev-package-shell`n      secrets:`n        - vnbroker_github_token`n      args:`n        REACT_APP_API_BASE_URL: /api`n        APP_RELEASE: ${APP_RELEASE:-main-local}`n        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"`n        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1`n    container_name: vninvest-frontend`n    restart: unless-stopped`n    environment:`n      APP_RELEASE: ${APP_RELEASE:-main-local}`n      REACT_APP_API_BASE_URL: /api`n      REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"`n      REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1`n      VIRTUAL_HOST: ${DOMAIN:-vninvest.edusuccess.vn}`n      VIRTUAL_PORT: "80"`n      LETSENCRYPT_HOST: ${DOMAIN:-vninvest.edusuccess.vn}`n      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@edusuccess.vn}`n    depends_on:`n      backend:`n        condition: service_healthy`n      core-api:`n        condition: service_healthy`n    labels:`n      com.vninvest.release: ${APP_RELEASE:-main-local}`n    expose:`n      - "80"`n    networks:`n      - vninvest_network`n      - nginx-proxy_default`n    mem_limit: ${FRONTEND_MEM_LIMIT:-750m}`n    cpus: ${FRONTEND_CPUS:-0.75}`n`nvolumes:`n  postgres_data:`n  core_pgdata:`n  core_redis_data:`n  prometheus_data:`n  grafana_data:`n`nsecrets:`n  vnbroker_github_token:`n    environment: VNBROKER_GITHUB_TOKEN`n`nnetworks:`n  vninvest_network:`n    driver: bridge`n  nginx-proxy_default:`n    external: true`n
+# Production override for docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Hoặc trên Portainer: thêm cả 2 file hoặc dùng file này thay vì docker-compose.yml
+# services:
+#   db:
+#     image: postgres:15-alpine
+#     container_name: vninvest-db
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_DB: ${POSTGRES_DB:-vninvest}
+#       POSTGRES_USER: ${POSTGRES_USER:-postgres}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vninvest}"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#     networks:
+#       - vninvest_network
+#     mem_limit: ${DB_MEM_LIMIT:-2g}
+#     cpus: ${DB_CPUS:-1.5}
+#
+#   mailpit:
+#     image: axllent/mailpit:latest
+#     container_name: vninvest-mailpit
+#     restart: unless-stopped
+#     # Khong expose Mailpit tren production.
+#     ports: []
+#     networks:
+#       - vninvest_network
+
+services:
+
+  core-db:
+    image: postgres:16-alpine
+    container_name: vninvest-core-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vninvest_core
+      POSTGRES_USER: vninvest
+      POSTGRES_PASSWORD: ${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set for core-db}
+    volumes:
+      - core_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vninvest -d vninvest_core"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_DB_MEM_LIMIT:-1g}
+    cpus: ${CORE_DB_CPUS:-1.0}
+
+  core-redis:
+    image: redis:7-alpine
+    container_name: vninvest-core-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - core_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_REDIS_MEM_LIMIT:-512m}
+    cpus: ${CORE_REDIS_CPUS:-0.5}
+
+  core-api:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+      secrets:
+        - vnbroker_github_token
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-api
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      CORE_API_PORT: "8100"
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}
+    command: ["api"]
+    depends_on:
+      core-db:
+        condition: service_healthy
+      core-redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://127.0.0.1:8100/core/v1/health",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    expose:
+      - "8100"
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_API_MEM_LIMIT:-256m}
+    cpus: ${CORE_API_CPUS:-0.5}
+
+  core-worker:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+      secrets:
+        - vnbroker_github_token
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,enrichment_offhours,manual_on_demand,analytics_heavy}
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  queue-drain-monitor:
+    image: redis:7-alpine
+    container_name: vninvest-queue-drain-monitor
+    restart: on-failure:5
+    depends_on:
+      core-redis:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          TS=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          DEPTH=$$(redis-cli -h core-redis -n 3 LLEN realtime_prefetch 2>/dev/null || echo -1)
+          THRESHOLD=$${QUEUE_MONITOR_REALTIME_THRESHOLD:-500}
+          echo "[$$TS] realtime_prefetch_depth=$$DEPTH threshold=$$THRESHOLD"
+          if [ "$$DEPTH" -ge "$$THRESHOLD" ]; then
+            echo "[$$TS] ALERT realtime_prefetch backlog high depth=$$DEPTH threshold=$$THRESHOLD"
+          fi
+          sleep $${QUEUE_MONITOR_INTERVAL_SECONDS:-300}
+        done
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h core-redis -n 3 PING | grep -q PONG"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - vninvest_network
+    mem_limit: ${QUEUE_MONITOR_MEM_LIMIT:-64m}
+    cpus: ${QUEUE_MONITOR_CPUS:-0.10}
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: vninvest-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://core-redis:6379
+      REDIS_EXPORTER_CHECK_KEYS: realtime_prefetch,manual_on_demand,analytics_heavy,enrichment_offhours
+    depends_on:
+      core-redis:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${REDIS_EXPORTER_MEM_LIMIT:-64m}
+    cpus: ${REDIS_EXPORTER_CPUS:-0.10}
+
+  core-worker-realtime-prefetch:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+      secrets:
+        - vnbroker_github_token
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-realtime-prefetch
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CELERY_QUEUES: realtime_prefetch
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      CELERY_CONCURRENCY: "4"
+      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-realtime-stream:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+      secrets:
+        - vnbroker_github_token
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-realtime-stream
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CELERY_QUEUES: realtime_stream
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      CELERY_CONCURRENCY: "4"
+      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-enrichment:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+      secrets:
+        - vnbroker_github_token
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-enrichment
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CELERY_QUEUES: enrichment_offhours
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      CELERY_CONCURRENCY: "6"
+      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-analytics:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+      secrets:
+        - vnbroker_github_token
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-analytics
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CELERY_QUEUES: analytics_heavy
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      CELERY_CONCURRENCY: "4"
+      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-manual:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+      secrets:
+        - vnbroker_github_token
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-worker-manual
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CELERY_QUEUES: manual_on_demand
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+      CELERY_CONCURRENCY: "3"
+      MAIL_CREDENTIAL_FERNET_KEY: ${MAIL_CREDENTIAL_FERNET_KEY:?MAIL_CREDENTIAL_FERNET_KEY must be set}
+    command: ["worker"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-beat:
+    build:
+      context: ./packages/core/backend
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+      secrets:
+        - vnbroker_github_token
+    image: vninvest-core-api:${APP_RELEASE:-latest}
+    container_name: vninvest-core-beat
+    restart: unless-stopped
+    environment:
+      CORE_ENV: production
+      DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY:?CORE_DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS:?CORE_ALLOWED_HOSTS must be set}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:?CORE_CORS_ALLOWED_ORIGINS must be set}
+    command: ["beat"]
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}
+    cpus: ${CORE_BEAT_CPUS:-0.25}
+
+#   backend:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#       args:
+#         APP_RELEASE: ${APP_RELEASE:-main-local}
+#         VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to build private vnbroker dependency}
+#     container_name: vninvest-backend
+#     restart: unless-stopped
+#     env_file:
+#       - ./backend/.env.production
+#     volumes:
+#       - ./backend/.env.production:/app/.env.production:ro
+#       - ./backend/.env:/app/.env:ro
+#     environment:
+#       POSTGRES_DB: ${POSTGRES_DB:-vninvest}
+#       POSTGRES_USER: ${POSTGRES_USER:-postgres}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+#       POSTGRES_HOST: ${POSTGRES_HOST:-db}
+#       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+#       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}
+#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}
+#       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}
+#       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}
+#       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}
+#       APP_RELEASE: ${APP_RELEASE:-main-local}
+#       # PAT-only: pepper must match core-api for LegacyCorePATAuthentication to validate tokens.
+#       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER must be set in production}
+#       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
+#       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+#     labels:
+#       com.vninvest.release: ${APP_RELEASE:-main-local}
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#       core-redis:
+#         condition: service_healthy
+#       mailpit:
+#         condition: service_started
+#     command: ["/bin/sh", "/app/entrypoint.sh"]
+#     healthcheck:
+#       test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8000/api/health/ >/dev/null || exit 1"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 45s
+#     expose:
+#       - "8000"
+#     networks:
+#       - vninvest_network
+#     mem_limit: ${BACKEND_MEM_LIMIT:-1500m}
+#     cpus: ${BACKEND_CPUS:-1.5}
+#
+#   celery_worker:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#       args:
+#         APP_RELEASE: ${APP_RELEASE:-main-local}
+#     container_name: vninvest-celery-worker
+#     restart: unless-stopped
+#     env_file:
+#       - ./backend/.env.production
+#     volumes:
+#       - ./backend/.env.production:/app/.env.production:ro
+#       - ./backend/.env:/app/.env:ro
+#     environment:
+#       POSTGRES_DB: ${POSTGRES_DB:-vninvest}
+#       POSTGRES_USER: ${POSTGRES_USER:-postgres}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+#       POSTGRES_HOST: ${POSTGRES_HOST:-db}
+#       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+#       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}
+#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}
+#       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}
+#       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}
+#       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}
+#       APP_RELEASE: ${APP_RELEASE:-main-local}
+#     labels:
+#       com.vninvest.release: ${APP_RELEASE:-main-local}
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#       core-redis:
+#         condition: service_healthy
+#       mailpit:
+#         condition: service_started
+#     command: ["celery", "-A", "config", "worker", "-l", "info"]
+#     healthcheck:
+#       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME | grep -q 'OK'"]
+#       interval: 30s
+#       timeout: 15s
+#       retries: 5
+#       start_period: 60s
+#     networks:
+#       - vninvest_network
+#     mem_limit: ${CELERY_WORKER_MEM_LIMIT:-2g}
+#     cpus: ${CELERY_WORKER_CPUS:-2.0}
+#
+#   celery_beat:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#       args:
+#         APP_RELEASE: ${APP_RELEASE:-main-local}
+#     container_name: vninvest-celery-beat
+#     restart: unless-stopped
+#     env_file:
+#       - ./backend/.env.production
+#     volumes:
+#       - ./backend/.env.production:/app/.env.production:ro
+#       - ./backend/.env:/app/.env:ro
+#     environment:
+#       POSTGRES_DB: ${POSTGRES_DB:-vninvest}
+#       POSTGRES_USER: ${POSTGRES_USER:-postgres}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+#       POSTGRES_HOST: ${POSTGRES_HOST:-db}
+#       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+#       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://core-redis:6379/0}
+#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://core-redis:6379/0}
+#       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://core-redis:6379/2}
+#       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://core-redis:6379/0}
+#       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://core-redis:6379/1}
+#       APP_RELEASE: ${APP_RELEASE:-main-local}
+#     labels:
+#       com.vninvest.release: ${APP_RELEASE:-main-local}
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#       core-redis:
+#         condition: service_healthy
+#       mailpit:
+#         condition: service_started
+#     command: ["celery", "-A", "config", "beat", "-l", "info"]
+#     healthcheck:
+#       test: ["CMD-SHELL", "python -c \"import pathlib, sys; cmd = pathlib.Path('/proc/1/cmdline').read_text(); sys.exit(0 if 'celery' in cmd and 'beat' in cmd else 1)\""]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+#     networks:
+#       - vninvest_network
+#     mem_limit: ${CELERY_BEAT_MEM_LIMIT:-750m}
+#     cpus: ${CELERY_BEAT_CPUS:-0.75}
+
+  # SM-P5.1: PgBouncer connection pooling
+  pgbouncer:
+    image: bitnami/pgbouncer:latest
+    container_name: vninvest-pgbouncer
+    restart: unless-stopped
+    environment:
+      POSTGRESQL_HOST: core-db
+      POSTGRESQL_PORT: "5432"
+      POSTGRESQL_DATABASE: vninvest_core
+      POSTGRESQL_USERNAME: vninvest
+      POSTGRESQL_PASSWORD: ${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set for core-db}
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: "500"
+      PGBOUNCER_DEFAULT_POOL_SIZE: "20"
+      PGBOUNCER_MIN_POOL_SIZE: "5"
+      PGBOUNCER_RESERVE_POOL_SIZE: "10"
+      PGBOUNCER_LISTEN_PORT: "6432"
+      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits
+    depends_on:
+      core-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "6432"
+    networks:
+      - vninvest_network
+    mem_limit: ${PGBOUNCER_MEM_LIMIT:-64m}
+    cpus: ${PGBOUNCER_CPUS:-0.25}
+
+  # SM-P5.2: Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vninvest-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    expose:
+      - "9090"
+    networks:
+      - vninvest_network
+    mem_limit: ${PROMETHEUS_MEM_LIMIT:-512m}
+    cpus: ${PROMETHEUS_CPUS:-0.5}
+
+  # SM-P5.2: Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vninvest-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    expose:
+      - "3000"
+    networks:
+      - vninvest_network
+    mem_limit: ${GRAFANA_MEM_LIMIT:-256m}
+    cpus: ${GRAFANA_CPUS:-0.25}
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.dev-package-shell
+      secrets:
+        - vnbroker_github_token
+      args:
+        REACT_APP_API_BASE_URL: /api
+        APP_RELEASE: ${APP_RELEASE:-main-local}
+        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
+        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+    container_name: vninvest-frontend
+    restart: unless-stopped
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+      REACT_APP_API_BASE_URL: /api
+      REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
+      REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+      VIRTUAL_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: ${DOMAIN:-vninvest.edusuccess.vn}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@edusuccess.vn}
+    depends_on:
+      backend:
+        condition: service_healthy
+      core-api:
+        condition: service_healthy
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
+    expose:
+      - "80"
+    networks:
+      - vninvest_network
+      - nginx-proxy_default
+    mem_limit: ${FRONTEND_MEM_LIMIT:-750m}
+    cpus: ${FRONTEND_CPUS:-0.75}
+
+volumes:
+  postgres_data:
+  core_pgdata:
+  core_redis_data:
+  prometheus_data:
+  grafana_data:
+
+secrets:
+  vnbroker_github_token:
+    environment: VNBROKER_GITHUB_TOKEN
+
+networks:
+  vninvest_network:
+    driver: bridge
+  nginx-proxy_default:
+    external: true
