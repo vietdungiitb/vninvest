@@ -16,7 +16,7 @@ import {
 
 class Cursor extends Component<any, any> {
 	static defaultProps: any;
-	context: any;
+	declare context: any;
 
 	constructor(props: any) {
 		super(props);

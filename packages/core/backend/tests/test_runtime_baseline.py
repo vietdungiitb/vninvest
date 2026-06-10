@@ -94,6 +94,18 @@ class DjangoHealthViewTests(unittest.TestCase):
         self.assertEqual(data['package'], 'vninvest-core')
         self.assertIn('timestamp', data)
 
+    def test_api_health_compat_route_returns_ok(self):
+        from django.test import Client
+
+        client = Client()
+        response = client.get('/api/health/')
+
+        import json
+        data = json.loads(response.content)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['status'], 'ok')
+        self.assertEqual(data['package'], 'vninvest-core')
+
     def test_capability_bootstrap_returns_navigation(self):
         from django.test import RequestFactory
         from vninvest_core.views_health import capability_bootstrap

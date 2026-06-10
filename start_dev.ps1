@@ -23,16 +23,41 @@
 #>
 param(
     [switch]$SkipBuild,
-    [switch]$Down
+    [switch]$Down,
+    [switch]$FrontendOnly
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function Get-GitHubCliToken {
+    $ghCommand = Get-Command gh -ErrorAction SilentlyContinue
+    if (-not $ghCommand) {
+        return $null
+    }
+
+    try {
+        $tokenOutput = & $ghCommand.Source auth token 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+
+        $token = [string]::Join("`n", @($tokenOutput)).Trim()
+        if ([string]::IsNullOrWhiteSpace($token)) {
+            return $null
+        }
+
+        return $token
+    } catch {
+        return $null
+    }
+}
 $SkipBuild = $false
 
 $ComposeFiles = @("-f", "docker-compose.yml", "-f", "docker-compose.dev.yml")
 $ComposeEnvFile = "compose.dev.env"
 $ProjectName = "vninvest-dev"
+$TargetServices = if ($FrontendOnly) { @("frontend") } else { @() }
 
 function Write-Step($msg) {
     Write-Host ""
@@ -84,12 +109,40 @@ function Test-IsPlaceholderSecretValue {
     ) -contains $normalized
 }
 
+function Get-GitHubCliToken {
+    $ghCommand = Get-Command gh -ErrorAction SilentlyContinue
+    if (-not $ghCommand) {
+        return $null
+    }
+
+    try {
+        $tokenOutput = & $ghCommand.Source auth token 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+
+        $token = [string]::Join("`n", @($tokenOutput)).Trim()
+        if ([string]::IsNullOrWhiteSpace($token)) {
+            return $null
+        }
+
+        return $token
+    }
+    catch {
+        return $null
+    }
+}
+
 function Ensure-VnbrokerGitHubToken {
     $envToken = $env:VNBROKER_GITHUB_TOKEN
+    $ghToken = Get-GitHubCliToken
     $backendToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
     $composeToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot $ComposeEnvFile) -Key "VNBROKER_GITHUB_TOKEN"
 
-    if (-not (Test-IsPlaceholderSecretValue -Value $envToken)) {
+    if (-not (Test-IsPlaceholderSecretValue -Value $ghToken)) {
+        Write-Host "  Using GitHub CLI auth token for VNBROKER_GITHUB_TOKEN." -ForegroundColor DarkGray
+        $token = $ghToken
+    } elseif (-not (Test-IsPlaceholderSecretValue -Value $envToken)) {
         $token = $envToken
     } elseif (-not [string]::IsNullOrWhiteSpace($envToken)) {
         Write-Host "  Ignoring placeholder VNBROKER_GITHUB_TOKEN from current shell." -ForegroundColor Yellow
@@ -135,7 +188,18 @@ function Ensure-VnbrokerGitHubToken {
 }
 
 function Invoke-Compose {
-    docker compose --env-file $ComposeEnvFile -p $ProjectName @ComposeFiles @args
+    param(
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$ComposeArgs
+    )
+
+    $composeCommand = @(
+        "compose",
+        "--env-file", $ComposeEnvFile,
+        "-p", $ProjectName
+    ) + $ComposeFiles + $ComposeArgs
+
+    & docker @composeCommand
 }
 
 function Get-ContainerHealthStatus {
@@ -194,7 +258,8 @@ function Get-ContainerHealthStatus {
 # ── Down mode ─────────────────────────────────────────────────────────────────
 if ($Down) {
     Write-Step "Dừng và xóa containers (volumes giữ nguyên)"
-    Invoke-Compose down --remove-orphans
+    $composeDownArgs = @("down", "--remove-orphans")
+    Invoke-Compose @composeDownArgs
     Write-Host "Done." -ForegroundColor Green
     exit 0
 }
@@ -226,11 +291,19 @@ try {
     exit 1
 }
 
+if ($FrontendOnly) {
+    Write-Host "  Frontend-only refresh mode enabled." -ForegroundColor DarkGray
+}
+
 # ── Build image ──────────────────────────────────────────────────────────────
 Write-Host "DEBUG SkipBuild value: '$SkipBuild', type: '$($SkipBuild.GetType().FullName)'"
 if (-not $SkipBuild) {
     Write-Step "Build Docker images (lần đầu mất 3–5 phút)"
-    Invoke-Compose build --parallel
+    $composeBuildArgs = @("build", "--parallel") + $TargetServices
+    Invoke-Compose @composeBuildArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "docker compose build failed with exit code $LASTEXITCODE. Aborting so stale images are not started."
+    }
 } else {
     Write-Step "Bỏ qua build (-SkipBuild)"
 }
@@ -266,6 +339,9 @@ $devContainerNames = @(
     "vninvest-dev-core-beat",
     "vninvest-dev-frontend"
 )
+if ($FrontendOnly) {
+    $devContainerNames = @("vninvest-dev-frontend")
+}
 foreach ($name in $devContainerNames) {
     $exists = docker ps -a --filter "name=^/${name}$" --format "{{.Names}}" 2>$null
     if ($exists -eq $name) {
@@ -274,7 +350,11 @@ foreach ($name in $devContainerNames) {
     }
 }
 
-Invoke-Compose up -d --remove-orphans
+$composeUpArgs = @("up", "-d", "--remove-orphans") + $TargetServices
+Invoke-Compose @composeUpArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "docker compose up failed with exit code $LASTEXITCODE."
+}
 
 # ── Đợi core-api healthy ──────────────────────────────────────────────────────
 Write-Step "Đợi core-api khởi động (tối đa 120 giây)..."

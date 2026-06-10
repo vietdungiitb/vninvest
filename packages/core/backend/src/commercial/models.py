@@ -85,3 +85,43 @@ class Invoice(models.Model):
 
     def __str__(self):
         return f'Invoice {self.invoice_number} ({self.status})'
+
+
+class PaymentTransaction(models.Model):
+    class StatusChoices(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        SUCCESS = 'success', 'Success'
+        FAILED = 'failed', 'Failed'
+        REFUNDED = 'refunded', 'Refunded'
+
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='payments')
+    tenant = models.ForeignKey(CoreTenant, on_delete=models.CASCADE, related_name='payments')
+    txn_ref = models.CharField(max_length=64, unique=True, db_index=True)  # vnp_TxnRef
+    vnp_transaction_no = models.CharField(max_length=64, null=True, blank=True)
+    amount = models.DecimalField(max_digits=18, decimal_places=2)
+    status = models.CharField(max_length=16, choices=StatusChoices.choices, default=StatusChoices.PENDING, db_index=True)
+    pay_url = models.TextField(null=True, blank=True)
+    error_code = models.CharField(max_length=16, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Payment Transaction'
+
+    def __str__(self):
+        return f'{self.txn_ref} — {self.amount} ({self.status})'
+
+
+class VNPayIPNLog(models.Model):
+    txn_ref = models.CharField(max_length=64, db_index=True)
+    raw_query = models.TextField()
+    is_valid_signature = models.BooleanField(default=False)
+    processed = models.BooleanField(default=False)
+    error_message = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'VNPay IPN Log'
+
+    def __str__(self):
+        return f'IPN Log {self.txn_ref} at {self.created_at}'

@@ -1,6 +1,25 @@
-export type DrawingShortcutTool = "trendLine" | "fibonacci" | "rectangle" | "text";
+export type DrawingShortcutTool =
+	| "trendLine"
+	| "fibonacci"
+	| "rectangle"
+	| "text"
+	| "hLine"
+	| "vLine"
+	| "arrow"
+	| "channel"
+	| "polyline";
 
-export type DrawingShortcutCommand = "delete" | "copy" | "paste" | "clone" | "undo" | "redo" | "escape";
+export type DrawingShortcutCommand =
+	| "delete"
+	| "copy"
+	| "paste"
+	| "clone"
+	| "undo"
+	| "redo"
+	| "escape"
+	| "toggleMagnet"
+	| "lockSelected"
+	| "hideSelected";
 
 export interface DrawingShortcutToolAction {
 	type: "tool";
@@ -24,6 +43,14 @@ export const DRAWING_SHORTCUTS: readonly DrawingShortcutDefinition[] = [
 	{ key: "F", action: { type: "tool", tool: "fibonacci" } },
 	{ key: "R", action: { type: "tool", tool: "rectangle" } },
 	{ key: "T", action: { type: "tool", tool: "text" } },
+	{ key: "H", action: { type: "tool", tool: "hLine" } },
+	{ key: "V", action: { type: "tool", tool: "vLine" } },
+	{ key: "A", action: { type: "tool", tool: "arrow" } },
+	{ key: "C", action: { type: "tool", tool: "channel" } },
+	{ key: "P", action: { type: "tool", tool: "polyline" } },
+	{ key: "M", action: { type: "command", command: "toggleMagnet" } },
+	{ key: "Ctrl/Cmd+L", action: { type: "command", command: "lockSelected" } },
+	{ key: "Ctrl/Cmd+H", action: { type: "command", command: "hideSelected" } },
 	{ key: "Del", action: { type: "command", command: "delete" } },
 	{ key: "Ctrl/Cmd+C", action: { type: "command", command: "copy" } },
 	{ key: "Ctrl/Cmd+V", action: { type: "command", command: "paste" } },
@@ -59,9 +86,29 @@ export function resolveDrawingShortcut(event: Pick<KeyboardEvent, "key" | "ctrlK
 				return { type: "tool", tool: "rectangle" };
 			case "t":
 				return { type: "tool", tool: "text" };
+			case "h":
+				return { type: "tool", tool: "hLine" };
+			case "v":
+				return { type: "tool", tool: "vLine" };
+			case "a":
+				return { type: "tool", tool: "arrow" };
+			case "c":
+				return { type: "tool", tool: "channel" };
+			case "p":
+				return { type: "tool", tool: "polyline" };
+			case "m":
+				return { type: "command", command: "toggleMagnet" };
 			default:
 				return null;
 		}
+	}
+
+	if (key === "l") {
+		return { type: "command", command: "lockSelected" };
+	}
+
+	if (key === "h") {
+		return { type: "command", command: "hideSelected" };
 	}
 
 	if (key === "c") {

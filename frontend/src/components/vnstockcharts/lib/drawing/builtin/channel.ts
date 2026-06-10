@@ -1,10 +1,10 @@
 import type { DrawingToolDefinition } from "../types";
-import { createDrawingObject, replaceNextPoint } from "../shared";
+import { createDrawingObject, replaceLastPoint } from "../shared";
 
 const Channel: DrawingToolDefinition = {
 	name: "channel",
 	createDraft: (startPoint) => createDrawingObject("channel", [startPoint, startPoint, startPoint]),
-	updateDraft: (draft, nextPoint) => replaceNextPoint(draft, nextPoint),
+	updateDraft: (draft, nextPoint) => replaceLastPoint(draft, nextPoint),
 	render: () => undefined,
 };
 

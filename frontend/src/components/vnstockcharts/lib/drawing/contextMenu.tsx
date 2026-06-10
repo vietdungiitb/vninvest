@@ -1,5 +1,7 @@
 import { useEffect, type CSSProperties } from "react";
 
+import { useCompactViewport } from "./useCompactViewport";
+
 export interface DrawingContextMenuItem {
 	key: string;
 	label: string;
@@ -42,6 +44,8 @@ function resolvePalette(isDark: boolean | undefined) {
 }
 
 export function DrawingContextMenu({ ariaLabel, items, onClose, position, title, isDark }: DrawingContextMenuProps) {
+	const isCompactViewport = useCompactViewport();
+
 	useEffect(() => {
 		if (!position || typeof window === "undefined") {
 			return;
@@ -78,18 +82,23 @@ export function DrawingContextMenu({ ariaLabel, items, onClose, position, title,
 
 	const panelStyle: CSSProperties = {
 		position: "absolute",
-		left: position.x,
-		top: position.y,
-		minWidth: 240,
-		maxWidth: 280,
-		padding: 10,
-		borderRadius: 16,
+		left: isCompactViewport ? 8 : position.x,
+		right: isCompactViewport ? 8 : undefined,
+		top: isCompactViewport ? "auto" : position.y,
+		bottom: isCompactViewport ? 8 : undefined,
+		minWidth: isCompactViewport ? 0 : 240,
+		maxWidth: isCompactViewport ? "none" : 280,
+		padding: isCompactViewport ? "12px 14px 14px" : 10,
+		borderRadius: isCompactViewport ? 22 : 16,
 		border: `1px solid ${palette.border}`,
 		background: palette.panel,
-		boxShadow: "0 20px 40px rgba(15, 23, 42, 0.22)",
+		boxShadow: isCompactViewport ? "0 -18px 36px rgba(15, 23, 42, 0.2)" : "0 20px 40px rgba(15, 23, 42, 0.22)",
 		backdropFilter: "blur(14px)",
 		WebkitBackdropFilter: "blur(14px)",
 		color: palette.text,
+		width: isCompactViewport ? "auto" : undefined,
+		maxHeight: isCompactViewport ? "min(48vh, 420px)" : undefined,
+		overflowY: isCompactViewport ? "auto" : undefined,
 	};
 
 	const titleStyle: CSSProperties = {
@@ -105,7 +114,7 @@ export function DrawingContextMenu({ ariaLabel, items, onClose, position, title,
 	const itemListStyle: CSSProperties = {
 		display: "flex",
 		flexDirection: "column",
-		gap: 4,
+		gap: isCompactViewport ? 8 : 4,
 	};
 
 	return (

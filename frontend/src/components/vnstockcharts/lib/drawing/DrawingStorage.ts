@@ -68,6 +68,8 @@ export interface DrawingStorageAdapter {
 	importJSON(payload: string): DrawingObject[];
 }
 
+const DEFAULT_DRAWING_STORAGE_KEY_PREFIX = "rsc-drawings-v1";
+
 function getStorage() {
 	if (typeof globalThis === "undefined" || typeof globalThis.localStorage === "undefined") {
 		throw new Error("localStorage is not available in this environment");
@@ -75,8 +77,8 @@ function getStorage() {
 	return globalThis.localStorage;
 }
 
-function getStorageKey(symbol: string, timeframe: string) {
-	return `rsc-drawings-v1-${symbol}-${timeframe}`;
+function getStorageKey(symbol: string, timeframe: string, keyPrefix = DEFAULT_DRAWING_STORAGE_KEY_PREFIX) {
+	return `${keyPrefix}-${symbol}-${timeframe}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -167,7 +169,7 @@ function isDrawingType(value: unknown): value is DrawingToolType {
 	return typeof value === "string" && DRAWING_TOOL_TYPES.includes(value as DrawingToolType);
 }
 
-function normalizeDrawingObject(value: unknown, index: number): DrawingObject {
+export function normalizeDrawingObject(value: unknown, index: number): DrawingObject {
 	if (!isRecord(value)) {
 		throw new DrawingImportError(`Drawing[${index}] must be an object`);
 	}
@@ -243,13 +245,13 @@ function normalizeDrawings(payload: unknown): DrawingObject[] {
 	return payload.map((item, index) => normalizeDrawingObject(item, index));
 }
 
-export function createLocalStorageAdapter(): DrawingStorageAdapter {
+export function createLocalStorageAdapter(keyPrefix = DEFAULT_DRAWING_STORAGE_KEY_PREFIX): DrawingStorageAdapter {
 	return {
 		save(symbol, timeframe, drawings) {
-			getStorage().setItem(getStorageKey(symbol, timeframe), serializeDrawings(drawings));
+			getStorage().setItem(getStorageKey(symbol, timeframe, keyPrefix), serializeDrawings(drawings));
 		},
 		load(symbol, timeframe) {
-			const raw = getStorage().getItem(getStorageKey(symbol, timeframe));
+			const raw = getStorage().getItem(getStorageKey(symbol, timeframe, keyPrefix));
 			if (!raw) {
 				return [];
 			}
@@ -257,7 +259,7 @@ export function createLocalStorageAdapter(): DrawingStorageAdapter {
 				return normalizeDrawings(deserializeDrawings(raw));
 			} catch (error) {
 				if (error instanceof DrawingImportError) {
-					getStorage().removeItem(getStorageKey(symbol, timeframe));
+					getStorage().removeItem(getStorageKey(symbol, timeframe, keyPrefix));
 					console.warn(`Ignoring invalid drawing cache for ${symbol}/${timeframe}:`, error.message);
 					return [];
 				}
@@ -265,7 +267,7 @@ export function createLocalStorageAdapter(): DrawingStorageAdapter {
 			}
 		},
 		clear(symbol, timeframe) {
-			getStorage().removeItem(getStorageKey(symbol, timeframe));
+			getStorage().removeItem(getStorageKey(symbol, timeframe, keyPrefix));
 		},
 		exportJSON(drawings) {
 			return serializeDrawings(drawings);

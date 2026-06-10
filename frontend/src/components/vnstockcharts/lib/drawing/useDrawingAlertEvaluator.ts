@@ -41,16 +41,23 @@ export function useDrawingAlertEvaluator({
 		if (prevPriceRef.current === currentPrice) return;
 		prevPriceRef.current = currentPrice;
 
-		const fired: DrawingAlertEvent[] = evaluateDrawingAlerts(drawings, previousPrice, currentPrice);
+		const now = Date.now();
+		const fired: DrawingAlertEvent[] = evaluateDrawingAlerts(drawings, previousPrice, currentPrice, now);
 
 		for (const event of fired) {
 			// Persist the updated triggeredAt so cooldown is durable
-			if (event.drawing.alertCondition) {
+			if (event.drawing.alertConditions && event.condition) {
+				updateDrawing(event.drawing.id, {
+					alertConditions: event.drawing.alertConditions.map((c) =>
+						c === event.condition ? { ...c, triggeredAt: event.triggeredAt } : c
+					),
+				});
+			} else if (event.drawing.alertCondition) {
 				updateDrawing(event.drawing.id, {
 					alertCondition: { ...event.drawing.alertCondition, triggeredAt: event.triggeredAt },
 				});
 			}
-			onDrawingAlert(event.drawing, event.drawing.alertCondition!, event.currentPrice);
+			onDrawingAlert(event.drawing, event.condition || event.drawing.alertCondition!, event.currentPrice);
 		}
 	}, [plotData, drawings, updateDrawing, onDrawingAlert]);
 }

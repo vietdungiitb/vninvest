@@ -51,26 +51,19 @@ interface BridgeMeasurementOverlayProps {
 	height: number;
 }
 
-type ScaleSlotState = NonNullable<PaneRuntimeSnapshot["scaleSlotStates"]>[string];
-
-function resolveScaleSlotStates(snapshot: PaneRuntimeSnapshot): Record<string, ScaleSlotState> {
-	return snapshot.scaleSlotStates ?? {};
-}
-
 function resolvePreferredScaleSlotId(snapshot: PaneRuntimeSnapshot, requestedScaleSlotId?: string) {
-	const scaleSlotStates = resolveScaleSlotStates(snapshot);
-	if (requestedScaleSlotId && (scaleSlotStates[requestedScaleSlotId] || snapshot.scaleSlotBounds[requestedScaleSlotId])) {
+	if (requestedScaleSlotId && snapshot.scaleSlotStates[requestedScaleSlotId]) {
 		return requestedScaleSlotId;
 	}
 
-	const visibleScaleSlotIds = Object.entries(scaleSlotStates)
-		.filter(([, state]) => state?.visible !== false)
+	const visibleScaleSlotIds = Object.entries(snapshot.scaleSlotStates)
+		.filter(([, state]) => state.visible)
 		.map(([scaleSlotId]) => scaleSlotId);
 	if (visibleScaleSlotIds.length === 0) {
-		return Object.keys(snapshot.scaleSlotBounds)[0];
+		return undefined;
 	}
 
-	return visibleScaleSlotIds.find((scaleSlotId) => scaleSlotStates[scaleSlotId]?.side === "right")
+	return visibleScaleSlotIds.find((scaleSlotId) => snapshot.scaleSlotStates[scaleSlotId]?.side === "right")
 		?? visibleScaleSlotIds[0];
 }
 

@@ -5,7 +5,7 @@
 import type { DrawingObject, DrawingToolDefinition, Point } from "../types";
 import type { ChartScales } from "../coordinateUtils";
 import { chartPointToPixel } from "../coordinateUtils";
-import { createDrawingObject, replaceNextPoint } from "../shared";
+import { createDrawingObject, replaceLastPoint } from "../shared";
 
 export type GannAdvancedToolType = "gannBox" | "gannSquareFixed" | "gannSquare";
 
@@ -54,7 +54,7 @@ export const GannBox: DrawingToolDefinition = {
 	createDraft: (startPoint: Point): DrawingObject =>
 		createDrawingObject("gannBox", [{ ...startPoint }, { ...startPoint }]),
 	updateDraft: (draft: DrawingObject, nextPoint: Point): DrawingObject =>
-		replaceNextPoint(draft, nextPoint),
+		replaceLastPoint(draft, nextPoint),
 };
 
 export const GannSquare: DrawingToolDefinition = {
@@ -62,7 +62,7 @@ export const GannSquare: DrawingToolDefinition = {
 	createDraft: (startPoint: Point): DrawingObject =>
 		createDrawingObject("gannSquare", [{ ...startPoint }, { ...startPoint }]),
 	updateDraft: (draft: DrawingObject, nextPoint: Point): DrawingObject =>
-		replaceNextPoint(draft, nextPoint),
+		replaceLastPoint(draft, nextPoint),
 };
 
 export const GannSquareFixed: DrawingToolDefinition = {

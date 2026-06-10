@@ -34,6 +34,8 @@ export { WhaleAlertsPage } from "./pages/WhaleAlertsPage.js";
 export { StockDetailPage } from "./pages/StockDetailPage.js";
 export { PortfoliosPage } from "./pages/PortfoliosPage.js";
 export { TransactionsPage } from "./pages/TransactionsPage.js";
+export { BillingCenterPage } from "./pages/commercial/BillingCenterPage.js";
+export { PaymentReturnPage } from "./pages/commercial/PaymentReturnPage.js";
 export { UserSettingsPage } from "./pages/UserSettingsPage.js";
 export { AuthLoginPage, AuthRegisterPage, AuthVerifyEmailPage, AuthResetPasswordPage } from "./pages/auth/index.js";
 export { authTokenStorage, coreApiAdapter, createCoreApiAdapter } from "./adapters/coreApiAdapter.js";

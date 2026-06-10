@@ -2208,10 +2208,12 @@ export default function LibraryShowcaseDemo() {
 	const supportsMeasurementOverlay = widgetRuntimeCapabilities?.measurementOverlay ?? false;
 	const supportsDrawingOverlays = widgetRuntimeCapabilities?.drawingOverlays ?? false;
 	const chartAdapter = useMemo<StockDataAdapter>(() => ({
-		async fetchBars(_symbol: string, _timeframe: string, _from: Date, _to: Date) {
-			return widgetData.map((bar) => ({ ...bar, date: new Date(bar.date) }));
+		async fetchBarsInRange(_symbol: string, _timeframe: string, from: Date, to: Date) {
+			return widgetData
+				.filter((bar) => bar.date >= from && bar.date <= to)
+				.map((bar) => ({ ...bar, date: new Date(bar.date) }));
 		},
-		async fetchMoreBars(_symbol: string, _timeframe: string, before: Date, limit = 300) {
+		async fetchBarsBefore(_symbol: string, _timeframe: string, before: Date, limit = 300) {
 			return widgetData
 				.filter((bar) => bar.date < before)
 				.slice(-limit)

@@ -62,7 +62,7 @@ function mergeSets(builtinSets: readonly IndicatorSet[], userSets: readonly Indi
 			merged.set(set.id, cloneIndicatorSet({ ...set, isBuiltin: false }));
 		}
 	});
-	return Array.from(merged.values()).sort((left, right) => {
+	return [...merged.values()].sort((left, right) => {
 		if (left.isBuiltin !== right.isBuiltin) {
 			return left.isBuiltin ? -1 : 1;
 		}

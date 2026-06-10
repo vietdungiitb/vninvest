@@ -1,0 +1,35 @@
+export const DRAWING_UI_TOKENS = {
+    railWidth: 40,
+    railHandleWidth: 20,
+    railHandleHeight: 44,
+    railButtonSize: 32,
+    railButtonGap: 4,
+    railSectionGap: 4,
+    flyoutPadding: 6,
+    flyoutMargin: 8,
+    flyoutButtonSize: 32,
+    flyoutButtonSizeCompact: 32,
+    minTouchTarget: 32,
+    minControlSpacing: 4,
+    mobileBreakpoint: 767,
+    motionFastMs: 120,
+    motionDefaultMs: 150,
+};
+export function createDrawingUiStyleVars() {
+    return {
+        "--gc-toolbar-w": `${DRAWING_UI_TOKENS.railWidth}px`,
+        "--gc-toolbar-handle-w": `${DRAWING_UI_TOKENS.railHandleWidth}px`,
+        "--gc-toolbar-handle-h": `${DRAWING_UI_TOKENS.railHandleHeight}px`,
+        "--gc-toolbar-button-size": `${DRAWING_UI_TOKENS.railButtonSize}px`,
+        "--gc-toolbar-gap": `${DRAWING_UI_TOKENS.railButtonGap}px`,
+        "--gc-toolbar-section-gap": `${DRAWING_UI_TOKENS.railSectionGap}px`,
+        "--gc-toolbar-flyout-padding": `${DRAWING_UI_TOKENS.flyoutPadding}px`,
+        "--gc-toolbar-flyout-margin": `${DRAWING_UI_TOKENS.flyoutMargin}px`,
+        "--gc-toolbar-flyout-button-size": `${DRAWING_UI_TOKENS.flyoutButtonSize}px`,
+        "--gc-toolbar-flyout-button-size-compact": `${DRAWING_UI_TOKENS.flyoutButtonSizeCompact}px`,
+        "--gc-touch-target-min": `${DRAWING_UI_TOKENS.minTouchTarget}px`,
+        "--gc-touch-spacing-min": `${DRAWING_UI_TOKENS.minControlSpacing}px`,
+        "--gc-toolbar-motion-fast": `${DRAWING_UI_TOKENS.motionFastMs}ms`,
+        "--gc-toolbar-motion-default": `${DRAWING_UI_TOKENS.motionDefaultMs}ms`,
+    };
+}

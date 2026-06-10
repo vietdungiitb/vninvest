@@ -107,6 +107,8 @@ export const pageRegistry = Object.freeze([
     import("./TransactionsPage.js").then((module) => module.TransactionsPage)),
   makePageEntry("core-user-settings", "core", () =>
     import("./UserSettingsPage.js").then((module) => module.UserSettingsPage)),
+  makePageEntry("core-watchlist", "core", () =>
+    import("./WatchlistPage.js").then((module) => module.WatchlistPage)),
   makePageEntry("auth-login", "core", () =>
     import("./auth/AuthLoginPage.js").then((module) => module.AuthLoginPage)),
   makePageEntry("auth-register", "core", () =>
@@ -115,6 +117,10 @@ export const pageRegistry = Object.freeze([
     import("./auth/AuthVerifyEmailPage.js").then((module) => module.AuthVerifyEmailPage)),
   makePageEntry("auth-reset-password", "core", () =>
     import("./auth/AuthResetPasswordPage.js").then((module) => module.AuthResetPasswordPage)),
+  makePageEntry("commercial-billing-center", "core", () =>
+    import("./commercial/BillingCenterPage.js").then((module) => module.BillingCenterPage)),
+  makePageEntry("commercial-payment-return", "core", () =>
+    import("./commercial/PaymentReturnPage.js").then((module) => module.PaymentReturnPage)),
 ]);
 
 export function getPageRegistryRouteIds() {

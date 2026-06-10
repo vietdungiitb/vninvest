@@ -6,7 +6,7 @@ import type { DrawingObject, Point } from "./types";
 import type { DrawingAction, DrawingState } from "./stateMachine";
 import { drawingReducer } from "./stateMachine";
 import { clonePoint } from "./shared";
-import { deleteDrawingGroup, resolveDrawingGroupMemberIds } from "./engineCompat";
+import { deleteDrawingGroup, resolveDrawingGroupMemberIds } from "@vnstockcharts/vn-kline-engine-core";
 
 export type DrawingInteractionAction = DrawingAction | DrawingHistoryAction;
 

@@ -59,6 +59,8 @@ export {
 		DrawingContextMenu,
 	DrawingInspector,
 	DrawingListPanel,
+	DrawingDock,
+	DrawingSemanticPointLegend,
 		DRAWING_SHORTCUTS,
 		resolveDrawingShortcut,
 	Rectangle,
@@ -80,13 +82,30 @@ export {
 	clearDrawingStyleOverrides,
 	getDrawingStyleOverride,
 	listDrawingStyleOverrides,
+	DRAWING_UI_TOKENS,
+	createDrawingUiStyleVars,
+	FloatingSelectionToolbar,
+	createDrawingSelectionToolbarModel,
+	resolveDrawingSelectionToolbarPosition,
 	overrideDrawingStyle,
 	resolveDrawingStyle,
 	subscribeDrawingStyle,
 	subscribeDrawingStyleChanges,
+	evaluateDrawingAlerts,
+	resolveReferencePriceForAlert,
+	isCooldownElapsed,
+	detectPriceCross,
+	AlertNotificationToast,
+	listTemplates,
+	saveTemplate,
+	deleteTemplate,
+	loadTemplate,
+	exportAllTemplates,
+	importAllTemplates,
 } from "./lib/drawing";
 
 export type {
+	DrawingAlertToastItem,
 	ChartScales,
 	DrawingInteractionAction,
 	DrawingInteractionState,
@@ -97,11 +116,17 @@ export type {
 	DrawingShortcutTool,
 	DrawingContextMenuItem,
 	DrawingContextMenuProps,
+	DrawingDockLabels,
+	DrawingDockProps,
 	MagnetSensitivity,
 	MeasurementPoint,
 	MeasurementSelection,
 	MeasurementSummary,
 	PlotDatum,
+	DrawingSelectionToolbarActionId,
+	DrawingSelectionToolbarLabels,
+	DrawingSelectionToolbarModel,
+	DrawingSelectionToolbarPosition,
 	UseDrawingInteractionReturn,
 } from "./lib/drawing";
 
@@ -125,6 +150,13 @@ export type {
 } from "./lib/types/index";
 
 export type { DrawingStyleOverride } from "./lib/drawing";
+export type {
+	DrawingDockTab,
+	DrawingWorkspaceController,
+	DrawingWorkspaceState,
+	DrawingWorkspaceTool,
+	UseDrawingWorkspaceControllerOptions,
+} from "./lib/drawing";
 export {
 	buildRenderScalesFromBridge,
 	chartPointToPixelWithBridge,
@@ -146,6 +178,7 @@ export { MeasurementOverlay, VNStockChart, WidgetErrorBoundary, WidgetEmptyState
 export { widgetMessagesEn, widgetMessagesVi } from "./widget";
 export type {
 	VNStockChartProps,
+	VNStockChartRef,
 	WidgetCoordinateBridge,
 	WidgetPaneRuntimeSnapshot,
 	WidgetPaneSplitterRenderContext,

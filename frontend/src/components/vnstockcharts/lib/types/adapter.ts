@@ -30,8 +30,8 @@ export interface SymbolInfo {
 }
 
 export interface StockDataAdapter {
-	fetchBars(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<readonly OHLCVBar[]>;
-	fetchMoreBars(symbol: string, timeframe: Timeframe, before: Date, limit?: number): Promise<readonly OHLCVBar[]>;
+	fetchBarsInRange(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<readonly OHLCVBar[]>;
+	fetchBarsBefore(symbol: string, timeframe: Timeframe, before: Date, limit?: number): Promise<readonly OHLCVBar[]>;
 	subscribeToBar(symbol: string, timeframe: Timeframe, onBar: (bar: OHLCVBar) => void): Unsubscribe;
 	subscribeToTrades(symbol: string, onTrade: (trade: Trade) => void): Unsubscribe;
 	subscribeToOrderbook(symbol: string, onUpdate: (snapshot: OrderbookSnapshot) => void): Unsubscribe;

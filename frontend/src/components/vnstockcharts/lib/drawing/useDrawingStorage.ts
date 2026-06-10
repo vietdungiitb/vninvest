@@ -8,24 +8,37 @@ export interface UseDrawingStorageReturn {
 	clearAll: () => void;
 }
 
+export interface UseDrawingStorageOptions {
+	enabled?: boolean;
+}
+
 export function useDrawingStorage(
 	symbol: string,
 	timeframe: string,
 	drawings: readonly DrawingObject[],
 	onLoad: (drawings: DrawingObject[]) => void,
 	adapter?: DrawingStorageAdapter,
+	options?: UseDrawingStorageOptions,
 ): UseDrawingStorageReturn {
 	const storage = useMemo(() => adapter ?? createLocalStorageAdapter(), [adapter]);
 	const hydratedRef = useRef(false);
+	const isEnabled = options?.enabled ?? true;
 
 	useEffect(() => {
+		if (!isEnabled) {
+			hydratedRef.current = false;
+			return;
+		}
 		hydratedRef.current = false;
 		const loaded = storage.load(symbol, timeframe);
 		onLoad(loaded);
 		hydratedRef.current = true;
-	}, [onLoad, storage, symbol, timeframe]);
+	}, [isEnabled, onLoad, storage, symbol, timeframe]);
 
 	useEffect(() => {
+		if (!isEnabled) {
+			return;
+		}
 		if (!hydratedRef.current) {
 			return;
 		}
@@ -37,7 +50,7 @@ export function useDrawingStorage(
 		return () => {
 			globalThis.clearTimeout(timeoutId);
 		};
-	}, [drawings, storage, symbol, timeframe]);
+	}, [drawings, isEnabled, storage, symbol, timeframe]);
 
 	const exportJSON = useCallback(() => {
 		const payload = storage.exportJSON(drawings);

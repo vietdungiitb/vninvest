@@ -21,6 +21,8 @@ import {
 	serializeDrawingHistory,
 	serializeDrawingObject,
 	serializeDrawings,
+	exportDrawingsJSON,
+	importDrawingsJSON,
 } from "./serialization";
 import TrendLine from "./builtin/trendLine";
 import HLine from "./builtin/hLine";
@@ -51,14 +53,29 @@ import { GannBox, GannSquare, GannSquareFixed } from "./builtin/gannAdvanced";
 import { CyclicLines, TimeCycles, SineLine } from "./builtin/cycles";
 import DrawingInspector from "./DrawingInspector";
 import DrawingListPanel from "./DrawingListPanel";
-export { generateDrawingLabel } from "./DrawingListPanel";
+import DrawingDock from "./DrawingDock";
+import DrawingSemanticPointLegend from "./DrawingSemanticPointLegend";
+export { generateDrawingLabel, filterDrawings, reorderDrawings } from "./DrawingListPanel";
 export type { DrawingListPanelLabels, DrawingListPanelProps } from "./DrawingListPanel";
 import type { DrawingInteractionAction, DrawingInteractionState, UseDrawingInteractionReturn } from "./useDrawingInteraction";
 import { createDrawingInteractionState, deleteSelectedInteractionState, drawingInteractionReducer, useDrawingInteraction } from "./useDrawingInteraction";
+export { DRAWING_UI_TOKENS, createDrawingUiStyleVars } from "./uiTokens";
+import { FloatingSelectionToolbar } from "./FloatingSelectionToolbar";
 import { renderDrawingToSvg } from "./renderSvg";
 import DrawingLayer from "./DrawingLayer";
 export { DRAWING_SHORTCUTS, resolveDrawingShortcut } from "./shortcutMap";
 export type { DrawingShortcutAction, DrawingShortcutCommand, DrawingShortcutDefinition, DrawingShortcutTool } from "./shortcutMap";
+export {
+	createDrawingSelectionToolbarModel,
+	resolveDrawingSelectionToolbarPosition,
+} from "./workspace/selectionToolbar";
+export type {
+	DrawingSelectionToolbarAction,
+	DrawingSelectionToolbarActionId,
+	DrawingSelectionToolbarLabels,
+	DrawingSelectionToolbarModel,
+	DrawingSelectionToolbarPosition,
+} from "./workspace/selectionToolbar";
 
 // DT-10: Drawing Alerts
 export { evaluateDrawingAlerts, resolveReferencePriceForAlert, isCooldownElapsed, detectPriceCross } from "./evaluateDrawingAlerts";
@@ -67,6 +84,8 @@ export { useDrawingAlertEvaluator } from "./useDrawingAlertEvaluator";
 export type { UseDrawingAlertEvaluatorOptions } from "./useDrawingAlertEvaluator";
 export type { DrawingAlertCondition, DrawingAlertDirection } from "./types";
 export { renderDrawingAlertIcon } from "./renderCanvas";
+export { AlertNotificationToast } from "./AlertNotificationToast";
+export type { DrawingAlertToastItem, AlertNotificationToastProps } from "./AlertNotificationToast";
 // DT-11: Elliott Wave
 export { calculateElliottWaveGeometry, ELLIOTT_LABELS, ELLIOTT_POINT_COUNT } from "./builtin/elliottWaves";
 export type { ElliottWaveGeometry, ElliottWaveToolType } from "./builtin/elliottWaves";
@@ -86,9 +105,11 @@ export type { CycleGeometry, CycleToolType } from "./builtin/cycles";
 export { DrawingContextMenu } from "./contextMenu";
 export type { DrawingContextMenuItem, DrawingContextMenuProps } from "./contextMenu";
 export { clearDrawingStyleOverride, clearDrawingStyleOverrides, getDrawingStyleOverride, listDrawingStyleOverrides, overrideDrawingStyle, resolveDrawingStyle, subscribeDrawingStyle, subscribeDrawingStyleChanges, saveDrawingTemplate, loadDrawingTemplate, clearDrawingTemplate, applyDrawingTemplate, validateDrawingStyleTemplate } from "./drawingStyleRegistry";
+export { listTemplates, saveTemplate, deleteTemplate, loadTemplate, exportAllTemplates, importAllTemplates } from "./drawingTemplateStorage";
 export { isLineFamilyType, LINE_FAMILY_TYPES, lineTypeFlagsFor } from "./stateMachine";
 export type { LineFamilyType } from "./stateMachine";
 import { useDrawingStorage } from "./useDrawingStorage";
+import { useDrawingWorkspaceController } from "./workspace/useDrawingWorkspaceController";
 
 registerDrawingTool(TrendLine);
 registerDrawingTool(HLine);
@@ -156,6 +177,8 @@ export {
 	serializeDrawingHistory,
 	serializeDrawingObject,
 	serializeDrawings,
+	exportDrawingsJSON,
+	importDrawingsJSON,
 	chartPointToPixel,
 	chartPointToPixelWithBridge,
 	pixelToChartPoint,
@@ -173,9 +196,13 @@ export {
 	createLocalStorageAdapter,
 	DrawingImportError,
 	useDrawingStorage,
+	useDrawingWorkspaceController,
 	DrawingLayer,
 	DrawingInspector,
 	DrawingListPanel,
+	DrawingDock,
+	DrawingSemanticPointLegend,
+	FloatingSelectionToolbar,
 };
 
 export type {
@@ -198,7 +225,7 @@ export type {
 export type { DrawingStyleOverride } from "./drawingStyleRegistry";
 
 export type { MagnetSensitivity } from "./snap";
-export { MAGNET_TOLERANCE } from "./snap";
+export { MAGNET_TOLERANCE, collectFibLevelSnapCandidates } from "./snap";
 
 export { useLongPress } from "./useLongPress";
 export type { UseLongPressOptions, LongPressHandlers } from "./useLongPress";
@@ -211,6 +238,19 @@ export type {
 	DrawingInteractionState,
 	UseDrawingInteractionReturn,
 } from "./useDrawingInteraction";
+export type { UseDrawingStorageOptions, UseDrawingStorageReturn } from "./useDrawingStorage";
+export type {
+	DrawingDockTab,
+	DrawingWorkspaceController,
+	DrawingWorkspaceState,
+	DrawingWorkspaceTool,
+	UseDrawingWorkspaceControllerOptions,
+} from "./workspace/useDrawingWorkspaceController";
+
+export type {
+	DrawingDockLabels,
+	DrawingDockProps,
+} from "./DrawingDock";
 
 export type {
 	ChartScales,
@@ -280,3 +320,21 @@ export {
 	TimeCycles,
 	SineLine,
 };
+
+// ── GAP-4: Multi-select batch operations ─────────────────────────────────────
+export {
+	applyBatchDelete,
+	applyBatchLock,
+	applyBatchVisible,
+	applyBatchColor,
+	resolveNextLockState,
+	resolveNextVisibleState,
+} from "./multiSelectBatch";
+
+// ── GAP-11: Harmonic ratio validation ────────────────────────────────────────
+export type { HarmonicRatioLabel } from "./harmonicRatioValidation";
+export {
+	classifyHarmonicDeviation,
+	computeHarmonicRatioLabels,
+	formatHarmonicRatioLabel,
+} from "./harmonicRatioValidation";

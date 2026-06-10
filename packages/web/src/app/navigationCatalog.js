@@ -22,7 +22,7 @@ export const navigationCatalog = Object.freeze([
     labelKey: "navigation.system",
     buildTargets: ALL_BUILD_TARGETS,
     requiredCapabilities: ["system.group.read"],
-    items: ["support", "settings", "ai-command-center"],
+    items: ["support", "settings", "ai-command-center", "commercial-billing-center"],
   },
   {
     id: "admin",

@@ -74,8 +74,33 @@ class Command(BaseCommand):
                             self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Service Account JSON cho config ID {config.id}: {str(e)}"))
                             raise e
 
+                    # 3. Rotate Google Client Secret
+                    if config.google_client_secret_encrypted:
+                        try:
+                            plain_bytes = old_cipher.decrypt(bytes(config.google_client_secret_encrypted))
+                            config.google_client_secret_encrypted = new_cipher.encrypt(plain_bytes)
+                            modified = True
+                        except Exception as e:
+                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Google Client Secret cho config ID {config.id}: {str(e)}"))
+                            raise e
+
+                    # 4. Rotate Google Refresh Token
+                    if config.google_refresh_token_encrypted:
+                        try:
+                            plain_bytes = old_cipher.decrypt(bytes(config.google_refresh_token_encrypted))
+                            config.google_refresh_token_encrypted = new_cipher.encrypt(plain_bytes)
+                            modified = True
+                        except Exception as e:
+                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Google Refresh Token cho config ID {config.id}: {str(e)}"))
+                            raise e
+
                     if modified:
-                        config.save()
+                        config.save(update_fields=[
+                            'smtp_password_encrypted',
+                            'google_service_account_json_encrypted',
+                            'google_client_secret_encrypted',
+                            'google_refresh_token_encrypted',
+                        ])
                         success_count += 1
                         self.stdout.write(self.style.SUCCESS(f"  [+] Đã cập nhật thành công khóa cho Config ID {config.id}."))
                 except Exception as e:

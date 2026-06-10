@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useI18n } from '../context/LangContext';
 import { toCanonicalMinute } from '../utils/whaleTimeAdapter';
 import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInvestSignalAdapter';
-import { VNStockChart, MockAdapter, OverlayCanvas } from './vnstockcharts';
+import { VNStockChart, OverlayCanvas } from './vnstockcharts';
 
 function clamp(value, lower, upper) {
   return Math.max(lower, Math.min(upper, Number(value)));
@@ -204,6 +204,20 @@ export default function VNStockChartPanel({
   // Enriched bars mapped from input data
   const enrichedBars = useMemo(() => mapToOHLCVBars(data), [data]);
 
+  // Inline adapter backed by enrichedBars — satisfies new StockDataAdapter interface
+  const chartAdapter = useMemo(() => ({
+    async fetchBarsInRange(_symbol, _timeframe, from, to) {
+      return enrichedBars.filter((b) => b.date >= from && b.date <= to);
+    },
+    async fetchBarsBefore(_symbol, _timeframe, before, limit = 300) {
+      return enrichedBars.filter((b) => b.date < before).slice(-limit);
+    },
+    subscribeToBar: () => () => undefined,
+    subscribeToTrades: () => () => undefined,
+    subscribeToOrderbook: () => () => undefined,
+    async searchSymbols() { return []; },
+  }), [enrichedBars]);
+
   // Enriched whale orders and CVD mapped from inputs
   const mappedWhaleOrders = useMemo(() => {
     const signalsOrders = whaleSignals.map(s => ({
@@ -223,6 +237,8 @@ export default function VNStockChartPanel({
   const flowBucketLookup = useMemo(() => buildFlowBucketLookup(flowViewModel, flowTimeframe), [flowTimeframe, flowViewModel]);
 
   // Define 3 explicit panes for the high-end chart
+  // NOTE: BollingerBands, CVDApprox, BuyStrength, InstitutionalStrength series types
+  // are not yet registered in vnstockcharts library. Using supported types only.
   const customPanes = useMemo(() => [
     {
       id: "price",
@@ -235,33 +251,19 @@ export default function VNStockChartPanel({
       series: [
         { type: "Candlestick", yAxis: "right" },
         { type: "EMA", params: { period: 20 }, yAxis: "right", color: "#3b82f6" },
-        { type: "EMA", params: { period: 50 }, yAxis: "right", color: "#f59e0b" },
-        { type: "BollingerBands", params: { period: 20, multiplier: 2 }, yAxis: "right" }
+        { type: "EMA", params: { period: 50 }, yAxis: "right", color: "#f59e0b" }
       ]
     },
     {
-      id: "cvd",
-      label: t('whaleAlertsDashboard.flowCvdPaneTitle', { defaultValue: "CVD Chuẩn Hóa" }),
+      id: "volume",
+      label: t('stockDetail.chartVolume', { defaultValue: "Khối lượng" }),
       pinned: false,
       visible: true,
-      heightRatio: 0.22,
+      heightRatio: 0.25,
       splitScale: false,
       tooltip: "value",
       series: [
-        { type: "CVDApprox", yAxis: "right", color: "#22d3ee" }
-      ]
-    },
-    {
-      id: "strength",
-      label: t('whaleAlertsDashboard.flowStrengthPaneTitle', { defaultValue: "Sức Mạnh Dòng Tiền" }),
-      pinned: false,
-      visible: true,
-      heightRatio: 0.23,
-      splitScale: true,
-      tooltip: "value",
-      series: [
-        { type: "BuyStrength", yAxis: "left", color: "#34d399", scaleSlotId: "strength-left" },
-        { type: "InstitutionalStrength", yAxis: "right", color: "#38bdf8", scaleSlotId: "strength-right" }
+        { type: "Column", yAxis: "right", color: "#6366f1" }
       ]
     }
   ], [t]);
@@ -360,7 +362,7 @@ export default function VNStockChartPanel({
           </div>
         ) : (
           <VNStockChart
-            adapter={new MockAdapter({ bars: [] })}
+            adapter={chartAdapter}
             data={enrichedBars}
             panes={customPanes}
             engineRuntime="legacy"

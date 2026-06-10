@@ -18,22 +18,32 @@ export interface DrawingAlertEvent {
 	direction: "crossAbove" | "crossBelow";
 	/** Timestamp (ms) of the trigger */
 	triggeredAt: number;
+	/** The specific condition that triggered */
+	condition?: DrawingAlertCondition;
 }
 
 /**
  * Resolve the reference price for alert evaluation.
  * For horizontal drawings (hLine, trendLine at flat, etc.) use the first point's y (price).
- * For multi-point drawings, use the lowest y among all points.
+ * For diagonal drawings (trendLine, channel, ray, extendedLine), do linear interpolation at nowMs.
+ * Guard dx === 0: return p1.y (vertical line).
  */
-export function resolveReferencePriceForAlert(drawing: DrawingObject): number | null {
+export function resolveReferencePriceForAlert(drawing: DrawingObject, nowMs: number = Date.now()): number | null {
 	if (drawing.points.length === 0) return null;
 	// All y values in DrawingObject are in data (price) coordinates
 	if (drawing.type === "hLine") {
 		return drawing.points[0].y;
 	}
-	// For trendLine and similar: take average of first two points' y
+	// For trendLine and similar: linear interpolation at nowMs
 	if (drawing.points.length >= 2) {
-		return (drawing.points[0].y + drawing.points[1].y) / 2;
+		const p1 = drawing.points[0];
+		const p2 = drawing.points[1];
+		const dx = p2.x - p1.x;
+		if (dx === 0) {
+			return p1.y;
+		}
+		// Linear interpolation: y1 + ((nowMs - x1) / (x2 - x1)) * (y2 - y1)
+		return p1.y + ((nowMs - p1.x) / dx) * (p2.y - p1.y);
 	}
 	return drawing.points[0].y;
 }
@@ -87,30 +97,40 @@ export function evaluateDrawingAlerts(
 	const fired: DrawingAlertEvent[] = [];
 
 	for (const drawing of drawings) {
-		const condition = drawing.alertCondition;
-		if (!condition || !condition.enabled) continue;
+		// Collect active alert conditions (GAP-14 support for both single and multiple alerts)
+		const activeConditions: DrawingAlertCondition[] = [];
+		if (drawing.alertConditions && drawing.alertConditions.length > 0) {
+			activeConditions.push(...drawing.alertConditions);
+		} else if (drawing.alertCondition) {
+			activeConditions.push(drawing.alertCondition);
+		}
 
-		const refPrice = resolveReferencePriceForAlert(drawing);
-		if (refPrice === null) continue;
+		for (const condition of activeConditions) {
+			if (!condition || !condition.enabled) continue;
 
-		if (!isCooldownElapsed(condition, nowMs)) continue;
+			const refPrice = resolveReferencePriceForAlert(drawing, nowMs);
+			if (refPrice === null) continue;
 
-		const triggered = detectPriceCross(previousPrice, currentPrice, refPrice, condition.direction);
-		if (!triggered) continue;
+			if (!isCooldownElapsed(condition, nowMs)) continue;
 
-		const actualDirection: "crossAbove" | "crossBelow" =
-			currentPrice > previousPrice ? "crossAbove" : "crossBelow";
+			const triggered = detectPriceCross(previousPrice, currentPrice, refPrice, condition.direction);
+			if (!triggered) continue;
 
-		// Mutate triggeredAt so caller can persist update
-		condition.triggeredAt = nowMs;
+			const actualDirection: "crossAbove" | "crossBelow" =
+				currentPrice > previousPrice ? "crossAbove" : "crossBelow";
 
-		fired.push({
-			drawing,
-			referencePrice: refPrice,
-			currentPrice,
-			direction: actualDirection,
-			triggeredAt: nowMs,
-		});
+			// Mutate triggeredAt so caller can persist update
+			condition.triggeredAt = nowMs;
+
+			fired.push({
+				drawing,
+				referencePrice: refPrice,
+				currentPrice,
+				direction: actualDirection,
+				triggeredAt: nowMs,
+				condition,
+			});
+		}
 	}
 
 	return fired;

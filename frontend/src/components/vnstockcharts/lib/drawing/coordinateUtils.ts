@@ -15,7 +15,7 @@ export interface ChartScales {
 	xScaleInvert: (px: number) => Date;
 	yScale: (price: number) => number;
 	yScaleInvert: (px: number) => number;
-	xAccessor?: (datum: PlotDatum) => Date;
+	xAccessor?: (datum: PlotDatum) => Date | number;
 	plotData?: PlotDatum[];
 }
 

@@ -9,6 +9,7 @@ import { calculateAbcdPatternMetrics } from "./builtin/abcdPattern";
 import { calculateFibArcGeometry } from "./builtin/fibArc";
 import { calculateFibTimeZoneGeometry } from "./builtin/fibTimeZone";
 import { calculateRegressionChannelMetrics } from "./builtin/regressionChannel";
+import { resolveSegmentStyle, isSegmentVisible } from "./segmentRegistry";
 
 export interface RenderSvgOptions {
 	chartWidth: number;
@@ -271,6 +272,11 @@ function renderFibonacci(drawing: DrawingObject, scales: ChartScales, options: R
 	const pixelDelta = end.y - start.y;
 
 	levels.forEach((level, index) => {
+		// DT-16-T02: Respect per-level visibility and color from fibLevelConfigs
+		const fibConfig = drawing.fibLevelConfigs?.find((c) => Math.abs(c.ratio - level) < 0.0001);
+		if (fibConfig && !fibConfig.visible) return;
+		const levelStroke = fibConfig?.color ?? drawing.style.stroke;
+
 		const y = start.y + pixelDelta * level;
 		const price = startPoint.y + priceDelta * level;
 		elements.push(lineElement(`${drawing.id}-fib-line-${index}`, {
@@ -278,7 +284,7 @@ function renderFibonacci(drawing: DrawingObject, scales: ChartScales, options: R
 			y1: y,
 			x2: options.chartWidth,
 			y2: y,
-			stroke: drawing.style.stroke,
+			stroke: levelStroke,
 			strokeWidth: drawing.style.strokeWidth,
 			strokeDasharray: strokeDasharrayForStyle(drawing.style),
 			fill: "none",
@@ -289,7 +295,7 @@ function renderFibonacci(drawing: DrawingObject, scales: ChartScales, options: R
 		elements.push(textElement(`${drawing.id}-fib-label-${index}`, {
 			x: options.chartWidth - 6,
 			y: y - 4,
-			fill: drawing.style.stroke,
+			fill: levelStroke,
 			fontSize: drawing.style.fontSize ?? 11,
 			fontFamily: drawing.style.fontFamily ?? "sans-serif",
 			textAnchor: "end",
@@ -322,8 +328,11 @@ function renderChannel(drawing: DrawingObject, scales: ChartScales, options: Ren
 		})();
 	const offsetStart = { x: start.x + offsetVector.x, y: start.y + offsetVector.y };
 	const offsetEnd = { x: end.x + offsetVector.x, y: end.y + offsetVector.y };
-	const lineProps = {
-		stroke: drawing.style.stroke,
+	const primaryStyle = resolveSegmentStyle(drawing, "primary");
+	const secondaryStyle = resolveSegmentStyle(drawing, "secondary");
+	const primaryVisible = isSegmentVisible(drawing, "primary");
+	const secondaryVisible = isSegmentVisible(drawing, "secondary");
+	const baseLineProps = {
 		strokeWidth: drawing.style.strokeWidth,
 		strokeDasharray: strokeDasharrayForStyle(drawing.style),
 		fill: "none",
@@ -332,16 +341,17 @@ function renderChannel(drawing: DrawingObject, scales: ChartScales, options: Ren
 		...interactiveProps(drawing, options),
 	};
 
+	const elements: ReactElement[] = [];
+	if (primaryVisible) {
+		elements.push(lineElement(`${drawing.id}-channel-primary`, { x1: start.x, y1: start.y, x2: end.x, y2: end.y, ...baseLineProps, stroke: primaryStyle.stroke }));
+	}
+	if (secondaryVisible) {
+		elements.push(lineElement(`${drawing.id}-channel-secondary`, { x1: offsetStart.x, y1: offsetStart.y, x2: offsetEnd.x, y2: offsetEnd.y, ...baseLineProps, stroke: secondaryStyle.stroke }));
+	}
+
 	return options.isSelected
-		? [
-			lineElement(`${drawing.id}-channel-primary`, { x1: start.x, y1: start.y, x2: end.x, y2: end.y, ...lineProps }),
-			lineElement(`${drawing.id}-channel-secondary`, { x1: offsetStart.x, y1: offsetStart.y, x2: offsetEnd.x, y2: offsetEnd.y, ...lineProps }),
-			...selectionHandles([start, end, offsetAnchor], drawing, options),
-		]
-		: [
-			lineElement(`${drawing.id}-channel-primary`, { x1: start.x, y1: start.y, x2: end.x, y2: end.y, ...lineProps }),
-			lineElement(`${drawing.id}-channel-secondary`, { x1: offsetStart.x, y1: offsetStart.y, x2: offsetEnd.x, y2: offsetEnd.y, ...lineProps }),
-		];
+		? [...elements, ...selectionHandles([start, end, offsetAnchor], drawing, options)]
+		: elements;
 }
 
 function renderParallelChannel(drawing: DrawingObject, scales: ChartScales, options: RenderSvgOptions): ReactElement[] {
@@ -367,8 +377,7 @@ function renderParallelChannel(drawing: DrawingObject, scales: ChartScales, opti
 		return [];
 	}
 
-	const lineProps = {
-		stroke: drawing.style.stroke,
+	const baseLineProps = {
 		strokeWidth: drawing.style.strokeWidth,
 		strokeDasharray: strokeDasharrayForStyle(drawing.style),
 		fill: "none",
@@ -376,11 +385,19 @@ function renderParallelChannel(drawing: DrawingObject, scales: ChartScales, opti
 		vectorEffect: "non-scaling-stroke",
 		...interactiveProps(drawing, options),
 	};
-	const elements = [
-		lineElement(`${drawing.id}-parallel-channel-upper`, { x1: positiveBoundary[0].x, y1: positiveBoundary[0].y, x2: positiveBoundary[1].x, y2: positiveBoundary[1].y, ...lineProps }),
-		lineElement(`${drawing.id}-parallel-channel-middle`, { x1: middle[0].x, y1: middle[0].y, x2: middle[1].x, y2: middle[1].y, ...lineProps }),
-		lineElement(`${drawing.id}-parallel-channel-lower`, { x1: negativeBoundary[0].x, y1: negativeBoundary[0].y, x2: negativeBoundary[1].x, y2: negativeBoundary[1].y, ...lineProps }),
-	];
+	const upperStyle = resolveSegmentStyle(drawing, "upper");
+	const middleStyle = resolveSegmentStyle(drawing, "middle");
+	const lowerStyle = resolveSegmentStyle(drawing, "lower");
+	const elements: ReactElement[] = [];
+	if (isSegmentVisible(drawing, "upper")) {
+		elements.push(lineElement(`${drawing.id}-parallel-channel-upper`, { x1: positiveBoundary[0].x, y1: positiveBoundary[0].y, x2: positiveBoundary[1].x, y2: positiveBoundary[1].y, ...baseLineProps, stroke: upperStyle.stroke }));
+	}
+	if (isSegmentVisible(drawing, "middle")) {
+		elements.push(lineElement(`${drawing.id}-parallel-channel-middle`, { x1: middle[0].x, y1: middle[0].y, x2: middle[1].x, y2: middle[1].y, ...baseLineProps, stroke: middleStyle.stroke }));
+	}
+	if (isSegmentVisible(drawing, "lower")) {
+		elements.push(lineElement(`${drawing.id}-parallel-channel-lower`, { x1: negativeBoundary[0].x, y1: negativeBoundary[0].y, x2: negativeBoundary[1].x, y2: negativeBoundary[1].y, ...baseLineProps, stroke: lowerStyle.stroke }));
+	}
 
 	return options.isSelected ? [...elements, ...selectionHandles([geometry.start, geometry.end, geometry.offsetAnchor], drawing, options)] : elements;
 }
@@ -402,8 +419,7 @@ function renderPitchfork(drawing: DrawingObject, scales: ChartScales, options: R
 		return [];
 	}
 
-	const lineProps = {
-		stroke: drawing.style.stroke,
+	const baseLineProps = {
 		strokeWidth: drawing.style.strokeWidth,
 		strokeDasharray: strokeDasharrayForStyle(drawing.style),
 		fill: "none",
@@ -411,6 +427,9 @@ function renderPitchfork(drawing: DrawingObject, scales: ChartScales, options: R
 		vectorEffect: "non-scaling-stroke",
 		...interactiveProps(drawing, options),
 	};
+	const medianStyle = resolveSegmentStyle(drawing, "median");
+	const leftForkStyle = resolveSegmentStyle(drawing, "leftFork");
+	const rightForkStyle = resolveSegmentStyle(drawing, "rightFork");
 	const labels = [
 		textElement(`${drawing.id}-pitchfork-label-a`, {
 			x: geometry.pivot.x + 6,
@@ -447,12 +466,17 @@ function renderPitchfork(drawing: DrawingObject, scales: ChartScales, options: R
 		}, "C"),
 	];
 
-	const elements = [
-		lineElement(`${drawing.id}-pitchfork-median`, { x1: median[0].x, y1: median[0].y, x2: median[1].x, y2: median[1].y, ...lineProps }),
-		lineElement(`${drawing.id}-pitchfork-left`, { x1: leftFork[0].x, y1: leftFork[0].y, x2: leftFork[1].x, y2: leftFork[1].y, ...lineProps }),
-		lineElement(`${drawing.id}-pitchfork-right`, { x1: rightFork[0].x, y1: rightFork[0].y, x2: rightFork[1].x, y2: rightFork[1].y, ...lineProps }),
-		...labels,
-	];
+	const elements: ReactElement[] = [];
+	if (isSegmentVisible(drawing, "median")) {
+		elements.push(lineElement(`${drawing.id}-pitchfork-median`, { x1: median[0].x, y1: median[0].y, x2: median[1].x, y2: median[1].y, ...baseLineProps, stroke: medianStyle.stroke }));
+	}
+	if (isSegmentVisible(drawing, "leftFork")) {
+		elements.push(lineElement(`${drawing.id}-pitchfork-left`, { x1: leftFork[0].x, y1: leftFork[0].y, x2: leftFork[1].x, y2: leftFork[1].y, ...baseLineProps, stroke: leftForkStyle.stroke }));
+	}
+	if (isSegmentVisible(drawing, "rightFork")) {
+		elements.push(lineElement(`${drawing.id}-pitchfork-right`, { x1: rightFork[0].x, y1: rightFork[0].y, x2: rightFork[1].x, y2: rightFork[1].y, ...baseLineProps, stroke: rightForkStyle.stroke }));
+	}
+	elements.push(...labels);
 
 	return options.isSelected ? [...elements, ...selectionHandles([geometry.pivot, geometry.leftSwing, geometry.rightSwing], drawing, options)] : elements;
 }
@@ -464,8 +488,7 @@ function renderAbcdPattern(drawing: DrawingObject, scales: ChartScales, options:
 	}
 
 	const [a, b, c, d] = metrics.points;
-	const lineProps = {
-		stroke: drawing.style.stroke,
+	const baseLineProps = {
 		strokeWidth: drawing.style.strokeWidth,
 		strokeDasharray: strokeDasharrayForStyle(drawing.style),
 		fill: "none",
@@ -473,6 +496,9 @@ function renderAbcdPattern(drawing: DrawingObject, scales: ChartScales, options:
 		vectorEffect: "non-scaling-stroke",
 		...interactiveProps(drawing, options),
 	};
+	const abStyle = resolveSegmentStyle(drawing, "AB");
+	const bcStyle = resolveSegmentStyle(drawing, "BC");
+	const cdStyle = resolveSegmentStyle(drawing, "CD");
 	const badgeProps = {
 		fill: drawing.style.stroke,
 		fontSize: drawing.style.fontSize ?? 11,
@@ -487,17 +513,24 @@ function renderAbcdPattern(drawing: DrawingObject, scales: ChartScales, options:
 	const ratioAB = metrics.bcToAb == null ? "BC/AB n/a" : `BC/AB ${metrics.bcToAb.toFixed(2)}`;
 	const ratioBC = metrics.cdToBc == null ? "CD/BC n/a" : `CD/BC ${metrics.cdToBc.toFixed(2)}`;
 
-	const elements = [
-		lineElement(`${drawing.id}-abcd-ab`, { x1: a.x, y1: a.y, x2: b.x, y2: b.y, ...lineProps }),
-		lineElement(`${drawing.id}-abcd-bc`, { x1: b.x, y1: b.y, x2: c.x, y2: c.y, ...lineProps }),
-		lineElement(`${drawing.id}-abcd-cd`, { x1: c.x, y1: c.y, x2: d.x, y2: d.y, ...lineProps }),
+	const elements: ReactElement[] = [];
+	if (isSegmentVisible(drawing, "AB")) {
+		elements.push(lineElement(`${drawing.id}-abcd-ab`, { x1: a.x, y1: a.y, x2: b.x, y2: b.y, ...baseLineProps, stroke: abStyle.stroke }));
+	}
+	if (isSegmentVisible(drawing, "BC")) {
+		elements.push(lineElement(`${drawing.id}-abcd-bc`, { x1: b.x, y1: b.y, x2: c.x, y2: c.y, ...baseLineProps, stroke: bcStyle.stroke }));
+	}
+	if (isSegmentVisible(drawing, "CD")) {
+		elements.push(lineElement(`${drawing.id}-abcd-cd`, { x1: c.x, y1: c.y, x2: d.x, y2: d.y, ...baseLineProps, stroke: cdStyle.stroke }));
+	}
+	elements.push(
 		textElement(`${drawing.id}-abcd-a`, { x: a.x + 6, y: a.y - 6, ...badgeProps }, "A"),
 		textElement(`${drawing.id}-abcd-b`, { x: b.x + 6, y: b.y - 6, ...badgeProps }, "B"),
 		textElement(`${drawing.id}-abcd-c`, { x: c.x + 6, y: c.y - 6, ...badgeProps }, "C"),
 		textElement(`${drawing.id}-abcd-d`, { x: d.x + 6, y: d.y - 6, ...badgeProps }, "D"),
 		textElement(`${drawing.id}-abcd-ratio-ab`, { x: metrics.segmentMidpoints[1].x, y: metrics.segmentMidpoints[1].y - 10, ...badgeProps }, ratioAB),
 		textElement(`${drawing.id}-abcd-ratio-bc`, { x: metrics.segmentMidpoints[2].x, y: metrics.segmentMidpoints[2].y - 10, ...badgeProps }, ratioBC),
-	];
+	);
 
 	return options.isSelected ? [...elements, ...selectionHandles(metrics.points, drawing, options)] : elements;
 }
@@ -583,8 +616,7 @@ function renderRegressionChannel(drawing: DrawingObject, scales: ChartScales, op
 		return [];
 	}
 
-	const lineProps = {
-		stroke: drawing.style.stroke,
+	const baseLineProps = {
 		strokeWidth: drawing.style.strokeWidth,
 		strokeDasharray: strokeDasharrayForStyle(drawing.style),
 		fill: "none",
@@ -592,6 +624,9 @@ function renderRegressionChannel(drawing: DrawingObject, scales: ChartScales, op
 		vectorEffect: "non-scaling-stroke",
 		...interactiveProps(drawing, options),
 	};
+	const centerStyle = resolveSegmentStyle(drawing, "center");
+	const upperStyle = resolveSegmentStyle(drawing, "upper");
+	const lowerStyle = resolveSegmentStyle(drawing, "lower");
 	const fill = drawing.style.fill && drawing.style.fill !== "transparent" ? drawing.style.fill : "rgba(100,149,237,0.08)";
 	const polygon = polygonElement(`${drawing.id}-regression-fill`, {
 		points: [
@@ -621,13 +656,17 @@ function renderRegressionChannel(drawing: DrawingObject, scales: ChartScales, op
 		...interactiveProps(drawing, options),
 	}, `R² ${metrics.rSquared.toFixed(2)}`);
 
-	const elements = [
-		polygon,
-		lineElement(`${drawing.id}-regression-upper`, { x1: metrics.startX, y1: metrics.upperStartY, x2: metrics.endX, y2: metrics.upperEndY, ...lineProps, strokeDasharray: dashedStroke }),
-		lineElement(`${drawing.id}-regression-lower`, { x1: metrics.startX, y1: metrics.lowerStartY, x2: metrics.endX, y2: metrics.lowerEndY, ...lineProps, strokeDasharray: dashedStroke }),
-		lineElement(`${drawing.id}-regression-center`, { x1: metrics.startX, y1: metrics.startY, x2: metrics.endX, y2: metrics.endY, ...lineProps }),
-		badge,
-	];
+	const regressionElements: ReactElement[] = [polygon, badge];
+	if (isSegmentVisible(drawing, "upper")) {
+		regressionElements.push(lineElement(`${drawing.id}-regression-upper`, { x1: metrics.startX, y1: metrics.upperStartY, x2: metrics.endX, y2: metrics.upperEndY, ...baseLineProps, stroke: upperStyle.stroke, strokeDasharray: dashedStroke }));
+	}
+	if (isSegmentVisible(drawing, "lower")) {
+		regressionElements.push(lineElement(`${drawing.id}-regression-lower`, { x1: metrics.startX, y1: metrics.lowerStartY, x2: metrics.endX, y2: metrics.lowerEndY, ...baseLineProps, stroke: lowerStyle.stroke, strokeDasharray: dashedStroke }));
+	}
+	if (isSegmentVisible(drawing, "center")) {
+		regressionElements.push(lineElement(`${drawing.id}-regression-center`, { x1: metrics.startX, y1: metrics.startY, x2: metrics.endX, y2: metrics.endY, ...baseLineProps, stroke: centerStyle.stroke }));
+	}
+	const elements = regressionElements;
 
 	return options.isSelected ? [...elements, ...selectionHandles([drawing.points[0], drawing.points[1]].filter(Boolean) as Array<{ x: number; y: number }>, drawing, options)] : elements;
 }

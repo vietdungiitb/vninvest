@@ -8,70 +8,12 @@ import { calculateFibArcGeometry } from "./builtin/fibArc";
 import { calculateFibTimeZoneGeometry } from "./builtin/fibTimeZone";
 import { calculateRegressionChannelMetrics } from "./builtin/regressionChannel";
 import { calculateGannFanGeometry } from "./builtin/gannFan";
+import { calculateGannAdvancedGeometry } from "./builtin/gannAdvanced";
 import { clipSegmentToBox, DEFAULT_FIB_EXTENSION_LEVELS, DEFAULT_FIB_LEVELS } from "./renderCanvas";
-// OverlayCanvasPrimitive — định nghĩa local vì export đã bị xóa khỏi vn-kline-engine-core
-export type OverlayCanvasPrimitive = {
-	type: "trendLine" | "arrow" | "hLine" | "vLine" | "rectangle" | "dateAndPriceRange" | "text";
-	points: Array<{ x: number; y: number }>;
-	text?: string;
-	style: {
-		stroke?: string;
-		strokeWidth?: number;
-		strokeDasharray?: "solid" | "dashed" | "dotted" | readonly number[];
-		fill?: string;
-		fillOpacity?: number;
-		opacity?: number;
-		fontSize?: number;
-		fontFamily?: string;
-	};
-};
-
-function hitTestOverlayPrimitive(
-	primitive: OverlayCanvasPrimitive,
-	mouseX: number,
-	mouseY: number,
-	options: { chartWidth: number; chartHeight: number; tolerance: number },
-): boolean {
-	const { tolerance, chartWidth, chartHeight } = options;
-	const pts = primitive.points;
-	switch (primitive.type) {
-		case "trendLine":
-		case "arrow": {
-			const [a, b] = pts;
-			if (!a || !b) return false;
-			return distanceToSegment(mouseX, mouseY, a.x, a.y, b.x, b.y) <= tolerance;
-		}
-		case "hLine": {
-			const [p] = pts;
-			if (!p) return false;
-			return Math.abs(mouseY - p.y) <= tolerance;
-		}
-		case "vLine": {
-			const [p] = pts;
-			if (!p) return false;
-			return Math.abs(mouseX - p.x) <= tolerance;
-		}
-		case "rectangle":
-		case "dateAndPriceRange": {
-			const [start, end] = pts;
-			if (!start || !end) return false;
-			const x = Math.min(start.x, end.x);
-			const y = Math.min(start.y, end.y);
-			const w = Math.abs(end.x - start.x);
-			const h = Math.abs(end.y - start.y);
-			return pointInRect(mouseX, mouseY, x - tolerance, y - tolerance, w + tolerance * 2, h + tolerance * 2);
-		}
-		case "text": {
-			const [p] = pts;
-			if (!p) return false;
-			const fontSize = primitive.style.fontSize ?? 12;
-			const len = (primitive.text?.length ?? 4) * fontSize * 0.6;
-			return pointInRect(mouseX, mouseY, p.x - tolerance, p.y - fontSize - tolerance, len + tolerance * 2, fontSize + tolerance * 2);
-		}
-		default:
-			return false;
-	}
-}
+import {
+	hitTestOverlayPrimitive,
+	type OverlayCanvasPrimitive,
+} from "@vnstockcharts/vn-kline-engine-core";
 
 // CE21: device-aware hit tolerance. Touch targets need ~3× the tolerance of mouse.
 export type PointerDeviceType = "mouse" | "touch" | "pen";
@@ -558,19 +500,19 @@ export function hitTestDrawing(
 		case "gannBox":
 		case "gannSquareFixed":
 		case "gannSquare": {
-			const pts = effectiveDrawing.points;
-			if (pts.length < 1) return false;
-			const px1 = toPixel(pts[0], scales);
-			const px2 = pts[1] ? toPixel(pts[1], scales) : px1;
-			const x = Math.min(px1.x, px2.x);
-			const y = Math.min(px1.y, px2.y);
-			const w = Math.abs(px2.x - px1.x);
-			const h = Math.abs(px2.y - px1.y);
+			// Use the geometry's actual rendered corners (gannSquare constrains to min-dimension square).
+			const geo = calculateGannAdvancedGeometry(effectiveDrawing, scales);
+			if (!geo) return false;
+			const { x1, y1, x2, y2 } = geo;
+			const xL = Math.min(x1, x2);
+			const yT = Math.min(y1, y2);
+			const xR = Math.max(x1, x2);
+			const yB = Math.max(y1, y2);
 			return (
-				distanceToSegment(mouseX, mouseY, x, y, x + w, y) <= tolerance
-				|| distanceToSegment(mouseX, mouseY, x + w, y, x + w, y + h) <= tolerance
-				|| distanceToSegment(mouseX, mouseY, x + w, y + h, x, y + h) <= tolerance
-				|| distanceToSegment(mouseX, mouseY, x, y + h, x, y) <= tolerance
+				distanceToSegment(mouseX, mouseY, xL, yT, xR, yT) <= tolerance
+				|| distanceToSegment(mouseX, mouseY, xR, yT, xR, yB) <= tolerance
+				|| distanceToSegment(mouseX, mouseY, xR, yB, xL, yB) <= tolerance
+				|| distanceToSegment(mouseX, mouseY, xL, yB, xL, yT) <= tolerance
 			);
 		}
 		case "cyclicLines":
@@ -594,6 +536,17 @@ export function getResizeHandleIndex(
 	scales: ChartScales,
 	tolerance = 8,
 ): number | null {
+	// For gannSquare the rendered corner (index 1) is constrained to a square aspect ratio
+	// and differs from raw points[1] pixel. Use actual geometry corners for hit detection.
+	if (drawing.type === "gannSquare" || drawing.type === "gannBox") {
+		const geo = calculateGannAdvancedGeometry(drawing, scales);
+		if (geo) {
+			if (Math.hypot(mouseX - geo.x1, mouseY - geo.y1) <= tolerance) return 0;
+			if (Math.hypot(mouseX - geo.x2, mouseY - geo.y2) <= tolerance) return 1;
+			return null;
+		}
+	}
+
 	for (let index = 0; index < drawing.points.length; index += 1) {
 		const point = drawing.points[index];
 		if (!point) {
@@ -639,6 +592,20 @@ export function getDrawingBoundingBox(
 	if (drawing.type === "vLine" && drawing.points[0]) {
 		const p = toPixel(drawing.points[0], scales);
 		return { minX: p.x, maxX: p.x, minY: 0, maxY: chartHeight };
+	}
+
+	// For gannSquare/gannBox/gannSquareFixed use actual rendered corners clamped to the
+	// visible chart area so action handles and rubber-band selection stay within viewport.
+	if (drawing.type === "gannSquare" || drawing.type === "gannBox" || drawing.type === "gannSquareFixed") {
+		const geo = calculateGannAdvancedGeometry(drawing, scales);
+		if (geo) {
+			return {
+				minX: Math.max(0, Math.min(geo.x1, geo.x2)),
+				maxX: Math.min(chartWidth, Math.max(geo.x1, geo.x2)),
+				minY: Math.max(0, Math.min(geo.y1, geo.y2)),
+				maxY: Math.min(chartHeight, Math.max(geo.y1, geo.y2)),
+			};
+		}
 	}
 
 	const pixels = drawing.points.map((pt) => toPixel(pt, scales));

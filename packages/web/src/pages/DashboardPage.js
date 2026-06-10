@@ -15,6 +15,7 @@
 import { createElement, useEffect, useRef, useState } from "react";
 
 import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
+import { AIAdvisorAlertPanel } from "../features/dashboard/AIAdvisorAlertPanel.js";
 
 const e = createElement;
 const NOOP = () => null;
@@ -193,7 +194,7 @@ export function DashboardPage({
         { className: "dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--ai" },
         showSkeleton
           ? e(LoadingSkeleton, { rows: 3 })
-          : renderAiPanel({
+          : e(AIAdvisorAlertPanel, {
               holdings,
               technicals,
               analytics,

@@ -1,43 +1,60 @@
-export type SeriesTypeId =
-	| "Candlestick"
-	| "HollowCandle"
-	| "OHLC"
-	| "HeikinAshi"
-	| "Line"
-	| "Area"
-	| "Bar"
-	| "Volume"
-	| "EMA"
-	| "BollingerBand"
-	| "RSI"
-	| "MACD"
-	| "CVDApprox"
-	| "CVDRealtime"
-	| "StrengthElder"
-	| "StrengthRelative"
-	| "Whale"
+export const SERIES_TYPE_IDS = [
+	"Candlestick",
+	"HollowCandle",
+	"OHLC",
+	"HeikinAshi",
+	"Line",
+	"Area",
+	"Bar",
+	"Volume",
+	"EMA",
+	"BollingerBand",
+	"RSI",
+	"MACD",
+	"CVDApprox",
+	"CVDRealtime",
+	"StrengthElder",
+	"StrengthRelative",
+	"Whale",
 	// CE15 additions
-	| "MA"
-	| "BBI"
-	| "SAR"
-	| "OBV"
-	| "WR"
-	| "VR"
+	"MA",
+	"BBI",
+	"SAR",
+	"OBV",
+	"WR",
+	"VR",
 	// CE16 additions
-	| "KDJ"
-	| "CCI"
-	| "DMI"
-	| "BIAS"
-	| "BRAR"
-	| "MTM"
-	| "EMV"
-	| "AO"
-	| "ROC"
-	| "TRIX"
-	| "DMA"
-	| "PVT"
-	| "PSY"
-	| "CR";
+	"KDJ",
+	"CCI",
+	"DMI",
+	"BIAS",
+	"BRAR",
+	"MTM",
+	"EMV",
+	"AO",
+	"ROC",
+	"TRIX",
+	"DMA",
+	"PVT",
+	"PSY",
+	"CR",
+] as const;
+
+export type SeriesTypeId = (typeof SERIES_TYPE_IDS)[number];
+
+const KNOWN_SERIES_TYPE_SET = new Set<string>(SERIES_TYPE_IDS);
+const LEGACY_SERIES_TYPE_ALIASES: Partial<Record<string, SeriesTypeId>> = {
+	BollingerBands: "BollingerBand",
+};
+
+export function normalizeSeriesTypeId(type: unknown): SeriesTypeId | null {
+	if (typeof type !== "string") {
+		return null;
+	}
+
+	const canonicalType = LEGACY_SERIES_TYPE_ALIASES[type] ?? type;
+	return KNOWN_SERIES_TYPE_SET.has(canonicalType) ? canonicalType as SeriesTypeId : null;
+}
 
 export type YAxisSide = "left" | "right";
 
@@ -85,7 +102,7 @@ export const DEFAULT_PANES: PaneDescriptor[] = [
 			{ type: "Candlestick", yAxis: "right" },
 			{ type: "EMA", params: { period: 20, color: "#2d9cdb" }, yAxis: "right", overlay: true },
 			{ type: "EMA", params: { period: 50, color: "#f2994a" }, yAxis: "right", overlay: true },
-			{ type: "BollingerBand", params: { period: 20, stdDev: 2 }, yAxis: "right", overlay: true },
+			{ type: "BollingerBand", params: { period: 20, stdDev: 2 }, color: "#38bdf8", yAxis: "right", overlay: true },
 		],
 	},
 	// ── 2: VOLUME — visible by default ───────────────────────────────────────

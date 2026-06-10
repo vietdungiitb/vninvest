@@ -1,0 +1,407 @@
+/* WatchlistPage.css — SaaS-Native Watchlist Stylesheet */
+
+.watchlistPage__container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  color: #e2e8f0;
+}
+
+.watchlistPage__layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
+  width: 100%;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .watchlistPage__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Sidebar Styling */
+.watchlistPage__sidebarCard {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.watchlistPage__sidebarTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.watchlistPage__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.watchlistPage__listItem {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.watchlistPage__listItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.watchlistPage__listItem--active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.watchlistPage__listItemName {
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+.watchlistPage__listItem--active .watchlistPage__listItemName {
+  color: #3b82f6;
+}
+
+.watchlistPage__listItemCount {
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 2px 8px;
+  color: #94a3b8;
+}
+
+.watchlistPage__sidebarAction {
+  margin-top: 0.5rem;
+}
+
+/* Main Area Card */
+.watchlistPage__mainCard {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Header & Metadata */
+.watchlistPage__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.watchlistPage__titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.watchlistPage__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.watchlistPage__description {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.watchlistPage__syncBadge {
+  font-size: 0.75rem;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: monospace;
+}
+
+/* Tabs */
+.watchlistPage__tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.5rem;
+}
+
+.watchlistPage__tabBtn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.watchlistPage__tabBtn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.watchlistPage__tabBtn--active {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+/* Bloomberg Density Grid controls */
+.watchlistPage__controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.watchlistPage__densityToggle {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.watchlistPage__densityBtn {
+  background: none;
+  border: none;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.watchlistPage__densityBtn--active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+/* Radar Table Styling */
+.watchlistPage__tableWrapper {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.watchlistPage__table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.watchlistPage__table th {
+  background: rgba(255, 255, 255, 0.03);
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Default Comfortable View Row */
+.watchlistPage__table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+/* High-Density Compact View Row */
+.watchlistPage__table--compact td {
+  padding: 4px 14px;
+  font-size: 0.75rem;
+}
+
+.watchlistPage__table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.watchlistPage__symbolLink {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.watchlistPage__symbolLink:hover {
+  text-decoration: underline;
+}
+
+/* Price Flash Animations */
+.watchlistPage__priceCell {
+  font-family: monospace;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.watchlistPage__priceCell--up {
+  animation: price-glow-up 0.5s ease;
+}
+
+.watchlistPage__priceCell--down {
+  animation: price-glow-down 0.5s ease;
+}
+
+@keyframes price-glow-up {
+  0% { background-color: rgba(0, 255, 187, 0.25); }
+  100% { background-color: transparent; }
+}
+
+@keyframes price-glow-down {
+  0% { background-color: rgba(255, 51, 68, 0.25); }
+  100% { background-color: transparent; }
+}
+
+/* Text Colors */
+.text-green {
+  color: #00FFBB;
+  font-weight: bold;
+}
+
+.text-red {
+  color: #FF3344;
+  font-weight: bold;
+}
+
+.text-gray {
+  color: #94a3b8;
+}
+
+.text-white {
+  color: #f8fafc;
+}
+
+.text-mono {
+  font-family: monospace;
+}
+
+/* Mini-Sparkline Cell */
+.watchlistPage__sparklineCell {
+  width: 90px;
+}
+
+.watchlistPage__sparklineSvg {
+  display: block;
+}
+
+.watchlistPage__sparklinePath {
+  stroke-width: 1.5;
+  fill: none;
+}
+
+/* Form Styles */
+.watchlistPage__form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.watchlistPage__input {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+  min-width: 180px;
+}
+
+.watchlistPage__input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.watchlistPage__select {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.watchlistPage__btn {
+  background: #3b82f6;
+  border: none;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.watchlistPage__btn:hover {
+  background: #2563eb;
+}
+
+.watchlistPage__btn--danger {
+  background: #ef4444;
+}
+
+.watchlistPage__btn--danger:hover {
+  background: #dc2626;
+}
+
+.watchlistPage__btn--secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.watchlistPage__btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Empty State */
+.watchlistPage__emptyState {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.watchlistPage__emptyIcon {
+  font-size: 2rem;
+  color: rgba(255, 255, 255, 0.2);
+}

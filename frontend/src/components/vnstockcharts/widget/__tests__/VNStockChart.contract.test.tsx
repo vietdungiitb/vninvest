@@ -109,6 +109,7 @@ let createDrawingObject: typeof import("../../lib/drawing/shared").createDrawing
 let chartPointToPixelWithBridge: typeof import("../../lib/drawing/coordinateBridge").chartPointToPixelWithBridge;
 let createRoot: typeof import("react-dom/client").createRoot;
 let measurementPointToPixelWithBridge: typeof import("../../lib/drawing/coordinateBridge").measurementPointToPixelWithBridge;
+let normalizePaneDescriptorsForExplicitScaleSlots: typeof import("../VNStockChart").normalizePaneDescriptorsForExplicitScaleSlots;
 let resolveChartPointWithBridge: typeof import("../../lib/drawing/coordinateBridge").resolveChartPointWithBridge;
 let resolveMeasurementPointWithBridge: typeof import("../../lib/drawing/coordinateBridge").resolveMeasurementPointWithBridge;
 let VNStockChart: typeof import("../VNStockChart").VNStockChart;
@@ -125,7 +126,7 @@ beforeAll(async () => {
 		resolveChartPointWithBridge,
 		resolveMeasurementPointWithBridge,
 	} = await import("../../lib/drawing/coordinateBridge"));
-	({ VNStockChart } = await import("../VNStockChart"));
+	({ VNStockChart, normalizePaneDescriptorsForExplicitScaleSlots } = await import("../VNStockChart"));
 	({ WidgetErrorBoundary } = await import("../WidgetErrorBoundary"));
 	({ WidgetI18nProvider } = await import("../context/WidgetI18nContext"));
 }, 30_000);
@@ -1173,6 +1174,24 @@ describe("VNStockChart", () => {
 
 		expect(container?.querySelector('[data-rsc-drawing-price-labels="legacy"]')).toBeNull();
 		expect(container?.textContent).not.toContain("Đã xảy ra lỗi trong biểu đồ");
+	});
+
+	it("normalizes legacy BollingerBands pane types at the widget boundary", () => {
+		const panes = normalizePaneDescriptorsForExplicitScaleSlots([
+			{
+				id: "price",
+				label: "Price",
+				pinned: true,
+				visible: true,
+				heightRatio: 1,
+				splitScale: false,
+				tooltip: "ohlc",
+				series: [{ type: "BollingerBands" as never, yAxis: "right" }],
+			},
+		]);
+
+		expect(panes[0]?.series).toHaveLength(1);
+		expect(panes[0]?.series[0]?.type).toBe("BollingerBand");
 	});
 
 	it("keeps legacy children, measurement overlay, and dark-flow badge mounted on legacy runtime", async () => {
