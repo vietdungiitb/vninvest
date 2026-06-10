@@ -44,10 +44,12 @@ import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import {
   AlertCenterPage,
+  BillingCenterPage,
   AuthLoginPage,
   AuthRegisterPage,
   AuthVerifyEmailPage,
   AuthResetPasswordPage,
+  PaymentReturnPage,
   authTokenStorage,
 } from '@vninvest/web';
 import ModernDashboard from './pages/modern/ModernDashboard';
@@ -129,6 +131,8 @@ export default function App() {
                     />
                   ) : null}
                   <Route path="whale-alerts" element={<AlertCenterPage />} />
+                  <Route path="commercial/billing" element={<BillingCenterPage />} />
+                  <Route path="commercial/payment-return" element={<PaymentReturnPage />} />
                   {packageShellHostEnabled ? (
                     <Route
                       path="whale-alerts/shell"

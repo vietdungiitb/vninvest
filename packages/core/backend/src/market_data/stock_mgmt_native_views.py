@@ -732,6 +732,7 @@ def _default_chart_technical_payload():
         'momentum_20d_pct': None,
         'range_position_pct': None,
         'latest_close': None,
+        'rvol': None,
     }
 
 
@@ -762,6 +763,7 @@ def _compute_chart_technical_payload(points):
     sma50 = sum(closes[-50:]) / min(len(closes), 50)
     avg_volume_20 = sum(volumes[-20:]) / min(len(volumes), 20) if volumes else None
     rsi14 = _compute_rsi14(closes)
+    rvol = volumes[-1] / avg_volume_20 if volumes and avg_volume_20 else None
 
     low_values = [_to_float(point.get('low')) for point in points if _to_float(point.get('low')) is not None]
     high_values = [_to_float(point.get('high')) for point in points if _to_float(point.get('high')) is not None]
@@ -803,6 +805,7 @@ def _compute_chart_technical_payload(points):
             'momentum_20d_pct': _round_or_none(momentum_20d_pct),
             'range_position_pct': _round_or_none(range_position_pct),
             'latest_close': _round_or_none(latest_close),
+            'rvol': _round_or_none(rvol),
         }
     )
     return payload
@@ -1397,6 +1400,9 @@ class StockManagementTechnicalsView(APIView):
                 'sma50': technical_payload.get('sma50'),
                 'rsi14': technical_payload.get('rsi14'),
                 'rsi_14': technical_payload.get('rsi14'),
+                'ma20_distance_pct': technical_payload.get('price_vs_sma20_pct'),
+                'rvol': technical_payload.get('rvol'),
+                'updated_at': timezone.now().isoformat(),
                 'avg_volume_20': technical_payload.get('avg_volume_20'),
                 'price_vs_sma20_pct': technical_payload.get('price_vs_sma20_pct'),
                 'price_vs_sma50_pct': technical_payload.get('price_vs_sma50_pct'),

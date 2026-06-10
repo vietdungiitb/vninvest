@@ -22,6 +22,10 @@ from .vnpay_service import VNPayService
 logger = logging.getLogger(__name__)
 
 
+class QuotaCursorPagination(CoreCursorPagination):
+    ordering = '-period_start'
+
+
 class SubscriptionDetailView(generics.RetrieveAPIView):
     serializer_class = SubscriptionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -34,7 +38,7 @@ class SubscriptionDetailView(generics.RetrieveAPIView):
 class QuotaListView(generics.ListAPIView):
     serializer_class = QuotaRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
-    pagination_class = CoreCursorPagination
+    pagination_class = QuotaCursorPagination
 
     def get_queryset(self):
         tenant = CoreTenant.objects.get(owner_user=self.request.user)

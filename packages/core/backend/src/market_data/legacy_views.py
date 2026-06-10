@@ -20,6 +20,7 @@ from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from user_workspace.permissions import TenantScopePermission
 
 
 # ---------------------------------------------------------------------------
@@ -133,12 +134,12 @@ def _build_stock_management_group_payload(watchlist, index: int):
 
 class StockManagementGroupsView(APIView):
     """GET /api/stock-management/groups/ — returns core watchlist-backed market groups."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def get(self, request):
         from user_workspace.models import Watchlist
 
-        watchlists = list(Watchlist.objects.filter(user=request.user).prefetch_related('items'))
+        watchlists = list(Watchlist.objects.filter(user=request.user, tenant=request.tenant).prefetch_related('items'))
         watchlists.sort(
             key=lambda watchlist: (
                 _STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP.get(watchlist.name, {}).get('order', 999),
@@ -152,7 +153,7 @@ class StockManagementGroupsView(APIView):
 
 
 class StockManagementSeedView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def post(self, request):
         from user_workspace.models import Watchlist, WatchlistItem
@@ -164,6 +165,7 @@ class StockManagementSeedView(APIView):
         for group_data in _STOCK_MANAGEMENT_DEFAULT_GROUPS:
             watchlist, created = Watchlist.objects.get_or_create(
                 user=request.user,
+                tenant=request.tenant,
                 name=group_data['name'],
                 defaults={
                     'description': group_data['description'],
@@ -228,7 +230,7 @@ class StockManagementSyncView(APIView):
 
 class TrackedSymbolsView(APIView):
     """GET/POST /api/stock-management/tracked-symbols/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def get(self, request):
         return _empty_list()

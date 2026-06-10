@@ -7,7 +7,7 @@
 import fs from "fs";
 import path from "path";
 
-const ROOT = path.resolve("src/components/vnstockcharts");
+const ROOT = path.resolve("src/components/vninvestcharts");
 
 function collectJsFiles(dir) {
   const results = [];
@@ -33,6 +33,11 @@ function resolveImport(fileDir, specifier) {
 
   const resolved = path.resolve(fileDir, specifier);
 
+  // File with .js?
+  if (fs.existsSync(resolved + ".js")) return specifier + ".js";
+  if (fs.existsSync(resolved + ".ts")) return specifier + ".js";
+  if (fs.existsSync(resolved + ".tsx")) return specifier + ".js";
+
   // Directory with index.js?
   if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
     if (fs.existsSync(path.join(resolved, "index.js"))) return specifier + "/index.js";
@@ -40,16 +45,11 @@ function resolveImport(fileDir, specifier) {
     return specifier;
   }
 
-  // File with .js?
-  if (fs.existsSync(resolved + ".js")) return specifier + ".js";
-  if (fs.existsSync(resolved + ".ts")) return specifier + ".js";
-  if (fs.existsSync(resolved + ".tsx")) return specifier + ".js";
-
   return specifier;
 }
 
-// Match any from "..." or from '...' in import/export statements
-const SPECIFIER_RE = /((?:from|require\()\s*)(['"])([^'"]+)\2/g;
+// Match any from "..." or from '...' or import "..." or require("...") in import/export statements
+const SPECIFIER_RE = /((?:from|require\(|import)\s*)(['"])([^'"]+)\2/g;
 
 let totalFixed = 0;
 let filesChanged = 0;

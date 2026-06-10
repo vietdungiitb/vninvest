@@ -7,7 +7,7 @@
 import fs from "fs";
 import path from "path";
 
-const ROOT = path.resolve("src/components/vnstockcharts");
+const ROOT = path.resolve("src/components/vninvestcharts");
 
 function collectJsFiles(dir) {
   const results = [];

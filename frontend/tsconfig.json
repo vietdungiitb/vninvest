@@ -30,6 +30,9 @@
     "src/**/*.test.tsx",
     "src/**/*.test.js",
     "src/**/*.test.jsx",
-    "src/**/__tests__/**"
+    "src/**/__tests__/**",
+    "src/components/vnstockcharts/**",
+    "src/components/VNStockChartPanel.jsx",
+    "src/pages/StockDetail.jsx"
   ]
 }

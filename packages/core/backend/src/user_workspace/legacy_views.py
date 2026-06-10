@@ -20,6 +20,7 @@ from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .permissions import TenantScopePermission
 
 
 # ---------------------------------------------------------------------------
@@ -132,12 +133,12 @@ def _build_stock_management_group_payload(watchlist, index: int):
 
 
 class LegacyWatchlistGroupDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def _get(self, request, pk):
         from user_workspace.models import Watchlist
         try:
-            return Watchlist.objects.get(pk=pk, user=request.user)
+            return Watchlist.objects.get(pk=pk, user=request.user, tenant=request.tenant)
         except Watchlist.DoesNotExist:
             return None
 
@@ -169,11 +170,11 @@ class LegacyWatchlistGroupDetailView(APIView):
 
 class LegacyWatchlistGroupListView(APIView):
     """GET/POST /api/portfolio/watchlist/groups/ → core user_workspace.Watchlist"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def get(self, request):
         from user_workspace.models import Watchlist
-        watchlists = Watchlist.objects.filter(user=request.user).order_by('name')
+        watchlists = Watchlist.objects.filter(user=request.user, tenant=request.tenant).order_by('name')
         data = [
             {
                 "id": w.pk,
@@ -194,18 +195,18 @@ class LegacyWatchlistGroupListView(APIView):
         from user_workspace.serializers import WatchlistSerializer
         serializer = WatchlistSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        watchlist = serializer.save(user=request.user)
+        watchlist = serializer.save(user=request.user, tenant=request.tenant)
         return Response(WatchlistSerializer(watchlist).data, status=status.HTTP_201_CREATED)
 
 
 
 class LegacyWatchlistItemCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def post(self, request, group_id):
         from user_workspace.models import Watchlist, WatchlistItem
         try:
-            watchlist = Watchlist.objects.get(pk=group_id, user=request.user)
+            watchlist = Watchlist.objects.get(pk=group_id, user=request.user, tenant=request.tenant)
         except Watchlist.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         symbol = request.data.get("symbol", "").strip().upper()
@@ -217,12 +218,12 @@ class LegacyWatchlistItemCreateView(APIView):
 
 
 class LegacyWatchlistItemDeleteView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def delete(self, request, pk):
         from user_workspace.models import WatchlistItem
         try:
-            item = WatchlistItem.objects.get(pk=pk, watchlist__user=request.user)
+            item = WatchlistItem.objects.get(pk=pk, watchlist__user=request.user, watchlist__tenant=request.tenant)
             item.delete()
         except WatchlistItem.DoesNotExist:
             pass
@@ -307,11 +308,11 @@ class PortfolioUserConfigView(APIView):
 # ---------------------------------------------------------------------------
 
 class SecuritiesGroupListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def get(self, request):
         from user_workspace.models import Watchlist
-        watchlists = Watchlist.objects.filter(user=request.user).order_by('name')
+        watchlists = Watchlist.objects.filter(user=request.user, tenant=request.tenant).order_by('name')
         if not watchlists.exists():
             # Seed default groups if none exist for new users in SaaS mode
             return Response(_STOCK_MANAGEMENT_DEFAULT_GROUPS)
@@ -320,11 +321,11 @@ class SecuritiesGroupListCreateView(APIView):
         return Response(data)
 
 class SecuritiesGroupDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     def get(self, request, group_id):
         from user_workspace.models import Watchlist
         try:
-            w = Watchlist.objects.get(pk=group_id, user=request.user)
+            w = Watchlist.objects.get(pk=group_id, user=request.user, tenant=request.tenant)
             return Response(_build_stock_management_group_payload(w, 0))
         except Watchlist.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)

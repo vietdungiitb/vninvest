@@ -477,6 +477,33 @@ function PromptSourceTabs({
   );
 }
 
+const PROVIDER_MODELS = {
+  openai: [
+    { key: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { key: "gpt-4o", label: "gpt-4o" },
+    { key: "gpt-3.5-turbo", label: "gpt-3.5-turbo" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  gemini: [
+    { key: "gemini-1.5-flash", label: "gemini-1.5-flash" },
+    { key: "gemini-1.5-pro", label: "gemini-1.5-pro" },
+    { key: "gemini-pro", label: "gemini-pro" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  claude: [
+    { key: "claude-3-5-sonnet", label: "claude-3-5-sonnet" },
+    { key: "claude-3-haiku", label: "claude-3-haiku" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  openclaw: [
+    { key: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  copilot: [
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ]
+};
+
 const DEFAULT_AI_CONFIG = {
   ai_provider: 'openclaw',
   ai_model: '',
@@ -506,6 +533,29 @@ const AICommandCenter = () => {
   const [userRuntimeConfig, setUserRuntimeConfig] = useState(null);
   const currentConfig = config || DEFAULT_AI_CONFIG;
   const currentPromptConfig = normalizePromptConfig(currentConfig.ai_prompt_config);
+  
+  const currentProvider = currentConfig.ai_provider || 'openclaw';
+  const modelsForSelectedProvider = PROVIDER_MODELS[currentProvider] || [];
+  const isCustomModel = currentConfig.ai_model ? !modelsForSelectedProvider.some(m => m.key === currentConfig.ai_model && m.key !== 'custom') : true;
+  const displayModelValue = isCustomModel ? 'custom' : (currentConfig.ai_model || '');
+
+  const handleProviderChange = (e) => {
+    const nextProvider = e.target.value;
+    const models = PROVIDER_MODELS[nextProvider] || [];
+    const nextModel = models.length > 0 ? models[0].key : 'custom';
+    const nextModelVal = nextModel === 'custom' ? '' : nextModel;
+    handleSave({ ai_provider: nextProvider, ai_model: nextModelVal });
+  };
+
+  const handleModelSelectChange = (e) => {
+    const nextModel = e.target.value;
+    if (nextModel === 'custom') {
+      setConfig(prev => ({ ...prev, ai_model: '' }));
+    } else {
+      handleSave({ ai_model: nextModel });
+    }
+  };
+
   const totalAuditPages = Math.max(1, Math.ceil((auditTotal || 0) / AUDIT_PAGE_SIZE));
   const activeSourceCount = PROMPT_SOURCE_DEFINITIONS.filter((definition) => currentPromptConfig?.[definition.id]?.enabled).length;
   const eventBasedAdvisoryEnabled = userRuntimeConfig == null
@@ -903,30 +953,48 @@ const AICommandCenter = () => {
                       Nhà cung cấp AI
                     </label>
                     <select 
-                      value={currentConfig.ai_provider}
-                      onChange={(e) => handleSave({ ai_provider: e.target.value })}
+                      value={currentProvider}
+                      onChange={handleProviderChange}
                       className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-indigo-500"
                     >
+                      <option value="openclaw">OpenClaw (System Default)</option>
                       <option value="openai">OpenAI (ChatGPT)</option>
                       <option value="gemini">Google Gemini</option>
                       <option value="claude">Anthropic (Claude)</option>
                       <option value="copilot">GitHub Copilot</option>
-                      <option value="openclaw">OpenClaw (System Default)</option>
                     </select>
                   </div>
 
                   {/* AI Model */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">Mô hình AI</label>
-                    <input 
-                      type="text"
-                      value={currentConfig.ai_model || ''}
-                      onChange={(e) => setConfig({ ...currentConfig, ai_model: e.target.value })}
-                      onBlur={(e) => handleSave({ ai_model: e.target.value })}
-                      className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white outline-none transition-all focus:ring-2 focus:ring-indigo-500"
-                      placeholder="e.g. gpt-4o, gemini-1.5-pro"
-                    />
+                    <select 
+                      value={displayModelValue}
+                      onChange={handleModelSelectChange}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                    >
+                      {modelsForSelectedProvider.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+
+                  {/* Custom Model Input */}
+                  {displayModelValue === 'custom' && (
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-sm font-medium text-slate-300">Tên mô hình tùy chỉnh</label>
+                      <input 
+                        type="text"
+                        value={currentConfig.ai_model || ''}
+                        onChange={(e) => setConfig({ ...currentConfig, ai_model: e.target.value })}
+                        onBlur={(e) => handleSave({ ai_model: e.target.value })}
+                        className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white outline-none transition-all focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Ví dụ: o1-mini, gemini-2.0-flash"
+                      />
+                    </div>
+                  )}
 
                   {/* API Key */}
                   <div className="md:col-span-2 space-y-2">

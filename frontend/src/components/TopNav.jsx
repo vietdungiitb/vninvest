@@ -102,6 +102,7 @@ export default function TopNav() {
 
   const systemItems = [
     { to: '/support', label: t('layout.nav.support') },
+    { to: '/commercial/billing', label: t('layout.nav.billingCenter') },
     { to: '/screener', label: t('layout.nav.screener') },
     { to: '/settings/ai', label: t('layout.nav.aiCommandCenter') },
     { to: '/operations-center', label: t('layout.nav.soc') },
