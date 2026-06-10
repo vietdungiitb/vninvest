@@ -5,6 +5,17 @@ import { buildEffectiveOrderFlowData } from "../orderFlowFallback.js";
 const DEFAULT_ENV = {};
 const DEFAULT_ORDER_FLOW_WINDOW = "1h";
 
+function getLookbackDays(timeframe) {
+  const tf = String(timeframe || "").toLowerCase();
+  if (tf.includes("m")) {
+    return 30;
+  }
+  if (tf.includes("h")) {
+    return 180;
+  }
+  return 730;
+}
+
 function normalizeChartBarsPayload(payload) {
   if (!payload) return [];
 
@@ -36,8 +47,8 @@ function normalizeChartBarsPayload(payload) {
  */
 export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {}) {
   const [symbol, setSymbol] = useState(initialSymbol || "");
-  const [activeTimeframe, setActiveTimeframe] = useState("1H");
-  const [activePeriod, setActivePeriod] = useState("3M");
+  const [activeTimeframe, setActiveTimeframe] = useState("1D");
+  const [activePeriod, setActivePeriod] = useState("6M");
   const [selectedSession, setSelectedSession] = useState(null);
   const [visibleRange, setVisibleRange] = useState(null);
 
@@ -75,11 +86,15 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
       setSymbol(initialSymbol);
       setSelectedSession(null);
       setVisibleRange(null);
+      setModelState((s) => ({
+        ...s,
+        chartBars: [],
+      }));
     }
   }, [initialSymbol]);
 
-  // 1. Blocking Lane: Symbol metadata, quote snapshot, chart history, order flow summary.
-  // Dependencies: symbol, activeTimeframe. (Does NOT re-fetch chart history on selectedSession change!)
+  // 1. Blocking Lane: Symbol metadata, quote snapshot, order flow summary.
+  // Dependencies: symbol, activeTimeframe.
   useEffect(() => {
     if (!symbol) return;
 
@@ -93,10 +108,9 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
 
     async function loadBlocking() {
       try {
-        const [profileRes, snapshotRes, chartRes, orderFlowRes, sessionFactsCvdRes, whaleSnapshotRes] = await Promise.allSettled([
+        const [profileRes, snapshotRes, orderFlowRes, sessionFactsCvdRes, whaleSnapshotRes] = await Promise.allSettled([
           adapter.getStockProfile(symbol),
           adapter.getSymbolSnapshot(symbol),
-          adapter.getStockChartHistory(symbol, { timeframe: activeTimeframe, days: 180 }),
           adapter.getStockOrderFlow(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
           adapter.getSessionFactsCvd(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
           adapter.getWhaleAnalyticsSnapshot(symbol, {
@@ -113,10 +127,6 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
           loadingBlocking: false,
           profile: profileRes.status === "fulfilled" ? profileRes.value : null,
           snapshot: snapshotRes.status === "fulfilled" ? snapshotRes.value : null,
-          chartBars:
-            chartRes.status === "fulfilled"
-              ? normalizeChartBarsPayload(chartRes.value)
-              : [],
           orderFlowData: buildEffectiveOrderFlowData({
             orderFlowPayload: orderFlowRes.status === "fulfilled" ? orderFlowRes.value : null,
             sessionFactsCvdPayload: sessionFactsCvdRes.status === "fulfilled" ? sessionFactsCvdRes.value : null,
@@ -237,6 +247,13 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     }, 250);
   }, []);
 
+  const setChartBars = useCallback((bars) => {
+    setModelState((s) => ({
+      ...s,
+      chartBars: bars,
+    }));
+  }, []);
+
   return {
     symbol,
     setSymbol,
@@ -249,10 +266,12 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     visibleRange,
     setVisibleRange,
     handleRealtimeSnapshot,
+    setChartBars,
     news,
     financials,
     loadingNews,
     loadingFinancials,
     ...modelState,
   };
+
 }

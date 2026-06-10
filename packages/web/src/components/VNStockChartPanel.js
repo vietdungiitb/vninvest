@@ -1,92 +1,215 @@
-import React, { createElement, useState, useCallback, useMemo } from 'react';
+import React, { createElement, useState, useCallback, useMemo, useEffect } from 'react';
 import { toCanonicalMinute } from '../utils/whaleTimeAdapter.js';
 import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInvestSignalAdapter.js';
-import { VNStockChart, MockAdapter, OverlayCanvas } from './vnstockcharts/index.js';
+import { VNInvestCharts, MockAdapter, OverlayCanvas, widgetMessagesVi } from './vninvestcharts/index.js';
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
+import { createCoreApiAdapter } from '../adapters/coreApiAdapter.js';
 
 const e = createElement;
 
-function clamp(value, lower, upper) {
-  return Math.max(lower, Math.min(upper, Number(value)));
-}
-
-function resolveHeatmapMetric(bucket, mode = 'net') {
-  const normalizedMode = String(mode || 'net').trim().toLowerCase();
-  if (normalizedMode === 'off') {
-    return null;
+class CoreApiChartAdapter {
+  constructor(symbol, timeframe, coreAdapter) {
+    this.symbol = symbol;
+    this.timeframe = timeframe;
+    this.coreAdapter = coreAdapter;
+    this.label = "core-api-adapter";
   }
 
-  if (normalizedMode === 'buy') {
-    const buyHeat = Number(bucket?.buyHeat);
-    if (!Number.isFinite(buyHeat) || buyHeat <= 0) {
-      return null;
-    }
+  getSourceSemantics() {
     return {
-      kind: 'buy',
-      intensity: buyHeat,
-      signedValue: buyHeat,
+      sourceId: "core-api-adapter",
+      sourceContractVersion: "vnstocks-window-v1",
+      instrumentClass: "equity",
+      coverageMode: "window-hint",
+      sessionModel: "exchange-calendar",
+      timezone: "Asia/Ho_Chi_Minh",
+      sessionCalendarId: "vn-exchange-calendar",
+      supportsExactRangeFetch: false,
+      supportsBackwardAnchor: true,
+      supportsForwardAnchor: false,
+      supportsLiveBars: true,
+      maxBarsPerRequest: 3650,
+      finalityMode: "historically-correctable",
+      expectedGapReasons: ["not-fetched", "market-closed", "source-no-data", "rate-limited", "boundary-exhausted"],
     };
   }
 
-  if (normalizedMode === 'sell') {
-    const sellHeat = Number(bucket?.sellHeat);
-    if (!Number.isFinite(sellHeat) || sellHeat <= 0) {
-      return null;
-    }
+  mapPointToBar(point, index) {
     return {
-      kind: 'sell',
-      intensity: sellHeat,
-      signedValue: -sellHeat,
+      date: new Date(point.timestamp ?? point.time ?? point.date),
+      open: point.open,
+      high: point.high,
+      low: point.low,
+      close: point.close,
+      volume: point.volume,
+      index,
+      dataIndex: index,
     };
   }
 
-  const netHeat = Number(bucket?.netHeat);
-  const whaleScore = Number(bucket?.whaleScore);
-  const intensity = Math.max(
-    Number.isFinite(netHeat) ? Math.abs(netHeat) : 0,
-    Number.isFinite(whaleScore) ? whaleScore : 0,
-  );
-  if (intensity <= 0) {
-    return null;
+  resolveDays(params) {
+    const tf = String(params.interval || "").toLowerCase();
+    let intervalMs = 60 * 60 * 1000; // default 1H
+    if (tf.includes("m")) {
+      const mins = parseInt(tf) || 15;
+      intervalMs = mins * 60 * 1000;
+    } else if (tf.includes("d") || tf.includes("1d")) {
+      intervalMs = 24 * 60 * 60 * 1000;
+    } else if (tf.includes("h")) {
+      const hrs = parseInt(tf) || 1;
+      intervalMs = hrs * 60 * 60 * 1000;
+    }
+
+    const requestedWindowMs = Math.max(1, params.limit) * intervalMs;
+    if (params.type === "backward" && params.timestamp !== null) {
+      const anchorWindowMs = Math.max(0, Date.now() - params.timestamp);
+      return Math.max(1, Math.min(3650, Math.ceil((anchorWindowMs + requestedWindowMs) / (24 * 60 * 60 * 1000))));
+    }
+    return Math.max(1, Math.min(3650, Math.ceil(requestedWindowMs / (24 * 60 * 60 * 1000))));
   }
 
-  return {
-    kind: Math.abs(netHeat) < 12 && whaleScore >= 45 ? 'whale' : netHeat >= 0 ? 'buy' : 'sell',
-    intensity,
-    signedValue: Number.isFinite(netHeat) ? netHeat : 0,
-  };
+  async getBars(params) {
+    const days = this.resolveDays(params);
+    const intervalLower = String(params.interval || "").toLowerCase();
+    const safeInterval = intervalLower === "1d" || intervalLower === "d" ? "D" : intervalLower === "1h" ? "1H" : params.interval;
+    
+    const payload = await this.coreAdapter.getStockChartHistory(params.symbol, {
+      timeframe: safeInterval,
+      days: days,
+    });
+
+    const points = payload.points
+      ?? payload.results
+      ?? payload.bars
+      ?? payload.candles
+      ?? payload.data?.points
+      ?? payload;
+
+    const allBars = (Array.isArray(points) ? points : [])
+      .map((p, idx) => this.mapPointToBar(p, idx))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    const backwardAnchor = params.type === "backward" ? params.timestamp : null;
+    const bars = backwardAnchor !== null
+      ? allBars.filter((bar) => bar.date.getTime() < backwardAnchor).slice(-params.limit)
+      : allBars.slice(-params.limit);
+
+    return {
+      bars,
+      hasMore: bars.length > 0,
+    };
+  }
+
+  getBarsCanonical(params) {
+    return this.getBars(params).then((result) => {
+      const coverage = this.buildCoverage(result, params);
+      return { ...result, coverage };
+    });
+  }
+
+  buildCoverage(result, params) {
+    const { bars, hasMore } = result;
+    if (bars.length === 0) {
+      if (params.type === "backward" && params.timestamp !== null) {
+        return [
+          { fromTs: 0, toTs: params.timestamp, status: "unresolved", reason: "boundary-exhausted" },
+        ];
+      }
+      return [{ fromTs: 0, toTs: Date.now(), status: "unresolved", reason: "source-no-data" }];
+    }
+    const oldestTs = bars[0].date.getTime();
+    const newestTs = bars[bars.length - 1].date.getTime();
+    const covered = { fromTs: oldestTs, toTs: newestTs, status: "covered" };
+    if (!hasMore) {
+      return [
+        { fromTs: 0, toTs: oldestTs, status: "unresolved", reason: "boundary-exhausted" },
+        covered,
+      ];
+    }
+    return [covered];
+  }
+
+  async fetchBarsInRange(symbol, timeframe, from, to) {
+    const days = Math.max(1, Math.min(3650, Math.ceil((Date.now() - from.getTime()) / (24 * 60 * 60 * 1000))));
+    const intervalLower = String(timeframe || "").toLowerCase();
+    const safeInterval = intervalLower === "1d" || intervalLower === "d" ? "D" : intervalLower === "1h" ? "1H" : timeframe;
+    
+    const payload = await this.coreAdapter.getStockChartHistory(symbol, {
+      timeframe: safeInterval,
+      days: days,
+    });
+
+    const points = payload.points
+      ?? payload.results
+      ?? payload.bars
+      ?? payload.candles
+      ?? payload.data?.points
+      ?? payload;
+
+    const fromTs = from.getTime();
+    const toTs = to.getTime();
+
+    return (Array.isArray(points) ? points : [])
+      .map((p, idx) => this.mapPointToBar(p, idx))
+      .filter((bar) => bar.date.getTime() >= fromTs && bar.date.getTime() <= toTs)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  async fetchBarsBefore(symbol, timeframe, before, limit = 300) {
+    const intervalLower = String(timeframe || "").toLowerCase();
+    let intervalMs = 60 * 60 * 1000;
+    if (intervalLower.includes("m")) {
+      const mins = parseInt(intervalLower) || 15;
+      intervalMs = mins * 60 * 1000;
+    } else if (intervalLower.includes("d")) {
+      intervalMs = 24 * 60 * 60 * 1000;
+    } else if (intervalLower.includes("h")) {
+      const hrs = parseInt(intervalLower) || 1;
+      intervalMs = hrs * 60 * 60 * 1000;
+    }
+
+    const requestedWindowMs = Math.max(1, limit) * intervalMs;
+    const anchorWindowMs = Math.max(0, Date.now() - before.getTime());
+    const days = Math.max(1, Math.min(3650, Math.ceil((anchorWindowMs + requestedWindowMs) / (24 * 60 * 60 * 1000))));
+    
+    const safeInterval = intervalLower === "1d" || intervalLower === "d" ? "D" : intervalLower === "1h" ? "1H" : timeframe;
+
+    const payload = await this.coreAdapter.getStockChartHistory(symbol, {
+      timeframe: safeInterval,
+      days: days,
+    });
+
+    const points = payload.points
+      ?? payload.results
+      ?? payload.bars
+      ?? payload.candles
+      ?? payload.data?.points
+      ?? payload;
+
+    const beforeTs = before.getTime();
+
+    return (Array.isArray(points) ? points : [])
+      .map((p, idx) => this.mapPointToBar(p, idx))
+      .filter((bar) => bar.date.getTime() < beforeTs)
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(-limit);
+  }
+
+  subscribeToBar(symbol, timeframe, onBar) {
+    return () => {};
+  }
+  subscribeToTrades(symbol, onTrade) {
+    return () => {};
+  }
+  subscribeToOrderbook(symbol, onUpdate) {
+    return () => {};
+  }
+  async searchSymbols() {
+    return [{ symbol: this.symbol, name: this.symbol, exchange: "VNINVEST" }];
+  }
 }
 
-function buildHeatmapBandColor(bucket, mode = 'net') {
-  const metric = resolveHeatmapMetric(bucket, mode);
-  if (!metric) {
-    return null;
-  }
 
-  const magnitude = clamp(metric.intensity, 0, 100) / 100;
-  const alpha = (0.08 + magnitude * 0.26).toFixed(3);
-
-  if (metric.kind === 'whale') {
-    return `rgba(245, 158, 11, ${alpha})`;
-  }
-  if (metric.kind === 'buy') {
-    return `rgba(34, 197, 94, ${alpha})`;
-  }
-  return `rgba(244, 63, 94, ${alpha})`;
-}
-
-function buildFlowBucketLookup(viewModel, flowTimeframe) {
-  const lookup = new Map();
-  if (!viewModel || !Array.isArray(viewModel.buckets)) return lookup;
-
-  viewModel.buckets.forEach((bucket) => {
-    const minuteKey = toCanonicalMinute(bucket?.ts ?? bucket?.bucket_ts ?? bucket?.timestamp ?? bucket?.time ?? bucket?.date);
-    if (minuteKey == null) return;
-    lookup.set(String(minuteKey), bucket);
-  });
-
-  return lookup;
-}
 
 // Custom canvas overlay to draw top 10% shark viewport markers (🟢🦈/🔴🦈)
 function ViewportSharkMarkersOverlay({ visibleRange, whaleTimes }) {
@@ -133,51 +256,15 @@ function ViewportSharkMarkersOverlay({ visibleRange, whaleTimes }) {
   return e(OverlayCanvas, { draw, zIndex: 10 });
 }
 
-// Custom canvas overlay to draw flow heatmap background bands
-function HeatmapBandOverlay({ flowBucketLookup, heatmapMode }) {
-  const draw = useCallback((context) => {
-    const { ctx, xScale, plotData, width, height } = context;
-    if (!flowBucketLookup || flowBucketLookup.size === 0 || !heatmapMode || heatmapMode === 'off') {
-      return;
-    }
 
-    ctx.save();
-
-    // Determine spacing width
-    const dx = plotData.length > 1 ? xScale(plotData[1].dataIndex ?? plotData[1].index) - xScale(plotData[0].dataIndex ?? plotData[0].index) : 8;
-    const barWidth = Math.max(1.5, Math.abs(dx) * 0.85);
-
-    plotData.forEach((bar) => {
-      const timestamp = bar.timestamp || new Date(bar.date).getTime();
-      const minuteKey = toCanonicalMinute(timestamp);
-      const bucket = minuteKey ? flowBucketLookup.get(String(minuteKey)) : null;
-      if (!bucket) return;
-
-      const color = buildHeatmapBandColor(bucket, heatmapMode);
-      if (!color) return;
-
-      const idx = bar.dataIndex ?? bar.index;
-      let x = xScale(idx);
-      if (isNaN(x)) {
-        x = xScale(new Date(bar.date));
-      }
-      if (isNaN(x)) return;
-
-      ctx.fillStyle = color;
-      ctx.fillRect(x - barWidth / 2, 0, barWidth, height);
-    });
-
-    ctx.restore();
-  }, [flowBucketLookup, heatmapMode]);
-
-  return e(OverlayCanvas, { draw, zIndex: 1 });
-}
 
 function useI18n() {
   return {
     t: (key, options) => {
       const map = {
         'stockDetail.chartPrice': 'Giá',
+        'stockDetail.chartVolume': 'Khối lượng',
+        'stockDetail.chartRsiMacd': 'RSI + MACD',
         'whaleAlertsDashboard.flowCvdPaneTitle': 'CVD Chuẩn Hóa',
         'whaleAlertsDashboard.flowStrengthPaneTitle': 'Sức Mạnh Dòng Tiền',
         'vninvest.loading': 'Đang tải dữ liệu biểu đồ...',
@@ -189,7 +276,9 @@ function useI18n() {
 }
 
 export default function VNStockChartPanel({
-  data,
+  symbol,
+  env,
+  onBarsChange,
   loading = false,
   activePeriod,
   activeTimeframe,
@@ -201,12 +290,28 @@ export default function VNStockChartPanel({
   whaleSignals = [],
   orderFlowData = null,
 }) {
-  const { t, language } = useI18n();
+  const { t } = useI18n();
+  const [internalBars, setInternalBars] = useState([]);
   const [visibleRange, setVisibleRange] = useState(null);
-  const [heatmapMode, setHeatmapMode] = useState('net');
+  const [xExtents, setXExtents] = useState(undefined);
 
-  // Enriched bars mapped from input data
-  const enrichedBars = useMemo(() => mapToOHLCVBars(data), [data]);
+  // Reset viewport state when symbol, timeframe, or period changes
+  useEffect(() => {
+    setVisibleRange(null);
+    setXExtents(undefined);
+  }, [symbol, activeTimeframe, activePeriod]);
+
+  const coreAdapter = useMemo(() => createCoreApiAdapter({
+    env,
+    getToken: env?.getToken,
+    getRefreshToken: env?.getRefreshToken,
+    setTokens: env?.setTokens,
+    clearTokens: env?.clearTokens,
+  }), [env]);
+  const chartAdapter = useMemo(() => new CoreApiChartAdapter(symbol, activeTimeframe, coreAdapter), [symbol, activeTimeframe, coreAdapter]);
+
+  // Enriched bars mapped from local internalBars state
+  const enrichedBars = useMemo(() => mapToOHLCVBars(internalBars), [internalBars]);
 
   // Enforce explicit time/timestamp for useViewportWhaleMarkers compliance
   const candlesForHook = useMemo(() => {
@@ -234,11 +339,9 @@ export default function VNStockChartPanel({
 
   const mappedCvdSeries = useMemo(() => mapToCvdSeries(orderFlowData?.cvd_series || []), [orderFlowData]);
 
-  const flowViewModel = flowData?.view_model || null;
-  const flowTimeframe = flowData?.timeframe_window?.timeframe || flowData?.timeframe || '15m';
-  const flowBucketLookup = useMemo(() => buildFlowBucketLookup(flowViewModel, flowTimeframe), [flowTimeframe, flowViewModel]);
 
-  // Define 3 explicit panes for the high-end chart
+
+  // Define 3 explicit panes for the high-end chart (Price, Volume, and RSI+MACD)
   const customPanes = useMemo(() => [
     {
       id: "price",
@@ -252,39 +355,42 @@ export default function VNStockChartPanel({
         { type: "Candlestick", yAxis: "right" },
         { type: "EMA", params: { period: 20 }, yAxis: "right", color: "#3b82f6" },
         { type: "EMA", params: { period: 50 }, yAxis: "right", color: "#f59e0b" },
-        { type: "BollingerBand", params: { period: 20, stdDev: 2 }, yAxis: "right" }
+        { type: "BollingerBand", params: { period: 20, stdDev: 2, fillStyle: 'fade' }, yAxis: "right" }
       ]
     },
     {
-      id: "cvd",
-      label: t('whaleAlertsDashboard.flowCvdPaneTitle', { defaultValue: "CVD Chuẩn Hóa" }),
+      id: "volume",
+      label: t('stockDetail.chartVolume', { defaultValue: "Khối lượng" }),
       pinned: false,
       visible: true,
       heightRatio: 0.22,
       splitScale: false,
       tooltip: "value",
       series: [
-        { type: "CVDApprox", yAxis: "right", color: "#22d3ee" }
+        { type: "Volume", yAxis: "right" }
       ]
     },
     {
-      id: "strength",
-      label: t('whaleAlertsDashboard.flowStrengthPaneTitle', { defaultValue: "Sức Mạnh Dòng Tiền" }),
+      id: "rsi_macd",
+      label: t('stockDetail.chartRsiMacd', { defaultValue: "RSI + MACD" }),
       pinned: false,
       visible: true,
       heightRatio: 0.23,
       splitScale: true,
       tooltip: "value",
       series: [
-        { type: "StrengthElder", yAxis: "left", color: "#34d399", scaleSlotId: "strength-left" },
-        { type: "StrengthRelative", yAxis: "right", color: "#38bdf8", scaleSlotId: "strength-right" }
+        { type: "RSI", yAxis: "left", color: "#38bdf8", scaleSlotId: "rsi-left" },
+        { type: "MACD", yAxis: "right", color: "#34d399", scaleSlotId: "macd-right" }
       ]
     }
-  ], [t]);
+  ], []);
 
   // Handle visible range updates to sync viewport indicators
   const handleVisibleRangeChange = useCallback((range) => {
     setVisibleRange(range);
+    if (range?.startDate && range?.endDate) {
+      setXExtents([range.startDate, range.endDate]);
+    }
     onVisibleRangeChange?.(range);
   }, [onVisibleRangeChange]);
 
@@ -302,50 +408,12 @@ export default function VNStockChartPanel({
     }
   }, [onSessionChange]);
 
-  const TIMEFRAMES = [
-    { id: '1m', label: '1M' },
-    { id: '5m', label: '5M' },
-    { id: '15m', label: '15M' },
-    { id: '1H', label: '1H' },
-    { id: 'D', label: 'D' },
-  ];
+  const handleBarsChange = useCallback((bars) => {
+    setInternalBars(bars);
+    onBarsChange?.(bars);
+  }, [onBarsChange]);
 
-  const timeframeButtons = TIMEFRAMES.map((timeframe) => e(
-    'button',
-    {
-      key: timeframe.id,
-      type: 'button',
-      onClick: () => onTimeframeChange?.(timeframe.id),
-      className: `px-3 py-1 text-xs font-medium rounded-md transition-all ${
-        activeTimeframe === timeframe.id
-          ? 'bg-cyan-600 text-white shadow-md'
-          : 'text-slate-400 hover:text-slate-200'
-      }`,
-    },
-    timeframe.label,
-  ));
-
-  const heatmapButtons = [
-    { id: 'off', label: 'Tắt' },
-    { id: 'net', label: 'Net' },
-    { id: 'buy', label: 'Mua' },
-    { id: 'sell', label: 'Bán' },
-  ].map((mode) => e(
-    'button',
-    {
-      key: mode.id,
-      type: 'button',
-      onClick: () => setHeatmapMode(mode.id),
-      className: `px-2.5 py-0.5 rounded transition-all ${
-        heatmapMode === mode.id
-          ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-500/30'
-          : 'text-slate-400 hover:text-slate-200 border border-transparent'
-      }`,
-    },
-    mode.label,
-  ));
-
-  const chartBody = enrichedBars.length === 0 && loading
+  const chartBody = loading
     ? e(
         'div',
         { className: 'absolute inset-0 flex items-center justify-center bg-slate-950/40 text-sm text-slate-500' },
@@ -356,66 +424,50 @@ export default function VNStockChartPanel({
           e('span', null, t('vninvest.loading', { defaultValue: 'Đang tải dữ liệu biểu đồ...' })),
         ),
       )
-    : enrichedBars.length === 0
-      ? e(
-          'div',
-          { className: 'absolute inset-0 flex items-center justify-center bg-slate-950/40 text-sm text-slate-500' },
-          e('span', null, 'Không có dữ liệu biểu đồ cho khung thời gian đã chọn.'),
-        )
     : e(
-        VNStockChart,
+        VNInvestCharts,
         {
-          adapter: new MockAdapter({ bars: [] }),
-          data: enrichedBars,
+          adapter: chartAdapter,
+          data: undefined,
+          symbol: symbol,
+          timeframe: activeTimeframe.toLowerCase() === 'd' ? '1d' : activeTimeframe.toLowerCase() === '1h' ? '1h' : activeTimeframe.toLowerCase(),
+          supportedTimeframes: ['1m', '5m', '15m', '1h', '1D'],
+          range: activePeriod,
+          onRangeChange: onPeriodChange,
           panes: customPanes,
-          engineRuntime: 'legacy',
-          locale: language === 'vi' ? 'vi' : 'en',
+          xExtents: xExtents,
+          engineRuntime: 'fork',
+          drawingUiEnabled: true,
+          showToolbar: true,
+          showHeader: true,
+          showFooter: true,
+          locale: 'vi',
+          messages: widgetMessagesVi,
           theme: 'dark',
           enableWhale: true,
           whaleOrders: mappedWhaleOrders,
-          enableCVD: true,
-          externalCvdSeries: mappedCvdSeries,
-          darkFlowStrength: orderFlowData?.dark_flow?.strength ?? null,
-          darkFlowSignalType: orderFlowData?.dark_flow?.signal_type ?? undefined,
+          enableCVD: false,
+          externalCvdSeries: undefined,
+          darkFlowStrength: null,
+          darkFlowSignalType: undefined,
           onClick: handleClick,
           onVisibleRangeChange: handleVisibleRangeChange,
+          onBarsChange: handleBarsChange,
+          onTimeframeChange: (tf) => {
+            const mapped = tf === '1d' ? 'D' : tf === '1h' ? '1H' : tf;
+            onTimeframeChange?.(mapped);
+          },
+          onSymbolChange: (sym) => {
+            window.location.href = '/stocks/' + sym;
+          },
           className: 'w-full h-full',
         },
         e(ViewportSharkMarkersOverlay, { visibleRange, whaleTimes }),
-        e(HeatmapBandOverlay, { flowBucketLookup, heatmapMode }),
       );
 
   return e(
     'div',
     { className: 'flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
-    e(
-      'div',
-      { className: 'flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b border-slate-800 bg-[#0f172a]/95 flex-shrink-0 z-10' },
-      e(
-        'div',
-        { className: 'flex items-center gap-3' },
-        e(
-          'span',
-          { className: 'text-xs font-semibold text-cyan-400 tracking-wider uppercase bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded' },
-          'VNStockChart D3',
-        ),
-        e(
-          'div',
-          { className: 'flex rounded-lg border border-slate-700 bg-slate-900/50 p-0.5' },
-          timeframeButtons,
-        ),
-      ),
-      e(
-        'div',
-        { className: 'flex items-center gap-2' },
-        e('span', { className: 'text-[11px] font-medium text-slate-400' }, 'Heatmap:'),
-        e(
-          'div',
-          { className: 'flex rounded-lg border border-slate-700 bg-slate-900/50 p-0.5 text-[11px]' },
-          heatmapButtons,
-        ),
-      ),
-    ),
     e('div', { className: 'flex-1 min-h-[460px] relative' }, chartBody),
   );
 }

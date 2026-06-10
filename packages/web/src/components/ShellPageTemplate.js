@@ -2,19 +2,19 @@ import { createElement } from "react";
 
 export const SHELL_PAGE_TEMPLATE_STYLES = `
 .shellPage {
-  --shell-ink: #102a43;
-  --shell-muted: #486581;
-  --shell-accent: #006d77;
-  --shell-accent-soft: rgba(0, 109, 119, 0.12);
+  --shell-ink: #f1f5f9;
+  --shell-muted: #94a3b8;
+  --shell-accent: #00b4d8;
+  --shell-accent-soft: rgba(0, 180, 216, 0.15);
   --shell-signal: #ff7f50;
-  --shell-signal-soft: rgba(255, 127, 80, 0.12);
-  --shell-border: rgba(16, 42, 67, 0.14);
-  --shell-surface: rgba(255, 252, 248, 0.88);
-  --shell-shadow: 0 22px 48px rgba(16, 42, 67, 0.12);
+  --shell-signal-soft: rgba(255, 127, 80, 0.15);
+  --shell-border: rgba(255, 255, 255, 0.08);
+  --shell-surface: rgba(15, 23, 42, 0.65);
+  --shell-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   background:
-    radial-gradient(circle at top right, rgba(255, 179, 71, 0.22), transparent 30%),
-    radial-gradient(circle at left center, rgba(0, 109, 119, 0.12), transparent 32%),
-    linear-gradient(160deg, #fffaf1 0%, #f4fbfb 52%, #eef7f2 100%);
+    radial-gradient(circle at top right, rgba(0, 180, 216, 0.12), transparent 45%),
+    radial-gradient(circle at left center, rgba(255, 127, 80, 0.04), transparent 45%),
+    linear-gradient(160deg, #0b0f19 0%, #111827 50%, #070a13 100%);
   color: var(--shell-ink);
   font-family: "Segoe UI", "Arial", sans-serif;
   padding: 28px;
@@ -64,7 +64,7 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
   gap: 8px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(15, 23, 42, 0.6);
   border: 1px solid var(--shell-border);
   color: var(--shell-muted);
   font-weight: 600;
@@ -86,10 +86,11 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
 }
 
 .shellPage__metric {
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(15, 23, 42, 0.5);
   border: 1px solid var(--shell-border);
   border-radius: 20px;
   padding: 16px 18px;
+  backdrop-filter: blur(8px);
 }
 
 .shellPage__metricLabel {
@@ -117,12 +118,12 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
 .shellPage__banner--notice {
   background: var(--shell-accent-soft);
   color: var(--shell-accent);
-  border: 1px solid rgba(0, 109, 119, 0.18);
+  border: 1px solid rgba(0, 180, 216, 0.22);
 }
 
 .shellPage__banner--error {
   background: var(--shell-signal-soft);
-  color: #8a3b12;
+  color: #ff9e7d;
   border: 1px solid rgba(255, 127, 80, 0.22);
 }
 
@@ -179,7 +180,7 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, background 0.2s ease;
 }
 
 .shellPage__button:hover {
@@ -193,21 +194,25 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
 }
 
 .shellPage__button--primary {
-  background: linear-gradient(135deg, #006d77 0%, #0a9396 100%);
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
   color: #fff;
-  box-shadow: 0 14px 28px rgba(0, 109, 119, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 180, 216, 0.25);
 }
 
 .shellPage__button--secondary {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--shell-ink);
   border: 1px solid var(--shell-border);
+}
+
+.shellPage__button--secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .shellPage__button--signal {
   background: linear-gradient(135deg, #ff7f50 0%, #ffb347 100%);
   color: #fff;
-  box-shadow: 0 14px 28px rgba(255, 127, 80, 0.24);
+  box-shadow: 0 8px 24px rgba(255, 127, 80, 0.25);
 }
 
 .shellPage__form {
@@ -236,12 +241,20 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
 .shellPage__select {
   width: 100%;
   border-radius: 14px;
-  border: 1px solid rgba(16, 42, 67, 0.16);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--shell-border);
+  background: rgba(15, 23, 42, 0.6);
   padding: 12px 14px;
   font-size: 14px;
   color: var(--shell-ink);
   box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.shellPage__input:focus,
+.shellPage__select:focus {
+  outline: none;
+  border-color: var(--shell-accent);
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
 }
 
 .shellPage__summaryGrid,
@@ -259,8 +272,9 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
 .shellPage__listItem {
   border-radius: 18px;
   border: 1px solid var(--shell-border);
-  background: rgba(255, 255, 255, 0.84);
+  background: rgba(15, 23, 42, 0.45);
   padding: 14px 16px;
+  backdrop-filter: blur(8px);
 }
 
 .shellPage__listItemHeader {
@@ -298,10 +312,10 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
 
 .shellPage__empty {
   border-radius: 18px;
-  border: 1px dashed rgba(16, 42, 67, 0.18);
+  border: 1px dashed var(--shell-border);
   padding: 18px;
   color: var(--shell-muted);
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(15, 23, 42, 0.3);
 }
 
 @media (max-width: 980px) {

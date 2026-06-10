@@ -97,6 +97,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
     profile,
     snapshot,
     chartBars,
+    setChartBars,
     orderFlowData,
     advisory,
     whaleFeed,
@@ -196,7 +197,9 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
       "div",
       { className: "sdp-chart-wrapper" },
       e(VNStockChartPanel, {
-        data: chartBars,
+        symbol,
+        env,
+        onBarsChange: setChartBars,
         loading: loadingBlocking,
         activePeriod,
         activeTimeframe,
