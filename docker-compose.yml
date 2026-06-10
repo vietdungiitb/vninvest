@@ -161,6 +161,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile.dev-package-shell
+      secrets:
+        - vnbroker_github_token
       args:
         REACT_APP_API_BASE_URL: /api
         REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"

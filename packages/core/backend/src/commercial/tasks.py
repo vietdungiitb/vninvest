@@ -215,3 +215,76 @@ def send_quota_warning(self, tenant_id: str, percent: int):
         'tenant_id': tenant_id,
         'percent': int(percent),
     }
+
+
+@shared_task(name='commercial.tasks.manage_subscriptions_lifecycle', bind=True, max_retries=2, default_retry_delay=300)
+def manage_subscriptions_lifecycle(self, today_iso: str | None = None):
+    """
+    Manages automatic subscription lifecycle: dunning, renewals, and plan downgrades.
+    Runs hourly in production.
+    """
+    today = date.fromisoformat(today_iso) if today_iso else timezone.now().date()
+    downgraded = 0
+    renewed = 0
+
+    # 1. Downgrade expired subscriptions where cancel_at_period_end is True
+    expired_cancelled_subs = Subscription.objects.select_related('tenant').filter(
+        current_period_end__lt=today,
+        cancel_at_period_end=True,
+        status=Subscription.StatusChoices.ACTIVE
+    )
+    for sub in expired_cancelled_subs:
+        tenant = sub.tenant
+        # Downgrade plan in tenant and subscription
+        sub.plan = CoreTenant.PlanChoices.FREE
+        sub.cancel_at_period_end = False
+        sub.current_period_start = today
+        sub.current_period_end = today + timedelta(days=365)  # Extended free period
+        sub.status = Subscription.StatusChoices.ACTIVE
+        sub.save(update_fields=['plan', 'cancel_at_period_end', 'current_period_start', 'current_period_end', 'status', 'updated_at'])
+
+        tenant.plan = CoreTenant.PlanChoices.FREE
+        tenant.status = CoreTenant.StatusChoices.ACTIVE
+        tenant.save(update_fields=['plan', 'status', 'updated_at'])
+        downgraded += 1
+
+    # 2. Process Auto-renewal / Dunning invoices creation for expired subscriptions without cancel_at_period_end
+    expired_active_subs = Subscription.objects.select_related('tenant').filter(
+        current_period_end__lt=today,
+        cancel_at_period_end=False,
+        status=Subscription.StatusChoices.ACTIVE
+    )
+    for sub in expired_active_subs:
+        tenant = sub.tenant
+        amount_due = _subscription_amount_due(sub)
+
+        # Check if there is already an open/paid invoice for the next period
+        next_start = sub.current_period_end + timedelta(days=1)
+        next_end = next_start + timedelta(days=30)
+
+        invoice_exists = Invoice.objects.filter(
+            tenant=tenant,
+            period_start=next_start,
+        ).exists()
+
+        if not invoice_exists:
+            # Generate invoice for next billing period
+            invoice_number = f"INV-{next_start.strftime('%Y%m')}-{str(tenant.tenant_code).upper()}-{uuid.uuid4().hex[:4].upper()}"
+            Invoice.objects.create(
+                tenant=tenant,
+                invoice_number=invoice_number,
+                status=Invoice.StatusChoices.OPEN,
+                amount_due=amount_due,
+                currency='VND',
+                period_start=next_start,
+                period_end=next_end,
+                due_date=today + timedelta(days=7)
+            )
+            renewed += 1
+
+    return {
+        'status': 'ok',
+        'downgraded_subscriptions': downgraded,
+        'new_renewal_invoices': renewed,
+        'checked_at': today.isoformat()
+    }

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views_tenant as views
 from . import views_auth
 from . import onboarding_views
 from . import views_operator

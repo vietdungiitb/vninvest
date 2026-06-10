@@ -183,6 +183,7 @@ How to verify:
 9. **QUY ĐỊNH BẮT BUỘC SAAS NATIVE**: Thư mục `backend/` và `frontend/` cũ ở thư mục gốc hoàn toàn chỉ để tham khảo tính năng (deprecated). Mọi chức năng mới bắt buộc phải theo kiến trúc SaaS native và nằm trong `packages/core` (core-api) và `packages/web`. Mọi vi phạm viết tính năng mới vào các thư mục cũ sẽ bị đánh giá là Quality Gate Failure.
 10. **QUY ĐỊNH BẮT BUỘC DOC PACK**: Khi tạo bộ tài liệu bàn giao cho đội code, phải dùng skill `.copilot/skills/handoff-doc-pack-generator/SKILL.md` (và dùng `.copilot/skills/handoff-doc-pack-scaffold/SKILL.md` nếu cần scaffold trước). Mọi bộ tài liệu bàn giao không qua workflow skill này được coi là không đạt Quality Gate.
 11. **QUY ĐỊNH BẮT BUỘC QUY TRÌNH BÀN GIAO FEATURE PACK (SOP)**: Quy trình thiết kế và bàn giao lập trình phải tuân thủ tuyệt đối [FEATURE_PACK_HANDOVER_SOP.md](file:///c:/Mujoco%20Projects/vninvest/quality/FEATURE_PACK_HANDOVER_SOP.md) (5 bước và hệ thống 10 tài liệu bàn giao bắt buộc). Mọi Feature Pack không đi kèm đầy đủ bằng chứng chạy test và di cư dữ liệu theo SOP sẽ bị đánh giá là Quality Gate Failure.
+12. **QUY ĐỊNH BẮT BUỘC COMMIT & REBUILD**: Sau khi hoàn thành xong việc code, phải thực hiện commit toàn bộ thay đổi lên git vào nhánh `dev`, đồng thời phải chạy build lại code mới bằng lệnh `.\start_dev.ps1`.
 
 ## 5a. VnBroker Data Access — SSOT Hard Rules
 

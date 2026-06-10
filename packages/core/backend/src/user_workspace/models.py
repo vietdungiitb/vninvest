@@ -31,7 +31,7 @@ class Portfolio(models.Model):
         'identity_access.CoreTenant',
         on_delete=models.CASCADE,
         related_name='core_portfolios',
-        null=True,
+        null=False,
         blank=True,
         verbose_name='Người dùng SaaS (Tenant)',
         help_text='Tenant owner of this portfolio. Must be set after migration.',
@@ -73,7 +73,7 @@ class Transaction(models.Model):
         'identity_access.CoreTenant',
         on_delete=models.CASCADE,
         related_name='transactions',
-        null=True,
+        null=False,
         blank=True,
         verbose_name='Người dùng SaaS (Tenant)',
         help_text='Tenant owner. Set from portfolio.tenant or directly.',
@@ -126,7 +126,7 @@ class Watchlist(models.Model):
         'identity_access.CoreTenant',
         on_delete=models.CASCADE,
         related_name='core_watchlists',
-        null=True,
+        null=False,
         blank=True,
         verbose_name='Người dùng SaaS (Tenant)',
         help_text='Tenant owner of this watchlist. Must be set after migration.',
@@ -190,7 +190,7 @@ class TrackedSymbol(models.Model):
         'identity_access.CoreTenant',
         on_delete=models.CASCADE,
         related_name='core_tracked_symbols',
-        null=True,
+        null=False,
         blank=True,
         verbose_name='Người dùng SaaS (Tenant)',
         help_text='Tenant owner of this tracked symbol. Must be set after migration.',
@@ -270,7 +270,7 @@ class PriceAlert(models.Model):
         'identity_access.CoreTenant',
         on_delete=models.CASCADE,
         related_name='core_price_alerts',
-        null=True,
+        null=False,
         blank=True,
         verbose_name='Người dùng SaaS (Tenant)',
         help_text='Tenant owner of this price alert. Must be set after migration.',
@@ -345,7 +345,7 @@ class SubAccount(models.Model):
         'identity_access.CoreTenant',
         on_delete=models.CASCADE,
         related_name='sub_accounts',
-        null=True,
+        null=False,
         blank=True,
         verbose_name='Người dùng SaaS (Tenant)',
         help_text='Tenant owner. Set from portfolio.tenant or user primary tenant.',
@@ -475,3 +475,24 @@ class AccountSnapshot(models.Model):
     @property
     def nav(self):
         return self.net_equity
+
+
+class QuarantinedRecord(models.Model):
+    """
+    Lưu trữ tạm thời các bản ghi mồ côi (không có tenant) được phát hiện trong quá trình kiểm toán tiền di trú.
+    Giúp Operator đối soát thủ công và làm sạch dữ liệu.
+    """
+    model_name = models.CharField(max_length=100, db_index=True, verbose_name="Tên Model")
+    original_id = models.IntegerField(db_index=True, verbose_name="ID gốc")
+    data = models.JSONField(verbose_name="Dữ liệu bản ghi thô")
+    reason = models.TextField(verbose_name="Lý do cô lập")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày cô lập")
+
+    class Meta:
+        verbose_name = "Bản ghi cô lập"
+        verbose_name_plural = "Bản ghi cô lập"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.model_name} #{self.original_id} - {self.reason}"
+

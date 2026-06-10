@@ -183,6 +183,26 @@ export const routeCatalog = Object.freeze([
     adapter: "vip-app",
     status: "baseline",
   },
+  {
+    id: "commercial-billing-center",
+    path: "/commercial/billing",
+    titleKey: "routes.billingCenter",
+    group: "system",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: [],
+    adapter: "core",
+    status: "core",
+  },
+  {
+    id: "commercial-payment-return",
+    path: "/commercial/payment-return",
+    titleKey: "routes.paymentReturn",
+    group: "system",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: [],
+    adapter: "core",
+    status: "core",
+  },
 ]);
 
 export function getRouteCatalogIds() {

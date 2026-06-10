@@ -210,6 +210,7 @@ REST_FRAMEWORK = {
         # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never
         # be blocked by operational polling exhausting the global 'user' bucket
         'auth_bootstrap': '60/min',
+        'notification': '3/second',
     },
 }
 
@@ -227,6 +228,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 # In dev (DEBUG=True) with no env var, allow localhost origins for convenience.
 _cors_origins_default = (
     'http://localhost:3000,http://127.0.0.1:3000,'
+    'http://localhost:5173,http://127.0.0.1:5173,'
     'http://localhost:80,http://127.0.0.1:80,'
     'http://localhost,http://127.0.0.1'
 ) if DEBUG else ''
@@ -246,6 +248,7 @@ _csrf_trusted_origins_default = (
     'http://localhost:80,http://127.0.0.1:80,'
     'http://localhost:3000,http://127.0.0.1:3000,'
     'http://localhost:3001,http://127.0.0.1:3001,'
+    'http://localhost:5173,http://127.0.0.1:5173,'
     'http://localhost:8080,http://127.0.0.1:8080'
 ) if DEBUG else ''
 _csrf_trusted_origins_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', _csrf_trusted_origins_default)
@@ -536,6 +539,12 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'signal_intelligence.materializers.materialize_unified_alerts',
         'schedule': 120.0,  # every 2 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-2m', 'analytics_heavy')},
+    },
+    # === Advisory: reset daily token budgets — daily at 00:00 (UTC+7 / Asia/Ho_Chi_Minh) ===
+    'reset-daily-token-budgets-0000': {
+        'task': 'advisory.reset_daily_token_budgets',
+        'schedule': crontab(hour=0, minute=0),
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('reset-daily-token-budgets-0000', 'manual_on_demand')},
     },
 }
 

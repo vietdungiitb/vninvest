@@ -686,6 +686,32 @@ class PortfolioWhaleAnalyticsView(APIView):
                 'confidence': _strength_confidence(bucket_row.get('institutional_strength')),
             })
 
+        # Fallback path: if materialized SessionFacts buckets are missing, reconstruct a
+        # minimal CVD series from canonical whale events so the chart can stay functional.
+        if not flow_series['cvd'] and bubble_series:
+            bucket_delta_map = {}
+            for event_row in bubble_series:
+                bucket_ts = event_row.get('bucket_ts')
+                if not bucket_ts:
+                    continue
+                matched_value = float(event_row.get('matched_value') or 0)
+                side = str(event_row.get('side') or '').lower()
+                if side == 'buy':
+                    delta_value = matched_value
+                elif side == 'sell':
+                    delta_value = -matched_value
+                else:
+                    delta_value = 0.0
+                bucket_delta_map[bucket_ts] = bucket_delta_map.get(bucket_ts, 0.0) + delta_value
+
+            running_cvd = 0.0
+            for bucket_ts in sorted(bucket_delta_map.keys()):
+                running_cvd += bucket_delta_map[bucket_ts]
+                flow_series['cvd'].append({
+                    'bucket_ts': bucket_ts,
+                    'value': running_cvd,
+                })
+
         session_high = None
         session_low = None
         if snapshot_row is not None:

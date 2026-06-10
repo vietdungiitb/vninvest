@@ -1,5 +1,491 @@
 # Code Change Audit Ledger
 
+# 2026-05-29 | AI SSOT advisory session persistence slice (1.x + 4.x) ✅
+
+## Problem Solved
+
+- Đóng bốn mục còn treo trong taskboard AI SSOT: 1.1, 1.2, 4.1, 4.2.
+- Materialize `AdvisorySession` và `AdvisoryComponent` ngay sau advisory generation để có vết multi-turn thật sự, đồng thời lưu `context_snapshot` đã redact trên surface mới.
+- Khẳng định lại `UserAlertDelivery`/`UserAlertPreference` và threshold delivery đã có migration + runtime wiring đầy đủ.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Migration evidence | ✅ `signal_intelligence/migrations/0005_advisorysignalevent_marketanomalyevent_and_more.py` và `advisory/migrations/0002_add_advisory_session_component.py` đã có schema mapping cho các thực thể checklist |
+| Backend focused test | ✅ `manage.py test tests.test_advisory_ssot.AdvisorySsotContextMergeTests.test_advisory_refresh_materializes_session_and_components --keepdb` -> pass |
+| Syntax/diagnostics | ✅ `py_compile` + `get_errors` sạch cho `advisory/tasks.py` và `tests/test_advisory_ssot.py` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/advisory/tasks.py` | Materialize `AdvisorySession`/`AdvisoryComponent` after advisory generation; redact sensitive fields in new session snapshot |
+| `packages/core/backend/tests/test_advisory_ssot.py` | Add regression for session/component persistence and redacted snapshot behavior |
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off 1.1, 1.2, 4.1, 4.2 based on verified implementation and test evidence |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Add this audit entry |
+
+## Residual Risk
+
+- `AdvisoryRecord.context_snapshot` vẫn giữ hành vi cũ với effective AI context; slice này chỉ tránh nhân bản plaintext key sang surface session/component mới.
+
+# 2026-05-29 | AI SSOT backend checklist alignment (2.x + 3.x) ✅
+
+## Problem Solved
+
+- Đồng bộ taskboard AI SSOT với trạng thái implementation thực tế ở lane backend để loại bỏ các mục còn `unchecked` nhưng đã hoàn thành trong codebase.
+- Đóng các mục 2.1–2.5 và 3.1–3.3 dựa trên evidence trực tiếp từ `advisory/views.py`, `advisory/tasks.py`, `identity_access/security.py`, `advisory/urls.py`, `signal_intelligence/views.py`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| `_get_or_create_active_ai_settings()` | ✅ hiện diện tại `advisory/views.py` |
+| Effective context + BYOK decrypt + fallback | ✅ hiện diện trong luồng `AdvisoryRefreshView` |
+| Fernet encryption helpers | ✅ `encrypt_user_api_key` / `decrypt_user_api_key` tại `identity_access/security.py` |
+| Token budget 429 guard | ✅ `status.HTTP_429_TOO_MANY_REQUESTS` + `token_budget` checks trong `advisory/views.py` |
+| Reset task | ✅ `reset_daily_token_budgets` trong `advisory/tasks.py` |
+| Route canonicalization | ✅ lane routes `/core/v1/signals/alert-center/feed`, `/core/v1/signals/ai-alerts/feed`, `/core/v1/advisory/refresh/{symbol}/` được khai báo/tiêu thụ |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off mục 2.1–2.5 và 3.1–3.3 theo evidence implementation |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Thêm entry audit alignment checklist backend |
+
+## Residual Risk
+
+- Dù checklist đã align theo code hiện tại, full regression backend lane vẫn phụ thuộc local Python env đầy đủ (`dj_database_url` trên host venv).
+
+# 2026-05-29 | AI SSOT taskboard slice 5.1 closure (remove legacy useAIAdvisor hook) ✅
+
+## Problem Solved
+
+- Đóng mục checklist **5.1** trong AI SSOT taskboard bằng evidence codebase: không còn tham chiếu `useAIAdvisor` trong runtime `packages/web/src/**`.
+- Chuẩn hóa tiến độ thực thi theo tình trạng thực tế sau các commit runtime trước đó thay vì để hạng mục mở.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Code search | ✅ `grep_search` trong `packages/web/src/**` không còn match `useAIAdvisor` |
+| Runtime refresh | ✅ `start_dev.ps1` hoàn tất; smoke checks `Core API health: OK`, `Frontend health: OK` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off mục 5.1 dựa trên evidence search/runtime |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Thêm entry audit cho slice 5.1 |
+
+## Residual Risk
+
+- Slice này là governance/evidence update; không tạo thay đổi runtime code mới.
+
+# 2026-05-29 | AI SSOT frontend i18n closure for AIAdvisorAlertPanel ✅
+
+## Problem Solved
+
+- Đóng slice còn mở ở Giai đoạn 5.5 bằng cách bản địa hóa toàn bộ label của `AIAdvisorAlertPanel` theo locale runtime (`vi`/`en`) thay cho hardcoded strings.
+- Chuẩn hóa fallback i18n để tránh mất nhãn khi key chưa tồn tại và giữ tiếng Việt có đầy đủ dấu theo baseline.
+- Bổ sung unit test focused cho translator layer để khóa regression i18n cho lane AI dashboard.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Frontend focused test | ✅ `npm --prefix packages/web test -- AIAdvisorAlertPanel.i18n.test.js` -> `1 suite passed, 3 tests passed` |
+| Diagnostics | ✅ `get_errors` không phát hiện lỗi tại file panel và test mới |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js` | Thêm i18n dictionary `vi/en`, translator helpers, locale resolver và thay thế toàn bộ nhãn hardcoded sang key-based translation |
+| `packages/web/src/features/dashboard/__tests__/AIAdvisorAlertPanel.i18n.test.js` | Thêm test đơn vị cho translator (vi default, en locale, key fallback) |
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off mục 5.3, 5.5, 5.6 và cập nhật quality gate i18n `ĐẠT` |
+
+## Residual Risk
+
+- Backend integration tests cho advisory lane vẫn phụ thuộc bootstrap env của `packages/core/backend`; slice này chỉ chạm frontend i18n nên chưa mở rộng backend verification.
+
+# 2026-05-29 | AI SSOT gap-closure docs synced to verified runtime status ✅
+
+## Problem Solved
+
+- Đóng các mismatch còn tồn tại trong bộ `docs/ai-ssot` sau khi team đã hoàn thành implementation thực tế cho REQ-TEN-03, REQ-RATE-05, REQ-UI-07, REQ-KL-08.
+- Loại bỏ trạng thái stale `gap/partial` không còn đúng cho tenant isolation core route, scheduler reset 00:00, dashboard AI panel mounting và viewport whale markers runtime wiring.
+- Chuẩn hóa lại đường dẫn frontend từ `.jsx` sang file thực tế `.js` ở lane dashboard.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Backend focused suite | ✅ `manage.py test tests.test_signal_intelligence_api_routes --keepdb` -> `4 passed` |
+| Frontend focused suites | ✅ `6 suites passed`, `71 tests passed` |
+| Runtime smoke | ✅ `start_dev.ps1` thành công; `Core API health: OK`, `Frontend health: OK` |
+| Compose health | ✅ `core-api/core-beat/frontend` và worker stack đều `Up (healthy)` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md` | Chuyển REQ-TEN-03/REQ-RATE-05/REQ-UI-07/REQ-KL-08 sang `implemented`, cập nhật mapping runtime thật |
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md` | Đổi note tenant isolation từ pending sang evidence đã hoàn thành |
+| `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Cập nhật trạng thái implementation thực tế và đường dẫn file `.js` |
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Check off các mục đã hoàn thành cho tenant isolation, scheduler evidence, dashboard panel, viewport markers |
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md` | Nâng trạng thái handoff sang `Production-Ready Verified` |
+
+## Residual Risk
+
+- Không phát hiện blocker mới trong phạm vi AI SSOT doc pack sau vòng xác minh này.
+
+# 2026-05-29 | AI SSOT documentation re-audit aligned to implemented codebase ✅
+
+## Problem Solved
+
+- Loại bỏ các claim không khớp thực tế trong bộ `docs/ai-ssot`, đặc biệt claim coverage tuyệt đối và ánh xạ test/file chưa tồn tại.
+- Chuẩn hóa traceability theo trạng thái `implemented | partial | gap` để QA không hiểu nhầm mức độ hoàn tất.
+- Đồng bộ protocol/taskboard/spec/handoff với hiện trạng đã implement (`test_advisory_ssot.py` đã có) và gap còn thiếu (tenant core-route test, viewport marker hook/test).
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Docs diagnostics (`get_errors`) | ✅ No errors trên 5 file `docs/ai-ssot` đã chỉnh |
+| Overclaim cleanup | ✅ Đã bỏ narrative coverage 100% và đổi sang trạng thái implemented/partial/gap |
+| Handoff condition consistency | ✅ Đã sửa điều kiện test: `test_advisory_ssot.py` là existing evidence, không còn đánh dấu file mới |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md` | Chuyển matrix sang implemented/partial/gap; cập nhật mapping REQ theo file/test hiện có; đánh dấu gap còn thiếu |
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md` | Đồng bộ test protocol với evidence thực tế và bổ sung note gap core-route tenant isolation |
+| `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Bổ sung checklist explicit cho scheduler evidence, missing frontend artifacts, và baseline dashboard hiện hành |
+| `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md` | Hạ claim cứng tenant isolation evidence; thêm trạng thái baseline/target cho frontend artifacts chưa tồn tại |
+| `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md` | Sửa điều kiện handoff để phản ánh đúng test đã có và test/case còn thiếu |
+
+## Residual Risk
+
+- Chưa có code implementation mới trong slice này nên các gap được nêu chưa được đóng bằng test runtime mới.
+- Cần slice tiếp theo để bổ sung test `/core/v1/signals/alert-center/feed` cross-tenant và viewport marker integration/test frontend.
+
+# 2026-05-28 | Billing phase-2 visibility/runtime fix (quota 500 + partial-failure UI) ✅
+
+## Problem Solved
+
+- Sửa lỗi backend `500` tại endpoint `/core/v1/billing/quota` do cursor pagination mặc định dùng `-created_at` không tồn tại trên `QuotaRecord`.
+- Sửa hành vi frontend `BillingCenterPage` để không còn fail toàn trang khi một endpoint billing lỗi/404; trang vẫn hiển thị phần dữ liệu khả dụng.
+- Khắc phục lỗi rollout dev stack do container name conflict `vninvest-dev-mailpit`, đảm bảo stack khởi động lại sạch.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Core API runtime stack | ✅ `./start_dev.ps1` chạy xong, `Core API health: OK`, `Frontend health: OK` |
+| Quota endpoint | ✅ `GET /core/v1/billing/quota` trả `200` với payload `{"next":null,"previous":null,"results":[]}` |
+| Billing page fallback bundle | ✅ Bundle frontend có `Promise.allSettled` cho luồng load dữ liệu billing |
+| Billing subscription sparse state | ✅ `404` subscription không còn làm sập toàn trang (được degrade thành trạng thái `noPlan`) |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/commercial/views.py` | Thêm `QuotaCursorPagination` với `ordering='-period_start'`, gán cho `QuotaListView` để loại bỏ `FieldError` `created_at` |
+| `packages/web/src/pages/commercial/BillingCenterPage.js` | Đổi từ `Promise.all + fail-fast` sang `Promise.allSettled`, chỉ báo lỗi tổng khi cả 3 nguồn dữ liệu đều thất bại |
+
+## Residual Risk
+
+- `GET /core/v1/billing/subscription` vẫn có thể trả `404` khi tenant chưa có subscription seed; hiện đã được UI xử lý an toàn nhưng dữ liệu nghiệp vụ vẫn cần seed nếu muốn hiển thị plan thực.
+
+# 2026-05-28 | SaaS-native OpenAPI frontend handoff pack for VNPay/Billing/Notification Phase 2 ✅
+
+## Problem Solved
+
+- Đã tạo mới bộ tài liệu bàn giao frontend hoàn chỉnh cho Phase 2 nhằm giao việc cho đội code triển khai commercial self-service billing, VNPay checkout/payment-return, và notification UX theo đúng kiến trúc SaaS native OpenAPI. Bộ pack khóa rõ route canonical, adapter ownership, test gates, audit gates và deferred boundary cho notification contract.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Handoff pack completeness | ✅ 13 tài liệu đã được tạo trong `docs/detailed_designs/` |
+| SaaS native boundary | ✅ Chỉ định rõ `packages/web` + `packages/core`, cấm legacy root |
+| OpenAPI posture | ✅ Contract-first, error envelope, payment truth và pagination rules đã được khóa trong docs |
+| Formatting | ✅ `git diff --check` sạch cho toàn bộ nhóm file mới |
+| Markdown diagnostics | ✅ `get_errors` không báo lỗi cho nhóm doc pack |
+| Module tree discipline | ✅ `module_tree_full.md` đã regenerate (`Modules: 2659`) |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_HANDOFF_MASTER_20260528.md` | Tạo handoff master cho pack frontend phase 2 |
+| `docs/detailed_designs/IMPLEMENTATION_PLAN_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md` | Tạo implementation plan với slices và gates |
+| `docs/detailed_designs/TECH_SPEC_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md` | Tạo tech spec contract-first cho commercial frontend |
+| `docs/detailed_designs/FRONTEND_DESIGN_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md` | Tạo đặc tả giao diện và UX states |
+| `docs/detailed_designs/TASKBOARD_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md` | Tạo taskboard phase 2 |
+| `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_TRACEABILITY_MATRIX_20260528.md` | Tạo ma trận requirement -> slice -> validation |
+| `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_CONFIG_OWNERSHIP_MATRIX_20260528.md` | Tạo ownership matrix cho config/route/contract |
+| `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md` | Tạo protocol tự audit và test |
+| `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_EXECUTION_EVIDENCE_TEMPLATE_20260528.md` | Tạo evidence template cho từng slice |
+| `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_CODE_QUALITY_CONSTITUTION_20260528.md` | Tạo code quality constitution cho workstream |
+| `docs/detailed_designs/RUN_CODE_REVIEW_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md` | Tạo runbook code review |
+| `docs/detailed_designs/RUN_INTEGRATION_TESTS_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md` | Tạo runbook integration tests |
+| `docs/detailed_designs/RUN_SPEC_AUDIT_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md` | Tạo runbook spec audit |
+| `module_tree_full.md` | Regenerate module tree sau khi hoàn tất doc pack |
+
+## Residual Risk
+
+- Notification user-facing vẫn chưa có backend contract riêng đủ evidence trong current anchors; pack đã khóa deferred gate nhưng chưa loại bỏ nhu cầu backend follow-up.
+- Đây là doc-only slice, chưa có implementation code mới để smoke end-to-end trong runtime.
+
+# 2026-05-28 | Pre-migration audit, quarantine models, NOT NULL migrations & Nginx rate limiting implemented ✅
+
+## Problem Solved
+
+- Đã triển khai hoàn tất củng cố nền tảng (Giai đoạn 1) theo kế hoạch hành động: cô lập dữ liệu multi-tenancy thông qua migration NOT NULL cho 6 thực thể trong `user_workspace`, thiết lập script quarantine dữ liệu lỗi để ngăn ngừa auto-fill `system_tenant` bất hợp lý, và triển khai gateway-level rate limiting trong Nginx để chống spam API.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Models update | ✅ 6 model trong `models.py` đổi `tenant` thành `null=False` |
+| QuarantinedRecord | ✅ Đã thêm model `QuarantinedRecord` và migration 0011 |
+| Audit command | ✅ Django management command `audit_orphans` sẵn sàng hoạt động |
+| Nginx rate limiting | ✅ Đã thêm `limit_req_zone` và `limit_req` cho `/api/` và `/core/v1/` trong 2 file config |
+| Technical Audit | ✅ Đã tạo tệp tin `TECHNICAL_AUDIT_REPORT_20260528.md` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md` | Bổ sung Technical Audit Report vào deliverables |
+| `docs/detailed_designs/TECHNICAL_AUDIT_REPORT_20260528.md` | Tạo báo cáo kiểm toán kỹ thuật chính thức |
+| `packages/core/backend/src/user_workspace/models.py` | Thêm model `QuarantinedRecord` và sửa `null=True` thành `null=False` cho trường `tenant` ở 6 model |
+| `packages/core/backend/src/user_workspace/management/commands/audit_orphans.py` | Tạo command kiểm toán tiền di trú và cô lập dữ liệu |
+| `packages/core/backend/src/user_workspace/migrations/0011_enforce_tenant_not_null.py` | Tạo migration 0011 để cập nhật database |
+| `frontend/docker/nginx.conf` | Định nghĩa zone và áp dụng rate limiting gateway |
+| `packages/opencore/distribution/nginx-opencore.conf` | Định nghĩa zone và áp dụng rate limiting gateway |
+
+## Residual Risk
+
+- Cài đặt dependencies `vnbroker` và `stockchart` qua pip vẫn yêu cầu token bảo mật `VNBROKER_GITHUB_TOKEN` trên local environment.
+
+# 2026-05-28 | Project hardening handoff doc-pack completed in `docs/detailed_designs` ✅
+
+## Problem Solved
+
+- Finalized `PROJECT_HARDENING_ACTION_PLAN_20260528.md` so QG-1 no longer overclaims readiness without the missing core-backend bootstrap prerequisites.
+- Generated a full 12-document handoff pack in `docs/detailed_designs/` so the code team can execute from a taskboard/spec/runbook set instead of a single action-plan document.
+- Locked the two previously ambiguous execution anchors in writing: the core-backend test lane must bootstrap from `packages/core/backend/requirements.txt`, and the package-web packaging gate is
+pm --prefix packages/web run build-community`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| First doc batch diff hygiene | ✅ `git diff --check` clean for updated action plan, handoff master, implementation plan, tech spec, taskboard, traceability |
+| Second doc batch diff hygiene | ✅ `git diff --check` clean for self-audit, evidence template, ownership matrix, quality constitution, and runbooks |
+| Handoff directory completeness | ✅ `docs/detailed_designs/` now contains the 12 new `PROJECT_HARDENING_BACKEND*` / `RUN_*PROJECT_HARDENING_BACKEND*` documents |
+| Package-web packaging gate | ✅
+pm --prefix packages/web run build-community` reran successfully and wrote artifact to `packages/web/dist/community` |
+| Shared core-backend test lane | ⚠️ `backend/.venv` still fails the QG-1 command with `ModuleNotFoundError: dj_database_url`, validating the need for the explicit bootstrap prerequisite added to the docs |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md` | Added explicit core-backend bootstrap prerequisites and corrected QG-1 readiness framing |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md` | Added execution handoff master for the project hardening pack |
+| `docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md` | Added phased implementation plan and task dependencies |
+| `docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md` | Added technical specification for migration, security, refactor, and phase-2 capability boundaries |
+| `docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md` | Added execution taskboard with phase gates |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md` | Added requirement-to-task-to-validation matrix |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md` | Added slice-level self-audit and validation protocol |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_EXECUTION_EVIDENCE_TEMPLATE_20260528.md` | Added execution evidence template |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CONFIG_OWNERSHIP_MATRIX_20260528.md` | Added config and ownership control matrix |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CODE_QUALITY_CONSTITUTION_20260528.md` | Added quality constitution specific to this workstream |
+| `docs/detailed_designs/RUN_CODE_REVIEW_PROJECT_HARDENING_BACKEND_20260528.md` | Added code-review runbook |
+| `docs/detailed_designs/RUN_INTEGRATION_TESTS_PROJECT_HARDENING_BACKEND_20260528.md` | Added integration-test runbook with env bootstrap prerequisites |
+| `docs/detailed_designs/RUN_SPEC_AUDIT_PROJECT_HARDENING_BACKEND_20260528.md` | Added spec-audit runbook |
+| `module_tree_full.md` | Regenerated after the doc-pack slice |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list |
+
+## Residual Risk
+
+- No runtime code changed in this slice, so there is no fresh `./start_dev.ps1` evidence attached to the doc-pack itself. The package-web packaging gate is green, but the shared local `backend/.venv` still needs the documented `packages/core/backend/requirements.txt` bootstrap before the backend QG-1 command is reproducible.
+
+# 2026-05-28 | Detailed-design doc sync to actual implemented code ✅
+
+## Problem Solved
+
+- Đồng bộ lại bộ tài liệu `docs/detailed_designs` theo đúng trạng thái code đã implement thay vì giữ các claim planning cũ.
+- Xóa các mismatch quan trọng được phát hiện trong audit: tenant vẫn nullable, nhầm vai trò migration 0011/0012, route/method VNPay sai, line counts fat-file lỗi thời và taskboard vẫn để TODO cho các phần đã code xong.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Tenant isolation wording | ✅ cập nhật theo `null=False` thực tế của 6 model `user_workspace` |
+| Migration narrative | ✅ phân biệt rõ `0011` tạo quarantine model và `0012` mới là enforce NOT NULL |
+| VNPay route/method docs | ✅ đồng bộ theo route hiệu lực `/core/v1/payments/*` và IPN `GET` |
+| Fat-file status docs | ✅ đồng bộ theo facade/moduleized reality của `views_auth.py`, `dataops.py`, `coreApiAdapter.js`, `AlertCenterPage.js` |
+| Taskboard status | ✅ chuyển từ planning cũ sang mixed state phản ánh code đã triển khai |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md` | Đồng bộ trạng thái hardening, gateway throttling, fat-file refactor và VNPay foundation |
+| `docs/detailed_designs/SYSTEM_DETAILED_DESIGN_20260528.md` | Sửa payment workflow, IPN path, verify flow và ví dụ `coreApiAdapter.js` |
+| `docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md` | Cập nhật trạng thái PH01-PH09 theo code hiện tại |
+| `docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md` | Đồng bộ target entity status, refactor contract và VNPay foundation contract |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md` | Bổ sung note trạng thái requirement đã được code satisfy |
+| `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md` | Chuyển từ execution-ready sang baseline đã được code-align |
+| `docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md` | Ghi rõ đây là planning baseline mang tính lưu trữ |
+| `docs/detailed_designs/TECHNICAL_AUDIT_REPORT_20260528.md` | Giữ verdict PASS đã sync với code reality hiện tại |
+| `module_tree_full.md` | Regenerated after the documentation/governance synchronization slice |
+| `PROGRESS_DASHBOARD.md` | Thêm progress snapshot cho slice đồng bộ tài liệu |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Thêm ledger entry này |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Thêm file list tập trung cho đợt chỉnh tài liệu |
+
+## Residual Risk
+
+- Slice này chỉ chỉnh tài liệu/governance; runtime verification phải dựa vào `./start_dev.ps1` của trạng thái code hiện tại.
+- VNPay reconciliation/replay vẫn là phần còn mở, không nên bị diễn giải như đã production-complete.
+
+## Runtime Validation
+
+| Check | Result |
+|---|---|
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` with `2660` modules |
+| Dev stack rebuild | ✅ `./start_dev.ps1` rebuilt `vninvest-dev-core-runtime` and `vninvest-dev-frontend:latest` |
+| Dev stack startup | ✅ Core DB/Redis healthy, core-api healthy, workers/frontend started |
+| Smoke checks | ✅ `Core API health: OK`, `Frontend health: OK` |
+
+# 2026-05-27 | Frontend chart-engine source renamed from `vnstockchars` sibling to `stockchart` ✅
+
+## Problem Solved
+
+- Switched the frontend build/input source from the old sibling repository name `vnstockchars` to the renamed upstream repository `stockchart` without changing chart runtime behavior.
+- Kept the existing package scope `@vnstockcharts/*` intact because the renamed upstream repository still publishes the same internal package names.
+- Removed the last build-critical repo-path assumptions that still pointed to `vnstockchars` in the frontend package graph, Dockerfile, and compose frontend build overrides.
+- Wired the frontend Docker build to the existing `vnbroker_github_token` BuildKit secret so private `stockchart` fetches work through the same authenticated dev lane as `./start_dev.ps1`.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Upstream repo manifest audit | ✅ `gh repo view vietdungiitb/stockchart` shows default branch `dev`; GitHub blob inspection confirms repo name changed but package names remain `vnstockcharts` and `@vnstockcharts/*` |
+| Static diagnostics on touched files | ✅ no editor diagnostics in `frontend/package.json`, `frontend/package-lock.json`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml` |
+| Host-side dependency resolution | ✅ `cd frontend && npm install --ignore-scripts --no-package-lock --legacy-peer-deps` completed successfully after cloning sibling `c:\Mujoco Projects\stockchart` |
+|
+pm ci` lockfile probe | ⚠️ blocked by pre-existing frontend lock drift (`@testing-library/dom`, `aria-query`, `dom-accessibility-api`, `lz-string`, `dequal` missing from current lockfile); this is not caused by the `stockchart` path rename |
+| Compose merge validation | ✅ `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml config` passed after the frontend build-secret wiring |
+| Raw Docker build with env-file token | ⚠️ secret wiring works, but the persisted PAT currently stored in `compose.dev.env` is rejected by GitHub for `stockchart`; this is a credential issue, not a path or Dockerfile issue |
+| Raw Docker build with `gh auth` token | ✅ secret-authenticated build cloned `stockchart`, built both engine packages, completed frontend
+pm ci`, and advanced into `react-scripts build` |
+| Mandatory dev runtime refresh | ✅ `./start_dev.ps1 -FrontendOnly` used GitHub CLI auth precedence, built against the new `stockchart` path, and the live `vninvest-dev-frontend` container references the current `vninvest-dev-frontend:latest` image digest `sha256:3c182d89be72e285735a59f5b46bd6b03b298a3218874f058dcf36640d9f7ce7` |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/package.json` | Repointed local engine dependencies from `../../vnstockchars/...` to `../../stockchart/...` while keeping `@vnstockcharts/*` package names |
+| `frontend/package-lock.json` | Updated file dependency and resolved link paths to `../../stockchart/...` |
+| `frontend/Dockerfile.dev-package-shell` | Switched to the renamed `stockchart` source and added BuildKit-secret GitHub auth for private repo cloning |
+| `docker-compose.yml` | Wired the frontend build to the shared `vnbroker_github_token` secret in the base compose file |
+| `docker-compose.dev.yml` | Kept the repo-root frontend build context and added the shared frontend build secret for dev refreshes |
+| `docker-compose.prod.yml` | Wired the production/frontend compose build to the same shared GitHub token secret |
+| `module_tree_full.md` | Regenerated after the rename slice |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list |
+
+## Residual Risk
+
+- `packages/core/backend/requirements.txt` references `stockchart.git@v1.0.0`, but the upstream `vietdungiitb/stockchart` repository currently exposes no tags; if that ref is used later for Python-side installation, it should be corrected to an existing branch or commit.
+- The persisted PAT currently stored in `compose.dev.env` does not authenticate against `stockchart`; raw `docker build` flows that rely on that env-file token will still fail until the token is refreshed. The normal dev lane works because `start_dev.ps1` prefers the GitHub CLI token first.
+
+# 2026-05-27 | Stock detail live runtime fix: TPB chart alias + CVD hydration + frontend-only rebuild proof ✅
+
+## Problem Solved
+
+- Fix the real live `/stocks/:symbol` route in `packages/web` so `orderFlowData` can hydrate `cvd_series` through the effective order-flow fallback path instead of staying empty on sparse SessionFacts payloads.
+- Canonicalize the remaining legacy chart series ids on the live widget/runtime path: `BollingerBands`, `BuyStrength`, and `InstitutionalStrength` no longer break `SeriesRegistry` on `/stocks/TPB`.
+- Harden `./start_dev.ps1` with fail-fast compose handling and a `-FrontendOnly` lane so frontend rebuild proof no longer silently relaunches stale images after unrelated build failures.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Focused package-web regressions | ✅ `cd packages/web && npm test -- --runInBand src/features/stock-detail/__tests__/orderFlowFallback.test.js src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js` (`2 suites, 5 passed`) |
+| Mandatory dev runtime refresh | ✅ `./start_dev.ps1 -FrontendOnly` rebuilt and relaunched frontend; live bundle `/usr/share/nginx/html/static/js/main.52c19547.js`, SHA `c6d9d17de8035f0f1ad0b3a41c2fa1e6f644360529e56312b3a6460a10ee3e70` |
+| Live browser proof on `/stocks/TPB` | ✅ chart rendered; no `Đã xảy ra lỗi trong biểu đồ`, no `0 buckets`, no `Không có dữ liệu CVD trong phiên`; radar now shows `1 buckets` |
+| Live React props proof | ✅ `orderFlowData.cvd_series.length = 1`, `_cvd_source = whale-ssot`, `dark_flow` present |
+| Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` (`2627 modules`) |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js` | Route-level stock-detail model now composes effective order-flow data from order-flow, SessionFacts CVD, and whale snapshot sources |
+| `packages/web/src/features/stock-detail/orderFlowFallback.js` | Added pure fallback/materialization helper for `cvd_series` hydration on sparse live payloads |
+| `packages/web/src/features/stock-detail/__tests__/orderFlowFallback.test.js` | Added regression coverage for fallback CVD composition and precedence |
+| `packages/web/src/components/VNStockChartPanel.js` | Switched live stock-detail pane config to canonical chart series ids used by the runtime registry |
+| `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.js` | Added legacy alias normalization for live JS runtime pane descriptors |
+| `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.ts` | Kept TS descriptor layer in sync with the JS alias normalization |
+| `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js` | Added alias regression coverage for `BollingerBands`, `BuyStrength`, and `InstitutionalStrength` |
+| `packages/web/src/components/vnstockcharts/widget/VNStockChart.js` | Canonicalizes legacy pane series ids at the live widget boundary before render |
+| `packages/web/src/components/vnstockcharts/widget/VNStockChart.tsx` | TS parity update for widget-side pane normalization |
+| `start_dev.ps1` | Added fail-fast compose flow and `-FrontendOnly` rebuild lane to make runtime proof reliable |
+| `module_tree_full.md` | Regenerated after the code updates |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list |
+
+## Residual Risk
+
+- Non-blocking 404 resource noise still appears in the browser console on page load; this slice did not trace those requests because they do not affect chart render or the order-flow/CVD recovery path.
+
+# 2026-05-27 | Dashboard data-sync hotfix: heatmap fallback + whale CVD fallback ✅
+
+## Problem Solved
+
+- Fix dashboard heatmap showing 0.00% for all symbols when realtime quotes are temporarily empty.
+- Fix whale bubble chart degraded banner when SessionFacts buckets are missing but canonical whale events still exist.
+- Stabilize focused whale analytics tests to run without external Redis daemon by using in-memory cache in test scope.
+
+## Verification Results
+
+| Check | Result |
+|---|---|
+| Focused whale analytics tests | ✅ `manage.py test user_workspace.test_portfolio_whale_analytics_native` (`2 passed`) |
+| Runtime refresh entrypoint | ⚠️ `./start_dev.ps1` executed but Docker daemon unavailable on host (`dockerDesktopLinuxEngine` not found) |
+| Static diagnostics (changed files) | ✅ no editor diagnostics on touched files |
+
+## Modified Files
+
+| File | Change |
+|------|--------|
+| `frontend/src/pages/PackageDashboardHost.jsx` | Heatmap now uses `technicals.price_change_pct` fallback when realtime/tracked change data is missing; default fallback changed from forced `0` to nullable value |
+| `packages/core/backend/src/user_workspace/portfolio_analytics_views.py` | Reconstruct minimal CVD series from canonical whale events when SessionFacts buckets are empty |
+| `packages/core/backend/src/user_workspace/test_portfolio_whale_analytics_native.py` | Added regression test for fallback CVD path; switched test cache backend to LocMem via `@override_settings` |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this entry |
+| `PROGRESS_DASHBOARD.md` | Added matching progress snapshot |
+| `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list |
+
+## Residual Risk
+
+- End-to-end runtime validation on Docker stack is currently blocked on this machine until Docker Desktop daemon is running.
+
+
 # 2026-05-26 | Backfill Fix: D06 IntradayBar synthesis + datetime.date type bug ✅
 
 ## Problem Solved
@@ -241,7 +727,8 @@ Hai bug gốc khiến dữ liệu OHLCV lịch sử theo khung thời gian phút
 
 | Check | Result |
 |---|---|
-| Web adapter tests | ✅ `npm test -- src/adapters/coreApiAdapter.test.js` (`46 passed`) |
+| Web adapter tests | ✅
+pm test -- src/adapters/coreApiAdapter.test.js` (`46 passed`) |
 | Backend auth/spam gates | ✅ `manage.py test src.identity_access.tests.test_register_upgrade src.identity_access.tests.test_operator_mail_config src.vninvest_core.tests.test_status_codes_and_errors.ErrorEnvelopeConsistencyTests --keepdb` (`22 passed`) |
 | Dev stack refresh | ✅ `./start_dev.ps1` completed; `Core API health: OK`, `Frontend health: OK` |
 | Module tree refresh | ✅ `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2588` modules) |
@@ -274,7 +761,8 @@ Hai bug gốc khiến dữ liệu OHLCV lịch sử theo khung thời gian phút
 
 | Check | Result |
 |---|---|
-| Frontend tests | ✅ `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` (`5 passed`) |
+| Frontend tests | ✅
+pm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` (`5 passed`) |
 | Backend capability tests | ✅ `manage.py test identity_access.tests.test_capabilities_soc --keepdb` (`3 passed`) |
 | Diagnostics | ✅ `get_errors` clean trên các file backend/frontend của slice |
 | Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2575` modules) |
@@ -309,7 +797,8 @@ Hai bug gốc khiến dữ liệu OHLCV lịch sử theo khung thời gian phút
 
 | Check | Result |
 |---|---|
-| Frontend tests | ✅ `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` (`4 passed`) |
+| Frontend tests | ✅
+pm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` (`4 passed`) |
 | Backend capability tests | ✅ `manage.py test identity_access.tests.test_capabilities_soc --keepdb` (`3 passed`) |
 | Diagnostics | ✅ `get_errors` clean trên toàn bộ file touched |
 | Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2575` modules) |
@@ -347,7 +836,8 @@ Hai bug gốc khiến dữ liệu OHLCV lịch sử theo khung thời gian phút
 
 | Check | Result |
 |---|---|
-| Focused page tests | ✅ `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx` (`2 passed`) |
+| Focused page tests | ✅
+pm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx` (`2 passed`) |
 | Wiring sanity | ⚠️ `src/App.test.jsx` fail do Jest ESM với `echarts/core` (không phát sinh từ slice tenant-members) |
 | Diagnostics | ✅ `get_errors` clean trên toàn bộ file touched của slice |
 | Module tree refresh | ✅ `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (`2575` modules) |
@@ -487,7 +977,8 @@ SaaS Stock Detail page (`packages/web`) did not render historical OHLCV even whe
 |---|---|
 | Payload parser update | ✅ `useStockDetailPageModel` now normalizes `points/results/bars/candles` safely |
 | Regression guard | ✅ non-array payload now safely falls back to `[]` (no object passed to chart) |
-| Frontend package tests | ✅ `npm test -- --runInBand src/adapters/coreApiAdapter.test.js` (42 passed) |
+| Frontend package tests | ✅
+pm test -- --runInBand src/adapters/coreApiAdapter.test.js` (42 passed) |
 | Module tree refresh | ✅ `python scripts/ops/generate_module_tree.py` generated new `module_tree_full.md` |
 
 ## Modified Files
@@ -579,7 +1070,8 @@ Sau audit ngày 2026-05-22 phát hiện 2 FAIL + 1 design-intent gap + 1 CSS deb
 
 | Check | Result |
 |---|---|
-| `node scripts/check-stock-detail-shell.mjs` | ✅ `core-stock-detail shell wiring OK` |
+|
+ode scripts/check-stock-detail-shell.mjs` | ✅ `core-stock-detail shell wiring OK` |
 | `hardcoded 0.45 / 0.35 / 1250000 / 980000 / 45000000000` | ✅ ALL REMOVED |
 | `window.alert()` in StockDetailPage | ✅ REMOVED — replaced by Toast |
 | Toast/notification mechanism present | ✅ YES |
@@ -717,7 +1209,8 @@ Key outcomes:
 - Forbidden-pattern scan on touched frontend files (`print(`, `explorer`, `console.log`) ✅ no matches.
 - Browser smoke on logged-in session `http://localhost/stocks/FPT` ✅ route now shows `VNStockChart` toolbar/panes from page mới thay vì stock-detail host cũ.
 - `python scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md`.
-- `./start_dev.ps1` ✅ stack restarted and smoke checks OK; frontend image build still logs pre-existing `react-scripts@5` vs `typescript@6` peer conflict during `npm ci`, but final dev stack came up healthy.
+- `./start_dev.ps1` ✅ stack restarted and smoke checks OK; frontend image build still logs pre-existing `react-scripts@5` vs `typescript@6` peer conflict during
+pm ci`, but final dev stack came up healthy.
 
 ## Residual Risk
 
@@ -755,11 +1248,13 @@ Key outcomes:
 ## Validation
 
 - `get_errors` on `packages/web/src/components/OrderFlowRadarPanel.js`, `packages/web/src/components/VNStockChartPanel.js`, `packages/web/src/pages/StockDetailPage.js`, `packages/web/scripts/check-stock-detail-shell.mjs` ✅ no editor diagnostics.
-- `node ./scripts/check-stock-detail-shell.mjs` in `packages/web` ✅ `core-stock-detail shell wiring OK`.
+-
+ode ./scripts/check-stock-detail-shell.mjs` in `packages/web` ✅ `core-stock-detail shell wiring OK`.
 - `git diff --check -- packages/web/src/components/OrderFlowRadarPanel.js packages/web/src/components/VNStockChartPanel.js packages/web/src/pages/StockDetailPage.js packages/web/package.json packages/web/scripts/check-stock-detail-shell.mjs module_tree_full.md` ✅ no diff hygiene errors.
 - Forbidden-pattern scan on touched stock-detail package files (`print(`, `explorer`, fallback component names) ✅ no matches.
 - `python scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md`.
-- `./start_dev.ps1` ✅ stack restarted and smoke checks OK; frontend image build still reports pre-existing `react-scripts@5` vs `typescript@6` peer conflict during `npm ci`, but final dev stack came up healthy.
+- `./start_dev.ps1` ✅ stack restarted and smoke checks OK; frontend image build still reports pre-existing `react-scripts@5` vs `typescript@6` peer conflict during
+pm ci`, but final dev stack came up healthy.
 
 ## Residual Risk
 
@@ -792,10 +1287,12 @@ Key outcomes:
 
 ## Validation
 
-- `node --input-type=module -e "import { getPageLoader } from './src/pages/pageRegistry.js'; ..."` in `packages/web` ✅ route loader for `core-stock-detail` is registered.
+-
+ode --input-type=module -e "import { getPageLoader } from './src/pages/pageRegistry.js'; ..."` in `packages/web` ✅ route loader for `core-stock-detail` is registered.
 - `get_errors` on `packages/web/src/pages/market/ShellStockDetailPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`, `packages/web/src/pages/StockDetailPage.js` ✅ no editor diagnostics.
 - `python scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md`.
-- `./start_dev.ps1` ✅ stack restarted, core/frontend smoke health OK; frontend image build step still reports pre-existing `react-scripts@5` vs `typescript@6` peer conflict during `npm ci`, but final dev stack came up healthy.
+- `./start_dev.ps1` ✅ stack restarted, core/frontend smoke health OK; frontend image build step still reports pre-existing `react-scripts@5` vs `typescript@6` peer conflict during
+pm ci`, but final dev stack came up healthy.
 
 ## Residual Risk
 
@@ -832,7 +1329,8 @@ Key outcomes:
 
 ## Validation
 
-- `npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` ✅ (34 tests pass)
+-
+pm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` ✅ (34 tests pass)
 - `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec -T core-api python /app/src/manage.py test signal_intelligence.tests.test_alert_center_api --keepdb` ✅ (5 tests pass)
 - `./start_dev.ps1` ✅ stack up + smoke checks OK (core-api/frontend), while frontend image build step reports existing TS peer dependency conflict (`react-scripts@5` vs `typescript@6`).
 - `scripts/ops/generate_module_tree.py` ✅
@@ -1206,7 +1704,7 @@ This slice delivers the full project-standard format package, including design d
 
 ## Problem Solved
 
-Giao diện trang `/whale-alerts` cũ thiếu tính năng, không tối ưu và gặp lỗi crash transpile named imports cũng như lỗi `coreApiAdapter` invocation. 
+Giao diện trang `/whale-alerts` cũ thiếu tính năng, không tối ưu và gặp lỗi crash transpile named imports cũng như lỗi `coreApiAdapter` invocation.
 
 Slice này tiến hành thiết kế lại toàn bộ trang Whale Alerts mới theo kiến trúc SaaS native OpenAPI với các tính năng sau:
 - **Khắc phục triệt để lỗi crash:** Sửa lại khai báo import đặt tên `React` và dùng `coreApiAdapter` trực tiếp như một object instantiated thay vì gọi hàm.
@@ -1227,8 +1725,10 @@ Slice này tiến hành thiết kế lại toàn bộ trang Whale Alerts mới t
 
 ## Validation
 
-- `npm test` bên trong `packages/web` -> PASS (`35/35 tests passed`, 2 suites)
-- `npm run build` trong `frontend` -> PASS (`Compiled successfully`, không gặp lỗi transpilation hay named export)
+-
+pm test` bên trong `packages/web` -> PASS (`35/35 tests passed`, 2 suites)
+-
+pm run build` trong `frontend` -> PASS (`Compiled successfully`, không gặp lỗi transpilation hay named export)
 - Hoàn tất self-audit code review đảm bảo diff sạch đối với 3 immutable files:
   - `frontend/src/components/WhaleBubbleChart.jsx` - Sạch
   - `frontend/src/components/WhaleAnalyticsTab.jsx` - Sạch
@@ -1316,7 +1816,8 @@ Phần sửa đã chốt trong slice này:
 - `Set-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1` — PASS
    - Docker images rebuilt successfully: `vninvest-dev-core-runtime`, `vninvest-dev-frontend`
    - `vninvest-dev-core-api` reached `healthy`
-   - Native scheduler queue check returned `No queue drift detected`
+   - Native scheduler queue check returned
+o queue drift detected`
    - Smoke checks passed: `Core API health : OK`, `Frontend health : OK`
 - Final `code-reviewer` pass on the touched Tenant PAT slice — PASS (`0` critical, `0` high, `0` medium, `1` low)
    - Low note only: UI behavior is correct, but test suite still mocks translations instead of rendering the real i18n dictionaries end-to-end.
@@ -1371,7 +1872,8 @@ Phần sửa trong slice này:
 - `Set-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1` — PASS
    - Docker images rebuilt successfully: `vninvest-dev-core-runtime`, `vninvest-dev-frontend`
    - `vninvest-dev-core-api` reached `healthy`
-   - Native scheduler queue check returned `No queue drift detected`
+   - Native scheduler queue check returned
+o queue drift detected`
    - Smoke checks passed: `Core API health : OK`, `Frontend health : OK`
 
 ## Residual Risk
@@ -1388,7 +1890,8 @@ Slice này chốt dứt điểm native core ownership cho partner PAT/service-ac
 Phần hardening đã hoàn tất trong slice này:
 
 - Giữ route owner ở native core path cho `/core/v1/partner/*`; không sửa runtime qua `backend/portfolio/*`.
-- Bổ sung contract native cho service account và PAT theo shape frontend đang dùng: `id`, `environment`, `policy_ids`, `object`, `scope_codes`, `secret`, `new_token`.
+- Bổ sung contract native cho service account và PAT theo shape frontend đang dùng: `id`, `environment`, `policy_ids`, `object`, `scope_codes`, `secret`,
+ew_token`.
 - Thêm trạng thái `ROTATING` và grace window cho rotate, vẫn cho token cũ sống trong cửa sổ grace theo thiết kế.
 - Chuyển human login PAT từ heuristic mutable (`label`, `audit_reason`) sang provenance bit bất biến `is_human_session`.
 - Thêm migration revoke toàn bộ PAT legacy giả dạng login session để chặn bypass còn sót trong DB cũ.
@@ -1431,7 +1934,8 @@ Phần hardening đã hoàn tất trong slice này:
 - `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
    - Docker images rebuilt successfully: `vninvest-dev-core-runtime`, `vninvest-dev-frontend`
    - Native dev stack started successfully; `vninvest-dev-core-api` reached `healthy`
-   - Native scheduler queue check returned `No queue drift detected`
+   - Native scheduler queue check returned
+o queue drift detected`
    - Smoke checks passed: `Core API health : OK`, `Frontend health : OK`
 
 ## Residual Risk
@@ -1590,7 +2094,8 @@ Slice này dọn đúng bridge đó theo hướng root-cause và khóa luôn per
 - `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
    - Frontend production build: `Compiled successfully`
    - Core API health: `healthy`
-   - Native scheduler queue drift: `No queue drift detected`
+   - Native scheduler queue drift:
+o queue drift detected`
 
 ## Residual Risk
 
@@ -1606,7 +2111,9 @@ Sau slice groups/digest/tracked mutation, live subscriber frontend vẫn còn đ
 
 Slice này dọn đúng path đó theo hướng root-cause:
 
-- Mount native stock-detail read family dưới `/core/v1/stock-management/stocks/<symbol>/...` cho `profile`, `overview`, `chart`, `order-flow`, `news`, `news/ai-summary`, và `financials`.
+- Mount native stock-detail read family dưới `/core/v1/stock-management/stocks/<symbol>/...` cho `profile`, `overview`, `chart`, `order-flow`,
+ews`,
+ews/ai-summary`, và `financials`.
 - Siết tenant-aware permission stack cho family route mới expose và bổ sung OpenAPI metadata tương ứng cho core namespace.
 - Chuyển live frontend wrappers `getStockProfile`, `getStockWorkspaceOverview`, `getStockPriceChart`, `getStockOrderFlow`, `getStockNews`, `generateStockNewsAISummary`, và `getStockFinancials` sang core stock-management routes.
 - Sửa transport resolution ở `frontend/src/api/client.js` để core stock-management wrappers không còn bypass `REACT_APP_API_BASE_URL`, đồng thời vẫn fallback đúng về `/core/v1` trong dev/same-origin.
@@ -1631,11 +2138,13 @@ Slice này dọn đúng path đó theo hướng root-cause:
 - `Push-Location 'C:\Mujoco Projects\vninvest\frontend'; npm test -- --runTestsByPath src/api/client.coreRoutes.test.js --watch=false; Pop-Location` — PASS (`5` tests)
 - `Push-Location 'C:\Mujoco Projects\vninvest\frontend'; npm run build; Pop-Location` — PASS
 - `& 'C:\Mujoco Projects\vninvest\.venv\Scripts\python.exe' 'C:\Mujoco Projects\vninvest\scripts\ops\generate_module_tree.py'` — PASS (`1262` modules)
-- VS Code diagnostics on touched files (`core_urls.py`, `stock_mgmt_native_views.py`, `test_stock_management_native_api.py`, `client.js`, `client.coreRoutes.test.js`) — PASS (`No errors found`)
+- VS Code diagnostics on touched files (`core_urls.py`, `stock_mgmt_native_views.py`, `test_stock_management_native_api.py`, `client.js`, `client.coreRoutes.test.js`) — PASS (
+o errors found`)
 - `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
    - Core API health: `OK`
    - Frontend health: `OK`
-   - Native scheduler queue drift: `No queue drift detected`
+   - Native scheduler queue drift:
+o queue drift detected`
 
 ## Residual Risk
 
@@ -1684,7 +2193,8 @@ Slice này dọn nốt bridge đó theo hướng root-cause:
 - `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
    - Core API health: `OK`
    - Frontend health: `OK`
-   - Native scheduler queue drift: `No queue drift detected`
+   - Native scheduler queue drift:
+o queue drift detected`
 
 ## Residual Risk
 
@@ -1731,7 +2241,8 @@ Concretely:
 - `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
    - Core API health: `OK`
    - Frontend health: `OK`
-   - Native scheduler queue drift: `No queue drift detected`
+   - Native scheduler queue drift:
+o queue drift detected`
 
 ## Residual Risk
 
@@ -1776,7 +2287,8 @@ Concretely:
 - `Push-Location 'C:\Mujoco Projects\vninvest'; .\start_dev.ps1; Pop-Location` — PASS
    - Core API health: `OK`
    - Frontend health: `OK`
-   - Native scheduler queue drift: `No queue drift detected`
+   - Native scheduler queue drift:
+o queue drift detected`
 
 ## Residual Risk
 
@@ -1863,7 +2375,8 @@ This slice fixes the root cause by making the active core runtime owners emit da
 - `./start_dev.ps1` — PASS
    - Core API health: `OK`
    - Frontend health: `OK`
-   - Native scheduler queue drift: `No queue drift detected`
+   - Native scheduler queue drift:
+o queue drift detected`
 
 ## Residual Risk
 
@@ -2308,7 +2821,8 @@ Max lag realtime tick → alert: ≤ 10 phút (average ≈ 5 phút).
 
 ## Validation
 
-- `npm run build` — Compiled successfully (no errors)
+-
+pm run build` — Compiled successfully (no errors)
 - All i18n keys resolve via `soc.dnse_backfill.*` prefix
 - Backend v2 payload validated: `datasets`, `symbols_group`, `from_date`, `to_date`, `mode`, `dry_run`
 - §14.5 presence check enforced in missing_only mode before any `bulk_create`
@@ -2338,7 +2852,8 @@ Max lag realtime tick → alert: ≤ 10 phút (average ≈ 5 phút).
 
 - `ServiceDefinition` created in DB: id=26, `created=True`
 - `enqueue_dnse_quarterly_backfill` signature: `['days_back', 'symbols_group', '_scheduler_job_key', 'service_run_log_id']` — verified in both core-api and enrichment-worker containers
-- `npm run build` — success (no errors, 867.48 kB bundle)
+-
+pm run build` — success (no errors, 867.48 kB bundle)
 - Hot-copy applied to: `vninvest-dev-core-api`, `vninvest-dev-core-worker-enrichment`, `vninvest-dev-core-worker`, `vninvest-dev-core-beat`
 
 ## Residual Risk
@@ -2593,7 +3108,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 - `materialize_market_anomaly_alerts.apply()` → `{created: 200, status: ok}` → 300 total today
 - `apply_user_delivery_policy(admin)` → 21 alerts (8 medium, 13 low) scoped to admin's 59 delivery symbols
 - `SymbolSnapshot` non-zero `price_change_pct`: 280/911 (0% on weekend due to market closed — materializer works correctly)
-- `npm run build` → PASS (`main.9c6895b5.js`, Compiled successfully)
+-
+pm run build` → PASS (`main.9c6895b5.js`, Compiled successfully)
 - `./start_dev.ps1` → PASS (all 14 containers healthy, Core API + Frontend health OK)
 - Alert center API `/core/v1/signals/alert-center/summary` → `{total: 21, medium: 8, low: 13}`
 - Heatmap symbols with real data: BID +5.47%, ACB -1.29%, BMP -1.72%, CTG +1.40%, EIB -0.69%, MWG -0.63%
@@ -2610,7 +3126,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 | `module_tree_full.md` | REGENERATED — module tree refreshed after dashboard bridge changes | Dashboard native bridge |
 
 ## Validation
-- `npm run build` → PASS (Compiled successfully, no errors)
+-
+pm run build` → PASS (Compiled successfully, no errors)
 - `./start_dev.ps1` → PASS (Core API health OK, Frontend health OK)
 - Browser smoke at `/dashboard` → PASS; legacy UI rendered, AI Alerts/AI News panel present, alert center and market sections active
 
@@ -2622,7 +3139,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 | `frontend/src/App.jsx` | REVERT — `/dashboard` and `/dashboard/legacy` now both render `ModernDashboard` again so the main site matches the original legacy dashboard layout | DM-05 hotfix |
 
 ## Validation
-- `npm run build` → PASS (Compiled successfully, no errors)
+-
+pm run build` → PASS (Compiled successfully, no errors)
 - `/dashboard` route now resolves to `ModernDashboard` directly, matching the old website layout requested by the user
 - Browser smoke pending after stack refresh
 
@@ -2634,7 +3152,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 | `packages/web/src/adapters/coreApiAdapter.js` | FIX — redirect dashboard portfolio analytics + universe calls to legacy `/api/...` routes that exist in current core backend (`getPortfolioHoldings`, `getPortfolioSummary`, `getPortfolioAnalytics`, `getPortfolioTechnicals`, `getTrackedSymbols`, `getLegacyWatchlistGroups`) | DM-05 hotfix |
 
 ## Validation
-- `npm run build` → PASS (Compiled successfully, no errors)
+-
+pm run build` → PASS (Compiled successfully, no errors)
 - Root cause confirmed: `core/v1/workspace/portfolios/<id>/summary/` is not mounted in current core backend; legacy `/api/portfolio/portfolios/<id>/summary/` is mounted and now used
 - `./start_dev.ps1` → PASS (stack healthy, Core API health OK, Frontend health OK)
 - Browser smoke at `http://localhost/dashboard` → PASS, dashboard shell rendered for `admin` and no summary 404 visible
@@ -2656,8 +3175,10 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 | `frontend/src/App.jsx` | FIX — `/dashboard` → `<PackageDashboardHost>`; shadow `/dashboard/legacy` → `<ModernDashboard>` | DM-05 |
 
 ## Validation
-- `npm run build` → PASS (Compiled successfully, no errors)
-- `node --eval "import('./src/adapters/coreApiAdapter.js').then(m => ...)"` → 48 methods, OK
+-
+pm run build` → PASS (Compiled successfully, no errors)
+-
+ode --eval "import('./src/adapters/coreApiAdapter.js').then(m => ...)"` → 48 methods, OK
 - Git commits: `749882b2` (DM-00) → `e2769a73` (DM-01) → `b709b49a` (DM-02) → `8c6e2f87` (DM-03) → `b38469ff` (DM-04) → `0b0216df` (DM-05)
 - All pushed to `origin/dev`
 
@@ -2671,7 +3192,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 | `PROGRESS_DASHBOARD.md` | UPDATED — Full S01-S09 completion record |
 
 ## Validation
-- `npm run build` → PASS (no errors)
+-
+pm run build` → PASS (no errors)
 - **S08 Read-only soak**: 3/3 endpoints 200 OK (plan, health, history); 55/55 no-regression PASS
 - **S09 Rollback drill**: `disable → disabled → enable → enabled` on `market-data-queue-tier-scheduler-30s` → `ROLLBACK DRILL PASS`
 - Prefetch scheduler section renders via `<details>` collapsible in PrefetchPanel
@@ -2687,7 +3209,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 | `frontend/src/i18n/vi.json` | MODIFIED — Added `soc.scheduler.*` i18n keys (full Vietnamese diacritics) |
 
 ## Validation
-- `npm run build` — PASS, no compile errors
+-
+pm run build` — PASS, no compile errors
 - Scheduler tab renders in DataOps panel when `subTab === 'scheduler'`
 - Risky actions (disable/abort) require confirm modal + reason field
 - History drawer shows paginated ServiceRunLog per job
@@ -2718,7 +3241,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 ## Validation
 - 4/4 views have `tags=['Operator - Scheduler']`
 - Error envelope: `detail, code, timestamp, request_id` standard across all error paths
-- History endpoint has pagination (`page`, `page_size`, `total_pages`, `next`, `previous`)
+- History endpoint has pagination (`page`, `page_size`, `total_pages`,
+ext`, `previous`)
 - Auth: IsAuthenticated + IsAdminUser on all endpoints (SOCBaseView)
 - S05 gate: PASS
 
@@ -2879,7 +3403,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 | `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md` | Added centralized modified-file list for this slice |
 
 ## Validation
-- `npm test -- --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js --watch=false` -> **2 passed** ✅
+-
+pm test -- --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js --watch=false` -> **2 passed** ✅
 - `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 
@@ -3620,7 +4145,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 ## Validation
 - `get_errors` on backend files ✅ no errors
 - `get_errors` on frontend files ✅ no errors
-- `npm run build` from frontend/ ✅ Compiled successfully (849.49 kB main.js, +723 B)
+-
+pm run build` from frontend/ ✅ Compiled successfully (849.49 kB main.js, +723 B)
 - `./start_dev.ps1` ✅ rebuild/restart completed; all containers built; health checks: Core API OK, Frontend OK
 - `scripts/ops/generate_module_tree.py` ✅ module tree refreshed (1211 modules)
 
@@ -3729,7 +4255,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 | `PROGRESS_DASHBOARD.md` | Added progress snapshot for native-first hook ownership cutover |
 
 ## Validation
-- `npm run test -- src/api/client.unifiedAlerts.test.js` (frontend) ✅ 3/3 pass
+-
+pm run test -- src/api/client.unifiedAlerts.test.js` (frontend) ✅ 3/3 pass
 - `./start_dev.ps1` runtime refresh completed; smoke checks: Core API health OK, Frontend health OK ✅
 - `scripts/ops/generate_module_tree.py` completed (`1211` modules) ✅
 
@@ -3950,7 +4477,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 - `Push-Location ./packages/web; $env:CI='true'; npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false; Pop-Location` passed (`16` tests) ✅
 - `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false; Pop-Location` passed (`4` tests) ✅
 - `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1206` modules) ✅
-- `Set-Location .; .\start_dev.ps1` completed successfully: frontend production build OK, `No queue drift detected`, Core API health OK, Frontend health OK ✅
+- `Set-Location .; .\start_dev.ps1` completed successfully: frontend production build OK,
+o queue drift detected`, Core API health OK, Frontend health OK ✅
 
 ## Residual risk
 - Frontend naming (`getUnifiedAlerts`, `useUnifiedAlerts`) still carries historical terminology even though route contract is native alert-center; naming cleanup remains optional technical-debt follow-up.
@@ -3972,7 +4500,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 - `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb; Pop-Location` passed (`17` tests) ✅
 - Regression expectation confirmed in test run: `/core/v1/unified-alert/delivery` now returns `404` by design (legacy backend route removed) ✅
 - `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1206` modules) ✅
-- `Set-Location .; .\start_dev.ps1` completed successfully: `No queue drift detected`, Core API health OK, Frontend health OK ✅
+- `Set-Location .; .\start_dev.ps1` completed successfully:
+o queue drift detected`, Core API health OK, Frontend health OK ✅
 
 ## Residual risk
 - Frontend surfaces or adapters still calling legacy `unified-alert` endpoints will fail until D01/D05 compatibility cleanup is finished on client-side route usage.
@@ -3982,7 +4511,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 ## All Modified Files (6 files)
 | File | Change |
 |------|--------|
-| `packages/core/backend/src/signal_intelligence/delivery_service.py` | Added centralized delivery service with user symbol scope resolution, threshold/pref policy filtering, idempotent delivery row sync, and state transition guards (`new -> seen -> acknowledged`) |
+| `packages/core/backend/src/signal_intelligence/delivery_service.py` | Added centralized delivery service with user symbol scope resolution, threshold/pref policy filtering, idempotent delivery row sync, and state transition guards (
+ew -> seen -> acknowledged`) |
 | `packages/core/backend/src/signal_intelligence/views.py` | Refactored `UserUnifiedAlertDeliveryView` to consume `delivery_service.apply_user_delivery_policy` and persist per-page delivery rows via `delivery_service.sync_user_delivery_rows` |
 | `packages/core/backend/src/signal_intelligence/tests/test_delivery_service.py` | Added focused service tests for policy filtering, mute preference enforcement, idempotent sync, state transitions, and preference upsert semantics |
 | `module_tree_full.md` | Regenerated module tree after R1.2 backend/service test changes (`1206` modules) |
@@ -3992,7 +4522,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 ## Validation
 - `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_delivery_service signal_intelligence.tests.test_materializers --keepdb; Pop-Location` passed (`15` tests) ✅
 - `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1206` modules) ✅
-- `Set-Location .; .\start_dev.ps1` completed successfully: `No queue drift detected`, Core API health OK, Frontend health OK ✅
+- `Set-Location .; .\start_dev.ps1` completed successfully:
+o queue drift detected`, Core API health OK, Frontend health OK ✅
 
 ## Residual risk
 - R1.2 currently integrates service policy and lifecycle persistence on existing endpoint family (`/core/v1/unified-alert/*`); OpenAPI path-family convergence to `/core/v1/signals/*` remains pending in next remediation phases.
@@ -4013,7 +4544,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 - `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations signal_intelligence; Pop-Location` created migration `0005_*` ✅
 - `Push-Location ./packages/core/backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test signal_intelligence.tests.test_materializers --keepdb; Pop-Location` passed (`11` tests) ✅
 - `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` regenerated module tree (`1204` modules) ✅
-- `Set-Location .; .\start_dev.ps1` completed successfully: `No queue drift detected`, Core API health OK, Frontend health OK ✅
+- `Set-Location .; .\start_dev.ps1` completed successfully:
+o queue drift detected`, Core API health OK, Frontend health OK ✅
 
 ## Residual risk
 - R1.1 currently scaffolds domain entities only; service layer, state transitions, and alert-center endpoint family contract remain pending in follow-up slices.
@@ -4069,7 +4601,8 @@ Global `user` throttle bucket (1000/hour) was exhausted by realtime market-data 
 ## Validation
 - `Push-Location ./packages/web; npm test -- --runInBand src/adapters/coreApiAdapter.test.js; Pop-Location` → **14 tests OK** ✅
 - `Set-Location .; .\.venv\Scripts\python.exe scripts/ops/generate_module_tree.py` → module tree regenerated (`1203` modules) ✅
-- `Set-Location .; .\start_dev.ps1` → stack rebuilt/restarted successfully; `No queue drift detected`; Core API health OK; Frontend health OK ✅
+- `Set-Location .; .\start_dev.ps1` → stack rebuilt/restarted successfully;
+o queue drift detected`; Core API health OK; Frontend health OK ✅
 
 ## Residual risk
 - This hotfix only resolves endpoint path contract mismatch; it does not change alert delivery business logic.
@@ -4637,17 +5170,20 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 ## All Modified Files (2 files)
 | File | Change |
 |------|--------|
-| `frontend/src/pages/admin/tenant/TenantPATs.jsx` | Normalize secret reveal contract from issue/rotate responses; support `secret` and nested `new_token.secret`; copy button now copies the resolved secret string |
+| `frontend/src/pages/admin/tenant/TenantPATs.jsx` | Normalize secret reveal contract from issue/rotate responses; support `secret` and nested
+ew_token.secret`; copy button now copies the resolved secret string |
 | `frontend/src/pages/admin/tenant/TenantPATs.test.jsx` | NEW — RTL coverage for issue and rotate flows to ensure the PAT secret is rendered from backend payloads |
 
 ## Validation
-- `npm test -- --runInBand --watch=false src/pages/admin/tenant/TenantPATs.test.jsx` ✅
+-
+pm test -- --runInBand --watch=false src/pages/admin/tenant/TenantPATs.test.jsx` ✅
 - `./start_dev.ps1` refresh after validation if runtime UI changed
 
 # 2026-05-16 | DataOps Planner Preview Collapse/Expand | dev branch ✅
 
-**Status:** ✅ Commit `0ea2a457` pushed to dev  
-**Build:** `npm run build` → Compiled successfully (861.6 kB) ✅
+**Status:** ✅ Commit `0ea2a457` pushed to dev
+**Build:**
+pm run build` → Compiled successfully (861.6 kB) ✅
 **Runtime refresh:** `./start_dev.ps1` → 14/14 services started, core-api + frontend healthy, smoke checks OK ✅
 
 ---
@@ -4664,7 +5200,7 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
   - Collapsed (default): Shows title + count badge (cyan) + toggle button
   - Expanded: Shows full table with symbol/dataset/freshness info + pagination
   - State reset when `plannerPreview` changes
-  
+
 - **Planner Skipped section:**
   - Collapsed (default): Shows title + count badge (amber) + toggle button
   - Expanded: Shows full table with symbol/dataset/reason + pagination
@@ -4673,7 +5209,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - **Empty state:** Always shows "empty message" when no items/skipped
 
 ### Validation
-- `npm run build`: **Compiled successfully** (861.6 kB gzip) ✅
+-
+pm run build`: **Compiled successfully** (861.6 kB gzip) ✅
 - `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
 - Git commit: `0ea2a457` ✅
 - Git push: `53d533cc..0ea2a457` ✅
@@ -4683,7 +5220,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 # 2026-05-16 | DataOps Planner Preview Compact Layout | dev branch ✅
 
 **Status:** ✅ Commit `53d533cc` pushed to dev
-**Build:** `npm run build` → Compiled successfully (861.41 kB) ✅
+**Build:**
+pm run build` → Compiled successfully (861.41 kB) ✅
 **Runtime refresh:** `./start_dev.ps1` → 14/14 services started, core-api healthy, smoke checks OK ✅
 
 ---
@@ -4696,7 +5234,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 | `frontend/src/components/soc/DataOpsPanel.jsx` | Planner preview `items` và `skipped` đổi từ card list sang bảng compact có `max-h-72` + scroll nội bộ + phân trang mini (`PLANNER_PREVIEW_PAGE_SIZE = 12`) |
 
 ### Validation
-- `npm run build`: **Compiled successfully** ✅
+-
+pm run build`: **Compiled successfully** ✅
 - `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
 
 ---
@@ -4716,7 +5255,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 | `frontend/src/i18n/en.js` | Mirror in English |
 
 ### Validation
-- `npm run build`: **Compiled successfully** (858.98 kB gzip) ✅
+-
+pm run build`: **Compiled successfully** (858.98 kB gzip) ✅
 - `manage.py migrate service_ops`: `0003_add_custom_symbol_group` OK ✅
 - `git push origin dev`: `4804db3e..9359fdd2` ✅
 
@@ -4739,7 +5279,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 | `frontend/src/i18n/en.js` | Mirror of vi.js in English |
 
 ### Validation
-- `npm run build`: **Compiled successfully** (852.48 kB gzip) ✅
+-
+pm run build`: **Compiled successfully** (852.48 kB gzip) ✅
 - `git push origin dev`: **a8fb4180..bb8d570b** ✅
 - `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
 
@@ -4755,7 +5296,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 | `frontend/src/i18n/en.js` | Mirror of vi.js additions in English |
 
 ### Validation
-- `npm run build`: **Compiled successfully** (852.15 kB gzip) ✅
+-
+pm run build`: **Compiled successfully** (852.15 kB gzip) ✅
 - `git push origin dev`: **75ddc2e1..3ac57866** ✅
 - `./start_dev.ps1`: **14/14 Started, core-api Healthy, smoke checks OK** ✅
 
@@ -4784,7 +5326,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 | `frontend/src/i18n/en.js` | Matching English for 4 new keys |
 
 ### Validation
-- `npm run build`: **Compiled successfully** (850.85 kB gzip) ✅
+-
+pm run build`: **Compiled successfully** (850.85 kB gzip) ✅
 - `git push origin dev`: **471f3dbf..75ddc2e1** ✅
 - `./start_dev.ps1`: **14/14 Started; core-api Healthy; smoke checks OK** ✅
 
@@ -5116,14 +5659,16 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 
 **Status:** ✅ focused slice complete
 **Session Commits:** 0 commits (backend OpenAPI/schema slice)
-**Issues Fixed:** 2 contract gaps closed by annotating canonical DataOps operator routes with explicit OpenAPI request/response schema/examples and removing the `NamespaceVersioning` setting that caused `/core/v1/schema/` to emit an empty `paths` map
+**Issues Fixed:** 2 contract gaps closed by annotating canonical DataOps operator routes with explicit OpenAPI request/response schema/examples and removing the
+amespaceVersioning` setting that caused `/core/v1/schema/` to emit an empty `paths` map
 
 ### All Modified/Created Files (7 files)
 
 **Backend / Governance (7 files)**
 1. ✅ `packages/core/backend/src/service_ops/views/dataops.py` - added `drf-spectacular` summaries, request bodies, response schema, query parameters, and examples for canonical DataOps routes
 2. ✅ `packages/core/backend/src/service_ops/tests/test_soc_api_domain.py` - added a focused schema regression that proves canonical DataOps routes appear in `/core/v1/schema/`
-3. ✅ `packages/core/backend/src/vninvest_core/settings.py` - removed DRF `NamespaceVersioning` so the generated OpenAPI schema no longer collapses to `paths: {}`
+3. ✅ `packages/core/backend/src/vninvest_core/settings.py` - removed DRF
+amespaceVersioning` so the generated OpenAPI schema no longer collapses to `paths: {}`
 4. ✅ `docs/TASKBOARD_SCRAPING_SYSTEM_SAAS_NATIVE_OPENAPI_20260515.md` - recorded the DataOps OpenAPI progress and partial completion status
 5. ✅ `module_tree_full.md` - regenerated after source changes (`1200` modules)
 6. ✅ `CODE_CHANGE_AUDIT_LEDGER.md` - recorded this audit entry
@@ -5709,7 +6254,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 **Status:** 🔄 `T08` IN PROGRESS
 **Session Commits:** 0 commits (core intraday prices read-path slice)
 **Issues Fixed:** 2 remaining core intraday drifts closed by removing the direct `fetch_intraday_ohlcv()` request-path fetch from `/core/v1/market-data/intraday-prices/<symbol>/` and locking the route to canonical `IntradayBar` DB reads with focused regression coverage
-**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus `No queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing continued to show a stale core image (`/api/soc/matrix/providers/`=`401`, `/api/soc/dataops/queue-tiers/`=`404`)
+**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus
+o queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing continued to show a stale core image (`/api/soc/matrix/providers/`=`401`, `/api/soc/dataops/queue-tiers/`=`404`)
 
 ### All Modified/Created Files (6 files)
 
@@ -5728,7 +6274,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_intraday_prices_api market_data.tests.test_intraday_tape_api --keepdb; Pop-Location` passed (`4` tests).
 - ✅ `functions.get_errors` reported no diagnostics for `packages/core/backend/src/market_data/views.py` and `packages/core/backend/src/market_data/tests/test_intraday_prices_api.py`.
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace inventory to `1198` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure because the configured GitHub PAT still returned `Invalid username or token` when cloning private `vnbroker`, so runtime freshness for the updated backend code is still blocked.
 - ⚠️ Runtime probing showed `http://localhost:8001/api/soc/matrix/providers/` returned `401` while `http://localhost:8001/api/soc/dataops/queue-tiers/` returned `404`, confirming the running core containers are still serving a stale image that predates this and the completed T07 slices.
 
@@ -5742,7 +6289,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 **Status:** 🔄 `T08` IN PROGRESS
 **Session Commits:** 0 commits (watchlist sync planner-routing slice)
 **Issues Fixed:** 3 watchlist-scope drifts closed by removing the direct `fetch_price_board_snapshot()` request-path fetch from `POST /api/stock-management/sync/`, routing the user-scoped refresh request through `create_global_planner_run()` with audited queue metadata, and aligning watchlist success copy with queued-refresh semantics
-**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus `No queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing continued to show a stale core image (`/api/soc/matrix/providers/`=`401`, `/api/soc/dataops/queue-tiers/`=`404`)
+**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus
+o queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing continued to show a stale core image (`/api/soc/matrix/providers/`=`401`, `/api/soc/dataops/queue-tiers/`=`404`)
 
 ### All Modified/Created Files (8 files)
 
@@ -5763,7 +6311,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_stock_management_native_api --keepdb; Pop-Location` passed (`11` tests).
 - ✅ `functions.get_errors` reported no diagnostics for `packages/core/backend/src/market_data/stock_mgmt_native_views.py`, `packages/core/backend/src/market_data/tests/test_stock_management_native_api.py`, `frontend/src/i18n/vi.js`, and `frontend/src/i18n/en.js`.
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and kept the workspace inventory at `1197` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure because the configured GitHub PAT still returned `Invalid username or token` when cloning private `vnbroker`, so runtime freshness for the updated backend/frontend code is still blocked.
 - ⚠️ Runtime probing showed `http://localhost:8001/api/soc/matrix/providers/` returned `401` while `http://localhost:8001/api/soc/dataops/queue-tiers/` returned `404`, confirming the running core containers are still serving a stale image that predates this and the completed T07 slices.
 
@@ -5777,7 +6326,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 **Status:** 🔄 `T08` IN PROGRESS
 **Session Commits:** 0 commits (intraday read-path cutover slice)
 **Issues Fixed:** 3 direct request-path drifts closed by cutting both the compat intraday endpoint and the core intraday tape endpoint off provider fetches, forcing both read paths onto latest-session `IntradayTick` rows in the shared layer, and adding focused regression coverage that fails if `market_data.vnbroker_adapter.fetch_intraday_tape()` is called during the request
-**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus `No queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing continued to show a stale core image (`/api/soc/matrix/providers/`=`401`, `/api/soc/dataops/queue-tiers/`=`404`)
+**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus
+o queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing continued to show a stale core image (`/api/soc/matrix/providers/`=`401`, `/api/soc/dataops/queue-tiers/`=`404`)
 
 ### All Modified/Created Files (8 files)
 
@@ -5798,7 +6348,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test market_serving.tests.test_native_views market_data.tests.test_intraday_tape_api --keepdb; Pop-Location` passed (`4` tests).
 - ✅ `functions.get_errors` reported no diagnostics for `packages/core/backend/src/market_serving/native_views.py`, `packages/core/backend/src/market_serving/tests/test_native_views.py`, `packages/core/backend/src/market_data/views.py`, and `packages/core/backend/src/market_data/tests/test_intraday_tape_api.py`.
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace inventory to `1197` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure because the configured GitHub PAT still returned `Invalid username or token` when cloning private `vnbroker`, so runtime freshness for the updated backend code is still blocked.
 - ⚠️ Runtime probing showed `http://localhost:8001/api/soc/matrix/providers/` returned `401` while `http://localhost:8001/api/soc/dataops/queue-tiers/` returned `404`, confirming the running core containers are still serving a stale image that predates this and the completed T07 slices.
 
@@ -5812,7 +6363,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 **Status:** ✅ `T07` COMPLETE FOR CODE + VALIDATION
 **Session Commits:** 0 commits (scheduler consumer + planner queue handoff slice)
 **Issues Fixed:** 4 remaining T07 gaps closed by extracting shared market-data dataops helpers, adding a real queue-tier scheduler consumer that dispatches planner runs from runtime config, wiring planner async handoff to queue-specific routing context, and registering the scheduler in queue policy + Celery beat
-**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus `No queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing confirmed the new T07 routes are still absent from the running core container image
+**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus
+o queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing confirmed the new T07 routes are still absent from the running core container image
 
 ### All Modified/Created Files (12 files)
 
@@ -5838,7 +6390,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_ownership service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_tasks market_data.tests.test_global_symbol_planner --keepdb; Pop-Location` passed (`55` tests).
 - ✅ `functions.get_errors` reported no diagnostics for the touched scheduler/helper/planner/settings/test files.
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace inventory to `1195` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure because the configured GitHub PAT still returned `Invalid username or token` when cloning private `vnbroker`.
 - ⚠️ Runtime probing showed `http://localhost:8001/api/soc/matrix/providers/` returned `401`, while both `http://localhost:8001/api/soc/dataops/queue-tiers/` and `http://localhost:8001/api/soc/dataops/runtime-config/` returned `404`, confirming the running core containers are still serving a stale image that predates this completed T07 slice.
 
@@ -5852,7 +6405,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 **Status:** 🔄 `T07` IN PROGRESS (policy/config surfaces landed; scheduler consumers still pending)
 **Session Commits:** 0 commits (service-ops market-data dataops slice)
 **Issues Fixed:** 4 T07-level gaps closed by introducing a typed queue-tier runtime config schema, exposing audited `queue-tiers` and `runtime-config` SOC endpoints, adding ownership coverage for `dataops_market_data`, and locking the new backend contract with focused config/ownership/API regression tests
-**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus `No queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing confirmed the new dataops route is still missing from the running core container image
+**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus
+o queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, and runtime probing confirmed the new dataops route is still missing from the running core container image
 
 ### All Modified/Created Files (12 files)
 
@@ -5877,7 +6431,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test service_ops.tests.test_soc_domain_configs service_ops.tests.test_soc_ownership service_ops.tests.test_soc_api_domain --keepdb; Pop-Location` passed (`33` tests).
 - ✅ `functions.get_errors` reported no diagnostics for the touched `service_ops` runtime-config, ownership, route, and test files.
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace inventory to `1194` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure because the configured GitHub PAT still returned `Invalid username or token` when cloning private `vnbroker`.
 - ⚠️ Runtime probing showed `http://localhost:8001/api/soc/matrix/providers/` returned `401` while `http://localhost:8001/api/soc/dataops/queue-tiers/` returned `404`, confirming the running core containers are still serving a stale image that predates this T07 slice.
 
@@ -5891,7 +6446,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 **Status:** ✅ `T06` COMPLETE FOR CODE + VALIDATION
 **Session Commits:** 0 commits (intraday hydration planner execution backend slice)
 **Issues Fixed:** 4 intraday-layer gaps closed by turning `warm_intraday_universe()` into a real planner-consumable hydration task, persisting canonical `IntradayTick` rows, aggregating canonical `IntradayBar` rows for standard intraday timeframes, and wiring planner execution + audit trail support for `intraday_ticks` and `intraday_bars`
-**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus `No queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, so recreated core containers may still be based on the previous successful image
+**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus
+o queue drift detected`; ⚠️ the build stage still failed because the configured PAT could not clone the private `vnbroker` dependency, so recreated core containers may still be based on the previous successful image
 
 ### All Modified/Created Files (8 files)
 
@@ -5912,7 +6468,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test data_ingest.tests.test_tasks market_data.tests.test_global_symbol_planner --keepdb; Pop-Location` passed (`11` tests).
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_global_symbol_coverage market_data.tests.test_global_symbol_planner data_ingest.tests.test_tasks --keepdb; Pop-Location` passed (`16` tests).
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and kept the workspace inventory at `1192` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure because the configured GitHub PAT still returned `Invalid username or token` when cloning private `vnbroker`, so the runtime rebuild path remains only partially trustworthy until a valid PAT is supplied.
 
 ### Residual Risk
@@ -5925,7 +6482,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 **Status:** ✅ `T05` COMPLETE / 🔄 `T06` IN PROGRESS
 **Session Commits:** 0 commits (price-board planner execution backend slice)
 **Issues Fixed:** 4 snapshot-layer drifts closed by letting planner execution support `price_board_snapshot`, refactoring `fetch_and_upsert_price_board()` to consume explicit subset `plan_items`, teaching `materialize_symbol_snapshot_from_vnbroker()` to materialize only requested symbols, and adding inserted/updated/skipped-existing metrics instead of blind snapshot overwrite semantics
-**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus `No queue drift detected`; ⚠️ the build stage still failed to clone the private `vnbroker` dependency, so recreated core containers may still be based on the previous successful image
+**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus
+o queue drift detected`; ⚠️ the build stage still failed to clone the private `vnbroker` dependency, so recreated core containers may still be based on the previous successful image
 
 ### All Modified/Created Files (9 files)
 
@@ -5947,7 +6505,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test data_ingest.tests.test_tasks market_data.tests.test_global_symbol_planner --keepdb; Pop-Location` passed (`9` tests).
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_global_symbol_coverage market_data.tests.test_global_symbol_planner data_ingest.tests.test_tasks --keepdb; Pop-Location` passed (`14` tests).
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and kept the workspace inventory at `1192` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure in `core-runtime` because cloning private `vnbroker` still returned `Invalid username or token`, so the runtime rebuild path remains only partially trustworthy until the token path is fixed.
 
 ### Residual Risk
@@ -5960,7 +6519,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 **Status:** ✅ `T05` COMPLETE / 🔄 `T06` IN PROGRESS
 **Session Commits:** 0 commits (planner execution + daily-history ingest backend slice)
 **Issues Fixed:** 4 execution-layer gaps closed by turning planner preview output into auditable run payloads, adding sync/async planner run orchestration on top of `ServiceRunLog`, refactoring the daily-history ingest path to consume explicit per-symbol `plan_items`, and distinguishing inserted/updated/skipped-existing rows instead of blind overwrite semantics
-**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus `No queue drift detected`; ⚠️ the build stage still failed to clone the private `vnbroker` dependency, so recreated core containers may still be based on the previous successful image
+**Docker Status:** ✅ `./start_dev.ps1` was rerun and the dev stack reported healthy core API/frontend smoke checks plus
+o queue drift detected`; ⚠️ the build stage still failed to clone the private `vnbroker` dependency, so recreated core containers may still be based on the previous successful image
 
 ### All Modified/Created Files (8 files)
 
@@ -5981,7 +6541,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test data_ingest.tests.test_tasks market_data.tests.test_global_symbol_planner --keepdb; Pop-Location` passed (`7` tests).
 - ✅ `Push-Location .\packages\core\backend; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_global_symbol_coverage market_data.tests.test_global_symbol_planner data_ingest.tests.test_tasks --keepdb; Pop-Location` passed (`12` tests).
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace inventory to `1192` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure in `core-runtime` because cloning private `vnbroker` still returned `Invalid username or token`, so the runtime rebuild path remains only partially trustworthy until the token path is fixed.
 
 ### Residual Risk
@@ -6013,7 +6574,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location .\packages\core\backend; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_global_symbol_coverage --keepdb; Pop-Location` passed (`5` tests).
 - ✅ `functions.get_errors` reported no diagnostics for `packages/core/backend/src/market_data/global_symbol_coverage.py` and `packages/core/backend/src/market_data/tests/test_global_symbol_coverage.py`.
 - ✅ `Set-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and kept the workspace inventory at `1190` modules.
-- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and `No queue drift detected`.
+- ✅ `Set-Location .; .\start_dev.ps1` completed with healthy core API, frontend smoke checks OK, and
+o queue drift detected`.
 - ⚠️ The same `start_dev.ps1` run reported Docker build failure in `core-runtime` because cloning private `vnbroker` still returned `Invalid username or token`, so the runtime rebuild path remains only partially trustworthy until the token path is fixed.
 
 ### Residual Risk
@@ -6181,7 +6743,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 
 ### Validation Results
 
-- ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_data --dry-run --check; Pop-Location` passed with `No changes detected in app 'market_data'` after aligning model metadata with the manual migration.
+- ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_data --dry-run --check; Pop-Location` passed with
+o changes detected in app 'market_data'` after aligning model metadata with the manual migration.
 - ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test market_data.tests.test_global_symbol_registry market_data.tests.test_stock_management_native_api tests.test_global_symbol_registry_workspace_integration --keepdb; Pop-Location` passed (`16` tests).
 - ✅ `Set-Location "c:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace inventory to `1188` modules.
 - ✅ `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat core-worker-manual` rebuilt/refreshed the affected backend runtime services; compose reported `vninvest-core-db`, `vninvest-core-redis`, and `vninvest-dev-core-api` healthy.
@@ -6413,7 +6976,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 ### Validation Results
 
 - ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_session_facts_api tests.test_market_serving_api_routes tests.test_saas14_materializers.TestMaterializeSessionFactsNative --keepdb; Pop-Location` passed (`31` tests)
-- ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned `No changes detected in app 'market_serving'`
+- ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned
+o changes detected in app 'market_serving'`
 - ✅ `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed after wiring facts-first flow buckets into `StockDetail`
 - ✅ `functions.get_errors` returned no diagnostics for `packages/core/backend/src/market_serving/models.py`, `packages/core/backend/src/market_serving/session_facts_engine.py`, `packages/core/backend/src/market_serving/views.py`, `packages/core/backend/src/market_serving/migrations/0007_sessionfactsbucket_strength_fields.py`, and `frontend/src/pages/StockDetail.jsx`
 - ✅ `Set-Location "c:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace inventory to `1173` modules
@@ -6460,7 +7024,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_session_facts_api tests.test_market_serving_api_routes tests.test_saas14_materializers.TestMaterializeSessionFactsNative --keepdb; Pop-Location` passed (`31` tests)
 - ✅ `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed after wiring `selectedTradeDate` into the frontend SessionFacts client path
 - ✅ `functions.get_errors` returned no diagnostics for the touched backend model/engine/view/migration/tests and frontend client/StockDetail files
-- ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned `No changes detected in app 'market_serving'`
+- ✅ `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned
+o changes detected in app 'market_serving'`
 - ✅ `Set-Location "c:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace inventory to `1171` modules
 - ✅ `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat core-worker-manual` refreshed the full affected runtime once for the selected-session/frontend slice, then `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build core-api core-worker core-beat core-worker-manual` refreshed backend again after adding migration `0006`
 - ✅ `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml exec -T core-api python /app/src/manage.py showmigrations market_serving` confirmed `[X] 0004_add_session_facts_series_by_window`, `[X] 0005_session_facts_bucket_table`, and `[X] 0006_rename_sessionfactsbucket_indexes` in the running dev runtime
@@ -7396,7 +7961,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 
 - ✅ `functions.get_errors` returned no diagnostics for the touched Matrix frontend/backend files, runtime-backed domain views, and rewritten tests
 - ✅ `manage.py shell -c "... matrix start/monitor/cells/abort ..."` returned `{'start_status': 201, 'monitor_status': 'active', 'monitor_cell_count': 4, 'cells_count': 4, 'abort_status': 'aborted'}`
-- ✅ `npm run build` in `frontend/` completed successfully after the Matrix panel/client rewiring
+- ✅
+pm run build` in `frontend/` completed successfully after the Matrix panel/client rewiring
 - ✅ `manage.py shell -c "... screener rules/results/alert-history/manual-scan ..."` returned runtime-backed results with `scan_status='queued'`
 - ✅ `manage.py shell -c "... prefetch universe-groups/task-schedule ..."` returned the applied groups `['vn30', 'banking']`, `active_profile='pre_open'`, and 6 schedule rows
 - ✅ `manage.py shell -c "... signals whale/dark-pool/screener recent ..."` returned `whale_total_today=1`, `dark_total_today=1`, `screener_active_rules=1`, `screener_recent_total=1`
@@ -7452,7 +8018,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `manage.py shell -c "... ServiceDefinition.objects.count() ..."` returned `{'services': 23, 'active': 23, 'ownerships': 5, 'current_configs': 4, ...}`
 - ✅ `manage.py shell -c "... client.get('/api/soc/overview/') ... client.get('/api/soc/vnbroker/config/') ... client.get('/api/soc/signals/config/') ..."` returned `overview_count=23`, seeded VNBroker config, and bridge-write signal config metadata
 - ✅ `manage.py shell -c "... client.get('/api/soc/signals/summary/') ..."` returned the new summary payload keys required by traceability REQ-19
-- ✅ `npm run build` in `frontend/` completed successfully
+- ✅
+pm run build` in `frontend/` completed successfully
 - ✅ backend smoke for overview / vnbroker / prefetch / signals / screener endpoints returned `200` across the panel routes currently mounted by `/operations-center`
 - ✅ `c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` to `1154` modules
 - ✅ `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api frontend`
@@ -7476,7 +8043,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 
 **Frontend Code (3 files, modified)**
 1. ✅ `frontend/src/api/socApi.js` - added authenticated fetch handling so SOC requests send the browser bearer token and cookies
-2. ✅ `frontend/src/pages/SOCPage.jsx` - passed the resolved `pageT` function into all SOC child panels so the route no longer crashes with `n is not a function`
+2. ✅ `frontend/src/pages/SOCPage.jsx` - passed the resolved `pageT` function into all SOC child panels so the route no longer crashes with
+ is not a function`
 3. ✅ `frontend/src/i18n/vi.js` / `frontend/src/i18n/en.js` - added the missing `soc` namespace for the Service Operations Center surface
 
 **Backend Code (1 file, modified)**
@@ -7492,7 +8060,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 - ✅ `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api`
 - ✅ `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps frontend`
 - ✅ Live container smoke test inside `vninvest-dev-core-api` returned `200 OK` with `{'count': 0, 'next': None, 'previous': None, 'results': []}` for `/api/soc/overview/`
-- ✅ Browser reload of `/operations-center` showed the localized SOC shell and the overview panel without the `n is not a function` crash
+- ✅ Browser reload of `/operations-center` showed the localized SOC shell and the overview panel without the
+ is not a function` crash
 - ✅ `/admin-ops` redirected to `/operations-center`
 - ✅ `scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` (1153 modules)
 
@@ -7549,7 +8118,8 @@ WHALE_ALERT_DETECTION_INTERVAL_SECONDS=120
 ### Notes
 
 - The dev launcher no longer calls legacy backend commands.
-- The frontend dev service now uses the local native image and no longer depends on `nginx-proxy_default`.
+- The frontend dev service now uses the local native image and no longer depends on
+ginx-proxy_default`.
 
 ## 2026-05-14 | Task T10 | SOC Phase 1 Completion & Cleanup ✅
 
@@ -8392,4 +8962,94 @@ Resolved by:
 | `packages/core/backend/src/data_ingest/tests/test_backfill_tasks.py` | 4 new tests T-C8/C8b/C9/C9b |
 | `CODE_CHANGE_AUDIT_LEDGER.md` | This entry |
 
+---
 
+## 2026-05-27 | Redis Hostname Drift Guardrail (Dev + Production)
+
+### Context
+
+- Incident symptom: heatmap all `0.00%`, portfolio metrics `--`, whale chart stale data and missing reference warning.
+- Root cause from runtime audit: workers/environment still using `redis://redis:6379/...` while active stacks resolve Redis service as `core-redis`.
+
+### Fix Applied (Repo Templates)
+
+- Updated `compose.prod.env.example` Redis/Celery endpoints from `redis://redis:6379/...` to `redis://core-redis:6379/...`.
+- Updated `backend/.env.production.example` Redis/Celery endpoints from `redis://redis:6379/...` to `redis://core-redis:6379/...`.
+- Updated `.env.ghcr.example` realtime/stream Redis endpoints from `redis://redis:6379/...` to `redis://core-redis:6379/...`.
+- Regenerated `module_tree_full.md` using `python scripts/ops/generate_module_tree.py` per workspace rule.
+
+### Validation
+
+| Check | Result |
+|---|---|
+| `python scripts/ops/generate_module_tree.py` | ✅ PASS |
+| Template grep in workspace for updated Redis hostnames | ✅ PASS for updated files |
+
+### Residual Risk
+
+- Runtime env files on remote servers (`.env.production`, `backend/.env.production`) remain external to git and must be patched in-place, then services restarted.
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `compose.prod.env.example` | Redis/Celery URLs switched to `core-redis` |
+| `backend/.env.production.example` | Redis/Celery URLs switched to `core-redis` |
+| `.env.ghcr.example` | Realtime/stream Redis URLs switched to `core-redis` |
+| `module_tree_full.md` | Regenerated |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this entry |
+
+---
+
+## 2026-05-27 | API Health Compat Route + Runtime Hotfix
+
+### Context
+
+- Public endpoint `https://vninvest.edusuccess.vn/api/health/` returned `404` while canonical core endpoint `/core/v1/health` was healthy.
+- This broke legacy probes expecting `/api/health/` compatibility.
+
+### Root Cause
+
+- Frontend nginx routed `/api/*` correctly to `core-api`, but `core-api` URLConf did not expose `/api/health/`.
+
+### Fix Applied (Source)
+
+- Added compatibility routes in core backend URLConf:
+   - `path('api/health', views_health.health, ...)`
+   - `path('api/health/', views_health.health, ...)`
+- Added explicit frontend nginx compatibility locations:
+   - `location = /api/health` -> proxy to `/core/v1/health`
+   - `location = /api/health/` -> proxy to `/core/v1/health`
+- Added regression test `test_api_health_compat_route_returns_ok` in runtime baseline tests.
+- Regenerated `module_tree_full.md`.
+
+### Runtime Hotfix Applied (Production)
+
+- Uploaded updated nginx config to server and hot-reloaded frontend container:
+   - `docker cp /home/pham/nginx.conf.hotfix vninvest-frontend:/etc/nginx/conf.d/default.conf`
+   - `docker exec vninvest-frontend nginx -t && docker exec vninvest-frontend nginx -s reload`
+- Result: both compat endpoints now return `200` with health JSON payload.
+
+### Validation
+
+| Check | Result |
+|---|---|
+| `curl -k https://vninvest.edusuccess.vn/api/health/` | ✅ 200 |
+| `curl -k https://vninvest.edusuccess.vn/api/health` | ✅ 200 |
+| `curl -k https://vninvest.edusuccess.vn/core/v1/health` | ✅ 200 |
+| `python scripts/ops/generate_module_tree.py` | ✅ PASS |
+| `python -m pytest packages/core/backend/tests/test_runtime_baseline.py -q` | ⚠️ blocked locally (`ModuleNotFoundError: dj_database_url`) |
+
+### Residual Risk
+
+- Runtime hotfix in running frontend container is effective immediately but should be considered non-durable until normal image redeploy picks up committed nginx source changes.
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/vninvest_core/urls.py` | Added `/api/health` and `/api/health/` compatibility routes |
+| `packages/core/backend/tests/test_runtime_baseline.py` | Added compat route regression test |
+| `frontend/docker/nginx.conf` | Added explicit compat locations for API health paths |
+| `module_tree_full.md` | Regenerated |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this entry |

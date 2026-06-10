@@ -8,7 +8,7 @@ These paths mirror the frontend api/client.js partner/* calls.
 """
 from django.urls import path
 
-from . import views
+from . import views_tenant as views
 from .commercial_partner_views import (
     PartnerBillingInvoicesView,
     PartnerBillingSubscriptionView,

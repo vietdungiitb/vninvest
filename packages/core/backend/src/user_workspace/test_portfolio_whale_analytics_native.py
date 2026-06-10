@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
+from django.test.utils import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -15,6 +16,14 @@ from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
 User = get_user_model()
 
 
+@override_settings(
+    CACHES={
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'test-whale-analytics-native',
+        }
+    }
+)
 class PortfolioWhaleAnalyticsNativeApiTestCase(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -150,4 +159,112 @@ class PortfolioWhaleAnalyticsNativeApiTestCase(TestCase):
         self.assertEqual(payload['bubble_series'][0]['matched_value'], 1850000000.0)
         self.assertGreaterEqual(len(payload['flow_series']['cvd']), 1)
         self.assertEqual(payload['flow_series']['institutional_strength'][-1]['value'], 74.2)
+        self.assertFalse(payload['meta']['degraded_mode'])
+
+    def test_whale_analytics_rebuilds_cvd_when_session_facts_missing(self):
+        trade_date = timezone.localdate()
+        previous_date = trade_date - timedelta(days=1)
+        market_open = timezone.make_aware(
+            timezone.datetime.combine(trade_date, timezone.datetime.min.time().replace(hour=9)),
+            timezone.get_current_timezone(),
+        )
+
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=previous_date,
+            open=17.9,
+            high=18.1,
+            low=17.7,
+            close=18.0,
+            volume=90000,
+            source='core',
+        )
+        DailyPrice.objects.create(
+            symbol='TPB',
+            date=trade_date,
+            open=18.1,
+            high=18.7,
+            low=17.95,
+            close=18.45,
+            volume=125000,
+            source='core',
+        )
+        SymbolSnapshot.objects.create(
+            symbol='TPB',
+            session_date=trade_date,
+            price=Decimal('18.45'),
+            price_change=Decimal('0.45'),
+            price_change_pct=Decimal('2.5000'),
+            volume=125000,
+            reference_price=Decimal('18.00'),
+            high=Decimal('18.70'),
+            low=Decimal('17.95'),
+            market_status=SymbolSnapshot.MarketStatusChoices.OPEN,
+            source=SymbolSnapshot.SourceChoices.CORE,
+            stale=False,
+        )
+
+        first_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='TPB',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            confidence=0.9,
+            title='Whale buy TPB',
+            body='',
+            value=Decimal('1200000000'),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=trade_date,
+            triggered_at=market_open + timedelta(minutes=10),
+            source_ref='native-whale-fallback-1',
+            metadata={'event_score': 80, 'threshold': 1000000000, 'session_percentile': 90.0},
+            evidence={},
+        )
+        WhaleAlertCanonical.objects.create(
+            alert=first_alert,
+            symbol='TPB',
+            session_date=trade_date,
+            side=WhaleAlertCanonical.SideChoices.BUY,
+            price=Decimal('18.30'),
+            volume=50000,
+            matched_value=1200000000,
+            is_dark_flow=False,
+            order_id='whale-native-fallback-order-1',
+            executed_at=market_open + timedelta(minutes=10),
+        )
+
+        second_alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='TPB',
+            severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            confidence=0.82,
+            title='Whale sell TPB',
+            body='',
+            value=Decimal('700000000'),
+            direction=UnifiedAlert.DirectionChoices.SELL,
+            session_date=trade_date,
+            triggered_at=market_open + timedelta(minutes=25),
+            source_ref='native-whale-fallback-2',
+            metadata={'event_score': 71, 'threshold': 1000000000, 'session_percentile': 82.0},
+            evidence={},
+        )
+        WhaleAlertCanonical.objects.create(
+            alert=second_alert,
+            symbol='TPB',
+            session_date=trade_date,
+            side=WhaleAlertCanonical.SideChoices.SELL,
+            price=Decimal('18.26'),
+            volume=35000,
+            matched_value=700000000,
+            is_dark_flow=False,
+            order_id='whale-native-fallback-order-2',
+            executed_at=market_open + timedelta(minutes=25),
+        )
+
+        response = self.client.get('/core/v1/workspace/whale-analytics/TPB/?timeframe=session&compact=0')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['materialization']['read_path'], 'canonical_fallback')
+        self.assertEqual(len(payload['bubble_series']), 2)
+        self.assertGreaterEqual(len(payload['flow_series']['cvd']), 1)
         self.assertFalse(payload['meta']['degraded_mode'])

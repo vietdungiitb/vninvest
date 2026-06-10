@@ -111,7 +111,7 @@ export default function PackageDashboardHost() {
       const held = holdingsMap.get(symbol);
       const quote = quotesBySymbol[symbol] || {};
       const trackedInfo = trackedMap.get(symbol);
-      const changePct = quote.change_pct ?? held?.live_change_pct ?? trackedInfo?.change_pct ?? 0;
+      const changePct = quote.change_pct ?? held?.live_change_pct ?? trackedInfo?.change_pct ?? null;
       const sparkline24 = buildFallbackSparkline(quote, held, trackedInfo);
       const industry = String(held?.industry || trackedInfo?.industry || 'Khác').trim() || 'Khác';
 
@@ -312,16 +312,40 @@ export default function PackageDashboardHost() {
   );
 
   const renderHeatmap = React.useCallback(
-    ({ loading }) => (
-      <Suspense fallback={<DashboardPanelFallback minHeightClass="min-h-[320px]" />}>
-        <PortfolioHeatmap
-          holdings={heatmapData}
-          quotesBySymbol={quotesBySymbol}
-          loading={loading}
-          compact={true}
-        />
-      </Suspense>
-    ),
+    ({ loading, technicals }) => {
+      const technicalChangeBySymbol = new Map(
+        (Array.isArray(technicals) ? technicals : []).map((row) => [
+          normalizeSymbol(row?.symbol),
+          row?.price_change_pct,
+        ]),
+      );
+
+      const mergedHeatmapData = heatmapData.map((item) => {
+        if (item?.live_change_pct !== null && item?.live_change_pct !== undefined) {
+          return item;
+        }
+        const fallbackChangePct = technicalChangeBySymbol.get(normalizeSymbol(item?.symbol));
+        const numericFallback = Number(fallbackChangePct);
+        if (Number.isNaN(numericFallback)) {
+          return item;
+        }
+        return {
+          ...item,
+          live_change_pct: numericFallback,
+        };
+      });
+
+      return (
+        <Suspense fallback={<DashboardPanelFallback minHeightClass="min-h-[320px]" />}>
+          <PortfolioHeatmap
+            holdings={mergedHeatmapData}
+            quotesBySymbol={quotesBySymbol}
+            loading={loading}
+            compact={true}
+          />
+        </Suspense>
+      );
+    },
     [heatmapData, quotesBySymbol],
   );
 

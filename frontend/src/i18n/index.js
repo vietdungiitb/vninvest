@@ -29,7 +29,10 @@ export function createTranslator(locale) {
   const dictionary = dictionaries[normalizedLocale] || dictionaries[DEFAULT_LOCALE];
   const fallbackDictionary = dictionaries[DEFAULT_LOCALE];
 
-  return function translate(key, vars = {}) {
+  return function translate(key, varsOrDefault = {}) {
+    const vars = (varsOrDefault && typeof varsOrDefault === 'object' && !Array.isArray(varsOrDefault))
+      ? varsOrDefault
+      : { defaultValue: varsOrDefault };
     const hasDefaultValue = Object.prototype.hasOwnProperty.call(vars, 'defaultValue');
     const defaultValue = hasDefaultValue ? String(vars.defaultValue) : String(key);
     const template = getNestedValue(dictionary, key) ?? getNestedValue(fallbackDictionary, key) ?? defaultValue;

@@ -1,3 +1,472 @@
+# 2026-05-29 — AI SSOT slice: backend checklist alignment (2.x + 3.x) ✅
+
+Status: **✅ DONE (taskboard đã đồng bộ với implementation backend thực tế)**
+
+## Summary
+
+- Đóng các mục backend còn mở nhưng đã có code thực thi: 2.1–2.5 và 3.1–3.3.
+- Evidence lấy trực tiếp từ search trong `advisory/views.py`, `advisory/tasks.py`, `identity_access/security.py`, `advisory/urls.py`, `signal_intelligence/views.py`.
+
+## Files Updated
+
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- Code search ✅ xác nhận đủ marker cho context merge, Fernet, route canonicalization, reset task, và token budget 429 guard.
+
+## Residual Risk
+
+- Full backend regression trên host venv vẫn bị chặn bởi thiếu dependency `dj_database_url`.
+
+# 2026-05-29 — AI SSOT slice: advisory session persistence closure ✅
+
+Status: **✅ DONE (1.1, 1.2, 4.1, 4.2 đã được đóng bằng implementation + regression test)**
+
+## Summary
+
+- Materialize `AdvisorySession` và `AdvisoryComponent` ngay sau advisory generation để có vết multi-turn thật sự cho lane AI.
+- Redact sensitive context trên surface session/component mới, tránh nhân bản plaintext key sang vết lưu bổ sung.
+- Xác nhận lại `UserAlertDelivery`/`UserAlertPreference` và threshold delivery đã có migration + runtime wiring đầy đủ nên taskboard 1.1/1.2 có thể đóng.
+
+## Files Updated
+
+- `packages/core/backend/src/advisory/tasks.py`
+- `packages/core/backend/tests/test_advisory_ssot.py`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `manage.py test tests.test_advisory_ssot.AdvisorySsotContextMergeTests.test_advisory_refresh_materializes_session_and_components --keepdb` ✅ pass.
+- `py_compile` + `get_errors` ✅ sạch cho hai file Python đã chỉnh.
+
+## Residual Risk
+
+- `AdvisoryRecord.context_snapshot` vẫn giữ dữ liệu effective context cũ theo behavior hiện hữu; slice này chỉ siết surface mới.
+
+# 2026-05-29 — AI SSOT slice: close taskboard item 5.1 ✅
+
+Status: **✅ DONE (đã xác nhận loại bỏ hook `useAIAdvisor.js` khỏi SaaS-native runtime)**
+
+## Summary
+
+- Hoàn tất đối chiếu codebase và đóng mục 5.1 trong taskboard AI SSOT.
+- Không còn tham chiếu `useAIAdvisor` trong `packages/web/src/**`.
+- Runtime đã được refresh lại thành công bằng `start_dev.ps1`; smoke checks đều xanh.
+
+## Files Updated
+
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- Code search ✅ không còn `useAIAdvisor` trong `packages/web/src/**`.
+- Runtime smoke ✅ `Core API health: OK`, `Frontend health: OK`.
+
+## Residual Risk
+
+- Đây là slice tài liệu/evidence, không có thay đổi code runtime mới.
+
+# 2026-05-29 — AI SSOT slice: AIAdvisorAlertPanel i18n closure ✅
+
+Status: **✅ DONE (Giai đoạn 5.5 đã đóng với test tự động + taskboard gate cập nhật)**
+
+## Summary
+
+- Hoàn tất i18n cho `AIAdvisorAlertPanel` bằng translator key-based theo locale runtime (`vi` mặc định, `en` fallback theo browser language).
+- Loại bỏ nhãn hardcoded trực tiếp trong panel; toàn bộ title/button/state/severity/metric/trend labels đều đi qua hàm `t()`.
+- Thêm test focused để bảo vệ behavior i18n và fallback key.
+
+## Files Updated
+
+- `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js`
+- `packages/web/src/features/dashboard/__tests__/AIAdvisorAlertPanel.i18n.test.js`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `npm --prefix packages/web test -- AIAdvisorAlertPanel.i18n.test.js` ✅ `1 suite passed`, `3 tests passed`.
+- `get_errors` ✅ không lỗi ở panel và file test mới.
+
+## Residual Risk
+
+- Slice này là frontend-focused; backend advisory lanes chưa được re-run full regression trong bước này.
+
+# 2026-05-29 — AI SSOT verification closure (runtime + docs) ✅
+
+Status: **✅ VERIFIED + DOCS CLOSED (REQ-TEN/RATE/UI/KL đã align code-test-runtime-docs)**
+
+## Summary
+
+- Xác nhận implementation thực tế đã hoàn tất: tenant isolation test core route, scheduler reset token 00:00, AIAdvisorAlertPanel mount vào dashboard lane AI, và viewport whale markers đã wire vào KLine runtime.
+- Chạy lại focused suites để lấy evidence mới nhất và xác nhận stack runtime vẫn healthy.
+- Đồng bộ lại bộ `docs/ai-ssot` từ trạng thái pending/gap sang trạng thái production-verified.
+
+## Files Updated
+
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md`
+- `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- Backend: `manage.py test tests.test_signal_intelligence_api_routes --keepdb` ✅ `4 passed`.
+- Frontend: focused Jest suites ✅ `6 passed`, `71 tests`.
+- Runtime: `start_dev.ps1` ✅ smoke checks `Core API health: OK`, `Frontend health: OK`.
+- Compose status ✅ `core-api`, `core-beat`, `frontend` và worker stack đều healthy/up.
+
+## Residual Risk
+
+- Không có residual blocker mới trong phạm vi AI SSOT sau vòng xác minh và đồng bộ tài liệu này.
+
+# 2026-05-29 — AI SSOT doc pack re-audit synced với codebase thực tế ✅
+
+Status: **✅ DOCS UPDATED (traceability/protocol/taskboard/spec/handoff đã phản ánh đúng implemented-vs-gap)**
+
+## Summary
+
+- Đồng bộ lại toàn bộ bộ tài liệu `docs/ai-ssot` theo trạng thái code hiện tại để loại bỏ claim quá mức (đặc biệt coverage 100%).
+- Chuẩn hóa ma trận truy xuất sang trạng thái `implemented | partial | gap` để đội dev/QA đóng gate theo rủi ro thực tế.
+- Đánh dấu rõ các gap còn mở: test cross-tenant cho route `/core/v1/signals/alert-center/feed`, hook/test viewport whale markers, và evidence schedule reset token 00:00.
+
+## Files Updated
+
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_TRACEABILITY_MATRIX_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260529.md`
+- `docs/ai-ssot/TASKBOARD_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/TECH_SPEC_AI_STOCK_ADVISORY_SSOT_UPGRADE_20260529.md`
+- `docs/ai-ssot/AI_STOCK_ADVISORY_SSOT_UPGRADE_HANDOFF_MASTER_20260529.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `get_errors` trên 5 file docs `ai-ssot` ✅ không có diagnostics.
+- Cross-check sau chỉnh sửa ✅ không còn câu chữ bắt buộc `test_advisory_ssot.py` là file mới cần tạo.
+
+## Residual Risk
+
+- Slice hiện tại là doc-only, chưa bổ sung test/runtime code nên chưa có evidence từ `./start_dev.ps1` cho thay đổi này.
+- Các gap đã được ghi rõ trong docs, cần follow-up code slice để đóng gate chính thức.
+
+# 2026-05-28 — Billing phase-2 runtime fix: quota 500 removed, UI no longer fail-fast ✅
+
+Status: **✅ CODE + RUNTIME VERIFIED (billing page path visible and resilient under partial data failures)**
+
+## Summary
+
+- Backend: fix `QuotaListView` pagination ordering mismatch bằng paginator riêng `QuotaCursorPagination(ordering='-period_start')` để loại bỏ `FieldError` tại `/core/v1/billing/quota`.
+- Frontend: `BillingCenterPage` chuyển sang `Promise.allSettled`, cho phép render phần dữ liệu có sẵn thay vì crash cả trang khi một endpoint lỗi.
+- Runtime ops: xử lý lỗi compose conflict container `vninvest-dev-mailpit`, sau đó khởi động lại stack thành công.
+
+## Files Updated
+
+- `packages/core/backend/src/commercial/views.py`
+- `packages/web/src/pages/commercial/BillingCenterPage.js`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `./start_dev.ps1` ✅ stack healthy (`Core API health: OK`, `Frontend health: OK`).
+- `GET http://localhost:8001/core/v1/billing/quota` ✅ `200` với payload rỗng hợp lệ.
+- `GET http://localhost:8001/core/v1/billing/invoices?page=1&page_size=10` ✅ `200`.
+- Frontend bundle check ✅ chứa logic `Promise.allSettled` cho Billing Center.
+
+## Residual Risk
+
+- `billing/subscription` có thể `404` nếu tenant chưa có dữ liệu subscription; UI hiện degrade đúng (no-plan state), nhưng để demo đầy đủ cần seed dữ liệu commercial.
+
+# 2026-05-28 — Frontend handoff pack cho VNPay/Billing/Notification Phase 2 ✅
+
+Status: **✅ DOC PACK READY (SaaS-native OpenAPI handoff complete, implementation chưa bắt đầu)**
+
+## Summary
+
+- Đã tạo mới đầy đủ bộ tài liệu bàn giao frontend cho Phase 2 theo hướng SaaS native OpenAPI cho VNPay, Billing và Notification.
+- Đã khóa rõ boundary: chỉ `packages/web` + `packages/core`, callback `payment-return` chuẩn, browser không gọi IPN, payment truth phải đọc lại qua status endpoint.
+- Đã tách rõ phần có thể triển khai ngay trong phase 2 frontend và phần notification phải deferred cho đến khi backend contract đủ chuẩn OpenAPI.
+- Đã regenerate `module_tree_full.md` sau khi hoàn tất doc pack.
+
+## Files Updated
+
+- `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_HANDOFF_MASTER_20260528.md`
+- `docs/detailed_designs/IMPLEMENTATION_PLAN_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md`
+- `docs/detailed_designs/TECH_SPEC_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md`
+- `docs/detailed_designs/FRONTEND_DESIGN_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md`
+- `docs/detailed_designs/TASKBOARD_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md`
+- `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_TRACEABILITY_MATRIX_20260528.md`
+- `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_CONFIG_OWNERSHIP_MATRIX_20260528.md`
+- `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md`
+- `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_EXECUTION_EVIDENCE_TEMPLATE_20260528.md`
+- `docs/detailed_designs/VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_CODE_QUALITY_CONSTITUTION_20260528.md`
+- `docs/detailed_designs/RUN_CODE_REVIEW_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md`
+- `docs/detailed_designs/RUN_INTEGRATION_TESTS_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md`
+- `docs/detailed_designs/RUN_SPEC_AUDIT_VNPAY_BILLING_NOTIFICATION_FRONTEND_SAAS_OPENAPI_PHASE2_20260528.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `git diff --check` sạch cho toàn bộ 13 tài liệu mới.
+- `get_errors` không báo lỗi trên nhóm markdown vừa tạo.
+- `module_tree_full.md` regenerate thành công với `Modules: 2659`.
+
+## Residual Risk
+
+- Đây là doc-pack bàn giao, chưa phải implementation; chưa có runtime code mới nào được ship từ pack này.
+- Notification user-facing vẫn phụ thuộc backend contract riêng; nếu contract chưa đủ OpenAPI metadata thì phải giữ deferred ở phase thực thi.
+
+# 2026-05-28 — Pre-migration audit, quarantine models, NOT NULL migrations & Nginx rate limiting ✅
+
+Status: **✅ CODE DONE (migration 0011, audit command, QuarantinedRecord model, and Nginx limits applied)**
+
+## Summary
+
+- Đã thêm model `QuarantinedRecord` vào `user_workspace/models.py` phục vụ việc cô lập dữ liệu mồ côi.
+- Đã tạo Django management command `audit_orphans` để quét 6 bảng mồ côi, quarantine chúng dạng JSON và reject migration (exit 1) nếu dữ liệu chưa sạch đúng theo đặc tả.
+- Đã cập nhật 6 model trong `models.py` thành `null=False` (NOT NULL) cho trường `tenant` FK.
+- Đã tạo tệp tin migration `0011_enforce_tenant_not_null.py` để đồng bộ cấu trúc PostgreSQL NOT NULL.
+- Đã thiết lập `limit_req_zone` và `limit_req` tại các tệp cấu hình Nginx (`nginx.conf` và `nginx-opencore.conf`) bảo vệ endpoints API.
+- Đã thêm tài liệu `TECHNICAL_AUDIT_REPORT_20260528.md` ghi nhận kết quả kiểm toán kỹ thuật chính thức.
+
+## Files Updated
+
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md`
+- `docs/detailed_designs/TECHNICAL_AUDIT_REPORT_20260528.md`
+- `packages/core/backend/src/user_workspace/models.py`
+- `packages/core/backend/src/user_workspace/management/commands/audit_orphans.py`
+- `packages/core/backend/src/user_workspace/migrations/0011_enforce_tenant_not_null.py`
+- `frontend/docker/nginx.conf`
+- `packages/opencore/distribution/nginx-opencore.conf`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `git diff --check` sạch hoàn toàn không lỗi.
+- Django management command `audit_orphans` sẵn sàng chạy tiền di trú.
+- File migration 0011 được viết thủ công đúng chuẩn, liên kết chính xác dependencies 0010.
+- Cấu hình Nginx rate limiting biên dịch và parse thành công.
+
+## Residual Risk
+
+- Phân giải dependencies `vnbroker` và `stockchart` qua pip vẫn yêu cầu `VNBROKER_GITHUB_TOKEN` hợp lệ trên môi trường chạy local.
+
+# 2026-05-28 — Project hardening doc-pack lock for code-team handoff ✅
+
+Status: **✅ DOC PACK DONE (execution handoff complete; no runtime code changed in this slice)**
+
+## Summary
+
+- Chốt lại `PROJECT_HARDENING_ACTION_PLAN_20260528.md` theo hướng trung thực hơn với execution reality: QG-1 backend gate chỉ được coi là sẵn sàng khi core env đã bootstrap đúng dependency set và env vars tối thiểu.
+- Tạo đầy đủ bộ 12 tài liệu handoff trong `docs/detailed_designs/` cho đội code thực thi, gồm handoff master, implementation plan, tech spec, taskboard, traceability, self-audit, evidence template, ownership matrix, quality constitution và 3 runbooks.
+- Khóa rõ hai điểm từng gây audit ambiguity: backend test lane của `packages/core/backend` và packaging gate thực tế của `packages/web` là `build-community`.
+
+## Files Updated
+
+- `docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md`
+- `docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_EXECUTION_EVIDENCE_TEMPLATE_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CONFIG_OWNERSHIP_MATRIX_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_CODE_QUALITY_CONSTITUTION_20260528.md`
+- `docs/detailed_designs/RUN_CODE_REVIEW_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/RUN_INTEGRATION_TESTS_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/RUN_SPEC_AUDIT_PROJECT_HARDENING_BACKEND_20260528.md`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `git diff --check -- docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md` ✅ clean.
+- `git diff --check -- docs/detailed_designs/PROJECT_HARDENING_BACKEND_SELF_AUDIT_AND_TEST_PROTOCOL_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_EXECUTION_EVIDENCE_TEMPLATE_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_CONFIG_OWNERSHIP_MATRIX_20260528.md docs/detailed_designs/PROJECT_HARDENING_BACKEND_CODE_QUALITY_CONSTITUTION_20260528.md docs/detailed_designs/RUN_CODE_REVIEW_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/RUN_INTEGRATION_TESTS_PROJECT_HARDENING_BACKEND_20260528.md docs/detailed_designs/RUN_SPEC_AUDIT_PROJECT_HARDENING_BACKEND_20260528.md` ✅ clean.
+- Directory audit `docs/detailed_designs/` ✅ confirmed 12 new handoff docs present.
+-
+pm --prefix packages/web run build-community` ✅ rerun completed successfully and wrote artifact to `packages/web/dist/community`.
+- `& "c:\Mujoco Projects\vninvest\backend\.venv\Scripts\python.exe" packages/core/backend/manage.py test identity_access market_data user_workspace service_ops --keepdb` ⚠️ still fails in shared `backend/.venv` with `ModuleNotFoundError: dj_database_url`, confirming the newly added bootstrap prerequisite remains mandatory.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ module tree regenerated after documentation slice.
+
+## Residual Risk
+
+- Đây là slice tài liệu/governance; không có thay đổi runtime code nên không chạy `./start_dev.ps1`. Backend QG-1 trên shared `backend/.venv` vẫn chưa tự tái lập được nếu chưa bootstrap dependency set của `packages/core/backend`.
+
+# 2026-05-28 — Detailed designs synced to actual code reality ✅
+
+Status: **✅ DOCS REALIGNED TO IMPLEMENTED CODE (post-implementation audit findings absorbed)**
+
+## Summary
+
+- Đồng bộ lại bộ `docs/detailed_designs` theo trạng thái code hiện tại thay vì giữ narrative planning cũ.
+- Sửa các claim sai về tenant nullable, vai trò migration `0011`/`0012`, trạng thái refactor fat-file, method/path VNPay và tiến độ taskboard.
+- Cập nhật lại các hồ sơ governance để phản ánh đúng rằng phần lớn hardening lõi đã được implement, còn lại chủ yếu là closeout/reconciliation/outbound/AI cost-control.
+
+## Files Updated
+
+- `docs/detailed_designs/PROJECT_HARDENING_ACTION_PLAN_20260528.md`
+- `docs/detailed_designs/SYSTEM_DETAILED_DESIGN_20260528.md`
+- `docs/detailed_designs/TASKBOARD_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/TECH_SPEC_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_TRACEABILITY_MATRIX_20260528.md`
+- `docs/detailed_designs/PROJECT_HARDENING_BACKEND_HANDOFF_MASTER_20260528.md`
+- `docs/detailed_designs/IMPLEMENTATION_PLAN_PROJECT_HARDENING_BACKEND_20260528.md`
+- `docs/detailed_designs/TECHNICAL_AUDIT_REPORT_20260528.md`
+- `module_tree_full.md`
+- `PROGRESS_DASHBOARD.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- Stale-claim sweep ✅ removed legacy wording around nullable tenant, `/api/v1/commercial/*`, old fat-file line counts, and `Status: Planned` taskboard markers from the synchronized docs.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2660` modules).
+- `./start_dev.ps1` ✅ rebuilt `vninvest-dev-core-runtime` and `vninvest-dev-frontend:latest`, relaunched the dev stack, and returned healthy smoke checks (`Core API health: OK`, `Frontend health: OK`).
+
+## Residual Risk
+
+- Commercial foundation đã có nhưng reconciliation/replay flow của VNPay vẫn chưa có evidence hoàn chỉnh trong code hiện tại.
+- QG-1 backend reproducibility vẫn phụ thuộc bootstrap dependency đúng theo từng machine/container.
+
+# 2026-05-27 — Frontend chart-engine source renamed to `stockchart` ✅
+
+Status: **✅ CODE DONE, SECRET-AUTH BUILD GREEN VIA `gh auth`, DEV FRONTEND IMAGE LOADED**
+
+## Summary
+
+- Frontend build-critical paths no longer assume the sibling repo is named `vnstockchars`; they now point to the renamed upstream source `stockchart`.
+- Internal package names remain unchanged because the upstream repo still exposes `vnstockcharts` and `@vnstockcharts/*`.
+- Host-side dependency resolution succeeded after cloning `c:\Mujoco Projects\stockchart`, so the rename is not blocked on code-level path errors.
+- Frontend Docker builds now use the shared `vnbroker_github_token` BuildKit secret instead of anonymous GitHub clone attempts.
+- `./start_dev.ps1 -FrontendOnly` refreshed the dev frontend through the GitHub CLI auth lane and the running container references the current `vninvest-dev-frontend:latest` image digest.
+- `module_tree_full.md` da duoc regenerate lai theo rule workspace.
+
+## Files Updated
+
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/Dockerfile.dev-package-shell`
+- `docker-compose.yml`
+- `docker-compose.dev.yml`
+- `docker-compose.prod.yml`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- GitHub repo audit ✅ `vietdungiitb/stockchart` exists, default branch is `dev`, and package manifests still declare `vnstockcharts` / `@vnstockcharts/*`.
+- `get_errors` on touched files ✅ no diagnostics.
+- `cd frontend && npm install --ignore-scripts --no-package-lock --legacy-peer-deps` ✅ completed successfully against the new `../../stockchart/...` paths.
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml config` ✅ merged successfully after the frontend build-secret wiring.
+- Raw `docker build` with the PAT from `compose.dev.env` ⚠️ now fails specifically on GitHub auth for `stockchart`, proving the remaining issue is credential scope rather than path/config.
+- Raw `docker build` with `gh auth token` ✅ cloned `stockchart`, built the engine packages, completed frontend install, and progressed into `react-scripts build`.
+- `./start_dev.ps1 -FrontendOnly` ✅ used GitHub CLI auth precedence and the live `vninvest-dev-frontend` container now references image digest `sha256:3c182d89be72e285735a59f5b46bd6b03b298a3218874f058dcf36640d9f7ce7`.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md`.
+-
+pm ci` ⚠️ blocked by pre-existing frontend lock drift unrelated to this rename.
+
+## Residual Risk
+
+- `packages/core/backend/requirements.txt` currently pins `stockchart.git@v1.0.0`, but upstream has no published tags yet.
+- The PAT currently persisted in `compose.dev.env` does not authenticate against `stockchart`; direct raw Docker builds that read only that env-file token will still fail until the token is rotated or refreshed.
+
+# 2026-05-27 — Stock detail live runtime fix on `/stocks/TPB` ✅
+
+Status: **✅ DONE (live bundle rebuilt + browser proof green + package-web regressions green)**
+
+## Summary
+
+- Re-anchored the stock-detail fix into `packages/web`, the real runtime owner of `/stocks/:symbol`, instead of relying on the shell-only `frontend` path.
+- Hydrated `orderFlowData.cvd_series` through the effective fallback path and normalized the remaining legacy chart series ids so the live widget no longer trips `SeriesRegistry`.
+- Repaired `./start_dev.ps1` so `-FrontendOnly` can rebuild the actual live frontend image without silently relaunching stale bundles.
+
+## Files Updated
+
+- `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js`
+- `packages/web/src/features/stock-detail/orderFlowFallback.js`
+- `packages/web/src/features/stock-detail/__tests__/orderFlowFallback.test.js`
+- `packages/web/src/components/VNStockChartPanel.js`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.js`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.ts`
+- `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js`
+- `packages/web/src/components/vnstockcharts/widget/VNStockChart.js`
+- `packages/web/src/components/vnstockcharts/widget/VNStockChart.tsx`
+- `start_dev.ps1`
+- `module_tree_full.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `cd packages/web && npm test -- --runInBand src/features/stock-detail/__tests__/orderFlowFallback.test.js src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js` ✅ (`2 suites, 5 passed`).
+- `./start_dev.ps1 -FrontendOnly` ✅ rebuilt frontend and switched live runtime to `main.52c19547.js` (`sha256 c6d9d17de8035f0f1ad0b3a41c2fa1e6f644360529e56312b3a6460a10ee3e70`).
+- Browser proof on `/stocks/TPB` ✅ no chart error, no `0 buckets`, no `Không có dữ liệu CVD trong phiên`, chart rendered, radar shows `1 buckets`.
+- React prop proof ✅ live `orderFlowData` now contains `cvd_series` and `_cvd_source`.
+- `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2627` modules).
+
+## Residual Risk
+
+- Có console 404 advisory chưa được xử lý trong slice này; không ảnh hưởng tới chart runtime proof hoặc CVD hydration.
+
+# 2026-05-27 — Dashboard data-sync hotfix (heatmap + whale fallback) ✅
+
+Status: **✅ CODE + FOCUSED TEST DONE (runtime docker refresh blocked by host daemon)**
+
+## Summary
+
+- Fixed heatmap fallback so `% change` no longer collapses to `0.00%` when realtime feed is temporarily empty.
+- Added backend fallback to reconstruct CVD from canonical whale events when SessionFacts buckets are missing.
+- Added regression test for fallback path and made test cache in-memory to remove external Redis dependency.
+
+## Files Updated
+
+- `frontend/src/pages/PackageDashboardHost.jsx`
+- `packages/core/backend/src/user_workspace/portfolio_analytics_views.py`
+- `packages/core/backend/src/user_workspace/test_portfolio_whale_analytics_native.py`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+- `MODIFIED_FILES_AUDIT_T12_PHASE_4_20250501.md`
+
+## Validation
+
+- `cd packages/core/backend && DJANGO_DEBUG=true DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 python manage.py test user_workspace.test_portfolio_whale_analytics_native` ✅ (`2 passed`).
+- `./start_dev.ps1` ⚠️ executed but Docker daemon missing on host (`dockerDesktopLinuxEngine` not found), so stack smoke checks could not be completed in this session.
+
+## Residual Risk
+
+- Need one runtime smoke pass after Docker daemon is up to verify containerized health endpoints and UI parity in dev stack.
+
 # 2026-05-25 — Slice 7 registration frontend anti-spam DONE ✅
 
 Status: **✅ DONE (Turnstile + honeypot + field error parsing + runtime smoke green)**
@@ -208,7 +677,8 @@ Status: **✅ DONE (code + docs + runtime refresh complete)**
 
 ## Validation
 
-- `npm test -- src/adapters/coreApiAdapter.test.js` ✅ (`46 passed`).
+-
+pm test -- src/adapters/coreApiAdapter.test.js` ✅ (`46 passed`).
 - `manage.py test src.identity_access.tests.test_register_upgrade src.identity_access.tests.test_operator_mail_config src.vninvest_core.tests.test_status_codes_and_errors.ErrorEnvelopeConsistencyTests --keepdb` ✅ (`22 passed`).
 - `./start_dev.ps1` ✅ completed; smoke checks: `Core API health: OK`, `Frontend health: OK`.
 - `python scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2588` modules).
@@ -240,7 +710,8 @@ Status: **✅ DONE (permission split complete + tests green) | ⚠️ local runt
 
 ## Validation
 
-- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ✅ (`5 passed`).
+-
+pm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ✅ (`5 passed`).
 - `Set-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py test identity_access.tests.test_capabilities_soc --keepdb` ✅ (`3 passed`).
 - `get_errors` on touched backend/frontend files ✅ no diagnostics.
 - `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2575` modules).
@@ -276,7 +747,8 @@ Status: **✅ DONE (permission split + tests green) | ⚠️ local runtime smoke
 
 ## Validation
 
-- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ✅ (`4 passed`).
+-
+pm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ✅ (`4 passed`).
 - `Set-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py test identity_access.tests.test_capabilities_soc --keepdb` ✅ (`3 passed`).
 - `get_errors` on all touched files ✅ no diagnostics.
 - `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2575` modules).
@@ -317,8 +789,10 @@ Status: **✅ ROUTE + MENU + PAGE + I18N DONE (runtime smoke blocked by local Do
 
 ## Validation
 
-- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx` ✅ (`2 passed`).
-- `npm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ⚠️ `App.test.jsx` fail do Jest ESM của `echarts/core` (không phải regression từ tenant-members slice).
+-
+pm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx` ✅ (`2 passed`).
+-
+pm test -- --watchAll=false src/pages/admin/tenant/TenantMembers.test.jsx src/App.test.jsx` ⚠️ `App.test.jsx` fail do Jest ESM của `echarts/core` (không phải regression từ tenant-members slice).
 - `get_errors` on all touched files ✅ no diagnostics.
 - `./.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` ✅ regenerated `module_tree_full.md` (`2575` modules).
 - `./start_dev.ps1` ✅ executed nhưng Docker daemon local unavailable nên `core-api/frontend` smoke checks fail trên máy hiện tại.
@@ -442,7 +916,8 @@ Status: **✅ FIXED IN `packages/web` CHART PAYLOAD PARSER + VERIFIED**
 
 ## Validation
 
-- `npm test -- --runInBand src/adapters/coreApiAdapter.test.js` ✅ (42 tests passed)
+-
+pm test -- --runInBand src/adapters/coreApiAdapter.test.js` ✅ (42 tests passed)
 - `python scripts/ops/generate_module_tree.py` ✅ (`module_tree_full.md` regenerated)
 - `get_errors` on touched hook file ✅ no editor diagnostics
 
@@ -619,7 +1094,8 @@ Status: **✅ ROUTE CUTOVER DONE + FRONTEND BRIDGE THINNED + BROWSER VERIFIED**
 - Browser smoke on logged-in `/stocks/FPT` ✅ page mới đang render.
 - `git diff --check -- ...` scoped frontend files ✅
 - `scripts/ops/generate_module_tree.py` ✅
-- `./start_dev.ps1` ✅ stack healthy; frontend image build still logs pre-existing `react-scripts` vs `typescript@6` peer conflict during `npm ci`.
+- `./start_dev.ps1` ✅ stack healthy; frontend image build still logs pre-existing `react-scripts` vs `typescript@6` peer conflict during
+pm ci`.
 
 ## Residual Risk
 - `packages/web` package-local standalone dependency cleanup vẫn chưa phải một phần của slice này.
@@ -644,11 +1120,13 @@ Status: **✅ PANEL PARITY WIRED + SHELL CHECK ADDED + DEV STACK REFRESHED**
 
 ## Validation
 - `get_errors` on touched `packages/web` files ✅ none.
-- `node ./scripts/check-stock-detail-shell.mjs` ✅
+-
+ode ./scripts/check-stock-detail-shell.mjs` ✅
 - `git diff --check -- ...` on touched stock-detail package files ✅
 - Forbidden-pattern scan on touched files ✅ no matches.
 - `scripts/ops/generate_module_tree.py` ✅
-- `./start_dev.ps1` ✅ dev stack healthy; frontend image build still logs pre-existing `react-scripts` vs `typescript@6` peer conflict during `npm ci`.
+- `./start_dev.ps1` ✅ dev stack healthy; frontend image build still logs pre-existing `react-scripts` vs `typescript@6` peer conflict during
+pm ci`.
 
 ## Residual Risk
 - Direct standalone Node imports from `packages/web/src/components/*` remain an imperfect smoke test in this workspace because source-level runtime dependencies are not fully installed for isolated package execution.
@@ -670,10 +1148,12 @@ Status: **✅ SHELL HOST WIRED + PAGE REGISTRY REPOINTED + DEV STACK REFRESHED**
 - `module_tree_full.md`
 
 ## Validation
-- `node --input-type=module ... getPageLoader('core-stock-detail')` ✅ loader registered in `packages/web`.
+-
+ode --input-type=module ... getPageLoader('core-stock-detail')` ✅ loader registered in `packages/web`.
 - Editor diagnostics on touched `packages/web` files ✅ none.
 - `scripts/ops/generate_module_tree.py` ✅
-- `./start_dev.ps1` ✅ dev stack healthy; frontend image build still logs pre-existing `react-scripts` vs `typescript@6` peer conflict during `npm ci`.
+- `./start_dev.ps1` ✅ dev stack healthy; frontend image build still logs pre-existing `react-scripts` vs `typescript@6` peer conflict during
+pm ci`.
 
 ## Residual Risk
 - The route now uses SaaS shell architecture, but the raw stock-detail surface still renders package-safe fallback chart/radar blocks rather than full widget parity.
@@ -699,13 +1179,15 @@ Status: **✅ CODED + FRONTEND ADAPTER TESTS GREEN + DEV STACK REFRESHED**
 - `module_tree_full.md`
 
 ## Validation
-- `npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` ✅ (34/34)
+-
+pm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` ✅ (34/34)
 - `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml exec -T core-api python /app/src/manage.py test signal_intelligence.tests.test_alert_center_api --keepdb` ✅ (5/5)
 - `./start_dev.ps1` ✅ stack restarted + health/smoke OK (core-api, frontend)
 - `scripts/ops/generate_module_tree.py` ✅
 
 ## Residual Risk
-- Frontend container image rebuild still encounters pre-existing `react-scripts` peer conflict with `typescript@6` in `npm ci`.
+- Frontend container image rebuild still encounters pre-existing `react-scripts` peer conflict with `typescript@6` in
+pm ci`.
 
 # 2026-05-21 — Chot quy dinh cung bat buoc dung handoff doc-pack skills ✅
 
@@ -930,8 +1412,10 @@ Status: **✅ IMPLEMENTATION + VALIDATION COMPLETE (core/public routes + adapter
 
 ## Validation
 - Backend: `manage.py test market_data.tests.test_stock_management_native_api --keepdb` -> PASS (`50` tests).
-- Shared package: `npm test -- src/adapters/coreApiAdapter.test.js` -> PASS (`32` tests).
-- Frontend wrapper: `npm test -- --runTestsByPath src/api/client.coreRoutes.test.js` -> PASS (`10` tests).
+- Shared package:
+pm test -- src/adapters/coreApiAdapter.test.js` -> PASS (`32` tests).
+- Frontend wrapper:
+pm test -- --runTestsByPath src/api/client.coreRoutes.test.js` -> PASS (`10` tests).
 - Audit checks: `git diff --check` (scoped files) -> PASS; forbidden pattern scan (`print(`, `vnbroker.explorer`) -> clean.
 - Module tree regen: `scripts/ops/generate_module_tree.py` executed.
 - Runtime refresh: `./start_dev.ps1` -> core API healthy, frontend healthy, queue drift clean.
@@ -1090,7 +1574,8 @@ Status: **✅ native core ownership confirmed, auth review blockers closed, focu
 - `start_dev.ps1` — PASS
   - `vninvest-dev-core-runtime` and `vninvest-dev-frontend` rebuilt successfully
   - `vninvest-dev-core-api` reached `healthy`
-  - native scheduler queue check returned `No queue drift detected`
+  - native scheduler queue check returned
+o queue drift detected`
   - smoke checks passed: `Core API health : OK`, `Frontend health : OK`
 
 ## Residual Risk
@@ -1198,7 +1683,9 @@ Status: **✅ WATCHLIST STOCK-MANAGEMENT ACTION PATH MOVED TO `/core/v1`** | foc
 Status: **✅ STOCK DETAIL / WHALE ALERTS PRIMARY READ PATH MOVED TO `/core/v1`** | backend suite PASS | frontend wrapper suite PASS | frontend build PASS | dev runtime refreshed | module tree synced
 
 ## Summary
-- Mounted the native stock-detail read family under `/core/v1/stock-management/stocks/<symbol>/...` for `profile`, `overview`, `chart`, `order-flow`, `news`, `news/ai-summary`, and `financials`.
+- Mounted the native stock-detail read family under `/core/v1/stock-management/stocks/<symbol>/...` for `profile`, `overview`, `chart`, `order-flow`,
+ews`,
+ews/ai-summary`, and `financials`.
 - `frontend/src/api/client.js` now reads those surfaces through core stock-management routes instead of compat `/api/stock-management/stocks/*`, so `StockDetail`, `WhaleAlertsDashboard`, and `StockNewsPanel` no longer depend on the legacy read namespace for this slice.
 - Replaced the same-origin `baseURL: ''` override pattern in the stock-management core wrappers with a resolved core base derived from env, so external API hosts/prefixes continue to work.
 - Aligned tracked-symbol creation with the same facts-first existence rule used by stock detail, so a symbol that opens from native market facts can also be tracked from the same page.
@@ -1792,13 +2279,14 @@ Status: **✅ heatmap shows real % changes** | **✅ alert center: 21 alerts (8 
 ## What changed
 - **Backend**: `_MARKET_ANOMALY_PCT_THRESHOLD` lowered 7%→1% with tiered severity; alerts now cover all 1%+ moves (21 for admin's 59-symbol universe)
 - **Backend**: Weekend reference-price bug fixed in `vnbroker_materializer.py`; no longer uses calendar yesterday when market closed
-- **Backend**: `detect-market-anomaly-alerts-5m` added to `CELERY_BEAT_SCHEDULE`; runs every 5 minutes automatically  
+- **Backend**: `detect-market-anomaly-alerts-5m` added to `CELERY_BEAT_SCHEDULE`; runs every 5 minutes automatically
 - **Frontend**: `changePct` fallback chain in `ModernDashboard.jsx` now includes `trackedInfo?.change_pct` for tracked symbols not in holdings
 
 ## Validation
 - Alert center: `/core/v1/signals/alert-center/summary` → `{total: 21, medium: 8, low: 13}` ✅
 - Heatmap symbols with color: BID +5.47%, ACB -1.29%, BMP -1.72%, CTG +1.40% ✅
-- `npm run build` → PASS (`main.9c6895b5.js`) ✅
+-
+pm run build` → PASS (`main.9c6895b5.js`) ✅
 - `./start_dev.ps1` → PASS (14 containers healthy) ✅
 
 ## Notes
@@ -1815,7 +2303,8 @@ Status: **✅ legacy UI preserved** | **✅ core-native data bridge wired** | **
 - Added native bridge for portfolio news digest and kept the existing `{ data }` contract expected by the legacy dashboard components.
 
 ## Validation
-- `npm run build` → **PASS** (no errors)
+-
+pm run build` → **PASS** (no errors)
 - `./start_dev.ps1` → **PASS** (Core API health OK, Frontend health OK)
 - Browser smoke at `/dashboard` → **PASS** (legacy UI visible, AI Alerts/AI News panel visible, market/alert sections active)
 
@@ -1829,7 +2318,8 @@ Status: **✅ legacy UI preserved** | **✅ core-native data bridge wired** | **
 - `packages/web/src/adapters/coreApiAdapter.js` now sends dashboard portfolio analytics and universe fetches to the legacy `/api/...` routes that exist in the current core backend.
 - This removes the 404 on portfolio summary seen in `/dashboard` and keeps the DM-05 route swap intact.
 - `frontend/src/App.jsx` now routes `/dashboard` back to `ModernDashboard`, so the main dashboard matches the original legacy layout.
-- Validation completed: `npm run build` PASS; browser smoke pending after the latest route restore.
+- Validation completed:
+pm run build` PASS; browser smoke pending after the latest route restore.
 
 Status: **✅ DM-00 Bug fixes** | **✅ DM-01 coreApiAdapter** | **✅ DM-02 useCoreDashboardData** | **✅ DM-03 DashboardPage render-props** | **✅ DM-04 PackageDashboardHost** | **✅ DM-05 Route swap**
 
@@ -1842,7 +2332,8 @@ Status: **✅ DM-00 Bug fixes** | **✅ DM-01 coreApiAdapter** | **✅ DM-02 use
 - **DM-05**: Route swap: `/dashboard` → `PackageDashboardHost`; shadow `/dashboard/legacy` → `ModernDashboard` (3-day parity window).
 
 ## Validation
-- `npm run build` → **PASS** (no errors, both DM-00 and DM-01..05)
+-
+pm run build` → **PASS** (no errors, both DM-00 and DM-01..05)
 - `coreApiAdapter` node import → **48 methods, OK**
 - Git: 6 commits pushed to `origin/dev` (`749882b2`..`0b0216df`)
 
@@ -1874,7 +2365,8 @@ Status: **✅ S01-S04 backend 55/55 tests** | **✅ S05 OpenAPI gate PASS** | **
 
 ## Validation
 - `docker exec manage.py test ... --keepdb` → **55/55 OK**
-- `npm run build` → **PASS** (no errors)
+-
+pm run build` → **PASS** (no errors)
 - Live container smoke: plan/health/history → **200 OK**, jobs_total=19
 - Rollback drill: disable→enable on `market-data-queue-tier-scheduler-30s` → **PASS**
 
@@ -1923,7 +2415,8 @@ Status: **✅ page registry lazy loading enabled** | **✅ ShellPageTemplate mig
 - Updated audit source doc `docs/FRONTEND_AUDIT_PACKAGES_WEB_20260517.md` with remediation status for all findings.
 
 ## Validation
-- `npm test -- --watch=false` (packages/web) -> **20 passed** ✅
+-
+pm test -- --watch=false` (packages/web) -> **20 passed** ✅
 - `scripts/ops/generate_module_tree.py` -> **1223 modules** ✅
 - `./start_dev.ps1` -> **Frontend health OK** ✅
 
@@ -1941,7 +2434,8 @@ Status: **✅ factory/static singleton anti-pattern removed** | **✅ 401 refres
 - Extended unit tests in `packages/web/src/adapters/coreApiAdapter.test.js` for refresh success/failure and injected token provider behavior.
 
 ## Validation
-- `npm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` -> **20 passed** ✅
+-
+pm test -- --runTestsByPath src/adapters/coreApiAdapter.test.js --watch=false` -> **20 passed** ✅
 - `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 
@@ -1977,7 +2471,8 @@ Status: **✅ repeated CVD 404 polling suppressed in hook** | **✅ regression t
 - Added focused test to ensure one 404 miss is not re-requested on manual refetch.
 
 ## Validation
-- `npm test -- --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js --watch=false` -> **2 passed** ✅
+-
+pm test -- --runTestsByPath src/hooks/useSessionFactsCvdSeries.test.js --watch=false` -> **2 passed** ✅
 - `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 
@@ -2031,7 +2526,8 @@ Status: **✅ retention trend summary added to observability API** | **✅ DataO
 ## Validation
 - `manage.py test service_ops.tests.test_soc_api_domain.DataOpsDomainApiTestCase.test_observability_endpoint_returns_backlog_fail_rate_and_starvation --keepdb` -> **1 passed** ✅
 - `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **49 passed** ✅
-- `npm run build` (frontend) -> **compiled successfully** ✅
+-
+pm run build` (frontend) -> **compiled successfully** ✅
 - `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 
@@ -2050,7 +2546,8 @@ Status: **✅ retention_health added to observability API** | **✅ DataOps moni
 
 ## Validation
 - `DJANGO_DEBUG=true manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` -> **75 passed** ✅
-- `npm run build` (frontend) -> **compiled successfully** ✅
+-
+pm run build` (frontend) -> **compiled successfully** ✅
 - `scripts/ops/generate_module_tree.py` -> **1211 modules** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 
@@ -2141,7 +2638,8 @@ Status: **✅ parity_history added in observability API** | **✅ DataOps monito
 
 ## Validation
 - `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **48 passed** ✅
-- `npm run build` (frontend) -> **compiled successfully** ✅
+-
+pm run build` (frontend) -> **compiled successfully** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
 
@@ -2163,7 +2661,8 @@ Status: **✅ parity windows now include trend deltas** | **✅ DataOps monitor 
 
 ## Validation
 - `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **48 passed** ✅
-- `npm run build` (frontend) -> **compiled successfully** ✅
+-
+pm run build` (frontend) -> **compiled successfully** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
 
@@ -2207,7 +2706,8 @@ Status: **✅ parity_gates added to observability API** | **✅ DataOps monitor 
 
 ## Validation
 - `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **48 passed** ✅
-- `npm run build` (frontend) -> **compiled successfully** ✅
+-
+pm run build` (frontend) -> **compiled successfully** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
 
@@ -2276,7 +2776,8 @@ Status: **✅ observability endpoint delivered** | **✅ monitor widgets added**
 
 ## Validation
 - `manage.py test service_ops.tests.test_soc_api_domain --keepdb` -> **48 passed** ✅
-- `npm run build` (frontend) -> **compiled successfully** ✅
+-
+pm run build` (frontend) -> **compiled successfully** ✅
 - `./start_dev.ps1` -> **native stack healthy, queue drift check pass, Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` -> **1210 modules** ✅
 
@@ -2431,7 +2932,8 @@ Status: **✅ order-flow native trả đủ Radar contract** | **✅ regression 
 
 ## Validation
 - `manage.py test market_data.tests.test_stock_management_native_api --keepdb` → **16 passed** ✅
-- `npm run build` (frontend) → **compiled successfully** ✅
+-
+pm run build` (frontend) → **compiled successfully** ✅
 - `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` → **1210 modules** ✅
 
@@ -2451,7 +2953,8 @@ Status: **✅ chart no-data root causes fixed** | **✅ native route naming clea
 
 ## Validation
 - Focused backend suite: `market_data.tests.test_stock_management_native_api` → **14 passed** ✅
-- Frontend build: `npm run build` → **compiled successfully** ✅
+- Frontend build:
+pm run build` → **compiled successfully** ✅
 - Runtime refresh: `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - Module tree: `scripts/ops/generate_module_tree.py` → **1210 modules** ✅
 
@@ -2490,7 +2993,8 @@ Status: **✅ planner abort endpoint added** | **✅ Backfill UI now supports st
 
 ## Validation
 - `get_errors` on touched files → **no errors** ✅
-- `npm run build` (frontend) → **compiled successfully** ✅
+-
+pm run build` (frontend) → **compiled successfully** ✅
 - `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
 - Focused backend test command for abort endpoint → **blocked by env guard (`DJANGO_ALLOWED_HOSTS`)** ⚠️
@@ -2511,7 +3015,8 @@ Status: **✅ backfill dataset mismatch fixed** | **✅ duplicate run spam block
 
 ## Validation
 - `get_errors` on touched files → **no errors** ✅
-- `npm run build` (frontend) → **compiled successfully** ✅
+-
+pm run build` (frontend) → **compiled successfully** ✅
 - `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
 
@@ -2528,7 +3033,8 @@ Status: **✅ raw i18n keys no longer shown in VNBroker per-provider UI** | **�
 
 ## Validation
 - `get_errors` on touched files → **no errors** ✅
-- `npm run build` (frontend) → **compiled successfully** ✅
+-
+pm run build` (frontend) → **compiled successfully** ✅
 - `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
 
@@ -2563,7 +3069,8 @@ Status: **✅ benchmark -> optimized candidate synthesis completed** | **✅ per
 
 ## Validation
 - `get_errors` on touched files → **no errors** ✅
-- `npm run build` (frontend) → **compiled successfully** ✅
+-
+pm run build` (frontend) → **compiled successfully** ✅
 - `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
 
@@ -2585,7 +3092,8 @@ Status: **✅ per-provider config DONE** | **✅ KBS/VCI/DNSE can now have indep
 
 ## Validation
 - Backend: `get_errors` on domain_configs/vnbroker.py + views/vnbroker.py → **no errors** ✅
-- Frontend: `npm run build` → **compiled successfully (849.49 kB main.js)** ✅
+- Frontend:
+pm run build` → **compiled successfully (849.49 kB main.js)** ✅
 - Docker: All containers rebuilt → **no failures** ✅
 - Runtime: `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - Module tree: `scripts/ops/generate_module_tree.py` → **1211 modules** ✅
@@ -2617,7 +3125,8 @@ Status: **✅ provider list corrected (KBS/VCI/DNSE)** | **✅ benchmark now run
 
 ## Validation
 - `get_errors` on all touched files → **no errors** ✅
-- `npm run build` (frontend) → **compiled successfully** ✅
+-
+pm run build` (frontend) → **compiled successfully** ✅
 - `manage.py test tests.test_admin_ops_contract_api --keepdb` (packages/core/backend) → **blocked** by required env guard (`DJANGO_ALLOWED_HOSTS`) ⚠️
 - `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
@@ -2636,7 +3145,8 @@ Status: **✅ hotfix DONE** | **✅ dashboard contract compatibility restored** 
 
 ## Validation
 - `get_errors` for affected files → **no errors** ✅
-- `npm run test -- src/components/DashboardRealtimePanel.test.jsx` → **2 tests OK** ✅
+-
+pm run test -- src/components/DashboardRealtimePanel.test.jsx` → **2 tests OK** ✅
 - `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
 
@@ -2655,7 +3165,8 @@ Status: **✅ UI slice DONE** | **✅ registry-first semantics surfaced in opera
 
 ## Validation
 - `get_errors` on updated frontend files → **no errors** ✅
-- `npm run test -- src/pages/SOCPage.test.jsx` → **1 failed** (legacy expected tab label `Ma trận` no longer matches runtime label `Runtime KPI`) ⚠️
+-
+pm run test -- src/pages/SOCPage.test.jsx` → **1 failed** (legacy expected tab label `Ma trận` no longer matches runtime label `Runtime KPI`) ⚠️
 - `./start_dev.ps1` → **Core API health OK, Frontend health OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
 
@@ -2772,8 +3283,11 @@ Status: **✅ D01 DONE** | **✅ canonical AlertCenterFeed naming applied on run
 - Updated taskboard status `D01` to `DONE`.
 
 ## Validation
-- `npm test -- --runInBand src/api/client.unifiedAlerts.test.js --watch=false` → **3 tests OK** ✅
-- `npm run check:mobile` + `npm run check:mobile-navigation` → **mobile smoke OK** ✅
+-
+pm test -- --runInBand src/api/client.unifiedAlerts.test.js --watch=false` → **3 tests OK** ✅
+-
+pm run check:mobile` +
+pm run check:mobile-navigation` → **mobile smoke OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
 - `./start_dev.ps1` → **Frontend health OK** ✅
 
@@ -2794,7 +3308,8 @@ Status: **✅ D05 DONE** | **✅ runtime path đã dùng naming chuẩn AlertCen
 - Updated taskboard status `D05` to `DONE`.
 
 ## Validation
-- `npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **5 tests OK** ✅
+-
+pm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **5 tests OK** ✅
 - `scripts/ops/generate_module_tree.py` → **module tree refreshed (1211 modules)** ✅
 - `./start_dev.ps1` → **Frontend health OK** ✅
 
@@ -2840,8 +3355,10 @@ Status: **✅ checklist validation wave DONE** | **✅ required backend suites a
 
 ## Validation
 - Backend: `manage.py test signal_intelligence.tests.test_alert_center_api signal_intelligence.tests.test_user_alert_delivery signal_intelligence.tests.test_market_anomaly_events signal_intelligence.tests.test_ai_signal_lane signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb` → **25 tests OK** ✅
-- Packages web: `npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false` → **17 tests OK** ✅
-- Frontend: `npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **4 tests OK** ✅
+- Packages web:
+pm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false` → **17 tests OK** ✅
+- Frontend:
+pm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **4 tests OK** ✅
 - Inventory: `scripts/ops/generate_module_tree.py` → **module tree refreshed (1210 modules)** ✅
 - Runtime: `./start_dev.ps1` → **Frontend health OK** ✅
 
@@ -2881,8 +3398,10 @@ Status: **✅ 1 DONE** | **✅ 2 DONE** | **✅ 3 DONE** | **✅ native alert-ce
 
 ## Validation
 - Backend: `manage.py test signal_intelligence.tests.test_materializers signal_intelligence.tests.test_delivery_service --keepdb` → **18 tests OK** ✅
-- Packages web: `npm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false` → **16 tests OK** ✅
-- Frontend: `npm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **4 tests OK** ✅
+- Packages web:
+pm test -- --runInBand src/adapters/coreApiAdapter.test.js --watch=false` → **16 tests OK** ✅
+- Frontend:
+pm test -- --runInBand src/api/client.unifiedAlerts.test.js src/components/DashboardRealtimePanel.test.jsx --watch=false` → **4 tests OK** ✅
 - Runtime: `./start_dev.ps1` → **frontend build success, No queue drift detected, Core API health OK, Frontend health OK** ✅
 - Inventory: `scripts/ops/generate_module_tree.py` → **module tree refreshed (1206 modules)** ✅
 
@@ -3095,7 +3614,8 @@ Status: **✅ D05 DONE** | **✅ getUnifiedAlerts bridged to canonical core deli
 
 ## What changed
 - Legacy `getUnifiedAlerts` client call now reads from canonical `coreApiAdapter.getUnifiedAlertDelivery`.
-- Legacy cursor shape is normalized so existing dashboard consumers still receive `next_cursor` and `has_more`.
+- Legacy cursor shape is normalized so existing dashboard consumers still receive
+ext_cursor` and `has_more`.
 - Browser snapshot synthesis fallback in `useUnifiedAlerts` was removed to keep alert truth on server delivery data.
 
 ## Validation
@@ -3440,14 +3960,16 @@ Status: **✅ Commit `0ea2a457`, 1 file changed, 145 insertions/107 deletions** 
 **Files changed (1)**
 - `frontend/src/components/soc/DataOpsPanel.jsx`
 
-**Validation:** `npm run build` → Compiled successfully (861.6 kB) | `./start_dev.ps1` → 14/14 Started; core-api Healthy; smoke checks OK | `git push origin dev` → `53d533cc..0ea2a457`
+**Validation:**
+pm run build` → Compiled successfully (861.6 kB) | `./start_dev.ps1` → 14/14 Started; core-api Healthy; smoke checks OK | `git push origin dev` → `53d533cc..0ea2a457`
 
 ---
 
 # 2026-05-16 — DataOps Planner Preview Compact Layout 🔄 → ✅
 
 Status: **✅ Commit `53d533cc` pushed to dev** | **Planner preview đã gọn hơn, không kéo dài dọc trang**
-Validation: **✅ `npm run build` Compiled successfully** | **✅ `./start_dev.ps1` 14/14 Started; core-api healthy; smoke checks OK**
+Validation: **✅
+pm run build` Compiled successfully** | **✅ `./start_dev.ps1` 14/14 Started; core-api healthy; smoke checks OK**
 
 ## What changed
 - `frontend/src/components/soc/DataOpsPanel.jsx`: phần preview của planner (`Hạng mục sẽ chạy`, `Hạng mục bị bỏ qua`) đổi sang bảng compact có chiều cao cố định, cuộn nội bộ và điều hướng trang nhỏ để operator đọc nhanh hơn mà không bị trang quá dài.
@@ -3481,14 +4003,16 @@ Validation: **✅ `npm run build` Compiled successfully** | **✅ `./start_dev.p
 - `frontend/src/i18n/vi.js`
 - `frontend/src/i18n/en.js`
 
-**Validation:** `npm run build` → Compiled successfully (858.98 kB) | `manage.py migrate service_ops` → 0003 OK | `git push origin dev` → `4804db3e..9359fdd2`
+**Validation:**
+pm run build` → Compiled successfully (858.98 kB) | `manage.py migrate service_ops` → 0003 OK | `git push origin dev` → `4804db3e..9359fdd2`
 
 ---
 
 # 2026-05-16 — DataOps Tab UX Overhaul + Snapshot Group Select Fix ✅
 
 Status: **✅ 4 commits, 13 files changed** | **Dev stack 14/14 healthy** | **Frontend compiled successfully (852 kB gzip)**
-Validation: **✅ `npm run build` Compiled successfully** | **✅ `git push origin dev` (471f3dbf → 75ddc2e1 → 3ac57866 → bb8d570b)** | **✅ `./start_dev.ps1` 14/14 Started; core-api Healthy; smoke checks OK**
+Validation: **✅
+pm run build` Compiled successfully** | **✅ `git push origin dev` (471f3dbf → 75ddc2e1 → 3ac57866 → bb8d570b)** | **✅ `./start_dev.ps1` 14/14 Started; core-api Healthy; smoke checks OK**
 
 
 ## Commit `bb8d570b` — Snapshot Section UX Fix (F1+F2+F3)
@@ -3503,7 +4027,8 @@ Validation: **✅ `npm run build` Compiled successfully** | **✅ `git push orig
 - `frontend/src/i18n/vi.js`
 - `frontend/src/i18n/en.js`
 
-**Validation:** `npm run build` → Compiled successfully (852.48 kB gzip) | `git push origin dev` → `a8fb4180..bb8d570b` | `./start_dev.ps1` → 14/14 Started, core-api Healthy, smoke checks OK
+**Validation:**
+pm run build` → Compiled successfully (852.48 kB gzip) | `git push origin dev` → `a8fb4180..bb8d570b` | `./start_dev.ps1` → 14/14 Started, core-api Healthy, smoke checks OK
 
 ## Commit `3ac57866` — DataOps Operational Context Strips (Backfill + Snapshot)
 
@@ -3517,7 +4042,8 @@ Validation: **✅ `npm run build` Compiled successfully** | **✅ `git push orig
 - `frontend/src/i18n/vi.js`
 - `frontend/src/i18n/en.js`
 
-**Validation:** `npm run build` → Compiled successfully (852.15 kB gzip) | `git push origin dev` → `75ddc2e1..3ac57866` | `./start_dev.ps1` → 14/14 Started, core-api Healthy, smoke checks OK
+**Validation:**
+pm run build` → Compiled successfully (852.15 kB gzip) | `git push origin dev` → `75ddc2e1..3ac57866` | `./start_dev.ps1` → 14/14 Started, core-api Healthy, smoke checks OK
 
 ## Commit `471f3dbf` — REQ-02/13/24 Audit Gap Fixes
 
@@ -3678,14 +4204,16 @@ Validation: **✅ backend `DataOpsDomainApiTestCase` passed (`12` tests)** | **�
 
 # 2026-05-15 — Canonical DataOps OpenAPI Schema Slice ✅
 
-Status: **✅ focused slice complete** | **Canonical DataOps routes now carry explicit OpenAPI summaries, request/response schema, examples, and a focused schema regression; the root cause of the previously empty `/core/v1/schema/` output was closed by removing DRF `NamespaceVersioning`, which was incompatible with the current namespace layout**
+Status: **✅ focused slice complete** | **Canonical DataOps routes now carry explicit OpenAPI summaries, request/response schema, examples, and a focused schema regression; the root cause of the previously empty `/core/v1/schema/` output was closed by removing DRF
+amespaceVersioning`, which was incompatible with the current namespace layout**
 Validation: **✅ backend `DataOpsDomainApiTestCase` passed (`12` tests)** | **✅ focused schema regression proves canonical DataOps `runtime-config` and `planner/preview` routes appear in `/core/v1/schema/` with request bodies** | **✅ `module_tree_full.md` regenerated successfully (`1200` modules)** | **✅ `start_dev.ps1` rebuilt/refreshed the dev stack successfully** | **✅ live schema smoke on `http://localhost:8001/core/v1/schema/` returned `200` and exposed canonical DataOps paths**
 
 ## Canonical DataOps OpenAPI Schema Subslice
 
 **What changed**
 - `service_ops/views/dataops.py` now documents canonical DataOps operator endpoints with summaries, descriptions, query parameters, request schema, response schema, and concrete examples for `queue-tiers`, `coverage`, `run-logs`, `planner/preview`, `planner/run`, and `runtime-config`.
-- `vninvest_core/settings.py` no longer uses DRF `NamespaceVersioning`, because that setting was causing the OpenAPI generator to publish an empty schema even though the routes were mounted.
+- `vninvest_core/settings.py` no longer uses DRF
+amespaceVersioning`, because that setting was causing the OpenAPI generator to publish an empty schema even though the routes were mounted.
 - `service_ops/tests/test_soc_api_domain.py` now locks the canonical OpenAPI surface by asserting that DataOps routes show up in `/core/v1/schema/` with the expected summaries and request bodies.
 
 **Residual Risk**
@@ -3846,7 +4374,8 @@ Validation: **✅ `data_ingest.tests.test_tasks` passed (`7` tests)** | **✅ `s
 - `packages/core/backend/src/data_ingest/tests/test_tasks.py` được mở rộng để khóa production writeback path thật: daily ingest, price-board materialization, và intraday warm-up đều phải tạo/refresh `GlobalSymbolCoverage` cho registry symbols liên quan.
 - `packages/core/backend/src/service_ops/tasks.py` giờ cleanup cả child `ServiceRunLog` inline khi stale parent queue-tier bị auto-recover, thay vì chỉ fail parent rồi để child `running` treo vô hạn.
 - `packages/core/backend/src/service_ops/tests/test_soc_tasks.py` thêm focused regression cho stale parent + child cleanup path; suite hiện pass `23` tests và vẫn giữ nguyên invariant “child còn mới thì phải tiếp tục giữ inflight”.
-- Runtime admin blocker đã được xử lý đúng contract auth core: compose-backed `admin` không chỉ là Django superuser mà còn có `CoreTenant`, active `CoreServiceAccount`, và `UserProfile.tenant`, nên login/profile/capabilities path không còn trả `No tenant associated with this account.`.
+- Runtime admin blocker đã được xử lý đúng contract auth core: compose-backed `admin` không chỉ là Django superuser mà còn có `CoreTenant`, active `CoreServiceAccount`, và `UserProfile.tenant`, nên login/profile/capabilities path không còn trả
+o tenant associated with this account.`.
 - Live runtime evidence hiện tại: `GlobalSymbolRegistry=1536`, `DailyPrice=157` rows cho `65` active symbols, `GlobalSymbolCoverage=5` rows sau planner smoke một symbol, manual cleanup đã dọn `8` orphan child history runs cũ, và snapshot cuối cùng xác nhận `remaining_orphans=[]`.
 
 **Files audited in this slice**
@@ -3885,7 +4414,8 @@ Validation: **✅ `service_ops.tests.test_soc_tasks` passed (`22` tests)** | **�
 - `PROGRESS_DASHBOARD.md`
 
 **Residual Risk**
-- Runtime probe cho thấy `celery_task_id` của parent queue-tier run vẫn thường hiện `not live` dù child `vnbroker_history` đang chạy; vì vậy guard mới hiện an toàn hơn trước, nhưng bản thân liveness signal từ Celery inspect vẫn chưa đủ mạnh để kết luận parent execution truth.
+- Runtime probe cho thấy `celery_task_id` của parent queue-tier run vẫn thường hiện
+ot live` dù child `vnbroker_history` đang chạy; vì vậy guard mới hiện an toàn hơn trước, nhưng bản thân liveness signal từ Celery inspect vẫn chưa đủ mạnh để kết luận parent execution truth.
 - `DailyPrice` đã materialize một phần (`157` rows / `65` active symbols) nhưng `GlobalSymbolCoverage` vẫn chưa được hydrate; do đó bài toán completeness/freshness proof vẫn chưa đóng, và child history run logs hiện vẫn thiếu `celery_task_id` riêng.
 
 # 2026-05-15 — Global Market Data Matrix Listed-Market Baseline Expansion Slice ✅
@@ -4102,7 +4632,8 @@ Validation: **✅ focused backend DataOps suite passed (`4` tests)** | **✅ foc
 # 2026-05-15 — Global Market Data Matrix T08 Core Intraday Prices Cutover Slice 🔄
 
 Status: **🔄 `T08` IN PROGRESS** | **Public core route `/core/v1/market-data/intraday-prices/<symbol>/` không còn đọc provider trực tiếp; cả core intraday prices và core intraday tape đều đã phục vụ canonical `IntradayBar`/`IntradayTick` từ shared layer**
-Validation: **✅ focused core intraday suites passed (`4` tests)** | **✅ diagnostics sạch cho `market_data.views` và test mới** | **✅ module tree regenerated (`1198` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
+Validation: **✅ focused core intraday suites passed (`4` tests)** | **✅ diagnostics sạch cho `market_data.views` và test mới** | **✅ module tree regenerated (`1198` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và
+o queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
 
 ## Global Market Data Matrix T08 Core Intraday Prices Subslice
 
@@ -4125,7 +4656,8 @@ Validation: **✅ focused core intraday suites passed (`4` tests)** | **✅ diag
 # 2026-05-15 — Global Market Data Matrix T08 Watchlist Sync Planner Routing Slice 🔄
 
 Status: **🔄 `T08` IN PROGRESS** | **Watchlist không còn tự fetch quote provider trong request path; `/api/stock-management/sync/` giờ queue một global planner run audited trên `manual_on_demand`, còn UI copy cũng đã đổi sang semantics “gửi yêu cầu làm mới”**
-Validation: **✅ focused stock-management native API suite passed (`11` tests)** | **✅ diagnostics sạch cho sync backend + i18n files** | **✅ module tree regenerated (`1197` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
+Validation: **✅ focused stock-management native API suite passed (`11` tests)** | **✅ diagnostics sạch cho sync backend + i18n files** | **✅ module tree regenerated (`1197` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và
+o queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
 
 ## Global Market Data Matrix T08 Watchlist Sync Subslice
 
@@ -4151,7 +4683,8 @@ Validation: **✅ focused stock-management native API suite passed (`11` tests)*
 # 2026-05-15 — Global Market Data Matrix T08 Intraday Read-Path Cutover Slice 🔄
 
 Status: **🔄 `T08` IN PROGRESS** | **Stock Detail và LegacyDashboard không còn kéo intraday tape từ provider trong request path; cả compat route `/api/realtime/intraday/<symbol>/` lẫn core route `/core/v1/market-data/intraday-tape/<symbol>/` giờ đọc latest-session `IntradayTick` từ shared layer**
-Validation: **✅ focused intraday suites passed (`4` tests)** | **✅ diagnostics sạch cho các view/test vừa chạm** | **✅ module tree regenerated (`1197` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
+Validation: **✅ focused intraday suites passed (`4` tests)** | **✅ diagnostics sạch cho các view/test vừa chạm** | **✅ module tree regenerated (`1197` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và
+o queue drift detected`** | **⚠️ build stage vẫn fail vì private `vnbroker` PAT không hợp lệ; probe runtime tiếp tục cho thấy image core đang stale (`/api/soc/matrix/providers/` = `401`, `/api/soc/dataops/queue-tiers/` = `404`)**
 
 ## Global Market Data Matrix T08 Intraday Read-Path Subslice
 
@@ -4177,7 +4710,8 @@ Validation: **✅ focused intraday suites passed (`4` tests)** | **✅ diagnosti
 # 2026-05-15 — Global Market Data Matrix T07 Scheduler Consumer Slice ✅
 
 Status: **✅ `T07` COMPLETE FOR CODE + VALIDATION** | **queue-tier policy không chỉ có config surface mà giờ đã có scheduler consumer thật, bám runtime cadence/batch-size và dispatch planner runs vào các queue hiện có**
-Validation: **✅ focused service-ops + planner suite passed (`55` tests)** | **✅ diagnostics sạch cho scheduler/helper/queue-policy/planner files** | **✅ module tree regenerated (`1195` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ probe runtime xác nhận route cũ `/api/soc/matrix/providers/` trả `401` nhưng cả `/api/soc/dataops/queue-tiers/` và `/api/soc/dataops/runtime-config/` đều trả `404`, nên core containers vẫn đang chạy image cũ do build private `vnbroker` tiếp tục fail**
+Validation: **✅ focused service-ops + planner suite passed (`55` tests)** | **✅ diagnostics sạch cho scheduler/helper/queue-policy/planner files** | **✅ module tree regenerated (`1195` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và
+o queue drift detected`** | **⚠️ probe runtime xác nhận route cũ `/api/soc/matrix/providers/` trả `401` nhưng cả `/api/soc/dataops/queue-tiers/` và `/api/soc/dataops/runtime-config/` đều trả `404`, nên core containers vẫn đang chạy image cũ do build private `vnbroker` tiếp tục fail**
 
 ## Global Market Data Matrix T07 Scheduler Consumer Subslice
 
@@ -4209,7 +4743,8 @@ Validation: **✅ focused service-ops + planner suite passed (`55` tests)** | **
 # 2026-05-15 — Global Market Data Matrix T07 Queue Tier API + Runtime Config Slice 🔄
 
 Status: **🔄 `T07` IN PROGRESS** | **SOC Data Ops giờ đã có backend contract cho `queue-tiers` và `runtime-config`; queue-tier policy không còn là implicit convention nằm rải rác trong registry fields**
-Validation: **✅ focused service-ops suite passed (`33` tests)** | **✅ diagnostics sạch cho các file mới/chạm trong `service_ops`** | **✅ module tree regenerated (`1194` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ probe runtime xác nhận route cũ `/api/soc/matrix/providers/` trả `401` nhưng route mới `/api/soc/dataops/queue-tiers/` trả `404`, nên core containers vẫn đang chạy image cũ do build private `vnbroker` tiếp tục fail**
+Validation: **✅ focused service-ops suite passed (`33` tests)** | **✅ diagnostics sạch cho các file mới/chạm trong `service_ops`** | **✅ module tree regenerated (`1194` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và
+o queue drift detected`** | **⚠️ probe runtime xác nhận route cũ `/api/soc/matrix/providers/` trả `401` nhưng route mới `/api/soc/dataops/queue-tiers/` trả `404`, nên core containers vẫn đang chạy image cũ do build private `vnbroker` tiếp tục fail**
 
 ## Global Market Data Matrix T07 Queue Tier API + Runtime Config Subslice
 
@@ -4240,7 +4775,8 @@ Validation: **✅ focused service-ops suite passed (`33` tests)** | **✅ diagno
 # 2026-05-15 — Global Market Data Matrix T06 Intraday Hydration Slice ✅
 
 Status: **✅ `T06` COMPLETE FOR CODE + VALIDATION** | **Planner execution giờ đã chạy được cả `daily_prices`, `price_board_snapshot`, `intraday_ticks`, và `intraday_bars`; slice refactor ingest theo `plan_items` của `T06` đã khép kín ở backend**
-Validation: **✅ focused planner/ingest suite passed (`16` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail vì PAT hiện tại không clone được private `vnbroker`, nên runtime có thể vẫn đang dùng image core cũ**
+Validation: **✅ focused planner/ingest suite passed (`16` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và
+o queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail vì PAT hiện tại không clone được private `vnbroker`, nên runtime có thể vẫn đang dùng image core cũ**
 
 ## Global Market Data Matrix T06 Intraday Hydration Subslice
 
@@ -4267,7 +4803,8 @@ Validation: **✅ focused planner/ingest suite passed (`16` tests)** | **✅ mod
 # 2026-05-15 — Global Market Data Matrix T06 Price Board Plan-Item Slice ✅
 
 Status: **✅ `T05` COMPLETE / 🔄 `T06` EXPANDED** | **Planner execution giờ đã chạy được cả `daily_prices` lẫn `price_board_snapshot`; snapshot ingest không còn buộc quét toàn active universe khi planner chỉ yêu cầu subset symbols**
-Validation: **✅ focused planner/ingest suite passed (`14` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
+Validation: **✅ focused planner/ingest suite passed (`14` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và
+o queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
 
 ## Global Market Data Matrix T06 Price Board Plan-Item Subslice
 
@@ -4296,7 +4833,8 @@ Validation: **✅ focused planner/ingest suite passed (`14` tests)** | **✅ mod
 # 2026-05-15 — Global Market Data Matrix T05 Execution Contract + T06 Daily History Slice ✅
 
 Status: **✅ `T05` COMPLETE / 🔄 `T06` STARTED** | **Planner missing-only giờ không chỉ preview mà đã có execution contract + audited run trail; daily-history ingest path cũng đã chuyển sang consume explicit `plan_items` thay vì backfill mù theo range chung**
-Validation: **✅ focused planner/ingest suite passed (`12` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và `No queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
+Validation: **✅ focused planner/ingest suite passed (`12` tests)** | **✅ module tree regenerated (`1192` modules)** | **✅ `start_dev.ps1` rerun thành công với health/smoke OK và
+o queue drift detected`** | **⚠️ build stage của `start_dev.ps1` vẫn fail ở private `vnbroker` clone nên runtime có thể đang dùng image core cũ**
 
 ## Global Market Data Matrix T05 Execution Contract + T06 Daily History Subslice
 
@@ -4686,7 +5224,8 @@ Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_ap
 
 **Validation**
 - `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_session_facts_api tests.test_market_serving_api_routes tests.test_saas14_materializers.TestMaterializeSessionFactsNative --keepdb; Pop-Location` passed (`31` tests).
-- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned `No changes detected in app 'market_serving'`.
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned
+o changes detected in app 'market_serving'`.
 - `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed after wiring KLine to facts-first bucket flow.
 - `functions.get_errors` reported no diagnostics for all touched backend/frontend files in this slice.
 - `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace to `1173` modules.
@@ -4731,7 +5270,8 @@ Validation: **✅ `tests.test_session_facts_api` + `tests.test_market_serving_ap
 - `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py test tests.test_session_facts_api tests.test_market_serving_api_routes tests.test_saas14_materializers.TestMaterializeSessionFactsNative --keepdb; Pop-Location` passed (`31` tests).
 - `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` passed after wiring `selectedTradeDate` into the frontend SessionFacts client.
 - `functions.get_errors` reported no diagnostics for all touched backend/frontend files.
-- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned `No changes detected in app 'market_serving'`.
+- `Push-Location "c:\Mujoco Projects\vninvest\packages\core\backend"; $env:DJANGO_DEBUG='true'; $env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1'; $env:DJANGO_SECRET_KEY='test-secret'; $env:CORE_PAT_PEPPER='test-pepper'; ..\..\..\.venv\Scripts\python.exe manage.py makemigrations market_serving --dry-run --check; Pop-Location` returned
+o changes detected in app 'market_serving'`.
 - `Set-Location "C:\Mujoco Projects\vninvest"; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py` regenerated `module_tree_full.md` and updated the workspace to `1171` modules.
 - `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat core-worker-manual` refreshed the full affected runtime, and a follow-up backend refresh loaded migration `0006` into the running containers.
 - `docker compose --env-file .\compose.dev.env -f .\docker-compose.yml -f .\docker-compose.dev.yml exec -T core-api python /app/src/manage.py showmigrations market_serving` confirmed `[X] 0005_session_facts_bucket_table` and `[X] 0006_rename_sessionfactsbucket_indexes` in the active dev runtime.
@@ -5457,7 +5997,8 @@ Validation: **✅ `test_soc_tasks + test_soc_api_domain` passed (`25` tests)** |
 
 **Validation**
 - `manage.py test service_ops.tests.test_soc_tasks service_ops.tests.test_soc_api_domain --keepdb` passed (`25` tests).
-- `npm run build` in `frontend/` compiled successfully.
+-
+pm run build` in `frontend/` compiled successfully.
 - `python scripts/ops/generate_module_tree.py` regenerated `module_tree_full.md` to `1163` modules.
 - `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate frontend core-api core-worker core-worker-manual core-worker-realtime-stream core-worker-analytics core-worker-enrichment core-worker-realtime-prefetch core-beat` refreshed the affected runtime services.
 - `docker compose ... ps ...` showed `core-api` healthy, `frontend` up, workers up, and `core-beat` still `health: starting`.
@@ -5639,7 +6180,8 @@ Validation: **✅ Matrix start/monitor/abort smoke passed** | **✅ frontend bui
 - `manage.py shell -c "... screener rules/results/alert-history/manual-scan ..."` returned runtime-backed payloads and queued a real `ServiceRunLog`.
 - `manage.py shell -c "... prefetch universe-groups/task-schedule ..."` reflected the applied config groups and intervals.
 - `manage.py shell -c "... signals whale/dark-pool/screener recent ..."` reflected canonical `UnifiedAlert` data.
-- `npm run build` in `frontend/` compiled successfully.
+-
+pm run build` in `frontend/` compiled successfully.
 - `manage.py test service_ops.tests.test_soc_api_domain service_ops.tests.test_soc_api_signals --keepdb` passed (`18` tests).
 - `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api frontend`
 - `docker compose ... ps core-api frontend` showed `core-api` healthy and `frontend` up.
@@ -5666,7 +6208,8 @@ Validation: **✅ core DB shows `23` active SOC services** | **✅ `GET /api/soc
 - `Set-Location "C:\Mujoco Projects\vninvest\packages\core\backend"; ..\..\..\.venv\Scripts\python.exe manage.py migrate service_ops --noinput`
 - `manage.py shell -c "... ServiceDefinition.objects.count() ..."` returned `23` services, `5` ownership records, `4` current configs
 - `manage.py shell -c "... client.get('/api/soc/overview/') ... client.get('/api/soc/signals/summary/') ..."` returned `200` with the expected payload keys
-- `npm run build` in `frontend/` compiled successfully
+-
+pm run build` in `frontend/` compiled successfully
 - `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api frontend`
 - `docker compose ... ps core-api frontend` showed `core-api` healthy and `frontend` up
 - Browser smoke at `http://localhost/operations-center` rendered overview cards plus working `VNBroker`, `Prefetch`, `Signals`, and `Screener` tabs
@@ -5692,7 +6235,8 @@ Validation: **✅ core-api smoke test returned 200 on `/api/soc/overview/`** | *
 - `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps core-api`
 - `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate --no-deps frontend`
 - Live container smoke test inside `vninvest-dev-core-api` returned `200 OK` and `{'count': 0, 'next': None, 'previous': None, 'results': []}` for `/api/soc/overview/`
-- Browser reload of `/operations-center` showed the SOC shell, translated title, tabs, and overview panel without the `n is not a function` crash
+- Browser reload of `/operations-center` showed the SOC shell, translated title, tabs, and overview panel without the
+ is not a function` crash
 - `/admin-ops` redirected to `/operations-center`
 
 **Residual Risk**
@@ -5724,7 +6268,8 @@ Validation: **✅ `start_dev.ps1 -SkipBuild` passed** | **✅ core-api and front
 
 **What changed**
 - `start_dev.ps1` no longer calls legacy backend seed logic and now targets `core-api`, core workers, and `core-beat`.
-- `docker-compose.dev.yml` now keeps the dev frontend on `vninvest-dev-frontend:latest` and drops the `nginx-proxy_default` dependency for local runs.
+- `docker-compose.dev.yml` now keeps the dev frontend on `vninvest-dev-frontend:latest` and drops the
+ginx-proxy_default` dependency for local runs.
 - `module_tree_full.md` was regenerated after the launcher/compose changes.
 
 **Validation**
@@ -6315,7 +6860,8 @@ Smoke result (authenticated through `http://127.0.0.1/api/...`):
 - PASS: `/api/signals/whale-feed/?symbol=VCB&limit=10` (200)
 
 Operational note:
-- Legacy bridge call sites now degrade safely to native/stub behavior and no longer throw `NameError`.
+- Legacy bridge call sites now degrade safely to native/stub behavior and no longer throw
+ameError`.
 
 ---
 
@@ -6565,7 +7111,8 @@ Validation Snapshot:
 - ✓ Browser test: Changing page size resets to page 1 automatically
 - ✓ Browser test: Rotate token displays new secret with copy button working
 - ✓ Browser test: Bulk select all, count display, revoke with confirmation
-- ✓ All 8 new i18n keys added (Vietnamese + English): `itemsPerPageLabel`, `showing`, `of`, `previousPage`, `nextPage`, `pageSize5`, `pageSize10`, `pageSize15`, `pageSize20`
+- ✓ All 8 new i18n keys added (Vietnamese + English): `itemsPerPageLabel`, `showing`, `of`, `previousPage`,
+extPage`, `pageSize5`, `pageSize10`, `pageSize15`, `pageSize20`
 
 Files Modified:
 - frontend/src/pages/admin/tenant/TenantPATs.jsx: State hooks, pagination UI, render logic, bulk revoke
@@ -7499,7 +8046,8 @@ Residual risk:
 
 What was fixed:
 - ✅ `packages/core/backend/src/vninvest_core/contracts/admin_ops/views.py` patched with missing logger initialization.
-- ✅ Eliminated `NameError: name 'logger' is not defined` in legacy bridge fallback (`/api/admin-ops/signals/config/`).
+- ✅ Eliminated
+ameError: name 'logger' is not defined` in legacy bridge fallback (`/api/admin-ops/signals/config/`).
 - ✅ Rebuilt/restarted affected runtime services via `docker compose -f docker-compose.dev.yml up -d --build frontend core-api core-worker core-beat backend backend-worker backend-beat`.
 
 Validation evidence:
@@ -7509,7 +8057,8 @@ Validation evidence:
   - `/api/admin-ops/vnbroker-config/current/`
   - `/api/admin-ops/vnbroker-config/changelog/?limit=20&offset=0`
   - `/api/realtime/tickers/?symbols=...`
-- Core-api logs after fix: no recurrence of `NameError`, `Internal Server Error: /api/admin-ops/signals/config`, `Bad Gateway`, or `Service Unavailable` signatures in post-fix window.
+- Core-api logs after fix: no recurrence of
+ameError`, `Internal Server Error: /api/admin-ops/signals/config`, `Bad Gateway`, or `Service Unavailable` signatures in post-fix window.
 
 Operational note:
 - `backend-legacy` container vẫn có thể restart ngắn lúc startup/reloader, nhưng đường API đã ổn định lại sau deploy fix + stack refresh.
@@ -7927,7 +8476,8 @@ Files changed:
 - `frontend/src/pages/PortfoliosShellHost.jsx` (MODIFIED) - Render `PortfoliosPage` SaaS thật thay vì `ShellPortfoliosPage` diagnostic.
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` compile thành công sau khi đổi route.
+- PASSED:
+pm run build` trong `frontend/` compile thành công sau khi đổi route.
 - PASSED: `get_errors` trên `App.jsx` và `PortfoliosShellHost.jsx` không báo lỗi.
 - INFO: Browser snapshot hiện tại đang ở `/login` do chưa có auth session; route `/portfolios` sau login sẽ đi vào page SaaS thật.
 
@@ -8374,7 +8924,8 @@ Validation:
 - PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; $env:LEGACY_BACKEND_URL='http://backend:8000'; docker compose --env-file compose.dev.env -f docker-compose.yml -f docker-compose.dev.yml --profile legacy up -d --force-recreate core-api backend; Pop-Location`
 - PASSED: live PAT bridge-auth verification inside `vninvest-dev-core-api` and `vninvest-dev-backend` after env alignment
 - PASSED: authenticated runtime smoke through `http://localhost` -> signal summary/config/jobs, benchmark latest, and intraday-side-backfill preview all returned successful bridge-backed responses
-- PASSED: browser smoke on `/admin-ops` -> signal tab no longer shows the read-only banner and write controls are enabled under `native-read-legacy-write-through`
+- PASSED: browser smoke on `/admin-ops` -> signal tab no longer shows the read-only banner and write controls are enabled under
+ative-read-legacy-write-through`
 - PASSED: screenshot captured for the bridge-enabled signal tab
 
 Status:
@@ -8727,7 +9278,8 @@ Files changed:
 
 Validation:
 - PASSED: `& "c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe" -m py_compile scripts/pre_decommission_gates_check.py`
-- PASSED: `node --check infra/load-tests/api-load.js`
+- PASSED:
+ode --check infra/load-tests/api-load.js`
 - PASSED: `DJANGO_DEBUG=true .\.venv\Scripts\python.exe packages/core/backend/manage.py test tests.test_public_bootstrap_routes tests.test_identity_access_api_routes tests.test_user_workspace_api_routes tests.test_market_data_api_routes tests.test_market_serving_api_routes tests.test_signal_intelligence_api_routes --keepdb` -> 13 tests passed
 - PASSED: `& "c:\Mujoco Projects\vninvest\.venv\Scripts\python.exe" scripts/ops/generate_module_tree.py` -> module_tree_full.md regenerated (979 modules)
 
@@ -9295,7 +9847,8 @@ Status:
 - PROGRESS_DASHBOARD.md (MODIFIED)
 
 Validation:
-- PASSED: `node ./scripts/build-community.mjs` -> `packages/web/dist/community` written
+- PASSED:
+ode ./scripts/build-community.mjs` -> `packages/web/dist/community` written
 - PASSED: JSON parse of `packages/opencore/distribution/community-bundle.json` -> OK
 - PASSED: JSON parse of `packages/opencore/activation/bootstrap.json` -> OK
 - PASSED: PowerShell syntax parse of `packages/opencore/distribution/install-community.ps1` -> OK
@@ -9401,7 +9954,8 @@ Status:
 - PROGRESS_DASHBOARD.md (MODIFIED - mirror SAAS-12 completion)
 
 Validation:
-- PASSED: `node shared/scripts/validate-contracts.mjs` -> Checked: 9, Passed: 9, Failed: 0. Exit code 0.
+- PASSED:
+ode shared/scripts/validate-contracts.mjs` -> Checked: 9, Passed: 9, Failed: 0. Exit code 0.
 
 Status:
 - SAAS-12 ✅ completed. Next: SAAS-13 (packages/core Django extraction).
@@ -10473,7 +11027,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` clean tren `frontend/src/components/HoldingsTable.jsx` va `frontend/src/pages/LegacyDashboard.jsx` sau khi them whale badge map.
-- PASSED: `npm run build` trong `frontend` thanh cong voi HoldingsTable whale badge update.
+- PASSED:
+pm run build` trong `frontend` thanh cong voi HoldingsTable whale badge update.
 - PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` refresh dev stack thanh cong; backend va frontend healthy.
 - PASSED: `scripts/ops/generate_module_tree.py` regenerate thanh cong `module_tree_full.md` voi tong 564 modules.
 
@@ -10506,7 +11061,8 @@ Validation:
 Validation:
 - PASSED: `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` green, explicit admin abilities present and manage all absent.
 - PASSED: `manage.py test portfolio.tests.test_partner_admin_api --keepdb` green, tenant contract stable under canonical registry.
-- PASSED: `npm run build` trong `frontend` thanh cong.
+- PASSED:
+pm run build` trong `frontend` thanh cong.
 - PASSED: `manage.py makemigrations portfolio --check --dry-run` xanh sau khi them 0068.
 - PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` refresh thanh cong; backend va frontend healthy.
 - PASSED: browser proof tren `/admin-ops`, `/admin-crawl-control`, `/tenant-admin/usage`, `/tenant-admin/billing` voi `ability_admin` va `testpro`.
@@ -10536,7 +11092,8 @@ Validation:
 Validation:
 - PASSED: `manage.py test portfolio.tests.test_api_routes_auth_profile --keepdb` green after CA-10 auth/me entitlement expansion.
 - PASSED: `manage.py test portfolio.tests.test_partner_admin_api --keepdb` green for service account create/list and PAT issue/rotate/revoke flows.
-- PASSED: `npm run build` trong `frontend` thanh cong voi tenant machine-access routes/pages/client copy moi.
+- PASSED:
+pm run build` trong `frontend` thanh cong voi tenant machine-access routes/pages/client copy moi.
 - PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend backend` refresh lai dev stack thanh cong; backend healthy, frontend started.
 - PASSED: `manage.py migrate` apply `portfolio.0066_userconfig_ai_prompt_config_and_more` thanh cong sau khi patch migration drift.
 - PASSED: `scripts/ops/generate_module_tree.py` regenerate thanh cong `module_tree_full.md` voi tong 560 module.
@@ -10564,7 +11121,8 @@ Validation:
 Validation:
 - PASSED: browser proof tren `http://127.0.0.1/tenant-admin/home` va `http://127.0.0.1/tenant-admin/capabilities` voi session `testpro` xac nhan tenant console render live sau rebuild frontend.
 - PASSED: `get_errors` clean tren `backend/portfolio/permissions.py`, `backend/portfolio/tests/test_api_routes_auth_profile.py`, `frontend/src/context/PortfolioContext.jsx`, `frontend/src/components/TopNav.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`, `frontend/src/pages/admin/tenant/TenantAdminHome.jsx`, `frontend/src/pages/admin/tenant/TenantCapabilities.jsx`.
-- PASSED: `npm run build` trong `frontend` thanh cong sau khi them tenant console routes va pages.
+- PASSED:
+pm run build` trong `frontend` thanh cong sau khi them tenant console routes va pages.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend backend` refresh lai dev stack thanh cong voi frontend/backend moi.
 - PASSED: direct Python permission probe `build_abilities('pro')` va `resolve_user_entitlements(user=pro)` tra tenant abilities + tenant flags dung nhu mong doi.
 - PASSED: `module_tree_full.md` regenerated successfully with 556 modules.
@@ -10595,7 +11153,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `frontend/src/pages/AICommandCenter.jsx` sau khi them runtime summary/policy panel.
-- PASSED: `npm run build` trong `frontend` thanh cong sau AI Command Center summary update.
+- PASSED:
+pm run build` trong `frontend` thanh cong sau AI Command Center summary update.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
 - PASSED: browser proof tren `/settings/ai` xac nhan provider/model/source/readiness grid va policy summary cho gate sự kiện / budget / cadence.
 - PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
@@ -10608,7 +11167,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `frontend/src/pages/packageShellHostRuntime.js` sau khi them guard `frontend-auth` cho session id.
-- PASSED: `npm run build` trong `frontend` thanh cong sau session-id bridge.
+- PASSED:
+pm run build` trong `frontend` thanh cong sau session-id bridge.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
 - PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan `Session ID: frontend-auth:testpro` cho `testpro`, advisory `BCM` van giu `Contract: v2`, `Quality: 33.5`.
 - PASSED: browser proof tren `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` xac nhan `Session ID: frontend-auth:testpro` cho `testpro`, whale snapshot `SSI` van giu `latest_completed_session` va `raw_fallback`.
@@ -10624,7 +11184,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx` va `frontend/src/pages/WhaleAlertsShellHost.jsx`.
-- PASSED: `npm run build` trong `frontend` thanh cong sau khi bridge shell bootstrap qua `usePortfolio()` va cleanup admin-only navigation.
+- PASSED:
+pm run build` trong `frontend` thanh cong sau khi bridge shell bootstrap qua `usePortfolio()` va cleanup admin-only navigation.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi host-runtime auth bridge moi.
 - PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan `Username: testpro`, `Plan: pro`, khong con `admin` group, khong con `show_admin_ops`, ability list chi con `read WhaleAdvisory`, va advisory that cua `BCM` van giu `Contract: v2`, `Quality: 33.5`.
 - PASSED: browser proof tren `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` xac nhan `Username: testpro`, `Plan: pro`, khong con `admin` group, `Enabled surfaces` chi con `show_ai_command_center`, va whale snapshot that van giu `latest_completed_session` / `raw_fallback` nhu truoc.
@@ -10638,8 +11199,10 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`.
-- PASSED: `npm run check:shell` trong `packages/web` xanh sau khi bo `startTransition` khoi shared bootstrap state helper.
-- PASSED: `npm run build` trong `frontend` thanh cong sau khi package-shell helper moi duoc consume boi host app.
+- PASSED:
+pm run check:shell` trong `packages/web` xanh sau khi bo `startTransition` khoi shared bootstrap state helper.
+- PASSED:
+pm run build` trong `frontend` thanh cong sau khi package-shell helper moi duoc consume boi host app.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
 - PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan badge thanh `Lane AI advisory san sang cho kiem tra`, `Build target: saas`, `Username: package-admin`, `Plan: pro`, `Signals routes visible: 2`, `Advisory routes active: 1`, va advisory that cua `BCM` van giu `Contract: v2`, `Quality: 33.5`.
 - PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
@@ -10656,8 +11219,10 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `frontend/src/pages/UserConfig.jsx`, `frontend/src/pages/UserConfig.test.jsx`, `frontend/src/pages/AICommandCenter.jsx`, `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`.
-- PASSED: `npm test -- --watchAll=false --runInBand src/pages/UserConfig.test.jsx` => 11/11 PASS.
-- PASSED: `npm run build` trong `frontend` thanh cong sau khi them advisory gate visible UI va runtime warning.
+- PASSED:
+pm test -- --watchAll=false --runInBand src/pages/UserConfig.test.jsx` => 11/11 PASS.
+- PASSED:
+pm run build` trong `frontend` thanh cong sau khi them advisory gate visible UI va runtime warning.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
 - PASSED: sync `testpro` theo runtime path cua `admin` trong dev DB va bat `advisory_whale_signal_enabled=True`.
 - PASSED: `resolve_ai_runtime_config(user=testpro)` xac nhan `ready=True`, `source=command_center`, `provider=copilot`, `model=openai/gpt-4.1-mini`.
@@ -10706,7 +11271,8 @@ Validation:
 Validation:
 - PASSED: editor diagnostics clean tren `docker-compose.dev.yml` va `frontend/docker/nginx.conf`.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build core-api frontend` dua `vninvest-dev-core-api` len healthy va restart frontend thanh cong.
-- PASSED: host proof sau khi kill host terminal cu => `NO_HOST_LISTENER` tren `:8100`.
+- PASSED: host proof sau khi kill host terminal cu =>
+O_HOST_LISTENER` tren `:8100`.
 - PASSED: browser proof `http://127.0.0.1/core/v1/health` van tra JSON qua frontend host du khong con host listener `:8100`.
 - PASSED: browser sanity reload tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` van vao duoc host page sau khi doi upstream sang compose service.
 - PASSED: backend-container investigation xac nhan `ai_not_configured` hien do runtime secret thieu: khong co provider env key, `testpro` khong co `AICommandCenterConfig`, va `SystemAISettings` active khong co DB key.
@@ -10723,14 +11289,17 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/scripts/check-shell.mjs` va `backend/create_test_users.py`.
-- PASSED: `npm run check:shell` trong `packages/web` xanh sau khi them fallback advisory `holistic_disabled` + regression proof.
-- PASSED: `npm run build` trong `frontend` thanh cong voi advisory client moi.
+- PASSED:
+pm run check:shell` trong `packages/web` xanh sau khi them fallback advisory `holistic_disabled` + regression proof.
+- PASSED:
+pm run build` trong `frontend` thanh cong voi advisory client moi.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle advisory moi.
 - PASSED: `create_test_users.py` seed lai `testpro` tren canonical DPI plans va xac nhan Pro feature access khong con bi drift.
 - PASSED: browser fetch proof tren `/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1` voi token moi cua `testpro` da tra `200` thay vi `403 feature_locked`.
 - PASSED: browser proof `/ai-advisory/shell?symbol=BCM&ts=1777707400` khong con hien error `403`; advisory session card render voi `Contract: v1`.
 - PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
-- PASSED: live gateway proof tren `/api/stock-management/stocks/VRE/ai-advisory-session/?contract=v2&include_benchmarks=1` voi PAT hop le tra `200` va payload `no_advisory_data` thay vi `404`.
+- PASSED: live gateway proof tren `/api/stock-management/stocks/VRE/ai-advisory-session/?contract=v2&include_benchmarks=1` voi PAT hop le tra `200` va payload
+o_advisory_data` thay vi `404`.
 
 # ✅ AUDIT FILE LIST (2026-05-02at)
 - frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to the host core stub)
@@ -10749,7 +11318,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `frontend/docker/nginx.conf`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `frontend/src/pages/packageShellHostRuntime.js`, `frontend/src/pages/AiAdvisoryShellHost.jsx`, `frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx`, `frontend/src/pages/WhaleAdvisory.jsx` va `frontend/src/App.jsx`.
-- PASSED: `npm run build` trong `frontend` thanh cong sau khi doi core host sang same-origin `/core/v1` va them AI advisory shell host route.
+- PASSED:
+pm run build` trong `frontend` thanh cong sau khi doi core host sang same-origin `/core/v1` va them AI advisory shell host route.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi same-origin proxy va consumer advisory moi.
 - PASSED: browser proof `http://127.0.0.1/core/v1/health` tra JSON qua frontend host, xac nhan core stub da di same-origin.
 - PASSED: browser proof `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` van render whale shell host voi copy same-origin moi.
@@ -10765,7 +11335,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend` thanh cong sau khi nut `Mo shell kiem chung` duoc doi sang href co context.
+- PASSED:
+pm run build` trong `frontend` thanh cong sau khi nut `Mo shell kiem chung` duoc doi sang href co context.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
 - PASSED: browser proof tren `/whale-alerts?symbol=SSI&trade_date=2026-04-19` xac nhan link shell tro thanh `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19`, va click vao shell host giu dung `SSI`/`2026-04-19` cho ca nut quay lai.
 - PASSED: `module_tree_full.md` regenerated successfully with 551 modules.
@@ -10789,7 +11360,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/api_stub.py`, `frontend/src/App.jsx`, `frontend/src/pages/WhaleAlertsHub.jsx`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `backend/portfolio/models.py` va `frontend/Dockerfile.dev-package-shell`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them quick action fallback va host-runtime glue cho whale shell.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them quick action fallback va host-runtime glue cho whale shell.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` build lai dev frontend thanh cong; `vninvest-dev-frontend` start va khong con duplicate React tu vendor copy `@vninvest/web`.
 - PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend python create_test_users.py` seed lai `testfree/testpro` thanh cong sau khi model drift `UserConfig.ai_prompt_config` duoc dong bo.
 - PASSED: live browser route `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` render duoc package-shell host header, facts card `Whale snapshot that (SSI)` va session source `latest_completed_session`; loi `useRef` runtime da duoc loai bo.
@@ -10805,7 +11377,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them selected trade-date control cho whale shell.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them selected trade-date control cho whale shell.
 - PASSED: focused Django contract suite `test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date` => 1/1 PASS.
 - PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
 
@@ -10822,7 +11395,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/web/src/adapters/core/index.js` va `packages/web/src/index.js`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them whale snapshot client va facts-first panel cho `whale-alerts`.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them whale snapshot client va facts-first panel cho `whale-alerts`.
 - PASSED: focused Django contract suite `test_snapshot_endpoint_returns_contract_and_headers` + `test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date` => 2/2 PASS.
 - PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
 
@@ -10836,7 +11410,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellAiAdvisoryPage.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them query-driven symbol routing va control doi ma advisory.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them query-driven symbol routing va control doi ma advisory.
 - PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
 
 # ✅ AUDIT FILE LIST (2026-05-02an)
@@ -10854,7 +11429,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi doi signals lane sang canonical `WhaleAdvisory` va them advisory session data slice.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi doi signals lane sang canonical `WhaleAdvisory` va them advisory session data slice.
 - PASSED: focused Django contract suite `test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled` + `test_stock_ai_advisory_session_v2_includes_benchmark_enrichment` => 2/2 PASS.
 - PASSED: core stub tren `:8100` da duoc refresh lai va live payload proof xac nhan khong con `AiAdvisory`/`WhaleAlerts`, chi con `WhaleAdvisory` cho signals lane.
 - PASSED: live parity tren core runtime `:8100` da xac nhan `ShellAiAdvisoryPage` render duoc advisory session data slice va `ShellWhaleAlertsPage` van render route `whale-alerts` tren canonical payload.
@@ -10873,7 +11449,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `whale-alerts` vao shared shell surface va registry.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `whale-alerts` vao shared shell surface va registry.
 - PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `WhaleAlerts` dong thoi giu `WhaleAdvisory`.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan `whale-alerts`, `signals`, `package-admin`, `Signals routes` va `Whale abilities` deu co trong markup render tu payload that.
 - PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
@@ -10891,7 +11468,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `ai-advisory` vao shared shell surface va registry.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `ai-advisory` vao shared shell surface va registry.
 - PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `AiAdvisory`.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan `ai-advisory`, `signals`, `package-admin`, `Signals routes` va `Advisory abilities` deu co trong markup render tu payload that.
 - PASSED: `module_tree_full.md` regenerated successfully with 549 modules.
@@ -10908,7 +11486,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/workspace/ShellTransactionsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `transactions` vao shared shell surface va registry.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `transactions` vao shared shell surface va registry.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan `transactions`, `workspace`, `package-admin`, `Workspace routes` va `Transactions abilities` deu co trong markup render tu payload that.
 - PASSED: `module_tree_full.md` regenerated successfully with 548 modules.
 
@@ -10924,7 +11503,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/workspace/ShellWatchlistPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `watchlist` vao shared shell surface va registry.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `watchlist` vao shared shell surface va registry.
 - FAILED -> FIXED: lan live parity dau tien dung assertion token tieng Viet trong inline Node script qua PowerShell nen bi skew encoding; da doi sang ASCII-safe markers va rerun thanh cong ma khong can sua source code.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan `watchlist`, `workspace`, `package-admin`, `Workspace routes` va `Watchlist abilities` deu co trong markup render tu payload that.
 - PASSED: `module_tree_full.md` regenerated successfully with 547 modules.
@@ -10941,7 +11521,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/workspace/ShellDashboardPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `dashboard` vao shared shell surface va registry.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `dashboard` vao shared shell surface va registry.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan `dashboard`, `support`, `settings`, `portfolios`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected; bootstrap payload da chua dashboard ability san co.
 - PASSED: `module_tree_full.md` regenerated successfully with 546 modules.
 
@@ -10958,7 +11539,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/system/ShellSupportPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `support` vao shared shell surface va registry.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `support` vao shared shell surface va registry.
 - PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose support ability.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan `support`, `settings`, `portfolios`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected; bootstrap payload da chua support ability.
 - PASSED: `module_tree_full.md` regenerated successfully with 545 modules.
@@ -10977,7 +11559,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/workspace/ShellPortfoliosPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `portfolios` vao shared shell surface va registry.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `portfolios` vao shared shell surface va registry.
 - PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose `portfolios`.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan `portfolios`, `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected; bootstrap payload da chua `portfolios` trong `visible_routes`.
 - PASSED: `module_tree_full.md` regenerated successfully with 544 modules.
@@ -10994,7 +11577,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi tach mapper helpers chung cho snapshot, flags, route visibility va health actions.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi tach mapper helpers chung cho snapshot, flags, route visibility va health actions.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected sau cleanup.
 - PASSED: `module_tree_full.md` regenerated successfully with 543 modules.
 
@@ -11010,7 +11594,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi tach helper bootstrap/render dung chung cho ba core shell page.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi tach helper bootstrap/render dung chung cho ba core shell page.
 - FAILED -> FIXED: lan live parity dau tien dung sai env key `VNINVEST_CORE_API_BASE_URL`, tao loi `Failed to parse URL from /core/v1/health`; da doi ve `VNINVEST_CORE_BASE_URL` va rerun thanh cong.
 - PASSED: live SSR parity tren core runtime `:8100` da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected.
 - PASSED: `module_tree_full.md` regenerated successfully with 543 modules.
@@ -11028,7 +11613,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren AI command center page, route catalog, page registry, root exports va shell validation script.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `ai-command-center` vao shared shell surface.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `ai-command-center` vao shared shell surface.
 - PASSED: live SSR parity tren core runtime `:8100` da render `shellPage__panel`, `package-admin`, `show_ai_command_center` va `ai-command-center`.
 - PASSED: `module_tree_full.md` regenerated successfully with 542 modules.
 
@@ -11045,7 +11631,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren admin ops page, route catalog, page registry, root exports va shell validation script.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `admin-ops` vao shared shell surface.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `admin-ops` vao shared shell surface.
 - PASSED: live SSR parity tren core runtime `:8100` da render `shellPage__panel`, `package-admin`, `show_admin_ops` va `admin-ops`.
 - PASSED: `module_tree_full.md` regenerated successfully with 541 modules.
 
@@ -11061,7 +11648,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren core settings page, page registry, root exports va shell validation script.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `settings` vao page registry.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi them route-level page `settings` vao page registry.
 - PASSED: core stub da duoc start lai dung cwd va live SSR parity tren `:8100` da render `shellPage__panel`, `package-admin` va `core-api`.
 - PASSED: `module_tree_full.md` regenerated successfully with 540 modules.
 
@@ -11077,7 +11665,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren shared template module, VIP local control page, root exports va shell validation script.
-- PASSED: `npm run check:shell` trong `packages/web` sau khi shared shell helpers duoc tich hop vao `VipLocalControlPage`.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi shared shell helpers duoc tich hop vao `VipLocalControlPage`.
 - PASSED: React key warning da duoc sua va rerun `check:shell` khong con warning.
 - PASSED: live SSR parity tren runtime `:8200` da xac nhan markup moi van render shared classes `shellPage__panel`, `shellPage__heroBadge` va seeded local identity `vip-local-admin`.
 - PASSED: `module_tree_full.md` regenerated successfully after adding the new shared component module.
@@ -11100,7 +11689,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren page registry, VIP local control page va toan bo doc pack vua cap nhat.
-- PASSED: `npm run check:shell` trong `packages/web` da cover page registry, route `vip-local-control` status `baseline` va SSR render cua `VipLocalControlPage`.
+- PASSED:
+pm run check:shell` trong `packages/web` da cover page registry, route `vip-local-control` status `baseline` va SSR render cua `VipLocalControlPage`.
 - PASSED: live SSR parity tren runtime `:8200` da xac nhan page moi tieu thu duoc `health`, `session`, `users` va `auditLogs`.
 - PASSED: integrated browser preview va screenshot da xac nhan giao dien bam template thong tin dam, metric band ro, panel compact va spacing thap.
 - PASSED: `module_tree_full.md` regenerated successfully with 538 modules.
@@ -11117,8 +11707,10 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `packages/web/src/adapters/vip-app/vipAppAdapter.js`, `packages/web/src/adapters/vip-app/index.js`, `packages/web/src/index.js`, va `packages/web/scripts/check-shell.mjs`.
-- PASSED: `npm install` trong `packages/web` da khoi phuc local deps can thiet de chay standard shell validation.
-- PASSED: `npm run check:shell` trong `packages/web` da cover them VIP control client route metadata va request semantics.
+- PASSED:
+pm install` trong `packages/web` da khoi phuc local deps can thiet de chay standard shell validation.
+- PASSED:
+pm run check:shell` trong `packages/web` da cover them VIP control client route metadata va request semantics.
 - PASSED: live smoke tren runtime `:8200` da xac nhan `login`, `listUsers`, `upsertUser`, `listAuditLogs`, `resetSession`, `logout` qua `createVipAppControlClient`.
 - PASSED: public export parity qua `packages/web/src/index.js` thanh cong tren compose runtime `:8200`.
 - PASSED: `module_tree_full.md` regenerated successfully with 536 modules.
@@ -11155,7 +11747,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run check:shell` trong `packages/web` sau khi React dependency va SSR assertions duoc chot.
+- PASSED:
+pm run check:shell` trong `packages/web` sau khi React dependency va SSR assertions duoc chot.
 - PASSED: React provider smoke voi core stub song tra ve `status=ready`, `ready=true`, `authenticated=true`, `plan=pro`, `username=package-admin`, `staff=true`, `buildTarget=saas`.
 - PASSED: `module_tree_full.md` regenerated successfully with 535 modules.
 
@@ -11595,7 +12188,8 @@ Validation:
 - PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js; ...` => 4/4 PASS.
 - PASSED: direct Django snippet `build_whale_analytics_snapshot(... include_baseline=False)` sau `cache.clear()` => ~3.53s cold path cho `ACB 1h`.
 - PASSED: `get_errors` tren touched backend/frontend files => no errors found.
-- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED:
+pm run build` trong `frontend/` => compiled successfully.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
 - PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
 - NOTE: chart snapshot `1H` da duoc tach khoi baseline percentile workload; bubble/session baseline van duoc cache de giam cold-start chi phi o cac request sau.
@@ -11610,7 +12204,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` on `frontend/src/pages/WhaleAlertsDashboard.jsx`, `frontend/src/pages/StockDetail.jsx`, and `frontend/src/hooks/useWhaleAnalyticsData.js` => no errors found.
-- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED:
+pm run build` trong `frontend/` => compiled successfully.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
 - PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
 - NOTE: screenshot/video va payload snapshot khong capture trong slice terminal-only nay; runtime dev stack da duoc refresh de auditor co the mo UI va test tiep.
@@ -11623,7 +12218,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` on frontend touched files.
-- PASSED: code review manual. Note: `npm run build` thieu bo nho tren Node.js v24.14 host nhung dev stack container v20 chay binh thuong.
+- PASSED: code review manual. Note:
+pm run build` thieu bo nho tren Node.js v24.14 host nhung dev stack container v20 chay binh thuong.
 - NOTE: Khong the capture screenshot/video browser tu dong vi loi cascade browser agent, nhung thay doi la ro rang tren code path va runtime da rebuild.
 
 # ✅ AUDIT FILE LIST (2026-04-28g)
@@ -11642,7 +12238,8 @@ Validation:
 
 Validation:
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_admin_screener_admin --keepdb` => 8/8 PASS.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi them admin screener panel.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau khi them admin screener panel.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
 - PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
 - PASSED: `get_errors` tren cac file touched backend/frontend => no errors found.
@@ -11657,7 +12254,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` on `frontend/src/pages/StockDetail.jsx` and `backend/portfolio/consumers.py` => no errors found.
-- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED:
+pm run build` trong `frontend/` => compiled successfully.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
 - PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
 - NOTE: screenshot/video va payload snapshot khong capture trong slice terminal-only nay; runtime dev stack da duoc refresh de auditor co the mo UI va test tiep.
@@ -11671,7 +12269,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` on touched frontend files => no errors found.
-- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED:
+pm run build` trong `frontend/` => compiled successfully.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
 - NOTE: day la slice code-only; screenshot/video khong capture trong terminal session nay.
 
@@ -11685,7 +12284,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` on touched frontend files => no errors found.
-- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED:
+pm run build` trong `frontend/` => compiled successfully.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
 - PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
 - NOTE: screenshot/video va payload snapshot khong capture trong slice terminal-only nay; runtime dev stack da duoc refresh de auditor co the mo UI va test tiep.
@@ -11843,7 +12443,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` tren `frontend/src/components/KLineChartPanel.jsx` va `frontend/src/pages/WhaleAlertsDashboard.jsx` => no errors found.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi toolbar va custom pane controls.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau khi doi toolbar va custom pane controls.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
 - NOTE: runtime UI da build-validate thanh cong; neu auditor can minh chung anh/clip browser thi can mot buoc mo trang/ghi hinh rieng.
 
@@ -11858,7 +12459,8 @@ Validation:
 Validation:
 - PASSED: `get_errors` tren `frontend/src/pages/StockDetail.jsx`, `backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py`, `backend/portfolio/views_ai_advisory_session.py` => no errors found.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_api_routes_stock_ai_advisory_session.ApiRouteStockAiAdvisorySessionTests.test_stock_ai_advisory_session_get_filters_by_trade_date --keepdb` => 1/1 PASS.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi thread selected session vao Stock Detail advisory.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau khi thread selected session vao Stock Detail advisory.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
 - NOTE: hai legacy smoke tests trong `test_api_routes_stock_ai_advisory_session.py` van fail khi chay file/toan bo file run (`creates_sync_when_missing`, `returns_503_when_queue_unavailable`); hien tuong nay co ve fixture-sensitive/pre-existing va khong lien quan truc tiep den slice selected session.
 
@@ -11872,7 +12474,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` tren `frontend/src/components/KLineChartPanel.jsx`, `frontend/src/hooks/useWhaleAnalyticsData.js`, `frontend/src/pages/WhaleAlertsDashboard.jsx` => no errors found.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi thread selected session vao bubble route.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau khi thread selected session vao bubble route.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
 - NOTE: bubble da bam theo selected Kline session; advisory modal hien tai van symbol-scoped vi backend advisory session chua co `trade_date` selector contract.
 
@@ -11885,7 +12488,8 @@ Validation:
 
 Validation:
 - PASSED: `get_errors` tren `frontend/src/components/KLineChartPanel.jsx` va `frontend/src/pages/WhaleAlertsDashboard.jsx` => no errors found.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi mount Kline + bubble stack.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau khi mount Kline + bubble stack.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
 - PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => frontend dev stack rebuild/restart thanh cong.
 - NOTE: whale-alerts/:symbol now has Kline + bubble stack, bubble is controlled by route timeframe and synced to the current Kline visible range endpoint.
@@ -11917,7 +12521,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau spacing fix.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau spacing fix.
 - PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` => backend healthy, frontend rebuild/restart thanh cong.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
 - PASSED: `get_errors` tren `frontend/src/pages/AICommandCenter.jsx` => no errors found.
@@ -11936,7 +12541,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi chinh lai panel/slider/icon.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau khi chinh lai panel/slider/icon.
 - PASSED: diagnostics sach tren `frontend/src/components/WhaleBubbleChart.jsx`.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong tren `http://localhost`.
 - NOTE: dot polish nay chi sua semantics hien thi va iconography de khop screenshot audit, khong doi contract du lieu hoac hanh vi load advisory.
@@ -11948,7 +12554,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi rut gon panel Whale Analytics.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau khi rut gon panel Whale Analytics.
 - PASSED: diagnostics sach tren `frontend/src/components/WhaleBubbleChart.jsx`.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong tren `http://localhost`.
 - NOTE: mau zoom slider truoc do la cau hinh UI, khong phai loi render; nay da duoc dua ve bang mau slate trung tinh de khop design system.
@@ -11965,7 +12572,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau refactor Whale Analytics UI.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau refactor Whale Analytics UI.
 - PASSED: diagnostics sach tren tat ca file frontend vua cham toi.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong tren `http://localhost`.
 - NOTE: advisory modal dang lazy-load dung theo hanh vi mong muon; focused test rieng cho modal chua duoc bo sung trong phien nay.
@@ -11993,7 +12601,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi chinh layout panel va copy.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong sau khi chinh layout panel va copy.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong de test tren `http://localhost`.
 - PASSED: panel phai duoc giam tu `320px` xuong `280px`, bo box huong dan mac dinh, giu lai khung chu thich cuoi voi noi dung doc chart huu ich hon cho nha dau tu.
 
@@ -12021,7 +12630,8 @@ Validation:
 Validation:
 - PASSED: backend snapshot regression `14/14` PASS.
 - PASSED: frontend focused tests `WhaleBubbleChart.tooltip.test.jsx` + `WhaleAnalytics.degraded.test.jsx` => 4/4 PASS.
-- PASSED: HTTP smoke tren dev stack voi runtime user `qa_whale` xac nhan `HPG` co `session_levels` + `speed` + percentile; `FPT/DGC` degrade dung voi percentile `null`.
+- PASSED: HTTP smoke tren dev stack voi runtime user `qa_whale` xac nhan `HPG` co `session_levels` + `speed` + percentile; `FPT/DGC` degrade dung voi percentile
+ull`.
 - NOTE: ket luan QA slice = `PASS WITH NOTES` vi chua co clip/screenshot browser tu dong trong phien nay.
 
 ---
@@ -12036,7 +12646,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.a2c1d889.js` ~756.73 kB gzip.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong; bundle `main.a2c1d889.js` ~756.73 kB gzip.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
 
 ---
@@ -12050,7 +12661,8 @@ Validation:
 
 Validation:
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` => 14/14 PASS.
-- PASSED: payload Whale Analytics da tra `matched_value_percentile_10d`, `event_score_percentile_10d`, `baseline_sample_size` va degrade `null` khi chua du baseline.
+- PASSED: payload Whale Analytics da tra `matched_value_percentile_10d`, `event_score_percentile_10d`, `baseline_sample_size` va degrade
+ull` khi chua du baseline.
 
 ---
 
@@ -12075,7 +12687,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.43624cbd.js` ~755.4 kB gzip.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong; bundle `main.43624cbd.js` ~755.4 kB gzip.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
 
 ---
@@ -12091,7 +12704,8 @@ Validation:
 
 Validation:
 - PASSED: editor diagnostics clean tren 4 file frontend cua slice `FE-2.2`.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.9963241a.js` ~746.29 kB gzip.
+- PASSED:
+pm run build` trong `frontend/` => compile thanh cong; bundle `main.9963241a.js` ~746.29 kB gzip.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
 
 ---
@@ -12232,7 +12846,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~741.37 kB gzip.
+- PASSED:
+pm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~741.37 kB gzip.
 - PASSED: root cause da duoc chot: TDZ trong `ModularPositionDeck` sau minify la nguon gay man hinh den `/dashboard`.
 - NOTE: hotfix nay nham khoi phuc runtime ngay lap tuc truoc khi tiep tuc cac slice toi uu khac.
 
@@ -12246,7 +12861,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~741.38 kB gzip, phu hop voi trade-off them callback/guard de cat request digest khoi default dashboard load.
+- PASSED:
+pm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~741.38 kB gzip, phu hop voi trade-off them callback/guard de cat request digest khoi default dashboard load.
 - PASSED: editor diagnostics clean tren 3 file frontend vua cap nhat.
 - NOTE: toi uu nay nham giam fanout request luc vao dashboard; digest se den khi AI surfaces thuc su duoc mo.
 
@@ -12258,7 +12874,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~741.28 kB gzip, phu hop voi trade-off them scheduler/guard de giam thoi gian cho khung chinh vao man hinh.
+- PASSED:
+pm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~741.28 kB gzip, phu hop voi trade-off them scheduler/guard de giam thoi gian cho khung chinh vao man hinh.
 - PASSED: editor diagnostics clean tren `frontend/src/pages/modern/ModernDashboard.jsx`.
 - NOTE: toi uu nay giam blocking tren lan load dashboard dau; auxiliary panels co the fill du lieu tre hon mot nhip thay vi chan render khung chinh.
 
@@ -12270,7 +12887,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~741.01 kB gzip, phu hop voi muc tieu toi uu compute theo tab thay vi bundle-size.
+- PASSED:
+pm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~741.01 kB gzip, phu hop voi muc tieu toi uu compute theo tab thay vi bundle-size.
 - PASSED: editor diagnostics clean tren `frontend/src/components/modern/ModularPositionDeck.jsx`.
 - NOTE: toi uu nay giam work moi lan state realtime thay doi vi deck khong con filter/paginate san cho cac tab khong active.
 
@@ -12283,7 +12901,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~740.99 kB gzip, phu hop voi muc tieu toi uu runtime compute thay vi bundle-size.
+- PASSED:
+pm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~740.99 kB gzip, phu hop voi muc tieu toi uu runtime compute thay vi bundle-size.
 - PASSED: editor diagnostics clean tren `frontend/src/hooks/useAIAdvisor.js` va `frontend/src/components/modern/AIAdvisorAlertPanel.jsx`.
 - NOTE: toi uu nay giam work moi lan realtime cap nhat, dac biet khi user dang xem `AI News` hoac panel dang thu gon.
 
@@ -12295,7 +12914,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => frontend build thanh cong; `main` bundle giu ~740.97 kB gzip, dong thoi chunk sidebar shell giam manh va chart phu duoc tach thanh cac async chunks rieng.
+- PASSED:
+pm run build` trong `frontend/` => frontend build thanh cong; `main` bundle giu ~740.97 kB gzip, dong thoi chunk sidebar shell giam manh va chart phu duoc tach thanh cac async chunks rieng.
 - PASSED: editor diagnostics clean tren `frontend/src/components/modern/ModernSidebar.jsx`.
 - NOTE: toi uu nay tap trung vao progressive rendering cho cot phai cua modern dashboard, khong thay doi du lieu hay hanh vi route/page.
 
@@ -12307,7 +12927,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~740.97 kB gzip va xuat them async chunks cho cac panel sidebar phu cua ModernDashboard.
+- PASSED:
+pm run build` trong `frontend/` => frontend build thanh cong; `main` bundle ~740.97 kB gzip va xuat them async chunks cho cac panel sidebar phu cua ModernDashboard.
 - PASSED: editor diagnostics clean tren `frontend/src/pages/modern/ModernDashboard.jsx`.
 - NOTE: toi uu nay chi tri hoan cot phai phu cua modern dashboard, giu nguyen luong render eager cho khung lam viec chinh de tranh tai dien loi loading deadlock cap route.
 
@@ -12318,7 +12939,9 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: runtime cache inspection truoc fix cho thay meta prefetch van la `startup_warmup`, metrics scheduler `null`, sample cache `ticker:*` trong meta deu `null`.
+- PASSED: runtime cache inspection truoc fix cho thay meta prefetch van la `startup_warmup`, metrics scheduler
+ull`, sample cache `ticker:*` trong meta deu
+ull`.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d celery_worker celery_beat` => 2 service Celery da start lai.
 - PASSED: runtime cache inspection sau fix cho thay `scheduler_tick` dang publish meta moi, metrics scheduler tang, va sample cache `ticker:*` da co du lieu.
 
@@ -12357,7 +12980,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm test -- --runInBand --watch=false src/utils/dashboardRealtimeSelectors.test.js` => 2/2 pass.
+- PASSED:
+pm test -- --runInBand --watch=false src/utils/dashboardRealtimeSelectors.test.js` => 2/2 pass.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build backend frontend` => backend/frontend rebuild/restart thanh cong.
 - PASSED: editor diagnostics clean tren `frontend/src/utils/dashboardRealtimeSelectors.js`.
 
@@ -12382,7 +13006,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` => frontend build thanh cong; `main` ~745.55 kB gzip.
+- PASSED:
+pm run build` => frontend build thanh cong; `main` ~745.55 kB gzip.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, container da restart voi bundle moi.
 - PASSED: editor diagnostics clean tren `frontend/src/hooks/useUnifiedAlerts.js`.
 
@@ -12394,7 +13019,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` => frontend build thanh cong; `main` ~745.57 kB gzip.
+- PASSED:
+pm run build` => frontend build thanh cong; `main` ~745.57 kB gzip.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, container da restart voi bundle moi ~745.59 kB gzip trong Docker build.
 - PASSED: editor diagnostics clean tren `frontend/src/pages/modern/ModernDashboard.jsx`.
 
@@ -12406,7 +13032,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` => frontend build thanh cong; `main` ~745.56 kB gzip, thay doi chi tang nhe do scheduling logic.
+- PASSED:
+pm run build` => frontend build thanh cong; `main` ~745.56 kB gzip, thay doi chi tang nhe do scheduling logic.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, container da restart voi bundle moi.
 - PASSED: editor diagnostics clean tren `frontend/src/pages/LegacyDashboard.jsx`.
 - NOTE: toi uu nay nham cai thien toc do hien thi dashboard mac dinh ma khong tac dong den du lieu tong quan, holdings, realtime hay alert feed chinh.
@@ -12420,7 +13047,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` => frontend build thanh cong; `main` ~745.4 kB gzip do route/page da duoc dua lai vao main bundle.
+- PASSED:
+pm run build` => frontend build thanh cong; `main` ~745.4 kB gzip do route/page da duoc dua lai vao main bundle.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, container da restart voi bundle moi.
 - PASSED: editor diagnostics clean tren `frontend/src/App.jsx` va `frontend/src/pages/Dashboard.jsx`.
 - NOTE: fix nay uu tien do on dinh runtime; toi uu bundle se can quay lai bang chien luoc split khac an toan hon.
@@ -12433,7 +13061,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` => frontend build thanh cong; `main` bundle ~147.93 kB gzip va xuat them cac async chunks nho cho panel phu cua legacy dashboard.
+- PASSED:
+pm run build` => frontend build thanh cong; `main` bundle ~147.93 kB gzip va xuat them cac async chunks nho cho panel phu cua legacy dashboard.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, frontend container da restart voi bundle moi ~147.97 kB gzip trong Docker build.
 - PASSED: editor diagnostics clean tren `frontend/src/pages/LegacyDashboard.jsx`.
 - NOTE: slice nay toi uu runtime cua dashboard mac dinh, khong nham muc tieu cat `main` bundle them dang ke.
@@ -12448,7 +13077,8 @@ Validation:
 Validation:
 - PASSED: `python manage.py test portfolio.tests.test_whale_analytics_snapshot_api portfolio.tests.test_whale_analytics_snapshot_flow_series --keepdb -v 1` => 14/14 PASS.
 - PASSED: `CI=true npm test -- --watch=false --runTestsByPath src/components/WhaleBubbleChart.tooltip.test.jsx src/hooks/useWhaleAnalyticsData.test.js src/components/WhaleAnalytics.degraded.test.jsx` => 7/7 PASS.
-- PASSED: `npm run build` => frontend build thanh cong, `main` bundle ~147.84 kB gzip.
+- PASSED:
+pm run build` => frontend build thanh cong, `main` bundle ~147.84 kB gzip.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, frontend container da restart.
 - NOTE: audit pack da phan tach ro phan evidence tu dong va phan manual UAT con thieu.
 
@@ -12464,7 +13094,8 @@ Validation:
 
 Validation:
 - PASSED: `CI=true npm test -- --watch=false --runTestsByPath src/components/WhaleBubbleChart.tooltip.test.jsx src/hooks/useWhaleAnalyticsData.test.js src/components/WhaleAnalytics.degraded.test.jsx` => 7/7 PASS.
-- PASSED: `npm run build` => frontend build thanh cong, `main` bundle ~147.84 kB gzip.
+- PASSED:
+pm run build` => frontend build thanh cong, `main` bundle ~147.84 kB gzip.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, frontend container da restart voi bundle moi ~147.90 kB gzip trong Docker build.
 - NOTE: FE-08 hien co regression cho degraded rendering, tooltip binding va hook lifecycle; cac muc QA manual van can bang chung UAT/audit pack rieng.
 
@@ -12479,7 +13110,8 @@ Validation:
 Validation:
 - PASSED: `CI=true npm test -- --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js` => 3/3 PASS.
 - PASSED: `CI=true npm test -- --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js src/components/WhaleAnalytics.degraded.test.jsx` => 5/5 PASS.
-- PASSED: `npm run build` => frontend build thanh cong, `main` bundle giu o ~147.83 kB gzip.
+- PASSED:
+pm run build` => frontend build thanh cong, `main` bundle giu o ~147.83 kB gzip.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, frontend container da restart voi bundle moi ~147.90 kB gzip trong Docker build.
 - NOTE: taskboard da dong bo BE/FE code slices sang hoan thanh; cac muc QA manual van de `[/]` cho den khi bo sung du bang chung UAT/audit pack.
 
@@ -12491,7 +13123,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` => `main` bundle giam tu ~460.49 kB xuong ~147.83 kB gzip (`-312.66 kB`) va tach rieng hai chunks dashboard mode.
+- PASSED:
+pm run build` => `main` bundle giam tu ~460.49 kB xuong ~147.83 kB gzip (`-312.66 kB`) va tach rieng hai chunks dashboard mode.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, frontend container da restart voi bundle moi ~147.90 kB gzip trong Docker build.
 - PASSED: editor diagnostics clean tren `frontend/src/pages/Dashboard.jsx`.
 - NOTE: initial route dashboard khong con ship dong thoi ca legacy va modern workstation trong `main` bundle.
@@ -12504,7 +13137,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` => `main` bundle giam tu ~596.58 kB xuong ~460.49 kB gzip (`-136.09 kB`) va tao them async chunks cho StockDetail, Transactions, Support, Watchlist, AdminOps, AdminCrawlControl, Screener, PortfolioManagement, UserConfig.
+- PASSED:
+pm run build` => `main` bundle giam tu ~596.58 kB xuong ~460.49 kB gzip (`-136.09 kB`) va tao them async chunks cho StockDetail, Transactions, Support, Watchlist, AdminOps, AdminCrawlControl, Screener, PortfolioManagement, UserConfig.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, frontend container da restart voi bundle moi ~460.55 kB gzip trong Docker build.
 - PASSED: editor diagnostics clean tren `frontend/src/App.jsx`.
 - NOTE: bundle `main` da giam manh so voi moc truoc va khong con nam trong muc canh bao cu, nhung van co the tiep tuc toi uu neu can cat them initial payload.
@@ -12517,7 +13151,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm run build` => `main` bundle giam tu ~746.24 kB xuong ~596.58 kB gzip (`-149.66 kB`) va tach them route chunks cho Whale surfaces.
+- PASSED:
+pm run build` => `main` bundle giam tu ~746.24 kB xuong ~596.58 kB gzip (`-149.66 kB`) va tach them route chunks cho Whale surfaces.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, frontend container da restart voi bundle moi.
 - PASSED: editor diagnostics clean tren `frontend/src/App.jsx`.
 - NOTE: CRA van canh bao bundle lon, nhung Whale routes da duoc loai khoi eager main path.
@@ -12533,8 +13168,10 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` voi `CI=true` => 2/2 PASS.
-- PASSED: `npm run build` => `main` bundle giam tu ~895.32 kB xuong ~746.24 kB gzip (`-149.08 kB`) va tao them async chunk nho cho Whale tab.
+- PASSED:
+pm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` voi `CI=true` => 2/2 PASS.
+- PASSED:
+pm run build` => `main` bundle giam tu ~895.32 kB xuong ~746.24 kB gzip (`-149.08 kB`) va tao them async chunk nho cho Whale tab.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong va container frontend da restart.
 - NOTE: bundle frontend van con warning kich thuoc, nhung full ECharts import da duoc loai khoi runtime path chinh.
 
@@ -12546,7 +13183,8 @@ Validation:
 
 Validation:
 - PASSED: `python manage.py test portfolio.tests.test_whale_analytics_snapshot_api portfolio.tests.test_whale_analytics_snapshot_flow_series --keepdb -v 1` => 14/14 PASS.
-- PASSED: `npm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` voi `CI=true` => 2/2 PASS.
+- PASSED:
+pm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` voi `CI=true` => 2/2 PASS.
 - PASSED: editor diagnostics clean tren cac file frontend Whale Analytics vua harden.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml ps` => backend/frontend/db/redis healthy or up.
 - NOTE: frontend bundle build warning ~897.28 kB gzip van con, chua block slice nay.
@@ -12561,7 +13199,8 @@ Validation:
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `npm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` => 2/2 PASS.
+- PASSED:
+pm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` => 2/2 PASS.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong va container frontend da restart.
 - NOTE: frontend build van canh bao bundle JS ~897.28 kB gzip, khong block slice nay.
 
@@ -14194,7 +14833,8 @@ Validation:
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - tooltip switched to stable rich-text formatter, still showing symbol/company, industry, price, market cap, volume, and 24h trend summary)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18bc)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- Validation: `get_errors` clean; `npm run build` pass.
+- Validation: `get_errors` clean;
+pm run build` pass.
 - Status: COMPLETED (heatmap tooltip can render reliably without HTML tooltip lifecycle crashes)
 
 ### Heatmap Treemap Aligned to Official Flat-Data Pattern (2026-04-18)
@@ -14216,7 +14856,8 @@ Validation:
 - Status: COMPLETED (Treemap leaf nodes are configured to render correctly again)
 
 ### start_dev Seed Logging Cleanup for vnbroker stderr Noise (2026-04-18)
-- start_dev.ps1 (MODIFIED - capture `seed_securities_groups` output via `cmd /c` to avoid false `NativeCommandError` on successful seed)
+- start_dev.ps1 (MODIFIED - capture `seed_securities_groups` output via `cmd /c` to avoid false
+ativeCommandError` on successful seed)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18az)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 - Validation: PowerShell parser validation pass (`start_dev.ps1 parse: OK`); Docker dev stack update completed with backend/frontend smoke checks OK.
@@ -14334,7 +14975,8 @@ Validation:
 - docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - align walkthrough with final implementation behavior)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18an)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- Validation: `get_errors` clean on touched frontend files; `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` pass 4/4.
+- Validation: `get_errors` clean on touched frontend files;
+pm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` pass 4/4.
 - Status: COMPLETED (heatmap hybrid plan, implementation, and audit documentation are now aligned)
 
 ### Support SLA/Ops Dashboard for Staff Queue (2026-04-18)
@@ -14362,7 +15004,8 @@ Validation:
 - frontend/src/pages/Support.test.jsx (NEW - focused regression tests for support user/staff flows)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ak)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- Validation: `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` pass 4/4, `get_errors` clean.
+- Validation:
+pm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` pass 4/4, `get_errors` clean.
 - Status: COMPLETED (support page now has frontend regression guard for user + staff workflow)
 
 ### Support Ticket Implementation Slice 2 - Staff Web Workflow (2026-04-18)
@@ -15254,7 +15897,8 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 - ✅ Added advisory feed UI with Premium-only detail masking
 
 ### Validation
-- ✅ `npm run build` passes after advisory UI integration
+- ✅
+pm run build` passes after advisory UI integration
 - ✅ `manage.py test portfolio.tests.test_api_routes` passes (28 tests)
 - ✅ Stock workspace smoke test stabilized by mocking vnbroker live overlay in test
 - ✅ Redis-backed local validation: 4 stream keys / 400 ticks / consumer batch writes 400 `IntradayTick`
@@ -15519,3 +16163,58 @@ Delta highlights:
 ### Residual Risk
 
 - The production stack is healthy, but a fresh GHCR push still requires registry credentials if you want to publish new images upstream.
+
+---
+
+## 2026-05-27 | Redis Hostname Drift Guardrail (Dev + Production)
+
+### Status
+
+**Completed**: Environment templates now align to single Redis service name `core-redis` to prevent worker broker DNS failures.
+
+### What Changed
+
+- `compose.prod.env.example`: switched `REALTIME_REDIS_URL`, `STREAM_REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` to `redis://core-redis:6379/...`.
+- `backend/.env.production.example`: switched `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CACHE_REDIS_URL`, `REALTIME_REDIS_URL` to `redis://core-redis:6379/...`.
+- `.env.ghcr.example`: switched `REALTIME_REDIS_URL`, `STREAM_REDIS_URL` to `redis://core-redis:6379/...`.
+- `module_tree_full.md` regenerated with `python scripts/ops/generate_module_tree.py`.
+
+### Validation
+
+- `python scripts/ops/generate_module_tree.py` -> PASS.
+- Manual content verification confirms updated template endpoints no longer point to `redis://redis:6379/...`.
+
+### Next Runtime Step (Required)
+
+- Apply the same hostname correction in active remote env files (`.env.production`, `backend/.env.production`) on both dev and production servers, then restart the affected worker/api services.
+
+---
+
+## 2026-05-27 | `/api/health` Compatibility Completion
+
+### Status
+
+**Completed**: Public compatibility endpoints `/api/health` and `/api/health/` now return 200 on production domain.
+
+### What Changed
+
+- `packages/core/backend/src/vninvest_core/urls.py`:
+  - Added `path('api/health', views_health.health, ...)`
+  - Added `path('api/health/', views_health.health, ...)`
+- `frontend/docker/nginx.conf`:
+  - Added exact-match compatibility locations for `/api/health` and `/api/health/` proxied to `/core/v1/health`.
+- `packages/core/backend/tests/test_runtime_baseline.py`:
+  - Added `test_api_health_compat_route_returns_ok` regression test.
+- `module_tree_full.md` regenerated.
+
+### Runtime Actions Executed
+
+- Hot-applied nginx compat config in `vninvest-frontend` container and reloaded nginx.
+- Re-verified canonical endpoint remains healthy.
+
+### Validation
+
+- `curl -k https://vninvest.edusuccess.vn/api/health/` -> `200` + `{status: "ok"}`.
+- `curl -k https://vninvest.edusuccess.vn/api/health` -> `200` + `{status: "ok"}`.
+- `curl -k https://vninvest.edusuccess.vn/core/v1/health` -> `200` + `{status: "ok"}`.
+- `python -m pytest packages/core/backend/tests/test_runtime_baseline.py -q` locally blocked due missing dependency `dj_database_url` in local interpreter context.

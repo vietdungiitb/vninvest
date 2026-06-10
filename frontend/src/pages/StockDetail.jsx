@@ -23,6 +23,7 @@ import {
   getStockPriceChart,
   getStockWorkspaceOverview,
   getWatchlistGroups,
+  getWhaleAnalyticsSnapshot,
   getWhaleFeed,
   deleteStockAIAdvisoryComponent,
   clearDeletedStockAIAdvisoryComponents,
@@ -53,6 +54,8 @@ import {
   resolveAdvisoryConflictState,
   shouldAutoRetryAdvisoryConflict,
 } from './stockDetailAdvisoryUtils';
+import { buildEffectiveOrderFlowData } from '../utils/orderFlowFallback';
+import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter';
 
 const ADVISORY_INVALIDATION_EVENT = 'vninvest:advisory_updated';
 
@@ -1125,13 +1128,15 @@ export default function StockDetail() {
     return symbolAlerts;
   }, [symbolAlerts, whaleAnalyticsData, whaleFeedData]);
 
+  const effectiveOrderFlowData = orderFlowData;
+
   const klineFlowData = useMemo(() => buildKlineFactsFirstFlowData({
     baseFlowData: whaleAnalyticsData?.flow || null,
-    orderFlowData,
+    orderFlowData: effectiveOrderFlowData,
     bubbleOrders: whaleSignalsForChart,
     selectedTradeDate,
-    flowTimeframe: orderFlowData?.window || orderFlowWindow,
-  }), [orderFlowData, orderFlowWindow, selectedTradeDate, whaleAnalyticsData?.flow, whaleSignalsForChart]);
+    flowTimeframe: effectiveOrderFlowData?.window || orderFlowWindow,
+  }), [effectiveOrderFlowData, orderFlowWindow, selectedTradeDate, whaleAnalyticsData?.flow, whaleSignalsForChart]);
 
   const handleKlineSessionChange = useCallback((session) => {
     setSelectedKlineSession(session ? { ...session, symbol: normalizedSymbol } : null);
@@ -1632,26 +1637,31 @@ export default function StockDetail() {
     if (!normalizedSymbol) return;
     if (!silent) setOrderFlowLoading(true);
     try {
-      // Fetch song song: order-flow (signals/dark_flow/tick_rate) + CVD SSOT
-      const [orderFlowResp, cvdResp] = await Promise.allSettled([
+      // Build the final order-flow state in one cycle so whale fallback cannot race a separate hook.
+      const [orderFlowResp, cvdResp, whaleSnapshotResp] = await Promise.allSettled([
         getStockOrderFlow(normalizedSymbol, orderFlowWindow),
         getSessionFactsCvd(normalizedSymbol, orderFlowWindow, selectedTradeDate),
+        getWhaleAnalyticsSnapshot(normalizedSymbol, {
+          timeframe: orderFlowWindow,
+          compact: 0,
+          tradeDate: selectedTradeDate,
+          includeBaseline: false,
+        }),
       ]);
-      const base = orderFlowResp.status === 'fulfilled' ? (orderFlowResp.value?.data || null) : null;
+      const orderFlowPayload = orderFlowResp.status === 'fulfilled' ? (orderFlowResp.value?.data || null) : null;
       const cvdData = cvdResp.status === 'fulfilled' ? cvdResp.value?.data : null;
-      // Ưu tiên payload facts-first từ SessionFacts để KLine/OrderFlow dùng cùng selected-session truth.
-      setOrderFlowData(base || cvdData ? {
-        ...(base || {}),
+      const whaleAnalyticsSnapshot = whaleSnapshotResp.status === 'fulfilled' ? whaleSnapshotResp.value?.data : null;
+      const fallbackWhaleAnalyticsData = whaleAnalyticsSnapshot?.symbol
+        ? normalizeWhaleAnalyticsSnapshot(whaleAnalyticsSnapshot, orderFlowWindow)
+        : null;
+
+      setOrderFlowData(buildEffectiveOrderFlowData({
+        orderFlowPayload,
+        cvdPayload: cvdData,
+        whaleAnalyticsData: fallbackWhaleAnalyticsData,
         symbol: normalizedSymbol,
-        session_date: cvdData?.session_date ?? base?.session_date ?? null,
-        window: cvdData?.window ?? base?.window ?? orderFlowWindow,
-        bucket_minutes: cvdData?.bucket_minutes ?? base?.bucket_minutes ?? null,
-        cvd_normalized: cvdData?.cvd_normalized ?? base?.cvd_normalized ?? null,
-        delta_strength_pct: cvdData?.delta_strength_pct ?? base?.delta_strength_pct ?? null,
-        whale_net_flow: cvdData?.whale_net_flow ?? base?.whale_net_flow ?? null,
-        cvd_series: cvdData?.cvd_series ?? base?.cvd_series ?? [],
-        _cvd_source: cvdData ? 'whale-ssot' : 'intraday-tick',
-      } : null);
+        fallbackWindow: orderFlowWindow,
+      }));
     } catch (err) {
       if (isRequestCanceled(err)) {
         return;
@@ -2732,7 +2742,7 @@ export default function StockDetail() {
                   onSessionChange={handleKlineSessionChange}
                   flowData={klineFlowData}
                   whaleSignals={whaleSignalsForChart}
-                  orderFlowData={orderFlowData}
+                  orderFlowData={effectiveOrderFlowData}
                 />
               )}
             </div>
@@ -2744,7 +2754,7 @@ export default function StockDetail() {
               <OrderFlowRadarPanel
                 symbol={normalizedSymbol}
                 loading={orderFlowLoading}
-                orderFlowData={orderFlowData}
+                orderFlowData={effectiveOrderFlowData}
                 latestRealtimeAlert={symbolDarkFlowAlert}
               />
             </div>

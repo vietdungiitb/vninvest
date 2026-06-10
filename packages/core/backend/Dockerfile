@@ -26,13 +26,10 @@ RUN --mount=type=secret,id=vnbroker_github_token \
     test -f "$token_file"; \
     token="$(cat "$token_file")"; \
     test -n "$token"; \
-    printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$token" > /root/.netrc; \
-    chmod 600 /root/.netrc; \
-    sed 's#git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/#git+https://github.com/#' requirements.txt > requirements.build.txt; \
+    export VNBROKER_GITHUB_TOKEN="$token"; \
     pip install --upgrade pip; \
     mkdir -p /install; \
-    pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt; \
-    rm -f /root/.netrc requirements.build.txt
+    pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.txt
 
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────

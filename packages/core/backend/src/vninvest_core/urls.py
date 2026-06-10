@@ -23,6 +23,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # SM-P5.2: Prometheus metrics endpoint
     path('', include('django_prometheus.urls')),
+    # Compat health route for legacy monitors that still probe /api/health/.
+    path('api/health', views_health.health, name='api_health_compat_no_slash'),
+    path('api/health/', views_health.health, name='api_health_compat'),
     path('core/v1/health', views_health.health, name='core_health'),
     path('core/v1/capability-bootstrap', views_health.capability_bootstrap, name='core_capability_bootstrap'),
     # OpenAPI schema + Swagger UI (chỉ DEBUG hoặc internal)

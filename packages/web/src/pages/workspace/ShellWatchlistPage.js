@@ -20,6 +20,8 @@ import {
   renderValueList,
   useCoreShellPageSnapshot,
 } from "../coreShellPageHelpers.js";
+import { createElement } from "react";
+import { WatchlistPage } from "../WatchlistPage.js";
 
 const WORKSPACE_ROUTE_IDS = ["dashboard", "watchlist", "transactions", "portfolios"];
 
@@ -51,6 +53,16 @@ export function ShellWatchlistPage({
     visibleRoutes,
     abilities,
   } = deriveCoreShellSnapshot(viewState);
+
+  // LOGIC GATE FOR SAAS NATIVE MIGRATION
+  const hasSaasNative = capabilities?.tenant?.features?.includes("watchlist_saas_native") ||
+                       session?.tenant?.features?.includes("watchlist_saas_native") ||
+                       identity?.tenant?.features?.includes("watchlist_saas_native");
+
+  if (hasSaasNative) {
+    return createElement(WatchlistPage, { env, autoLoad });
+  }
+
   const workspaceRoutes = filterVisibleRoutes(visibleRoutes, WORKSPACE_ROUTE_IDS);
   const watchlistAbilities = filterAbilitiesBySubject(abilities, "watchlist");
   const enabledSurfaces = getEnabledSurfaceKeys(surfaces);
