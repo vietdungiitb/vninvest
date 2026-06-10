@@ -20,15 +20,15 @@ APP_RELEASE="${APP_RELEASE:-$(git rev-parse --short HEAD)}"
 export APP_RELEASE
 
 echo "[2/5] Build containers for APP_RELEASE=${APP_RELEASE}"
-docker compose --env-file .env.production -f docker-compose.prod.yml build --pull backend celery_worker celery_beat frontend
+docker compose --env-file .env.production -f docker-compose.prod.yml build --pull core-api frontend
 
 echo "[3/5] Start services"
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --force-recreate backend celery_worker celery_beat frontend
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --force-recreate
 
 echo "[4/5] Check service status"
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
 
 echo "[5/5] Health check (container logs tail)"
-docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=80 backend
+docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=80 core-api
 
 echo "Done. App should be reachable at http://<server-ip>/ (or your domain)."
