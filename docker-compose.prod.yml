@@ -540,7 +540,7 @@ services:
 
   # SM-P5.1: PgBouncer connection pooling
   pgbouncer:
-    image: bitnami/pgbouncer:latest
+    image: bitnamilegacy/pgbouncer:latest
     container_name: vninvest-pgbouncer
     restart: unless-stopped
     environment:
