@@ -1,6 +1,15 @@
 from django.apps import AppConfig
 
 
+def cors_allow_api_requests(sender, request, **kwargs):
+    from django.conf import settings
+    if not getattr(settings, 'CORS_API_DYNAMIC_ALLOW', True):
+        return False
+    if request.path.startswith('/core/v1/') or request.path.startswith('/api/'):
+        return True
+    return False
+
+
 class IdentityAccessConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'identity_access'
@@ -29,14 +38,6 @@ class IdentityAccessConfig(AppConfig):
 
         # CORS dynamic signal handling for API routes
         from corsheaders.signals import check_request_enabled
-
-        def cors_allow_api_requests(sender, request, **kwargs):
-            if not getattr(settings, 'CORS_API_DYNAMIC_ALLOW', True):
-                return False
-            if request.path.startswith('/core/v1/') or request.path.startswith('/api/'):
-                return True
-            return False
-
         check_request_enabled.connect(cors_allow_api_requests)
 
 
