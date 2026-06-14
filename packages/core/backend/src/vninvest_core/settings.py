@@ -66,8 +66,6 @@ INSTALLED_APPS = [
     'user_workspace',
     'market_data',
     'service_ops',
-    'support',
-    'advertising',
 ]
 
 MIDDLEWARE = [
