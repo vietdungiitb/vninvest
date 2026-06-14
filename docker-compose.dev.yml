@@ -70,11 +70,13 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
+      CORS_API_DYNAMIC_ALLOW: "true"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-bhVAxIWMEP0forZ4OatG_UemXTulVgWdcRveIXDe2Io=}
+
     command: ["api"]
     restart: unless-stopped
     healthcheck:
@@ -116,8 +118,8 @@ services:
         condition: service_healthy
     networks:
       - vninvest_network
-    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
-    cpus: ${CORE_WORKER_CPUS:-0.25}
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
+    cpus: ${CORE_WORKER_CPUS:-0.50}
 
   queue-drain-monitor:
     container_name: vninvest-dev-queue-drain-monitor
@@ -443,7 +445,7 @@ services:
       args:
         REACT_APP_API_BASE_URL: /api
         REACT_APP_AI_ADVISORY_PATH: /ai-advisory
-        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "0"
+        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
         REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
         STOCKCHART_REF: ${STOCKCHART_REF:-dev}
     depends_on: !override

@@ -83,6 +83,7 @@ services:
       DJANGO_SECRET_KEY: ${CORE_DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${CORE_ALLOWED_HOSTS}
       CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS}
+      CORS_API_DYNAMIC_ALLOW: ${CORS_API_DYNAMIC_ALLOW:-true}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
     command: ["api"]

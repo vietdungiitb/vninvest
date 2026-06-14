@@ -66,6 +66,8 @@ INSTALLED_APPS = [
     'user_workspace',
     'market_data',
     'service_ops',
+    'support',
+    'advertising',
 ]
 
 MIDDLEWARE = [
@@ -240,6 +242,9 @@ if not DEBUG and not CORS_ALLOWED_ORIGINS:
         "CORS_ALLOWED_ORIGINS must be set in production. "
         "Set CORS_ALLOWED_ORIGINS env var (comma-separated origins)."
     )
+
+# Dynamic CORS allowance toggle for API endpoints (/core/v1/* and /api/*)
+CORS_API_DYNAMIC_ALLOW = os.environ.get('CORS_API_DYNAMIC_ALLOW', 'true').strip().lower() in ('true', '1', 'yes')
 
 # CSRF origin checks must know the public host(s) in production, but local dev
 # should work out of the box on localhost without extra env wiring.
@@ -447,7 +452,7 @@ CELERY_BEAT_SCHEDULE = {
     # Upserts 365 days of daily candles for all tracked symbols via VCI+KBS parallel.
     'daily-backfill-prices-1700': {
         'task': 'data_ingest.tasks.backfill_daily_prices',
-        'schedule': crontab(hour=10, minute=5),  # 17:05 ICT (UTC+7) = 10:05 UTC
+        'schedule': crontab(hour=17, minute=5),  # 17:05 ICT (UTC+7)
         'kwargs': {'days': 365, '_scheduler_job_key': 'daily-backfill-prices-1700'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('daily-backfill-prices-1700', 'enrichment_offhours')},
     },
@@ -458,7 +463,7 @@ CELERY_BEAT_SCHEDULE = {
     # Enabled=True — chạy hàng tuần để fill gap tự động.
     'dnse-quarterly-backfill-intraday': {
         'task': 'data_ingest.tasks.enqueue_dnse_quarterly_backfill',
-        'schedule': crontab(hour=18, minute=0, day_of_week=6),  # Sat 18:00 UTC = Sun 01:00 ICT
+        'schedule': crontab(hour=1, minute=0, day_of_week=0),  # Sun 01:00 ICT
         'kwargs': {'days_back': 90, 'symbols_group': 'global', '_scheduler_job_key': 'dnse-quarterly-backfill-intraday'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('dnse-quarterly-backfill-intraday', 'enrichment_offhours')},
     },
@@ -469,7 +474,7 @@ CELERY_BEAT_SCHEDULE = {
     # Runs only once per week (off-market, off-peak) to avoid API quota pressure.
     'deep-history-bootstrap-weekly': {
         'task': 'data_ingest.tasks.backfill_daily_prices',
-        'schedule': crontab(hour=20, minute=0, day_of_week=6),  # Sat 20:00 UTC = Sun 03:00 ICT
+        'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Sun 03:00 ICT
         'kwargs': {'days': 1825, '_scheduler_job_key': 'deep-history-bootstrap-weekly'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('deep-history-bootstrap-weekly', 'enrichment_offhours')},
     },
@@ -479,7 +484,7 @@ CELERY_BEAT_SCHEDULE = {
     # from market inception up to the day before the rolling 5-year window.
     'pre5y-history-backfill-weekly': {
         'task': 'data_ingest.tasks.backfill_pre5y_to_market_inception',
-        'schedule': crontab(hour=21, minute=0, day_of_week=6),  # Sat 21:00 UTC = Sun 04:00 ICT
+        'schedule': crontab(hour=4, minute=0, day_of_week=0),  # Sun 04:00 ICT
         'kwargs': {
             'market_inception_date': '2000-07-28',
             'recent_years': 5,
@@ -494,7 +499,7 @@ CELERY_BEAT_SCHEDULE = {
     # Once parity is confirmed, remove 'daily-backfill-prices-1700' and keep this one.
     'ingest-daily-prices-1705': {
         'task': 'data_ingest.tasks.ingest_daily_prices',
-        'schedule': crontab(hour=10, minute=10),  # 17:10 ICT = 10:10 UTC (staggered 5m after backfill)
+        'schedule': crontab(hour=17, minute=10),  # 17:10 ICT
         'kwargs': {'days': 1},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-daily-prices-1705', 'enrichment_offhours')},
         'enabled': False,  # Disabled by default for P3-T03 (enable during shadow run)
@@ -539,6 +544,12 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'signal_intelligence.materializers.materialize_unified_alerts',
         'schedule': 120.0,  # every 2 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-2m', 'analytics_heavy')},
+    },
+    # === Signal intelligence: materialize AI signal alerts — every 5 minutes ===
+    'materialize-ai-signal-alerts-5m': {
+        'task': 'signal_intelligence.materializers.materialize_ai_signal_alerts',
+        'schedule': 300.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-ai-signal-alerts-5m', 'analytics_heavy')},
     },
     # === Advisory: reset daily token budgets — daily at 00:00 (UTC+7 / Asia/Ho_Chi_Minh) ===
     'reset-daily-token-budgets-0000': {
