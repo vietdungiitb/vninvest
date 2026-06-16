@@ -93,6 +93,14 @@ class CoreTenant(models.Model):
     suspended_at = models.DateTimeField(null=True, blank=True)
     billing_period_start = models.DateField(null=True, blank=True)
     billing_period_end = models.DateField(null=True, blank=True)
+    
+    # Stripe Billing Fields
+    stripe_customer_id = models.CharField(max_length=128, unique=True, null=True, blank=True, db_index=True, verbose_name='Stripe Customer ID')
+    stripe_subscription_id = models.CharField(max_length=128, null=True, blank=True, db_index=True, verbose_name='Stripe Subscription ID')
+    stripe_price_id = models.CharField(max_length=128, null=True, blank=True, verbose_name='Stripe Price ID')
+    stripe_current_period_end = models.DateTimeField(null=True, blank=True, verbose_name='Stripe Current Period End')
+    stripe_cancel_at_period_end = models.BooleanField(default=False, verbose_name='Stripe Cancel at Period End')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -195,21 +203,24 @@ class CorePATCredential(models.Model):
         verbose_name='Service account',
     )
     label = models.CharField(max_length=120, blank=True, default='', verbose_name='Display label')
-    token_prefix = models.CharField(max_length=12, verbose_name='Safe token prefix (12 chars)')
-    token_secret_hash = models.CharField(max_length=64, verbose_name='Token secret HMAC-SHA256 hash')
-    scopes = models.JSONField(default=list, blank=True, verbose_name='Effective scopes')
+    token_prefix = models.CharField(max_length=12, db_index=True, verbose_name='Token prefix (first 12 chars)')
+    token_secret_hash = models.CharField(max_length=64, unique=True, db_index=True, verbose_name='HMAC-SHA256 hash of token')
+    scopes = models.JSONField(default=list, blank=True, verbose_name='Granted scope codes')
     status = models.CharField(
         max_length=24,
         choices=StatusChoices.choices,
         default=StatusChoices.ACTIVE,
         db_index=True,
     )
-    expires_at = models.DateTimeField(null=True, blank=True)
-    last_used_at = models.DateTimeField(null=True, blank=True)
-    revoked = models.BooleanField(default=False, db_index=True)
-    is_human_session = models.BooleanField(default=False, db_index=True)
-    revoked_at = models.DateTimeField(null=True, blank=True)
-    audit_reason = models.CharField(max_length=255, blank=True, default='')
+    is_human_session = models.BooleanField(default=False, db_index=True, verbose_name='Human login session PAT')
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Expiration timestamp')
+    last_used_at = models.DateTimeField(null=True, blank=True, verbose_name='Last successful authentication')
+    revoked_at = models.DateTimeField(null=True, blank=True, verbose_name='Revocation timestamp')
+    revoked_reason = models.TextField(blank=True, default='', verbose_name='Reason for revocation')
+    grace_until = models.DateTimeField(null=True, blank=True, verbose_name='Grace period end for rotation')
+    audit_reason = models.TextField(blank=True, default='', verbose_name='Audit trail reason')
+    allowed_cidr_blocks = models.JSONField(default=list, blank=True, verbose_name='Allowed CIDR blocks for IP whitelisting')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -219,11 +230,12 @@ class CorePATCredential(models.Model):
         ordering = ['-created_at', '-pk']
         indexes = [
             models.Index(fields=['service_account', 'status']),
-            models.Index(fields=['token_prefix']),
+            models.Index(fields=['token_prefix', 'status']),
+            models.Index(fields=['is_human_session', 'status']),
         ]
 
     def __str__(self):
-        return f'{self.public_id or "pat"} ({self.status})'
+        return f'{self.label or self.token_prefix} ({self.status})'
 
     def save(self, *args, **kwargs):
         if not self.public_id:
@@ -233,66 +245,69 @@ class CorePATCredential(models.Model):
 
     @property
     def effective_status(self) -> str:
-        if self.revoked:
-            return self.StatusChoices.REVOKED
-        if self.expires_at and self.expires_at <= timezone.now():
+        if self.status == self.StatusChoices.ACTIVE and self.expires_at and self.expires_at <= timezone.now():
             return self.StatusChoices.EXPIRED
         return self.status
 
+    @property
+    def revoked(self) -> bool:
+        """Backward compatibility property for tests."""
+        return self.status == self.StatusChoices.REVOKED
+
     @classmethod
     def resolve_from_raw_secret(cls, raw_secret: str):
-        """Resolve a PAT credential from raw secret. Returns credential or None."""
-        secret = str(raw_secret or '').strip()
-        if not secret:
+        from django.utils import timezone
+        prefix = _extract_pat_prefix(raw_secret)
+        try:
+            credential = cls.objects.select_related('service_account__tenant').get(token_prefix=prefix)
+        except cls.DoesNotExist:
             return None
-        prefix = _extract_pat_prefix(secret)
-        if not prefix:
+        if not hmac.compare_digest(credential.token_secret_hash, _hash_pat_secret(raw_secret)):
             return None
-        expected_hash = _hash_pat_secret(secret)
-        candidates = (
-            cls.objects
-            .select_related('service_account', 'service_account__tenant')
-            .filter(token_prefix=prefix, revoked=False)
-            .order_by('-created_at')
-        )
-        for credential in candidates:
-            if hmac.compare_digest(str(credential.token_secret_hash or ''), expected_hash):
-                return credential
-        return None
+        # Don't return revoked credentials
+        if credential.status == cls.StatusChoices.REVOKED:
+            return None
+        return credential
 
     @classmethod
-    def issue_for_service_account(
-        cls,
-        *,
-        service_account: 'CoreServiceAccount',
-        scopes: list,
-        expires_at=None,
-        label: str = '',
-        audit_reason: str = '',
-        is_human_session: bool = False,
-    ):
-        """Issue a new PAT and return (credential, raw_secret). raw_secret shown once only."""
+    def issue_for_service_account(cls, service_account: CoreServiceAccount, scopes: list[str], expires_at=None, label: str = '', audit_reason: str = '', allowed_cidr_blocks: list[str] = None, is_human_session: bool = False):
+        from django.utils import timezone
         raw_secret = _build_pat_secret()
+        token_hash = _hash_pat_secret(raw_secret)
+        token_prefix = _extract_pat_prefix(raw_secret)
         credential = cls.objects.create(
             service_account=service_account,
-            label=str(label or '').strip(),
-            token_prefix=_extract_pat_prefix(raw_secret),
-            token_secret_hash=_hash_pat_secret(raw_secret),
-            scopes=list(scopes or []),
+            label=label,
+            token_prefix=token_prefix,
+            token_secret_hash=token_hash,
+            scopes=scopes,
             expires_at=expires_at,
-            audit_reason=str(audit_reason or '').strip(),
-            is_human_session=bool(is_human_session),
+            audit_reason=audit_reason,
+            allowed_cidr_blocks=allowed_cidr_blocks or [],
+            is_human_session=is_human_session,
         )
-        service_account.last_rotated_at = timezone.now()
-        service_account.save(update_fields=['last_rotated_at', 'updated_at'])
         return credential, raw_secret
 
-    def revoke_pat(self, *, reason: str = '') -> None:
-        self.revoked = True
-        self.revoked_at = timezone.now()
+    def mark_rotating(self, grace_period_seconds: int = 3600, reason: str = 'rotated'):
+        from django.utils import timezone
+        self.status = self.StatusChoices.ROTATING
+        self.grace_until = timezone.now() + timedelta(seconds=grace_period_seconds)
+        self.audit_reason = reason
+        self.save(update_fields=['status', 'grace_until', 'audit_reason', 'updated_at'])
+        return self.grace_until
+
+    def revoke_pat(self, reason: str = 'revoked'):
+        from django.utils import timezone
         self.status = self.StatusChoices.REVOKED
-        self.audit_reason = str(reason or '').strip()
-        self.save(update_fields=['revoked', 'revoked_at', 'status', 'audit_reason', 'updated_at'])
+        self.revoked_at = timezone.now()
+        self.revoked_reason = reason
+        self.audit_reason = reason
+        self.save(update_fields=['status', 'revoked_at', 'revoked_reason', 'audit_reason', 'updated_at'])
+
+    def record_usage(self):
+        from django.utils import timezone
+        self.last_used_at = timezone.now()
+        self.save(update_fields=['last_used_at', 'updated_at'])
 
     def mark_rotating(self, *, grace_period_seconds: int = 3600, reason: str = ''):
         grace_seconds = max(0, int(grace_period_seconds or 0))
@@ -897,6 +912,32 @@ class SystemMailConfig(models.Model):
                     raise ValidationError("Cấu hình Google Gmail API yêu cầu đầy đủ Email ủy quyền (DWD).")
             else:
                 raise ValidationError("Cấu hình Google Gmail API yêu cầu bộ thông tin OAuth2 hoặc Service Account DWD.")
+
+
+class TenantSSOConfig(models.Model):
+    """SAML 2.0 SSO configuration for Enterprise tenants."""
+    tenant = models.OneToOneField(
+        CoreTenant,
+        on_delete=models.CASCADE,
+        related_name='sso_config',
+        verbose_name='Tenant',
+    )
+    is_enabled = models.BooleanField(default=False, verbose_name='SSO enabled')
+    idp_entity_id = models.CharField(max_length=255, blank=True, default='', verbose_name='IdP Entity ID')
+    idp_sso_url = models.CharField(max_length=500, blank=True, default='', verbose_name='IdP SSO URL')
+    idp_x509_cert = models.TextField(blank=True, default='', verbose_name='IdP X.509 Certificate')
+    domain_hint = models.CharField(max_length=255, blank=True, default='', verbose_name='Domain hint for IdP discovery')
+    sp_entity_id = models.CharField(max_length=255, blank=True, default='', verbose_name='SP Entity ID (this app)')
+    sp_acs_url = models.CharField(max_length=500, blank=True, default='', verbose_name='SP Assertion Consumer Service URL')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Tenant SSO Configuration'
+        verbose_name_plural = 'Tenant SSO Configurations'
+
+    def __str__(self):
+        return f'SSO Config for {self.tenant.display_name} (enabled={self.is_enabled})'
 
 
 class OutboxEvent(models.Model):

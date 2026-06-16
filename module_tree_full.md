@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-06-16 06:17:13`
+Generated at: `2026-06-16 14:59:15`
 
 ## Summary
 
-- Total modules: 2052
-- Python modules: 446
-- JS/TS modules: 1606
-- Total classes: 1257
-- Total functions: 5903
-- Total top-level variables: 19296
+- Total modules: 2059
+- Python modules: 449
+- JS/TS modules: 1610
+- Total classes: 1264
+- Total functions: 5924
+- Total top-level variables: 19331
 
 ## Python Modules
 
@@ -362,10 +362,8 @@ Generated at: `2026-06-16 06:17:13`
 
 ### `packages/core/backend/src/data_ingest/urls.py`
 
-- Classes:
-  - `NoFormatSuffixRouter` -> methods: `get_urls`
 - Top-level variables:
-  - `router`, `urlpatterns`
+  - `data_ingest_task_status`, `data_ingest_trigger_daily_prices`, `data_ingest_trigger_price_board`, `ingest_job_detail`, `ingest_job_list`, `ingest_run_detail`, `ingest_run_list`, `urlpatterns`
 
 ### `packages/core/backend/src/data_ingest/views.py`
 
@@ -492,7 +490,8 @@ Generated at: `2026-06-16 06:17:13`
 ### `packages/core/backend/src/identity_access/middleware.py`
 
 - Classes:
-  - `TenantQuotaMiddleware` -> methods: `__call__`, `__init__`, `_build_counter_key`, `_increment_daily_counter`, `_is_exempt_path`, `_resolve_tenant_quota`
+  - `TenantQuotaMiddleware` -> methods: `__call__`, `__init__`, `_build_counter_key`, `_get_tenant_quota_limit`, `_increment_daily_counter`, `_is_exempt_path`, `_resolve_tenant_quota`
+  - `TenantResolutionMiddleware` -> methods: `__call__`, `__init__`, `_get_user_from_pat`, `_is_exempt_path`, `_resolve_by_header`, `_resolve_superuser_tenant`, `_resolve_tenant`
 
 ### `packages/core/backend/src/identity_access/migrations/0001_initial.py`
 
@@ -627,11 +626,12 @@ Generated at: `2026-06-16 06:17:13`
 ### `packages/core/backend/src/identity_access/tenant_member_views.py`
 
 - Classes:
-  - `IsTenantOwnerOrAdmin` -> methods: `has_object_permission`, `has_permission`
   - `TenantInviteAcceptView` -> methods: `post`
-  - `TenantInvitesCombinedView` -> methods: `_get_tenant_for_user`, `get`, `post`
+  - `TenantInvitesCombinedView` -> methods: `get`, `post`
   - `TenantMemberListView` -> methods: `get`
   - `TenantMemberRemoveView` -> methods: `delete`
+- Functions:
+  - `_get_request_tenant`, `_get_request_tenant_role`, `_require_tenant_role`
 
 ### `packages/core/backend/src/identity_access/tests/__init__.py`
 
@@ -670,7 +670,7 @@ Generated at: `2026-06-16 06:17:13`
 ### `packages/core/backend/src/identity_access/tests/test_email_tasks.py`
 
 - Classes:
-  - `EmailTaskIntegrationTests` -> methods: `setUp`, `test_password_reset_view_calls_async_task`, `test_register_view_calls_async_task`
+  - `EmailTaskIntegrationTests` -> methods: `setUp`, `tearDown`, `test_password_reset_view_calls_async_task`, `test_register_view_calls_async_task`
   - `EmailVerificationTokenTaskTests` -> methods: `setUp`, `test_send_email_verification_token_default_frontend_url`, `test_send_email_verification_token_failure`, `test_send_email_verification_token_success`
   - `PasswordResetEmailTaskTests` -> methods: `setUp`, `test_send_password_reset_email_default_frontend_url`, `test_send_password_reset_email_failure`, `test_send_password_reset_email_success`
 
@@ -700,6 +700,16 @@ Generated at: `2026-06-16 06:17:13`
   - `SaaSUserRegistrationSpamProtectionTests` -> methods: `setUp`, `test_backfill_missing_tenants_command`, `test_disposable_domain_validation_blocked`, `test_happy_path_registration_atomic_provisioning`, `test_honeypot_field_validation_blocked`, `test_tc_chaos_failover_02_google_api_crash_fallback`, `test_tc_concurrency_01_active_mail_config_constraint`, `test_tc_migration_key_05_credential_rotation`, `test_tc_outbox_atomic_03_atomic_failure_rollback`, `test_tc_outbox_consume_04_idempotent_event_processing`, `test_turnstile_token_invalid_blocked`
 - Top-level variables:
   - `TEST_FERNET_KEY`, `User`
+
+### `packages/core/backend/src/identity_access/tests/test_tenant_resolution_middleware.py`
+
+- Classes:
+  - `TenantResolutionMiddlewareIntegrationTests` -> methods: `setUp`, `test_middleware_sets_tenant_and_role_on_request`, `test_middleware_with_different_roles`
+  - `TenantResolutionMiddlewareTests` -> methods: `_create_request`, `setUp`, `test_deprovisioned_tenant_returns_403`, `test_exempt_path_bypasses_middleware`, `test_fallback_to_first_member`, `test_fallback_to_tenant_owner`, `test_invalid_x_tenant_id_header_returns_403`, `test_no_tenant_for_user_returns_403`, `test_pat_authentication_disabled_service_account_bypasses`, `test_pat_authentication_invalid_token_bypasses`, `test_pat_authentication_resolves_user`, `test_pat_authentication_revoked_token_bypasses`, `test_superuser_bypass_with_header`, `test_superuser_fallback_to_member_tenant`, `test_superuser_fallback_to_owned_tenant`, `test_suspended_tenant_returns_403`, `test_unauthenticated_user_bypasses_middleware`, `test_valid_x_tenant_id_header_with_member`, `test_valid_x_tenant_id_header_with_owner`, `test_x_tenant_id_header_user_not_member_returns_403`
+- Functions:
+  - `_parse_json_response`
+- Top-level variables:
+  - `User`
 
 ### `packages/core/backend/src/identity_access/urls.py`
 
@@ -774,7 +784,7 @@ Generated at: `2026-06-16 06:17:13`
   - `TenantDetailView` -> methods: `get_object`
   - `UserProfileView` -> methods: `get`, `patch`
 - Functions:
-  - `_is_human_session_pat`, `_normalize_scope_codes`, `_reject_human_session_markers`, `_require_partner_scope`, `_resolve_issue_target_service_account`, `_resolve_request_tenant_or_none`, `_serialize_partner_pat`, `_validate_requested_pat_scopes`, `issue_pat`, `partner_issue_pat`, `partner_revoke_pat`, `partner_rotate_pat`
+  - `_get_request_tenant`, `_get_request_tenant_role`, `_is_human_session_pat`, `_normalize_scope_codes`, `_reject_human_session_markers`, `_require_partner_scope`, `_require_tenant_role`, `_resolve_issue_target_service_account`, `_serialize_partner_pat`, `_validate_requested_pat_scopes`, `issue_pat`, `partner_issue_pat`, `partner_revoke_pat`, `partner_rotate_pat`
 - Top-level variables:
   - `HUMAN_SESSION_PAT_AUDIT_REASON`, `HUMAN_SESSION_PAT_LABEL_PREFIX`, `PARTNER_SCOPE_MANAGE_PATS`, `PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS`, `PARTNER_SCOPE_MANAGE_TENANT`, `TENANT_PERMISSION_CLASSES`
 
@@ -1106,11 +1116,6 @@ Generated at: `2026-06-16 06:17:13`
   - `SessionFactsAdmin`
   - `SymbolSnapshotAdmin`
 
-### `packages/core/backend/src/market_serving/api_urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
-
 ### `packages/core/backend/src/market_serving/apps.py`
 
 - Classes:
@@ -1341,6 +1346,7 @@ Generated at: `2026-06-16 06:17:13`
 
 - Classes:
   - `AuditEventSerializer`
+  - `TenantLifecycleEventSerializer` -> methods: `get_actor_user`, `get_actor_username`
 
 ### `packages/core/backend/src/ops_audit/serializers_parity.py`
 
@@ -1356,6 +1362,14 @@ Generated at: `2026-06-16 06:17:13`
 - Top-level variables:
   - `_MAX_BACKUP_SIZE_BYTES`, `logger`
 
+### `packages/core/backend/src/ops_audit/tests/test_audit_logs_api.py`
+
+- Classes:
+  - `PartnerAuditLogsViewIntegrationTests` -> methods: `_create_request`, `setUp`, `test_api_endpoint_requires_auth`, `test_api_endpoint_with_pat_auth`, `test_api_endpoint_with_session_auth`
+  - `PartnerAuditLogsViewTests` -> methods: `_create_request`, `_get_response_data`, `setUp`, `test_actor_username_fallback_to_actor_type`, `test_actor_username_populated`, `test_cross_tenant_access_blocked`, `test_filter_by_date_range`, `test_filter_by_end_date`, `test_filter_by_event_type`, `test_filter_by_start_date`, `test_list_audit_logs_member`, `test_list_audit_logs_owner`, `test_pagination`, `test_response_structure`, `test_unauthenticated_access_blocked`
+- Top-level variables:
+  - `User`
+
 ### `packages/core/backend/src/ops_audit/urls.py`
 
 - Top-level variables:
@@ -1370,6 +1384,7 @@ Generated at: `2026-06-16 06:17:13`
 
 - Classes:
   - `AuditLogListView` -> methods: `get_queryset`, `get_serializer_class`
+  - `PartnerAuditLogsView` -> methods: `get_queryset`
 
 ### `packages/core/backend/src/ops_audit/views_parity.py`
 
@@ -3074,6 +3089,13 @@ Generated at: `2026-06-16 06:17:13`
 - Top-level variables:
   - `_src_dir`
 
+### `packages/core/backend/tests/test_audit_logs_api.py`
+
+- Classes:
+  - `PartnerAuditLogsAPITests` -> methods: `_authenticate_with_pat`, `_authenticate_with_session`, `setUp`, `test_actor_username_populated`, `test_cross_tenant_access_returns_403`, `test_event_structure_has_required_fields`, `test_filter_by_date_range`, `test_filter_by_end_date`, `test_filter_by_event_type`, `test_filter_by_start_date`, `test_list_audit_logs_returns_tenant_logs`, `test_member_can_access_audit_logs`, `test_pagination_works`, `test_suspended_tenant_cannot_access`, `test_unauthenticated_request_returns_401`
+- Top-level variables:
+  - `_src_dir`
+
 ### `packages/core/backend/tests/test_byok_security.py`
 
 - Classes:
@@ -3289,6 +3311,13 @@ Generated at: `2026-06-16 06:17:13`
 - Classes:
   - `_InMemoryQuotaCache` -> methods: `__init__`, `add`, `incr`
   - `TenantQuotaMiddlewareTests` -> methods: `_middleware`, `_request`, `_run_with_cache`, `setUp`, `test_auth_path_is_exempt`, `test_exceeded_limit_returns_429`, `test_health_path_is_exempt`, `test_public_path_is_exempt_even_for_authenticated_user`, `test_resolve_tenant_quota_uses_active_quota_record`, `test_settings_register_middleware_after_authentication`, `test_superuser_request_is_not_counted`, `test_unauthenticated_request_is_not_counted`, `test_unlimited_quota_counts_but_never_blocks`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_tenant_resolution_middleware.py`
+
+- Classes:
+  - `TenantResolutionMiddlewareTests` -> methods: `_middleware`, `_request`, `setUp`, `test_cross_tenant_header_returns_403`, `test_deprovisioned_tenant_returns_403`, `test_exempt_paths_bypass_resolution`, `test_header_invalid_tenant_returns_403`, `test_header_valid_tenant_resolves_correct_tenant`, `test_member_cross_tenant_header_returns_403`, `test_member_role_admin`, `test_member_role_viewer`, `test_no_header_fallback_member_resolved`, `test_no_header_fallback_owner_resolved`, `test_superuser_bypass_with_header`, `test_superuser_fallback_to_owned_tenant`, `test_suspended_tenant_returns_403`, `test_unauthenticated_request_passes_through`
 - Top-level variables:
   - `_src_dir`
 
@@ -8376,6 +8405,13 @@ Generated at: `2026-06-16 06:17:13`
   - `OrderFlowRadarPanel`, `fmtCompact`, `formatPercentDelta`, `getICTTime`, `useI18n`
 - Top-level variables:
   - `chartData`, `cvdSeries`, `d`, `darkFlow`, `e`, `filteredCvdSeries`, `filteredSignals`, `formatter`, `hourPart`, `hours`, `ict`, `ictDate`, `itemTs`, `latestSignal`, `liveSignal`, `liveStrength`, `map`, `maxTs`, `minutePart`, `minutes`, `n`, `numericValue`, `parts`, `recentSignalNodes`, `signals`, `sizeDistribution`, `smallOrderRatio`, `tickRate`, `timeFilterButtons`, `utc`
+
+### `packages/web/src/components/PolicyCheckboxes.js`
+
+- Functions:
+  - `PolicyCheckboxes`, `handleToggle`, `policyIdsToScopeCodes`, `scopeCodesToPolicyIds`
+- Top-level variables:
+  - `POLICIES`, `POLICY_TO_SCOPE_CODES`, `SCOPE_CODE_TO_POLICY`, `newSelected`, `policyId`, `policyIds`, `scopeCodes`, `scopes`, `seen`, `selectedSet`
 
 ### `packages/web/src/components/ShellPageTemplate.js`
 
@@ -13610,6 +13646,27 @@ Generated at: `2026-06-16 06:17:13`
   - `ShellSupportPage`
 - Top-level variables:
   - `SYSTEM_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `supportAbilities`, `systemRoutes`
+
+### `packages/web/src/pages/tenant-admin/TenantAdminHomePage.js`
+
+- Functions:
+  - `TenantAdminHomePage`, `loadTenant`
+- Top-level variables:
+  - `data`, `metrics`, `response`, `summaryCards`
+
+### `packages/web/src/pages/tenant-admin/TenantAdminMembersPage.js`
+
+- Functions:
+  - `TenantAdminMembersPage`, `handleInviteSubmit`, `handleRemoveMember`, `loadData`
+- Top-level variables:
+  - `data`, `errorData`, `metrics`, `response`, `roleLabels`, `statusLabels`
+
+### `packages/web/src/pages/tenant-admin/TenantAdminServiceAccountsPage.js`
+
+- Functions:
+  - `TenantAdminServiceAccountsPage`, `handleCreateSubmit`, `handleDeleteSA`, `handleToggleStatus`, `loadServiceAccounts`
+- Top-level variables:
+  - `data`, `errorData`, `metrics`, `newStatus`, `response`, `statusLabels`
 
 ### `packages/web/src/pages/TransactionsPage.js`
 

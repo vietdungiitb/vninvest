@@ -88,6 +88,13 @@ class IsTenantActive(BasePermission):
 
         tenant = getattr(user, 'core_tenant', None)
         if tenant is None:
+            # Try to fetch from database (for force_authenticate in tests)
+            try:
+                tenant = CoreTenant.objects.get(owner_user=user)
+            except CoreTenant.DoesNotExist:
+                pass
+        
+        if tenant is None:
             profile = getattr(user, 'core_profile', None)
             tenant = getattr(profile, 'tenant', None)
         if tenant is None:

@@ -108,7 +108,7 @@ function resolvePageComponent(routeId) {
 }
 
 export function Layout() {
-  const { userIdentity, logout } = usePortfolio();
+  const { userIdentity, logout, userTenants = [], switchTenant, activeTenantId } = usePortfolio();
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -128,6 +128,7 @@ export function Layout() {
     { label: 'Cài đặt', path: '/settings', icon: '⚙️' },
     { label: 'AI Control', path: '/settings/ai', icon: '🧠' },
     { label: 'SOC Operator', path: '/operations-center', icon: '🛠️' },
+    { label: 'Tenant Admin', path: '/tenant-admin', icon: '🏢' },
   ];
 
   return createElement(
@@ -139,7 +140,33 @@ export function Layout() {
       createElement(
         'div',
         { style: layoutStyles.logoContainer },
-        createElement('h1', { style: layoutStyles.logo }, 'VNInvest')
+        createElement('h1', { style: layoutStyles.logo }, 'VNInvest'),
+        userTenants.length > 0 && createElement(
+          "div",
+          { style: { marginTop: "14px" } },
+          createElement("label", { style: { display: "block", fontSize: "10px", fontWeight: "bold", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" } }, "Không gian làm việc"),
+          createElement(
+            "select",
+            {
+              value: activeTenantId || "",
+              onChange: (e) => switchTenant(e.target.value),
+              style: {
+                width: "100%",
+                padding: "8px 10px",
+                background: "rgba(15,23,42,0.6)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "8px",
+                color: "var(--text-primary)",
+                fontSize: "13px",
+                outline: "none",
+                cursor: "pointer",
+              },
+            },
+            userTenants.map(t =>
+              createElement("option", { key: t.tenant_id || t.public_id || t.id, value: t.tenant_id || t.public_id || t.id }, `${t.display_name} (${(t.plan || "free").toUpperCase()})`)
+            )
+          )
+        )
       ),
       createElement(
         'nav',
@@ -238,6 +265,15 @@ function App() {
         createElement(Route, { path: 'operations-center', element: createElement(resolvePageComponent('operations-center')) }),
         createElement(Route, { path: 'operations-center/mail-config', element: createElement(resolvePageComponent('operations-center-mail-config')) }),
         createElement(Route, { path: 'stocks/:symbol', element: createElement(resolvePageComponent('core-stock-detail')) }),
+        createElement(Route, { path: 'tenant-admin/home', element: createElement(resolvePageComponent('tenant-admin-home')) }),
+        createElement(Route, { path: 'tenant-admin/members', element: createElement(resolvePageComponent('tenant-admin-members')) }),
+        createElement(Route, { path: 'tenant-admin/service-accounts', element: createElement(resolvePageComponent('tenant-admin-service-accounts')) }),
+        createElement(Route, { path: 'tenant-admin/pats', element: createElement(resolvePageComponent('tenant-admin-pats')) }),
+        createElement(Route, { path: 'tenant-admin/usage', element: createElement(resolvePageComponent('tenant-admin-usage')) }),
+        createElement(Route, { path: 'tenant-admin/billing', element: createElement(resolvePageComponent('tenant-admin-billing')) }),
+        createElement(Route, { path: 'tenant-admin/capabilities', element: createElement(resolvePageComponent('tenant-admin-capabilities')) }),
+        createElement(Route, { path: 'tenant-admin/audit-logs', element: createElement(resolvePageComponent('tenant-admin-audit-logs')) }),
+        createElement(Route, { path: 'tenant-admin', element: createElement(Navigate, { to: '/tenant-admin/home', replace: true }) }),
       ),
       createElement(Route, { path: '*', element: createElement(Navigate, { to: '/dashboard', replace: true }) })
     )

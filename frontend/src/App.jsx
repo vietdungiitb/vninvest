@@ -35,6 +35,8 @@ import TenantMembers from './pages/admin/tenant/TenantMembers';
 import TenantPATs from './pages/admin/tenant/TenantPATs';
 import TenantServiceAccounts from './pages/admin/tenant/TenantServiceAccounts';
 import TenantUsage from './pages/admin/tenant/TenantUsage';
+import TenantUsageHistory from './pages/admin/tenant/TenantUsageHistory';
+import TenantAdminSSOPage from './pages/admin/tenant/TenantAdminSSOPage';
 import AICommandCenter from './pages/AICommandCenter';
 import Upgrade from './pages/Upgrade';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
@@ -286,6 +288,14 @@ export default function App() {
                     )}
                   />
                   <Route
+                    path="tenant-admin/usage/history"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantUsageView">
+                        <TenantUsageHistory />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
                     path="tenant-admin/billing"
                     element={(
                       <ProtectedRoute action="read" subject="TenantBillingView">
@@ -314,6 +324,14 @@ export default function App() {
                     element={(
                       <ProtectedRoute action="read" subject="TenantPATAdmin">
                         <TenantPATs />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="tenant-admin/sso"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantAdmin">
+                        <TenantAdminSSOPage />
                       </ProtectedRoute>
                     )}
                   />

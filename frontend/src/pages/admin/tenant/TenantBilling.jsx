@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getTenantBillingInvoices, getTenantBillingSubscription } from '../../../api/client';
+import { getTenantBillingInvoices, getTenantBillingSubscription, createStripeCheckoutSession, createStripePortalSession } from '../../../api/client';
 import { useI18n } from '../../../context/LangContext';
 import { usePortfolio } from '../../../context/PortfolioContext';
 
@@ -87,6 +87,9 @@ export default function TenantBilling() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripeError, setStripeError] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState('pro');
 
   async function loadData() {
     setLoading(true);
@@ -102,6 +105,55 @@ export default function TenantBilling() {
       setError(resolveErrorMessage(nextError, t('tenantBilling.loadError')));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleUpgradePlan(plan) {
+    setStripeLoading(true);
+    setStripeError('');
+    try {
+      const baseUrl = window.location.origin;
+      const successUrl = `${baseUrl}/tenant-admin/billing?stripe_success=true`;
+      const cancelUrl = `${baseUrl}/tenant-admin/billing?stripe_canceled=true`;
+      
+      const response = await createStripeCheckoutSession({
+        plan,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+      });
+      
+      if (response.data?.url) {
+        window.location.href = response.data.url;
+      } else {
+        setStripeError(t('tenantBilling.stripeError') || 'Failed to create checkout session');
+      }
+    } catch (nextError) {
+      setStripeError(resolveErrorMessage(nextError, t('tenantBilling.stripeError') || 'Failed to create checkout session'));
+    } finally {
+      setStripeLoading(false);
+    }
+  }
+
+  async function handleManageBilling() {
+    setStripeLoading(true);
+    setStripeError('');
+    try {
+      const baseUrl = window.location.origin;
+      const returnUrl = `${baseUrl}/tenant-admin/billing`;
+      
+      const response = await createStripePortalSession({
+        return_url: returnUrl,
+      });
+      
+      if (response.data?.url) {
+        window.location.href = response.data.url;
+      } else {
+        setStripeError(t('tenantBilling.stripeError') || 'Failed to create portal session');
+      }
+    } catch (nextError) {
+      setStripeError(resolveErrorMessage(nextError, t('tenantBilling.stripeError') || 'Failed to create portal session'));
+    } finally {
+      setStripeLoading(false);
     }
   }
 
@@ -139,6 +191,22 @@ export default function TenantBilling() {
     };
   }, [t]);
 
+  // Handle Stripe redirect callbacks
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stripe_success') === 'true') {
+      setStripeError('');
+      // Show success message or reload data
+      loadData();
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (params.get('stripe_canceled') === 'true') {
+      setStripeError(t('tenantBilling.checkoutCanceled') || 'Checkout was canceled. You can try again anytime.');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [t, loadData]);
+
   const statusLabel = resolveSubscriptionStatusLabel(t, subscription?.status);
   const invoiceStateLabel = resolveInvoiceStateLabel(t, subscription?.invoice_state);
   const renewalLabel = subscription?.next_invoice_date ? formatDate(subscription.next_invoice_date, locale) : t('common.notAvailable');
@@ -170,6 +238,45 @@ export default function TenantBilling() {
                   {t('tenantBilling.openUsage')}
                 </Link>
               ) : null}
+              {canReadUsage ? (
+                <Link
+                  to="/tenant-admin/usage/history"
+                  className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-colors hover:border-emerald-400/60 hover:bg-emerald-500/20"
+                >
+                  {t('tenantBilling.openUsageHistory')}
+                </Link>
+              ) : null}
+              {/* Stripe Billing Actions */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedPlan}
+                  onChange={(e) => setSelectedPlan(e.target.value)}
+                  disabled={stripeLoading}
+                  className="rounded-full border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition-colors focus:border-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="starter">{t('plans.starter')}</option>
+                  <option value="pro">{t('plans.pro')}</option>
+                  <option value="enterprise">{t('plans.enterprise')}</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleUpgradePlan(selectedPlan)}
+                  disabled={stripeLoading}
+                  className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-colors hover:border-emerald-400/60 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {stripeLoading ? t('tenantBilling.upgrading') : t('tenantBilling.upgradePlan')}
+                </button>
+              </div>
+              {subscription?.stripe_customer_id ? (
+                <button
+                  type="button"
+                  onClick={handleManageBilling}
+                  disabled={stripeLoading}
+                  className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-100 transition-colors hover:border-blue-400/60 hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {stripeLoading ? t('tenantBilling.openingPortal') : t('tenantBilling.manageBilling')}
+                </button>
+              ) : null}
               <Link
                 to="/tenant-admin/home"
                 className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition-colors hover:border-violet-400/60 hover:bg-violet-500/20"
@@ -193,6 +300,12 @@ export default function TenantBilling() {
           </div>
         ) : null}
 
+        {stripeError ? (
+          <div className="rounded-2xl border border-rose-500/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+            {stripeError}
+          </div>
+        ) : null}
+
         <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex items-center justify-between gap-3">
@@ -213,6 +326,15 @@ export default function TenantBilling() {
                 <FieldCard label={t('tenantBilling.nextInvoiceDateLabel')} value={renewalLabel} />
                 <FieldCard label={t('tenantBilling.autoRenewLabel')} value={subscription?.auto_renew ? t('tenantBilling.autoRenew.enabled') : t('tenantBilling.autoRenew.disabled')} />
                 <FieldCard label={t('tenantBilling.creditBalanceLabel')} value={formatCurrency(subscription?.credit_balance, locale)} />
+                {/* Stripe Subscription Status */}
+                {subscription?.stripe_subscription_id ? (
+                  <>
+                    <FieldCard label={t('tenantBilling.stripeSubscriptionIdLabel')} value={subscription.stripe_subscription_id} />
+                    <FieldCard label={t('tenantBilling.stripeStatusLabel')} value={subscription.stripe_status || t('common.notAvailable')} />
+                    <FieldCard label={t('tenantBilling.stripeCurrentPeriodEndLabel')} value={subscription.stripe_current_period_end ? formatDate(subscription.stripe_current_period_end, locale) : t('common.notAvailable')} />
+                    <FieldCard label={t('tenantBilling.stripeCancelAtPeriodEndLabel')} value={subscription.stripe_cancel_at_period_end ? t('tenantBilling.autoRenew.disabled') : t('tenantBilling.autoRenew.enabled')} />
+                  </>
+                ) : null}
               </div>
             )}
           </section>

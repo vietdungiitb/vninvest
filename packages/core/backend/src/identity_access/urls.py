@@ -6,6 +6,7 @@ from . import onboarding_views
 from . import views_operator
 from . import tenant_member_views
 from .dnse_credential_views import DNSECredentialView
+from .views.sso import SSOLoginInitiateView, SSOCallbackView
 
 urlpatterns = [
     # Auth endpoints (Gate A2, A3)
@@ -50,6 +51,12 @@ urlpatterns = [
     path('auth/password-reset/confirm/', views_auth.password_reset_confirm_view, name='auth-password-reset-confirm'),
     path('auth/token/refresh/', views_auth.refresh_token_view, name='auth-token-refresh'),
 
+    # SSO endpoints
+    path('auth/sso/login/', SSOLoginInitiateView.as_view(), name='auth-sso-login'),
+    path('auth/sso/login', SSOLoginInitiateView.as_view(), name='auth-sso-login-noslash'),
+    path('auth/sso/callback/', SSOCallbackView.as_view(), name='auth-sso-callback'),
+    path('auth/sso/callback', SSOCallbackView.as_view(), name='auth-sso-callback-noslash'),
+
     # DNSE Credential management (D02)
     path('dnse-credential/', DNSECredentialView.as_view(), name='dnse-credential'),
 
@@ -67,4 +74,7 @@ urlpatterns = [
     path('operator/mail-config/<int:pk>/', views_operator.OperatorMailConfigDetailView.as_view(), name='operator-mail-config-detail-singular'),
     path('operator/mail-config/<int:pk>/activate/', views_operator.OperatorMailConfigActivateView.as_view(), name='operator-mail-config-activate-singular'),
     path('operator/mail-config/test/', views_operator.OperatorMailConfigTestView.as_view(), name='operator-mail-config-test-singular'),
+
+    # Ops Audit endpoints (includes partner audit logs)
+    path('', include('ops_audit.urls')),
 ]

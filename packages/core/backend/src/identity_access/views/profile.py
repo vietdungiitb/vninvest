@@ -51,6 +51,9 @@ def profile_view(request):
             'status': subscription.status,
         }
 
+    from django.db.models import Q
+    user_tenants = CoreTenant.objects.filter(Q(owner_user=user) | Q(members__user=user)).distinct()
+
     return Response(
         {
             **_user_payload(user),
@@ -63,6 +66,7 @@ def profile_view(request):
                 **_tenant_payload(tenant),
                 'created_at': tenant.created_at.isoformat() if hasattr(tenant, 'created_at') else None,
             },
+            'tenants': [_tenant_payload(t) for t in user_tenants],
             'subscription': subscription_payload,
         }
     )

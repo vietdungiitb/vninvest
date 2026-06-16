@@ -165,6 +165,18 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_DEFAULT_MODEL = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
 ADVISORY_TOKEN_BUDGET = int(os.environ.get('ADVISORY_TOKEN_BUDGET', '2000'))
 
+# Stripe Billing Integration
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+
+# Stripe Price IDs mapping (plan_code -> Stripe Price ID)
+STRIPE_PRICE_IDS = {
+    'starter': os.environ.get('STRIPE_PRICE_ID_STARTER', ''),
+    'pro': os.environ.get('STRIPE_PRICE_ID_PRO', ''),
+    'enterprise': os.environ.get('STRIPE_PRICE_ID_ENTERPRISE', ''),
+}
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = False
@@ -184,6 +196,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 50,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'identity_access.authentication.CorePATAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

@@ -370,6 +370,30 @@ export const getTenantBillingSubscription = () =>
 export const getTenantBillingInvoices = (params = {}) =>
   apiClient.get('/core/v1/partner/billing/invoices/', { params });
 
+// --- Stripe Billing APIs ---
+export const createStripeCheckoutSession = (data) =>
+  apiClient.post('/core/v1/partner/billing/stripe/session/', data);
+
+export const createStripePortalSession = (data) =>
+  apiClient.post('/core/v1/partner/billing/stripe/portal/', data);
+
+// --- Usage History API ---
+export const getTenantUsageHistory = (params = {}) =>
+  apiClient.get('/core/v1/partner/usage/history/', { params });
+
+// --- SSO APIs ---
+export const getTenantSSOConfig = () =>
+  apiClient.get('/core/v1/partner/sso/');
+
+export const updateTenantSSOConfig = (data) =>
+  apiClient.post('/core/v1/partner/sso/', data);
+
+export const initiateSSOLogin = (params = {}) =>
+  apiClient.get('/core/v1/auth/sso/login/', { params });
+
+export const handleSSOCallback = (data) =>
+  apiClient.post('/core/v1/auth/sso/callback/', data);
+
 export const getCoreOperatorJobs = (params = {}) =>
   apiClient.get('/core/v1/operator/jobs/', { params });
 

@@ -222,14 +222,23 @@ export function createCoreTransport(env = {}, options = {}) {
   async function requestWithAuth(path, init = {}, attemptRefresh = true) {
     const base = resolveCoreApiBase(env);
     const requestId = generateRequestId();
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Request-ID": requestId,
+      ...getAuthorizationHeader(getToken),
+      ...(init.headers || {}),
+    };
+
+    if (typeof window !== "undefined" && window.localStorage) {
+      const storedTenantId = window.localStorage.getItem("tenant_id");
+      if (storedTenantId) {
+        headers["X-Tenant-ID"] = storedTenantId;
+      }
+    }
+
     const response = await fetch(`${base}${path}`, {
       ...init,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Request-ID": requestId,
-        ...getAuthorizationHeader(getToken),
-        ...(init.headers || {}),
-      },
+      headers,
       credentials: "include",
     });
 

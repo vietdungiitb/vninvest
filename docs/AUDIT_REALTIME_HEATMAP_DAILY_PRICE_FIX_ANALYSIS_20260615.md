@@ -1,4 +1,4 @@
-# Audit: Real-time Heatmap & Daily Price Fix Analysis
+c:\Mujoco Projects\vninvest\feedback\tenant_admin_audit_report.md# Audit: Real-time Heatmap & Daily Price Fix Analysis
 
 **Date:** 2026-06-15  
 **Analyst:** BlackboxAI  

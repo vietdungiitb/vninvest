@@ -166,6 +166,14 @@ export default function TenantAdminHome() {
                 {t('tenantHome.patsRoute')}
               </Link>
             ) : null}
+            {tenantCanManagePATs ? (
+              <Link
+                to="/tenant-admin/sso"
+                className="rounded-2xl border border-purple-500/25 bg-purple-500/10 px-4 py-3 text-sm font-semibold text-purple-100 transition-colors hover:border-purple-400/50 hover:bg-purple-500/20"
+              >
+                {t('tenantHome.ssoRoute')}
+              </Link>
+            ) : null}
           </div>
         </section>
       </div>

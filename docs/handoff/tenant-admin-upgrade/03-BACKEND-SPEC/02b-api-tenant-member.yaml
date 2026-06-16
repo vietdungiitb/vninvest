@@ -1,0 +1,358 @@
+openapi: 3.0.3
+info:
+  title: VNInvest Tenant Admin API - Tenant, Member, Invitation
+  version: 1.0.0
+
+components:
+  schemas:
+    # ==========================================
+    # Tenant Detail (Full)
+    # ==========================================
+    TenantDetail:
+      allOf:
+        - $ref: './02a-api-schemas.yaml#/components/schemas/TenantRef'
+        - type: object
+          required: [plan, stripe_customer_id, created_at, updated_at]
+          properties:
+            plan:
+              $ref: './02a-api-schemas.yaml#/components/schemas/PlanTier'
+            stripe_customer_id:
+              type: string
+              nullable: true
+              example: "cus_ABC123"
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    # ==========================================
+    # Tenant Member (Full)
+    # ==========================================
+    TenantMember:
+      type: object
+      required: [id, tenant, user, role, status, invited_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant:
+          $ref: './02a-api-schemas.yaml#/components/schemas/TenantRef'
+        user:
+          $ref: './02a-api-schemas.yaml#/components/schemas/UserRef'
+        role:
+          $ref: './02a-api-schemas.yaml#/components/schemas/TenantRole'
+        status:
+          $ref: './02a-api-schemas.yaml#/components/schemas/TenantMemberStatus'
+        invited_by:
+          $ref: './02a-api-schemas.yaml#/components/schemas/UserRef'
+          nullable: true
+        invited_at:
+          type: string
+          format: date-time
+        joined_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ==========================================
+    # Invitation Request/Response
+    # ==========================================
+    InviteMemberRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          $ref: './02a-api-schemas.yaml#/components/schemas/TenantRole'
+          enum: [ADMIN, MEMBER, VIEWER]  # OWNER not allowed via invite
+
+    InviteMemberResponse:
+      type: object
+      required: [invitation_id, email, role, status, expires_at]
+      properties:
+        invitation_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: './02a-api-schemas.yaml#/components/schemas/TenantRole'
+        status:
+          type: string
+          enum: [PENDING]
+        expires_at:
+          type: string
+          format: date-time
+
+    # ==========================================
+    # Update Member Request
+    # ==========================================
+    UpdateMemberRequest:
+      type: object
+      properties:
+        role:
+          $ref: './02a-api-schemas.yaml#/components/schemas/TenantRole'
+          enum: [ADMIN, MEMBER, VIEWER]
+        status:
+          $ref: './02a-api-schemas.yaml#/components/schemas/TenantMemberStatus'
+          enum: [ACTIVE, SUSPENDED, REVOKED]
+
+    # ==========================================
+    # Tenant List Query Params
+    # ==========================================
+    TenantListParams:
+      type: object
+      properties:
+        cursor:
+          type: string
+          description: Opaque cursor for pagination
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+
+paths:
+  /api/core/v1/partner/tenants/:
+    get:
+      summary: List tenants current user has access to
+      description: |
+        **No X-Tenant-ID header required.** Returns all tenants where user is an active member.
+        Used for initial Tenant Switcher population.
+      operationId: listUserTenants
+      tags: [Tenant]
+      parameters:
+        - $ref: '#/components/parameters/CursorPageParams'
+      responses:
+        '200':
+          description: Cursor-paginated list of tenants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CursorPage'
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TenantRef'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/core/v1/partner/tenants/{tenant_id}/:
+    get:
+      summary: Get tenant detail (requires membership)
+      operationId: getTenantDetail
+      tags: [Tenant]
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDetail'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/core/v1/partner/tenants/{tenant_id}/members/:
+    get:
+      summary: List tenant members (paginated)
+      operationId: listTenantMembers
+      tags: [Member]
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/CursorPageParams'
+        - name: status
+          in: query
+          schema:
+            $ref: './02a-api-schemas.yaml#/components/schemas/TenantMemberStatus'
+        - name: role
+          in: query
+          schema:
+            $ref: './02a-api-schemas.yaml#/components/schemas/TenantRole'
+      responses:
+        '200':
+          description: Paginated member list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CursorPage'
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TenantMember'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      summary: Invite new member
+      operationId: inviteMember
+      tags: [Member]
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteMemberRequest'
+      responses:
+        '201':
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteMemberResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: User already member or invitation pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/core/v1/partner/tenants/{tenant_id}/members/{member_id}/:
+    patch:
+      summary: Update member role/status (Owner/Admin only)
+      operationId: updateMember
+      tags: [Member]
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRequest'
+      responses:
+        '200':
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantMember'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Revoke membership (Owner/Admin only, cannot revoke self if Owner)
+      operationId: revokeMember
+      tags: [Member]
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Membership revoked
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================
+  # Shared Parameters & Responses
+  # ==========================================
+  parameters:
+    CursorPageParams:
+      name: cursor
+      in: query
+      description: Opaque cursor for pagination
+      schema:
+        type: string
+      # page_size handled by pagination class
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: './02a-api-schemas.yaml#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: AUTHENTICATION_REQUIRED
+              message: Authentication required
+
+    Forbidden:
+      description: Insufficient permissions or tenant access denied
+      content:
+        application/json:
+          schema:
+            $ref: './02a-api-schemas.yaml#/components/schemas/ErrorResponse'
+          examples:
+            no_membership:
+              summary: Not a member
+              value:
+                error:
+                  code: MEMBERSHIP_REQUIRED
+                  message: You are not an active member of this tenant
+            suspended:
+              summary: Tenant suspended
+              value:
+                error:
+                  code: TENANT_SUSPENDED
+                  message: Tenant is suspended
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: './02a-api-schemas.yaml#/components/schemas/ErrorResponse'
+
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: './02a-api-schemas.yaml#/components/schemas/ErrorResponse'

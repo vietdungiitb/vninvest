@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 import uuid
 import logging
+import stripe
 
 from identity_access.models import CoreTenant
 from vninvest_core.pagination import CoreCursorPagination
@@ -18,6 +19,7 @@ from vninvest_core.exceptions import (
 from .models import Invoice, QuotaRecord, Subscription, PaymentTransaction, VNPayIPNLog
 from .serializers import InvoiceSerializer, QuotaRecordSerializer, SubscriptionSerializer
 from .vnpay_service import VNPayService
+from .stripe_service import stripe_service
 
 logger = logging.getLogger(__name__)
 
@@ -302,3 +304,138 @@ class PaymentStatusCheckView(APIView):
             'vnp_transaction_no': txn.vnp_transaction_no,
             'updated_at': txn.updated_at.isoformat()
         }, status=status.HTTP_200_OK)
+
+
+# ─── GIAI ĐOẠN 2: STRIPE BILLING PORTAL INTEGRATION ────────────────────────
+
+class StripeCheckoutSessionView(APIView):
+    """
+    POST /api/core/v1/partner/billing/stripe/session/
+    
+    Create a Stripe Checkout Session for subscription upgrade.
+    Request Body: { "plan": "pro", "success_url": "...", "cancel_url": "..." }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        try:
+            tenant = user.core_tenant
+        except CoreTenant.DoesNotExist:
+            raise PermissionErrorException(
+                detail="Tài khoản không được liên kết với bất kỳ Workspace/Tenant nào.",
+                code="tenant_not_found"
+            )
+
+        if not stripe_service.is_configured():
+            raise ValidationErrorException(
+                detail="Stripe thanh toán chưa được cấu hình. Vui lòng liên hệ quản trị viên.",
+                code="stripe_not_configured"
+            )
+
+        plan = request.data.get('plan')
+        success_url = request.data.get('success_url')
+        cancel_url = request.data.get('cancel_url')
+
+        if not plan:
+            raise ValidationErrorException(
+                detail="plan là bắt buộc (starter, pro, enterprise).",
+                code="validation_error"
+            )
+
+        if not success_url or not cancel_url:
+            raise ValidationErrorException(
+                detail="success_url và cancel_url là bắt buộc.",
+                code="validation_error"
+            )
+
+        price_id = stripe_service.get_price_id(plan)
+        if not price_id:
+            raise ValidationErrorException(
+                detail=f"Gói {plan} không có Stripe Price ID được cấu hình.",
+                code="stripe_price_not_configured"
+            )
+
+        try:
+            session = stripe_service.create_checkout_session(
+                tenant=tenant,
+                price_id=price_id,
+                success_url=success_url,
+                cancel_url=cancel_url,
+            )
+            return Response({
+                'session_id': session.id,
+                'url': session.url,
+            }, status=status.HTTP_201_CREATED)
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error creating checkout session: {e}")
+            raise ValidationErrorException(
+                detail=f"Lỗi Stripe: {str(e)}",
+                code="stripe_error"
+            )
+        except ValueError as e:
+            logger.error(f"Value error creating checkout session: {e}")
+            raise ValidationErrorException(
+                detail=str(e),
+                code="stripe_error"
+            )
+
+
+class StripePortalSessionView(APIView):
+    """
+    POST /api/core/v1/partner/billing/stripe/portal/
+    
+    Create a Stripe Customer Portal Session for self-service billing management.
+    Request Body: { "return_url": "..." }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        try:
+            tenant = user.core_tenant
+        except CoreTenant.DoesNotExist:
+            raise PermissionErrorException(
+                detail="Tài khoản không được liên kết với bất kỳ Workspace/Tenant nào.",
+                code="tenant_not_found"
+            )
+
+        if not stripe_service.is_configured():
+            raise ValidationErrorException(
+                detail="Stripe thanh toán chưa được cấu hình. Vui lòng liên hệ quản trị viên.",
+                code="stripe_not_configured"
+            )
+
+        return_url = request.data.get('return_url')
+        if not return_url:
+            raise ValidationErrorException(
+                detail="return_url là bắt buộc.",
+                code="validation_error"
+            )
+
+        if not tenant.stripe_customer_id:
+            raise ValidationErrorException(
+                detail="Tenant chưa có Stripe Customer. Vui lòng nâng cấp gói trước.",
+                code="stripe_customer_not_found"
+            )
+
+        try:
+            session = stripe_service.create_portal_session(
+                tenant=tenant,
+                return_url=return_url,
+            )
+            return Response({
+                'url': session.url,
+            }, status=status.HTTP_201_CREATED)
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error creating portal session: {e}")
+            raise ValidationErrorException(
+                detail=f"Lỗi Stripe: {str(e)}",
+                code="stripe_error"
+            )
+        except ValueError as e:
+            logger.error(f"Value error creating portal session: {e}")
+            raise ValidationErrorException(
+                detail=str(e),
+                code="stripe_error"
+            )

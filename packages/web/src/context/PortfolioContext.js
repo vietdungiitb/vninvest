@@ -21,6 +21,7 @@ export function PortfolioProvider({ children }) {
   const [userEntitlements, setUserEntitlements] = useState(null);
   const [capabilitySnapshot, setCapabilitySnapshot] = useState(null);
   const [ability, setAbility] = useState(() => createAbilityFromRules([]));
+  const [userTenants, setUserTenants] = useState([]);
 
   const logout = useCallback(() => {
     authTokenStorage.clearTokens();
@@ -35,6 +36,7 @@ export function PortfolioProvider({ children }) {
     setUserEntitlements(null);
     setCapabilitySnapshot(null);
     setAbility(createAbilityFromRules([]));
+    setUserTenants([]);
     setAuthStateReady(true);
   }, []);
 
@@ -80,6 +82,13 @@ export function PortfolioProvider({ children }) {
         entitlements: profile?.entitlements || null,
         actor: { plan: tenantLifecycle?.plan || 'free' },
       });
+      setUserTenants(profile?.tenants || []);
+      if (typeof window !== "undefined" && window.localStorage) {
+        const storedTenantId = window.localStorage.getItem("tenant_id");
+        if (!storedTenantId && profile?.tenant?.tenant_id) {
+          window.localStorage.setItem("tenant_id", profile.tenant.tenant_id);
+        }
+      }
 
       return true;
     } catch (error) {
@@ -251,6 +260,13 @@ export function PortfolioProvider({ children }) {
     };
   }, [isAuthenticated, accessToken, syncAuthState, fetchPortfolios]);
 
+  const switchTenant = useCallback((tenantId) => {
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem("tenant_id", tenantId);
+      window.location.reload();
+    }
+  }, []);
+
   const contextValue = useMemo(() => ({
     portfolios,
     activePortfolioId,
@@ -277,6 +293,9 @@ export function PortfolioProvider({ children }) {
     createSubAccount,
     updateSubAccount,
     deleteSubAccount,
+    userTenants,
+    switchTenant,
+    activeTenantId: typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("tenant_id") : null,
   }), [
     portfolios, activePortfolioId, isAuthenticated, authStateReady, login, register,
     resendVerification, logout, refreshAccessToken, userConfig,
@@ -285,6 +304,7 @@ export function PortfolioProvider({ children }) {
     capabilitySnapshot,
     ability, createPortfolio, updatePortfolio, deletePortfolio,
     createSubAccount, updateSubAccount, deleteSubAccount,
+    userTenants, switchTenant,
   ]);
 
   return createElement(
