@@ -111,23 +111,36 @@ def _serialize_partner_pat(credential: CorePATCredential, *, secret: str | None 
     return payload
 
 
-def _resolve_request_tenant_or_none(user) -> CoreTenant | None:
-    """Return the caller tenant when available; allow staff/superuser to operate without one."""
-    try:
-        return CoreTenant.objects.get(owner_user=user)
-    except CoreTenant.DoesNotExist:
-        if bool(getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)):
-            return None
-        raise PermissionDenied('Không tìm thấy tenant của người dùng hiện tại.')
+def _get_request_tenant(request) -> CoreTenant:
+    """Get tenant from request (set by TenantResolutionMiddleware)."""
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        raise PermissionDenied('Không tìm thấy tenant trong request. Middleware chưa chạy hoặc tenant không hợp lệ.')
+    return tenant
 
 
-def _resolve_issue_target_service_account(*, request, service_account_id: str, tenant: CoreTenant | None) -> CoreServiceAccount:
+def _get_request_tenant_role(request) -> str:
+    """Get tenant role from request (set by TenantResolutionMiddleware)."""
+    role = getattr(request, 'tenant_role', None)
+    if role is None:
+        raise PermissionDenied('Không tìm thấy vai trò tenant trong request.')
+    return role
+
+
+def _require_tenant_role(request, *allowed_roles: str) -> None:
+    """Check if request.tenant_role is in allowed_roles."""
+    role = _get_request_tenant_role(request)
+    if role not in allowed_roles:
+        raise PermissionDenied(f'Vai trò {role} không có quyền thực hiện hành động này.')
+
+
+def _resolve_issue_target_service_account(*, request, service_account_id: str) -> CoreServiceAccount:
+    tenant = _get_request_tenant(request)
     queryset = CoreServiceAccount.objects.filter(
         public_id=service_account_id,
         status=CoreServiceAccount.StatusChoices.ACTIVE,
+        tenant=tenant,
     )
-    if tenant is not None:
-        queryset = queryset.filter(tenant=tenant)
     return generics.get_object_or_404(queryset)
 
 
@@ -137,7 +150,8 @@ class TenantDetailView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_TENANT)
-        return CoreTenant.objects.get(owner_user=self.request.user)
+        _require_tenant_role(self.request, 'owner', 'admin')
+        return _get_request_tenant(self.request)
 
 
 class ServiceAccountListView(generics.ListCreateAPIView):
@@ -147,12 +161,14 @@ class ServiceAccountListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        _require_tenant_role(self.request, 'owner', 'admin')
+        tenant = _get_request_tenant(self.request)
         return CoreServiceAccount.objects.filter(tenant=tenant).order_by('-created_at')
 
     def perform_create(self, serializer):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        _require_tenant_role(self.request, 'owner', 'admin')
+        tenant = _get_request_tenant(self.request)
         serializer.save(tenant=tenant)
 
 
@@ -162,7 +178,8 @@ class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        _require_tenant_role(self.request, 'owner', 'admin')
+        tenant = _get_request_tenant(self.request)
         return CoreServiceAccount.objects.filter(tenant=tenant)
 
     def get_object(self):
@@ -186,9 +203,8 @@ class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
             return
 
         if deleting:
-            raise ValidationError({'detail': 'Không thể xóa service account active cuối cùng của tenant.'})
-
-        raise ValidationError({'status': ['Không thể vô hiệu service account active cuối cùng của tenant.']})
+            raise ValidationError({'detail': 'Không thể xóa service account đang hoạt động cuối cùng của tenant.'})
+        raise ValidationError({'detail': 'Không thể vô hiệu hóa service account đang hoạt động cuối cùng của tenant.'})
 
     def perform_update(self, serializer):
         instance = self.get_object()
@@ -208,35 +224,24 @@ class PATListView(generics.ListAPIView):
 
     def get_queryset(self):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_PATS)
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        _require_tenant_role(self.request, 'owner', 'admin')
+        tenant = _get_request_tenant(self.request)
         return CorePATCredential.objects.filter(
             service_account__tenant=tenant,
             is_human_session=False,
-        ).order_by('-created_at')
+        ).select_related('service_account', 'service_account__tenant').order_by('-created_at')
 
 
-@api_view(['POST'])
-@permission_classes(TENANT_PERMISSION_CLASSES)
 def issue_pat(request, service_account_id):
-    """Issue a new PAT for a service account. Returns token ONE TIME only."""
+    """Issue a new PAT for a service account (legacy endpoint)."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    tenant = _resolve_request_tenant_or_none(request.user)
-    sa = _resolve_issue_target_service_account(
-        request=request,
-        service_account_id=service_account_id,
-        tenant=tenant,
-    )
+    _require_tenant_role(request, 'owner', 'admin')
+    sa = _resolve_issue_target_service_account(request=request, service_account_id=service_account_id)
 
-    serializer = PartnerPATIssueSerializer(data={
-        **request.data,
-        'service_account_id': service_account_id,
-    })
-    serializer.is_valid(raise_exception=True)
-
-    scopes = serializer.validated_data.get('scope_codes', [])
-    expires_at = serializer.validated_data.get('expires_at')
-    label = serializer.validated_data.get('display_name') or serializer.validated_data.get('label') or ''
-    audit_reason = serializer.validated_data.get('audit_reason', '')
+    scopes = _normalize_scope_codes(request.data.get('scope_codes', []))
+    expires_at = request.data.get('expires_at')
+    label = str(request.data.get('display_name') or request.data.get('label') or '').strip()
+    audit_reason = str(request.data.get('audit_reason', '')).strip()
     _reject_human_session_markers(label=label, audit_reason=audit_reason)
     scopes = _validate_requested_pat_scopes(request, sa, scopes)
 
@@ -312,16 +317,13 @@ class UserProfileView(APIView):
 def partner_issue_pat(request):
     """Issue a new PAT. Takes service_account_id from request body."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    tenant = _resolve_request_tenant_or_none(request.user)
+    _require_tenant_role(request, 'owner', 'admin')
+    tenant = _get_request_tenant(request)
     serializer = PartnerPATIssueSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
     sa_id = serializer.validated_data['service_account_id']
-    sa = _resolve_issue_target_service_account(
-        request=request,
-        service_account_id=sa_id,
-        tenant=tenant,
-    )
+    sa = _resolve_issue_target_service_account(request=request, service_account_id=sa_id)
 
     scopes = serializer.validated_data.get('scope_codes', [])
     expires_at = serializer.validated_data.get('expires_at')
@@ -345,7 +347,8 @@ def partner_issue_pat(request):
 def partner_rotate_pat(request, pat_id):
     """Revoke old PAT and issue a replacement for the same service account."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    tenant = CoreTenant.objects.get(owner_user=request.user)
+    _require_tenant_role(request, 'owner', 'admin')
+    tenant = _get_request_tenant(request)
     old_pat = generics.get_object_or_404(
         CorePATCredential,
         public_id=pat_id,
@@ -393,7 +396,8 @@ def partner_rotate_pat(request, pat_id):
 def partner_revoke_pat(request, pat_id):
     """Revoke a PAT owned by the authenticated tenant."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    tenant = CoreTenant.objects.get(owner_user=request.user)
+    _require_tenant_role(request, 'owner', 'admin')
+    tenant = _get_request_tenant(request)
     pat = generics.get_object_or_404(
         CorePATCredential,
         public_id=pat_id,

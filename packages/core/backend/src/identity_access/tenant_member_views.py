@@ -11,8 +11,7 @@ Endpoints:
 from datetime import timedelta
 
 from django.utils import timezone
-from rest_framework import permissions, serializers, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -22,38 +21,30 @@ from .serializers import TenantMemberSerializer, TenantInviteSerializer, TenantI
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
 
 
-class IsTenantOwnerOrAdmin(permissions.BasePermission):
-    """Permission: user must be tenant owner or admin."""
+def _get_request_tenant(request) -> CoreTenant:
+    """Get tenant from request (set by TenantResolutionMiddleware)."""
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied('Không tìm thấy tenant trong request. Middleware chưa chạy hoặc tenant không hợp lệ.')
+    return tenant
 
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return True
 
-    def has_object_permission(self, request, view, obj):
-        if isinstance(obj, CoreTenant):
-            tenant = obj
-        elif hasattr(obj, 'tenant'):
-            tenant = obj.tenant
-        else:
-            return False
+def _get_request_tenant_role(request) -> str:
+    """Get tenant role from request (set by TenantResolutionMiddleware)."""
+    role = getattr(request, 'tenant_role', None)
+    if role is None:
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied('Không tìm thấy vai trò tenant trong request.')
+    return role
 
-        # Owner is always allowed
-        if tenant.owner_user == request.user:
-            return True
 
-        # Superuser bypass
-        if request.user.is_superuser:
-            return True
-
-        # Check membership: must be OWNER or ADMIN
-        member = TenantMember.objects.filter(
-            tenant=tenant,
-            user=request.user,
-        ).first()
-        if member is None:
-            return False
-        return member.role in [TenantMember.RoleChoices.OWNER, TenantMember.RoleChoices.ADMIN]
+def _require_tenant_role(request, *allowed_roles: str) -> None:
+    """Check if request.tenant_role is in allowed_roles."""
+    role = _get_request_tenant_role(request)
+    if role not in allowed_roles:
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied(f'Vai trò {role} không có quyền thực hiện hành động này.')
 
 
 class TenantMemberListView(APIView):
@@ -62,14 +53,8 @@ class TenantMemberListView(APIView):
 
     def get(self, request):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        user = request.user
-        # Find user's primary tenant
-        tenant = CoreTenant.objects.filter(owner_user=user).first()
-        if not tenant:
-            return Response(
-                {'error': 'User has no tenant'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        _require_tenant_role(request, 'owner', 'admin')
+        tenant = _get_request_tenant(request)
 
         # List members
         members = TenantMember.objects.filter(tenant=tenant).select_related('user', 'invited_by')
@@ -85,36 +70,11 @@ class TenantInvitesCombinedView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
-    def _get_tenant_for_user(self, user):
-        """Get the user's primary tenant (owner-owned) or first accessible tenant."""
-        # Try to find tenant owned by user
-        tenant = CoreTenant.objects.filter(owner_user=user).first()
-        if tenant:
-            return tenant
-        # If not found, try to find any tenant where user is a member
-        member = TenantMember.objects.filter(user=user).select_related('tenant').first()
-        if member:
-            return member.tenant
-        return None
-
     def post(self, request):
         """Create invite for new member."""
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        user = request.user
-        tenant = self._get_tenant_for_user(user)
-        if not tenant:
-            return Response(
-                {'error': 'User has no tenant'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        # Check permission (owner/admin)
-        perm = IsTenantOwnerOrAdmin()
-        if not perm.has_object_permission(request, None, tenant):
-            return Response(
-                {'error': 'Not authorized'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        _require_tenant_role(request, 'owner', 'admin')
+        tenant = _get_request_tenant(request)
 
         # Validate input
         serializer = TenantInviteCreateSerializer(data=request.data)
@@ -152,7 +112,7 @@ class TenantInvitesCombinedView(APIView):
         invite = TenantInvite.objects.create(
             tenant=tenant,
             invited_email=invited_email,
-            inviter=user,
+            inviter=request.user,
             token=token,
             role=role,
             expires_at=timezone.now() + timedelta(days=7),
@@ -163,7 +123,7 @@ class TenantInvitesCombinedView(APIView):
             tenant=tenant,
             event_type=TenantLifecycleEvent.EventType.MEMBER_INVITED,
             actor_type='api',
-            actor_user=user,
+            actor_user=request.user,
             new_value={'invited_email': invited_email, 'role': role},
         )
 
@@ -173,21 +133,8 @@ class TenantInvitesCombinedView(APIView):
     def get(self, request):
         """List pending invites for tenant."""
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        user = request.user
-        tenant = self._get_tenant_for_user(user)
-        if not tenant:
-            return Response(
-                {'error': 'User has no tenant'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        # Check permission (owner/admin)
-        perm = IsTenantOwnerOrAdmin()
-        if not perm.has_object_permission(request, None, tenant):
-            return Response(
-                {'error': 'Not authorized'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        _require_tenant_role(request, 'owner', 'admin')
+        tenant = _get_request_tenant(request)
 
         # List pending invites
         invites = TenantInvite.objects.filter(
@@ -279,38 +226,35 @@ class TenantInviteAcceptView(APIView):
 
 class TenantMemberRemoveView(APIView):
     """Remove member from tenant."""
-    permission_classes = [permissions.IsAuthenticated, IsTenantActive, IsTenantOwnerOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
     def delete(self, request, member_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        user = request.user
+        _require_tenant_role(request, 'owner', 'admin')
+        tenant = _get_request_tenant(request)
 
         # Find member
-        member = TenantMember.objects.filter(public_id=member_id).first()
+        member = TenantMember.objects.filter(public_id=member_id, tenant=tenant).first()
         if not member:
             return Response(
                 {'error': 'Member not found'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Check permission
-        self.check_object_permissions(request, member)
-
         # Cannot remove owner
-        if member.tenant.owner_user == member.user:
+        if tenant.owner_user == member.user:
             return Response(
                 {'error': 'Cannot remove tenant owner'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         # Cannot remove self
-        if member.user == user:
+        if member.user == request.user:
             return Response(
                 {'error': 'Cannot remove yourself'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        tenant = member.tenant
         removed_user = member.user
 
         # Delete member
@@ -321,7 +265,7 @@ class TenantMemberRemoveView(APIView):
             tenant=tenant,
             event_type=TenantLifecycleEvent.EventType.MEMBER_REMOVED,
             actor_type='api',
-            actor_user=user,
+            actor_user=request.user,
             new_value={'removed_user_id': removed_user.id, 'email': removed_user.email},
         )
 
