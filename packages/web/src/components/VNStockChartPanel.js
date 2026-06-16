@@ -298,6 +298,8 @@ export default function VNStockChartPanel({
   flowData = null,
   whaleSignals = [],
   orderFlowData = null,
+  enableCVD = false,
+  enableInstitutionalStrength = false,
 }) {
   const { t } = useI18n();
   const [internalBars, setInternalBars] = useState([]);
@@ -513,10 +515,11 @@ export default function VNStockChartPanel({
           theme: 'dark',
           enableWhale: true,
           whaleOrders: mappedWhaleOrders,
-          enableCVD: false,
+          enableCVD: enableCVD,
           externalCvdSeries: undefined,
           darkFlowStrength: null,
           darkFlowSignalType: undefined,
+          enableInstitutionalStrength: enableInstitutionalStrength,
           onClick: handleClick,
           onVisibleRangeChange: handleVisibleRangeChange,
           onBarsChange: handleBarsChange,
@@ -535,6 +538,6 @@ export default function VNStockChartPanel({
   return e(
     'div',
     { className: 'flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
-    e('div', { className: 'flex-1 min-h-[460px] relative' }, chartBody),
+    e('div', { className: 'flex-1 min-h-[420px] max-h-[420px] relative' }, chartBody),
   );
 }

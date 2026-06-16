@@ -293,9 +293,9 @@ textarea {
 }
 
 .dashboard-triad-lane {
-  height: 526px;
+  height: 580px;
   min-width: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .dashboard-triad-lane--center {
